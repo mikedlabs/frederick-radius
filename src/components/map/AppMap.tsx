@@ -92,6 +92,24 @@ const AERIAL_SEASON_COUNTS: Record<string, number> = AERIAL_PHOTOS.reduce(
   {} as Record<string, number>,
 );
 
+// Does this browser have a usable WebGL context? Mapbox GL needs one; without
+// it the canvas stays blank. mapbox-gl v3 dropped the old `supported()` helper,
+// so probe directly. Conservative: any throw or missing context → treat as no
+// WebGL and fall back to the list view. SSR returns true so we never flash the
+// fallback during hydration — the real check runs in a mount effect.
+function hasWebGL(): boolean {
+  if (typeof document === "undefined" || typeof window === "undefined") return true;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 // ── Tap-a-town: which municipality is under a tapped point ──────────
 // Ray-cast point-in-polygon. Even-odd across all rings handles holes
 // (a point in a hole counts as outside), and MultiPolygon tries each
@@ -315,6 +333,19 @@ export default function AppMap({
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
+  // A browser with no WebGL (locked-down corporate profile, a headless/bot
+  // client, GPU blocklisted) can never paint the GL canvas — react-map-gl just
+  // renders an empty rectangle, which is exactly the "map failed to load" a
+  // reviewer hit. Distinguish it from a transient token/network error so the
+  // fallback copy is honest: "reload" won't fix an unsupported browser. Checked
+  // once on mount (client only); the same branded overlay covers the dead canvas.
+  const [mapUnsupported, setMapUnsupported] = useState(false);
+  useEffect(() => {
+    if (!hasWebGL()) {
+      setMapUnsupported(true);
+      setMapError(true);
+    }
+  }, []);
   // P0-10: a graceful note when the user denies (or we cannot get)
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
@@ -1141,20 +1172,24 @@ export default function AppMap({
             role="alert"
           >
             <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
-              The map is temporarily unavailable
+              {mapUnsupported ? "This browser can't show the map" : "The map is temporarily unavailable"}
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              It should be back shortly. Reload, or browse every place in the county by list.
+              {mapUnsupported
+                ? "The interactive map needs graphics support this browser doesn't have. You can still browse every place in the county by list."
+                : "It should be back shortly. Reload, or browse every place in the county by list."}
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-              >
-                Reload the map
-              </button>
+              {!mapUnsupported && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                >
+                  Reload the map
+                </button>
+              )}
               <Link
                 href="/places"
                 className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
