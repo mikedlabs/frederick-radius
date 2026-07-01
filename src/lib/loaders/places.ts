@@ -1030,6 +1030,47 @@ export function publicPlaces(): Place[] {
 }
 
 /**
+ * Coverage safety net: places that clear junk/relevance/coords/season but are
+ * hidden from every public surface ONLY because Google says they're closed
+ * (isOperational) or because they carry no Google rating/photo/summary
+ * (isSubstantive). The intentional B2B long-tail (isDiscoverable) is excluded —
+ * that's a deliberate hide, not a coverage gap.
+ *
+ * These drops are otherwise INVISIBLE (unlike off-bbox coords, which already
+ * surface via getNeedsReviewPlaces). Surfacing them lets an editor rescue the
+ * false positives — a curated restaurant wrongly flagged closed by a
+ * misattributed Google listing, or a real park/civic place with thin Google
+ * data — via a places-overrides patch (hero_image/blurb to clear "thin",
+ * clearGoogle to clear a bad closure). Server-only: reads the enrichment map.
+ */
+export type HiddenFromDiscovery = {
+  slug: string;
+  name: string;
+  category: string;
+  municipality: string;
+  source: Place["source"];
+  /** "closed" = failed isOperational; "thin" = failed isSubstantive. */
+  reason: "closed" | "thin";
+};
+
+export function getHiddenFromDiscovery(): HiddenFromDiscovery[] {
+  return BASE_PLACES
+    .filter((p) => !SUPPRESSED_JUNK_SLUGS.has(p.slug))
+    .filter(isDiscoverable) // exclude the intended B2B hides
+    .filter((p) => isValidCoord(p.geom))
+    .filter((p) => isInSeason(p))
+    .filter((p) => !isOperational(p) || !isSubstantive(p))
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      category: p.category,
+      municipality: p.municipality,
+      source: p.source,
+      reason: !isOperational(p) ? ("closed" as const) : ("thin" as const),
+    }));
+}
+
+/**
  * Places whose coordinate is missing or outside the Frederick County
  * bbox. These are dropped from every public surface and listed in
  * /admin/data-health so an editor can fix them.
