@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Compass,
-  Home,
   MapPin,
   Sparkles,
   Bell,
@@ -22,7 +21,7 @@ import {
   Hotel,
   Users,
 } from "lucide-react";
-import { useMode, resetModeState, type Mode } from "@/hooks/useMode";
+import { resetModeState } from "@/hooks/useMode";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
   getHomeMuni,
@@ -75,7 +74,6 @@ const INTEREST_LABEL: Record<string, string> = Object.fromEntries(
 
 export default function PreferencesPanel() {
   const router = useRouter();
-  const { mode, setMode, mounted } = useMode();
 
   // Local state mirrors localStorage. We seed it after mount to stay
   // SSR-safe and update both at once on every change.
@@ -93,15 +91,6 @@ export default function PreferencesPanel() {
     setInterestsState(new Set(getInterests()));
     setCommunityOn(getCommunityNotes());
   }, []);
-
-  const changeMode = useCallback(
-    (m: Mode) => {
-      if (m === mode) return;
-      haptic("light");
-      setMode(m);
-    },
-    [mode, setMode],
-  );
 
   const changeMuni = useCallback((slug: string | null) => {
     haptic("light");
@@ -148,48 +137,6 @@ export default function PreferencesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* PERSONA */}
-      <SectionShell title="You're using Radius as" icon="persona">
-        <div className="grid grid-cols-2 gap-2">
-          {(["visitor", "resident"] as const).map((m) => {
-            const active = mounted && mode === m;
-            const Icon = m === "visitor" ? Compass : Home;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => changeMode(m)}
-                aria-pressed={active}
-                className="flex w-full items-center gap-2.5 rounded-xl border p-3 text-left text-[13px] font-semibold transition active:scale-[0.99]"
-                style={{
-                  borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-                  background: active
-                    ? "color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated))"
-                    : "var(--app-bg-elevated)",
-                  color: "var(--app-ink)",
-                }}
-              >
-                <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                <span className="capitalize">{m}</span>
-                {active && (
-                  <Check
-                    className="ml-auto h-4 w-4 shrink-0"
-                    strokeWidth={3}
-                    aria-hidden
-                    style={{ color: "var(--app-brand)" }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {mode === "visitor"
-            ? "Food, arts, and where to park. Downtown-weighted."
-            : "What's open, what's closed, and civic happenings across the county."}
-        </p>
-      </SectionShell>
-
       {/* HOME MUNICIPALITY */}
       <SectionShell title="Your spot" icon="muni">
         {!muniEditing ? (
