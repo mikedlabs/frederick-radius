@@ -102,9 +102,23 @@ export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null>
     detailedForecast: p.detailedForecast,
   });
 
+  // Drop hourly periods that have ALREADY ended before slicing, so hourly[0]
+  // is always the current hour — not a stale past hour. The NWS payload is
+  // HTTP-cached (revalidate: 1800), so on a cache hit its first periods can be
+  // 20-30 min in the past; every consumer treats hourly[0] as "now" and the
+  // slice(0,12) as "the next 12 hours" (TodayCard's "Spotty showers around",
+  // the hourly strips, PoP curves), so a past front period surfaces the wrong
+  // read. This filter runs at request time (getNwsForecast is called per
+  // render; only the fetch is cached), so it re-anchors to the real now on
+  // every render regardless of cache age. endTime <= now means fully past.
+  const now = Date.now();
+  const hourlyCurrent = (hourly?.properties.periods ?? []).filter(
+    (p) => new Date(p.endTime).getTime() > now,
+  );
+
   return {
     asOf: hourly?.properties.updated ?? daily?.properties.updated ?? new Date().toISOString(),
-    hourly: (hourly?.properties.periods ?? []).slice(0, 12).map(mapPeriod),
+    hourly: hourlyCurrent.slice(0, 12).map(mapPeriod),
     // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
     daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),
   };
