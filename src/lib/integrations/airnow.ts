@@ -16,6 +16,9 @@ export type AqiObservation = {
   category: AqiCategory;
   reportingArea: string;
   dateObserved: string;
+  /** Local hour (0-23) the reading was observed — surfaced so the tile can
+   *  say "as of 2 PM" instead of showing a bare, undateable number. */
+  hourObserved: number;
 };
 
 type AirNowResp = Array<{
@@ -54,6 +57,7 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
       } as AqiCategory,
       reportingArea: r.ReportingArea,
       dateObserved: r.DateObserved,
+      hourObserved: r.HourObserved,
     }));
   } catch {
     return null;

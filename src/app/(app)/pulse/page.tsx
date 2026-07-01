@@ -118,6 +118,15 @@ function clockToMin(s: string): number {
   return h * 60 + Number(m[2]);
 }
 
+/** AirNow's local observation hour (0-23) → "2 PM", so the AQI reads as a
+ *  timestamped measurement, not a bare number. */
+function aqiClock(h: number): string {
+  const hr = ((h % 24) + 24) % 24;
+  const ampm = hr < 12 ? "AM" : "PM";
+  const h12 = hr % 12 === 0 ? 12 : hr % 12;
+  return `${h12} ${ampm}`;
+}
+
 function nowClock(): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -480,7 +489,7 @@ export default async function PulsePage({
         <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{aqiWorst.category.name}</span>
           <br />
-          {aqiWorst.parameter} · {aqiWorst.reportingArea}
+          {aqiWorst.parameter} · {aqiWorst.reportingArea} · as of {aqiClock(aqiWorst.hourObserved)}
         </span>
       </div>
       {aqiObs && aqiObs.length > 1 && (
@@ -530,7 +539,10 @@ export default async function PulsePage({
           accent: aqiAccent,
           active: aqiActive,
           sourceLabel: "AirNow · EPA",
-          peek: `${aqiWorst.category.name} · ${aqiWorst.parameter}`,
+          // Face carries the category + the reporting AREA so "AQI 69" reads as
+          // "the nearest EPA monitor, near Frederick" — not a bare claim that
+          // looks wrong for the city (there's no monitor inside Frederick).
+          peek: `${aqiWorst.category.name} · ${aqiWorst.reportingArea}`,
           body: aqiBody,
         } as PulseTile]
       : []),
