@@ -37,7 +37,14 @@ async function downscale(file: File, maxDim = 1280, quality = 0.8): Promise<stri
   return canvas.toDataURL("image/jpeg", quality);
 }
 
-export default function ReportClient() {
+export default function ReportClient({
+  initialCamera = null,
+}: {
+  /** When arriving from the map's "Mark a spot" FAB, the map's current camera
+   *  is carried through so /report opens on the exact spot you were looking at
+   *  (instead of re-geolocating). Parsed server-side from `?c=lng,lat,zoom`. */
+  initialCamera?: { longitude: number; latitude: number; zoom: number } | null;
+} = {}) {
   const mapRef = useRef<MapRef | null>(null);
   const [category, setCategory] = useState<string>("hazard");
   const [subtype, setSubtype] = useState<string | null>(null);
@@ -88,8 +95,10 @@ export default function ReportClient() {
   }, [flyTo]);
 
   useEffect(() => {
-    locate();
-  }, [locate]);
+    // Only auto-locate when we DIDN'T arrive with a camera from the map — a
+    // passed camera is the user's chosen spot; re-locating would yank it away.
+    if (!initialCamera) locate();
+  }, [locate, initialCamera]);
 
   // Reset subtype when switching to a category that doesn't have the current one.
   const subtypes = def?.subtypes ?? [];
@@ -175,7 +184,7 @@ export default function ReportClient() {
         <Map
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
-          initialViewState={{ longitude: FREDERICK[0], latitude: FREDERICK[1], zoom: 15 }}
+          initialViewState={initialCamera ?? { longitude: FREDERICK[0], latitude: FREDERICK[1], zoom: 15 }}
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl

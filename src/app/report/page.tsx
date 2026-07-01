@@ -19,6 +19,21 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function ReportPage() {
-  return <ReportClient />;
+/** Parse the map's `?c=lng,lat,zoom` camera param (written by AppMap) so the
+ *  "Mark a spot" FAB can carry the user's current view into /report. Bad/absent
+ *  values fall through to null (ReportClient then geolocates as before). */
+function parseCamera(c: string | undefined): { longitude: number; latitude: number; zoom: number } | null {
+  if (!c) return null;
+  const [lng, lat, z] = c.split(",").map(Number);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  return { longitude: lng, latitude: lat, zoom: Number.isFinite(z) ? z : 16 };
+}
+
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>;
+}) {
+  const { c } = await searchParams;
+  return <ReportClient initialCamera={parseCamera(c)} />;
 }
