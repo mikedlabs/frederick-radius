@@ -60,6 +60,7 @@
     "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts",
     "build:amenities": "tsx --tsconfig tsconfig.json scripts/build-amenities.ts",
     "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
+    "build:map-style": "node scripts/build-map-style.mjs",
     "build:transit": "tsx --tsconfig tsconfig.json scripts/build-transit-gtfs.ts",
     "build:marc-schedule": "tsx --tsconfig tsconfig.json scripts/build-marc-schedule.ts",
     "build:push-icons": "tsx --tsconfig tsconfig.json scripts/build-push-icons.ts",

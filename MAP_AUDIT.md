@@ -65,11 +65,21 @@ weaken the hazard-photo/spam gate without owner sign-off.
 
 ## Owner actions (cannot be done/verified in-sandbox)
 
-1. **Bake a Mapbox Studio style** (biggest first-paint win): fork `light-v11`,
-   apply the Brand Book hexes + POI suppression + hillshade + county spotlight at
-   design time, publish, set `STYLE_URL` (constants.ts), and **flag off** the
-   runtime palette pass when the baked style is active (don't run both). Snapshot
-   the current look first — the runtime hexes are the source of truth.
+1. **Bake a Mapbox Studio style** (biggest first-paint win) — **now shipped as a
+   build-time bake behind a flag, no Studio/dashboard needed.**
+   `scripts/build-map-style.mjs` (`npm run build:map-style`) fetches `light-v11`,
+   applies the exact same Brand Book transform as `applyFrederickPalette` (ported
+   tokens + `has()`/type rules), validates against the style-spec, and writes
+   `src/components/map/frederick-style.json` (~36 KB, 50 layers). Set
+   `NEXT_PUBLIC_MAP_BAKED_STYLE=1` and the map loads that static style — the ~50-
+   layer runtime recolor walk is skipped; only the hillshade relief + county
+   spotlight (which a static JSON can't carry) are still installed at load.
+   **Default OFF** so prod stays on the proven runtime path until the owner
+   verifies the baked look on a preview (tiles/pixel-parity can't be checked from
+   the sandbox). Keep the two palettes in sync: if `applyFrederickPalette.ts`
+   changes, re-run `build:map-style`. The remaining Studio route is still open if
+   you want dashboard editing, but the bake captures the same look with zero
+   dashboard work.
 2. **Token hardening (reclassified):** the committed token is a *publishable*
    `pk.` token (ships by design — not a secret leak). Action = **URL-restrict**
    it to the prod/preview origins and **split out a separate server token** for

@@ -11,7 +11,7 @@ import Map, {
   type MapRef,
   type MapMouseEvent,
 } from "react-map-gl/mapbox";
-import type { GeoJSONSource } from "mapbox-gl";
+import type { GeoJSONSource, StyleSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { useMode } from "@/hooks/useMode";
@@ -47,8 +47,13 @@ import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
-import { applyFrederickPalette } from "./applyFrederickPalette";
+import { applyFrederickPalette, installRelief } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
+// Baked style JSON — the palette pre-applied at build time. Only used when
+// MAP_BAKED_STYLE is on; the import is a small (~36KB) static JSON so it's
+// cheap to include even when the flag is off (tree-shakers keep it out of the
+// runtime path since mapStyle only references it behind the flag).
+import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
@@ -142,6 +147,7 @@ import {
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
   isInFrederickCounty,
+  MAP_BAKED_STYLE,
   RADIUS_M,
   STYLE_URL,
   circlePolygon,
@@ -1262,7 +1268,7 @@ export default function AppMap({
               zoom: initialZoom,
             }
           }
-          mapStyle={STYLE_URL}
+          mapStyle={MAP_BAKED_STYLE ? (BAKED_STYLE as unknown as StyleSpecification) : STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
           // ── Mobile-smoothness flags ──
@@ -1296,14 +1302,20 @@ export default function AppMap({
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
-            // System Black palette: rewrites the dark-v11 base into
-            // the Frederick Radius design — warm-dark land, civic
-            // blue water, suppressed POI clutter (our own pins are
-            // the points of interest), warm hillshade across the
-            // Catoctin + South Mountain ridges. The whole repaint
-            // is the difference between "Mapbox dark style" and
+            // Brand repaint. The palette rewrites stock light-v11 into the
+            // Frederick Radius design — paper-cream land, civic-blue water,
+            // suppressed POI clutter (our own pins are the points of
+            // interest), warm hillshade across the Catoctin + South Mountain
+            // ridges. This is the difference between "Mapbox light style" and
             // "Frederick Radius map."
-            applyFrederickPalette(e.target);
+            //
+            // Two paths: the baked style (flag on) already carries the palette
+            // as static JSON, so we skip the ~50-layer runtime walk and only
+            // install the two things the JSON can't hold — the hillshade relief
+            // (a live raster-dem source) and the county spotlight. Flag off
+            // keeps the proven runtime recolor.
+            if (MAP_BAKED_STYLE) installRelief(e.target);
+            else applyFrederickPalette(e.target);
             // Frame browse mode in the county too, the same veil + drawn
             // border the radius map already wears, so the two modes feel
             // like one place and not two different maps.

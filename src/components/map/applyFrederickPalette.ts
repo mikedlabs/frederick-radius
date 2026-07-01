@@ -44,7 +44,7 @@ const has = (id: string, ...needles: string[]) =>
  * ridges without turning it into a topo map or costing legibility.
  * Idempotent: the style reloads on nav, so guard the source/layer.
  */
-function installRelief(map: GLMap): void {
+export function installRelief(map: GLMap): void {
   try {
     if (!map.getSource("fr-dem")) {
       map.addSource("fr-dem", {
