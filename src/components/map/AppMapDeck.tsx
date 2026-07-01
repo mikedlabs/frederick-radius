@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Clock, NotebookPen } from "lucide-react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -11,6 +12,80 @@ import type { CivicPin, MapLineFC } from "./types";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
+
+/**
+ * One-tap "featured" category chips that aren't top-level CATEGORIES rows but
+ * earn a shortcut: coffee (a food sub-type) and worship/churches (its own
+ * slug). Kept as DATA here — not hardcoded twice in the drawer JSX with raw
+ * hexes — so a chip is edited in one place and the swatch stays consistent
+ * (the hex is a category data-color, same convention as categories.ts).
+ */
+const FEATURED_CATEGORIES: ReadonlyArray<{
+  slug: string;
+  label: string;
+  glyph: string;
+  color: string;
+  title: string;
+}> = [
+  { slug: "coffee", label: "Coffee", glyph: "☕", color: "#8B5A2B", title: "Just coffee: cafes, roasters, espresso bars" },
+  { slug: "worship", label: "Churches", glyph: "⛪", color: "#5B3A8F", title: "Churches, temples, and houses of worship" },
+];
+
+/**
+ * A collapsible layer group in the drawer. Native <details>/<summary> so the
+ * header is keyboard-focusable and screen-reader "expanded/collapsed" for free
+ * (no hand-rolled aria). Uncontrolled with `defaultOpen`, OR controlled via
+ * `open`/`onToggle` (the Amenities group stays controlled so an intent chip can
+ * still open it programmatically). The chevron mirrors the open state. Turns
+ * the old wall of ~40 chips into named, foldable sections.
+ */
+function LayerGroup({
+  title,
+  meta,
+  defaultOpen = false,
+  open: openProp,
+  onToggle,
+  children,
+}: {
+  title: string;
+  meta?: ReactNode;
+  defaultOpen?: boolean;
+  open?: boolean;
+  onToggle?: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const [local, setLocal] = useState(defaultOpen);
+  const open = openProp ?? local;
+  return (
+    <details
+      open={open}
+      onToggle={(e) => {
+        const v = (e.currentTarget as HTMLDetailsElement).open;
+        onToggle?.(v);
+        if (openProp === undefined) setLocal(v);
+      }}
+      className="border-t first:border-t-0"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      <summary className="tap-44 flex cursor-pointer list-none items-center justify-between py-3 [&::-webkit-details-marker]:hidden">
+        <span className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </span>
+        <span className="flex items-center gap-2">
+          {meta}
+          <span
+            aria-hidden
+            className="text-[11px] transition-transform duration-200"
+            style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
+          >
+            ▾
+          </span>
+        </span>
+      </summary>
+      <div className="pb-2">{children}</div>
+    </details>
+  );
+}
 
 /**
  * Props for the in-map control deck. All state is owned by AppMap; the
@@ -518,14 +593,18 @@ export default function AppMapDeck({
         subtitle="Choose what to show on the map"
       >
         <div className="space-y-3 px-4 pt-3">
-        {/* CATEGORIES section — places by type. Was mixed in one flat
-            wrap with the overlays; pulling them into a labeled
-            cluster reads as "what kind of place" vs the OVERLAYS
-            cluster's "what infrastructure to show." */}
-        <section className="space-y-2">
-          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-            Categories
-          </h3>
+        {/* CATEGORIES group — places by type. A foldable group (open by
+            default) instead of a flat wrap, so the drawer reads as named
+            sections rather than a wall of chips. */}
+        <LayerGroup
+          title="Places by type"
+          defaultOpen
+          meta={
+            <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+              {(places.length + trustedOsmCount).toLocaleString()} mapped
+            </span>
+          }
+        >
           <ul className="flex flex-wrap items-center gap-2 py-0.5">
           <li>
             <button
@@ -582,56 +661,36 @@ export default function AppMapDeck({
               </button>
             </li>
           )}
-          <li>
-            <button
-              type="button"
-              onClick={() =>
-                setActiveCats((prev) => {
-                  const next = new Set(prev);
-                  if (next.has("coffee")) next.delete("coffee");
-                  else next.add("coffee");
-                  return next;
-                })
-              }
-              aria-pressed={activeCats.has("coffee")}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-              style={{
-                background: activeCats.has("coffee") ? "#8B5A2B" : "var(--app-bg-elevated)",
-                color: activeCats.has("coffee") ? "white" : "var(--app-ink-2)",
-                border: `1px solid ${activeCats.has("coffee") ? "#8B5A2B" : "var(--app-border)"}`,
-                boxShadow: activeCats.has("coffee") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-              }}
-              title="Just coffee: cafes, roasters, espresso bars"
-            >
-              <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"☕"}</span>
-              Coffee
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              onClick={() =>
-                setActiveCats((prev) => {
-                  const next = new Set(prev);
-                  if (next.has("worship")) next.delete("worship");
-                  else next.add("worship");
-                  return next;
-                })
-              }
-              aria-pressed={activeCats.has("worship")}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-              style={{
-                background: activeCats.has("worship") ? "#5B3A8F" : "var(--app-bg-elevated)",
-                color: activeCats.has("worship") ? "white" : "var(--app-ink-2)",
-                border: `1px solid ${activeCats.has("worship") ? "#5B3A8F" : "var(--app-border)"}`,
-                boxShadow: activeCats.has("worship") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-              }}
-              title="Churches, temples, and houses of worship"
-            >
-              <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"⛪"}</span>
-              Churches
-            </button>
-          </li>
+          {FEATURED_CATEGORIES.map((c) => {
+            const active = activeCats.has(c.slug);
+            return (
+              <li key={c.slug}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveCats((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(c.slug)) next.delete(c.slug);
+                      else next.add(c.slug);
+                      return next;
+                    })
+                  }
+                  aria-pressed={active}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: active ? c.color : "var(--app-bg-elevated)",
+                    color: active ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${active ? c.color : "var(--app-border)"}`,
+                    boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  }}
+                  title={c.title}
+                >
+                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{c.glyph}</span>
+                  {c.label}
+                </button>
+              </li>
+            );
+          })}
           {TOP_CATEGORIES.map((c) => {
             const active = activeCats.has(c.slug);
             return (
@@ -664,18 +723,15 @@ export default function AppMapDeck({
             );
           })}
           </ul>
-        </section>
+        </LayerGroup>
 
-        {/* OVERLAYS section: infrastructure / situation layers. The
+        {/* OVERLAYS group: infrastructure / situation layers. The
             data-dependent chips (amenities, roads, transit, trails)
             still render only when their data exists; the GIS overlay
             chips (parks, markets, art, ...) are always available, so the
-            section now always appears. */}
+            group now always appears. */}
         {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || OVERLAYS.length > 0) && (
-          <section className="space-y-2">
-            <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-              Overlays
-            </h3>
+          <LayerGroup title="Overlays & live layers" defaultOpen>
             <ul className="flex flex-wrap items-center gap-2 py-0.5">
           {amenityCount > 0 && (
             <li>
@@ -817,7 +873,7 @@ export default function AppMapDeck({
             );
           })}
             </ul>
-          </section>
+          </LayerGroup>
         )}
 
         {/* Amenities sub-tray — toggled by the Amenities chip,

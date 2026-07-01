@@ -50,6 +50,7 @@ import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
+import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
@@ -298,7 +299,11 @@ export default function AppMap({
   // visitor-default activeCats (["food", "arts", "parking"]) filtered
   // those out → zero pins rendered. Empty default lets every intent
   // chip work; the user opts INTO category narrowing if they want it.
-  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set());
+  // Remembered layer choices (per device). Read ONCE on mount — layers on top
+  // of the clean cold open without reversing it: only explicit prior choices
+  // restore, a first-timer still gets the clean default, deep-links win below.
+  const [layerPrefs] = useState(readMapLayerPrefs);
+  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set(layerPrefs.cats ?? []));
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
@@ -315,9 +320,12 @@ export default function AppMap({
   // /amenities or /today) pre-activates those groups and opens the tray so the
   // requested amenity layer is on at first paint.
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(
-    () => new Set(initialAmenityGroups ?? []),
+    // Deep-link (?amenity=) wins; otherwise restore the remembered set.
+    () => new Set(initialAmenityGroups ?? layerPrefs.amenities ?? []),
   );
-  const [amenityOpen, setAmenityOpen] = useState((initialAmenityGroups?.length ?? 0) > 0);
+  const [amenityOpen, setAmenityOpen] = useState(
+    (initialAmenityGroups?.length ?? layerPrefs.amenities?.length ?? 0) > 0,
+  );
   // The category rail is heavy; collapsed by default so the in-map
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -325,13 +333,15 @@ export default function AppMap({
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
-  const [showCivic, setShowCivic] = useState(false);
-  const [showTrails, setShowTrails] = useState(false);
-  const [showTransit, setShowTransit] = useState(initialDefaults.lineLayers.includes("transit"));
+  const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
+  const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? false);
+  const [showTransit, setShowTransit] = useState(
+    () => layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit"),
+  );
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
   // one opens a Popup with the photo thumbnail + season + date.
-  const [showAerial, setShowAerial] = useState(false);
+  const [showAerial, setShowAerial] = useState(() => layerPrefs.aerial ?? false);
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
@@ -342,6 +352,20 @@ export default function AppMap({
   // Tap-a-town: the municipality under the last empty-map tap (name +
   // tap point for the popup anchor). Null when no town sheet is open.
   const [civicTown, setCivicTown] = useState<{ name: string; lng: number; lat: number } | null>(null);
+
+  // Remember the user's explicit layer choices (per device) so a customized map
+  // survives reload. Transient focus filters (saved-only / field-notes-only)
+  // are intentionally excluded — see mapLayerPrefs.
+  useEffect(() => {
+    writeMapLayerPrefs({
+      cats: [...activeCats],
+      amenities: [...amenityGroups],
+      civic: showCivic,
+      transit: showTransit,
+      trails: showTrails,
+      aerial: showAerial,
+    });
+  }, [activeCats, amenityGroups, showCivic, showTransit, showTrails, showAerial]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
