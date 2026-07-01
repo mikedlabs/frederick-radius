@@ -88,8 +88,22 @@ function installRelief(map: GLMap): void {
   }
 }
 
-export function applyFrederickPalette(map: GLMap): void {
+/**
+ * Recolor a stock Mapbox style to the Frederick paper-cream palette at runtime.
+ *
+ * This walks every layer of the loaded style and mutates paint/layout — real
+ * main-thread work on load. It runs ONCE per style load now (the previous
+ * version registered BOTH `once("styledata")` and a standing `on("style.load")`,
+ * so a Next route remount re-walked all ~92 layers twice). Returns a disposer
+ * that removes the pending listener if the map unmounts before the style loads.
+ * The pass is bracketed with performance marks so its cost is measurable (and
+ * regressions catchable) — the plan is to retire this whole pass in favor of a
+ * baked Mapbox Studio style, and the "fr-palette" measure will prove the win.
+ */
+export function applyFrederickPalette(map: GLMap): () => void {
   const apply = () => {
+    const canMark = typeof performance !== "undefined" && typeof performance.mark === "function";
+    if (canMark) performance.mark("fr-palette-start");
     const style = map.getStyle();
     if (!style?.layers) return;
     installRelief(map);
@@ -179,10 +193,29 @@ export function applyFrederickPalette(map: GLMap): void {
           set("text-color", LABEL_2);
       }
     }
+    if (canMark) {
+      performance.mark("fr-palette-end");
+      try {
+        performance.measure("fr-palette", "fr-palette-start", "fr-palette-end");
+      } catch {
+        /* marks missing (SSR/edge) — ignore */
+      }
+    }
   };
 
-  if (map.isStyleLoaded()) apply();
-  else map.once("styledata", apply);
-  // Mapbox loads/replaces the style asynchronously; reapply on each load.
-  map.on("style.load", apply);
+  if (map.isStyleLoaded()) {
+    apply();
+    return () => {};
+  }
+  // Single deferred pass on the first full style load. No standing style.load
+  // listener: nothing swaps the style at runtime today, and the double-listener
+  // made the layer walk run twice on every navigation.
+  map.once("style.load", apply);
+  return () => {
+    try {
+      map.off("style.load", apply);
+    } catch {
+      /* already fired / map torn down */
+    }
+  };
 }
