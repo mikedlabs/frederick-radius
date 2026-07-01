@@ -94,4 +94,66 @@ function formatSlack(anomalies: Anomaly[]): string {
 export function _resetAlertThrottle(): void {
   lastFingerprint = null;
   lastSentAt = 0;
+  lastWarmFingerprint = null;
+  lastWarmSentAt = 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Warm-events failure alert (obs-3). Separate from sendAnomalyAlert because
+// the Anomaly union is feed-shaped; a warm-cache failure carries a cache name
+// + an error string. Own throttle state so a persistent feed anomaly and a
+// persistent warm failure don't suppress each other.
+// ─────────────────────────────────────────────────────────────────────────
+let lastWarmFingerprint: string | null = null;
+let lastWarmSentAt = 0;
+
+export type WarmFailure = { cache: string; error: string };
+
+/**
+ * Alert when the warm-events cron fails to warm one or more caches. That cron
+ * is the ONLY thing between users and the 8s cold-miss TTFB on /today /events
+ * /map, and it `allSettled`s — so without this a rejected warm is silently
+ * 200'd and the protection rots invisibly. Same Slack-webhook + throttle shape
+ * as sendAnomalyAlert; logs to stderr when no webhook is set. Always resolves.
+ */
+export async function sendWarmFailureAlert(failures: WarmFailure[]): Promise<void> {
+  if (failures.length === 0) return;
+
+  const fp = failures.map((f) => f.cache).sort().join("|");
+  if (fp === lastWarmFingerprint && Date.now() - lastWarmSentAt < MIN_REPEAT_MS) {
+    console.info("[alerts] suppressing repeat warm-failure alert (same fingerprint)");
+    return;
+  }
+
+  const url = process.env.SLACK_WEBHOOK_URL;
+  if (!url) {
+    console.warn(
+      `[alerts] warm-events failed to warm ${failures.length} cache(s), no SLACK_WEBHOOK_URL set:`,
+      failures.map((f) => `${f.cache}: ${f.error}`).join("; "),
+    );
+    lastWarmFingerprint = fp;
+    lastWarmSentAt = Date.now();
+    return;
+  }
+
+  const text = [
+    `:warning: *Frederick Radius warm-events* — ${failures.length} cache(s) failed to warm; users may hit cold-miss TTFB until the next run.`,
+    ...failures.map((f) => `• *${f.cache}* — ${f.error}`),
+    `<https://frederickradius.app/admin/data-health|Open dashboard →>`,
+  ].join("\n");
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      console.error(`[alerts] warm slack post failed: HTTP ${res.status}`);
+      return;
+    }
+    lastWarmFingerprint = fp;
+    lastWarmSentAt = Date.now();
+  } catch (err) {
+    console.error("[alerts] warm slack post threw:", err instanceof Error ? err.message : err);
+  }
 }

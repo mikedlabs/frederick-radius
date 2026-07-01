@@ -9,6 +9,7 @@
  *   GET /api/ingest/civicengage?only=Thurmont
  */
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { parseICal } from "@/lib/ingest/parser";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
@@ -104,6 +105,13 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       geocode = { error: err instanceof Error ? err.message : "geocode failed" };
     }
+  }
+
+  // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
+  // /events, and /map pick up the new municipal events immediately.
+  if (!dry && sql) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
   }
 
   return Response.json({

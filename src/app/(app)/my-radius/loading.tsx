@@ -4,7 +4,8 @@ import Skeleton from "@/components/ui/Skeleton";
  *  saved-row placeholders so the tab swap never freezes on tap. */
 export default function MyRadiusLoading() {
   return (
-    <div className="space-y-5">
+    <div aria-busy="true" className="space-y-5">
+      <span className="sr-only" role="status">Loading your saved list</span>
       <div className="space-y-2">
         <Skeleton.Block width={140} height={26} round="var(--app-radius-sm)" />
         <Skeleton.Block width={220} height={14} />

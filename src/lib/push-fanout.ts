@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import { eq, lt } from "drizzle-orm";
+import { eq, lt, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { sendPush, configurePush } from "@/lib/push";
@@ -63,6 +63,7 @@ export async function fanoutToTopic(
   // Step 3 — send each. Gone subs get pruned.
   let sent = 0;
   let gone = 0;
+  const sentEndpoints: string[] = [];
   for (const row of rows) {
     try {
       await sendPush(
@@ -70,6 +71,7 @@ export async function fanoutToTopic(
         payload,
       );
       sent += 1;
+      sentEndpoints.push(row.endpoint);
     } catch (err) {
       if (err instanceof Error && err.message === "subscription_gone") {
         gone += 1;
@@ -90,6 +92,21 @@ export async function fanoutToTopic(
       .update(push_log)
       .set({ sent_count: sent })
       .where(eq(push_log.id, claim[0].id));
+  }
+
+  // integrity-06 (foundational half): advance last_seen_at on every
+  // SUCCESSFUL delivery, not just on subscribe. This is the precondition for
+  // any future staleness-based reaping of dead subscriptions — without it, an
+  // actively-receiving subscription still looks "last seen" at signup time, so
+  // a reaper keyed on last_seen_at would wrongly delete healthy subscribers.
+  // Best-effort: a failure here must never affect delivery accounting.
+  if (sentEndpoints.length > 0) {
+    try {
+      await db
+        .update(push_subscriptions)
+        .set({ last_seen_at: new Date() })
+        .where(inArray(push_subscriptions.endpoint, sentEndpoints));
+    } catch {}
   }
 
   return { claimed: true, attempted: rows.length, sent, gone };

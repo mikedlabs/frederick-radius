@@ -33,6 +33,8 @@ import { prunePushLog } from "@/lib/push-fanout";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
+import { pruneExpiredReports } from "@/lib/loaders/communityReports";
+import { findRlsAnomalies, findStaleIngestSources } from "@/lib/quality/db-health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -108,10 +110,22 @@ export async function GET(request: Request) {
     console.error("[cron/data-health] push_log prune failed:", err);
     return 0;
   });
+  // community_reports self-cleans: expired approved + old rejected rows
+  // (integrity-01). Pending rows are never touched. Each helper is already
+  // fail-soft (returns 0 / [] on no-DB or error), so the cron stays green.
+  const prunedReports = await pruneExpiredReports();
+  // DB-health guards (mig-6 + ING-5): an RLS-disabled public table re-opens
+  // the anon hole; a stale ingest source means a dead cron. Both surface as
+  // Anomaly-shaped rows so they ride the same Slack alert + dashboard.
+  const dbAnomalies = [
+    ...(await findRlsAnomalies()),
+    ...(await findStaleIngestSources()),
+  ];
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  if (anomalies.length > 0) {
-    void sendAnomalyAlert(anomalies);
+  const allAnomalies = [...anomalies, ...dbAnomalies];
+  if (allAnomalies.length > 0) {
+    void sendAnomalyAlert(allAnomalies);
   }
 
   return NextResponse.json({
@@ -141,7 +155,12 @@ export async function GET(request: Request) {
       anomaly_count: anomalies.length,
       pruned_old_snapshots: prunedRows,
       pruned_push_log: prunedPushRows,
-      alert_sent: anomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
+      alert_sent: allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
+    },
+    db_health: {
+      pruned_expired_reports: prunedReports,
+      rls_unprotected: dbAnomalies.filter((a) => a.kind === "rls_unprotected").map((a) => a.source),
+      ingest_stale: dbAnomalies.filter((a) => a.kind === "ingest_stale").map((a) => a.source),
     },
     note: "Recompute only. Commit-time scripts persist the artifacts.",
   });

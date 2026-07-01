@@ -13,7 +13,8 @@ import { currentSkyPalette } from "@/components/today/SkyHero";
 export default function TodayLoading() {
   const sky = currentSkyPalette();
   return (
-    <div className="space-y-6">
+    <div aria-busy="true" className="space-y-6">
+      <span className="sr-only" role="status">Loading today</span>
       {/* Fold sky */}
       <div
         className="-mx-4 -mt-4 flex min-h-[72svh] flex-col items-center justify-center gap-4 rounded-b-[var(--app-radius-xl)] px-4"

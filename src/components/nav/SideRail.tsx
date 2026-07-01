@@ -165,7 +165,7 @@ export default function SideRail() {
                     }}
                   />
                   <span
-                    className="text-[11px] font-semibold leading-tight tracking-tight transition-opacity"
+                    className="text-[11px] font-medium leading-tight tracking-tight transition-opacity"
                     style={{ opacity: active ? 1 : 0.78 }}
                   >
                     {label}

@@ -4,7 +4,8 @@ import Skeleton from "@/components/ui/Skeleton";
  *  event-row placeholders so the tab swap never freezes on tap. */
 export default function EventsLoading() {
   return (
-    <div className="space-y-5">
+    <div aria-busy="true" className="space-y-5">
+      <span className="sr-only" role="status">Loading events</span>
       <div className="space-y-2">
         <Skeleton.Block width={160} height={26} round="var(--app-radius-sm)" />
         <Skeleton.Block width={240} height={14} />

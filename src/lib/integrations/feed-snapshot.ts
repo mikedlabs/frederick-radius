@@ -285,7 +285,12 @@ export type Anomaly = {
     | "venue_concentrated"
     | "category_concentrated"
     | "empty_desc_spike"
-    | "empty_batch";
+    | "empty_batch"
+    // DB-health kinds (src/lib/quality/db-health.ts): an RLS-disabled public
+    // table, or an ingest source that has gone stale. They share this shape so
+    // they ride the existing sendAnomalyAlert / dashboard rendering.
+    | "rls_unprotected"
+    | "ingest_stale";
   detail: string;
 };
 

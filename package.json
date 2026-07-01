@@ -21,6 +21,7 @@
     "db:migrate": "echo 'BLOCKED: migrations are applied BY HAND in the Supabase SQL editor. The drizzle journal is intentionally partial and schema.ts omits the raw-SQL ingestion tables + RLS, so drizzle-kit migrate would desync/drop production objects. See drizzle/README.md. To override deliberately, run drizzle-kit migrate directly.' && exit 1",
     "db:push": "echo 'BLOCKED: drizzle-kit push is DESTRUCTIVE here. schema.ts does not model raw_events/ingested_events/unparseable_locations/venue_geocache or RLS, so a push proposes DROPPING those tables and stripping RLS (re-opening the anon/PostgREST hole). See drizzle/README.md. To override deliberately, run drizzle-kit push directly.' && exit 1",
     "db:studio": "drizzle-kit studio",
+    "db:audit": "node scripts/migration-audit.mjs",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
     "enrich:amenities": "tsx --tsconfig tsconfig.json scripts/enrich-amenities.ts",

@@ -65,7 +65,11 @@ const enrichSlug = unstable_cache(
       status: data.business_status,
     };
   },
-  ["place-enrich-v1"],
+  // SHA-pin the key (isr-3): the Data Cache survives deploys, so a key without
+  // the deploy SHA would serve a stale EnrichResponse SHAPE for up to 7 days
+  // after a projection change (the #509 lesson) — every other cache in the app
+  // is SHA-pinned; this one was the lone exception.
+  ["place-enrich-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 604800, tags: ["place-enrich"] }
 );
 

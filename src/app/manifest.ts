@@ -12,7 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // Brand-deck launch: Spruce field (matches the app-icon ground) with
     // a Paper in-app toolbar tint that blends with the UI ground.
     background_color: "#16352B",
-    theme_color: "#EEE6D4",
+    // Match the actual paper ground (--app-bg = #EBE2CD) so the installed-PWA
+    // toolbar tint blends with the UI instead of leaving a seam.
+    theme_color: "#EBE2CD",
     lang: "en-US",
     categories: ["lifestyle", "navigation", "travel", "utilities"],
     icons: [

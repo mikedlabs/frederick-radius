@@ -3,6 +3,14 @@
   "regions": ["iad1"],
   "crons": [
     {
+      "path": "/api/cron/warm-events",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/saved-reminders",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/ingest/all",
       "schedule": "0 9 * * *"
     },
@@ -59,6 +67,15 @@
     },
     {
       "source": "/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/history-photos/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
