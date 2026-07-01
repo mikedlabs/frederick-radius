@@ -2,32 +2,23 @@ import Link from "next/link";
 import Image from "next/image";
 import { BadgeCheck, Tag } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
-import { splitDeal, figureCount } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 /**
- * Today's briefing — the verified day-of-week specials as rich, photo-forward
- * cards with an EMBOSSED GOLD DENOMINATION (the "$10 / $4 / $1" struck like a
- * gift-card figure). The card face carries the venue's real photo, the deal in
- * serif, and the day/town/hours in mono; the denomination is the foil-gold
- * star. Shares the photo-card language of the Happy-Hour wallet above it (so
- * the moat surfaces read as one set) and adds the struck figure on top, so
- * the briefing is the richer of the two, not the plainer. Server component.
+ * Today's specials — the verified day-of-week deals as photo-forward cards.
+ *
+ * Every card reads the SAME way: venue photo (or a designed plate), the offer
+ * as clause lines (each figure glued to its item, e.g. "$8 old fashioneds"),
+ * and the day/town/hours in mono. The old embossed-gold denomination was
+ * dropped (owner call): it only rendered for deals that named exactly one
+ * figure, so a "$8" card sat beside a figure-less "Whiskey Wednesday returns"
+ * card and the set read as half-finished. A hero number that can't appear on
+ * every card is inconsistent by nature, so it comes off entirely, and the
+ * offer text carries the value uniformly. Server component.
  */
 const MAX_ROWS = 12;
-
-/** Split a deal hook ("$10 OFF", "25% OFF", "FROM $5", "$4") into the big
- *  struck figure and a small qualifier for the embossed denomination. */
-function denom(hook: string): { figure: string; label: string } {
-  const m = hook.match(/\$\s?\d+(?:\.\d{1,2})?|\d{1,3}\s?%/);
-  if (!m) return { figure: hook, label: "" };
-  return {
-    figure: m[0].replace(/\s+/g, ""),
-    label: hook.replace(m[0], "").replace(/[^a-zA-Z%]/g, " ").trim().toLowerCase(),
-  };
-}
 
 /** The photo-less fallback: a tinted plate with the category glyph in gold. */
 function PhotoFallback({ category }: { category?: string }) {
@@ -50,14 +41,6 @@ function PhotoFallback({ category }: { category?: string }) {
 }
 
 function IntelCard({ deal: d }: { deal: TodaysDeal }) {
-  // The struck gold denomination is only honest when the deal names exactly ONE
-  // figure (then "$8" + "personal pizza" reads cleanly). For a multi-part deal a
-  // single struck number would strand its subject, so we drop the figure and
-  // render the offer as clause lines instead (each figure glued to its item).
-  const { hook } = splitDeal(d.offer);
-  const single = figureCount(d.offer) === 1 && Boolean(hook);
-  const fig = single && hook ? denom(hook) : null;
-  const body = d.offer ? d.offer.charAt(0).toUpperCase() + d.offer.slice(1) : d.offer;
   const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
   return (
@@ -83,45 +66,19 @@ function IntelCard({ deal: d }: { deal: TodaysDeal }) {
         )}
       </div>
 
-      {/* The deal — venue, the offer, the when/where. */}
+      {/* The deal — venue, the offer as clause lines, the when/where. Every card
+          renders identically now (no conditional hero figure). */}
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
         <h3 className="truncate font-serif text-[15px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
           {d.name}
         </h3>
-        {fig ? (
-          <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            {body}
-          </p>
-        ) : (
-          <DealLines deal={d.offer} max={2} className="space-y-0.5 text-[12.5px]" />
-        )}
+        <DealLines deal={d.offer} max={2} className="space-y-0.5 text-[12.5px]" />
         {meta && (
           <p className="truncate font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
             {meta}
           </p>
         )}
       </div>
-
-      {/* The struck gold denomination — the foil figure (AA-safe gold), raised
-          with a top highlight. Only when the deal carries a figure. */}
-      {fig && (
-        <div
-          className="flex shrink-0 flex-col items-center justify-center self-stretch pl-3"
-          style={{ borderLeft: "1px solid color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
-        >
-          <span
-            className="font-serif font-bold leading-none tabular-nums"
-            style={{ fontSize: 28, color: "var(--app-accent-press)", textShadow: "0 1px 0 rgba(255,255,255,0.7)" }}
-          >
-            {fig.figure}
-          </span>
-          {fig.label && (
-            <span className="mt-1 font-mono text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-accent-press)" }}>
-              {fig.label}
-            </span>
-          )}
-        </div>
-      )}
     </Link>
   );
 }

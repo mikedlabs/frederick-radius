@@ -5,15 +5,18 @@ import { getHomeMuni } from "@/lib/personalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
- * MastheadTitle — the /today cover line, personalized to your home town.
+ * MastheadTitle — a small, optional /today orienting line.
  *
- * SSR (and every crawler / first paint) gets the brand line, "Your field guide
- * to Frederick County." — the stable identity. Post-mount, if you've set a home
- * town, the cover leads with the TOWN ("Middletown, today.") and demotes the
- * brand line to a quiet standfirst beneath it: the page now reads as YOUR corner
- * of the county, not a generic county cover. Reads localStorage post-mount only,
- * so there's no SSR/hydration mismatch; the display line is a <p>, not the page
- * heading (the real h1 is sr-only), so swapping its text changes no semantics.
+ * Identity now lives in the top bar (the disc mark + "Frederick Radius"
+ * lockup), so the body no longer repeats a big "Your field guide to Frederick
+ * County." cover line below the weather (owner call, 2026-07-01): a brochure
+ * headline stacked under the weather hero pushed the real answer down and read
+ * as redundant with the top-bar brand. What's left is warmth without weight:
+ * when you've set a home town, a quiet "Middletown, today." orients the page to
+ * your corner of the county; otherwise this renders nothing and the masthead is
+ * just the almanac notes (weather / market / town picker) beneath. Reads
+ * localStorage post-mount only, so there's no SSR/hydration mismatch; the real
+ * h1 is sr-only, so this <p> carries no page-heading semantics.
  */
 export default function MastheadTitle() {
   const [homeSlug, setHomeSlug] = useState<string | null>(null);
@@ -23,23 +26,11 @@ export default function MastheadTitle() {
   }, []);
 
   const muni = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
-
-  if (!muni) {
-    return (
-      <p className="display-3" style={{ color: "var(--app-ink)" }}>
-        Your field guide to Frederick County.
-      </p>
-    );
-  }
+  if (!muni) return null;
 
   return (
-    <div>
-      <p className="display-3" style={{ color: "var(--app-ink)" }}>
-        {muni.name}, today.
-      </p>
-      <p className="mt-1 text-[12.5px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-        Your field guide to Frederick County.
-      </p>
-    </div>
+    <p className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink-2)" }}>
+      {muni.name}, today.
+    </p>
   );
 }
