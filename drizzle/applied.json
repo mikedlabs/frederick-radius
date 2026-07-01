@@ -84,6 +84,12 @@
       "sha256": "5836d57a5145c50c9ebf8a31fb3446167387a11146cd79fa171f95b32af13f49",
       "applied_at": null,
       "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0014_commerce_link_reports.sql",
+      "sha256": "f3bfeed66ce138dbc88db08b302c222ce07372dceecf29d190dadc409128f0ca",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
     }
   ]
 }
