@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
@@ -12,12 +13,29 @@ import { haptic } from "@/lib/haptics";
  * So it lives here now, on /map, where dropping a pin is in context. Calmer
  * than the old solid-red nav cell: an elevated pill with a small vermilion
  * plus, so it's clearly the contribute action without shouting over the map.
+ *
+ * Continuity: /report is the mark tool (a focused full-screen map with the same
+ * center-crosshair pattern), but it normally re-geolocates on open. Here we
+ * carry the CURRENT map camera (AppMap writes it to `?c=lng,lat,zoom`) into the
+ * link, so tapping "Mark a spot" lands you on /report already looking at the
+ * exact spot you were on — no re-find. Falls back to a plain /report link
+ * (SSR-safe, crawlable) when JS/params aren't available.
  */
 export default function MapMarkFab() {
+  const router = useRouter();
+  const go = (e: React.MouseEvent) => {
+    haptic("light");
+    if (typeof window === "undefined") return;
+    const c = new URLSearchParams(window.location.search).get("c");
+    if (c) {
+      e.preventDefault();
+      router.push(`/report?c=${encodeURIComponent(c)}`);
+    }
+  };
   return (
     <Link
       href="/report"
-      onPointerDown={() => haptic("light")}
+      onClick={go}
       aria-label="Mark a spot: a hazard, condition, tip, or note"
       className="tap-44 pointer-events-auto inline-flex items-center gap-2 rounded-full border py-2 pl-2 pr-3.5 text-[13px] font-semibold transition active:scale-[0.97]"
       style={{
