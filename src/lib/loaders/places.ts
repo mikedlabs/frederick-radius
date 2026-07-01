@@ -991,9 +991,18 @@ const PRUNE_THIN_ON = process.env.RADIUS_PRUNE_THIN !== "0";
  * linked record still resolves — we hide from discovery, never
  * destroy. Cheap: reads the enrichment map, never decorates.
  */
+// A park or trail is a destination regardless of what Google knows about it —
+// there is no such thing as a low-value park. Exempt these from the thin-data
+// prune so landmarks like Carroll Creek Promenade can't vanish from the guide
+// for lack of a Google rating/photo. Kept intentionally tight to unambiguous
+// destination categories (not civic/museum, which the coverage audit surfaces
+// on /admin/data-health for case-by-case rescue instead).
+const ALWAYS_SUBSTANTIVE_CATEGORIES = new Set(["park", "trail"]);
+
 export function isSubstantive(p: Place): boolean {
   if (!PRUNE_THIN_ON) return true;
   if (p.source !== "dfp" && p.source !== "google") return true;
+  if (ALWAYS_SUBSTANTIVE_CATEGORIES.has(p.category)) return true;
   // Any real signal keeps it: a Google rating, a photo of ANY kind
   // (Google enrichment, seed hero, or a Wikimedia landmark match), or
   // a real editorial summary. Hidden only when it has NONE of these —
