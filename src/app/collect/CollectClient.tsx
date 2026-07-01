@@ -452,6 +452,7 @@ export default function CollectClient() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={280}
+            aria-label="Note"
             placeholder={kind === "other" ? "What is it?" : "Note (optional)"}
             className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
@@ -489,6 +490,7 @@ export default function CollectClient() {
           <div className="flex gap-2">
             <input
               type="password"
+              aria-label="Trusted passcode"
               value={passcode}
               onChange={(e) => {
                 setPasscode(e.target.value);
@@ -500,6 +502,7 @@ export default function CollectClient() {
             />
             <input
               type="text"
+              aria-label="Your name"
               value={collectedBy}
               onChange={(e) => {
                 setCollectedBy(e.target.value);
@@ -541,7 +544,7 @@ export default function CollectClient() {
               type="button"
               onClick={saveEdit}
               disabled={saving}
-              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
+              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>
@@ -551,7 +554,7 @@ export default function CollectClient() {
             type="button"
             onClick={add}
             disabled={saving}
-            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
+            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
           >
             {saving ? "Adding…" : `Add ${selected?.label ?? "point"} here`}
           </button>
