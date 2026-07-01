@@ -439,7 +439,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <h2 className="eyebrow">
           Location
         </h2>
-        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#A03A22"} />
+        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "var(--app-brand)"} />
         {/* "From above" — the nearest geotagged drone shot, when one
             genuinely covers this spot (downtown Frederick). Self-hides
             elsewhere so it never fakes an aerial of a place we don't have. */}

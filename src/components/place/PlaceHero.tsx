@@ -38,7 +38,10 @@ export default function PlaceHero({
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
-  const color = cat?.color ?? "#A03A22";
+  // Vermilion brand fallback for uncategorized places. Kept as a literal
+  // (not var(--app-brand)) because `color` is consumed in hex-alpha concat
+  // below (`${color}26`), which a CSS var cannot satisfy.
+  const color = cat?.color ?? "#E14328";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const resolved = resolvePhotoSrc(slug, width);

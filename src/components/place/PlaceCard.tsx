@@ -220,7 +220,7 @@ export default function PlaceCard({
   galleryPhotos?: string[];
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
-  const color = cat?.color ?? "#1A1A1A";
+  const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
   const openDetail = () => { haptic("light"); openSheet(place); };
   // "Known for" — the real descriptive blurb, or null for DFP filler.

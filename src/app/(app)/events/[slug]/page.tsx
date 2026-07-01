@@ -289,7 +289,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div
             className="relative h-56 overflow-hidden sm:h-60"
             style={{
-              background: `linear-gradient(135deg, ${cat?.color ?? "#A03A22"}40, ${cat?.color ?? "#A03A22"}0F 60%, var(--app-bg-elevated))`,
+              background: `linear-gradient(135deg, ${cat?.color ?? "#E14328"}40, ${cat?.color ?? "#E14328"}0F 60%, var(--app-bg-elevated))`,
             }}
           >
             {/* Watermark calendar — quietly anchors the right side. */}
@@ -568,7 +568,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 transition"
                   style={{
                     borderColor: isCurrent ? (cat?.color ?? "var(--app-brand)") : "var(--app-border)",
-                    background: isCurrent ? `${cat?.color ?? "#A03A22"}14` : "var(--app-bg-elevated)",
+                    background: isCurrent ? `${cat?.color ?? "#E14328"}14` : "var(--app-bg-elevated)",
                     opacity: isPast && !isCurrent ? 0.5 : 1,
                   }}
                 >

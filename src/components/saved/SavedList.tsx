@@ -1066,8 +1066,8 @@ function EmptyState() {
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
     { href: "/today", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
     { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
-    { href: "/events", label: "Events", Icon: Calendar, color: "#C99632" },
-    { href: "/towns", label: "Towns", Icon: Building2, color: "#7E2C6F" },
+    { href: "/events", label: "Events", Icon: Calendar, color: "var(--app-accent)" },
+    { href: "/towns", label: "Towns", Icon: Building2, color: "var(--app-civic)" },
   ];
 
   return (
