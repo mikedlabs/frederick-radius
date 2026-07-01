@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { ingestICal } from "@/lib/ingest/ical";
 import { verifyCronAuth } from "../_auth";
 
@@ -39,6 +40,15 @@ export async function GET(request: Request) {
 
   const t0 = Date.now();
   const results = await Promise.all(SOURCES.map((s) => ingestICal(s)));
+  // isr-1: only bust the event caches when rows ACTUALLY changed (skips the
+  // no-op case where DATABASE_URL is unset and ingestICal early-returns having
+  // written nothing). Refreshes the DB-backed loader (ingested-events) AND the
+  // assembled /today + /events + /map surfaces (events) immediately.
+  const upserted = results.reduce((a, r) => a + r.records_upserted, 0);
+  if (upserted > 0) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
+  }
   return NextResponse.json({
     duration_ms: Date.now() - t0,
     totals: {

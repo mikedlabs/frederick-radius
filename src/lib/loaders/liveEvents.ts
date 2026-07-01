@@ -40,6 +40,28 @@ export function liveCleanSlug(e: Pick<LiveEvent, "title" | "starts_at">): string
 }
 
 /**
+ * Bound a single source fetch so the /events/[slug] resolver can't hang
+ * the page on a cold cache or a slow upstream. On timeout it resolves to
+ * `fallback` (it never rejects), mirroring the guard the /map page uses.
+ * The warm-events cron keeps these caches hot, so this only bites the
+ * rare cold-window request (e.g. the first hit right after a deploy busts
+ * the SHA-keyed cache); without it, that request awaited the slowest feed
+ * up to the full 8s per-feed timeout. The per-source `.catch` below still
+ * handles genuine rejections.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/** Worst-case wall time the slug resolver may spend awaiting any one
+ *  source before it degrades that source to empty. All sources run in
+ *  parallel, so this also bounds the whole resolution. */
+const SLUG_SOURCE_TIMEOUT_MS = 6_000;
+
+/**
  * Adapt one live feed event to the EventWithMeta shape the card and
  * detail page consume. The slug is the deterministic liveEventSlug (not
  * the raw feed UID) so the same value the card links to and Share copies
@@ -130,14 +152,19 @@ export async function getLiveCardEventBySlug(
   // 6 of 45 listing links dead). Same fail-soft pattern as the index:
   // a hung provider degrades to [], never throws. All four fetches are
   // HTTP-cached upstream, so this shares the index's cache entries.
+  // Each source is BOTH timeout-bounded (withTimeout → fallback, the cold-
+  // cache / slow-upstream guard) AND catch-guarded (→ fallback, genuine
+  // rejection). Without the timeout, a cold-window hit awaited the slowest
+  // feed up to the 8s per-feed ceiling on a primary surface; the per-source
+  // bound keeps the whole parallel resolution under ~6s.
   const [ical, tmMusic, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
-    getCachedLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
-    fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
-    fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
-    fetchBandsintownForArtists(BANDSINTOWN_ARTISTS).catch(() => [] as LiveEvent[]),
-    fetchVisitFrederick().catch(() => [] as LiveEvent[]),
-    fetchFrederickKeys().catch(() => [] as LiveEvent[]),
-    fetchSquarespaceVenueEvents(windowDays).catch(() => []),
+    withTimeout(getCachedLiveEvents(windowDays).then((r) => r.events), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchTicketmasterMusic(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchTicketmasterSports(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchVisitFrederick(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchFrederickKeys(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
+    withTimeout(fetchSquarespaceVenueEvents(windowDays), SLUG_SOURCE_TIMEOUT_MS, []).catch(() => []),
   ]);
   const events = [...ical, ...tmMusic, ...tmSports, ...bit, ...vf, ...keys];
   // Clean stored slug first (the canonical form a card links to).

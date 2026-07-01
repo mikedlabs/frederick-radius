@@ -54,7 +54,7 @@ export default function AppFooter() {
           </li>
         </ul>
       </nav>
-      <p className="mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-3 text-meta" style={{ color: "var(--app-ink-3)" }}>
         Frederick Radius: one guide for Frederick City and the towns around it.
       </p>
       {/* Independence + reliance disclaimer (civic-facing app): keeps the

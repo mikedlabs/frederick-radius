@@ -240,7 +240,7 @@ export default function ReportClient() {
                 }}
                 aria-pressed={active}
                 className={`flex min-h-[50px] w-[76px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
-                  active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]" : "border-[var(--app-ink)]/12 bg-white/70"
+                  active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
                 <span className="text-base leading-none" aria-hidden="true">{cat.glyph}</span>
@@ -262,7 +262,7 @@ export default function ReportClient() {
                   onClick={() => setSubtype(on ? null : s.key)}
                   aria-pressed={on}
                   className={`tap-44 inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-medium ${
-                    on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]" : "border-[var(--app-ink)]/15 bg-white/70"
+                    on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/15 bg-white/70"
                   }`}
                 >
                   <span aria-hidden="true">{s.glyph}</span>
@@ -280,13 +280,15 @@ export default function ReportClient() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={280}
+            aria-label="Note"
+            aria-required={category === "tip" || category === "note"}
             placeholder={category === "tip" || category === "note" ? "What is it? (required)" : "Add a detail (optional)"}
             className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
           <label className={`tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#E14328)] text-[var(--app-brand,#E14328)]" : "border-[var(--app-ink)]/15"}`}>
             <span aria-hidden="true">{"\u{1F4F7}"}</span>
             {def?.photoRequired ? "Photo*" : ""}
-            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
+            <input type="file" accept="image/*" capture="environment" aria-label={def?.photoRequired ? "Add photo (required)" : "Add photo (optional)"} className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
           </label>
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element -- local capture preview (data URL)
@@ -301,6 +303,7 @@ export default function ReportClient() {
         {showPass && (
           <input
             type="password"
+            aria-label="Trusted passcode"
             value={passcode}
             onChange={(e) => {
               const v = e.target.value;
@@ -328,7 +331,7 @@ export default function ReportClient() {
           type="button"
           onClick={submit}
           disabled={saving}
-          className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
         >
           {saving ? "Sending…" : `Report ${def?.label?.toLowerCase() ?? "it"}`}
         </button>

@@ -1036,7 +1036,7 @@ export default function SavedList() {
 }
 
 function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Start building your Radius.";
+  if (placeN === 0 && eventN === 0) return "Nothing saved yet, but you've started your field guide.";
   const parts: string[] = [];
   if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
   if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);

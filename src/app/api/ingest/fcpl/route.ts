@@ -12,10 +12,12 @@
  *   GET /api/ingest/fcpl?only=brunswick
  */
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { geocodePending } from "@/lib/ingest/geocode";
 import { fcplMapFeed, FCPL_SOURCE_DOMAIN } from "@/lib/ingest/fcpl";
+import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -52,13 +54,28 @@ export async function GET(req: NextRequest) {
   if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
 
   const t0 = Date.now();
+  // obs-2: record this run so a silent partial failure is visible in
+  // ingest_runs. Fail-soft (no-op without a DB / on dry run).
+  const runId = !dry && sql ? await startIngestRun(FCPL_SOURCE_DOMAIN) : null;
   const feed = await fetchFeed();
   if (!feed) {
+    await finishIngestRun(runId, { status: "error", error: "feed fetch failed" });
     return Response.json({ ok: false, error: "feed fetch failed", dry }, { status: 502 });
   }
 
-  let mapped = fcplMapFeed(feed, new Date());
-  if (only) mapped = mapped.filter((m) => m.municipality.toLowerCase() === only.toLowerCase());
+  // Wrap the mapper so a parser throw stamps the run as error rather than
+  // leaving a dangling 'running' row that getRecentIngestRuns surfaces forever.
+  let mapped: ReturnType<typeof fcplMapFeed>;
+  try {
+    mapped = fcplMapFeed(feed, new Date());
+    if (only) mapped = mapped.filter((m) => m.municipality.toLowerCase() === only.toLowerCase());
+  } catch (e) {
+    await finishIngestRun(runId, {
+      status: "error",
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
+  }
 
   const stats: UpsertStats = emptyStats();
   const perMunicipality: Record<string, number> = {};
@@ -82,6 +99,20 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       geocode = { error: err instanceof Error ? err.message : "geocode failed" };
     }
+  }
+
+  await finishIngestRun(runId, {
+    status: "ok",
+    records_in: mapped.length,
+    records_upserted: stats.normUpserted,
+    records_failed: failed,
+  });
+
+  // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
+  // /events, and /map pick up the new library programs immediately.
+  if (!dry && sql) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
   }
 
   return Response.json({

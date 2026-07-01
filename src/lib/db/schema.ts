@@ -291,6 +291,29 @@ export const push_subscriptions = pgTable(
 );
 
 /**
+ * saved_events (critic-1) — device-scoped record of which push-enabled devices
+ * saved which event, so the "one hour before something you saved" reminder can
+ * reach exactly those devices. Keyed by the device's push-subscription
+ * `endpoint` (the same device key push_subscriptions uses; NO user_id — saves
+ * are device-local). Populated by /api/saved when an event is saved on a device
+ * that has push consent. RLS deny-all like every other table; only the
+ * BYPASSRLS server role touches it.
+ */
+export const saved_events = pgTable(
+  "saved_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    endpoint: text("endpoint").notNull(),
+    event_slug: text("event_slug").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    endpointSlugUq: uniqueIndex("saved_events_endpoint_slug_uq").on(t.endpoint, t.event_slug),
+    slugIdx: index("saved_events_slug_idx").on(t.event_slug),
+  }),
+);
+
+/**
  * Push-fanout dedupe log. Each `(topic, dedupe_key)` is sent at most
  * once: a cron does INSERT … ON CONFLICT DO NOTHING and only fans out
  * to subscribers when the insert reports it created the row. This is

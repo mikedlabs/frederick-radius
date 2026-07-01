@@ -460,7 +460,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {eventsAtThisVenue.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
             Upcoming at {place.name}
           </h2>
           <ul className="space-y-2">
@@ -472,7 +472,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       )}
 
       <section className="space-y-3">
-        <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
           Near here
         </h2>
         <ul className="space-y-2">

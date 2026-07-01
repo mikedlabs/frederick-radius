@@ -434,7 +434,7 @@ export default function CollectClient() {
                 aria-pressed={active}
                 className={`flex min-h-[52px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
                   active
-                    ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]"
+                    ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]"
                     : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
@@ -452,11 +452,21 @@ export default function CollectClient() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={280}
+            aria-label="Note"
             placeholder={kind === "other" ? "What is it?" : "Note (optional)"}
             className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
-          <label className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium">
+          {/* Visible "Photo" text (not an emoji alone): the camera glyph fails
+              to render on some Android/desktop fonts, collapsing the control to
+              a blank box — the "no photo button" report. The word label keeps
+              it visible + recognizable everywhere, matching every other control
+              in this tool (glyph + label). aria-label names it for AT. */}
+          <label
+            aria-label="Add photo"
+            className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium"
+          >
             <span aria-hidden="true">{"\u{1F4F7}"}</span>
+            <span>{photo || editing?.photo ? "Change" : "Photo"}</span>
             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
           </label>
           {photo ? (
@@ -480,6 +490,7 @@ export default function CollectClient() {
           <div className="flex gap-2">
             <input
               type="password"
+              aria-label="Trusted passcode"
               value={passcode}
               onChange={(e) => {
                 setPasscode(e.target.value);
@@ -491,6 +502,7 @@ export default function CollectClient() {
             />
             <input
               type="text"
+              aria-label="Your name"
               value={collectedBy}
               onChange={(e) => {
                 setCollectedBy(e.target.value);
@@ -532,7 +544,7 @@ export default function CollectClient() {
               type="button"
               onClick={saveEdit}
               disabled={saving}
-              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
+              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>
@@ -542,7 +554,7 @@ export default function CollectClient() {
             type="button"
             onClick={add}
             disabled={saving}
-            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
+            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
           >
             {saving ? "Adding…" : `Add ${selected?.label ?? "point"} here`}
           </button>

@@ -12,7 +12,8 @@ import Skeleton from "@/components/ui/Skeleton";
  */
 export default function MapLoading() {
   return (
-    <div className="-mx-4 -mt-4">
+    <div aria-busy="true" className="-mx-4 -mt-4">
+      <span className="sr-only" role="status">Loading the map</span>
       {/* Mode + intent chip strips */}
       <div className="flex items-center gap-2 px-4 py-2.5">
         <Skeleton.Block width={150} height={36} round="9999px" />
