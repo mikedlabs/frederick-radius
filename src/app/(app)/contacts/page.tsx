@@ -21,9 +21,9 @@ import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/contacts" },
-  title: "Contacts",
+  title: "County & city services",
   description:
-    "Phone numbers and direct links for City of Frederick and Frederick County government departments, plus emergency lines.",
+    "Frederick County and City services in one place: who to call and how to do it, from 311, permits, trash, and taxes to voting, plus every department and the emergency lines.",
 };
 
 export const revalidate = 86_400;
@@ -130,7 +130,7 @@ export default function ContactsPage() {
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Contacts
+          County &amp; city services
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
           What do you need?

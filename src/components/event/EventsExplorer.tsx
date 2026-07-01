@@ -471,8 +471,11 @@ export default function EventsExplorer({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search events, venues…"
-            aria-label="Search events"
+            // Scoped-FILTER label, not "Search" — the sticky global bar already
+            // owns "search". This one narrows the list already on screen, so
+            // naming it a filter stops it reading as a duplicate search box.
+            placeholder="Filter these events…"
+            aria-label="Filter the events shown"
             className="tactile w-full rounded-full py-2.5 pl-9 pr-3 text-sm"
             style={{
               background: "var(--app-bg-elevated)",

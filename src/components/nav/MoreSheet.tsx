@@ -19,6 +19,7 @@ import {
   Store,
   FileText,
   MapPin,
+  Landmark,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -58,10 +59,11 @@ type Item = {
 
 // Explore is the field-guide INDEX, not a second copy of the Today "I want…"
 // grid. Everything that has a craving/destination on Today (eat, drink,
-// outdoors, parking, trails, rivers, markers, plan, pulse, contacts, happy
-// hour, brunch, libraries, worship…) lives THERE and is intentionally NOT
-// repeated here. This sheet keeps only what Today doesn't surface: the
-// discovery + curiosity surfaces, ways to contribute, and the app/meta pages.
+// outdoors, parking, trails, rivers, markers, plan, pulse, happy hour, brunch,
+// libraries, worship…) lives THERE and is intentionally NOT repeated here. This
+// sheet keeps only what Today doesn't surface: the discovery + curiosity
+// surfaces, County services (the /contacts civic hub, otherwise reachable only
+// from two deep pages), ways to contribute, and the app/meta pages.
 const DISCOVER: Item[] = [
   { href: "/open-now", label: "Open now", description: "Everything open across the county right this minute", icon: DoorOpen, color: "var(--app-positive)" },
   { href: "/events", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
@@ -69,6 +71,7 @@ const DISCOVER: Item[] = [
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
   { href: "/collections", label: "Collections", description: "Editor's curated lists: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
   { href: "/towns", label: "Towns", description: "Explore all 12 municipalities + Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
+  { href: "/contacts", label: "County services", description: "Who to call and how to do it: 311, permits, trash, taxes, voting, and every county + city department", icon: Landmark, color: "var(--app-cool)" },
   { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "var(--app-accent-press)" },
   { href: "/overhead", label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
   { href: "/from-above/preview", label: "From Above", description: "The aerial photography book of Frederick County", icon: Camera, color: "var(--app-cool)" },
