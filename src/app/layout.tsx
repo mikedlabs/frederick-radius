@@ -121,7 +121,10 @@ export const viewport: Viewport = {
   // dark-mode users) get the ink ground so the bar doesn't clash.
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#16140E" },
-    { media: "(prefers-color-scheme: light)", color: "#EEE6D4" },
+    // Must match the actual paper ground (--app-bg = #EBE2CD, deepened in the
+    // 2026 readability pass) or installed PWAs show a status-bar/page seam.
+    // Viewport metadata can't read CSS vars, so this literal is kept in sync.
+    { media: "(prefers-color-scheme: light)", color: "#EBE2CD" },
   ],
 };
 
@@ -236,7 +239,7 @@ export default function RootLayout({
       >
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[var(--z-skip)] focus:rounded-md focus:bg-black focus:px-3 focus:py-2 focus:text-sm focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[var(--z-skip)] focus:rounded-[var(--app-radius-sm)] focus:bg-[var(--app-ink)] focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--app-on-brand)]"
         >
           Skip to content
         </a>

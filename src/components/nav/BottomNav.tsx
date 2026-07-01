@@ -180,7 +180,7 @@ export default function BottomNav() {
                     }}
                   />
                   <span
-                    className="text-[11px] font-semibold leading-tight tracking-tight"
+                    className="text-[11px] font-medium leading-tight tracking-tight"
                     style={{ opacity: 1 }}
                   >
                     {label}
