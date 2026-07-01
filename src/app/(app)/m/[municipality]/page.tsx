@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Search, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
@@ -216,44 +216,19 @@ export default async function MunicipalityPage(
         </div>
       </header>
 
-      {/* 2 — Town-scoped ask/search pill: the first action. Ported from the
-          Places pill, scoped to this town. Opens the typed search. */}
-      <Link
-        href={`/search?q=${encodeURIComponent(m.name)}`}
-        aria-label={`Search ${m.name}`}
-        className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5"
-        style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
-      >
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand-press)" }}
-        >
-          <Search className="h-[17px] w-[17px]" strokeWidth={2.25} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: "var(--app-ink-3)" }}>
-          Search {m.name}…
-        </span>
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
-          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
-          aria-hidden
-        >
-          <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.5} />
-        </span>
-      </Link>
+      {/* 2 — Town-scoped search bar removed (owner call): it stacked a second
+          search field directly under the global header search. The "All places
+          in {town}" link in Worth-your-time below already pre-fills a
+          town-scoped browse, so the redundant slab came out. */}
 
       {/* 3 — Field-guide locator line: mono caps centroid coordinates,
           echoing the Saved header's plate mark. */}
       <TownLocatorLine centroid={m.centroid} type={m.type} />
 
-      {/* 3b — Cliff notes: the verified almanac (one-liner + FAQ + fun facts
-          + local insight). The informative town context at the top of the
-          page, so the reader knows what the town IS before the place reel. */}
-      <TownAlmanac slug={m.slug} townName={m.name} />
-
-      {/* 4 — Worth your time: the LEAD answer. A glow-lead selected card,
-          then a compact 2-up grid of cells, then a demoted "all places"
-          link. This curates rather than listing every place. */}
+      {/* 4 — Worth your time: the LEAD answer — the PLACES lead the page now
+          (owner call: open with what's actionable + visual, not the town's
+          history). A glow-lead selected card, then a compact 2-up grid of
+          cells, then a demoted "all places" link. */}
       {lead ? (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
@@ -304,6 +279,11 @@ export default async function MunicipalityPage(
           .
         </p>
       )}
+
+      {/* Cliff notes: the verified almanac (one-liner + FAQ + fun facts +
+          local insight) — what the town IS, set BELOW the place reel now so
+          the visual answer leads and the history is here for the curious. */}
+      <TownAlmanac slug={m.slug} townName={m.name} />
 
       {/* "{Town} from above" — the nearest geotagged drone shot. Only towns
           the aerial archive covers render this; everywhere else self-hides. */}

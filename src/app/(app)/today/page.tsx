@@ -52,6 +52,7 @@ import PoolsToday from "@/components/today/PoolsToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
+import TodayLens from "@/components/today/TodayLens";
 
 /**
  * Now — the daily briefing.
@@ -186,6 +187,19 @@ export default async function HomePage() {
           render nothing. */}
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
+      {/* ── HEADS UP — an ACTIVE civic alert (NWS/NPS: warning, closure,
+          incident) LEADS the entire page (owner call: alerts before the
+          header). It's the one thing that changes whether anything else on the
+          page matters, so nothing — not even the weather hero — sits above it.
+          Self-hides when nothing is active (the common case), and the
+          :not(:empty) wrapper means it then costs the ordinary day zero space:
+          no phantom gap above the sky hero. */}
+      <Suspense fallback={null}>
+        <div className="[&:not(:empty)]:mb-4">
+          <CivicAlerts />
+        </div>
+      </Suspense>
+
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
           tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -249,42 +263,14 @@ export default async function HomePage() {
         <div className="fg-rule mt-3" aria-hidden />
       </header>
 
-      {/* ── HEADS UP — an ACTIVE civic alert (NWS/NPS: warning, closure,
-          incident) is the one thing that changes whether the rest of the page
-          matters, so it sits right under the masthead, before anyone plans.
-          Self-hides when nothing is active (the common case), so it costs the
-          ordinary day nothing; on an alert day it leads instead of hiding at the
-          bottom. Still one worst-first card with a quiet "+N more", never a
-          banner wall. */}
-      <Suspense fallback={null}>
-        <div className="mt-3">
-          <CivicAlerts />
-        </div>
-      </Suspense>
-
-      {/* ── CONTENTS RAIL — a slim almanac "on this page" line (not a chunky
-          chip bar): mono anchors that skip to the major sections below the
-          fold, with a quiet "Live" tick on the right so the open-now / specials
-          data reads as real-time. The page is medium-long after the On-now
-          consolidation; this gives a one-tap skip without adding visual weight.
-          (CivicAlerts above self-hides on the ordinary day, so the rail then
-          sits right under the masthead.) */}
-      <nav
-        aria-label="On this page"
-        className="mt-3 flex items-center justify-between gap-3 px-0.5"
-      >
-        <div className="flex items-center gap-x-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em]">
-          <a href="#want" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>I want</a>
-          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-          <a href="#whats-on" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>Events</a>
-          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-          <a href="#on-now" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>On now</a>
-        </div>
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-          Live
-        </span>
-      </nav>
+      {/* ── LENS PICKER — the calm, always-visible Resident/Visitor chooser
+          that replaces the startup "are you visiting" popup (owner call).
+          Stating the active lens and letting the user switch it in place
+          makes the choice easy to make AND easy to find later, without an
+          interruption on arrival. (The old "on this page" jump-rail that
+          used to sit here was removed as redundant; section ids stay on
+          their divs so deep-link anchors like /today#whats-on still work.) */}
+      <TodayLens />
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On

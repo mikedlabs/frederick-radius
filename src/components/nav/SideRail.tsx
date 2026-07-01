@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
 
@@ -135,7 +136,7 @@ export default function SideRail() {
               transitionDuration: "var(--app-dur-fast)",
             } as const;
 
-            return (
+            const cell = (
               <li
                 key={href}
                 ref={(el) => {
@@ -173,6 +174,42 @@ export default function SideRail() {
                 </Link>
               </li>
             );
+
+            // Center "Mark" action (public report tool) — mirrors BottomNav so
+            // both navs share the focal CTA. An action, not a tab (no pill).
+            if (idx === 1) {
+              return (
+                <Fragment key="mark-slot">
+                  {cell}
+                  <li key="mark" className="flex justify-center">
+                    <Link
+                      href="/report"
+                      onPointerDown={() => haptic("light")}
+                      aria-label="Mark a spot: a hazard, condition, tip, or note"
+                      className="group flex h-14 w-14 flex-col items-center justify-center gap-1 text-center"
+                    >
+                      <span
+                        className="grid h-9 w-9 place-items-center rounded-full text-white transition-transform active:scale-[0.9] group-active:scale-[0.9]"
+                        style={{
+                          background: "var(--app-brand)",
+                          boxShadow:
+                            "0 6px 16px -6px color-mix(in srgb, var(--app-brand) 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 30%, transparent)",
+                        }}
+                      >
+                        <Plus width={20} height={20} strokeWidth={2.75} aria-hidden />
+                      </span>
+                      <span
+                        className="text-[11px] font-semibold leading-tight tracking-tight"
+                        style={{ color: "var(--app-brand)" }}
+                      >
+                        Mark
+                      </span>
+                    </Link>
+                  </li>
+                </Fragment>
+              );
+            }
+            return cell;
           })}
         </ul>
       </nav>

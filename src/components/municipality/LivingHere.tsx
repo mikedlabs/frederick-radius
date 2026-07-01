@@ -56,7 +56,10 @@ export default function LivingHere({
           merged heading above replaces each component's separate header. */}
       <div className="space-y-3">
         <CivicCard rec={civic} hideHeading />
-        <TownLinks slug={slug} />
+        {/* When the civic card renders its "Main office" contact, TownLinks
+            drops its own address/phone footer so the town-hall contact isn't
+            printed twice on the page. */}
+        <TownLinks slug={slug} hideContact={hasCivic} />
       </div>
 
       <p className="px-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>

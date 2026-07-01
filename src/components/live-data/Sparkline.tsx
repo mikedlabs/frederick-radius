@@ -20,6 +20,7 @@ export default function Sparkline({
   strokeWidth = 1.5,
   fillOpacity = 0.12,
   showLast = true,
+  animated = false,
 }: {
   values: number[];
   width?: number;
@@ -30,6 +31,9 @@ export default function Sparkline({
   fillOpacity?: number;
   /** Highlight the latest point with a dot. */
   showLast?: boolean;
+  /** One-shot reveal on mount: the line draws left-to-right and the latest
+   *  point pulses as a "live" beacon. Freezes under prefers-reduced-motion. */
+  animated?: boolean;
 }) {
   if (!values || values.length < 2) {
     return (
@@ -96,6 +100,10 @@ export default function Sparkline({
         strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
+        // pathLength normalizes the dash math to 1 so the draw-in keyframe
+        // works regardless of the path's real length.
+        pathLength={animated ? 1 : undefined}
+        className={animated ? "spark-line" : undefined}
       />
       {showLast && (
         <circle
@@ -103,6 +111,7 @@ export default function Sparkline({
           cy={lastY}
           r={strokeWidth + 1}
           fill={stroke}
+          className={animated ? "spark-beacon" : undefined}
         />
       )}
     </svg>

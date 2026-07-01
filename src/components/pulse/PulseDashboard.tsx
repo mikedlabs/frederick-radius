@@ -11,6 +11,10 @@ import {
   Waves,
   Plane,
   CloudSun,
+  Newspaper,
+  Radio,
+  Shield,
+  TrafficCone,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -43,6 +47,10 @@ const ICONS: Record<string, LucideIcon> = {
   Waves,
   Plane,
   CloudSun,
+  Newspaper,
+  Radio,
+  Shield,
+  TrafficCone,
 };
 
 export type PulseTile = {

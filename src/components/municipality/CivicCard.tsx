@@ -1,4 +1,4 @@
-import { Phone, Clock, Recycle, ExternalLink } from "lucide-react";
+import { Phone, Clock, Recycle, ExternalLink, Landmark } from "lucide-react";
 import {
   civicContacts,
   freshnessLabel,
@@ -19,6 +19,25 @@ import {
  * is unaffected until the agent (scripts/ingest-municipal-civic.ts)
  * populates that town. Nothing is ever fabricated here.
  */
+
+/** Most-repeated non-empty value, only when it actually repeats (>= 2). */
+function sharedValue(vals: Array<string | undefined>): string | undefined {
+  const counts = new Map<string, number>();
+  for (const v of vals) {
+    if (!v) continue;
+    counts.set(v, (counts.get(v) ?? 0) + 1);
+  }
+  let best: string | undefined;
+  let bestN = 1;
+  for (const [v, n] of counts) {
+    if (n > bestN) {
+      best = v;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
 export default function CivicCard({
   rec,
   hideHeading = false,
@@ -38,6 +57,13 @@ export default function CivicCard({
   } catch {
     /* keep fallback */
   }
+
+  // Town-hall departments (hall, permits, utilities) usually share ONE office
+  // phone + address. Surface that once as a "Main office" line and drop it from
+  // the individual rows, so the card lists departments cleanly instead of
+  // repeating the same address on every entry.
+  const sharedPhone = sharedValue(contacts.map((c) => c.phone));
+  const sharedAddress = sharedValue(contacts.map((c) => c.address));
 
   return (
     <section className="space-y-2.5">
@@ -66,9 +92,52 @@ export default function CivicCard({
         className="overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
       >
+        {/* Shared "Main office" contact — shown ONCE, not on every row. */}
+        {(sharedPhone || sharedAddress) && (
+          <div
+            className="flex items-start gap-2.5 border-b px-4 py-3"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+          >
+            <Landmark
+              className="mt-0.5 h-4 w-4 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-cool)" }}
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+                Main office
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {sharedPhone && (
+                  <a
+                    href={`tel:${sharedPhone.replace(/[^0-9+]/g, "")}`}
+                    className="inline-flex items-center gap-1 text-[13px] font-semibold"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    <Phone className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                    {sharedPhone}
+                  </a>
+                )}
+                {sharedAddress && (
+                  <span className="text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+                    {sharedAddress}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <ul>
           {contacts.map((c, i) => (
-            <ContactRow key={`${c.label}-${i}`} c={c} last={i === contacts.length - 1} />
+            <ContactRow
+              key={`${c.label}-${i}`}
+              c={c}
+              last={i === contacts.length - 1}
+              sharedPhone={sharedPhone}
+              sharedAddress={sharedAddress}
+            />
           ))}
         </ul>
         {/* Provenance + freshness — the trust line. */}
@@ -94,10 +163,25 @@ export default function CivicCard({
   );
 }
 
-function ContactRow({ c, last }: { c: CivicContact; last: boolean }) {
+function ContactRow({
+  c,
+  last,
+  sharedPhone,
+  sharedAddress,
+}: {
+  c: CivicContact;
+  last: boolean;
+  sharedPhone?: string;
+  sharedAddress?: string;
+}) {
   // Trash/recycling reads as the highest-value resident answer, so its
   // schedule gets a glyph; the rest stay clean text rows.
   const isTrash = /recycl|trash|garbage|refuse/i.test(c.label);
+  // Suppress the phone/address that already live in the "Main office" line
+  // above — a department row only shows what's UNIQUE to it.
+  const showPhone = Boolean(c.phone && c.phone !== sharedPhone);
+  const showAddress = Boolean(c.address && c.address !== sharedAddress);
+  const hasDetailRow = showPhone || Boolean(c.website) || showAddress;
   return (
     <li
       className="px-4 py-3"
@@ -144,35 +228,37 @@ function ContactRow({ c, last }: { c: CivicContact; last: boolean }) {
         </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        {c.phone && (
-          <a
-            href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            <Phone className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-            {c.phone}
-          </a>
-        )}
-        {c.website && (
-          <a
-            href={c.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[12px] font-medium hover:underline"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            Website
-            <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
-          </a>
-        )}
-        {c.address && (
-          <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            {c.address}
-          </span>
-        )}
-      </div>
+      {hasDetailRow && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {showPhone && (
+            <a
+              href={`tel:${c.phone!.replace(/[^0-9+]/g, "")}`}
+              className="inline-flex items-center gap-1 text-[12px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              <Phone className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              {c.phone}
+            </a>
+          )}
+          {c.website && (
+            <a
+              href={c.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[12px] font-medium hover:underline"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Website
+              <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
+            </a>
+          )}
+          {showAddress && (
+            <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              {c.address}
+            </span>
+          )}
+        </div>
+      )}
     </li>
   );
 }

@@ -40,7 +40,6 @@ import {
   Siren,
   ShieldCheck,
   ExternalLink, MapPin, Clock, ChevronRight,
-  Radio,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -53,13 +52,16 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
-import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
+import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
+import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
+import MetricCard from "@/components/live-data/MetricCard";
+import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
-import { PoliceBreakingStrip, PoliceBlotter, AdvisoryCard } from "@/components/pulse/CivicPress";
+import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
 import NextStopsBoard from "@/components/transit/NextStopsBoard";
@@ -189,8 +191,9 @@ export default async function PulsePage({
     withTimeout(getCivicPressReleases(), FEED_MS, []),
     // TransIT route count for the "by the numbers" grid (weekly-cached loader).
     withTimeout(getFrederickTransitRoutes(), FEED_MS, []),
-    // USGS live gage height + streamflow for county rivers (latest reading only).
-    withTimeout(getFrederickWaterSites(), FEED_MS, [] as WaterSite[]),
+    // USGS live gage height + streamflow for county rivers, WITH 24h history
+    // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
+    withTimeout(getFrederickWaterSitesWithHistory(), FEED_MS, [] as WaterSite[]),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // TransIT route shapes + stops for the live bus map (weekly-cached).
@@ -291,8 +294,9 @@ export default async function PulsePage({
   // height + observed time only, never a synthesized flood "stage".
   const riverGroups = groupByRiver(rivers);
   const riverPeekSite = riverGroups[0]?.sites.find((s) => s.gageHeightFt != null);
+  const riverPeekDir = riverPeekSite ? readingTrend(riverPeekSite.gageHistory) : null;
   const riverPeek = riverPeekSite
-    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft`
+    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
 
   // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
@@ -320,6 +324,98 @@ export default async function PulsePage({
       {text}
     </p>
   );
+
+  // ── Bodies for the civic-feed tiles (News · Police · Road work · Scanner).
+  // These reference feeds used to stack as their own text-heavy sections below
+  // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
+  // whole page is one unified, visual grid. Built server-side like every tile.
+  const newsLead = news[0];
+  const newsBody = news.length > 0 ? (
+    <div className="space-y-1">
+      <a
+        href={newsLead.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block rounded-[var(--app-radius-md)] px-1 py-2 transition hover:bg-[var(--app-bg-sunken)]"
+      >
+        <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+          {newsLead.title}
+        </h3>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+          {newsLead.source} · {timeAgo(newsLead.published_at)}
+        </p>
+      </a>
+      {news.length > 1 && (
+        <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+          {news.slice(1, 6).map((h) => (
+            <li
+              key={h.url}
+              className="border-b last:border-b-0"
+              style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
+            >
+              <a
+                href={h.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start justify-between gap-3 px-1 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+                    {h.title}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+                    {h.source} · {timeAgo(h.published_at)}
+                  </span>
+                </span>
+                <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  ) : emptyNote("No local headlines right now.");
+
+  const policeBody = (
+    <div className="space-y-3">
+      {blotter.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+            Recent releases
+          </p>
+          <PoliceBlotter items={blotter} now={nowMs} />
+        </div>
+      )}
+      <div
+        className={blotter.length > 0 ? "space-y-2.5 border-t pt-3" : "space-y-2.5"}
+        style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
+      >
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Frederick PD also publishes the prior day&apos;s calls for service from its
+          CAD system on an official map, updated daily.
+        </p>
+        <a
+          href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
+          style={{ background: "var(--app-cool)" }}
+        >
+          Open the official CFS map
+          <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        </a>
+        <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Calls for service are not confirmed crimes. They reflect requests for
+          police response, from the City of Frederick &amp; Frederick County.
+        </p>
+      </div>
+    </div>
+  );
+
+  const roadworkBody = advisories.length > 0
+    ? <PoliceBlotter items={advisories} now={nowMs} />
+    : emptyNote("No road work or closures reported right now.");
+
   const pulseTiles: PulseTile[] = [
     // Weather LEADS the board: "what's it doing out" is the most-asked live
     // question. An ambient tile (not an alarm) carrying the current reading;
@@ -522,42 +618,73 @@ export default async function PulsePage({
       peek: riverPeek,
       body: rivers.length > 0
         ? (
-          <>
+          <div className="space-y-4">
             {riverGroups.map((g) => (
-              <div
-                key={g.river}
-                className="rounded-[var(--app-radius-md)] border px-3 py-2.5"
-                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-              >
-                <p className="flex items-baseline gap-1.5">
-                  <span className="text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+              <div key={g.river} className="space-y-2">
+                <p className="flex items-baseline gap-1.5 px-0.5">
+                  <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {g.river}
                   </span>
-                  <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                  <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                     {g.sites.length} {g.sites.length === 1 ? "gauge" : "gauges"}
                   </span>
                 </p>
-                <ul className="mt-1 space-y-1">
-                  {g.sites.map((s) => (
-                    <li key={s.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                      <span className="min-w-0 flex-1 truncate" style={{ color: "var(--app-ink-2)" }}>
-                        {riverLocationOf(s.name) || titleCaseRiver(s.name)}
-                      </span>
-                      <span className="shrink-0 font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
-                        {s.gageHeightFt != null
-                          ? `${s.gageHeightFt.toFixed(2)} ft`
-                          : s.streamflowCfs != null
-                            ? `${s.streamflowCfs.toLocaleString()} ft³/s`
-                            : // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
-                              "—"}
-                        {s.observedAt && (
-                          <span className="ml-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                            {timeAgo(s.observedAt)}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="space-y-2.5">
+                  {g.sites.map((s) => {
+                    const hasHeight = s.gageHeightFt != null;
+                    const dir = readingTrend(s.gageHistory) ?? readingTrend(s.streamflowHistory);
+                    const flood = classifyFlood(s.gageHeightFt, s.floodStages);
+                    const trendTone: "neutral" | "good" | "warning" =
+                      dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
+                    const trendLabel =
+                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Live";
+                    // A flood category (action+) outranks the trend on the pill —
+                    // on a water board, "how close to flooding" beats "rising".
+                    const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
+                      flood && flood.key !== "normal"
+                        ? { label: flood.label, tone: flood.tone === "danger" ? "danger" : "warning" }
+                        : { label: trendLabel, tone: trendTone };
+                    const value = hasHeight ? s.gageHeightFt!.toFixed(2) : (s.streamflowCfs ?? 0).toLocaleString();
+                    const unit = hasHeight ? "ft" : "ft³/s";
+                    const trend = hasHeight ? s.gageHistory?.map((r) => r.value) : s.streamflowHistory?.map((r) => r.value);
+                    const secondary = hasHeight && s.streamflowCfs != null
+                      ? `Flow ${s.streamflowCfs.toLocaleString()} ft³/s`
+                      : null;
+                    const ago = s.observedAt ? timeAgo(s.observedAt) : "";
+                    return (
+                      <li key={s.id}>
+                        <MetricCard
+                          title={riverLocationOf(s.name) || titleCaseRiver(s.name)}
+                          value={value}
+                          unit={unit}
+                          trend={trend}
+                          animatedTrend
+                          accent="var(--app-cool)"
+                          trendStroke="var(--app-cool)"
+                          status={status}
+                          meta={
+                            ago || secondary ? (
+                              <>
+                                {ago}
+                                {ago && secondary && <span className="mx-1.5 opacity-50">·</span>}
+                                {secondary}
+                              </>
+                            ) : undefined
+                          }
+                          footer={
+                            flood && s.floodStages && s.gageHeightFt != null ? (
+                              <FloodGauge current={s.gageHeightFt} stages={s.floodStages} category={flood} animated />
+                            ) : undefined
+                          }
+                          href={
+                            s.floodStages
+                              ? nwsGaugeUrl(s.floodStages.nws)
+                              : `https://waterdata.usgs.gov/monitoring-location/${s.id}/`
+                          }
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -570,9 +697,9 @@ export default async function PulsePage({
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
             <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Latest reading only. Flood forecasts are the National Weather Service&rsquo;s job, not ours.
+              Latest reading + 24-hour trend. Flood categories are the National Weather Service&rsquo;s; crest forecasts stay with them.
             </p>
-          </>
+          </div>
         )
         : emptyNote("River gauge readings are briefly unavailable."),
     },
@@ -610,6 +737,53 @@ export default async function PulsePage({
           ),
         } as PulseTile]
       : []),
+    // ── Reference feeds, now first-class tiles (were stacked text sections).
+    {
+      key: "news",
+      label: "In the news",
+      iconName: "Newspaper",
+      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "Quiet",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Google News · Frederick County",
+      peek: news[0]?.title,
+      body: newsBody,
+    },
+    {
+      key: "police",
+      label: "Police & safety",
+      iconName: "Shield",
+      countLabel: blotter.length > 0 ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}` : "CFS map",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Frederick PD · City + County",
+      peek: breakingPolice?.title ?? blotter[0]?.title,
+      body: policeBody,
+    },
+    ...(advisories.length > 0
+      ? [{
+          key: "roadwork",
+          label: "Road work",
+          iconName: "TrafficCone",
+          countLabel: `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
+          accent: "var(--app-cool)",
+          active: false,
+          sourceLabel: "City + County advisories",
+          peek: advisories[0]?.title,
+          body: roadworkBody,
+        } as PulseTile]
+      : []),
+    {
+      key: "scanner",
+      label: "Scanner",
+      iconName: "Radio",
+      countLabel: "Live on X",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Frederick Scanner · X",
+      peek: "Police, fire & EMS calls",
+      body: <ScannerTimeline />,
+    },
   ];
 
   return (
@@ -738,8 +912,11 @@ export default async function PulsePage({
         <TransitMap
           shapes={transitShapes}
           height={300}
+          /* Open on downtown Frederick (Market & Patrick) — the densest part of
+             the network and where most riders are. The lockToService leash keeps
+             the camera over the service area; the user zooms out for outer routes. */
           center={[-77.4105, 39.4143]}
-          zoom={11}
+          zoom={12.5}
           liveBuses
           highlightRoutes
           hideBadge
@@ -755,256 +932,6 @@ export default async function PulsePage({
         </p>
       </section>
 
-      {/* ── Active sections only ──────────────────────────────── */}
-      {/* Desktop multi-column: at lg+ the operational sections fall
-          into a 2-col grid so traffic, power, schools, alerts, news
-          read side-by-side instead of as long single-column rows.
-          Mobile keeps the natural vertical stack. The grid is on the
-          parent <div>; conditional children populate cells in source
-          order so urgency stays top-left. */}
-      {/* Secondary surfaces — the scanner handoff, the rivers quick-link,
-          and local news. The operational feeds (weather alerts, fire &
-          rescue, traffic, power, schools, 311) are the tap-to-open dashboard
-          tiles above now, not a stacked run here. */}
-      <div className="space-y-4">
-
-      {/* Frederick Scanner — Twitter/X timeline embed. Sits between
-          the operational feeds and the editorial news section because
-          the scanner is operational-news in feel (raw incidents)
-          but lives on a third-party surface. Self-falls-back to an
-          "open on X" link card if the widget can't load. */}
-      <section
-        id="scanner"
-        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-        style={{
-          // Explicit side colors (not the borderColor shorthand) so the left
-          // accent longhand below doesn't trip React's shorthand/longhand warn.
-          borderTopColor: "var(--app-border)",
-          borderRightColor: "var(--app-border)",
-          borderBottomColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          borderLeftWidth: 3,
-          borderLeftColor: "var(--app-cool)",
-        }}
-      >
-        <header
-          className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <h2
-            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-cool) 13%, transparent)",
-                color: "var(--app-cool)",
-              }}
-            >
-              <Radio className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </span>
-            Frederick Scanner
-          </h2>
-          <span
-            className="text-[11px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Live on X
-          </span>
-        </header>
-        <div className="px-3 py-3">
-          <ScannerTimeline />
-        </div>
-      </section>
-
-      {/* Rivers moved INTO the dashboard as the cool-accent 7th tile — it's
-          live county data (gage height), so it belongs in the heat-map grid
-          alongside the other live feeds, not stranded below as a quiet link.
-          The full /rivers dashboard (24h trends + map) is linked from inside
-          the tile's window. */}
-
-      {/* City signal — Local news. Always-on city data even when the
-          operational feeds are quiet. Top headlines from Google News
-          RSS for Frederick County + the four named towns. Each row
-          links out; rendering quiet headline text + source +
-          published-ago meta. */}
-      {news.length > 0 && (() => {
-        // Broadsheet treatment: a lead story set large in serif, then a tight
-        // ruled column of the rest. Typography carries the "newspaper" feel.
-        const [lead, ...rest] = news.slice(0, 6);
-        const dateline = new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }).format(new Date(nowMs));
-        return (
-        <section
-          id="news"
-          className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
-          {/* Nameplate — a masthead double-rule, serif title, mono dateline. */}
-          <div className="px-4 pt-3.5 sm:px-5">
-            <div aria-hidden className="h-px" style={{ background: "var(--app-ink)" }} />
-            <div className="flex items-baseline justify-between gap-3 pt-2">
-              <h2 className="font-serif text-[21px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
-                In the news
-              </h2>
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-                Frederick · {dateline}
-              </span>
-            </div>
-            <div aria-hidden className="mt-2 h-px" style={{ background: "color-mix(in srgb, var(--app-ink) 28%, transparent)" }} />
-          </div>
-
-          {/* Lead story — set larger in serif, the broadsheet lead. */}
-          <a
-            href={lead.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block px-4 py-3 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
-          >
-            <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-              {lead.title}
-            </h3>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-              {lead.source} · {timeAgo(lead.published_at)}
-            </p>
-          </a>
-
-          {/* The column — secondary stories as a tight ruled run. */}
-          {rest.length > 0 && (
-            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
-              {rest.map((h) => (
-                <li
-                  key={h.url}
-                  className="border-b last:border-b-0"
-                  style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
-                >
-                  <a
-                    href={h.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-start justify-between gap-3 px-4 py-2.5 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                        {h.title}
-                      </span>
-                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-                        {h.source} · {timeAgo(h.published_at)}
-                      </span>
-                    </span>
-                    <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <p
-            className="px-4 py-2.5 font-mono text-[9.5px] uppercase tracking-[0.14em] sm:px-5"
-            style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}
-          >
-            Wire: Google News · Frederick County
-          </p>
-        </section>
-        );
-      })()}
-      </div>{/* /active-sections grid */}
-
-      {/* The all-clear verdict lives ONCE, in the hero ("All clear across
-          the county" + the sage live dot at the top). A second celebration
-          card here repeated it AFTER the user had already scrolled past the
-          tiles, scanner, and news — the verdict landing last, divorced from
-          the headline. One verdict, one place; removed. */}
-
-      {/* Police — kept as a quiet card with its required disclaimer.
-          Not part of the active-sections loop because there's no
-          feed to count from. */}
-      <section
-        id="police"
-        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-        style={{
-          // Explicit side colors (not the borderColor shorthand) so the left
-          // accent longhand below doesn't trip React's shorthand/longhand warn.
-          borderTopColor: "var(--app-border)",
-          borderRightColor: "var(--app-border)",
-          borderBottomColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          borderLeftWidth: 3,
-          borderLeftColor: "var(--app-cool)",
-        }}
-      >
-        <header
-          className="flex items-center gap-3 border-b px-4 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <h2
-            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-cool) 10%, transparent)",
-                color: "var(--app-cool)",
-              }}
-            >
-              <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </span>
-            Police &amp; safety
-          </h2>
-        </header>
-        <div className="px-4 py-3">
-          {/* The running blotter — recent police press releases from the
-              City + County newsrooms, the one already featured up top
-              excluded. Self-hides when the feeds carry no police items. */}
-          {blotter.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                Recent releases
-              </p>
-              <PoliceBlotter items={blotter} now={nowMs} />
-            </div>
-          )}
-          <div
-            className={blotter.length > 0 ? "mt-3 space-y-2.5 border-t pt-3" : "space-y-2.5"}
-            style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
-          >
-            <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Frederick PD also publishes the prior day&apos;s calls for service
-              from its CAD system on an official map, updated daily. You
-              can browse it and subscribe to alerts for your area there.
-            </p>
-            <a
-              href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
-              style={{ background: "var(--app-cool)" }}
-            >
-              Open the official CFS map
-              <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            </a>
-            <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Calls for service are not confirmed crimes. They reflect
-              requests for police response. Releases and the CFS map come
-              from the City of Frederick &amp; Frederick County.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Road work & closures — the civic-press advisory lane (planned City/
-          County closures + road work), a quiet standing card below Police.
-          Self-hides when there's nothing recent. Distinct from the live MDOT
-          traffic tile (accidents now) in the dashboard above. */}
-      <AdvisoryCard items={advisories} now={nowMs} />
 
       {/* By the numbers — county canon + live directory counts. Collapsed
           by DEFAULT: on a live-status page this is the largest block and pure

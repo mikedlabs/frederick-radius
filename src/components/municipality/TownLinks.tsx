@@ -23,7 +23,15 @@ const LINK_LABEL: Record<keyof CivicLinks, string> = {
   reportIssue: "Report a concern",
 };
 
-export default function TownLinks({ slug }: { slug: string }) {
+export default function TownLinks({
+  slug,
+  hideContact = false,
+}: {
+  slug: string;
+  /** Drop the address/phone footer when a sibling CivicCard already shows the
+   *  town-hall "Main office" contact — avoids repeating it on the town page. */
+  hideContact?: boolean;
+}) {
   const town = TOWN_WEBSITE_BY_SLUG[slug];
   if (!town || !town.homepage || !town.verified) return null;
 
@@ -72,7 +80,7 @@ export default function TownLinks({ slug }: { slug: string }) {
         </ul>
       )}
 
-      {town.contact && (town.contact.address || town.contact.phone) && (
+      {!hideContact && town.contact && (town.contact.address || town.contact.phone) && (
         <div
           className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}

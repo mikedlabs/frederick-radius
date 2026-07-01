@@ -25,6 +25,8 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/towns", label: "Towns" },
   { href: "/places", label: "All places" },
   { href: "/events", label: "Events" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
 ];
 
 export default function AppFooter() {
@@ -54,6 +56,15 @@ export default function AppFooter() {
       </nav>
       <p className="mt-3 text-meta" style={{ color: "var(--app-ink-3)" }}>
         Frederick Radius: one guide for Frederick City and the towns around it.
+      </p>
+      {/* Independence + reliance disclaimer (civic-facing app): keeps the
+          product honest and prevents anyone mistaking it for an official
+          government service or relying on it for emergencies. */}
+      <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        An independent local guide. Not affiliated with, endorsed by, or operated
+        by the City of Frederick, Frederick County Government, or any
+        municipality. Information may be out of date; never rely on it for
+        emergencies or public-safety decisions.
       </p>
     </footer>
   );

@@ -45,6 +45,7 @@ import { sizedImage } from "@/lib/format/img";
 // rule on every surface instead of a weaker map-only heuristic.
 import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
@@ -256,6 +257,18 @@ export default function AppMap({
     return initialCenter;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot read of the cached fix at mount
   }, []);
+  // Shareable / reload-safe camera: a `?c=lng,lat,zoom` param (written on
+  // moveend below) reopens the map exactly where it was left. Read once at
+  // mount; malformed values fall through to the mode/cached default. Mapbox
+  // clamps any out-of-region value to maxBounds, so a crafted URL is harmless.
+  const urlCamera = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const raw = new URLSearchParams(window.location.search).get("c");
+    if (!raw) return null;
+    const [lng, lat, z] = raw.split(",").map(Number);
+    if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
+    return { longitude: lng, latitude: lat, zoom: z };
+  }, []);
   const { openSheet } = usePlaceSheet();
   // Mode-driven layer defaults. The map mounts client-side via
   // dynamic({ ssr:false }), so the initial mode read here is the
@@ -343,8 +356,10 @@ export default function AppMap({
     else url.searchParams.delete("layers");
     window.history.replaceState(null, "", url.toString());
   }, [activeOverlays]);
-  const toggleOverlay = (k: OverlayKey) =>
+  const toggleOverlay = (k: OverlayKey) => {
+    track("map_layer", { layer: k, on: !activeOverlays.includes(k) });
     setActiveOverlays((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
+  };
 
   // Saved-only lens (continuity P2): filter the pins to the user's own
   // saved places, so the map can be read as a personal field guide.
@@ -723,6 +738,7 @@ export default function AppMap({
     // Cluster expansion — works for both OSM and curated clusters
     if ((layer === "clusters" || layer === "curated-clusters") && map) {
       setSelectedSlug(null);
+      track("map_cluster");
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const sourceId = layer === "clusters" ? "osm-businesses" : "curated-places";
       const source = map.getSource(sourceId) as GeoJSONSource | undefined;
@@ -751,6 +767,7 @@ export default function AppMap({
       // Distance must be from the USER, never a fixed city point — show it
       // only when we actually have their location, else omit it (honest).
       if (place) openSheet(userLoc ? { ...place, distance_m: haversineMeters(userLoc, place.geom) } : place);
+      track("map_pin", { category: place?.category ?? "unknown" });
       return;
     }
 
@@ -976,6 +993,7 @@ export default function AppMap({
         setLocating(false);
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
         haptic("light");
+        track("map_locate", { in_county: isInFrederickCounty(loc.lng, loc.lat) });
         // County lock (6.2): a user physically outside Frederick County
         // gets the county itself, centered on downtown, not a flight to
         // an out-of-area "you are here" the leash would then fight. We
@@ -1212,11 +1230,13 @@ export default function AppMap({
         <Map
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
-          initialViewState={{
-            longitude: effectiveCenter[0],
-            latitude: effectiveCenter[1],
-            zoom: initialZoom,
-          }}
+          initialViewState={
+            urlCamera ?? {
+              longitude: effectiveCenter[0],
+              latitude: effectiveCenter[1],
+              zoom: initialZoom,
+            }
+          }
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
@@ -1265,7 +1285,21 @@ export default function AppMap({
             installCountySpotlight(e.target);
             emitInView();
           }}
-          onMoveEnd={emitInView}
+          onMoveEnd={(e) => {
+            emitInView();
+            // Persist the camera to the URL so the view is shareable and
+            // survives reload. moveend is already debounced by Mapbox, so
+            // this writes once per settled move; replaceState preserves the
+            // sibling `layers` param.
+            try {
+              const c = e.target.getCenter();
+              const url = new URL(window.location.href);
+              url.searchParams.set("c", `${c.lng.toFixed(4)},${c.lat.toFixed(4)},${e.target.getZoom().toFixed(2)}`);
+              window.history.replaceState(null, "", url.toString());
+            } catch {
+              /* URL write is best-effort */
+            }
+          }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
             if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)/i.test(msg)) {
