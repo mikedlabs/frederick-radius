@@ -49,6 +49,7 @@ import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
+import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
@@ -1283,9 +1284,11 @@ export default function AppMap({
             // border the radius map already wears, so the two modes feel
             // like one place and not two different maps.
             installCountySpotlight(e.target);
+            markMapOnLoad();
             emitInView();
           }}
           onMoveEnd={(e) => {
+            markMapIdleOnce();
             emitInView();
             // Persist the camera to the URL so the view is shareable and
             // survives reload. moveend is already debounced by Mapbox, so
@@ -1649,7 +1652,11 @@ export default function AppMap({
             <Layer
               id="amenity-icons"
               type="symbol"
-              minzoom={11}
+              // Share the cluster floor (z10): below this the whole amenity layer
+              // is off, but between z10 and z11 clusters were visible while a lone
+              // (unclustered) amenity silently vanished. Icons now appear wherever
+              // clusters do, so a toggled layer is never partially invisible.
+              minzoom={10}
               filter={["!", ["has", "point_count"]]}
               layout={{
                 "icon-image": [
@@ -1659,6 +1666,7 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
+                  10, 0.20,
                   11, 0.22,
                   13, 0.30,
                   15, 0.42,

@@ -22,9 +22,13 @@ const ev = (slug: string, startsInMs: number, durMs = 2 * HOUR) => ({
 });
 
 describe("horizonOf", () => {
-  it("flags feed-live and currently-running events as live", () => {
-    expect(horizonOf(ev("concert-live", 5 * DAY), bounds)).toBe("live");
+  it("flags a STARTED feed-live event and currently-running events as live", () => {
+    // The feed-live set overrides an unreliable/missing END, but the event must
+    // have actually STARTED — a future occurrence mis-flagged live (e.g. an
+    // upstream feed mis-dated it) is NOT "happening now".
+    expect(horizonOf(ev("concert-live", -HOUR, 0), bounds)).toBe("live"); // started, in live set, degenerate end
     expect(horizonOf(ev("running", -HOUR, 3 * HOUR), bounds)).toBe("live");
+    expect(horizonOf(ev("concert-live", 5 * DAY), bounds)).not.toBe("live"); // future → never live
   });
 
   it("buckets today, weekend, this-week, and later", () => {
@@ -44,7 +48,7 @@ describe("groupByHorizon", () => {
     const events = [
       ev("nextmonth", 30 * DAY),
       ev("tonight", 5 * HOUR),
-      ev("concert-live", 5 * DAY),
+      ev("concert-live", -HOUR, 0), // started + in live set → the "live" group
       ev("sat", 2 * DAY),
       ev("over", -3 * DAY),
       ev("nextwed", 6 * DAY),

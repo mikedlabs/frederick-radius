@@ -147,10 +147,20 @@ export function fcvfraMapRow(row: FcvfraRow, now: Date): FcvfraMapped | null {
 
   let occ: number | null = null;
   if (recurring) {
-    // The start date sits on the recurrence weekday; step by the cadence until
-    // we reach the next occurrence at or after today, within the season.
+    // Anchor to the weekday NAMED in the title ("...WEDNESDAY BINGO"), NOT the
+    // season-range start date — the range start is arbitrary and need not fall
+    // on the event's weekday, which produced occurrences on the wrong day (the
+    // "weekday label disagrees with the date" bug). Find the first named-weekday
+    // on/after rangeStart, then step by the cadence to the next occurrence at or
+    // after today, within the season. Monthly series keep the date anchor.
     const stride = (monthly ? 28 : 7) * ONE_DAY;
-    let t = row.rangeStart.getTime();
+    const namedIdx = WEEKDAYS.findIndex((d) => lower.includes(d));
+    let anchor = row.rangeStart.getTime();
+    if (namedIdx >= 0 && !monthly) {
+      const startWd = new Date(anchor).getUTCDay();
+      anchor += (((namedIdx - startWd) % 7) + 7) % 7 * ONE_DAY;
+    }
+    let t = anchor;
     while (t < todayUtc) t += stride;
     occ = t <= row.rangeEnd.getTime() ? t : null;
   } else if (spanDays >= 0 && spanDays <= 16) {
