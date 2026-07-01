@@ -52,6 +52,9 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
+import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
+import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import MetricCard from "@/components/live-data/MetricCard";
@@ -103,6 +106,16 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/** "5:42 PM" → minutes-from-midnight, for picking the soonest MARC departure
+ *  across stations (the board hands back display clock labels, not epochs). */
+function clockToMin(s: string): number {
+  const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return Number.POSITIVE_INFINITY;
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return h * 60 + Number(m[2]);
 }
 
 function nowClock(): string {
@@ -175,7 +188,8 @@ export default async function PulsePage({
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast] = await Promise.all([
+  const marcNow = new Date();
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast, marcBoard, marcAlerts, aqiObs] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -201,6 +215,15 @@ export default async function PulsePage({
     // Current conditions for the leading Weather tile (the full panel is its
     // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
     withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
+    // MARC Brunswick Line — the county's commuter rail, schedule-backed with a
+    // live delay overlay. The tile head shows the soonest departure; the body
+    // is the full per-station board (NextTrainBoard). Complements the live bus
+    // map below. Keyless MTA GTFS + GTFS-RT.
+    withTimeout(getMarcBoard(marcNow), FEED_MS, { stations: [], serviceToday: false }),
+    withTimeout(getMarcAlerts(), FEED_MS, []),
+    // Air quality (AirNow / EPA). Nearest monitors within 25 miles, hourly.
+    // Returns null when AIRNOW_API_KEY is unset — the tile self-hides then.
+    withTimeout(getAirQuality(FREDERICK_CENTER), FEED_MS, null),
   ]);
 
   // Current weather for the leading dashboard tile. The rich PulseWeatherPanel
@@ -416,6 +439,69 @@ export default async function PulsePage({
     ? <PoliceBlotter items={advisories} now={nowMs} />
     : emptyNote("No road work or closures reported right now.");
 
+  // MARC — the soonest upcoming departure across the county stations powers
+  // the tile head (predicted time when the realtime feed has it, else
+  // scheduled); the body is the full per-station board. A service alert tints
+  // the tile amber but does NOT roll into the hero "situations" count (a train
+  // delay isn't a county emergency), same stance as rivers/airports.
+  const marcCandidates = marcBoard.stations.flatMap((sb) =>
+    (["eb", "wb"] as const).flatMap((dir) => {
+      const d = sb.departures[dir][0];
+      return d ? [{ label: d.live && d.predicted ? d.predicted : d.scheduled, dep: d }] : [];
+    }),
+  );
+  marcCandidates.sort((a, b) => clockToMin(a.label) - clockToMin(b.label));
+  const marcNext = marcCandidates[0] ?? null;
+
+  // Air quality — the worst pollutant leads (AQI reports the max across
+  // parameters). Category 3+ (Unhealthy for Sensitive Groups and worse) tints
+  // the tile; Good/Moderate stay a calm cool reading. The category color is
+  // AirNow's standard AQI scale (data color, like the flood tones).
+  const aqiWorst = aqiObs ? pickWorstAqi(aqiObs) : null;
+  const aqiActive = aqiWorst ? aqiWorst.category.id >= 3 : false;
+  const aqiAccent = !aqiWorst
+    ? "var(--app-cool)"
+    : aqiWorst.category.id >= 4
+      ? "var(--app-danger)"
+      : aqiWorst.category.id === 3
+        ? "var(--app-warning)"
+        : aqiWorst.category.id === 2
+          ? "var(--app-accent)"
+          : "var(--app-positive)";
+  const aqiBody = aqiWorst ? (
+    <div className="space-y-3">
+      <div
+        className="flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+      >
+        <span className="font-mono text-[32px] font-semibold leading-none tabular-nums" style={{ color: aqiWorst.category.color }}>
+          {aqiWorst.aqi}
+        </span>
+        <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{aqiWorst.category.name}</span>
+          <br />
+          {aqiWorst.parameter} · {aqiWorst.reportingArea}
+        </span>
+      </div>
+      {aqiObs && aqiObs.length > 1 && (
+        <div className="space-y-1.5">
+          {aqiObs.map((o) => (
+            <Row
+              key={o.parameter}
+              tone={o.category.id >= 4 ? "danger" : o.category.id >= 3 ? "warning" : o.category.id === 2 ? "cool" : "muted"}
+              title={o.parameter}
+              body={`AQI ${o.aqi} · ${o.category.name}`}
+              meta={[o.reportingArea]}
+            />
+          ))}
+        </div>
+      )}
+      <p className="px-1 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        Nearest EPA monitors within 25 miles, updated hourly.
+      </p>
+    </div>
+  ) : null;
+
   const pulseTiles: PulseTile[] = [
     // Weather LEADS the board: "what's it doing out" is the most-asked live
     // question. An ambient tile (not an alarm) carrying the current reading;
@@ -431,6 +517,21 @@ export default async function PulsePage({
           sourceLabel: "NWS · weather.gov",
           peek: wxCondition ?? undefined,
           body: <PulseWeatherPanel />,
+        } as PulseTile]
+      : []),
+    // Air quality rides right after weather — an ambient environmental reading,
+    // not an alarm. Self-hides when the AirNow key is unset or the feed is down.
+    ...(aqiWorst
+      ? [{
+          key: "air",
+          label: "Air quality",
+          iconName: "Wind",
+          countLabel: `AQI ${aqiWorst.aqi}`,
+          accent: aqiAccent,
+          active: aqiActive,
+          sourceLabel: "AirNow · EPA",
+          peek: `${aqiWorst.category.name} · ${aqiWorst.parameter}`,
+          body: aqiBody,
         } as PulseTile]
       : []),
     {
@@ -737,6 +838,27 @@ export default async function PulsePage({
           ),
         } as PulseTile]
       : []),
+    // MARC Brunswick Line — the county's commuter rail, beside the live bus map.
+    // Calm cool tile (informational transit, not a hero "situation"); a service
+    // alert tints it amber. The head shows the soonest departure, the body the
+    // full per-station board. On weekends/after the last train it reads honestly.
+    {
+      key: "train",
+      label: "MARC trains",
+      iconName: "TrainFront",
+      countLabel: !marcBoard.serviceToday ? "No service" : marcNext ? marcNext.label : "Done today",
+      accent: marcAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+      active: marcAlerts.length > 0,
+      sourceLabel: "MTA MARC · Brunswick Line",
+      peek: marcAlerts.length > 0
+        ? marcAlerts[0].header || "Service alert"
+        : marcNext
+          ? `to ${marcNext.dep.headsign}`
+          : marcBoard.serviceToday
+            ? "Brunswick Line"
+            : undefined,
+      body: <NextTrainBoard />,
+    },
     // ── Reference feeds, now first-class tiles (were stacked text sections).
     {
       key: "news",
@@ -1046,6 +1168,8 @@ export default async function PulsePage({
           <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
           <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
           <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
+          <SourceLine label="MARC trains" source="MTA Maryland" href="https://www.mta.maryland.gov/schedule/marc" />
+          <SourceLine label="Air quality" source="AirNow · EPA" href="https://www.airnow.gov/" />
           <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
           <SourceLine label="News" source="Google News · Frederick" href="https://news.google.com/search?q=Frederick%20County%20Maryland" />
           <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
