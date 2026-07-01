@@ -17,18 +17,21 @@ import type { Map as GLMap } from "mapbox-gl";
 // (--app-paper, --app-cool, --app-sage, --app-ink, --app-border)
 // but as literal hexes so we can pass them to Mapbox paint props
 // (which don't resolve CSS variables).
-const PAPER = "#F4EFE6"; // --app-paper: land background
-const PAPER_2 = "#ECE5D5"; // --app-paper-2: subtle lift for landuse
-const WATER = "#7FA4BB"; // soft Carroll Creek slate (lighter than --app-cool for light bg)
-const WATER_LINE = "#5C8AA8"; // stronger creek/river lines, --app-cool-2 family
-const PARK = "#C9D6BB"; // sage-tinted park green (--app-sage at 60% over paper)
-const BUILDING = "#DDD3BF"; // warm building card
-const ROAD_MINOR = "#D9D2C3"; // --app-border hairline
-const ROAD_MAJOR = "#C2B8A0"; // a step darker, warm road
-const ROAD_HWY = "#A89A7C"; // warm taupe highway
-const LABEL = "#1A1815"; // --app-ink: warm-dark primary label
-const LABEL_2 = "#6A6862"; // --app-ink-3: secondary label
-const HALO = "#F4EFE6"; // paper halo around dark text
+// Aligned to the SHIPPED brand tokens (src/app/globals.css) so the map's
+// ground reads as the same paper as the rest of the app, not a lighter
+// off-match. Literal hexes because Mapbox paint props don't resolve CSS vars.
+const PAPER = "#EBE2CD"; // --app-bg: land = the app's paper ground (was #F4EFE6)
+const PAPER_2 = "#E4DAC3"; // a hair under paper, for landuse/landcover
+const WATER = "#8DACC0"; // light Creek-slate fill (kept lighter than --app-cool so a big water fill stays legible on the cream ground)
+const WATER_LINE = "#4A7090"; // --app-cool-2: confident creek/river lines (the Monocacy spine)
+const PARK = "#C3D1B3"; // spruce-tinted park green over paper (--app-brand-2 family)
+const BUILDING = "#E1D5BD"; // --app-bg-sunken: warm building card
+const ROAD_MINOR = "#D8CDB1"; // hairline, between paper and --app-border
+const ROAD_MAJOR = "#C9BD9F"; // --app-border: warm road
+const ROAD_HWY = "#AD9E80"; // warm taupe highway
+const LABEL = "#16140E"; // --app-ink: warm near-black primary label
+const LABEL_2 = "#5C5A50"; // --app-ink-3: secondary label
+const HALO = "#EBE2CD"; // paper halo (= --app-bg) around dark text
 
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));
@@ -71,8 +74,8 @@ function installRelief(map: GLMap): void {
             // that the relief reads as topographic texture, never as
             // dark blotches on the cream ground.
             "hillshade-shadow-color": "#B4A998",
-            "hillshade-highlight-color": "#FBF8F1",
-            "hillshade-accent-color": "#D9D2C3",
+            "hillshade-highlight-color": "#F1E9D7",
+            "hillshade-accent-color": "#DACEB3",
             "hillshade-exaggeration": 0.3,
             "hillshade-illumination-direction": 315,
           },
