@@ -49,6 +49,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
+import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
@@ -507,6 +508,7 @@ export default async function HomePage() {
         defaultOpen={false}
       >
         <div className="space-y-4 pt-1">
+          <FoodTruckToday />
           <PartnerAppsRow />
           <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
             <WorthALook />
