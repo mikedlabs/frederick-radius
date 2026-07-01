@@ -301,11 +301,6 @@ export default async function HomePage() {
         />
       </div>
 
-      {/* Seasonal pools "open now" (summer only; self-hides out of season).
-          A resident-utility answer to "where can we swim right now," with
-          accurate City of Frederick pool hours. */}
-      <PoolsToday now={now} />
-
       {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
           ABOVE the moat (owner call): the day's events are the headline answer.
           Soonest first; the rest of the calendar is one tap away via "See all".
@@ -343,6 +338,12 @@ export default async function HomePage() {
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </div>
+
+      {/* Seasonal pools (summer only; self-hides out of season) — placed BELOW
+          the day's events and the happy-hour / on-now layer (owner call):
+          swimming is a resident utility, not the headline, so it follows the
+          draws instead of leading them. */}
+      <PoolsToday now={now} />
 
       {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
           places (their dominant craving), linking into /nearby for it. Client +

@@ -12,8 +12,8 @@ import ReportClient from "./ReportClient";
  * noindex — it's an input tool, not content.
  */
 export const metadata: Metadata = {
-  title: "Report something · Frederick Radius",
-  description: "Flag a hazard, a live condition, or a local tip on the Frederick County map.",
+  title: "Mark a spot · Frederick Radius",
+  description: "Mark a hazard, a live condition, or a local tip on the Frederick County map.",
   robots: { index: false, follow: false },
 };
 

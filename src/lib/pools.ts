@@ -46,6 +46,21 @@ export const POOLS: Pool[] = [
   },
 ];
 
+/**
+ * Other public outdoor pools around the county. We deliberately do NOT compute
+ * a live open/now for these: their hours are each town's, and we haven't
+ * verified them to the minute the way the City of Frederick sheet lets us for
+ * Diggs/Thomas. So the Today card lists them (linked to their place page for
+ * details) as "open for the season" instead of a real-time claim we can't stand
+ * behind. Both are confirmed operating outdoor pools with pages in the dataset.
+ */
+export type CountyPool = { slug: string; name: string; town: string };
+
+export const MORE_POOLS: CountyPool[] = [
+  { slug: "brunswick-municipal-swimming-pool-brunswick", name: "Brunswick Municipal Pool", town: "Brunswick" },
+  { slug: "emmitsburg-community-pool-emmitsburg", name: "Emmitsburg Community Pool", town: "Emmitsburg" },
+];
+
 type Phase = "pre" | "full" | "post" | "off";
 /** Minutes from midnight, or null = closed that day. */
 type DayWindow = { open: number; close: number } | null;
