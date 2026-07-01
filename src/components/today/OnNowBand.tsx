@@ -92,7 +92,10 @@ export default async function OnNowBand({ now, eventsPromise }: { now: Date; eve
   return (
     <section className="mt-5 space-y-3" aria-label="On now">
       <div className="flex items-baseline justify-between gap-3 px-0.5">
-        <h2 className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
+        {/* Serif-title register, matching its /today peers (PoolsToday,
+            CravingStrip) instead of the lone mono-eyebrow it used to wear. The
+            mono stays, but only on the tally to the right (counts support). */}
+        <h2 className="flex items-center gap-2 font-serif text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
           {anyLive && (
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
           )}

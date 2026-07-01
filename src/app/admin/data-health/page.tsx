@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PLACES } from "@/data/places";
-import { rankPlaces, hoursCoverage, getNeedsReviewPlaces } from "@/lib/loaders/places";
+import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
@@ -49,6 +49,18 @@ export default async function DataHealth() {
   // surfaces never render these, so this view is the only place an
   // editor sees them.
   const reviewPlaces = getNeedsReviewPlaces();
+  // Places hidden from discovery only because Google says closed, or because
+  // they carry no Google rating/photo/summary. Surfaced so an editor can rescue
+  // the false positives. "Notable" = consumer categories a field guide should
+  // carry even without Google data (vs obscure retail, which is fine to hide).
+  const hidden = getHiddenFromDiscovery();
+  const NOTABLE_HIDDEN = new Set([
+    "restaurant", "brewery", "coffee", "bar", "market", "park", "civic",
+    "gallery", "museum", "book-store", "antiques", "lodging", "trail",
+  ]);
+  const hiddenClosed = hidden.filter((h) => h.reason === "closed");
+  const hiddenThin = hidden.filter((h) => h.reason === "thin");
+  const hiddenNotable = hidden.filter((h) => NOTABLE_HIDDEN.has(h.category));
   const reviewEvents = getNeedsReviewEvents();
 
   // Live-feed connectivity — the at-a-glance "is it collecting data?"
@@ -278,6 +290,71 @@ export default async function DataHealth() {
                     {e.geom
                       ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}`
                       : "no geom"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Hidden from discovery
+        </h2>
+        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          Places that clear relevance, coordinates, and season but never reach a
+          user because Google reports them closed ({hiddenClosed.length}), or
+          because they carry no Google rating, photo, or summary ({hiddenThin.length}).
+          The intentional B2B long-tail is not counted here. Rescue a false
+          positive with a places-overrides patch: <span className="font-mono">clearGoogle</span> for
+          a wrong closure, or a <span className="font-mono">hero_image</span> / <span className="font-mono">short_blurb</span> to
+          clear the thin-data gate.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-4 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          <span>
+            Total hidden:{" "}
+            <span className="font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
+              {hidden.length.toLocaleString()}
+            </span>
+          </span>
+          <span>
+            Notable (field-guide categories):{" "}
+            <span
+              className="font-mono tabular-nums"
+              style={{ color: hiddenNotable.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
+            >
+              {hiddenNotable.length.toLocaleString()}
+            </span>
+          </span>
+        </div>
+        {hiddenNotable.length > 0 && (
+          <details className="mt-3" open>
+            <summary className="cursor-pointer text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
+              Review the {Math.min(40, hiddenNotable.length)} notable places most likely to be false positives
+            </summary>
+            <ul className="mt-2 space-y-1 text-[11px]" style={{ color: "var(--app-ink-2)" }}>
+              {hiddenNotable.slice(0, 40).map((h) => (
+                <li
+                  key={h.slug}
+                  className="flex items-center justify-between gap-3 border-b py-1"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span className="min-w-0 truncate">
+                    <span
+                      className="font-mono text-[10px]"
+                      style={{ color: h.reason === "closed" ? "var(--app-warning)" : "var(--app-ink-3)" }}
+                    >
+                      {h.reason}
+                    </span>{" "}
+                    <span style={{ color: "var(--app-ink)" }}>{h.name}</span>{" "}
+                    {/* slug for the overrides patch (hidden places have no live page) */}
+                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                      {h.slug}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {h.category} · {h.municipality} · {h.source}
                   </span>
                 </li>
               ))}

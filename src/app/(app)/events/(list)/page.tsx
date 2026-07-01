@@ -17,6 +17,7 @@ import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
+import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
 
 /**
  * Slim an event before it crosses into a client component.
@@ -163,7 +164,17 @@ export default async function EventsIndexPage({
       {/* ── THE BOARD — the explorer + the fenced civic sections, all
           event-dependent, streamed behind one boundary so the masthead never
           waits on the feeds. */}
-      <Suspense fallback={<Skeleton.Block height={420} round="var(--app-radius-lg)" />}>
+      <Suspense
+        fallback={
+          <SlowSuspenseFallback
+            label="Events are taking longer than usual to load."
+            altHref="/map"
+            altLabel="Open the map"
+          >
+            <Skeleton.Block height={420} round="var(--app-radius-lg)" />
+          </SlowSuspenseFallback>
+        }
+      >
         <EventsBoard searchParams={searchParams} now={now} eventsPromise={eventsPromise} />
       </Suspense>
 

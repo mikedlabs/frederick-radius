@@ -127,6 +127,10 @@ export function formatChecked(iso: string | undefined, nowMs: number = Date.now(
 export const TRUST_COLOR: Record<TrustLevel, string> = {
   verified: "var(--app-positive)",
   official: "var(--app-cool)",
-  likely: "var(--app-warning)",
+  // Calm provenance, not caution: "Live" (feed) and "Likely open" rows are
+  // normal states, so they ride the muted ink tone instead of warning-amber.
+  // Amber is reserved for genuinely stale/unconfirmed signals. (TRUST_COLOR is
+  // consumed only by TrustChip; the label carries likely-vs-unconfirmed.)
+  likely: "var(--app-ink-3)",
   unconfirmed: "var(--app-ink-3)",
 };

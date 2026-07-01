@@ -270,7 +270,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
                   className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >
-                  <span style={{ color: s.color }}>●</span>
+                  <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
                   {s.name}
                 </Link>
               </li>

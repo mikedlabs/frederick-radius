@@ -19,6 +19,7 @@
  */
 
 import type { Hours } from "@/data/places";
+import type { CommerceLink } from "@/lib/commerce/types";
 
 export type PatchFields = {
   name?: string;
@@ -41,6 +42,9 @@ export type PatchFields = {
    *  as closing at 10:00). Provide the COMPLETE corrected week — it replaces
    *  the whole `hours` object, not a single day. */
   hours?: Hours;
+  /** Curated commerce links (menu / order / reserve / delivery / catering).
+   *  Owner- or editor-provided; wins over the legacy flat *_url fields. */
+  commerce_links?: CommerceLink[];
 };
 
 export type Overrides = {
@@ -104,6 +108,7 @@ export function patchRecord<T extends { slug: string }>(
   // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule
   // over the typo'd Google parse — no change to applyEnrichment needed.
   if (x.hours) (out as Record<string, unknown>).hours = x.hours;
+  if (x.commerce_links) (out as Record<string, unknown>).commerce_links = x.commerce_links;
   // clearGoogle / clearPhoto are applied in decoratePlace AFTER applyEnrichment
   // (which re-derives google_rating/photo from the raw enrichment, so nulling
   // them here would be clobbered).

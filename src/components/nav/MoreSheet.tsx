@@ -69,7 +69,7 @@ const DISCOVER: Item[] = [
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
   { href: "/collections", label: "Collections", description: "Editor's curated lists: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
   { href: "/towns", label: "Towns", description: "Explore all 12 municipalities + Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
-  { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "#7A5C2E" },
+  { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "var(--app-accent-press)" },
   { href: "/overhead", label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
   { href: "/from-above/preview", label: "From Above", description: "The aerial photography book of Frederick County", icon: Camera, color: "var(--app-cool)" },
 ];
