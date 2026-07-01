@@ -56,7 +56,12 @@ export function horizonOf<E extends EventLike>(
   const start = +new Date(e.starts_at);
   const end = +new Date(e.ends_at);
 
-  if (b.live.has(e.slug) || (start <= b.now && end >= b.now)) return "live";
+  // "Live" requires the event to have actually STARTED. The curated live-set
+  // (b.live) may override an unreliable or missing END time, but it must NEVER
+  // force a FUTURE event live — that's what let an upstream feed's mis-dated
+  // occurrence (a far-future instance) render "Happening now". So the gate is:
+  // started AND (still running OR flagged live). A future start can never match.
+  if (start <= b.now && (end >= b.now || b.live.has(e.slug))) return "live";
   if (end < b.now) return null; // over, and not live → not upcoming
 
   if (start >= b.now && start < b.next24) return "today";
