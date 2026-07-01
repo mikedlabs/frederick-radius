@@ -601,16 +601,9 @@ export default function SavedList() {
         />
         <div className="relative space-y-2">
           <div className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 16%, transparent)",
-                color: "var(--app-brand)",
-              }}
-            >
-              <Bookmark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            </span>
+            {/* The eyebrow + serif summary below are the masthead; the brand
+                icon-pill that used to lead here fought the quiet 3px-rule
+                eyebrows on every section below it. Radial bloom kept. */}
             <p
               className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}

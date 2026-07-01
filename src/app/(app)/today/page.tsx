@@ -655,8 +655,8 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
           </div>
         ) : (
           <p
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            className="text-body py-4"
+            style={{ color: "var(--app-ink-3)" }}
           >
             Nothing on the calendar today.{" "}
             <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
