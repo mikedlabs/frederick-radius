@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
 
@@ -122,7 +121,7 @@ export default function BottomNav() {
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
+          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-4 px-1.5 py-1.5"
         >
           {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =
@@ -190,42 +189,12 @@ export default function BottomNav() {
               </li>
             );
 
-            // After the 2nd tab, inject the prominent center "Mark" action —
-            // the public community-report tool — so the nav has a focal CTA
-            // instead of dead center space. It's an ACTION, not a tab: it never
-            // takes the moving highlight pill (tabRefs only track the 4 tabs).
-            if (idx === 1) {
-              return (
-                <Fragment key="mark-slot">
-                  {cell}
-                  <li key="mark" className="flex items-center justify-center">
-                    <Link
-                      href="/report"
-                      onPointerDown={() => haptic("light")}
-                      aria-label="Mark a spot: a hazard, condition, tip, or note"
-                      className="group flex h-12 flex-col items-center justify-center gap-1 text-center"
-                    >
-                      <span
-                        className="grid h-9 w-9 place-items-center rounded-full text-white transition-transform active:scale-[0.9] group-active:scale-[0.9]"
-                        style={{
-                          background: "var(--app-brand)",
-                          boxShadow:
-                            "0 6px 16px -6px color-mix(in srgb, var(--app-brand) 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 30%, transparent)",
-                        }}
-                      >
-                        <Plus width={20} height={20} strokeWidth={2.75} aria-hidden />
-                      </span>
-                      <span
-                        className="text-[11px] font-semibold leading-tight tracking-tight"
-                        style={{ color: "var(--app-brand)" }}
-                      >
-                        Mark
-                      </span>
-                    </Link>
-                  </li>
-                </Fragment>
-              );
-            }
+            // The prominent center "Mark" (+) action was removed from the nav
+            // (2026-07-01, owner call): reporting is a low-frequency action, and
+            // the bright center cell shouted louder than the real answers while
+            // making the 4-tab nav read as a lopsided 5. "Mark a spot" now lives
+            // where a spot actually exists — a contextual FAB on /map — and in
+            // the Explore ("More") sheet. The nav is the clean 4 tabs again.
             return cell;
           })}
         </ul>
