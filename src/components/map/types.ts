@@ -86,10 +86,16 @@ export type MapPinPlace = Pick<
   | "field_notes"
   | "deal_hook"
   | "source"
-  | "google_place_id"
-  | "feature_score"
   | "municipality"
   // Read by cuisinesOf via the cuisine sub-intent matchers (IntentMatchable).
   | "short_blurb"
   | "primary_type"
-> & { distance_m?: number };
+> &
+  // OPTIONAL on pins (payload audit 2026-07-02): slimPlace stops shipping
+  // these ~107 KB — their only map read is AppMap's DedupeRecord, where the
+  // isSamePlace id-equality branch can never fire against OSM records (the
+  // OSM side never has a Google id). Full PlaceCardData records (SavedList,
+  // radius) still carry them and still satisfy this type.
+  Partial<Pick<PlaceCardData, "google_place_id" | "feature_score">> & {
+    distance_m?: number;
+  };
