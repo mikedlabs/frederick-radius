@@ -34,7 +34,9 @@ export default function MastheadNotes({
   contextSlot,
 }: {
   now: Date;
-  weatherSlot: ReactNode;
+  /** Optional since 2026-07-02: the "Weather to duck." nudge was retired
+   *  (Plan the moment carries the Rainy-day action now). */
+  weatherSlot?: ReactNode;
   contextSlot: ReactNode;
 }) {
   const hasHoliday = Boolean(holidayOn(now));

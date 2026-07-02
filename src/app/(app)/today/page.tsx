@@ -16,7 +16,6 @@ import LocationPrime from "@/components/today/LocationPrime";
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MastheadNotes from "@/components/today/MastheadNotes";
-import WeatherNudge from "@/components/today/WeatherNudge";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -208,6 +207,19 @@ export default async function HomePage() {
           the crafted-product-hero move the primitive reserves for a single
           element. It freezes under prefers-reduced-motion. (The old className
           shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
+      {/* ── WELCOME — the one-line answer to "what is this?" BEFORE anything
+          else (owner ask, 2026-07-02). The July-1 call removed a brochure
+          headline UNDER the hero because it pushed the answers down; this is
+          the small version in the right place: one quiet line above the sky,
+          serif claim + plain-sans promise, zero client JS. The top bar carries
+          the name, so this states what the thing IS, not who it is. */}
+      <p className="mb-2 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          A living field guide to Frederick County.
+        </span>{" "}
+        What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time.
+      </p>
+
       <SkyHero className="shader-rim relative z-10">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TonightTeaser eventsPromise={eventsPromise} now={now} />
@@ -243,13 +255,13 @@ export default async function HomePage() {
             beat plus the always-on town picker. WeatherNudge and TodayContext are
             passed in PRE-SUSPENDED so MastheadNotes never awaits the forecast or
             the events feed (the plate paints first). */}
+        {/* WeatherNudge ("Weather to duck." + a Rainy-day link) retired
+            (owner call, 2026-07-02): the lead read as cryptic, and Plan the
+            moment already carries the Rainy day Frederick collection — the
+            masthead was double-selling one link. NowIntel still DESCRIBES
+            adverse weather; the collection rail carries the action. */}
         <MastheadNotes
           now={now}
-          weatherSlot={
-            <Suspense fallback={null}>
-              <WeatherNudge />
-            </Suspense>
-          }
           contextSlot={
             <Suspense fallback={null}>
               <TodayContextSlot eventsPromise={eventsPromise} now={now} />
