@@ -6,18 +6,24 @@ Google Places. Production: https://frederickradius.app
 
 ## Design system — this is the truth, not older specs
 
-Earlier documents referenced Fraunces and a "Creek blue" palette. The
-SHIPPED brand deck (see `src/app/globals.css` tokens) is:
+Earlier documents referenced Newsreader/Public Sans and a "Creek blue"
+palette. The SHIPPED brand deck (see `src/app/globals.css` tokens and
+`src/app/layout.tsx` fonts) is:
 
-- **Type:** Newsreader (serif display), Public Sans (UI), JetBrains Mono
-  (data details: coordinates, counts). `font-serif` = Newsreader.
+- **Type:** Fraunces (serif display — it replaced Newsreader), Inter (UI),
+  JetBrains Mono (data details: coordinates, counts). `font-serif` =
+  Fraunces via `--font-display`.
 - **Palette tokens (always use `var(--app-*)`, never raw hex in app UI):**
-  paper cream ground `--app-bg #EEE6D4`, ink `--app-ink #16140E`,
-  Signal vermilion `--app-brand #E14328`, Spruce green `--app-brand-2`.
-  Tints exist (`--app-brand-tint-*`, `--app-ink-tint-*`); radii are
-  `--app-radius-sm/md/lg` (9/16/24px). The dark `--background/--foreground`
-  tokens are the MARKETING palette (`.marketing-shell`, /pitch) — do not
-  delete or "fix" them.
+  paper cream ground `--app-bg #EBE2CD` (deepened one step in the 2026
+  readability pass; the old #EEE6D4 survives as `--app-ink-inverse`,
+  paper-on-dark), ink `--app-ink #16140E`, Signal vermilion
+  `--app-brand #E14328`, Spruce green `--app-brand-2 #16352B`, almanac
+  gold `--app-accent #C0871F` (fills/tints/borders ONLY — as text/icon
+  use `--app-accent-press #8A5E10`, the way `--app-brand-press` shadows
+  `--app-brand`). Tints exist (`--app-brand-tint-*`, `--app-ink-tint-*`);
+  radii are `--app-radius-sm/md/lg` (9/16/24px). The dark
+  `--background/--foreground` tokens are the MARKETING palette
+  (`.marketing-shell`, /pitch) — do not delete or "fix" them.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline.
