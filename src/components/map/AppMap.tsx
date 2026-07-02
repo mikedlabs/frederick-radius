@@ -57,6 +57,7 @@ import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
+import BottomDrawer from "@/components/ui/BottomDrawer";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -402,6 +403,15 @@ export default function AppMap({
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
+  // Cluster index drawer: tapping a curated cluster used to ONLY zoom-step —
+  // a dense downtown "47" bubble took 2-3 taps to resolve and there was no
+  // way to see what it contained (the synced list was deliberately removed:
+  // the map IS the page). A transient drawer respects that call: one tap
+  // lists the cluster's places (name, category dot, open state); a row focuses
+  // its pin + opens the sheet, then the drawer dismisses. Null = closed.
+  const [clusterList, setClusterList] = useState<
+    { slug: string; name: string; category: string; closing: boolean }[] | null
+  >(null);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
@@ -850,6 +860,27 @@ export default function AppMap({
             // a second tap — that gentle tiering is the intended feel.
             smoothFocus(map, coords, { minZoom: zoom, maxStep: 2.5 });
           });
+        // Curated clusters ALSO answer "what's in here": list the leaves in a
+        // transient drawer (nearest-first is the source order). Capped at 60
+        // so a county-wide mega-cluster stays scannable; the zoom glide above
+        // still runs, so dismissing the drawer leaves the user closer in.
+        if (layer === "curated-clusters" && "getClusterLeaves" in source) {
+          (source as unknown as { getClusterLeaves: (id: number, limit: number, offset: number, cb: (err: Error | null, feats: GeoJSON.Feature[]) => void) => void })
+            .getClusterLeaves(clusterId, 60, 0, (err, feats) => {
+              if (err || !feats?.length) return;
+              setClusterList(
+                feats.map((f) => {
+                  const pr = (f.properties ?? {}) as Record<string, unknown>;
+                  return {
+                    slug: String(pr.slug ?? ""),
+                    name: String(pr.name ?? ""),
+                    category: String(pr.category ?? ""),
+                    closing: Boolean(pr.closing),
+                  };
+                }).filter((x) => x.slug && x.name),
+              );
+            });
+        }
       }
       return;
     }
@@ -2382,6 +2413,50 @@ export default function AppMap({
           <NavigationControl position="bottom-right" showCompass={false} />
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
+
+        {/* Cluster index — "what's in this bubble", as a field-guide index
+            page. Tapping a row focuses the pin + opens its sheet; the drawer
+            dismisses itself so the map stays the page. */}
+        <BottomDrawer
+          title={clusterList ? `${clusterList.length} places here` : "Places"}
+          subtitle="Tap one to see its card"
+          open={clusterList !== null}
+          onOpenChange={(o) => { if (!o) setClusterList(null); }}
+        >
+          <ul className="space-y-0.5 pb-4">
+            {(clusterList ?? []).map((c) => (
+              <li key={c.slug}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pin = placesBySlug.get(c.slug);
+                    setClusterList(null);
+                    if (!pin) return;
+                    setSelectedSlug(pin.slug);
+                    haptic("light");
+                    const m = mapRef.current?.getMap();
+                    if (m) smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
+                    openPlaceSheet(pin);
+                  }}
+                  className="tap-44 flex w-full items-center gap-2.5 rounded-[var(--app-radius-sm)] px-2 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
+                >
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: BUCKET_COLOR[bucketOf(c.category)] ?? "var(--app-brand)" }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
+                    {c.name}
+                  </span>
+                  <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                    {CATEGORY_BY_SLUG[c.category]?.name ?? c.category}
+                    {c.closing ? " · closing soon" : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </BottomDrawer>
       </div>
   );
 }

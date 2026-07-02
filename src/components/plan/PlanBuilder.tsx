@@ -695,6 +695,17 @@ export default function PlanBuilder({
                 {plan.summary}
               </p>
             )}
+            {/* Live-sky honesty: one calm line when NWS puts rain over 50%
+                during this plan's window. Absent on dry evenings. */}
+            {plan.weather_note && (
+              <p
+                className="mt-2 inline-flex items-start gap-1.5 text-[13px] leading-relaxed"
+                style={{ color: "var(--app-cool)" }}
+              >
+                <CloudRain className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                {plan.weather_note}
+              </p>
+            )}
             {plan.narrative && (
               <blockquote
                 className="mt-3 border-l-2 pl-3 font-serif text-[15px] italic leading-relaxed"
@@ -1309,6 +1320,17 @@ function Stop({
           >
             {stop.why}
           </p>
+          {/* The verified Field Note for this stop — parking intel first. No
+              other app's plan tells you where to park at each stop; render it
+              as the quiet expert margin note it is, never a badge. */}
+          {stop.tip && (
+            <p
+              className="mt-2 border-l-2 pl-2.5 text-[12px] leading-relaxed"
+              style={{ borderColor: "var(--app-brand-2)", color: "var(--app-ink-2)" }}
+            >
+              {stop.tip}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {geom && (
               <a
