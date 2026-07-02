@@ -22,6 +22,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { stampEventProvenance } from "@/lib/provenance";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isPublicEvent } from "@/lib/events/classify";
+import { isEventEnded } from "@/lib/eventWhenLabel";
 import type { Event } from "@/data/events";
 
 /** Ingest source domains we lift into the main rails (library + fire company).
@@ -115,7 +116,18 @@ export function ingestedSeriesToCards(series: IngestedSeries[], now: Date, perSe
   for (const s of series) {
     if (!LIFTED_INGEST_SOURCES.has(s.sourceDomain)) continue;
     if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
-    const upcoming = s.occurrences.filter((o) => +new Date(o.startsAtUtc) <= horizon).slice(0, perSeries);
+    // Two-sided window. The old filter only bounded the FUTURE side, so a
+    // series whose next stored occurrence was earlier TODAY kept emitting the
+    // finished one all evening ("the series' next occurrence" was a 2 PM craft
+    // at 8 PM, ranking over live draws on /today). An ended occurrence is
+    // never anyone's next occurrence — skip to the first still-relevant one.
+    const upcoming = s.occurrences
+      .filter(
+        (o) =>
+          +new Date(o.startsAtUtc) <= horizon &&
+          !isEventEnded({ starts_at: o.startsAtUtc, ends_at: o.endsAtUtc ?? undefined, is_all_day: o.allDay }, now),
+      )
+      .slice(0, perSeries);
     for (const occ of upcoming) {
       const card = occurrenceToCard(s, occ);
       if (card) cards.push({ ...card, description: "" });
