@@ -290,7 +290,14 @@ export type Anomaly = {
     // table, or an ingest source that has gone stale. They share this shape so
     // they ride the existing sendAnomalyAlert / dashboard rendering.
     | "rls_unprotected"
-    | "ingest_stale";
+    | "ingest_stale"
+    // Curated-freshness kinds (src/lib/quality/curated-freshness.ts): the
+    // data audit's core lesson was that committed snapshots and hand
+    // verifications rot SILENTLY — venue-events expired 25/25 with no signal.
+    // These make rot a red line on the same alert channel.
+    | "snapshot_expired"
+    | "verification_stale"
+    | "live_source_failed";
   detail: string;
 };
 

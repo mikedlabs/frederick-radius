@@ -14,16 +14,12 @@ import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
 import { getCommunityReports } from "@/lib/loaders/communityReports";
 import { REPORT_CATEGORY_BY_KEY } from "@/lib/reports/categories";
 import type { OsmPlace } from "@/lib/integrations/overpass";
-import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
-import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
 import { unstable_cache } from "next/cache";
-import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
-import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
-import { liveToCardEvent } from "@/lib/loaders/liveEvents";
-import { collapseRecurringEvents } from "@/lib/events/normalize";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import type { MapPinPlace } from "@/components/map/types";
 import { AMENITY_GROUPS } from "@/components/map/constants";
@@ -239,31 +235,21 @@ function isTimeMode(s: string | undefined): s is TimeMode {
  * can never drift on what "upcoming events" means.
  */
 async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
-  // Each feed is timeout-guarded (not just .catch'd) so a slow upstream
-  // can't hang the render — the radius branch (the DEFAULT /map view)
-  // awaits this, so an unbounded hang here is a default-page 503.
-  const [liveEventsRaw, tmMusic, tmSports, bitEvents] = await Promise.all([
-    withTimeout(getCachedLiveEvents(60).then((r) => r.events), 5000, [] as Awaited<ReturnType<typeof getCachedLiveEvents>>["events"]),
-    withTimeout(fetchTicketmasterMusic(), 5000, []),
-    withTimeout(fetchTicketmasterSports(), 5000, []),
-    withTimeout(fetchBandsintownForArtists([]), 5000, []),
-  ]);
-  const curatedWeek = allUpcoming(now, 200);
-  const liveCards = dedupeLiveAgainstCurated(
-    collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-        .map(liveToCardEvent)
-        .filter((e) => !isCivicEvent(e)),
-    ),
-    curatedWeek,
+  // ONE unified event set (CLAUDE.md's own rule: never count events from a
+  // different query). This function used to maintain a second, drifted feed
+  // union — it omitted SeatGeek, Eventbrite, Visit Frederick, the Keys, and
+  // the venue lineups, and called fetchBandsintownForArtists([]) with an
+  // EMPTY artist list so Bandsintown contributed literally nothing to the map
+  // (data audit: the same soft-drift bug as June's P0-5, reborn on /map).
+  // assembleUnifiedEvents is itself unstable_cache-wrapped and kept hot by
+  // the warm-events cron, so this is also FASTER on a cold render. The
+  // timeout guard stays: a cache-miss assembly still fans out to feeds.
+  const { publicEvents } = await withTimeout(
+    assembleUnifiedEvents(now),
+    8000,
+    { unified: [] as EventWithMeta[], publicEvents: [] as EventWithMeta[] },
   );
-  const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedWeek, ...liveCards]) {
-    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
-  }
-  return [...bySlug.values()].sort(
-    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-  );
+  return publicEvents;
 }
 
 /**
@@ -281,7 +267,7 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
  */
 const cachedUpcomingEvents = unstable_cache(
   (bucket: number) => loadUpcomingEvents(new Date(bucket * 300_000)),
-  ["map-upcoming-events-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["map-upcoming-events-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300, tags: ["events"] },
 );
 
