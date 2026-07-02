@@ -34,6 +34,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import GettingThere from "@/components/event/GettingThere";
+import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
@@ -163,6 +164,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   };
 
   const when = formatEventWhen(event);
+  // Quiet social proof: how many devices saved this event (3+ only; the
+  // registry the reminder cron already reads — data the app collected but
+  // never surfaced). Fail-soft null.
+  const saveCount = await eventSaveCount(event.slug).catch(() => null);
   // Split the formatted when into its human date and its clock range so the
   // promoted "when" line can set the date in serif and the time in mono
   // (the brand's data voice). formatEventWhen joins same-day events as
@@ -340,6 +345,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {whenTime && (
               <span className="font-mono tabular-nums text-[14px]" style={{ color: "var(--app-ink-2)" }}>
                 {whenTime}
+              </span>
+            )}
+            {saveCount !== null && (
+              <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                · saved {saveCount} times
               </span>
             )}
           </div>

@@ -18,6 +18,7 @@ import {
   TrainFront,
   Wind,
   ChevronRight,
+  Fish,
   type LucideIcon,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   TrafficCone,
   TrainFront,
   Wind,
+  Fish,
 };
 
 export type PulseTile = {

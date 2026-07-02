@@ -54,6 +54,8 @@ import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryRel
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
 import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
+import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
@@ -198,7 +200,7 @@ export default async function PulsePage({
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
   const marcNow = new Date();
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast, marcBoard, marcAlerts, aqiObs] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -233,6 +235,13 @@ export default async function PulsePage({
     // Air quality (AirNow / EPA). Nearest monitors within 25 miles, hourly.
     // Returns null when AIRNOW_API_KEY is unset — the tile self-hides then.
     withTimeout(getAirQuality(FREDERICK_CENTER), FEED_MS, null),
+    // DNR trout stockings in Frederick waters (Carroll Creek included) —
+    // near-daily during the spring/fall runs, empty mid-summer. Keyless
+    // state JSON API; the tile self-hides out of season.
+    withTimeout(getFrederickStockings(14), FEED_MS, []),
+    // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
+    // expanded — the quiet explanation for Thurmont's helicopter days.
+    withTimeout(getCampDavidTfr(), FEED_MS, null),
   ]);
 
   // Current weather for the leading dashboard tile. The rich PulseWeatherPanel
@@ -544,6 +553,54 @@ export default async function PulsePage({
           // looks wrong for the city (there's no monitor inside Frederick).
           peek: `${aqiWorst.category.name} · ${aqiWorst.reportingArea}`,
           body: aqiBody,
+        } as PulseTile]
+      : []),
+    // Trout stockings — seasonal, self-hides mid-summer. Frederick's waters
+    // (Carroll Creek included) get near-daily drops in the spring/fall runs;
+    // no other local app shows this (data audit, new-source #1).
+    ...(troutStockings.length > 0
+      ? [{
+          key: "trout",
+          label: "Trout stocking",
+          iconName: "Fish",
+          countLabel: `${troutStockings.length} recent`,
+          accent: "var(--app-cool)",
+          active: false,
+          sourceLabel: "Maryland DNR",
+          peek: `${troutStockings[0].location} · ${troutStockings[0].species}`,
+          body: troutStockings.map((t) => (
+            <Row
+              key={`${t.location}-${t.date}`}
+              tone="cool"
+              title={t.location}
+              meta={[
+                `${t.fish} ${t.species}`,
+                new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(new Date(t.date)),
+                t.regulations,
+              ]}
+            />
+          )),
+        } as PulseTile]
+      : []),
+    // Camp David airspace — renders ONLY while the P-40 ring is expanded.
+    // Airspace status in the calm civic voice, never presidential tracking.
+    ...(campDavidTfr
+      ? [{
+          key: "airspace",
+          label: "Camp David airspace",
+          iconName: "Plane",
+          countLabel: "Expanded",
+          accent: "var(--app-warning)",
+          active: true,
+          sourceLabel: "FAA TFR",
+          peek: "Flight restrictions widened around Thurmont",
+          body: (
+            <p className="px-1 py-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              The FAA has expanded the flight-restriction ring around Camp David
+              (NOTAM {campDavidTfr.notamId}). Expect helicopters and extra
+              activity around Thurmont and Catoctin Mountain Park.
+            </p>
+          ),
         } as PulseTile]
       : []),
     {
