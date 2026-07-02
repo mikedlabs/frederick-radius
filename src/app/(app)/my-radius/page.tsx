@@ -36,11 +36,14 @@ export default async function MyRadiusPage() {
           field-guide character without a decorative plate. */}
       <header className="relative flex items-center justify-between gap-3 pt-0.5">
         <div className="relative min-w-0">
+          {/* The tab says "Saved"; the page must too — a label and a poem
+              shouldn't swap jobs. "Your field guide" survives as the
+              standfirst, where the voice belongs. */}
           <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Your field guide
+            Saved
           </h1>
           <p className="truncate font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            39.41°N 77.41°W · {user ? (user.email ?? "you") : "on this device"}
+            Your field guide · {user ? (user.email ?? "you") : "on this device"}
           </p>
         </div>
         <Link

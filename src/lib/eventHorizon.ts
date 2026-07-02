@@ -42,7 +42,7 @@ export type HorizonBounds = {
   live: ReadonlySet<string>;
 };
 
-type EventLike = { slug: string; starts_at: string; ends_at: string };
+type EventLike = { slug: string; starts_at: string; ends_at: string; is_all_day?: boolean };
 
 /**
  * The horizon a single event belongs to. First match wins, in the
@@ -56,13 +56,24 @@ export function horizonOf<E extends EventLike>(
   const start = +new Date(e.starts_at);
   const end = +new Date(e.ends_at);
 
-  // "Live" requires the event to have actually STARTED. The curated live-set
-  // (b.live) may override an unreliable or missing END time, but it must NEVER
-  // force a FUTURE event live — that's what let an upstream feed's mis-dated
-  // occurrence (a far-future instance) render "Happening now". So the gate is:
-  // started AND (still running OR flagged live). A future start can never match.
-  if (start <= b.now && (end >= b.now || b.live.has(e.slug))) return "live";
-  if (end < b.now) return null; // over, and not live → not upcoming
+  // ALL-DAY rows never read as "live": a feed's all-day event starts at
+  // midnight and spans the whole day, so the old gate kept it in
+  // "Happening now" through the middle of the night (the 3 AM audit found
+  // Senior Yoga "live"). While its day lasts it belongs under "today" —
+  // EventCard already prints "All day" for the time.
+  if (e.is_all_day) {
+    if (start <= b.now && end >= b.now) return "today";
+    if (end < b.now) return null;
+    // future all-day event: fall through to the dated buckets below.
+  } else {
+    // "Live" requires the event to have actually STARTED. The curated live-set
+    // (b.live) may override an unreliable or missing END time, but it must NEVER
+    // force a FUTURE event live — that's what let an upstream feed's mis-dated
+    // occurrence (a far-future instance) render "Happening now". So the gate is:
+    // started AND (still running OR flagged live). A future start can never match.
+    if (start <= b.now && (end >= b.now || b.live.has(e.slug))) return "live";
+    if (end < b.now) return null; // over, and not live → not upcoming
+  }
 
   if (start >= b.now && start < b.next24) return "today";
   if (start >= b.weekendStart && start < b.weekendEnd) return "weekend";

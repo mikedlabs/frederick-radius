@@ -74,22 +74,49 @@ export function bucketOf(slug: string): Bucket {
   return (parent && BUCKET[parent]) || "pin";
 }
 
-/** Cluster tint per macro bucket — a glance tells you what an area is. */
+/** Cluster tint per macro bucket — a glance tells you what an area is.
+ *
+ *  ALIGNED TO THE CANONICAL CATEGORY PALETTE (src/data/categories.ts). This
+ *  map had drifted to pre-May-2026 brand hexes (old brick #A03A22, old slate
+ *  #2F5470, old gold #C99632), so the same taproom showed a vermilion accent
+ *  rail on its card and an old-brick dot on the map — the cross-surface color
+ *  contract (card accent == pin family) was broken for six top categories.
+ *  Category-named buckets take their category's exact hex; amenity/report
+ *  buckets (no category entry) keep hand-set values in the same palette.
+ *  Water-ish amenities split to Creek slate #4A7090 so eight different civic
+ *  things stop sharing one identical blue. Keep in sync with categories.ts. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#A03A22", brewery: "#C99632", wine: "#6E2233", bar: "#7E1F1F",
-  coffee: "#8B5A2B", bakery: "#C9852B", music: "#9B3F8A",
-  outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
-  library: "#2F5470", shopping: "#B26B00", wellness: "#A02929",
-  civic: "#2F5470", services: "#4A4A48", lodging: "#5B3A8F",
-  transit: "#2F5470", parking: "#4A4A48",
-  restroom: "#2F5470", water: "#2F5470", trash: "#4A4A48", recycle: "#1E6B3A",
+  food: "#E14328", brewery: "#C0871F", wine: "#6B2D5A", bar: "#7E1F1F",
+  coffee: "#8B5A2B", bakery: "#B26B00", music: "#7E2C6F",
+  outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#C0871F",
+  library: "#20506A", shopping: "#B26B00", wellness: "#A02929",
+  civic: "#20506A", services: "#4A4A48", lodging: "#5B1E55",
+  transit: "#20506A", parking: "#4A4A48",
+  restroom: "#20506A", water: "#4A7090", trash: "#4A4A48", recycle: "#1E6B3A",
   dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
-  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2F5470", ev: "#1E6B3A",
-  publicart: "#9B3F8A",
-  outlet: "#4A4A48", dogwater: "#2F5470",
-  rhazard: "#C2410C", rcond: "#2F5470", rtip: "#B07A1E", rnote: "#7A7975",
+  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#20506A", ev: "#1E6B3A",
+  publicart: "#7E2C6F",
+  outlet: "#4A4A48", dogwater: "#4A7090",
+  rhazard: "#C2410C", rcond: "#20506A", rtip: "#B07A1E", rnote: "#7A7975",
   pin: "#7A7975",
 };
+
+/** Macro FAMILIES for the cluster dominant-color tally. clusterProperties
+ *  used to count only 5 raw buckets (food/outdoors/arts/shopping/civic), so
+ *  breweries, wineries, coffee and 15 other buckets counted toward NOTHING:
+ *  an all-brewery cluster fell to the mx==0 vermilion fallback, and two
+ *  restaurants outvoted ten breweries — broken exactly where Frederick is
+ *  most distinctive. Every curated-place bucket now rolls into one of seven
+ *  families; the tally + tint expressions in AppMap read this one table. */
+export const CLUSTER_FAMILIES: ReadonlyArray<{ key: string; buckets: readonly Bucket[]; color: string }> = [
+  { key: "cf_food", buckets: ["food", "bakery"], color: "#E14328" },
+  { key: "cf_drink", buckets: ["brewery", "wine", "bar"], color: "#C0871F" },
+  { key: "cf_coffee", buckets: ["coffee"], color: "#8B5A2B" },
+  { key: "cf_outdoors", buckets: ["outdoors"], color: "#1E6B3A" },
+  { key: "cf_culture", buckets: ["arts", "music", "publicart", "family", "library"], color: "#7E2C6F" },
+  { key: "cf_shops", buckets: ["shopping", "services", "wellness", "lodging"], color: "#B26B00" },
+  { key: "cf_civic", buckets: ["civic", "transit", "parking"], color: "#20506A" },
+];
 
 function colorOf(slug: string): string {
   if (slug === "_default") return DEFAULT_COLOR;

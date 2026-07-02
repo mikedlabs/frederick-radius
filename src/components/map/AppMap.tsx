@@ -58,6 +58,7 @@ import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import { CLUSTER_FAMILIES } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -110,6 +111,22 @@ function hasWebGL(): boolean {
     return false;
   }
 }
+
+// Dominant-family cluster tint, generated from the ONE family table so the
+// tally (clusterProperties) and the paint can never disagree. First family
+// to hit the max wins ties (food > drink > coffee > ... — deliberate: the
+// order reflects what a browsing user most likely cares about).
+const CLUSTER_TINT: mapboxgl.ExpressionSpecification = [
+  "let",
+  "mx",
+  ["max", ...CLUSTER_FAMILIES.map((f) => ["get", f.key])],
+  [
+    "case",
+    ["==", ["var", "mx"], 0], "#E14328",
+    ...CLUSTER_FAMILIES.flatMap((f) => [["==", ["get", f.key], ["var", "mx"]], f.color]),
+    "#E14328",
+  ],
+] as unknown as mapboxgl.ExpressionSpecification;
 
 // ── Tap-a-town: which municipality is under a tapped point ──────────
 // Ray-cast point-in-polygon. Even-odd across all rings handles holes
@@ -1066,9 +1083,14 @@ export default function AppMap({
   const routeInfo = useMemo(() => {
     if (!userLoc || !selectedPlace) return null;
     const m = haversineMeters(userLoc, selectedPlace.geom);
+    // Honest mode for the estimate: downtown the answer is a WALK ("~1 min
+    // drive" for a place 300m away read as parody). Under ~800m show walk
+    // minutes; beyond that, drive.
+    const walkable = m <= 800;
+    const mins = Math.max(1, Math.round(metersToMinutes(walkable ? "walk" : "drive", m)));
     return {
       dist: formatDistance(m),
-      drive: Math.max(1, Math.round(metersToMinutes("drive", m))),
+      eta: `~${mins} min ${walkable ? "walk" : "drive"}`,
       href: `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.geom.lat},${selectedPlace.geom.lng}`,
       name: selectedPlace.name,
     };
@@ -1315,7 +1337,7 @@ export default function AppMap({
               <span aria-hidden style={{ color: "var(--app-cool)" }}>→</span>
               <span className="truncate">{routeInfo.name}</span>
               <span style={{ color: "var(--app-ink-3)" }}>
-                {routeInfo.dist} · ~{routeInfo.drive} min drive
+                {routeInfo.dist} · {routeInfo.eta}
               </span>
               <span style={{ color: "var(--app-cool)" }}>Directions ↗</span>
             </a>
@@ -1851,13 +1873,16 @@ export default function AppMap({
             cluster
             clusterRadius={64}
             clusterMaxZoom={15}
-            clusterProperties={{
-              food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
-              outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
-              arts: ["+", ["case", ["==", ["get", "bucket"], "arts"], 1, 0]],
-              shopping: ["+", ["case", ["==", ["get", "bucket"], "shopping"], 1, 0]],
-              civic: ["+", ["case", ["==", ["get", "bucket"], "civic"], 1, 0]],
-            }}
+            // Tally EVERY bucket via the seven macro families (was: five raw
+            // buckets, so brewery/wine/coffee/bar/music/family/etc counted
+            // toward nothing and an all-brewery cluster fell to the generic
+            // fallback). One table (CLUSTER_FAMILIES) drives tally + tint.
+            clusterProperties={Object.fromEntries(
+              CLUSTER_FAMILIES.map((f) => [
+                f.key,
+                ["+", ["case", ["in", ["get", "bucket"], ["literal", [...f.buckets]]], 1, 0]],
+              ]),
+            )}
           >
             {/* Dominant-category tint, shared by the glow + the disk. */}
             <Layer
@@ -1865,21 +1890,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": [
-                  "let",
-                  "mx",
-                  ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
-                  [
-                    "case",
-                    ["==", ["var", "mx"], 0], "#E14328",
-                    ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
-                    ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
-                    ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
-                    ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
-                    ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#E14328",
-                  ],
-                ],
+                "circle-color": CLUSTER_TINT,
                 "circle-opacity": 0.18,
                 "circle-blur": 1,
                 "circle-radius": [
@@ -1895,21 +1906,7 @@ export default function AppMap({
               paint={{
                 // Tint by the cluster's dominant category so a glance reads
                 // "this dense area is mostly food / arts / civic".
-                "circle-color": [
-                  "let",
-                  "mx",
-                  ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
-                  [
-                    "case",
-                    ["==", ["var", "mx"], 0], "#E14328",
-                    ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
-                    ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
-                    ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
-                    ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
-                    ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#E14328",
-                  ],
-                ],
+                "circle-color": CLUSTER_TINT,
                 // Calm category tint. The count label below restores
                 // "how many places" without a hard black outline; the
                 // disk itself stays soft and the dominant-category color

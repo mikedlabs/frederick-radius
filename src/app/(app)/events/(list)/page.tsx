@@ -7,6 +7,7 @@ import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
+import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -398,6 +399,11 @@ async function EventsBoard({
           the explorer's quick doorways + reflowing horizon spine (feature
           lead + glance cards) + map + search are now the single results
           region, so every event lands in exactly one place. */}
+      {/* The week at a glance — the tappable 7-day axis (?d= deep links the
+          explorer, which already honors initialDay). Built long ago, imported
+          nowhere until now (experience review, events #4): 'what's on
+          Saturday?' was scroll-archaeology; now it's one tap. */}
+      <EventWeekRibbon events={eventsForExplorer} activeDay={sp.get("d") ?? undefined} />
       <EventsExplorer
         events={eventsForExplorer}
         liveSlugs={liveSlugs}

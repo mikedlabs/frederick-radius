@@ -41,6 +41,20 @@ describe("horizonOf", () => {
   it("drops past, non-live events", () => {
     expect(horizonOf(ev("over", -2 * DAY), bounds)).toBe(null);
   });
+  it("an all-day event TODAY reads as today, never live (the 3 AM Senior Yoga bug)", () => {
+    // Started at midnight, spans the whole day: the old gate kept it in
+    // "Happening now" through the middle of the night.
+    expect(horizonOf({ ...ev("allday", -12 * HOUR, 24 * HOUR), is_all_day: true }, bounds)).toBe("today");
+  });
+
+  it("an all-day event whose day has passed is gone", () => {
+    expect(horizonOf({ ...ev("allday-past", -30 * HOUR, 20 * HOUR), is_all_day: true }, bounds)).toBe(null);
+  });
+
+  it("a FUTURE all-day event still lands in its dated bucket", () => {
+    expect(horizonOf({ ...ev("allday-sat", 2 * DAY, 24 * HOUR), is_all_day: true }, bounds)).toBe("weekend");
+  });
+
 });
 
 describe("groupByHorizon", () => {
