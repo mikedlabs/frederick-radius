@@ -60,6 +60,21 @@ const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
   ["/category", 1],
   ["/collections", 1],
   ["/m/", 1],
+  // Today's fast lane. Every "I want…" tile and live-layer door on /today
+  // lands on one of these; without an entry the nav went dark and the TopBar
+  // swapped the wordmark for a Back button, so the app's MOST-trafficked flow
+  // read as "you left the app." They highlight Today (index 0) because they
+  // are extensions of the front door's answer, not places to explore the map.
+  ["/nearby", 0],
+  ["/open-now", 0],
+  ["/brunch", 0],
+  ["/happy-hour", 0],
+  ["/deals", 0],
+  ["/live-music", 0],
+  ["/trails", 0],
+  ["/rivers", 0],
+  ["/parking", 0],
+  ["/transit", 0],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */

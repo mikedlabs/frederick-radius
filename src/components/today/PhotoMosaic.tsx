@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { MUNICIPALITIES } from "@/data/municipalities";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { eventsInMunicipality } from "@/lib/loaders/events";
 
 // A deterministic System-Black accent per town so the grid reads as
