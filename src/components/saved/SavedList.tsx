@@ -16,12 +16,13 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
+import SavedWallet from "@/components/saved/SavedWallet";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route , ArrowRight } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route , ArrowRight, Layers } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -213,17 +214,21 @@ export default function SavedList() {
   // who prefers the map lands on it next time. The Mapbox canvas only mounts in
   // map view (AppMapClient dynamic-imports AppMap), so list-view visitors never
   // pay the map JS.
-  const [view, setView] = useState<"list" | "map">("list");
+  // Default to the WALLET fan (owner call 2026-07-02): saved places are a
+  // personal collection, so the "cards you carry" treatment leads; List + Map
+  // stay a tap away and a returning user's stored choice wins. Neither wallet
+  // nor list pays the map JS (only "map" dynamic-imports AppMap).
+  const [view, setView] = useState<"wallet" | "list" | "map">("wallet");
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(SAVED_VIEW_STORAGE_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage hydration of a view preference; SSR can't read it
-      if (v === "map") setView("map");
+      if (v === "map" || v === "list" || v === "wallet") setView(v);
     } catch {
       /* ignore */
     }
   }, []);
-  function setViewAndStore(next: "list" | "map") {
+  function setViewAndStore(next: "wallet" | "list" | "map") {
     setView(next);
     try {
       window.localStorage.setItem(SAVED_VIEW_STORAGE_KEY, next);
@@ -763,11 +768,11 @@ export default function SavedList() {
               {/* List ↔ map view of your saved places. */}
               <div
                 role="tablist"
-                aria-label="View saved places as a list or map"
+                aria-label="View saved places as a wallet, list, or map"
                 className="inline-flex rounded-full border p-0.5"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
               >
-                {(["list", "map"] as const).map((v) => {
+                {(["wallet", "list", "map"] as const).map((v) => {
                   const active = view === v;
                   return (
                     <button
@@ -783,13 +788,14 @@ export default function SavedList() {
                         boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
                       }}
                     >
+                      {v === "wallet" && <Layers className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
                       {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-                      {v === "list" ? "List" : "Map"}
+                      {v === "wallet" ? "Wallet" : v === "list" ? "List" : "Map"}
                     </button>
                   );
                 })}
               </div>
-              {view === "list" && (
+              {view !== "map" && (
                 <SortDropdown
                   options={SORT_OPTIONS}
                   value={sort}
@@ -798,7 +804,9 @@ export default function SavedList() {
               )}
             </div>
           </header>
-          {view === "map" ? (
+          {view === "wallet" ? (
+            <SavedWallet places={places} />
+          ) : view === "map" ? (
             (() => {
               const mapPlaces = places.filter((p) => p.geom);
               return mapPlaces.length > 0 ? (
