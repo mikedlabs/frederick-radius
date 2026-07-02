@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import type { MapPinPlace } from "./types";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
@@ -79,7 +80,10 @@ export default function AppMapClient({
    *  (decoratePlace)). The client must NOT re-import the loader: it
    *  drags the ~12MB places-enrichment.json into the browser bundle
    *  and the map never loads. */
-  places: PlaceCardData[];
+  // MapPinPlace: the pin-field subset. Full PlaceCardData satisfies it
+  // structurally, so SavedList / radius mode pass their full records as-is;
+  // /map browse passes the slim set and the sheet hydrates on tap.
+  places: MapPinPlace[];
   civic?: CivicPin[];
   /** Server-fetched amenity points (e.g. Mapillary trash) merged into
    *  the map's amenity layer — keeps the secret token server-side. */

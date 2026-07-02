@@ -27,17 +27,20 @@ import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
  * Variable names stay generic so the downstream tokens (--font-sans /
  * --font-serif / --font-mono in globals.css) hold steady.
  */
+// VARIABLE fonts, one file per family/style instead of a static file per
+// weight. The explicit weight arrays forced 15 static woff2 downloads
+// (4 Inter + 8 Fraunces + 3 Mono); all three families are variable on Google
+// Fonts, so omitting `weight` serves the single variable axis file — same
+// rendered weights (100-900 covers every use), ~4 requests instead of 15.
 const sans = Inter({
   variable: "--font-sans-base",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 const display = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   display: "swap",
 });
@@ -45,7 +48,6 @@ const display = Fraunces({
 const mono = JetBrains_Mono({
   variable: "--font-mono-base",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
   display: "swap",
 });
 

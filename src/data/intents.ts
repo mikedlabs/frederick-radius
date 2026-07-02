@@ -13,6 +13,17 @@
  */
 
 import type { PlaceCardData } from "@/lib/loaders/places";
+
+/** The fields a matcher may read. Deliberately narrow: /map now ships only
+ *  pin-field records (MapPinPlace) to keep its payload small, and matchers
+ *  run against those too — widening this type would silently force fields
+ *  back into that payload. Full PlaceCardData satisfies it structurally. */
+export type IntentMatchable = Pick<
+  PlaceCardData,
+  // slug/name/category/subcategories: the direct matcher reads.
+  // short_blurb/primary_type: read via cuisinesOf (the cuisine sub-intents).
+  "slug" | "name" | "category" | "subcategories" | "short_blurb" | "primary_type"
+>;
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { cuisinesOf } from "@/lib/cuisine";
 
@@ -54,7 +65,7 @@ export type Intent = {
     | "Church";
   /** Match predicate against a place's category slug — kept simple so
    *  the matcher is fast across the full ~2,400 row set. */
-  match: (p: PlaceCardData) => boolean;
+  match: (p: IntentMatchable) => boolean;
   /** Whether matches should be filtered to currently-open. The
    *  discover view honors this — "coffee right now" filters open;
    *  "outdoor today" doesn't (parks don't have hours that matter). */
@@ -81,7 +92,7 @@ export type SubIntent = {
   /** Match predicate. Always called AFTER the parent intent's match
    *  has passed, so a sub-intent only needs to express the narrower
    *  filter (e.g. "category is pizza", not "is food AND is pizza"). */
-  match: (p: PlaceCardData) => boolean;
+  match: (p: IntentMatchable) => boolean;
   /** Lucide icon name (optional). Resolved by the rendering chip
    *  component the same way the top intent's icon is. */
   icon?:
@@ -141,7 +152,7 @@ const COFFEE = new Set(["coffee", "bakery"]);
 // subcategory tags.
 const WINERY_SUBS = new Set(["winery", "meadery", "cidery"]);
 const WINERY_NAME_RE = /winer|vineyard|cellar|meader|ciderworks?/i;
-const isWinery = (p: PlaceCardData): boolean =>
+const isWinery = (p: IntentMatchable): boolean =>
   p.category === "winery" ||
   (p.subcategories ?? []).some((s) => WINERY_SUBS.has(s)) ||
   WINERY_NAME_RE.test(p.name);
@@ -150,15 +161,15 @@ const isWinery = (p: PlaceCardData): boolean =>
 // them by name so "Movies" answers "where can I see a film" (Warehouse
 // Cinemas ×2, Regal Westview) while "Theaters" stays live-performance.
 const CINEMA_NAME_RE = /cinema|movie|regal|\bamc\b|marcus|megaplex|multiplex/i;
-const isCinema = (p: PlaceCardData): boolean =>
+const isCinema = (p: IntentMatchable): boolean =>
   p.category === "theater" && CINEMA_NAME_RE.test(p.name);
 // Coffee sub-types — there's no structured "coffee kind" field, so read
 // the name. Roasters (the local-roastery distinction coffee people seek)
 // and tea / boba houses get pulled out of the general coffee set so the
 // Coffee intent can answer the real question: what KIND of coffee.
-const isRoaster = (p: PlaceCardData): boolean =>
+const isRoaster = (p: IntentMatchable): boolean =>
   p.category === "coffee" && /\broast(er|ery|ing|ers)?\b/i.test(p.name);
-const isTeaHouse = (p: PlaceCardData): boolean =>
+const isTeaHouse = (p: IntentMatchable): boolean =>
   p.category === "coffee" &&
   (/\b(tea|boba|matcha)\b/i.test(p.name) || /bubble tea/i.test(p.name));
 // Distilleries are spirit-forward — closer to a brewery experience
@@ -167,7 +178,7 @@ const BREWERY_CATS = new Set(["brewery"]);
 const BREWERY_SUBS = new Set(["distillery"]);
 // Distilleries are their own category since the Wine/Beer-Trail split; the
 // subcategory check stays as a fallback for any straggler still under brewery.
-const isDistillery = (p: PlaceCardData): boolean =>
+const isDistillery = (p: IntentMatchable): boolean =>
   p.category === "distillery" ||
   (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s));
 const FOOD = new Set([
@@ -201,9 +212,9 @@ const FAMILY_CATS = new Set([
 // K-12 schools and admin offices don't sneak into the chip.
 const FAMILY_ATTRACTION_RE =
   /\b(arcade|escape room|escape this|bowling|adventure|wildlife|preserve|skate|laser|trampoline|mini.?golf|pinball|clay studio|gymnastics|climbing|aquarium|zoo|farm)\b/i;
-const isFamilyAttraction = (p: PlaceCardData): boolean =>
+const isFamilyAttraction = (p: IntentMatchable): boolean =>
   p.category === "family" && FAMILY_ATTRACTION_RE.test(p.name);
-const isPlaygroundLike = (p: PlaceCardData): boolean =>
+const isPlaygroundLike = (p: IntentMatchable): boolean =>
   p.category === "playground" ||
   (p.subcategories ?? []).includes("playground") ||
   PLAYGROUND_NAME_RE.test(p.name);
@@ -233,12 +244,12 @@ const CIVIC_COMMUNITY_RE =
   /\b(community center|nonprofit|non-profit|society|council|club|coalition|united way|ymca|rotary|chamber|legion|grange|ruritan|guild|mission|salvation army|boys.*girls)\b/i;
 const CIVIC_HISTORIC_RE =
   /\b(historic|historical|heritage|landmark|monument|battlefield|barracks|furnace)\b/i;
-const isCivicCommunity = (p: PlaceCardData): boolean =>
+const isCivicCommunity = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("community") ||
   (p.subcategories ?? []).includes("non_profit") ||
   (p.subcategories ?? []).includes("community_center") ||
   CIVIC_COMMUNITY_RE.test(p.name);
-const isCivicHistoric = (p: PlaceCardData): boolean =>
+const isCivicHistoric = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("landmark") || CIVIC_HISTORIC_RE.test(p.name);
 
 // Wellness — Frederick has a real yoga + boutique-fitness scene that
@@ -265,14 +276,14 @@ const YOGA_NAME_RE = /\byoga/i;
 // pure-fitness places land in Gyms.
 const GYM_NAME_RE = /\b(gym|fitness|crossfit|pilates|barre|spin|cycle|cardio)\b/i;
 const SPA_NAME_RE = /\b(spa|massage|sauna|salt(?:\s*cave|\s*room)?|bath\s*house)\b/i;
-const isYoga = (p: PlaceCardData): boolean =>
+const isYoga = (p: IntentMatchable): boolean =>
   WELLNESS_CATS.has(p.category) &&
   (p.category === "yoga" || YOGA_NAME_RE.test(p.name));
-const isGymFitness = (p: PlaceCardData): boolean =>
+const isGymFitness = (p: IntentMatchable): boolean =>
   WELLNESS_CATS.has(p.category) &&
   GYM_NAME_RE.test(p.name) &&
   !YOGA_NAME_RE.test(p.name);
-const isSpa = (p: PlaceCardData): boolean =>
+const isSpa = (p: IntentMatchable): boolean =>
   WELLNESS_CATS.has(p.category) && SPA_NAME_RE.test(p.name);
 
 // Shop — Market Street retail, antiques, books, makers, and markets.
@@ -292,19 +303,19 @@ const SHOP_GIFT_RE = /\b(gift|souvenir|candle|stationery)\b/i;
 const SHOP_JEWELRY_RE = /\b(jewel|jeweler|goldsmith|diamond|gem)\b/i;
 const SHOP_GROCERY_RE =
   /\b(grocery|grocer|supermarket|deli|butcher|cheese|spice|chocolate|candy|seafood|vinegar|oil|popcorn|provisions|emporium|creamery|weis|safeway|giant|wegmans|aldi|lidl|costco|mega ?mart|jubilee|organic market|co-?op|h mart|foods?)\b/i;
-const isShopFashion = (p: PlaceCardData): boolean =>
+const isShopFashion = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("clothes") ||
   (p.subcategories ?? []).includes("boutique") ||
   SHOP_FASHION_RE.test(p.name);
-const isShopVintage = (p: PlaceCardData): boolean =>
+const isShopVintage = (p: IntentMatchable): boolean =>
   p.category === "antiques" ||
   (p.subcategories ?? []).includes("thrift_store") ||
   SHOP_VINTAGE_RE.test(p.name);
-const isShopGifts = (p: PlaceCardData): boolean =>
+const isShopGifts = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("gift") || SHOP_GIFT_RE.test(p.name);
-const isShopJewelry = (p: PlaceCardData): boolean =>
+const isShopJewelry = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("jewelry") || SHOP_JEWELRY_RE.test(p.name);
-const isShopGrocery = (p: PlaceCardData): boolean =>
+const isShopGrocery = (p: IntentMatchable): boolean =>
   (p.subcategories ?? []).includes("food") ||
   (p.subcategories ?? []).includes("convenience_store") ||
   SHOP_GROCERY_RE.test(p.name);
@@ -320,7 +331,7 @@ const BNB_NAME_RE =
   /\b(bed\s?(?:and|&|'n')?\s?breakfast|b\s?&\s?b|guest\s?house|farm\s?stay|cottage)\b/i;
 const CHAIN_HOTEL_RE =
   /&\s?suites|garden inn|comfort inn|days inn|holiday inn|budget inn|sleep inn|hampton inn/i;
-const isBnB = (p: PlaceCardData): boolean =>
+const isBnB = (p: IntentMatchable): boolean =>
   LODGING.has(p.category) &&
   (BNB_NAME_RE.test(p.name) ||
     (/\binn\b/i.test(p.name) && !CHAIN_HOTEL_RE.test(p.name)));
@@ -337,15 +348,15 @@ const WORSHIP = new Set(["worship"]);
 const SELFCARE_CATS = new Set(["yoga", "wellness"]);
 const HAIR_NAME_RE = /\b(salon|hair|barber|braid|blow.?dry|beauty|lash|brow|wax|aesthetic|skin\s?care|med\s?spa)\b/i;
 const NAIL_NAME_RE = /\b(nail|mani|pedi|polish)\b/i;
-const isHairBeauty = (p: PlaceCardData): boolean =>
+const isHairBeauty = (p: IntentMatchable): boolean =>
   SELFCARE_CATS.has(p.category) && HAIR_NAME_RE.test(p.name) && !NAIL_NAME_RE.test(p.name);
-const isNails = (p: PlaceCardData): boolean =>
+const isNails = (p: IntentMatchable): boolean =>
   SELFCARE_CATS.has(p.category) && NAIL_NAME_RE.test(p.name);
 
 // Cuisine sub-intent helper — the cuisine classifier reads name + blurb
 // (there is no structured cuisine field), so "Italian / Mexican / Sushi"
 // work across the whole food set. A place can match more than one.
-const hasCuisine = (p: PlaceCardData, slug: string): boolean => cuisinesOf(p).includes(slug);
+const hasCuisine = (p: IntentMatchable, slug: string): boolean => cuisinesOf(p).includes(slug);
 
 export const INTENTS: Intent[] = [
   {

@@ -103,6 +103,30 @@ function isImage(req, url) {
   );
 }
 
+/**
+ * Bound a cache to its newest MAX entries (FIFO by insertion order; Cache
+ * keys() returns insertion order). Navigations and images previously
+ * accumulated WITHOUT LIMIT for the life of a deploy: every visited page's
+ * full HTML and every photo stayed cached, so a heavy browsing session could
+ * quietly grow the origin's storage by tens of MB. Fire-and-forget after
+ * each put; never blocks a response.
+ */
+function trimCache(name, max) {
+  caches.open(name).then(async (cache) => {
+    const keys = await cache.keys();
+    let excess = keys.length - max;
+    for (let i = 0; i < keys.length && excess > 0; i++) {
+      // Never evict the offline fallback page: it must survive any session
+      // length or the offline experience silently dies mid-deploy.
+      if (new URL(keys[i].url).pathname === OFFLINE_URL) continue;
+      cache.delete(keys[i]);
+      excess--;
+    }
+  }).catch(() => {});
+}
+const MAX_NAV_ENTRIES = 30;
+const MAX_IMAGE_ENTRIES = 150;
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -120,7 +144,7 @@ self.addEventListener("fetch", (event) => {
           // of the offline screen.
           if (res.ok && res.type === "basic") {
             const copy = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).then(() => trimCache(STATIC_CACHE, MAX_NAV_ENTRIES + 60)).catch(() => {});
           }
           return res;
         })
@@ -152,7 +176,9 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(request);
         const net = fetch(request)
           .then((res) => {
-            if (res && res.status === 200) cache.put(request, res.clone());
+            if (res && res.status === 200) {
+              cache.put(request, res.clone()).then(() => trimCache(IMAGE_CACHE, MAX_IMAGE_ENTRIES)).catch(() => {});
+            }
             return res;
           })
           .catch(() => hit);

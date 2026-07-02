@@ -152,6 +152,7 @@ import {
   type CivicPin,
   type EventPin,
   type MapLineFC,
+  type MapPinPlace,
   type Selected,
 } from "./types";
 import {
@@ -191,7 +192,10 @@ import {
 import AppMapDeck from "./AppMapDeck";
 
 type Props = {
-  places: PlaceCardData[];
+  /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
+   *  so SavedList/radius callers pass full records; /map browse passes the
+   *  slim set and the sheet hydrates the full card on tap (openPlaceSheet). */
+  places: MapPinPlace[];
   osmPlaces?: OsmPlace[];
   height?: string;
   /** Full-bleed layout: drop the rounded border, fill the parent. The
@@ -296,6 +300,37 @@ export default function AppMap({
     return { longitude: lng, latitude: lat, zoom: z };
   }, []);
   const { openSheet } = usePlaceSheet();
+  // ── Sheet hydration (the /map payload slim). Browse mode ships pin-field
+  // records only; the sheet is the one consumer that wants the full card
+  // (photos, rating, hours, address). Open INSTANTLY with the pin fields —
+  // PlaceSheet optional-chains everything beyond them — then swap in the full
+  // record from /api/places/by-slugs (CDN-cached 1h) when it lands, usually
+  // within a frame or two. Cache per slug so re-taps are instant + offline-
+  // tolerant. Callers holding full records (SavedList, radius mode) just get
+  // one redundant background fetch the first time, served from cache.
+  const hydratedRef = useRef(new globalThis.Map<string, PlaceCardData>());
+  const openPlaceSheet = (pin: MapPinPlace) => {
+    const withDist = (x: PlaceCardData): PlaceCardData =>
+      userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
+    const cached = hydratedRef.current.get(pin.slug);
+    if (cached) {
+      openSheet(withDist(cached));
+      return;
+    }
+    openSheet(withDist(pin as PlaceCardData));
+    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(pin.slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { places?: PlaceCardData[] } | null) => {
+        const full = d?.places?.[0];
+        if (full && full.slug === pin.slug) {
+          hydratedRef.current.set(pin.slug, full);
+          openSheet(withDist(full));
+        }
+      })
+      .catch(() => {
+        /* offline / transient — the pin-field sheet stays up, still useful */
+      });
+  };
   // Mode-driven layer defaults. The map mounts client-side via
   // dynamic({ ssr:false }), so the initial mode read here is the
   // localStorage-persisted value (not the SSR fallback). When the
@@ -828,7 +863,7 @@ export default function AppMap({
       // (photo, rating, hours, directions, save) instead of a cramped popup.
       // Distance must be from the USER, never a fixed city point — show it
       // only when we actually have their location, else omit it (honest).
-      if (place) openSheet(userLoc ? { ...place, distance_m: haversineMeters(userLoc, place.geom) } : place);
+      if (place) openPlaceSheet(place);
       track("map_pin", { category: place?.category ?? "unknown" });
       return;
     }
@@ -933,7 +968,7 @@ export default function AppMap({
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
-    const m = new globalThis.Map<string, PlaceCardData>();
+    const m = new globalThis.Map<string, MapPinPlace>();
     for (const p of places) m.set(p.slug, p);
     return m;
   }, [places]);
@@ -956,7 +991,7 @@ export default function AppMap({
         setSelectedSlug(p.slug);
         setQ("");
         if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
-        openSheet(userLoc ? { ...p, distance_m: haversineMeters(userLoc, p.geom) } : p);
+        openPlaceSheet(p);
         return;
       }
     }

@@ -4,7 +4,7 @@ import { Building2 } from "lucide-react";
 import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
-import { buildHorizonBounds } from "@/lib/eventHorizon";
+import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
@@ -50,6 +50,54 @@ function slimEventForClient<T extends { description?: string }>(e: T): T {
   const d = slim.description;
   if (!d || d.length <= 160) return slim;
   return { ...slim, description: d.slice(0, 160) };
+}
+
+/**
+ * Collapse recurring occurrences in the LATER horizon to one row per series.
+ *
+ * The serialized payload carried Preschool Storytime x4, Pour House Trivia x4,
+ * Bluegrass Jam x4… — weekly series each occupying 3-4 rows of the 434-event
+ * "Coming up" bucket, burying one-off events a local would plan around (and
+ * padding the 1.1MB flight payload). Inside Today/Weekend/Week windows the
+ * specific date matters, so occurrences stay; beyond them, one row per
+ * title+venue with an honest "N upcoming dates" cadence line (EventCard
+ * already renders recurrence_text). Keyed on normalized title+venue rather
+ * than seriesKey because feed rows aren't reliably flagged is_recurring.
+ */
+function collapseLaterSeries<E extends { slug: string; title: string; venue_name?: string; starts_at: string; ends_at: string; is_recurring?: boolean; recurrence_text?: string }>(
+  events: E[],
+  bounds: Parameters<typeof horizonOf>[1],
+): E[] {
+  const out: E[] = [];
+  const reps = new Map<string, E>();
+  const counts = new Map<string, number>();
+  const sorted = [...events].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  for (const e of sorted) {
+    if (horizonOf(e, bounds) !== "later") {
+      out.push(e);
+      continue;
+    }
+    const key = `${e.title.trim().toLowerCase()}@@${(e.venue_name ?? "").trim().toLowerCase()}`;
+    const rep = reps.get(key);
+    if (!rep) {
+      reps.set(key, e);
+      counts.set(key, 1);
+      out.push(e);
+    } else {
+      counts.set(key, (counts.get(key) ?? 1) + 1);
+    }
+  }
+  // Stamp the honest cadence on representatives that actually absorbed rows.
+  return out.map((e) => {
+    const key = `${e.title.trim().toLowerCase()}@@${(e.venue_name ?? "").trim().toLowerCase()}`;
+    const n = counts.get(key) ?? 1;
+    if (n <= 1 || reps.get(key) !== e) return e;
+    return {
+      ...e,
+      is_recurring: true,
+      recurrence_text: e.recurrence_text ?? `${n} upcoming dates`,
+    };
+  });
 }
 
 export const metadata: Metadata = {
@@ -308,6 +356,10 @@ async function EventsBoard({
   // it was already the weekend (so a Saturday showed next weekend). next24
   // is the next Eastern midnight, so "Today" never spills into tomorrow.
   const bounds = buildHorizonBounds(now, new Set(liveSlugs));
+  // Collapse the Coming-up series repeats now that the horizon bounds exist;
+  // everything downstream (explorer, facets already computed above) sees the
+  // deduplicated set.
+  const eventsForExplorer = collapseLaterSeries(allEvents, bounds);
   const friday = new Date(bounds.weekendStart);
   const monday = new Date(bounds.weekendEnd);
   const todayEnd = new Date(bounds.next24);
@@ -347,7 +399,7 @@ async function EventsBoard({
           lead + glance cards) + map + search are now the single results
           region, so every event lands in exactly one place. */}
       <EventsExplorer
-        events={allEvents}
+        events={eventsForExplorer}
         liveSlugs={liveSlugs}
         categories={categories}
         towns={towns}
