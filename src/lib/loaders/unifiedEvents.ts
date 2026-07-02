@@ -45,6 +45,7 @@ import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { getIngestedSeries } from "@/lib/loaders/ingested";
 import { ingestedSeriesToCards } from "@/lib/loaders/ingestedEvents";
 import { isPublicEvent } from "@/lib/events/classify";
+import { applyEventNotices } from "@/lib/events/notices";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { easternDayKey } from "@/lib/tz";
 import { unstable_cache } from "next/cache";
@@ -149,14 +150,21 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane), ...ingestedCards.filter(sane)]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
-  const unified = withVenueThumbs(
-    dedupeKeysHomeGames(
-      dedupeCuratedClusters(
-        [...bySlug.values()].sort(
-          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  // Owner event-notices stamp LAST, after every dedupe, so a cancellation
+  // wins no matter which source's row survived the merge. A cancelled/
+  // postponed stamp flows from here to every surface: classify.ts lanes it
+  // out of "What's on", cards badge it, the detail banner reads it.
+  const unified = applyEventNotices(
+    withVenueThumbs(
+      dedupeKeysHomeGames(
+        dedupeCuratedClusters(
+          [...bySlug.values()].sort(
+            (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+          ),
         ),
       ),
     ),
+    now,
   );
 
   return { unified, publicEvents: unified.filter(isPublicEvent) };
@@ -209,7 +217,7 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v14", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v15", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

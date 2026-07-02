@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban } from "lucide-react";
+import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban, AlertTriangle } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
@@ -47,6 +47,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
+import { noticeForEvent } from "@/lib/events/notices";
 
 export const revalidate = 300;
 // NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
@@ -89,8 +90,18 @@ export async function generateMetadata(
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const seed = getEventBySlug(slug);
-  const event = seed ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
-  if (!event) notFound();
+  const resolved = seed ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
+  if (!resolved) notFound();
+  // Owner notice override (src/data/event-notices.json): a hand-confirmed
+  // cancellation must beat whatever the source row says — the Alive @ Five
+  // heat cancellation reached no feed, only the owner. Stamped BEFORE any
+  // downstream read so the banner, the dimmed hero, and the JSON-LD
+  // eventStatus all tell the same story. Advisory notices don't change
+  // status (the event is still on); they only add the banner note below.
+   
+  const notice = noticeForEvent(slug, new Date());
+  const event =
+    notice && notice.status !== "advisory" ? { ...resolved, status: notice.status } : resolved;
   // Canonicalize live-event URLs (Phase 2). A live event always carries
   // its clean stored slug; if we resolved one through a legacy
   // "live-..." link or any non-canonical form, send the visitor to the
@@ -240,24 +251,50 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       {/* Cancellation banner — loud, above the hero, so a user who
        *  came here for this event sees it's off before anything else.
-       *  Only renders when the event is not scheduled. */}
-      {eventStatus !== "scheduled" && (
-        <div
-          className="flex items-center gap-2 rounded-[var(--app-radius-md)] px-4 py-2.5 text-[13px] font-semibold"
-          style={{
-            background: eventStatus === "cancelled"
-              ? "color-mix(in srgb, var(--app-danger) 16%, var(--app-bg-elevated))"
-              : "color-mix(in srgb, var(--app-warning) 16%, var(--app-bg-elevated))",
-            color: eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
-            border: `1px solid ${eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)"}`,
-          }}
-        >
-          <Ban className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          {eventStatus === "cancelled"
+       *  Renders when the event is not scheduled, or when an owner
+       *  notice carries an advisory (still on, but know this first).
+       *  A notice adds its one-line detail + the organizer's own
+       *  announcement link, so the claim always shows its source. */}
+      {(eventStatus !== "scheduled" || notice) && (() => {
+        const tone = eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)";
+        const BannerIcon = eventStatus === "scheduled" ? AlertTriangle : Ban;
+        const lead =
+          eventStatus === "cancelled"
             ? "This event has been cancelled."
-            : "This event has been postponed. Check the official page for a new date."}
-        </div>
-      )}
+            : eventStatus === "postponed"
+              ? "This event has been postponed. Check the official page for a new date."
+              : notice?.headline;
+        return (
+          <div
+            className="rounded-[var(--app-radius-md)] px-4 py-2.5"
+            style={{
+              background: `color-mix(in srgb, ${tone} 16%, var(--app-bg-elevated))`,
+              border: `1px solid ${tone}`,
+            }}
+          >
+            <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: tone }}>
+              <BannerIcon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+              {lead}
+            </div>
+            {notice?.note && (
+              <p className="mt-1 pl-6 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+                {notice.note}
+              </p>
+            )}
+            {notice?.source_url && (
+              <a
+                href={notice.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block pl-6 text-[12px] font-semibold underline"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Organizer&rsquo;s announcement
+              </a>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Cinematic hero. Two paths:
        *   - With hero_image: full-bleed 16:11 photo, dark legibility
