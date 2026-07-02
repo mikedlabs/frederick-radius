@@ -13,9 +13,30 @@
  * to assert a specific commit:
  *
  *   BASE_URL=https://frederickradius.app EXPECTED_SHA=$(git rev-parse HEAD) node scripts/prod-audit.mjs
+ *
+ * BETA WALL: production currently serves the /beta gate to uncookied
+ * requests, and grading that shell is worse than not auditing (positive
+ * checks fail spuriously, negative checks pass vacuously). Unlock with
+ * either env var — otherwise the script aborts BLIND (exit 2) instead of
+ * pretending it audited:
+ *
+ *   BETA_PASSWORD=...   the shared password; the unlock token is derived
+ *                       here exactly like src/lib/beta-gate.ts
+ *   BETA_COOKIE=...     a raw fr_beta cookie value pasted from a browser
  */
+import { createHash } from "node:crypto";
+
 const BASE = (process.env.BASE_URL || "https://frederickradius.app").replace(/\/$/, "");
 const EXPECTED_SHA = process.env.EXPECTED_SHA?.slice(0, 12) || null;
+
+// Same recipe as betaToken() in src/lib/beta-gate.ts: sha256("fr-beta:v1:" +
+// password), first 32 hex chars. BETA_COOKIE (a value copied from devtools,
+// with or without the "fr_beta=" prefix) wins over BETA_PASSWORD if both set.
+const BETA_TOKEN = process.env.BETA_COOKIE
+  ? process.env.BETA_COOKIE.replace(/^fr_beta=/, "")
+  : process.env.BETA_PASSWORD
+    ? createHash("sha256").update(`fr-beta:v1:${process.env.BETA_PASSWORD}`).digest("hex").slice(0, 32)
+    : null;
 
 let failures = 0;
 const ok = (m) => console.log(`  ✓ ${m}`);
@@ -23,18 +44,42 @@ const bad = (m) => { failures++; console.log(`  ✗ ${m}`); };
 const check = (pass, good, fail) => { if (pass) ok(good); else bad(fail); };
 
 async function get(path) {
-  const res = await fetch(`${BASE}${path}`, { headers: { "User-Agent": "fr-prod-audit" } });
-  return { status: res.status, html: await res.text() };
+  const headers = { "User-Agent": "fr-prod-audit" };
+  if (BETA_TOKEN) headers.cookie = `fr_beta=${BETA_TOKEN}`;
+  const res = await fetch(`${BASE}${path}`, { headers });
+  const html = await res.text();
+  // The beta wall 307s locked visitors to /beta. If we landed there (no
+  // token, or a stale one after a password rotation), every check against
+  // that shell is meaningless — refuse to grade it.
+  if (
+    path !== "/beta" &&
+    (new URL(res.url).pathname === "/beta" || html.includes("<title>Frederick Radius: private beta</title>"))
+  ) {
+    const err = new Error(
+      `got the /beta wall instead of ${path} — set BETA_PASSWORD or BETA_COOKIE` +
+        (BETA_TOKEN ? " (the one provided did not unlock; rotated password?)" : ""),
+    );
+    err.blind = true;
+    throw err;
+  }
+  return { status: res.status, html };
 }
 // Photo policy (revised): browse cards now LEAD with the curated Google
 // place photo (placePhotoBlob / Google proxy), de-twinned via PHOTO_SUPPRESS
 // with a category-mark fallback — the visual, decision-card direction the
 // reference apps (Maps / DoorDash / Uber Eats) use. So curated Google
 // sources are allowed. What stays banned is UNCONTROLLED imagery we never
-// curated (Wikimedia / arbitrary hero_image), which had the provenance and
-// wrong-photo problems (#437). Count only those.
+// curated (arbitrary hero_image / raw Wikimedia hotlinks), which had the
+// provenance and wrong-photo problems (#437). Count only those.
+//
+// Wikimedia carve-out: src/lib/integrations/wikimedia.ts is a CURATED layer
+// (hand-verified files, license + author recorded) whose signature is a
+// Special:FilePath URL served through next/image — town heroes on /m/* and
+// landmark fills use it. That's controlled; any other wikimedia src is not.
 const uncontrolledImgs = (html) =>
-  (html.match(/<img\b[^>]*\bsrc="[^"]*(wikimedia|upload\.wikimedia)[^"]*"/gi) || []).length;
+  (html.match(/<img\b[^>]*\bsrc="[^"]*wikimedia[^"]*"/gi) || []).filter(
+    (tag) => !/Special(?::|%3A)FilePath/i.test(tag),
+  ).length;
 
 const run = async () => {
   console.log(`\nProduction audit → ${BASE}\n`);
@@ -59,10 +104,27 @@ const run = async () => {
 
   // 1. Nav — the 4-tab bottom bar (Today · Map · Events · Saved). The Ask/Find
   //    tab was dropped in #624, so assert the current front-door tab instead.
+  //    (The June "nav 'Today' tab not found" failures were NOT this check going
+  //    stale — verified against an ungated render, it passes. They were the
+  //    beta wall serving the /beta shell, which has no nav.)
+  //
+  //    This is also the run's GATE PROBE: the first page fetch. If it hits the
+  //    wall, every later check would grade the same shell — abort as BLIND
+  //    (exit 2, distinct from FAIL) instead of spraying 12 bogus results.
   try {
     const { html } = await get("/today");
-    check(/<[^>]*>\s*Today\s*</.test(html), "nav shows the 'Today' tab", "nav 'Today' tab not found");
-  } catch (e) { bad(`/today fetch failed: ${e.message}`); }
+    check(
+      /aria-label="Primary"/.test(html) && /<[^>]*>\s*Today\s*</.test(html),
+      "nav shows the 'Today' tab",
+      "nav 'Today' tab not found",
+    );
+  } catch (e) {
+    if (e.blind) {
+      console.log(`\nBLIND — ${e.message}\n`);
+      process.exit(2);
+    }
+    bad(`/today fetch failed: ${e.message}`);
+  }
 
   // 2. Events laning (#443) — no private/cancelled anywhere in the HTML.
   try {
