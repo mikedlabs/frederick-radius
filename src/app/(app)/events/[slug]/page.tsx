@@ -34,7 +34,10 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import GettingThere from "@/components/event/GettingThere";
+import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import type { EventWithMeta } from "@/lib/loaders/events";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
@@ -180,9 +183,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
+  // ONE unified set for the page's "what else" sections. These used to read
+  // the ~38-event static seed (EVENTS/allUpcoming), so a live or ingested
+  // event page — the overwhelming majority — showed the same stale handful
+  // under "More upcoming" and a live weekly series showed no other dates.
+  // Fail-soft to the seed-backed pool on any feed trouble.
+  const { publicEvents: unifiedPool } = await assembleUnifiedEvents(new Date(nowMs)).catch(() => ({
+    unified: [],
+    publicEvents: [] as EventWithMeta[],
+  }));
   const lineup = event.is_recurring
-    ? EVENTS
-        .filter((e) => seriesKey(e) === seriesKey(event))
+    ? unifiedPool
+        .filter((e) => seriesKey(e) === seriesKey(event) && e.slug !== event.slug)
         .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     : [];
 
@@ -194,8 +206,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // always excluded — series siblings are already covered by Full
   // lineup above. allUpcoming() handles past-filtering + decoration.
   const currentSeries = seriesKey(event);
-  const upcomingPool = allUpcoming(new Date(nowMs)).filter(
-    (e) => e.slug !== event.slug && seriesKey(e) !== currentSeries,
+  const seedPool = allUpcoming(new Date(nowMs));
+  const upcomingPool = (unifiedPool.length > 0 ? unifiedPool : seedPool).filter(
+    (e) =>
+      e.slug !== event.slug &&
+      seriesKey(e) !== currentSeries &&
+      Date.parse(e.starts_at) > nowMs,
   );
   const venueKey = event.venue_place_slug ?? event.venue_name.toLowerCase();
   const sameVenueUpcoming = upcomingPool
@@ -463,6 +479,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           repo. Renders only when a line is EARNED (verified field-note
           parking, a downtown garage within 1.1km, or MARC within a 12-min
           walk); a Thurmont carnival shows nothing here. */}
+      {/* The visual WHERE — a static map thumb, tap-through to the live map
+          centered on the venue. Geo-precise events only (an area centroid
+          would draw a confidently wrong pin). */}
+      {isGeoPrecise(event) && <VenueMiniMap geom={event.geom} name={event.venue_name} />}
       <GettingThere
         geom={event.geom}
         venuePlaceSlug={event.venue_place_slug ?? undefined}
@@ -656,7 +676,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <ul className="space-y-2">
             {moreUpcoming.items.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard event={e} variant="row" />
+                {/* glance, not row: the unified pool arrives venue-thumb
+                    decorated, so the section reads as a visual shelf now
+                    instead of a text list. */}
+                <EventCard event={e} variant="glance" />
               </li>
             ))}
           </ul>

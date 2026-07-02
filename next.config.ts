@@ -102,6 +102,9 @@ const nextConfig: NextConfig = {
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Mapbox Static Images API — the event page's venue mini-map. Publishable
+      // pk token in the URL by design (same token the GL map ships).
+      { protocol: "https", hostname: "api.mapbox.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
       // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
       { protocol: "https", hostname: "t.plnspttrs.net" },
