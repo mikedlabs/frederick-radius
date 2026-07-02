@@ -72,13 +72,14 @@
   --app-on-brand: #FCFBF8;        /* warm near-white text/icon on a brand/cool/spruce fill (was an undefined token falling through to #fff) */
   --app-brand-2: #16352B;         /* Spruce — deep county green (brand deck; was Catoctin #2E3B2C) */
   --app-accent: #C0871F;          /* Almanac gold (brand deck; was #C99632) — for FILLS/tints/borders */
-  --app-accent-press: #8A5E10;    /* text-safe gold (AA 4.5:1+ on cream); use for gold as TEXT/icon, the way --app-brand-press shadows --app-brand */
+  --app-accent-press: #875C10;    /* text-safe gold (AA 4.5:1+ on cream: 4.56 on paper / 5.27 on card — was #8A5E10 at 4.42, a hair under); use for gold as TEXT/icon, the way --app-brand-press shadows --app-brand */
   --app-cool: #20506A;            /* Slate — Carroll Creek / civic (brand deck; was #2F5470) */
   --app-cool-2: #4A7090;          /* lighter cool, for hovers */
   --app-sage: #859076;            /* topo-line sage — light nature accent */
 
   --app-positive: #1E6B3A;
-  --app-warning: #B26B00;
+  --app-warning: #B26B00;         /* amber FILL/icon (AA 3:1 on cream for icons/UI) */
+  --app-warning-press: #8F5600;   /* text-safe amber (AA 4.5:1+ on cream): use for warning as TEXT, mirroring --app-brand-press / --app-accent-press */
   /* Was #A02929, too close to --app-brand (#A8462C, the brick) at
      a glance, so a "danger" alert visually read as a brand-colored
      content card. The new red is unambiguously stop-sign / alarm. */

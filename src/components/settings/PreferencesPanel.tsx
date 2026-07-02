@@ -350,7 +350,7 @@ export default function PreferencesPanel() {
         type="button"
         onClick={reset}
         className="mt-2 inline-flex items-center gap-1.5 self-start text-[12px] font-medium"
-        style={{ color: "var(--app-warning)" }}
+        style={{ color: "var(--app-warning-press)" }}
       >
         <RotateCcw className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         Reset and re-do the welcome flow

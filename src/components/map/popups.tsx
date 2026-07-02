@@ -196,7 +196,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       <p style={{
         marginTop: 4, fontSize: 10, fontWeight: 600,
         textTransform: "uppercase", letterSpacing: "0.06em",
-        color: "var(--app-warning)",
+        color: "var(--app-warning-press)",
       }}>
         ⚠ Unverified · from OpenStreetMap · may be closed or stale
       </p>
