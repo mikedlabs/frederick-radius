@@ -46,7 +46,7 @@ const AREA_ANCHORS: LngLat[] = [
 
 const AREA_EPSILON_M = 40;
 
-function isAreaCentroid(geom: LngLat): boolean {
+export function isAreaCentroid(geom: LngLat): boolean {
   return AREA_ANCHORS.some((a) => haversineMeters(a, geom) <= AREA_EPSILON_M);
 }
 

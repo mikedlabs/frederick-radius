@@ -38,7 +38,7 @@ import VenueMiniMap from "@/components/event/VenueMiniMap";
 import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { isGeoPrecise } from "@/lib/events/geo-confidence";
+import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
@@ -480,13 +480,16 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           parking, a downtown garage within 1.1km, or MARC within a 12-min
           walk); a Thurmont carnival shows nothing here. */}
       {/* The visual WHERE — a static map thumb, tap-through to the live map
-          centered on the venue. Geo-precise events only (an area centroid
-          would draw a confidently wrong pin). */}
-      {isGeoPrecise(event) && <VenueMiniMap geom={event.geom} name={event.venue_name} />}
+          centered on the venue. Gate on NOT-a-town-centroid, not on
+          isGeoPrecise: that helper demands a `placement` stamp most events
+          never carry (the first ship hid the map on nearly everything,
+          including hand-curated venue coords). A non-centroid geom is real
+          enough to pin; centroids stay honestly hidden. */}
+      {!isAreaCentroid(event.geom) && <VenueMiniMap geom={event.geom} name={event.venue_name} />}
       <GettingThere
         geom={event.geom}
         venuePlaceSlug={event.venue_place_slug ?? undefined}
-        geoPrecise={isGeoPrecise(event)}
+        geoPrecise={!isAreaCentroid(event.geom)}
       />
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
