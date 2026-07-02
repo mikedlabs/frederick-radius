@@ -39,6 +39,7 @@ import { eventSaveCount } from "@/lib/loaders/eventSaves";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
@@ -485,12 +486,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           never carry (the first ship hid the map on nearly everything,
           including hand-curated venue coords). A non-centroid geom is real
           enough to pin; centroids stay honestly hidden. */}
-      {!isAreaCentroid(event.geom) && <VenueMiniMap geom={event.geom} name={event.venue_name} />}
-      <GettingThere
-        geom={event.geom}
-        venuePlaceSlug={event.venue_place_slug ?? undefined}
-        geoPrecise={!isAreaCentroid(event.geom)}
-      />
+      {(() => {
+        // A resolved venue PLACE is the authoritative pin: its geom wins even
+        // when it sits inside the 40m centroid epsilon (Carroll Creek
+        // Amphitheater is ~30m from the downtown feed anchor, so the pure
+        // centroid test hid a genuinely-located venue — caught on prod).
+        const venuePlace = event.venue_place_slug ? clientPlaceBySlug(event.venue_place_slug) : null;
+        const pinGeom = venuePlace?.geom ?? event.geom;
+        const showPin = Boolean(venuePlace) || !isAreaCentroid(event.geom);
+        return (
+          <>
+            {showPin && <VenueMiniMap geom={pinGeom} name={event.venue_name} />}
+            <GettingThere
+              geom={pinGeom}
+              venuePlaceSlug={event.venue_place_slug ?? undefined}
+              geoPrecise={showPin}
+            />
+          </>
+        );
+      })()}
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">

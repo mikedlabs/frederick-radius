@@ -146,7 +146,11 @@ const cachedCallModel = unstable_cache(
   async (userContent: string): Promise<string> => {
     const answer = await callModel(userContent);
     if (answer === null) throw new Error("ask:no-answer"); // don't cache failures
-    return answer;
+    // Boundary cleaning for MODEL prose, same rule as feed text: the LLM
+    // loves em dashes and the voice bans them (verified in the first live
+    // answer: "though fair warning—they sell out often"). Clean once here,
+    // pre-cache, so every surface renders on-voice text.
+    return answer.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-");
   },
   ["ask-answer-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ask"] },
