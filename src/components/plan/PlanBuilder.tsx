@@ -695,6 +695,17 @@ export default function PlanBuilder({
                 {plan.summary}
               </p>
             )}
+            {/* Live-sky honesty: one calm line when NWS puts rain over 50%
+                during this plan's window. Absent on dry evenings. */}
+            {plan.weather_note && (
+              <p
+                className="mt-2 inline-flex items-start gap-1.5 text-[13px] leading-relaxed"
+                style={{ color: "var(--app-cool)" }}
+              >
+                <CloudRain className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                {plan.weather_note}
+              </p>
+            )}
             {plan.narrative && (
               <blockquote
                 className="mt-3 border-l-2 pl-3 font-serif text-[15px] italic leading-relaxed"

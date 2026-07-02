@@ -64,6 +64,11 @@ export type Plan = {
   summary: string;
   stops: PlanStop[];
   narrative?: string;
+  /** One honest weather line for the plan window ("Rain is likely around
+   *  8 PM, plan for cover between stops") — stamped by the server action
+   *  from the live NWS hourly forecast when precip probability crosses 50%
+   *  during the window. Absent on dry windows: no weather theater. */
+  weather_note?: string;
   /** URL safe token that reconstructs this exact plan. */
   share: string;
 };

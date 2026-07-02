@@ -20,8 +20,47 @@ import {
 
 async function withNarrative(plan: Plan | null): Promise<Plan | null> {
   if (!plan) return null;
-  const narrative = await narratePlanWithClaude(plan);
-  return narrative ? { ...plan, narrative } : plan;
+  const [narrative, weather_note] = await Promise.all([
+    narratePlanWithClaude(plan),
+    weatherNoteFor(plan),
+  ]);
+  return {
+    ...plan,
+    ...(narrative ? { narrative } : {}),
+    ...(weather_note ? { weather_note } : {}),
+  };
+}
+
+/** The plan builder knowing today's sky (experience review, differentiators
+ *  #3, scoped to the honest half): when the NWS hourly forecast puts precip
+ *  probability over 50% during the plan's window, say so in one calm line.
+ *  We deliberately do NOT reorder stops on a probability — a wrong reshuffle
+ *  is worse than a right warning. Fail-soft: any fetch problem = no note. */
+async function weatherNoteFor(plan: Plan): Promise<string | null> {
+  try {
+    if (plan.stops.length === 0) return null;
+    const first = new Date(plan.stops[0].at).getTime();
+    const last = plan.stops[plan.stops.length - 1];
+    const end = new Date(last.at).getTime() + last.duration_min * 60_000;
+    const { getNwsForecast } = await import("@/lib/integrations/nws");
+    const fc = await getNwsForecast({ lng: -77.4105, lat: 39.4143 });
+    if (!fc) return null;
+    let peak: { p: number; t: number } | null = null;
+    for (const h of fc.hourly) {
+      const t = new Date(h.startTime).getTime();
+      if (t < first - 3_600_000 || t > end) continue;
+      const p = h.probabilityOfPrecipitation ?? 0;
+      if (p >= 50 && (!peak || p > peak.p)) peak = { p, t };
+    }
+    if (!peak) return null;
+    const clock = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+    }).format(new Date(peak.t));
+    return `Rain is likely around ${clock} (${peak.p}% chance), plan for cover between stops.`;
+  } catch {
+    return null;
+  }
 }
 
 /** Build a fresh plan from the builder inputs. */
