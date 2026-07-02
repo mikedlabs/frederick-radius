@@ -5,6 +5,8 @@ import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/use
 import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { subscribeDevicePush } from "@/lib/pushSubscribe";
+import { track } from "@/lib/track";
 import { toast } from "sonner";
 
 /**
@@ -29,6 +31,49 @@ async function syncSavedEventReminder(slug: string, save: boolean): Promise<void
     });
   } catch {
     /* best-effort side channel; never surface or block the save */
+  }
+}
+
+const PUSH_NUDGE_KEY = "fr:push-nudge:v1";
+
+/** One-shot, contextual push opt-in at the moment it earns its keep: the user
+ *  just saved an EVENT, reminders exist (the /api/saved registry + hourly
+ *  cron), but the machinery silently no-ops without a push subscription — and
+ *  the only place to create one was three taps deep in Settings. Offered ONCE
+ *  ever per device, only when permission is still undecided; a dismissal is
+ *  final (Settings remains the deliberate path). Never the browser prompt
+ *  cold: the toast asks first, in our voice, and the browser prompt appears
+ *  only after an explicit "Remind me". */
+async function maybeOfferEventReminders(slug: string): Promise<void> {
+  try {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "default") return; // already granted or blocked
+    if (window.localStorage.getItem(PUSH_NUDGE_KEY)) return; // offered before
+    window.localStorage.setItem(PUSH_NUDGE_KEY, "1");
+    const reg = await navigator.serviceWorker?.ready;
+    if (await reg?.pushManager.getSubscription()) return; // already wired
+    toast("Want a nudge an hour before it starts?", {
+      description: "One reminder per saved event. Nothing else.",
+      duration: 8000,
+      action: {
+        label: "Remind me",
+        onClick: () => {
+          void subscribeDevicePush().then((r) => {
+            if (r === "subscribed") {
+              track("push_optin", { source: "event_save" });
+              // The subscription now exists, so the reminder registry write
+              // that no-opped during the save can succeed — re-run it.
+              void syncSavedEventReminder(slug, true);
+              toast.success("You'll get a nudge an hour before.");
+            } else if (r === "denied" || r === "dismissed") {
+              toast("No reminders then. You can change this in Settings.");
+            }
+          });
+        },
+      },
+    });
+  } catch {
+    /* the nudge must never break a save */
   }
 }
 
@@ -97,9 +142,13 @@ export default function SaveButton({
         e.stopPropagation();
         haptic(isSaved ? "light" : "medium");
         toggle();
+        if (refType === "event") track("save_event", { on: !isSaved });
         // Event saves also register a device-scoped reminder (critic-1).
         // isSaved is the PRE-toggle state, so the new state is !isSaved.
         if (refType === "event") void syncSavedEventReminder(refId, !isSaved);
+        // First event save on a device with undecided notification permission:
+        // offer the reminder loop right where it pays off (one-shot ever).
+        if (refType === "event" && !isSaved) void maybeOfferEventReminders(refId);
         // Sonner toast — quiet, brand-aligned acknowledgement so the
         // user sees something happen even if the bookmark animation
         // is missed at a glance. Undo action mirrors the toggle so

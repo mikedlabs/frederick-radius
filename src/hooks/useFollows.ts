@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
+import { track } from "@/lib/track";
 import { businessTopic } from "@/lib/push-topics";
 
 /**
@@ -255,7 +256,9 @@ export function useToggleFollow(slug: string, source?: string) {
     if (auth === "anonymous" || auth === "unknown") {
       // localStorage path (legacy)
       localToggle();
-      return readIsSavedSync(slug);
+      const on = readIsSavedSync(slug);
+      track("save_place", { on, source: source ?? "place_detail", synced: false });
+      return on;
     }
     // Authed path: optimistic. Flip the shared store immediately so
     // every follow control re-renders to the new state with no spinner
@@ -264,6 +267,7 @@ export function useToggleFollow(slug: string, source?: string) {
     const current = remoteStore ?? new Set<string>();
     const { next, wasFollowed } = toggleSlug(current, slug);
     writeRemote(next);
+    track("save_place", { on: !wasFollowed, source: source ?? "place_detail", synced: true });
 
     void fetch("/api/follows", {
       method: wasFollowed ? "DELETE" : "POST",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarPlus, Share2, Check } from "lucide-react";
 import { buildIcs } from "@/lib/ics";
 import { haptic } from "@/lib/haptics";
+import { track } from "@/lib/track";
 
 /** Structural subset of EventWithMeta — callers pass the event directly. */
 type EventActionsEvent = {
@@ -38,6 +39,7 @@ export default function EventActions({
   function addToCalendar(e: React.MouseEvent) {
     stop(e);
     haptic("medium");
+    track("calendar_add");
     const origin =
       typeof window !== "undefined" ? window.location.origin : "https://frederickradius.app";
     const ics = buildIcs({

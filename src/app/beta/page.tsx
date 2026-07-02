@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import BetaEmailField from "@/components/beta/BetaEmailField";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -153,6 +154,10 @@ export default async function BetaPage({
             Come in &rarr;
           </button>
         </form>
+
+        {/* Optional launch-news signup — the owned announcement channel for
+            people the wall turns away. See BetaEmailField. */}
+        <BetaEmailField />
 
         {/* County-canon plate: the field-guide detail line. */}
         <div
