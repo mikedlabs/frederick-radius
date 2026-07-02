@@ -48,6 +48,7 @@ import { compareForLead, pickLeadEvent } from "@/lib/events/lead-rank";
 import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
+import { easternParts, easternDayKey } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
@@ -605,6 +606,20 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   const todaysEvents = ahead.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
   const todaysCivic = ahead.filter((e) => isUtilityEvent(e));
   const earlierToday = ended.filter((e) => !isUtilityEvent(e));
+  // OVERNIGHT (10 PM - 5 AM Eastern): today's rail is honest but thin — most
+  // draws have ended and "what's worth your time right now" is usually
+  // "sleep". Give the night owl tomorrow's answer: the first few lead-ranked
+  // draws of the coming day, as a quiet strip. Empty outside the overnight
+  // band, so daytime renders are untouched.
+  const easternHour = easternParts(now).hour;
+  const overnight = easternHour >= 22 || easternHour < 5;
+  const tomorrowKey = easternDayKey(new Date(now.getTime() + 24 * 3_600_000));
+  const firstTomorrow = overnight
+    ? publicEvents
+        .filter((e) => easternDayKey(new Date(e.starts_at)) === tomorrowKey && !isUtilityEvent(e))
+        .sort(compareForLead)
+        .slice(0, 3)
+    : [];
   const featuredEvent = pickTonightEvent(now, publicEvents);
   const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
   const upcomingRest = showHero
@@ -621,7 +636,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         eyebrow="What's on"
         plateNo="Pl. I"
       >
-        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 ? (
+        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 || firstTomorrow.length > 0 ? (
           <div className="space-y-3">
             {showHero && featuredEvent && (
               <EventCard event={featuredEvent} variant="feature" />
@@ -646,6 +661,22 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 </p>
                 <ul>
                   {todaysCivic.map((e) => (
+                    <li key={`${e.slug}-${e.starts_at}`}>
+                      <EventCard event={e} variant="utility" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Overnight only: tomorrow's first draws, so the 2 AM open isn't
+                a dead end. Quiet one-liners; the full day is one tap away. */}
+            {firstTomorrow.length > 0 && (
+              <div className="space-y-1">
+                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                  First thing tomorrow
+                </p>
+                <ul>
+                  {firstTomorrow.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" />
                     </li>

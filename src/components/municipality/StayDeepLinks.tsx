@@ -93,7 +93,7 @@ export default function StayDeepLinks({
             className="font-serif text-[18px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Find a place in {townName}.
+            Find a place to stay in {townName}.
           </h2>
           <p
             className="mt-1 text-[13px] leading-relaxed"

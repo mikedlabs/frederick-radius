@@ -34,7 +34,7 @@ export default function PoolsToday({ now }: { now: Date }) {
           className="font-serif text-[18px] font-semibold leading-none tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          {anyOpen ? "Pools open now" : "Pools this season"}
+          {anyOpen ? "Pools open now" : "Where to swim"}
         </h2>
       </div>
 
