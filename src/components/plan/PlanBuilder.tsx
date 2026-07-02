@@ -1309,6 +1309,17 @@ function Stop({
           >
             {stop.why}
           </p>
+          {/* The verified Field Note for this stop — parking intel first. No
+              other app's plan tells you where to park at each stop; render it
+              as the quiet expert margin note it is, never a badge. */}
+          {stop.tip && (
+            <p
+              className="mt-2 border-l-2 pl-2.5 text-[12px] leading-relaxed"
+              style={{ borderColor: "var(--app-brand-2)", color: "var(--app-ink-2)" }}
+            >
+              {stop.tip}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {geom && (
               <a

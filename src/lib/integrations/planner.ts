@@ -20,6 +20,7 @@ import { upcomingEvents, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
+import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 
 export type PlanInputs = {
   audience: "solo" | "date" | "family" | "friends" | "visitor";
@@ -50,6 +51,12 @@ export type PlanStop = {
    *  card renders an empty stop block when omitted — never a stock
    *  or fabricated image. */
   photo_url?: string;
+  /** ONE verified Field Note for this stop — parking intel first (the thing
+   *  you need on arrival), else the best insider tip. The moat, attached to
+   *  the itinerary: no other app's evening plan tells you where to park at
+   *  each stop. Verified-source data only (field-notes.json); omitted when
+   *  the place has no dossier (~95% of places), never fabricated. */
+  tip?: string;
 };
 
 export type Plan = {
@@ -266,6 +273,8 @@ function schedule(
     const dur = o.event ? 90 : durationFor(cat);
     const at = new Date(cursor).toISOString();
     cursor += (dur + TRAVEL_MIN) * 60_000;
+    const notes = o.place ? fieldNotesFor(o.place.slug) : null;
+    const tip = notes?.parking?.text ?? notes?.insider?.[0]?.text;
     return {
       order: i + 1,
       at,
@@ -275,6 +284,7 @@ function schedule(
       place: o.place,
       event: o.event,
       photo_url: o.photo_url ?? o.event?.hero_image,
+      ...(tip ? { tip } : {}),
     };
   });
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Image from "next/image";
 import { Landmark, Calendar, Sparkles, Users, ExternalLink } from "lucide-react";
 import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
@@ -373,7 +374,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
         >
           {entry.body}
         </p>
-        {(entry.place || entry.source_url) && (
+        {(entry.place || entry.source_url || (entry.geom && typeof entry.year === "number")) && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {entry.place && (
               <span
@@ -383,6 +384,20 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
                 <Landmark className="h-3 w-3" strokeWidth={2} aria-hidden />
                 {entry.place}
               </span>
+            )}
+            {/* The Aerial Time Machine join: a located, dated moment links
+                straight into the orthoimagery scrubber at ITS spot in ITS
+                era. The scrubber's earliest layer is 1958, so the link only
+                renders for 1958+ moments — "see this block in 1864" would
+                land on imagery a century late, which breaks the promise. */}
+            {entry.geom && typeof entry.year === "number" && entry.year >= 1958 && (
+              <Link
+                href={`/from-above/time-machine?lng=${entry.geom.lng}&lat=${entry.geom.lat}&year=${entry.year}&zoom=16.5`}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                See this block in {entry.year}
+              </Link>
             )}
             {entry.source_url && (
               <a

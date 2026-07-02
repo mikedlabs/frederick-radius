@@ -35,8 +35,36 @@ const tilesFor = (year: number) => [
 // Downtown Frederick.
 const INITIAL = { longitude: -77.4105, latitude: 39.4143, zoom: 14.2 };
 
+/** Deep-link support: /from-above/time-machine?lng=&lat=&year=(&zoom=).
+ *  The scrubber was fully built but had ZERO inbound links (experience
+ *  review, differentiators #1); context links from history entries and
+ *  place pages carry the camera + era in the URL — "see this block in
+ *  1958" lands already looking at the block in 1958. Client-only component
+ *  (ssr:false), so reading window at first render is safe. Bad values fall
+ *  through to downtown/newest; maxBounds clamps out-of-city coords. */
+function initialFromUrl(): { view: typeof INITIAL; yearIdx: number } {
+  if (typeof window === "undefined") return { view: INITIAL, yearIdx: AERIAL_YEARS.length - 1 };
+  const q = new URLSearchParams(window.location.search);
+  const lng = Number(q.get("lng"));
+  const lat = Number(q.get("lat"));
+  const zoom = Number(q.get("zoom"));
+  const view =
+    Number.isFinite(lng) && Number.isFinite(lat) && lng !== 0 && lat !== 0
+      ? { longitude: lng, latitude: lat, zoom: Number.isFinite(zoom) && zoom > 0 ? zoom : 16 }
+      : INITIAL;
+  const y = Number(q.get("year"));
+  let yearIdx = AERIAL_YEARS.length - 1;
+  if (Number.isFinite(y) && y > 0) {
+    for (let i = 0; i < AERIAL_YEARS.length; i++) {
+      if (Math.abs(AERIAL_YEARS[i] - y) < Math.abs(AERIAL_YEARS[yearIdx] - y)) yearIdx = i;
+    }
+  }
+  return { view, yearIdx };
+}
+
 export default function AerialTimeMachine() {
-  const [yearIdx, setYearIdx] = useState(AERIAL_YEARS.length - 1); // default newest
+  const [{ view: initialView, yearIdx: initialYearIdx }] = useState(initialFromUrl);
+  const [yearIdx, setYearIdx] = useState(initialYearIdx);
   const activeYear = AERIAL_YEARS[yearIdx];
   // The City's ortho `export` endpoint can hang/fail (the historical
   // layers then never load). Detect that and show an honest banner
@@ -64,7 +92,7 @@ export default function AerialTimeMachine() {
     <div className="relative h-[calc(100dvh-var(--app-bottomnav-reserve)-env(safe-area-inset-bottom,0px))] w-full overflow-hidden">
       <Map
         mapboxAccessToken={MAPBOX_TOKEN}
-        initialViewState={INITIAL}
+        initialViewState={initialView}
         mapStyle="mapbox://styles/mapbox/light-v11"
         style={{ position: "absolute", inset: 0 }}
         maxBounds={[

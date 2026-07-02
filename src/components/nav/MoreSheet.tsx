@@ -20,6 +20,7 @@ import {
   FileText,
   MapPin,
   Landmark,
+  History,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -75,6 +76,10 @@ const DISCOVER: Item[] = [
   { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "var(--app-accent-press)" },
   { href: "/overhead", label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
   { href: "/from-above/preview", label: "From Above", description: "The aerial photography book of Frederick County", icon: Camera, color: "var(--app-cool)" },
+  // The orthoimagery scrubber had ZERO inbound links despite being fully
+  // built (experience review) — this is its front door; history moments
+  // deep-link into it at their own block + era.
+  { href: "/from-above/time-machine", label: "Time Machine", description: "Scrub your block through 65 years of aerial imagery, 1958 to 2025", icon: History, color: "var(--app-cool)" },
 ];
 
 // Ways to contribute — community submission + business claim surfaces that were

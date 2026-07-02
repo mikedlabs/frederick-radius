@@ -33,6 +33,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
+import GettingThere from "@/components/event/GettingThere";
+import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
@@ -446,6 +448,16 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         );
       })()}
+
+      {/* Getting there — parking + MARC logistics, from data already in the
+          repo. Renders only when a line is EARNED (verified field-note
+          parking, a downtown garage within 1.1km, or MARC within a 12-min
+          walk); a Thurmont carnival shows nothing here. */}
+      <GettingThere
+        geom={event.geom}
+        venuePlaceSlug={event.venue_place_slug ?? undefined}
+        geoPrecise={isGeoPrecise(event)}
+      />
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">
