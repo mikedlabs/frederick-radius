@@ -8,6 +8,7 @@
  * Nothing here changes at runtime — these are interfaces only.
  */
 import type { Place } from "@/data/places";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 
 /** Minimal GeoJSON line FeatureCollection (decoupled from the feeds). */
@@ -56,3 +57,39 @@ export type EventPin = {
 export type SelectedOsm = OsmPlace & { _kind: "osm" };
 export type SelectedPlace = Place & { _kind: "place" };
 export type Selected = SelectedOsm | SelectedPlace | null;
+
+
+/**
+ * MapPinPlace — the fields a curated place needs ON THE MAP, and nothing else.
+ *
+ * /map used to inline ~1,700 FULL decorated records into the RSC payload
+ * (measured live: 3.65MB HTML, 3.58MB of it one flight script, ~596KB br on
+ * the wire, re-parsed on the main thread every visit). Pins + filters + the
+ * dedupe index only touch the fields below (~15% of a full record); the
+ * PlaceSheet is the sole full-data consumer and hydrates on demand from the
+ * cached /api/places/by-slugs route. PlaceCardData satisfies this type
+ * structurally, so callers that already hold full records (SavedList, radius
+ * mode) pass them unchanged.
+ *
+ * If AppMap starts reading a new place field, add it HERE and to slimPlace in
+ * map/page.tsx — TypeScript will catch the read, the payload check won't.
+ */
+export type MapPinPlace = Pick<
+  PlaceCardData,
+  | "slug"
+  | "name"
+  | "category"
+  | "subcategories"
+  | "geom"
+  | "open_status"
+  | "is_verified"
+  | "field_notes"
+  | "deal_hook"
+  | "source"
+  | "google_place_id"
+  | "feature_score"
+  | "municipality"
+  // Read by cuisinesOf via the cuisine sub-intent matchers (IntentMatchable).
+  | "short_blurb"
+  | "primary_type"
+> & { distance_m?: number };

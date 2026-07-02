@@ -25,6 +25,7 @@ import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
+import type { MapPinPlace } from "@/components/map/types";
 import { AMENITY_GROUPS } from "@/components/map/constants";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
@@ -88,21 +89,36 @@ function openPlaces(now: Date): ReturnType<typeof slimPlace>[] {
   openPlacesMemo = { bucket, places };
   return places;
 }
-function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date) {
-  const decorated = decoratePlace(p, undefined, now);
-  const {
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    google_photos: _google_photos,
-    description: _description,
-    review_snippet: _review_snippet,
-    review_author: _review_author,
-    google_hours: _google_hours,
-    hours: _hours,
-    amenities: _amenities,
-    /* eslint-enable @typescript-eslint/no-unused-vars */
-    ...slim
-  } = decorated;
-  return slim;
+function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date): MapPinPlace {
+  const d = decoratePlace(p, undefined, now);
+  // WHITELIST, not blacklist. The old strip removed 7 heavy fields and shipped
+  // the other ~40 (address, phone, website, blurbs, license, provenance dates,
+  // photo URLs...) — ~2.2KB per place x 1,627 places = the 3.58MB flight
+  // payload, plus ~138KB of literal "$undefined" tokens for absent keys. Pins,
+  // filters, and the dedupe index need exactly the MapPinPlace fields; the
+  // sheet hydrates the full record on tap from /api/places/by-slugs (cached,
+  // immutable-ish). Undefined values are DROPPED so the flight payload stops
+  // paying for keys with no value.
+  const pin: MapPinPlace = {
+    slug: d.slug,
+    name: d.name,
+    category: d.category,
+    subcategories: d.subcategories,
+    geom: d.geom,
+    open_status: d.open_status,
+    is_verified: d.is_verified,
+    field_notes: d.field_notes,
+    deal_hook: d.deal_hook,
+    source: d.source,
+    google_place_id: d.google_place_id,
+    feature_score: d.feature_score,
+    municipality: d.municipality,
+    short_blurb: d.short_blurb,
+    primary_type: d.primary_type,
+  };
+  return Object.fromEntries(
+    Object.entries(pin).filter(([, v]) => v !== undefined),
+  ) as MapPinPlace;
 }
 
 export const metadata: Metadata = {
