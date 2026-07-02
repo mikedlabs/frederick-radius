@@ -21,7 +21,7 @@ import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route , ArrowRight } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -441,10 +441,28 @@ export default function SavedList() {
   // Shareable read-only "radius": the ordered saved PLACE slugs, encoded into a
   // /radius/shared link. Places only (events are time-bound; a shared list is a
   // "here's my Frederick" recommendation, which is about places).
-  const shareUrl = useMemo(() => {
-    const slugs = placeRefsAll.map((i) => i.id);
-    return slugs.length > 0 ? `/radius/shared?p=${slugs.map(encodeURIComponent).join(",")}` : null;
-  }, [placeRefsAll]);
+  // SCOPED to the active personal list: sharing your "date night" list used to
+  // ship your ENTIRE radius — the URL ignored the filter the screen showed.
+  const scopedSlugs = useMemo(
+    () =>
+      placeRefsAll
+        .map((i) => i.id)
+        .filter((slug) => !effectiveList || (savedTags[slug] ?? []).includes(effectiveList)),
+    [placeRefsAll, effectiveList, savedTags],
+  );
+  const shareUrl = useMemo(
+    () => (scopedSlugs.length > 0 ? `/radius/shared?p=${scopedSlugs.map(encodeURIComponent).join(",")}` : null),
+    [scopedSlugs],
+  );
+  // The missing bridge from "saved 20 places" to "planned my Saturday": when a
+  // personal list is active, one tap builds an itinerary from THAT list.
+  const listPlanHref = useMemo(
+    () =>
+      effectiveList && scopedSlugs.length >= 2
+        ? `/plan?p=${planTokenFromSaved(scopedSlugs.slice(0, 6))}`
+        : null,
+    [effectiveList, scopedSlugs],
+  );
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
@@ -670,6 +688,16 @@ export default function SavedList() {
               onClick={() => setActiveList(effectiveList === label ? null : label)}
             />
           ))}
+          {listPlanHref && (
+            <Link
+              href={listPlanHref}
+              className="tap-44-y ml-auto inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              Plan this list
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </Link>
+          )}
         </div>
       )}
 
