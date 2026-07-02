@@ -1,5 +1,6 @@
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { isRecommendable } from "@/lib/relevance";

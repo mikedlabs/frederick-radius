@@ -69,8 +69,27 @@ const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
  * getPlaceBySlug, so nothing the stripped fields power is lost — they
  * just stop riding along on the map's HTML.
  */
-const OPEN_PLACES = publicPlaces().map((p) => {
-  const decorated = decoratePlace(p);
+/** Slim decorated places, memoized per 5-minute bucket (was a module-scope
+ *  const). Module scope froze `now` at lambda init: decoratePlace defaults
+ *  now = new Date() evaluated ONCE, so a warm serverless instance served
+ *  hours-old open_status — the "?open=now" filter, openNowCount chip, and
+ *  "closing soon" badges all computed from that dead clock (the baked
+ *  closesAt values were visible in the flight payload). A plain in-lambda
+ *  memo (NOT unstable_cache: ~1,700 records would flirt with its 2MB
+ *  serialization ceiling) re-decorates at most once per bucket per instance
+ *  and also moves the ~1,700 decoratePlace calls off cold-start module init
+ *  onto the first request. Same 5-minute bucket trick as
+ *  cachedUpcomingEvents below. */
+let openPlacesMemo: { bucket: number; places: ReturnType<typeof slimPlace>[] } | null = null;
+function openPlaces(now: Date): ReturnType<typeof slimPlace>[] {
+  const bucket = Math.floor(now.getTime() / 300_000);
+  if (openPlacesMemo?.bucket === bucket) return openPlacesMemo.places;
+  const places = publicPlaces().map((p) => slimPlace(p, now));
+  openPlacesMemo = { bucket, places };
+  return places;
+}
+function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date) {
+  const decorated = decoratePlace(p, undefined, now);
   const {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     google_photos: _google_photos,
@@ -84,7 +103,7 @@ const OPEN_PLACES = publicPlaces().map((p) => {
     ...slim
   } = decorated;
   return slim;
-});
+}
 
 export const metadata: Metadata = {
   alternates: { canonical: "/map" },
@@ -443,6 +462,7 @@ async function BrowseMapArea({
     return [lng, lat];
   })();
   const now = new Date();
+  const allPlaces = openPlaces(now);
   const [
     incidents,
     fixit,
@@ -520,7 +540,7 @@ async function BrowseMapArea({
 
   const amenities = dedupeAmenities(
     [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
-    OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
+    allPlaces.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 
   // Community reports ride the amenity layer as OsmPlace-shaped points under
@@ -547,7 +567,7 @@ async function BrowseMapArea({
       ? INTENT_BY_KEY[intentParam as IntentKey]
       : null;
   // First-tier filter: top intent.
-  const intentPlaces = intent ? OPEN_PLACES.filter(intent.match) : OPEN_PLACES;
+  const intentPlaces = intent ? allPlaces.filter(intent.match) : allPlaces;
   // Sub-counts (parent-scoped) — computed BEFORE the sub-filter is
   // applied so each sub-chip shows the population reachable from the
   // current parent state. Users see "Pizza · 12" and don't tap into

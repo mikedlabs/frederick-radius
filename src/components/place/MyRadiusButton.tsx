@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { useIsFollowed, useToggleFollow, useFollowedSlugs } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -29,10 +28,13 @@ import { toast } from "sonner";
  *
  * Auth flow:
  *   - Signed in: tap → optimistic DB write via useToggleFollow.
- *   - Signed out: tap → router push to /auth/login?next=<current> so
- *     the user lands back where they started after signing in. The
- *     pending follow gets applied on return via a small ?follow=<slug>
- *     param the place page handles.
+ *   - Signed out: tap → saves to THIS DEVICE immediately (same silent
+ *     localStorage path as the sheet's icon SaveButton), and the toast
+ *     carries a quiet "sign in to keep it across devices" line. This CTA
+ *     used to redirect anonymous users to /auth/login instead of saving —
+ *     the app's most prominent save button punished the tap the icon
+ *     version rewarded, and cost an /api/auth/me round trip besides. A
+ *     save must never be a login wall; sync is the upsell, not the toll.
  *
  * Visual register:
  *   - Default: brand-filled pill (the call to action stands out).
@@ -47,9 +49,9 @@ export default function MyRadiusButton({
   slug: string;
   name: string;
 }) {
-  const router = useRouter();
   const mounted = useMounted();
   const isFollowed = useIsFollowed(slug);
+  const { authed } = useFollowedSlugs();
   const toggle = useToggleFollow(slug, "place_detail");
   const [busy, setBusy] = useState(false);
   const [hover, setHover] = useState(false);
@@ -78,28 +80,15 @@ export default function MyRadiusButton({
     if (busy) return;
     setBusy(true);
     try {
-      // Detect authed-ness by trying the optimistic toggle. If the
-      // hook returns "anonymous", we redirect to sign-in instead of
-      // committing the follow to localStorage (the localStorage path
-      // is fine, but on the prominent place-detail CTA we want to
-      // promote sign-in for cross-device persistence). The icon-only
-      // SaveButton still uses the localStorage path silently.
-      const r = await fetch("/api/auth/me", { cache: "no-store" });
-      const auth: { user: { id: string } | null } = await r.json();
-      if (!auth.user) {
-        // Build the post-login destination with proper query handling
-        // — concatenating "?follow=" would have stomped any existing
-        // query string. URLSearchParams gets it right.
-        const url = new URL(window.location.href);
-        url.searchParams.set("follow", slug);
-        const safeNext = `${url.pathname}${url.search}`;
-        router.push(`/auth/login?next=${encodeURIComponent(safeNext)}`);
-        return;
-      }
+      // One code path with the sheet's SaveButton: the toggle itself is
+      // auth-aware (localStorage when anonymous, optimistic DB write when
+      // signed in), so the tap always succeeds instantly. Anonymous saves
+      // get a quiet sync upsell in the toast, never a login detour.
       const nowFollowed = await toggle();
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
         toast.success(`Saved · ${name}`, {
+          description: authed ? undefined : "On this device. Sign in to keep saves everywhere.",
           action: { label: "Undo", onClick: () => void toggle() },
         });
       } else {

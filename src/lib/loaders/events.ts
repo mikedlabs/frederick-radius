@@ -419,48 +419,12 @@ export function isCivicEvent(e: Pick<Event, "category">): boolean {
   return isCivic(e);
 }
 
-export function formatEventWhen(e: Event): string {
-  const start = new Date(e.starts_at);
-  const end = new Date(e.ends_at);
-  const sameDay = start.toDateString() === end.toDateString();
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const timeFmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  if (sameDay) {
-    return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;
-  }
-  return `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
-}
-
-export function eventDateBlock(e: Event): { weekday: string; day: string; month: string; time: string } {
-  const start = new Date(e.starts_at);
-  const tz = "America/New_York";
-  return {
-    weekday: new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(start),
-    day: new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "numeric" }).format(start),
-    month: new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short" }).format(start).toUpperCase(),
-    // All-day rows carry no real clock — a formatted starts_at would print a
-    // bogus "12:00 AM" (the guards downstream only test truthiness, so they
-    // never caught it). Surface "All day" so every card variant reads right.
-    time: e.is_all_day
-      ? "All day"
-      : new Intl.DateTimeFormat("en-US", {
-          timeZone: tz,
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        }).format(start),
-  };
-}
+// Pure date formatters moved to src/lib/events/format.ts (data-free) so
+// client components can import them WITHOUT dragging this module's
+// places-client static import into their bundle (the 1.8 MB /events chunk
+// leak). Re-exported here so existing SERVER callers are untouched — client
+// components must import from "@/lib/events/format" directly.
+export { formatEventWhen, eventDateBlock } from "@/lib/events/format";
 
 export type TownEvents = {
   municipality: Municipality;

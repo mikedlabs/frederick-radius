@@ -4,7 +4,10 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import IconStamp from "@/components/ui/IconStamp";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventDateBlock } from "@/lib/loaders/events";
+// VALUE import from the DATA-FREE formatter module, never from the loader:
+// a value import of loaders/events would drag its places-client static
+// import (1.8MB JSON) into every client bundle that renders an event card.
+import { eventDateBlock } from "@/lib/events/format";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";

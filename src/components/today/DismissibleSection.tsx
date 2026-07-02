@@ -1,18 +1,17 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowRight, EyeOff } from "lucide-react";
-import { useMounted } from "@/hooks/useSaved";
-import { useIsHidden, useHide } from "@/hooks/useHiddenSections";
+import { ArrowRight } from "lucide-react";
 
 /**
- * A Today section the user can hide. Server-rendered children are
- * passed through, so the data work stays on the server; only the hide
- * affordance and the visibility decision are client side.
+ * A framed Today section with the field-guide plate header.
  *
- * Before mount it renders fully (no hydration flash, and the content is
- * always present for crawlers). After mount, a hidden section collapses
- * to nothing; HiddenSectionsBar offers a one tap restore.
+ * The "Hide" affordance this component used to carry was retired: its
+ * restore surface (HiddenSectionsBar) had already been removed from /today,
+ * so one accidental tap — the button sat right next to "See all" — hid the
+ * page's headline section PERMANENTLY on that device with no way back. With
+ * /today down to a single dismissible section, the hide feature was all trap
+ * and no value. The stored hidden state is deliberately ignored now, so
+ * anyone previously trapped gets the section back. (`id` is kept for section
+ * anchors/analytics continuity.)
  */
 export default function DismissibleSection({
   id,
@@ -37,12 +36,7 @@ export default function DismissibleSection({
   plateNo?: string;
   children: React.ReactNode;
 }) {
-  const mounted = useMounted();
-  const hidden = useIsHidden(id);
-  const hide = useHide(id);
-
-  if (mounted && hidden) return null;
-
+  void id;
   return (
     <section
       className={`relative rounded-[var(--app-radius-lg)] border p-4${eyebrow || plateNo ? " fg-plate" : ""}`}
@@ -81,16 +75,6 @@ export default function DismissibleSection({
                     {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                   </Link>
                 )}
-                <button
-                  type="button"
-                  onClick={hide}
-                  aria-label={`Hide ${title}`}
-                  className="inline-flex items-center gap-1 text-xs font-medium tracking-tight transition-colors"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  <EyeOff className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  Hide
-                </button>
               </div>
             </div>
             <div className="mt-2.5 flex items-center gap-2">
@@ -113,16 +97,6 @@ export default function DismissibleSection({
                   {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                 </Link>
               )}
-              <button
-                type="button"
-                onClick={hide}
-                aria-label={`Hide ${title}`}
-                className="inline-flex items-center gap-1 text-xs font-medium tracking-tight transition-colors"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                <EyeOff className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                Hide
-              </button>
             </div>
           </>
         )}

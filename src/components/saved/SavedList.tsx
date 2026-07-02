@@ -3,7 +3,8 @@
 import { stampEventProvenance } from "@/lib/provenance";
 import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
-import { useSavedList, useMounted } from "@/hooks/useSaved";
+import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
+import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
 import { useAllSavedTags } from "@/hooks/useSavedTags";
@@ -94,6 +95,26 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
 export default function SavedList() {
   const mounted = useMounted();
   const items = useSavedList();
+  // ── Split-store fix (experience review, save-loop finding #1). Signed-in
+  // saves are written to the DB (useToggleFollow) while `items` is
+  // localStorage-only, so this page silently omitted DB follows: save on the
+  // place page, open Saved, gone (and a second device showed nothing). Every
+  // OTHER consumer (AppMap, FromYourSaved, PlanBuilder) already reads the
+  // auth-aware truth via useFollowedSlugs — merge it here too. When signed in
+  // and hydrated, DB membership WINS (an unfollow on another device removes
+  // the card here); saved_at keeps the local ref's stamp when we have it,
+  // else epoch (sorts oldest under "Recent": honest, we don't know when).
+  // While hydrating, and for anonymous users, local refs pass through
+  // untouched. Events and radii stay device-local by contract.
+  const { slugs: followedSlugs, loading: followsLoading, authed: followsAuthed } = useFollowedSlugs();
+  const placeRefsAll = useMemo<SavedRef[]>(() => {
+    const local = items.filter((i) => i.type === "place");
+    if (!followsAuthed || followsLoading) return local;
+    const bySlug = new Map(local.map((i) => [i.id, i]));
+    return [...followedSlugs].map(
+      (slug) => bySlug.get(slug) ?? { type: "place" as const, id: slug, saved_at: "1970-01-01T00:00:00.000Z" },
+    );
+  }, [items, followedSlugs, followsAuthed, followsLoading]);
   // Soft signal — slugs the user has opened (PlaceSheet) but maybe
   // never bookmarked. Filtered to slugs still in the client place
   // index and to ones not already in the explicit Saved set so the
@@ -118,7 +139,7 @@ export default function SavedList() {
   // identity check is reference-stable across renders.
   const { slugsToFetch, slugsKey } = useMemo(() => {
     const set = new Set<string>();
-    for (const i of items) if (i.type === "place") set.add(i.id);
+    for (const i of placeRefsAll) set.add(i.id);
     for (const s of recentSlugs) set.add(s);
     // Noted places too — a note can exist on a place the user never bookmarked,
     // and its card must still resolve for the Notes section.
@@ -128,7 +149,7 @@ export default function SavedList() {
     for (const s of beenSlugs) set.add(s);
     const slugsToFetch = Array.from(set);
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
-  }, [items, recentSlugs, notes, beenSlugs]);
+  }, [placeRefsAll, recentSlugs, notes, beenSlugs]);
 
   // null = not yet fetched (or pre-mount); empty Map = fetched with no
   // matches. Distinguishing the two lets the render gate show a
@@ -265,8 +286,7 @@ export default function SavedList() {
   // the sort/list filter below — this is always "what of mine is live now".
   const liveNowPlaces = useMemo<PlaceCardData[]>(() => {
     if (!placesBySlug) return [];
-    const open = items
-      .filter((i) => i.type === "place")
+    const open = placeRefsAll
       .map((i) => placesBySlug.get(i.id))
       .filter((p): p is PlaceCardData => p !== undefined && isOpenNow(p.open_status));
     return open.sort((a, b) => {
@@ -274,17 +294,16 @@ export default function SavedList() {
       const cb = b.open_status.state === "open" || b.open_status.state === "closing-soon" ? b.open_status.closesAt ?? "99:99" : "99:99";
       return ca.localeCompare(cb);
     });
-  }, [items, placesBySlug]);
+  }, [placeRefsAll, placesBySlug]);
 
   // Distinct personal lists across SAVED places, with counts, for the filter row.
   const availableLists = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const i of items) {
-      if (i.type !== "place") continue;
+    for (const i of placeRefsAll) {
       for (const t of savedTags[i.id] ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [items, savedTags]);
+  }, [placeRefsAll, savedTags]);
 
   // Derive the EFFECTIVE filter during render (not via a state-resetting effect):
   // if the selected label no longer exists (its last place was unlabeled or
@@ -304,8 +323,7 @@ export default function SavedList() {
     }
     // Build (ref, place) tuples so we can sort by saved_at when the
     // user picks "Recent". Other sorts only need the place itself.
-    const placeRefs = items
-      .filter((i) => i.type === "place")
+    const placeRefs = placeRefsAll
       .map((i) => ({ ref: i, place: placesBySlug.get(i.id) }))
       .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place));
 
@@ -395,7 +413,7 @@ export default function SavedList() {
     }
 
     return { places, events, byCategory, byTown, townTally };
-  }, [items, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
+  }, [items, placeRefsAll, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
 
   // Saved events happening TODAY — the other half of the actionable lead. The
   // full Events section below keeps the whole saved set; this is just "tonight".
@@ -424,16 +442,16 @@ export default function SavedList() {
   // /radius/shared link. Places only (events are time-bound; a shared list is a
   // "here's my Frederick" recommendation, which is about places).
   const shareUrl = useMemo(() => {
-    const slugs = items.filter((i) => i.type === "place").map((i) => i.id);
+    const slugs = placeRefsAll.map((i) => i.id);
     return slugs.length > 0 ? `/radius/shared?p=${slugs.map(encodeURIComponent).join(",")}` : null;
-  }, [items]);
+  }, [placeRefsAll]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
   // index. Capped to 6 so the row stays scannable.
   const savedSlugs = useMemo(
-    () => new Set(items.filter((i) => i.type === "place").map((i) => i.id)),
-    [items],
+    () => new Set(placeRefsAll.map((i) => i.id)),
+    [placeRefsAll],
   );
   const recentPlaces = useMemo<PlaceCardData[]>(() => {
     if (!placesBySlug || !recentSlugs.length) return [];
@@ -466,7 +484,7 @@ export default function SavedList() {
   // Notes OR visited places alone are enough to skip the blank-journal empty
   // state — a user can annotate or mark "been here" without bookmarking.
   // (placesBySlug is resolved by here, so both lists are final — no flash.)
-  if (items.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) return <EmptyState />;
+  if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) return <EmptyState />;
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]

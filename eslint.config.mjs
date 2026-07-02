@@ -49,6 +49,41 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Bundle-leak guard: client components must never VALUE-import the big
+  // data loaders. loaders/places statically imports the ~12MB enrichment;
+  // loaders/events and loaders/places-client statically import the 1.8MB
+  // places-client.json. One value import from a "use client" file inlines
+  // that data into the client bundle (the EventCard/eventDateBlock leak,
+  // caught at 1.8MB on live /events). Type-only imports are erased at build
+  // and stay allowed; pure helpers live in data-free modules (e.g.
+  // lib/events/format). Server files under src/app are unaffected.
+  {
+    files: ["src/components/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/loaders/events",
+              message: "Client components: import types only (import type {...}); values from @/lib/events/format. A value import drags places-client.json (1.8MB) into the bundle.",
+              allowTypeImports: true,
+            },
+            {
+              name: "@/lib/loaders/places",
+              message: "Client components: import types only. A value import drags the ~12MB enrichment into the bundle (see AppMap.tsx).",
+              allowTypeImports: true,
+            },
+            {
+              name: "@/lib/loaders/places-client",
+              message: "Client components: use the dynamic-import hook (useClientPlaces) so the 1.8MB dataset loads as a cached lazy chunk, not the main bundle.",
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Star, Martini } from "lucide-react";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour, type HHWindow } from "@/lib/happyHour";

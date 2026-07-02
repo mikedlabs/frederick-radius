@@ -20,7 +20,7 @@ import { useMounted } from "@/hooks/useSaved";
 // line costs zero bytes in the client bundle.
 import type { NearbyContext } from "@/lib/connect";
 import { formatDistance } from "@/lib/geo";
-import { formatEventWhen } from "@/lib/loaders/events";
+import { formatEventWhen } from "@/lib/events/format"; // data-free module — see EventCard note
 import PlaceCard from "@/components/place/PlaceCard";
 import LiveDot from "@/components/ui/LiveDot";
 import { haptic } from "@/lib/haptics";

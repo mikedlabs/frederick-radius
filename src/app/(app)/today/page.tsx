@@ -47,7 +47,7 @@ import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, pickLeadEvent } from "@/lib/events/lead-rank";
 import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { isEventToday } from "@/lib/eventWhenLabel";
+import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
@@ -118,35 +118,29 @@ export const metadata: Metadata = {
 // answer. The filter logic moved into RightNowStrip's NIGHT_OUT_CATS.)
 const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
 
-/** Pick the next photo-backed marquee event for the hero card.
- *  Photo-led entries (Alive @ Five, Sky Stage) outrank text-only
- *  rows so the feature card always has imagery to carry — AND
- *  exclude administrative/private-sounding rows (board meetings,
- *  rehearsal dinners, prenatal classes) so the hero never carries
- *  a clinical entry.
+/** Tonight's marquee event: the best still-catchable DRAW happening TODAY.
  *
- *  Window-bounded to the next 72 hours. The old version had no upper
- *  bound, which is how an event two months out kept landing as the
- *  /today hero — a page that promises "today" shouldn't lead with
- *  something the user can't physically attend for weeks. If nothing
- *  photo-backed AND non-administrative is happening in the next 3
- *  days, we'd rather show no hero than lie about freshness. */
-const FEATURED_EVENT_WINDOW_HOURS = 72;
-function pickFeaturedEvent(now: Date, pool: EventWithMeta[]) {
-  const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
-  // `pool` is the unified public set (curated + live feeds), already
-  // venue-thumb-decorated and isPublicEvent-filtered by the shared
-  // loader. The NON_PUBLIC_EVENT regex stays as belt-and-braces.
-  const upcoming = pool.filter(
+ *  History: this picker used to lead-rank a 72-hour pool, and its callers then
+ *  nulled the result unless the winner started today — so whenever the ranked
+ *  winner was a photo-backed Thursday event, the masthead showed NOTHING on a
+ *  night with a live game downtown (the 7:55 PM audit render). It now filters
+ *  FIRST — today's Eastern day, not yet ended, non-administrative — and
+ *  lead-ranks inside that pool, so the hero is alive on exactly the nights it
+ *  matters and can never carry an event the user already missed. If nothing
+ *  qualifies, no hero: honest beats padded.
+ */
+function pickTonightEvent(now: Date, pool: EventWithMeta[]) {
+  const tonight = pool.filter(
     (e) =>
-      !NON_PUBLIC_EVENT.test(e.title ?? "") &&
-      Date.parse(e.starts_at) <= windowEnd,
+      isEventToday(e.starts_at, now) &&
+      !isEventEnded(e, now) &&
+      !NON_PUBLIC_EVENT.test(e.title ?? ""),
   );
   // Lead-rank, not raw chronology: a photo-led draw, then any real draw, then a
   // routine recurring program (storytime/class) last — so the cron-ingested
-  // library calendar (PR #894) can't put a 10am storytime in the hero ahead of
+  // library calendar (PR #894) can't put a storytime in the hero ahead of
   // tonight's carnival or concert.
-  return pickLeadEvent(upcoming);
+  return pickLeadEvent(tonight);
 }
 
 // /today is time-sensitive, but force-dynamic made every visit pay the
@@ -547,14 +541,14 @@ type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 /** Masthead teaser: tonight's featured event, today-only. */
 async function TonightTeaser({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
   const { publicEvents } = await eventsPromise;
-  const featuredEvent = pickFeaturedEvent(now, publicEvents);
+  // Today-only AND not-yet-ended: the picker itself enforces the masthead's
+  // "next 24 hours" contract, so no post-hoc nulling that could blank the
+  // hero while something is live downtown.
+  const featuredEvent = pickTonightEvent(now, publicEvents);
   return (
     <TodayCard
       tonightEvent={
-        // Today-only: the hero teaser shows tonight's event, never tomorrow's —
-        // /today is the next 24 hours, so a "Tomorrow: …" line has no place in
-        // the masthead.
-        featuredEvent && isEventToday(featuredEvent.starts_at, now)
+        featuredEvent
           ? {
               slug: featuredEvent.slug,
               title: featuredEvent.title,
@@ -597,12 +591,21 @@ async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromi
  *  sink to the end; civic/utility business shows quietly as "Also today". */
 async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
   const { publicEvents } = await eventsPromise;
-  const featuredEvent = pickFeaturedEvent(now, publicEvents);
   const todayAll = publicEvents
     .filter((e) => isEventToday(e.starts_at, now))
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
-  const todaysCivic = todayAll.filter((e) => isUtilityEvent(e));
+  // Time-honesty partition (the 7:55 PM audit render led with six ENDED 2-4 PM
+  // library crafts while a live Keys game sat ninth): the rail carries only
+  // what's live or still ahead; finished draws demote to a quiet "Earlier
+  // today" line list, and finished civic rows drop entirely (a meeting that
+  // ended has no evening value). Grouping stays by start-day; the floor is
+  // isEventEnded's real end time.
+  const ended = todayAll.filter((e) => isEventEnded(e, now));
+  const ahead = todayAll.filter((e) => !isEventEnded(e, now));
+  const todaysEvents = ahead.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
+  const todaysCivic = ahead.filter((e) => isUtilityEvent(e));
+  const earlierToday = ended.filter((e) => !isUtilityEvent(e));
+  const featuredEvent = pickTonightEvent(now, publicEvents);
   const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
   const upcomingRest = showHero
     ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
@@ -618,7 +621,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         eyebrow="What's on"
         plateNo="Pl. I"
       >
-        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
+        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 ? (
           <div className="space-y-3">
             {showHero && featuredEvent && (
               <EventCard event={featuredEvent} variant="feature" />
@@ -643,6 +646,22 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 </p>
                 <ul>
                   {todaysCivic.map((e) => (
+                    <li key={`${e.slug}-${e.starts_at}`}>
+                      <EventCard event={e} variant="utility" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Finished draws, demoted to quiet one-liners: still the honest
+                record of the day, never ranked over what's still catchable. */}
+            {earlierToday.length > 0 && (
+              <div className="space-y-1">
+                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                  Earlier today
+                </p>
+                <ul>
+                  {earlierToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" />
                     </li>
