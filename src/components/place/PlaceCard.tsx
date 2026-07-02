@@ -72,7 +72,7 @@ const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string;
   near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
   verified: { color: "var(--app-brand-2)",  tint: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", edge: "color-mix(in srgb, var(--app-brand-2) 26%, transparent)" },
   free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
-  rated:    { color: "var(--app-accent)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
+  rated:    { color: "var(--app-accent-press)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
   neutral:  { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
 };
 

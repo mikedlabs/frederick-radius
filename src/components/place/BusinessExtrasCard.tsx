@@ -73,7 +73,7 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
         )}
         {notable && (
           <Row
-            icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-accent)" }} />}
+            icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-accent-press)" }} />}
             label="Notable"
             value={notable}
           />
