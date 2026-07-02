@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/track";
+
 import { useCallback, useEffect, useState } from "react";
 import { Bell, BellOff, Check, AlertCircle, Send, Share, Plus } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
@@ -138,6 +140,7 @@ export default function NotificationsCard() {
       }
       setSubscription(sub);
       setSupport("subscribed");
+      track("push_optin");
       flash("Notifications on.");
     } finally {
       setBusy(false);

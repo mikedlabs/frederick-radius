@@ -82,6 +82,18 @@ export function isSameOriginRequest(req: Request): boolean {
  * The first call sets the key with TTL=window; subsequent calls in
  * the same window just INCR. When the value exceeds `max`, return true.
  */
+
+let kvWarned = false;
+function warnKvUnconfiguredOnce(): void {
+  if (kvWarned) return;
+  kvWarned = true;
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      "[rate-limit] KV_REST_API_URL/KV_REST_API_TOKEN not set: isRateLimited is a NO-OP and every API route is unmetered.",
+    );
+  }
+}
+
 export async function isRateLimited(
   req: Request,
   bucket: string,
@@ -90,7 +102,15 @@ export async function isRateLimited(
 ): Promise<boolean> {
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return false; // KV not configured — no-op
+  if (!url || !token) {
+    // KV not configured — the limiter is a silent pass-through. In production
+    // that means paid upstreams (Google photos, Mapbox isochrone/travel-time,
+    // the LLM behind /api/ask) are effectively UNMETERED, a failure mode the
+    // owner only discovers on the monthly invoice. Say so once per instance,
+    // loudly enough for Vercel logs, quietly enough not to spam.
+    warnKvUnconfiguredOnce();
+    return false;
+  }
 
   const ip = clientIp(req);
   if (!ip) return false; // no IP to bucket against — let it through

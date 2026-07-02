@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/track";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
@@ -431,7 +433,10 @@ export default function SearchOverlay({
                           <li key={r.id} role="option" aria-selected={active} data-idx={idx}>
                             <Link
                               href={r.href}
-                              onClick={onClose}
+                              onClick={() => {
+                                track("search_pick", { type: r.type });
+                                onClose();
+                              }}
                               onMouseEnter={() => setActiveIdx(idx)}
                               className="flex items-start gap-3 px-4 py-2.5 outline-none"
                               style={{

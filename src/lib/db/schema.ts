@@ -303,6 +303,26 @@ export const push_subscriptions = pgTable(
  * that has push consent. RLS deny-all like every other table; only the
  * BYPASSRLS server role touches it.
  */
+/**
+ * beta_emails — the owned launch-announcement list (experience review, blind
+ * spot #5: everyone who ever tried the beta was unreachable; launch day had no
+ * channel). One optional field on /beta, nothing else — email + where it came
+ * from. RLS deny-all like every table (server role only). Deleting a row is
+ * the entire unsubscribe story until a real ESP is chosen.
+ */
+export const beta_emails = pgTable(
+  "beta_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    source: text("source").notNull().default("beta_page"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    emailUq: uniqueIndex("beta_emails_email_uq").on(t.email),
+  }),
+);
+
 export const saved_events = pgTable(
   "saved_events",
   {

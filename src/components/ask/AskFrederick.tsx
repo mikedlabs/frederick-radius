@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/track";
+
 import { useState } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowUp, MapPin } from "lucide-react";
@@ -27,6 +29,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
     setRes(null);
     haptic("light");
     try {
+      track("ask_submit");
       const r = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },

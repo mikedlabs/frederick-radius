@@ -74,11 +74,28 @@ async function expectedBetaToken(pw: string): Promise<string> {
  *  setting or changing it in Vercel requires a FRESH build (a new commit, or a
  *  Redeploy with "Use existing Build Cache" UNCHECKED). A cache-reusing redeploy
  *  keeps the old bundle and the gate stays off. */
+/** Link-preview / unfurl bots that may pass the beta wall READ-ONLY.
+ *
+ *  The wall 307s every scraper to /beta, so every place or event link a beta
+ *  tester texts or posts renders the generic "private beta" card — the built
+ *  /api/og cards (place, event, muni, story) are unreachable, muting word of
+ *  mouth during exactly the highest-enthusiasm window. These UAs fetch a page
+ *  once to render its preview; they are not indexers (Googlebot is NOT here,
+ *  and /beta stays noindex), and the wall is a soft velvet rope, not auth —
+ *  nothing behind it is sensitive. Substring match on the UA, GETs only.
+ */
+const PREVIEW_BOT_UA =
+  /facebookexternalhit|twitterbot|slackbot|linkedinbot|discordbot|whatsapp|telegrambot|applebot(?!-extended)|pinterestbot|skypeuripreview/i;
+
 async function betaGate(req: NextRequest): Promise<NextResponse | null> {
   const pw = process.env.BETA_PASSWORD;
   if (!pw) return null; // gate disabled: site is public
   const { pathname } = req.nextUrl;
   if (isBetaExempt(pathname)) return null;
+  // Unfurl bots see the real page so shared links carry real previews.
+  if (req.method === "GET" && PREVIEW_BOT_UA.test(req.headers.get("user-agent") ?? "")) {
+    return null;
+  }
   const cookie = req.cookies.get(BETA_COOKIE)?.value;
   if (cookie && cookie === (await expectedBetaToken(pw))) return null; // unlocked
   const url = new URL("/beta", req.url);

@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/track";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -163,6 +165,7 @@ export default function ReportClient({
         return;
       }
       const d = (await res.json()) as { status?: string; queued?: boolean };
+      track("report_submit", { category, queued: Boolean(d.queued) });
       setStatus(
         d.queued
           ? { tone: "ok", text: "Thanks. Sent for review; it'll appear once approved." }
