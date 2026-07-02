@@ -58,6 +58,8 @@ import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import MarkSheet from "./MarkSheet";
+import { Plus } from "lucide-react";
 import { CLUSTER_FAMILIES } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
@@ -429,6 +431,14 @@ export default function AppMap({
   const [clusterList, setClusterList] = useState<
     { slug: string; name: string; category: string; closing: boolean }[] | null
   >(null);
+  // ── MARK MODE (MAP_AUDIT Slice 3, owner ask 2026-07-02): mark a spot ON
+  // this map, no navigate-away. The FAB toggles the mode; a crosshair holds
+  // the center (pan the map UNDER it — no tap-vs-pan gesture fight); the
+  // MarkSheet floats at the bottom, non-modal, map stays pannable. Success
+  // drops an optimistic marker so the mark is visibly ON the map instantly
+  // (the real reports layer picks it up after review/revalidate).
+  const [markMode, setMarkMode] = useState(false);
+  const [freshMarks, setFreshMarks] = useState<{ lng: number; lat: number; queued: boolean }[]>([]);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
@@ -2407,9 +2417,90 @@ export default function AppMap({
             </Popup>
           )}
 
+          {/* Just-marked spots — instant, optimistic. Amber = awaiting review,
+              brand = published (trusted submitter). The durable community-
+              reports layer takes over on the next server pass. */}
+          {freshMarks.map((m, i) => (
+            <Marker key={`fresh-${i}`} longitude={m.lng} latitude={m.lat} anchor="bottom">
+              <div
+                className="grid h-7 w-7 place-items-center rounded-full border-2 text-white shadow-md"
+                style={{ background: m.queued ? "var(--app-warning)" : "var(--app-brand)", borderColor: "#fff" }}
+                title={m.queued ? "Marked, awaiting review" : "Marked"}
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={3} />
+              </div>
+            </Marker>
+          ))}
           <NavigationControl position="bottom-right" showCompass={false} />
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
+
+        {/* ── Mark mode overlays ─────────────────────────────────── */}
+        {markMode && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-[var(--z-map-control)] grid place-items-center">
+            {/* Crosshair — same center-pin pattern as /report. */}
+            <div className="relative -mt-6">
+              <div
+                className="grid h-10 w-10 place-items-center rounded-full border-2"
+                style={{ borderColor: "var(--app-brand)", background: "color-mix(in srgb, var(--app-brand) 10%, transparent)" }}
+              >
+                <Plus className="h-4 w-4" strokeWidth={3} style={{ color: "var(--app-brand)" }} />
+              </div>
+              <div className="mx-auto h-5 w-0.5" style={{ background: "var(--app-brand)" }} />
+              <div className="mx-auto -mt-0.5 h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+            </div>
+          </div>
+        )}
+        {markMode && (
+          <div
+            className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] px-3"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 8px)" }}
+          >
+            <div className="mx-auto max-w-md">
+              <MarkSheet
+                getCenter={() => {
+                  const c = mapRef.current?.getMap().getCenter();
+                  return c ? { lng: c.lng, lat: c.lat } : null;
+                }}
+                inCounty={isInFrederickCounty}
+                onClose={() => setMarkMode(false)}
+                onPlaced={(spot) => {
+                  setFreshMarks((cur) => [...cur, spot]);
+                  setMarkMode(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {/* The Mark FAB — inside the map so it can TOGGLE mark mode instead of
+            navigating away (browse map only; Saved/radius embeds skip it). */}
+        {fullBleed && !markMode && (
+          <div
+            className="pointer-events-none absolute left-0 z-[var(--z-map-control)] px-3 lg:px-4"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px))" }}
+          >
+            <button
+              type="button"
+              onClick={() => { haptic("light"); setSelectedSlug(null); setClusterList(null); setMarkMode(true); }}
+              aria-label="Mark a spot: a hazard, condition, tip, or note, right here on the map"
+              className="tap-44 pointer-events-auto inline-flex items-center gap-2 rounded-full border py-2 pl-2 pr-3.5 text-[13px] font-semibold transition active:scale-[0.97]"
+              style={{
+                background: "var(--app-bg-elevated-solid)",
+                borderColor: "var(--app-border)",
+                color: "var(--app-ink)",
+                boxShadow: "0 8px 22px -8px rgba(20,20,18,0.28), var(--app-edge), var(--app-hi)",
+              }}
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-full text-white" style={{ background: "var(--app-brand)" }} aria-hidden>
+                <Plus className="h-4 w-4" strokeWidth={2.75} />
+              </span>
+              Mark a spot
+            </button>
+          </div>
+        )}
+        {/* Fresh marks — the just-submitted spot, visible immediately. Amber
+            ring while it awaits review; the durable reports layer replaces it
+            on the next data pass. */}
 
         {/* Cluster index — "what's in this bubble", as a field-guide index
             page. Tapping a row focuses the pin + opens its sheet; the drawer
