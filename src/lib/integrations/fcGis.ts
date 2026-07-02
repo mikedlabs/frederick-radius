@@ -14,6 +14,15 @@
  * graceful empty on any failure, no key, nothing fabricated.
  */
 import { EMPTY_LINE_FC, type MapLineFC } from "@/components/map/types";
+import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+
+// Display-slimming for the boundary overlays (payload audit 2026-07-02:
+// raw county GIS shipped 439 KB of 17-digit coordinates into /map's HTML).
+// 5 decimals ≈ 1.1 m; 0.0002° ≈ 22 m tolerance — both invisible under a
+// hairline boundary stroke at county zoom. Applied in the GETTERS, not the
+// pure normalizers, so the normalizer unit tests keep asserting source
+// fidelity.
+const BOUNDARY_SLIM = { decimals: 5, tolerance: 0.0002 } as const;
 
 const MUNI_URL =
   "https://fcgis.frederickcountymd.gov/server_pub/rest/services/Basemap/Municipalities/MapServer/0/query" +
@@ -56,7 +65,7 @@ export async function getMunicipalBoundaries(): Promise<MapLineFC> {
       next: { revalidate: 604_800 },
     });
     if (!res.ok) return EMPTY_LINE_FC;
-    return normalizeMunicipalBoundaries(await res.json());
+    return slimGeometryFC(normalizeMunicipalBoundaries(await res.json()), BOUNDARY_SLIM);
   } catch {
     return EMPTY_LINE_FC;
   } finally {
@@ -83,7 +92,7 @@ export async function getCountyBoundary(): Promise<MapLineFC> {
       join(process.cwd(), "public", "overlays", "county-boundary.geojson"),
       "utf-8",
     );
-    return JSON.parse(raw) as MapLineFC;
+    return slimGeometryFC(JSON.parse(raw) as MapLineFC, BOUNDARY_SLIM);
   } catch {
     return EMPTY_LINE_FC;
   }

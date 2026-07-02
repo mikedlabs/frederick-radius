@@ -26,6 +26,7 @@ import { AMENITY_GROUPS } from "@/components/map/constants";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import MapModeToggle from "@/components/map/MapModeToggle";
+import MapWarmup from "@/components/map/MapWarmup";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
@@ -105,8 +106,12 @@ function slimPlace(p: Parameters<typeof decoratePlace>[0], now: Date): MapPinPla
     field_notes: d.field_notes,
     deal_hook: d.deal_hook,
     source: d.source,
-    google_place_id: d.google_place_id,
-    feature_score: d.feature_score,
+    // google_place_id + feature_score deliberately NOT shipped (~107 KB
+    // across 1,627 pins). Their only client read is AppMap's DedupeRecord
+    // for the OSM-vs-curated check, where they can never fire: isSamePlace's
+    // id-equality branch needs BOTH sides to carry a Google id and OSM
+    // records never do. The type keeps them optional so full PlaceCardData
+    // records (SavedList, radius) still satisfy MapPinPlace structurally.
     municipality: d.municipality,
     short_blurb: d.short_blurb,
     primary_type: d.primary_type,
@@ -384,6 +389,9 @@ export default async function MapPage({
   return (
     <div className="relative -mx-4 -mt-4 lg:ml-0">
       <h1 className="sr-only">Frederick County map</h1>
+      {/* Warm the mapbox-gl chunk from the shell, in parallel with the
+          streamed data fetch below — see MapWarmup. */}
+      <MapWarmup />
       <Suspense
         fallback={
           <div
@@ -408,14 +416,10 @@ export default async function MapPage({
           <MapModeToggle mode="browse" />
         </div>
       </div>
-      {/* Contextual "Mark a spot" FAB — the community-report action, moved here
-          from the primary nav (marking only makes sense where a spot exists).
-          Floats bottom-LEFT so it never collides with the centered mode toggle
-          (mobile) or the right-gutter toggle (lg); lifted above the nav reserve. */}
-      {/* Mark-a-spot moved INSIDE AppMap (2026-07-02): the FAB now toggles
-          in-map MARK MODE (crosshair + bottom sheet, map stays pannable)
-          instead of navigating away to the /report overlay — the MAP_AUDIT
-          Slice-3 flow, finally. /report stays as the noindex full tool. */}
+      {/* Mark-a-spot left the map entirely (owner call 2026-07-02): the FAB
+          and in-map mark mode read as overlay clutter. Marking lives at
+          /report (More → "Mark a spot"); submitted reports still render on
+          the map via the community-reports layer. */}
     </div>
   );
 }

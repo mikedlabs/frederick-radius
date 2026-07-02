@@ -144,6 +144,8 @@ export type LineFC = {
   features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
 };
 
+import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+
 export function transitRouteShapesFC(raw: unknown): LineFC {
   const feats = (raw as { features?: Feature[] })?.features;
   const out: LineFC["features"] = [];
@@ -181,7 +183,11 @@ export async function getFrederickTransitRouteShapes(): Promise<LineFC> {
       next: { revalidate: 604800 },
     });
     if (!res.ok) return { type: "FeatureCollection", features: [] };
-    return transitRouteShapesFC(await res.json());
+    // Display-slimming (payload audit 2026-07-02: raw route shapes were
+    // 247 KB of /map HTML). 5 decimals ≈ 1.1 m; 0.00008° ≈ 9 m — routes
+    // follow roads users zoom into, so the tolerance stays tighter than
+    // the boundary overlays'. Applied here, not in the pure normalizer.
+    return slimGeometryFC(transitRouteShapesFC(await res.json()), { decimals: 5, tolerance: 0.00008 });
   } catch {
     return { type: "FeatureCollection", features: [] };
   } finally {

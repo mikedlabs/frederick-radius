@@ -183,6 +183,8 @@ export type TrailLineFC = {
   features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
 };
 
+import { slimGeometryFC } from "@/lib/geo/slim-geometry";
+
 export function trailShapesFC(raw: unknown): TrailLineFC {
   const feats = (raw as { features?: ArcFeature[] })?.features;
   const out: TrailLineFC["features"] = [];
@@ -227,7 +229,10 @@ export async function getFrederickTrailShapes(): Promise<TrailLineFC> {
       next: { revalidate: 604800 },
     });
     if (!res.ok) return { type: "FeatureCollection", features: [] };
-    return trailShapesFC(await res.json());
+    // Display-slimming (payload audit 2026-07-02): same treatment as the
+    // transit shapes — 5-decimal coords, ~9 m tolerance. Trails are drawn,
+    // not measured; applied here so the normalizer test stays source-true.
+    return slimGeometryFC(trailShapesFC(await res.json()), { decimals: 5, tolerance: 0.00008 });
   } catch {
     return { type: "FeatureCollection", features: [] };
   } finally {
