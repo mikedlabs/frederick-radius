@@ -135,7 +135,12 @@ async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; source
 }
 
 async function main() {
-  if (!(await preflightKey())) return;
+  // The key gates only the MODEL-ASSISTED methods (render/fetch/image). The
+  // deterministic Squarespace `feed` venues need no model, so a keyless run
+  // still refreshes them instead of bailing entirely — that global bail is
+  // how the whole snapshot silently expired (data audit P0-1: 25/25 events
+  // stale) when no key was around to re-run it.
+  const hasKey = await preflightKey();
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as VenueEvent[];
@@ -147,6 +152,10 @@ async function main() {
     const hasSource = venue.urls?.length || venue.imageUrl;
     if (!hasSource) {
       console.log(`• ${venue.name}: no source configured — skipped`);
+      continue;
+    }
+    if (!hasKey && methodOf(venue) !== "feed") {
+      console.log(`• ${venue.name} [${methodOf(venue)}]: needs ANTHROPIC_API_KEY — skipped (prior data untouched)`);
       continue;
     }
     console.log(`• ${venue.name} [${methodOf(venue)}]`);

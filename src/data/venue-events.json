@@ -1,307 +1,41 @@
 [
   {
-    "title": "24 and More: RECITAL",
-    "starts_at": "2026-05-30T19:00:00",
-    "description": "Annual recitals celebrating the amazing work of students with a strict limit of 5 tickets per family per show.",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.337Z"
-    }
-  },
-  {
-    "title": "24 and More: RECITAL",
-    "starts_at": "2026-05-31T18:00:00",
-    "description": "Annual recitals celebrating the amazing work of students with a strict limit of 5 tickets per family per show.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.337Z"
-    }
-  },
-  {
-    "title": "AIR SUPPLY – A Matter of Time Tour",
-    "starts_at": "2026-06-03T19:30:00",
-    "description": "Legendary duo Air Supply celebrating a remarkable half century musical partnership.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.337Z"
-    }
-  },
-  {
-    "title": "CAROL ANDERSON",
-    "starts_at": "2026-06-04T19:30:00",
-    "description": "Professor of African American Studies at Emory University speaking as part of the Frederick Speaker Series.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.337Z"
-    }
-  },
-  {
-    "title": "Jackie Venson",
-    "starts_at": "2026-06-04T19:30:00",
-    "description": "A rising force in the modern blues and rock world bringing soul, skill, and electrifying performances.",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Carol Anderson – Meet and Greet",
-    "starts_at": "2026-06-04T21:00:00",
-    "description": "Meet and greet opportunity associated with the Frederick Speaker Series.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Dance Unlimited Acting and Recital Showcase 2026",
-    "starts_at": "2026-06-05T19:00:00",
-    "description": "Annual acting and recital showcases for Dance Unlimited.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Dance Unlimited Acting and Recital Showcase 2026",
-    "starts_at": "2026-06-07T13:00:00",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Dance Unlimited Acting and Recital Showcase 2026",
-    "starts_at": "2026-06-07T18:00:00",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Dance Unlimited Acting and Recital Showcase 2026",
-    "starts_at": "2026-06-08T18:00:00",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "The Age of Innocence (1993)",
-    "starts_at": "2026-06-11T19:30:00",
-    "description": "Visually rich film directed by Martin Scorsese as part of the Classic Film Series.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "TED Democracy Live: FOUNDING FUTURES",
-    "starts_at": "2026-06-13T11:00:00",
-    "description": "Civic-minded exploration of democracy's future as America celebrates its 250th birthday.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "ESP Presents A Spoonful of Rhythm",
-    "starts_at": "2026-06-14T13:00:00",
-    "description": "Annual recitals from Elower-Sicilia Productions of Dance, serving the community since 1969.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "ESP Presents A Spoonful of Rhythm",
-    "starts_at": "2026-06-14T18:00:00",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "ABBAFAB – The Premier ABBA Tribute",
-    "starts_at": "2026-06-14T14:00:00",
-    "description": "Stunning multimedia tribute to the music of ABBA with singing, dancing, and celebration of timeless hits.",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "ABBAFAB – The Premier ABBA Tribute",
-    "starts_at": "2026-06-14T18:00:00",
-    "ticket_url": "https://weinbergcenter.org",
-    "venue_slug": "weinberg-center",
-    "venue_name": "Weinberg Center for the Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/performances/",
-      "fetchedAt": "2026-05-31T18:35:50.338Z"
-    }
-  },
-  {
-    "title": "Jackie Venson",
-    "starts_at": "2026-06-04T19:30:00",
-    "description": "DISCOVERY Series performance.",
-    "price": "SOLD OUT",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/our-venues/new-spire-arts/",
-      "fetchedAt": "2026-05-31T18:36:07.721Z"
-    }
-  },
-  {
-    "title": "TED Democracy Live: FOUNDING FUTURES",
-    "starts_at": "2026-06-13T11:00:00",
-    "ticket_url": "https://www.weinbergcenter.org",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/our-venues/new-spire-arts/",
-      "fetchedAt": "2026-05-31T18:36:07.721Z"
-    }
-  },
-  {
-    "title": "ABBAFAB – The Premier ABBA Tribute",
-    "starts_at": "2026-06-14T14:00:00",
-    "ticket_url": "https://www.weinbergcenter.org",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/our-venues/new-spire-arts/",
-      "fetchedAt": "2026-05-31T18:36:07.721Z"
-    }
-  },
-  {
-    "title": "ABBAFAB – The Premier ABBA Tribute",
-    "starts_at": "2026-06-14T18:00:00",
-    "ticket_url": "https://www.weinbergcenter.org",
-    "venue_slug": "new-spire",
-    "venue_name": "New Spire Arts",
-    "category": "theater",
-    "source": {
-      "url": "https://weinbergcenter.org/our-venues/new-spire-arts/",
-      "fetchedAt": "2026-05-31T18:36:07.721Z"
-    }
-  },
-  {
-    "title": "Jason Hannan",
-    "starts_at": "2026-06-04",
-    "venue_slug": "bentztown",
-    "venue_name": "Bentztown",
+    "title": "Hannah Ponce",
+    "starts_at": "2026-07-04T01:00:00.158Z",
+    "ends_at": "2026-07-04T03:55:00.158Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/event-two-6gh4l",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
     "category": "music",
     "source": {
-      "url": "https://www.bandsintown.com/v/10444653-bentztown",
-      "fetchedAt": "2026-05-31T18:37:08.989Z"
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-07-02T13:39:52.837Z"
     }
   },
   {
-    "title": "Jason Hannan",
-    "starts_at": "2026-06-11",
-    "venue_slug": "bentztown",
-    "venue_name": "Bentztown",
+    "title": "Girls Night",
+    "starts_at": "2026-07-16T22:00:00.557Z",
+    "ends_at": "2026-07-17T01:00:00.557Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/girls-night-1",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
     "category": "music",
     "source": {
-      "url": "https://www.bandsintown.com/v/10444653-bentztown",
-      "fetchedAt": "2026-05-31T18:37:08.989Z"
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-07-02T13:39:52.837Z"
     }
   },
   {
-    "title": "Jason Hannan",
-    "starts_at": "2026-06-18",
-    "venue_slug": "bentztown",
-    "venue_name": "Bentztown",
+    "title": "Emo Night",
+    "starts_at": "2026-08-30T01:00:00.032Z",
+    "ends_at": "2026-08-30T03:59:00.032Z",
+    "ticket_url": "https://www.thebanyanmd.com/livemusic/emo-night",
+    "venue_slug": "banyan",
+    "venue_name": "The Banyan",
     "category": "music",
     "source": {
-      "url": "https://www.bandsintown.com/v/10444653-bentztown",
-      "fetchedAt": "2026-05-31T18:37:08.990Z"
-    }
-  },
-  {
-    "title": "Skatt Daddy",
-    "starts_at": "2026-06-19",
-    "venue_slug": "bentztown",
-    "venue_name": "Bentztown",
-    "category": "music",
-    "source": {
-      "url": "https://www.bandsintown.com/v/10444653-bentztown",
-      "fetchedAt": "2026-05-31T18:37:08.990Z"
-    }
-  },
-  {
-    "title": "Jason Hannan",
-    "starts_at": "2026-06-25",
-    "venue_slug": "bentztown",
-    "venue_name": "Bentztown",
-    "category": "music",
-    "source": {
-      "url": "https://www.bandsintown.com/v/10444653-bentztown",
-      "fetchedAt": "2026-05-31T18:37:08.990Z"
+      "url": "https://www.thebanyanmd.com/livemusic",
+      "fetchedAt": "2026-07-02T13:39:52.837Z"
     }
   }
 ]

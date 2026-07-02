@@ -33,6 +33,7 @@ import { prunePushLog } from "@/lib/push-fanout";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
+import { curatedFreshnessAnomalies, liveSourceAnomalies } from "@/lib/quality/curated-freshness";
 import { pruneExpiredReports } from "@/lib/loaders/communityReports";
 import { findRlsAnomalies, findStaleIngestSources } from "@/lib/quality/db-health";
 
@@ -92,9 +93,9 @@ export async function GET(request: Request) {
 
     console.error("[cron/data-health] hydrate failed:", err);
   });
-  await getLiveEvents(60).catch((err) => {
-
+  const live = await getLiveEvents(60).catch((err) => {
     console.error("[cron/data-health] live fetch failed:", err);
+    return { events: [], sources_succeeded: [], sources_failed: ["getLiveEvents:threw"] };
   });
   const anomalies = getAnomalies();
   const validation = consumeFeedMetrics();
@@ -121,9 +122,16 @@ export async function GET(request: Request) {
     ...(await findRlsAnomalies()),
     ...(await findStaleIngestSources()),
   ];
+  // Curated-freshness assertions (data audit meta-fix): expired committed
+  // snapshots, aging hand-verifications, and named live-feed failures become
+  // red lines on the same alert channel instead of silent blanks.
+  const freshnessAnomalies = [
+    ...curatedFreshnessAnomalies(),
+    ...liveSourceAnomalies(live.sources_failed),
+  ];
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  const allAnomalies = [...anomalies, ...dbAnomalies];
+  const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
   }
@@ -156,6 +164,11 @@ export async function GET(request: Request) {
       pruned_old_snapshots: prunedRows,
       pruned_push_log: prunedPushRows,
       alert_sent: allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
+    },
+    curated_freshness: {
+      anomalies: freshnessAnomalies,
+      live_sources_failed: live.sources_failed,
+      live_sources_succeeded: live.sources_succeeded.length,
     },
     db_health: {
       pruned_expired_reports: prunedReports,
