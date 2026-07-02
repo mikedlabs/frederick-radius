@@ -26,7 +26,6 @@ import { AMENITY_GROUPS } from "@/components/map/constants";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import MapModeToggle from "@/components/map/MapModeToggle";
-import MapMarkFab from "@/components/map/MapMarkFab";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
@@ -413,12 +412,10 @@ export default async function MapPage({
           from the primary nav (marking only makes sense where a spot exists).
           Floats bottom-LEFT so it never collides with the centered mode toggle
           (mobile) or the right-gutter toggle (lg); lifted above the nav reserve. */}
-      <div
-        className="pointer-events-none absolute left-0 z-[var(--z-map-control)] px-3 lg:px-4"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve))" }}
-      >
-        <MapMarkFab />
-      </div>
+      {/* Mark-a-spot moved INSIDE AppMap (2026-07-02): the FAB now toggles
+          in-map MARK MODE (crosshair + bottom sheet, map stays pannable)
+          instead of navigating away to the /report overlay — the MAP_AUDIT
+          Slice-3 flow, finally. /report stays as the noindex full tool. */}
     </div>
   );
 }
