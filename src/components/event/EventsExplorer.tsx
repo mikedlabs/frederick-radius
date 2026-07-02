@@ -21,6 +21,7 @@ import { daypart, type Daypart } from "@/lib/daypart";
 import EventsSavedRail from "@/components/event/EventsSavedRail";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { pickLeadEvent } from "@/lib/events/lead-rank";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
@@ -837,9 +838,15 @@ export default function EventsExplorer({
             // makes every window legible at a glance; "Show N more" still
             // reveals the long tail on demand.
             const PEEK = 5;
-            const lead = g.events[0];
+            // EDITORIAL lead, not raw chronology: the window's one big card
+            // used to be whatever started soonest, so a toddler storytime
+            // could headline over the Keys game or a festival five rows down
+            // (the "feed dump vs a friend's shortlist" gap). pickLeadEvent
+            // floats a real draw (then imagery, then soonest); the rest of
+            // the window keeps its chronological order below.
+            const lead = pickLeadEvent(g.events) ?? g.events[0];
             const leadIsFeature = groupIdx === 0;
-            const rest = g.events.slice(1);
+            const rest = g.events.filter((e) => e !== lead);
             const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
             const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
             const moreCount = rest.length - shown.length;
