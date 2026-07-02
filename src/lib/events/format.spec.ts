@@ -1,0 +1,35 @@
+import { describe, it, expect } from "vitest";
+import { eventDateBlock } from "./format";
+import type { Event } from "@/data/events";
+
+const base = (over: Partial<Event>): Event =>
+  ({
+    slug: "x",
+    title: "X",
+    starts_at: "2026-01-29T17:00:00.000Z",
+    ends_at: "2026-01-29T19:00:00.000Z",
+    ...over,
+  }) as Event;
+
+describe("eventDateBlock", () => {
+  it("prints the clock time for a normal single event", () => {
+    expect(eventDateBlock(base({})).time).toBe("12:00 PM");
+  });
+
+  it("prints 'All day' for all-day rows (never a bogus clock)", () => {
+    expect(eventDateBlock(base({ is_all_day: true })).time).toBe("All day");
+  });
+
+  it("prints the honest range end for a date-range listing", () => {
+    // The Jul-2 owner report: a feed's series/exhibit window carried a noon
+    // ANCHOR on its first day, so cards printed "Thu JAN 29 · 12:00 PM"
+    // months after that date. The time slot now carries the range instead.
+    const block = eventDateBlock(
+      base({ ends_at: "2026-07-31T03:59:59.000Z" }),
+    );
+    expect(block.time).toBe("through Jul 30");
+    // The date plate still states the factual range START.
+    expect(block.month).toBe("JAN");
+    expect(block.day).toBe("29");
+  });
+});

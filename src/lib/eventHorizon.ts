@@ -45,6 +45,27 @@ export type HorizonBounds = {
 type EventLike = { slug: string; starts_at: string; ends_at: string; is_all_day?: boolean };
 
 /**
+ * A window longer than this is a date-RANGE listing, not a clock-time event:
+ * a months-long exhibit, or a recurring series a feed flattens into one
+ * first-day → last-day row (Visit Frederick models weekly trivia as a single
+ * multi-YEAR window). 36h keeps genuine late-night single events (an evening
+ * that runs past midnight) out of the range bucket.
+ */
+export const RANGE_LISTING_MS = 36 * 3_600_000;
+
+/** True for a non-all-day row whose start→end window exceeds RANGE_LISTING_MS. */
+export function isRangeListing(e: {
+  starts_at: string;
+  ends_at: string;
+  is_all_day?: boolean;
+}): boolean {
+  return (
+    !e.is_all_day &&
+    Date.parse(e.ends_at) - Date.parse(e.starts_at) > RANGE_LISTING_MS
+  );
+}
+
+/**
  * The horizon a single event belongs to. First match wins, in the
  * order live → today → weekend → week → later. Past events (already
  * ended and not live) return null so the caller can drop them.
@@ -65,6 +86,19 @@ export function horizonOf<E extends EventLike>(
     if (start <= b.now && end >= b.now) return "today";
     if (end < b.now) return null;
     // future all-day event: fall through to the dated buckets below.
+  } else if (end - start > RANGE_LISTING_MS) {
+    // Date-RANGE listings: "started AND not ended" holds for the entire
+    // span, so the live gate below kept every in-progress range in
+    // "Happening now" wearing its first-day date — 18 Visit Frederick
+    // series/exhibits squatted there labelled "Thu JAN 29 · 12:00 PM"
+    // (owner-reported, Jul 2). A bare range carries no next-occurrence, so
+    // the only honest placement while it runs is the undated shelf: Coming
+    // up (the card prints "through <end>", see eventDateBlock). A range
+    // OPENING today or later still earns its dated bucket — opening day is
+    // a real date claim — via the fall-through below.
+    if (end < b.now) return null;
+    if (start <= b.now) return "later";
+    // future range: fall through to the dated buckets on its opening day.
   } else {
     // "Live" requires the event to have actually STARTED. The curated live-set
     // (b.live) may override an unreliable or missing END time, but it must NEVER

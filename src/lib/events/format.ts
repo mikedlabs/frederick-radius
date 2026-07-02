@@ -1,4 +1,5 @@
 import type { Event } from "@/data/events";
+import { isRangeListing } from "@/lib/eventHorizon";
 
 /**
  * Pure event date/time formatters — deliberately DATA-FREE.
@@ -47,13 +48,22 @@ export function eventDateBlock(e: Event): { weekday: string; day: string; month:
     // All-day rows carry no real clock — a formatted starts_at would print a
     // bogus "12:00 AM" (the guards downstream only test truthiness, so they
     // never caught it). Surface "All day" so every card variant reads right.
+    //
+    // Date-RANGE listings (isRangeListing: a months-long exhibit, a series a
+    // feed flattens to one first-day → last-day window) carry no real clock
+    // either: starts_at is a noon ANCHOR on the range's first day, so
+    // formatting it printed "12:00 PM" beside a date that could be months
+    // old. Print the honest range end instead — "Thu JAN 29 · through Jul
+    // 31" reads as what it is, an ongoing listing, not a curtain time.
     time: e.is_all_day
       ? "All day"
-      : new Intl.DateTimeFormat("en-US", {
-          timeZone: tz,
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        }).format(start),
+      : isRangeListing(e)
+        ? `through ${new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short", day: "numeric" }).format(new Date(e.ends_at))}`
+        : new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          }).format(start),
   };
 }
