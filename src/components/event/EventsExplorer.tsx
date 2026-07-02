@@ -22,6 +22,7 @@ import EventsSavedRail from "@/components/event/EventsSavedRail";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
+import { isEventEnded } from "@/lib/eventWhenLabel";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
@@ -233,6 +234,13 @@ export default function EventsExplorer({
   const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return events.filter((e) => {
+      // FINISHED events never render, on ANY path. The horizon grouping
+      // already dropped them, but the flat paths — the week ribbon's ?d= day
+      // view, search results, the A-Z/venue sorts — filtered by start-day
+      // only, so tapping "today" at 11 PM listed the whole day's ended
+      // events as if they were still worth your time. One gate here covers
+      // every mode. (All-day events run to the end of their Eastern day.)
+      if (isEventEnded(e, new Date(now))) return false;
       // Day filter wins over time-window filters when both are set.
       if (day && dayKeyEastern(e.starts_at) !== day) return false;
       const t = +new Date(e.starts_at);
