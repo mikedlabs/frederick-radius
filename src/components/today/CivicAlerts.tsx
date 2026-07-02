@@ -1,6 +1,7 @@
-import { AlertTriangle, Info, AlertCircle, Clock } from "lucide-react";
+import { AlertTriangle, Info, AlertCircle, Clock, CalendarX } from "lucide-react";
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
+import { activeEventNotices } from "@/lib/events/notices";
 
 type UnifiedAlert = {
   source: "NWS" | "NPS";
@@ -122,19 +123,50 @@ const STYLES = {
 export default async function CivicAlerts() {
   const [nws, nps] = await Promise.all([getNwsAlerts(), getNpsAlerts()]);
   const alerts = normalize(nws, nps);
-  if (alerts.length === 0) return null;
+  // Owner event notices (event-notices.json) — "Alive @ Five is cancelled
+  // tonight" is exactly the news this slot exists for. They render as their
+  // OWN rows below the weather alert (never folded into the one-alert
+  // collapse: on a heat-cancellation night the heat warning and the
+  // cancellation are BOTH active, and the "+1 more" link points at /pulse,
+  // which doesn't carry notices). Owner-authored and rare, so capped at 2.
+   
+  const notices = activeEventNotices(new Date()).slice(0, 2);
+  if (alerts.length === 0 && notices.length === 0) return null;
 
   const top = alerts[0];
   const more = alerts.length - 1;
-  const s = STYLES[top.severity];
-  const Icon = s.icon;
-  const TailIcon = top.tail.startsWith("Until") ? Clock : null;
+  const s = top ? STYLES[top.severity] : null;
+  const Icon = s?.icon ?? Info;
+  const TailIcon = top?.tail.startsWith("Until") ? Clock : null;
 
   return (
     <section className="space-y-1.5" aria-label="Heads up">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
         Heads up
       </p>
+      {notices.map((n) => (
+        <a
+          key={n.slug}
+          href={`/events/${n.slug}`}
+          className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
+          style={{
+            background: n.status === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
+            color: "#fff",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <CalendarX className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">{n.headline}</p>
+            <span className="shrink-0 rounded-full bg-white/22 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
+              {n.status === "cancelled" ? "Cancelled" : n.status === "postponed" ? "Postponed" : "Update"}
+            </span>
+          </div>
+          {n.note && (
+            <p className="mt-1 truncate text-[11px] opacity-90">{n.note}</p>
+          )}
+        </a>
+      ))}
+      {top && s && (
       <a
         href={top.url ?? "#"}
         target={top.url ? "_blank" : undefined}
@@ -159,6 +191,7 @@ export default async function CivicAlerts() {
           )}
         </div>
       </a>
+      )}
       {more > 0 && (
         <a href="/pulse" className="block px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} →
