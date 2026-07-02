@@ -15,7 +15,7 @@ import Pill from "@/components/ui/Pill";
 import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { groupByHorizon } from "@/lib/eventHorizon";
+import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
 import { daypart, type Daypart } from "@/lib/daypart";
 import EventsSavedRail from "@/components/event/EventsSavedRail";
@@ -107,6 +107,16 @@ function dayKeyEastern(iso: string): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
+}
+
+// Chronological sort key. An IN-PROGRESS date-range listing (isRangeListing —
+// an exhibit, a series a feed flattened to one long window) sorts by its
+// CLOSING date, not its months-old starts_at anchor: "through Jul 5" sits
+// beside July 5's dated events (closing-soonest is the honest urgency)
+// instead of a 2022 first-day anchor dragging it to the top of every list.
+function chronoKey(e: EventWithMeta, nowISO: string): number {
+  const t = +new Date(e.starts_at);
+  return isRangeListing(e) && t <= Date.parse(nowISO) ? +new Date(e.ends_at) : t;
 }
 
 export default function EventsExplorer({
@@ -203,30 +213,6 @@ export default function EventsExplorer({
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
   const now = +new Date(nowISO);
 
-  // Apply user-chosen sort AFTER filtering. "time" preserves the
-  // server-provided chronological order (and feeds the horizon
-  // grouping below). The other keys produce a flat re-sort.
-  const sortFn = useMemo(() => {
-    switch (sort) {
-      case "az":
-        return (a: EventWithMeta, b: EventWithMeta) =>
-          (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
-      case "venue":
-        return (a: EventWithMeta, b: EventWithMeta) => {
-          const va = (a.venue_name ?? "").toLowerCase();
-          const vb = (b.venue_name ?? "").toLowerCase();
-          if (va !== vb) return va.localeCompare(vb);
-          // Within a venue, fall back to chronological so a venue
-          // cluster reads top-to-bottom as a venue schedule.
-          return +new Date(a.starts_at) - +new Date(b.starts_at);
-        };
-      case "time":
-      default:
-        return (a: EventWithMeta, b: EventWithMeta) =>
-          +new Date(a.starts_at) - +new Date(b.starts_at);
-    }
-  }, [sort]);
-
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
   // exact cat). The intent rail's badges count against THIS set, so a
   // glance reads "how many music events match my current time + town +
@@ -280,7 +266,21 @@ export default function EventsExplorer({
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
+  // "time" preserves the server-provided chronological order (and feeds
+  // the horizon grouping below); the other keys produce a flat re-sort.
   const filtered = useMemo(() => {
+    const sortFn = (a: EventWithMeta, b: EventWithMeta): number => {
+      if (sort === "az")
+        return (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
+      if (sort === "venue") {
+        const va = (a.venue_name ?? "").toLowerCase();
+        const vb = (b.venue_name ?? "").toLowerCase();
+        // Within a venue, fall through to chronological so a venue
+        // cluster reads top-to-bottom as a venue schedule.
+        if (va !== vb) return va.localeCompare(vb);
+      }
+      return chronoKey(a, nowISO) - chronoKey(b, nowISO);
+    };
     return baseFiltered
       .filter((e) => {
         if (intent && eventIntentOf(e) !== intent) return false;
@@ -289,7 +289,7 @@ export default function EventsExplorer({
         return true;
       })
       .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sortFn]);
+  }, [baseFiltered, intent, sub, cat, sort, nowISO]);
 
   // Split the filtered set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
