@@ -9,8 +9,12 @@ Google Places. Production: https://frederickradius.app
 Earlier documents referenced Fraunces and a "Creek blue" palette. The
 SHIPPED brand deck (see `src/app/globals.css` tokens) is:
 
-- **Type:** Newsreader (serif display), Public Sans (UI), JetBrains Mono
-  (data details: coordinates, counts). `font-serif` = Newsreader.
+- **Type:** Fraunces (serif display: titles, town/place headers, section
+  heads), Inter (UI: nav, labels, buttons, body, dense lists), JetBrains Mono
+  (data details: times, distances, counts, coordinates). `font-serif` =
+  Fraunces. (Shipped truth per `src/app/layout.tsx`; it replaced the earlier
+  Newsreader/Public Sans spec. Inter is a deliberate, if plain, UI face
+  paired with the characterful Fraunces display, see `docs/DESIGN_TELLS.md`.)
 - **Palette tokens (always use `var(--app-*)`, never raw hex in app UI):**
   paper cream ground `--app-bg #EEE6D4`, ink `--app-ink #16140E`,
   Signal vermilion `--app-brand #E14328`, Spruce green `--app-brand-2`.

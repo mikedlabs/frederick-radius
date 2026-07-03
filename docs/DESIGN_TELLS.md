@@ -44,20 +44,24 @@ comment and the scanner skips it — use this sparingly, only for real decisions
 | Generic font: `Inter` for UI | `src/app/layout.tsx` | **Real tell + doc drift.** Ships Fraunces (display) + **Inter** (UI); CLAUDE.md still claims Newsreader/Public Sans. Fraunces is a defensible characterful choice; Inter is the "safe" one. See "Open decision: type". |
 | `rounded-full` everywhere (353), fade-in/whileInView (93) | app-wide | **Mostly false positives.** Our pills are intentional mono micro-labels; motion is largely `prefers-reduced-motion`-gated. Low signal. Not worth chasing; `unslop-ignore` only if we CI-gate. |
 
-## Open decisions (need an owner call, not an auto-fix)
+## Decisions (resolved 2026-07, owner call)
 
-1. **Aurora / PageBloom.** Recommend replacing the four animated screen-blended
-   orbs with a single subtle *static* warm wash (keeps "whitespace reads warm, not
-   flat paper"; kills the scroll-FPS cost and softens the aurora read). Reduced-motion
-   users already get static, so this is the treatment the team already accepted,
-   for everyone. Preview before shipping — it touches 35 pages via one component.
-2. **Type.** Either update CLAUDE.md to the shipped truth (Fraunces + Inter + Mono)
-   or swap Inter for a UI face with more character (Public Sans, as the docs claim,
-   or another). Keep Fraunces. Resolve the doc-vs-code drift either way.
-3. **/pitch deck.** Decide whether the investor/marketing deck should keep its
-   cinematic-gradient look (a separate audience, arguably fine) or get de-vibed to
-   match the field-guide restraint. If it stays, that is a *choice* — record it here
-   so the scanner's HIGH count is understood, not alarming.
+1. **Aurora / PageBloom → replaced with a static warm wash.** The four animated
+   screen-blended orbs are gone; `PageBloom` now renders one still gradient wash
+   (per-variant, section-accent-tinted) plus the grain. Keeps "whitespace reads
+   warm, not flat paper"; removes the scroll-FPS cost and the aurora/blob tell.
+   Reduced-motion users already saw static, so this just gives it to everyone.
+   Dead `aurora-orb` keyframes/classes removed from `globals.css` (grain kept).
+2. **Type → docs aligned to shipped truth.** The app ships **Fraunces** (display)
+   + **Inter** (UI) + **JetBrains Mono**; CLAUDE.md now says so. Fraunces stays
+   (characterful). Inter is kept as a deliberate, plain UI face paired with the
+   display face — recorded here so the scanner's `generic-font` hit is understood,
+   not a mistake. Revisit only if a UI face with more character is wanted later.
+3. **/pitch deck → kept as a separate marketing world.** The investor/marketing
+   deck deliberately uses a cinematic dark-gradient look for a different audience,
+   scoped in CLAUDE.md (`.marketing-shell`). Its violet/neon HIGH hits in the
+   scanner are therefore *expected and accepted*, not the field-guide app leaking.
+   If the deck is ever folded into the product surface, de-vibe it then.
 
 ## The standing checklist (run before shipping a UI or copy pass)
 
