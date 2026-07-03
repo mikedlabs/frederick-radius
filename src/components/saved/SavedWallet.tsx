@@ -115,7 +115,7 @@ function Card({
       aria-label={`${place.name}${open ? "" : ", tap to open"}`}
       onClick={toggle}
       onKeyDown={onKey}
-      className={`sw-card${open ? " is-open" : ""}`}
+      className={`sw-card${open ? " is-open" : ""}${ol?.live ? " sw-live-card" : ""}`}
       style={
         {
           // Darkened category ground so cream text always clears AA — never the raw hue.
@@ -129,6 +129,10 @@ function Card({
           / emboss / topo / strata / grid), the field-guide answer to the Citi
           swirl / UOB facets / DBS emboss that make each Wallet card its own. */}
       <span className={`sw-art ${motifClass(place.category)}`} aria-hidden />
+      {/* Holographic foil — an iridescent band that sweeps across a raised card,
+          the premium "holo" pop, tinted via soft-light so it never fights the
+          brand palette. Reduced-motion users get a still, subtle sheen. */}
+      <span className="sw-holo" aria-hidden />
       {/* Big category glyph as the card's watermark "logo". */}
       <span className="sw-glyph" aria-hidden>
         <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />

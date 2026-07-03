@@ -2171,7 +2171,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sw-card.is-open::before { animation: sw-sweep .75s ease-out forwards; }
 .sw-card.is-open {
-  margin-top: 14px; min-height: 226px;
+  /* Taller reveal window so the (possibly 2-line) foot + Open-page link always
+     clear the next card's overlap — the gold-seal plate widened the foot. */
+  margin-top: 14px; min-height: 264px;
   box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset,
     0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1px rgba(22,20,14,.24);
 }
@@ -2206,8 +2208,29 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px),
   repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px); }
 
-/* Big category glyph as the card's watermark "logo", bleeding off the corner. */
-.sw-glyph { position: absolute; right: -20px; top: 50%; transform: translateY(-48%); width: 172px; height: 172px; opacity: .2; pointer-events: none; z-index: 0; }
+/* Holographic foil — an iridescent band swept across a raised card. soft-light
+   keeps it a tint, not a rainbow decal, so the brand ground still reads. */
+.sw-holo {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+  mix-blend-mode: soft-light; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 22%, rgba(120,200,255,.55) 38%, rgba(255,224,130,.5) 46%, rgba(206,130,255,.55) 54%, rgba(120,255,205,.45) 62%, transparent 78%);
+  background-size: 260% 100%; background-position: 120% 0;
+  transition: opacity .45s ease;
+}
+.sw-card.is-open .sw-holo { opacity: .2; animation: sw-holo 4.8s ease-in-out infinite; }
+
+/* Open-now cards carry a soft vermilion glow-edge so you can spot what you can
+   actually go to right now while scanning the fan. Clever + useful. */
+.sw-live-card { box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset, 0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1.5px color-mix(in srgb, var(--app-brand) 55%, transparent); }
+.sw-live-card.is-open { box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset, 0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1.5px color-mix(in srgb, var(--app-brand) 62%, transparent), 0 0 22px -6px color-mix(in srgb, var(--app-brand) 55%, transparent); }
+
+/* Big category glyph as the card's watermark "logo", letter-pressed into the
+   stock (light top edge + shadow) and bleeding off the corner. */
+.sw-glyph {
+  position: absolute; right: -20px; top: 50%; transform: translateY(-48%);
+  width: 172px; height: 172px; opacity: .22; pointer-events: none; z-index: 0;
+  filter: drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 -1px 1px rgba(0,0,0,.35));
+}
 
 /* Lockup — bold glyph "logo" + serif name left; category TIER wordmark right,
    the logo-left / product-right structure of a real card (HSBC · TravelOne). */
@@ -2236,7 +2259,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-card.is-open .sw-foot { opacity: 1; transform: none; }
 .sw-data { display: flex; flex-wrap: wrap; gap: 5px 11px; align-items: center; min-width: 0; }
 .sw-chip { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .9; display: inline-flex; align-items: center; gap: 6px; }
-.sw-plate { opacity: 1; font-weight: 700; }
+/* The plate number as a pressed GOLD-FOIL seal — the field-guide signature no
+   bank card has. Dark ink on foil clears contrast; the inner highlight + drop
+   sells the stamp. */
+.sw-plate {
+  opacity: 1; font-weight: 800; color: #2a1d05;
+  background: linear-gradient(158deg, #F3D889 0%, #D3A748 46%, #B8862B 100%);
+  border-radius: 5px; padding: 2px 7px; letter-spacing: .06em;
+  box-shadow: 0 1px 0 rgba(255,255,255,.45) inset, 0 1px 2px rgba(0,0,0,.32);
+}
 .sw-live { opacity: 1; }
 .sw-live b {
   width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand);
@@ -2272,11 +2303,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes sw-deal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes sw-sweep { to { transform: translateX(125%); } }
 @keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 rgba(225,67,40,.5); } 70%, 100% { box-shadow: 0 0 0 6px rgba(225,67,40,0); } }
+@keyframes sw-holo { 0% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .sw-card, .sw-foot, .sw-open { transition: none; animation: none; }
   .sw-card.is-open::before { animation: none; }
   .sw-live b { animation: none; }
+  /* Keep a still, subtle holo sheen — no sweep. */
+  .sw-card.is-open .sw-holo { animation: none; opacity: .12; background-position: 40% 0; }
 }
 
 /* ============================================================================
