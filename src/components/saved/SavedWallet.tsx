@@ -16,7 +16,7 @@
  * Pure presentation over the already-hydrated + already-sorted PlaceCardData
  * the parent hands down — no data fetching, no store reads.
  */
-import { useState, type KeyboardEvent } from "react";
+import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import Link from "next/link";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -98,24 +98,39 @@ function Card({
       onClick={toggle}
       onKeyDown={onKey}
       className={`sw-card${open ? " is-open" : ""}`}
-      style={{
-        // Darkened category ground so cream text always clears AA — never the raw hue.
-        background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
-      }}
+      style={
+        {
+          // Darkened category ground so cream text always clears AA — never the raw hue.
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          // Stagger index for the deal-in entrance (see globals.css sw-deal).
+          "--sw-i": index,
+        } as CSSProperties
+      }
     >
-      <div className="sw-row1">
+      {/* Full-card engraved artwork — concentric topo/guilloché lines in the
+          category hue, the field-guide answer to the Citi swirl / DBS emboss
+          that make the example cards read as cards, not documents. */}
+      <span className="sw-art" aria-hidden />
+      {/* Big specimen glyph, card-art scale. */}
+      <span className="sw-glyph" aria-hidden>
+        <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />
+      </span>
+
+      {/* Brand lockup — glyph + name top-left; the Radius target rides top-right
+          as the "network" mark, the way HSBC / Citi logos anchor the corner. */}
+      <div className="sw-top">
         <span className="sw-brand">
-          <CategoryIcon slug={place.category} className="h-[18px] w-[18px]" strokeWidth={2.25} />
+          <CategoryIcon slug={place.category} className="h-[19px] w-[19px]" strokeWidth={2.25} />
           <span className="sw-name">{place.name}</span>
         </span>
-        <span className="sw-plate">
-          Pl. {plate(index)}
-          <br />
-          {cat?.name ?? "Place"}
+        <span className="sw-net" aria-hidden>
+          <svg viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="16.5" stroke="currentColor" strokeWidth="2" opacity="0.9" />
+            <circle cx="20" cy="20" r="8.5" stroke="currentColor" strokeWidth="2" opacity="0.9" />
+            <circle cx="20" cy="20" r="2.6" fill="var(--app-brand)" />
+          </svg>
         </span>
       </div>
-
-      {place.short_blurb && <p className="sw-sub">{place.short_blurb}</p>}
 
       {/* Field-note stamp — the pressed mark for a place you've vouched for. */}
       {place.field_notes && (
@@ -124,20 +139,28 @@ function Card({
         </span>
       )}
 
-      {/* Big faint specimen glyph, watermark style. */}
-      <span className="sw-glyph" aria-hidden>
-        <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />
-      </span>
-
-      <div className="sw-data">
-        {ol && (
-          <span className={`sw-chip${ol.live ? " sw-live" : ""}`}>
-            {ol.live && <b aria-hidden />}
-            {ol.text}
-          </span>
-        )}
-        {dist && <span className="sw-chip">{dist}</span>}
-        {town && <span className="sw-chip">{town}</span>}
+      {/* Foot — the card's "number" line: plate + category + live data, with a
+          contactless glyph at the trailing edge. Revealed on raise. */}
+      <div className="sw-foot">
+        <div className="sw-data">
+          <span className="sw-chip sw-plate">Pl. {plate(index)}</span>
+          <span className="sw-chip">{cat?.name ?? "Place"}</span>
+          {ol && (
+            <span className={`sw-chip${ol.live ? " sw-live" : ""}`}>
+              {ol.live && <b aria-hidden />}
+              {ol.text}
+            </span>
+          )}
+          {dist && <span className="sw-chip">{dist}</span>}
+          {town && <span className="sw-chip">{town}</span>}
+        </div>
+        <span className="sw-tap" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M8 7a7 7 0 0 1 0 10" />
+            <path d="M12 4a11 11 0 0 1 0 16" />
+            <path d="M4 10a3.5 3.5 0 0 1 0 4" />
+          </svg>
+        </span>
       </div>
 
       <Link
