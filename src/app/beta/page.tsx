@@ -145,10 +145,50 @@ export default async function BetaPage({
         </span>
       </section>
 
+      {/* ── DIAGNOSTIC — the county is not empty, the info is scattered ─── */}
+      <RevealOnScroll>
+        <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
+          <PlateHeading eyebrow="Pl. I · diagnostic" title="The county is not empty. The information is just scattered." />
+          <p className="mx-auto mt-5 max-w-[52ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            People move fluidly between downtown, the towns, and the county. But
+            online, they are forced to become researchers, digging through social
+            feeds, stale calendars, and disconnected municipal pages to find what
+            is happening.
+          </p>
+          <DiagnosticPanels />
+        </section>
+      </RevealOnScroll>
+
+      {/* ── THE SIGNAL — a signal layer, not a directory ───────────────── */}
+      <RevealOnScroll>
+        <section className="px-6 py-16 sm:py-20" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
+          <div className="mx-auto max-w-[52rem]">
+            <PlateHeading eyebrow="Pl. II · the signal" title="A local signal layer, not a directory" />
+            <p className="mx-auto mt-5 max-w-[52ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              People do not need more information. They need the right local signal
+              at the right time. A signal is useful, timely information that helps
+              someone act.
+            </p>
+            <SignalFilter />
+          </div>
+        </section>
+      </RevealOnScroll>
+
+      {/* ── THE LANDSCAPE — what is useful right now (comparison) ───────── */}
+      <RevealOnScroll>
+        <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
+          <PlateHeading eyebrow="Pl. III · the landscape" title="What is useful right now" />
+          <LandscapeTable />
+          <p className="mx-auto mt-6 max-w-[40ch] border-l-[3px] pl-4 font-serif text-[18px] font-semibold leading-snug" style={{ borderColor: "var(--app-brand)", color: "var(--app-ink)" }}>
+            Social media asks what is getting attention. Frederick Radius asks what is useful right now.
+          </p>
+        </section>
+      </RevealOnScroll>
+
       {/* ── FREDERICK, RIGHT NOW — the living-almanac proof band ────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. I · proof" title="Frederick, right now" />
+          <PlateHeading eyebrow="Pl. IV · proof" title="Frederick, right now" />
           <Suspense fallback={<PulseGridSkeleton />}>
             <PulseGrid />
           </Suspense>
@@ -161,7 +201,7 @@ export default async function BetaPage({
       {/* ── WHAT'S INSIDE — specimen preview ───────────────────────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 pb-16 sm:pb-20">
-          <PlateHeading eyebrow="Pl. II · the guide" title="Every place, pressed into a card" />
+          <PlateHeading eyebrow="Pl. V · the guide" title="Every place, pressed into a card" />
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <SpecimenCard hue="#C0871F" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
             <SpecimenCard hue="#7E2C6F" kicker="Live music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
@@ -171,6 +211,19 @@ export default async function BetaPage({
             Save the ones you love. They fan out in your pocket like a wallet of
             field specimens, each with a plate number and a live open-now line.
           </p>
+        </section>
+      </RevealOnScroll>
+
+      {/* ── INTENT — the questions it answers ──────────────────────────── */}
+      <RevealOnScroll>
+        <section className="px-6 py-16 sm:py-20" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
+          <div className="mx-auto max-w-[52rem]">
+            <PlateHeading eyebrow="Pl. VI · intent" title="The questions it answers" />
+            <IntentGrid />
+            <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+              Scan a QR code or tap a link and get the answer. No app store, no download.
+            </p>
+          </div>
         </section>
       </RevealOnScroll>
 
@@ -187,7 +240,7 @@ export default async function BetaPage({
       {/* ── MANIFESTO — a field guide, not a directory ─────────────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. III · the difference" title="A field guide, not a directory" />
+          <PlateHeading eyebrow="Pl. VII · the difference" title="Written by someone who lives here" />
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <Value title="Answers, not listings" body="It knows what's open now, what's on tonight, and what's worth the drive. Ask in plain words." />
             <Value title="Written by someone local" body="Field notes on the taproom patio, the trail with the overlook, the diner that means it. Not scraped." />
@@ -198,8 +251,15 @@ export default async function BetaPage({
 
       {/* ── CLOSING — a second way in ──────────────────────────────────── */}
       <RevealOnScroll>
-        <section className="mx-auto max-w-[30rem] px-6 pb-20 text-center">
-          <h2 className="font-serif text-[30px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <section className="mx-auto max-w-[30rem] px-6 pb-20 pt-16 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-3)" }}>
+            Pl. VIII · the standard
+          </p>
+          <CompassRose />
+          <p className="mt-2 font-serif text-[30px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-brand)" }}>
+            Not louder. Clearer.
+          </p>
+          <h2 className="mt-8 font-serif text-[30px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Come see your county.
           </h2>
           <p className="mx-auto mt-3 max-w-[24rem] text-[14.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -281,6 +341,202 @@ function SpecimenCard({ hue, kicker, name, line }: { hue: string; kicker: string
         </p>
       </div>
     </div>
+  );
+}
+
+/* ── Diagnostic: physical reality vs the scattered digital one ───────── */
+function DiagnosticPanels() {
+  const physical = [
+    "Downtown Frederick",
+    "Thurmont · Middletown · Brunswick",
+    "Walkersville · Mount Airy · Emmitsburg",
+    "One connected county, moved through daily",
+  ];
+  const scraps = [
+    { t: "Stale PDF calendar (May 2023)", bad: false },
+    { t: "Event cancelled!", bad: true },
+    { t: "3.5 stars", bad: false },
+    { t: "Where is it?", bad: true },
+    { t: "“hard to navigate”", bad: false },
+    { t: "Local concert flyer", bad: false },
+    { t: "Dead link", bad: true },
+    { t: "Instagram post, 6 weeks ago", bad: false },
+    { t: "Which town is this?", bad: true },
+  ];
+  return (
+    <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div>
+        <p className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-2)" }}>
+          Physical reality
+        </p>
+        <div className="relative overflow-hidden rounded-[var(--app-radius-lg)] border p-4 pb-12" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", minHeight: 210 }}>
+          {physical.map((p) => (
+            <div key={p} className="flex items-center gap-2.5 py-1.5 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--app-brand-2)" }} />
+              {p}
+            </div>
+          ))}
+          <span className="absolute bottom-3 left-4 rounded-[6px] border px-2 py-1 font-mono text-[11px]" style={{ borderColor: "color-mix(in srgb, var(--app-brand) 40%, var(--app-border))", color: "var(--app-brand-press)" }}>
+            663 sq miles
+          </span>
+        </div>
+      </div>
+      <div>
+        <p className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+          Digital reality
+        </p>
+        <div className="flex flex-wrap content-start gap-2 rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", minHeight: 210 }}>
+          {scraps.map((s, i) => (
+            <span
+              key={i}
+              className="rounded-[8px] border border-dashed px-2.5 py-1.5 text-[12px]"
+              style={{
+                transform: `rotate(${(i % 3) - 1}deg)`,
+                color: s.bad ? "var(--app-brand-press)" : "var(--app-ink-3)",
+                borderColor: s.bad ? "color-mix(in srgb, var(--app-brand) 40%, var(--app-border))" : "var(--app-border-strong)",
+                background: "var(--app-bg)",
+              }}
+            >
+              {s.t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Signal filter: raw feeds → Context/Location/Time → live signals ──── */
+function SignalFilter() {
+  const inputs = ["Chronological social feeds", "Star ratings", "Static lists", "Stale calendars"];
+  const stages = ["Context", "Location", "Time"];
+  const signals = ["A food truck is nearby", "An event starts in 20 minutes", "A trail is muddy"];
+  return (
+    <div className="mt-8 flex flex-col items-center">
+      <div className="flex max-w-[34rem] flex-wrap justify-center gap-2">
+        {inputs.map((t) => (
+          <span key={t} className="rounded-full border px-3 py-1.5 text-[12.5px]" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink-3)" }}>
+            {t}
+          </span>
+        ))}
+      </div>
+      <div
+        className="relative my-5 flex w-full max-w-[34rem] items-center justify-around gap-2 rounded-[var(--app-radius-md)] border p-4"
+        style={{ borderColor: "var(--app-brand-2)", background: "color-mix(in srgb, var(--app-brand-2) 7%, var(--app-bg-elevated-solid))" }}
+      >
+        <span className="absolute -top-2.5 left-4 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ background: "var(--app-bg)", color: "var(--app-brand-2)" }}>
+          The Frederick Radius filter
+        </span>
+        {stages.map((s, i) => (
+          <span key={s} className="flex items-center gap-2">
+            <span className="rounded-[8px] border px-3 py-2 font-mono text-[13px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}>
+              {s}
+            </span>
+            {i < stages.length - 1 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>&rarr;</span>}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-wrap justify-center gap-2.5">
+        {signals.map((s) => (
+          <span
+            key={s}
+            className="rounded-full px-3.5 py-2 font-mono text-[13px] font-semibold"
+            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)", boxShadow: "0 6px 14px -8px color-mix(in srgb, var(--app-brand) 70%, transparent)" }}
+          >
+            {s}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Landscape: the comparison table, our column pressed in vermilion ─── */
+function LandscapeTable() {
+  const rows: Array<[string, string, string, string, string]> = [
+    ["Primary output", "Noise", "Pins", "Lists", "Signals"],
+    ["Timeliness", "Algorithmic", "Static", "Stale", "Live"],
+    ["Curation", "Zero", "Automated", "Variable", "High"],
+    ["Core metric", "Attention", "Search volume", "Page views", "Utility & action"],
+  ];
+  const ours = { background: "color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid))", color: "var(--app-ink)" };
+  return (
+    <div className="mt-7 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-[13.5px]" style={{ minWidth: 520 }}>
+        <thead>
+          <tr>
+            <th className="p-3" />
+            {["Social media", "Search / maps", "Calendars"].map((h) => (
+              <th key={h} className="p-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)", borderBottom: "1px solid var(--app-border)" }}>
+                {h}
+              </th>
+            ))}
+            <th className="p-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em]" style={{ ...ours, color: "var(--app-brand-press)", borderBottom: "1px solid var(--app-border)", borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+              Frederick Radius
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, a, b, c, mine], ri) => (
+            <tr key={label}>
+              <th className="p-3 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)", borderBottom: "1px solid var(--app-border)" }}>
+                {label}
+              </th>
+              {[a, b, c].map((v, i) => (
+                <td key={i} className="p-3 font-mono text-[12.5px]" style={{ color: "var(--app-ink-2)", borderBottom: "1px solid var(--app-border)" }}>
+                  {v}
+                </td>
+              ))}
+              <td
+                className="p-3 font-mono text-[12.5px] font-bold"
+                style={{ ...ours, borderBottom: "1px solid var(--app-border)", ...(ri === rows.length - 1 ? { borderBottomLeftRadius: 10, borderBottomRightRadius: 10 } : {}) }}
+              >
+                {mine}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── Intent: the questions the guide answers, each with its live answer ─ */
+function IntentGrid() {
+  const qs: Array<[string, string]> = [
+    ["What’s open?", "Live open-now line"],
+    ["What’s happening?", "17 events on today"],
+    ["What’s nearby?", "0.4 mi away"],
+    ["What’s worth my time?", "Field notes by a local"],
+    ["What should I know before I go?", "Weather & road closures"],
+    ["How do I get in?", "A link. No app store."],
+  ];
+  return (
+    <div className="mt-8 grid gap-3 sm:grid-cols-3">
+      {qs.map(([q, a]) => (
+        <div key={q} className="rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}>
+          <p className="font-serif text-[16px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+            {q}
+          </p>
+          <span className="mt-2.5 inline-block rounded-[6px] px-2.5 py-1.5 font-mono text-[11.5px]" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}>
+            {a}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Compass rose for the closing standard ───────────────────────────── */
+function CompassRose() {
+  return (
+    <svg aria-hidden className="mx-auto h-24 w-24" viewBox="0 0 100 100" fill="none" stroke="var(--app-ink)" strokeWidth={1.2}>
+      <circle cx="50" cy="50" r="46" strokeOpacity={0.5} />
+      <circle cx="50" cy="50" r="38" strokeOpacity={0.3} />
+      <path d="M50 8 L57 50 L50 92 L43 50 Z" fill="var(--app-ink)" stroke="none" />
+      <path d="M8 50 L50 43 L92 50 L50 57 Z" fill="none" stroke="var(--app-ink)" strokeOpacity={0.6} />
+      <path d="M50 20 L54 50 L50 80 L46 50 Z" fill="var(--app-brand)" stroke="none" transform="rotate(45 50 50)" />
+    </svg>
   );
 }
 
