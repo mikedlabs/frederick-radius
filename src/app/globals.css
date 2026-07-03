@@ -2256,3 +2256,32 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .sw-card.is-open::before { animation: none; }
   .sw-live b { animation: none; }
 }
+
+/* ============================================================================
+   /beta launch cover — the "living almanac" landing (beta/page.tsx). Namespaced
+   bt-*. Motion is cheap + reduced-motion-gated (no heavy backdrop-blur, per the
+   perf pass): an engraved towns marquee, a guilloché specimen texture, and a
+   slow drift on the hero glow.
+   ========================================================================== */
+.bt-marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.bt-marquee-track { display: inline-flex; gap: 0; white-space: nowrap; will-change: transform; animation: bt-marquee 42s linear infinite; }
+@keyframes bt-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Engraved guilloché fill for the specimen preview cards — reuses the wallet's
+   security-print motif so the landing and the app read as one brand. */
+.bt-guilloche { position: absolute; inset: 0; pointer-events: none; opacity: .9; z-index: 0;
+  background-image:
+    repeating-radial-gradient(circle at 116% 128%, transparent 0 12px, rgba(255,255,255,.055) 12px 13px),
+    repeating-radial-gradient(circle at -14% -22%, transparent 0 17px, rgba(255,255,255,.04) 17px 18px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 64%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0 64%, transparent 100%); }
+.bt-sheen { position: absolute; inset: 0; pointer-events: none; z-index: 2; mix-blend-mode: soft-light; border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%); }
+
+.bt-drift { animation: bt-drift 14s ease-in-out infinite alternate; }
+@keyframes bt-drift { from { transform: translate(-50%, -50%) scale(1); opacity: .85; } to { transform: translate(-50%, -54%) scale(1.08); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bt-marquee-track { animation: none; }
+  .bt-drift { animation: none; }
+}

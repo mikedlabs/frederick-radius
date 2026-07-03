@@ -95,6 +95,13 @@ export async function GET(request: Request) {
       // tokens fall through to the default brick.
       accent = COLLECTION_ACCENT_HEX[c.accent] ?? accent;
     }
+  } else if (type === "beta") {
+    // The Facebook tease card. Not time-baked (social caches at share time),
+    // so it reads true whenever it surfaces in a feed.
+    title = "You're early.";
+    kicker = "Private beta · Frederick Radius";
+    blurb = "A living field guide to Frederick County. What's open, what's on, and what's worth your time.";
+    accent = "#E14328";
   }
 
   // OG card palette — Brand Book No. 01 (May 2026): paper cream
