@@ -1,0 +1,52 @@
+/**
+ * betaPulse — the "Frederick, right now" proof line for the /beta launch cover.
+ *
+ * The beta page's whole pitch is "a LIVING field guide," so the page should
+ * prove it with real county data instead of asserting it. This gathers a small,
+ * high-signal set of genuinely-live facts, every one timeout-guarded and
+ * fail-soft: a field that can't resolve is simply omitted (the band shows what's
+ * true right now, never a fabricated number). Server-only; streamed into the
+ * page under a Suspense boundary so the access gate paints instantly.
+ */
+import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
+import { MUNICIPALITIES } from "@/data/municipalities";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { getKeysScoreToday, type KeysScore } from "@/lib/integrations/keysScore";
+import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
+import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
+
+export type BetaPulse = {
+  places: number;
+  towns: number;
+  eventsToday: number | null;
+  keys: KeysScore | null;
+  troutThisWeek: boolean;
+};
+
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let t: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<T>((resolve) => {
+    t = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([Promise.resolve(p).catch(() => fallback), timeout]).finally(() => clearTimeout(t));
+}
+
+export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
+  const places = Array.isArray(CLIENT_PLACES) ? CLIENT_PLACES.length : 0;
+  const towns = MUNICIPALITIES.length;
+
+  const [events, keys, trout] = await Promise.all([
+    // Canonical unified set (cached), windowed to today and not-yet-ended.
+    withTimeout(
+      assembleUnifiedEvents(now).then(({ publicEvents }) =>
+        publicEvents.filter((e) => isEventToday(e.starts_at, now) && !isEventEnded(e, now)).length,
+      ),
+      3000,
+      null as number | null,
+    ),
+    withTimeout(getKeysScoreToday(now), 2500, null as KeysScore | null),
+    withTimeout(getFrederickStockings(7).then((s) => s.length > 0), 2500, false),
+  ]);
+
+  return { places, towns, eventsToday: events, keys, troutThisWeek: trout };
+}
