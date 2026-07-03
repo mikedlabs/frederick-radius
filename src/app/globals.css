@@ -2141,11 +2141,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-stack { display: flex; flex-direction: column; }
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
-  border: none; border-radius: var(--app-radius-lg); overflow: hidden;
-  margin-top: -138px; padding: 16px 18px; min-height: 176px;
+  border: none; border-radius: 16px; overflow: hidden;
+  margin-top: -138px; padding: 15px 17px; min-height: 176px;
   color: var(--app-ink-inverse); font-family: var(--font-sans, inherit);
-  box-shadow: 0 -1px 0 rgba(255,255,255,.16) inset,
-    0 12px 22px -12px rgba(22,20,14,.72), 0 0 0 1px rgba(22,20,14,.18);
+  box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset,
+    0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1px rgba(22,20,14,.2);
   transition: margin .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
   /* Deal-in entrance — the deck fans out on mount, staggered top-to-bottom. */
   animation: sw-deal .5s cubic-bezier(.22,1,.36,1) both;
@@ -2153,55 +2153,77 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sw-card:first-child { margin-top: 0; }
 .sw-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
-/* Lamination sheen — diagonal gloss band + corner vignette, so the face reads
-   as a physical card, not a flat panel. */
+/* Lamination — a diagonal gloss band + top glare + corner vignette, tuned
+   stronger so the face reads as a physical, laminated card. */
 .sw-card::after {
-  content: ""; position: absolute; inset: 0; border-radius: var(--app-radius-lg);
+  content: ""; position: absolute; inset: 0; border-radius: 16px;
   pointer-events: none; mix-blend-mode: soft-light; z-index: 2;
   background:
-    linear-gradient(118deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%),
-    radial-gradient(120% 80% at 50% -25%, rgba(255,255,255,.16), transparent 55%),
-    radial-gradient(120% 130% at 118% 125%, rgba(0,0,0,.28), transparent 55%);
+    linear-gradient(116deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0) 66%, rgba(255,255,255,.12) 100%),
+    radial-gradient(130% 90% at 50% -30%, rgba(255,255,255,.22), transparent 52%),
+    radial-gradient(130% 130% at 118% 128%, rgba(0,0,0,.34), transparent 55%);
 }
 /* One-shot gloss sweep across the face when a card is raised. */
 .sw-card::before {
   content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,.22) 48%, transparent 60%);
+  background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,.26) 48%, transparent 60%);
   transform: translateX(-125%);
 }
 .sw-card.is-open::before { animation: sw-sweep .75s ease-out forwards; }
 .sw-card.is-open {
   margin-top: 14px; min-height: 226px;
-  box-shadow: 0 -1px 0 rgba(255,255,255,.2) inset,
-    0 26px 46px -18px rgba(22,20,14,.8), 0 0 0 1px rgba(22,20,14,.22);
+  box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset,
+    0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1px rgba(22,20,14,.24);
 }
 .sw-card:first-child.is-open { margin-top: 0; }
 
-/* Engraved guilloché / topo artwork filling the face — two sets of concentric
-   contour rings from opposite corners interfere like security print. The
-   field-guide analogue of the Citi swirl / DBS emboss. */
+/* ── Card ARTWORK — each category family gets a DISTINCT full-bleed motif, the
+   way every issuer's card in Apple Wallet is its own design (Citi swirl / UOB
+   facets / DBS emboss). The motif is what makes the stack read as a wallet of
+   cards, not a hue-swapped list. Base sets fill + fade; .sw-m-* set the pattern. */
 .sw-art {
-  position: absolute; inset: 0; pointer-events: none; opacity: .9; z-index: 0;
-  background-image:
-    repeating-radial-gradient(circle at 116% 128%, transparent 0 12px, rgba(255,255,255,.055) 12px 13px),
-    repeating-radial-gradient(circle at -14% -22%, transparent 0 17px, rgba(255,255,255,.04) 17px 18px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0 62%, transparent 100%);
-          mask-image: linear-gradient(to bottom, #000 0 62%, transparent 100%);
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 1;
+  -webkit-mask-image: linear-gradient(120deg, #000 0 78%, rgba(0,0,0,.35) 100%);
+          mask-image: linear-gradient(120deg, #000 0 78%, rgba(0,0,0,.35) 100%);
 }
-/* Big specimen glyph, card-art scale, bleeding off the trailing corner. */
-.sw-glyph { position: absolute; right: -22px; top: 50%; transform: translateY(-46%); width: 168px; height: 168px; opacity: .16; pointer-events: none; z-index: 0; }
+/* swirl — guilloché interference (food / default) */
+.sw-m-swirl { background-image:
+  repeating-radial-gradient(circle at 116% 122%, transparent 0 10px, rgba(255,255,255,.075) 10px 11.5px),
+  repeating-radial-gradient(circle at -12% -16%, transparent 0 14px, rgba(255,255,255,.05) 14px 15.5px); }
+/* facet — prism / diamond crosshatch (drink / brewery) */
+.sw-m-facet { background-image:
+  repeating-linear-gradient(58deg, rgba(255,255,255,.07) 0 1.5px, transparent 1.5px 20px),
+  repeating-linear-gradient(-58deg, rgba(255,255,255,.055) 0 1.5px, transparent 1.5px 20px); }
+/* emboss — soft damask dot field (arts / culture) */
+.sw-m-emboss { background-image: radial-gradient(rgba(255,255,255,.08) 1.5px, transparent 1.7px); background-size: 17px 17px; }
+/* topo — wide contour rings from below (outdoors) */
+.sw-m-topo { background-image:
+  repeating-radial-gradient(circle at 32% 128%, transparent 0 15px, rgba(255,255,255,.075) 15px 16.5px); }
+/* strata — fine diagonal metallic bands (shops / services / lodging) */
+.sw-m-strata { background-image: repeating-linear-gradient(122deg, rgba(255,255,255,.07) 0 1px, transparent 1px 13px); }
+/* grid — engineer's grid (civic / transit / parking) */
+.sw-m-grid { background-image:
+  repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px),
+  repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 22px); }
 
-/* Brand lockup — top row. Glyph + serif name left, Radius "network" mark right. */
-.sw-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Big category glyph as the card's watermark "logo", bleeding off the corner. */
+.sw-glyph { position: absolute; right: -20px; top: 50%; transform: translateY(-48%); width: 172px; height: 172px; opacity: .2; pointer-events: none; z-index: 0; }
+
+/* Lockup — bold glyph "logo" + serif name left; category TIER wordmark right,
+   the logo-left / product-right structure of a real card (HSBC · TravelOne). */
+.sw-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sw-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.sw-brand svg { flex: none; }
+.sw-brand svg { flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
 .sw-name {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-serif, Georgia, serif); font-weight: 600; font-size: 18px;
-  letter-spacing: -.01em; line-height: 1.1;
+  font-family: var(--font-serif, Georgia, serif); font-weight: 600; font-size: 18.5px;
+  letter-spacing: -.01em; line-height: 1.1; text-shadow: 0 1px 2px rgba(0,0,0,.28);
 }
-.sw-net { flex: none; width: 30px; height: 30px; color: var(--app-ink-inverse); opacity: .92; }
-.sw-net svg { width: 100%; height: 100%; }
+.sw-tier {
+  flex: none; font-family: var(--font-mono, monospace); font-size: 9.5px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase; opacity: .78; white-space: nowrap;
+  padding-left: 8px; align-self: flex-start; padding-top: 3px;
+}
 
 /* Foot — the "number" line: plate + category + live data + contactless glyph.
    In flow after the lockup; fades in on raise (clipped when collapsed). */

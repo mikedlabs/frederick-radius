@@ -42,6 +42,24 @@ function plate(i: number): string {
   return i < ROMAN.length ? ROMAN[i] : String(i + 1);
 }
 
+/**
+ * The card's background MOTIF, by category family — the thing that makes the
+ * stack read as a wallet of distinct cards (Citi swirl / UOB facets / DBS
+ * emboss) rather than one hue-swapped template. Falls back to the guilloché
+ * swirl for the long tail. See the .sw-m-* rules in globals.css.
+ */
+const MOTIF_BY_FAMILY: Record<string, string> = {
+  food: "swirl", restaurant: "swirl", bakery: "swirl", pizza: "swirl", dessert: "swirl", grocery: "swirl", market: "swirl",
+  brewery: "facet", bar: "facet", winery: "facet", distillery: "facet", coffee: "facet", cafe: "facet", cidery: "facet",
+  arts: "emboss", music: "emboss", theater: "emboss", gallery: "emboss", museum: "emboss", family: "emboss", publicart: "emboss", library: "emboss", culture: "emboss",
+  park: "topo", trail: "topo", outdoors: "topo", nature: "topo", garden: "topo", water: "topo", recreation: "topo", hike: "topo",
+  shopping: "strata", shop: "strata", retail: "strata", services: "strata", wellness: "strata", spa: "strata", lodging: "strata", hotel: "strata", stay: "strata",
+  civic: "grid", transit: "grid", parking: "grid", government: "grid",
+};
+function motifClass(category: string): string {
+  return `sw-m-${MOTIF_BY_FAMILY[category] ?? "swirl"}`;
+}
+
 function openLabel(p: PlaceCardData): { text: string; live: boolean } | null {
   const s = p.open_status;
   if (!s) return null;
@@ -107,29 +125,23 @@ function Card({
         } as CSSProperties
       }
     >
-      {/* Full-card engraved artwork — concentric topo/guilloché lines in the
-          category hue, the field-guide answer to the Citi swirl / DBS emboss
-          that make the example cards read as cards, not documents. */}
-      <span className="sw-art" aria-hidden />
-      {/* Big specimen glyph, card-art scale. */}
+      {/* Full-card artwork — a DISTINCT motif per category family (swirl / facet
+          / emboss / topo / strata / grid), the field-guide answer to the Citi
+          swirl / UOB facets / DBS emboss that make each Wallet card its own. */}
+      <span className={`sw-art ${motifClass(place.category)}`} aria-hidden />
+      {/* Big category glyph as the card's watermark "logo". */}
       <span className="sw-glyph" aria-hidden>
         <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />
       </span>
 
-      {/* Brand lockup — glyph + name top-left; the Radius target rides top-right
-          as the "network" mark, the way HSBC / Citi logos anchor the corner. */}
+      {/* Lockup — bold glyph "logo" + name left; category TIER wordmark right,
+          the logo-left / product-right structure of a real card. */}
       <div className="sw-top">
         <span className="sw-brand">
-          <CategoryIcon slug={place.category} className="h-[19px] w-[19px]" strokeWidth={2.25} />
+          <CategoryIcon slug={place.category} className="h-[22px] w-[22px]" strokeWidth={2.25} />
           <span className="sw-name">{place.name}</span>
         </span>
-        <span className="sw-net" aria-hidden>
-          <svg viewBox="0 0 40 40" fill="none">
-            <circle cx="20" cy="20" r="16.5" stroke="currentColor" strokeWidth="2" opacity="0.9" />
-            <circle cx="20" cy="20" r="8.5" stroke="currentColor" strokeWidth="2" opacity="0.9" />
-            <circle cx="20" cy="20" r="2.6" fill="var(--app-brand)" />
-          </svg>
-        </span>
+        <span className="sw-tier">{(cat?.name ?? "Place").toUpperCase()}</span>
       </div>
 
       {/* Field-note stamp — the pressed mark for a place you've vouched for. */}
@@ -144,7 +156,6 @@ function Card({
       <div className="sw-foot">
         <div className="sw-data">
           <span className="sw-chip sw-plate">Pl. {plate(index)}</span>
-          <span className="sw-chip">{cat?.name ?? "Place"}</span>
           {ol && (
             <span className={`sw-chip${ol.live ? " sw-live" : ""}`}>
               {ol.live && <b aria-hidden />}
