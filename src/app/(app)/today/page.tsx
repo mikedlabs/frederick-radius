@@ -4,6 +4,7 @@ import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import MastheadTitle from "@/components/today/MastheadTitle";
 import OnNowBand from "@/components/today/OnNowBand";
+import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -349,6 +350,14 @@ export default async function HomePage() {
           the band header reads "On now" when something's genuinely live and
           "Coming up" when the only card is the next happy hour. Streams on the
           shared events promise (it needs tonight's events for the parking play). */}
+      {/* Live Keys score — client island that self-hides unless there's a game
+          today (home or away). Polls only while the game is live. Leads the live
+          layer because a game in progress is the most time-sensitive thing on
+          the page. The [&:not(:empty)] wrapper costs an idle day zero space. */}
+      <div className="[&:not(:empty)]:mt-4">
+        <KeysScore />
+      </div>
+
       <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
           <OnNowBand now={now} eventsPromise={eventsPromise} />
