@@ -2142,67 +2142,117 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
   border: none; border-radius: var(--app-radius-lg); overflow: hidden;
-  margin-top: -138px; padding: 15px 17px; min-height: 176px;
+  margin-top: -138px; padding: 16px 18px; min-height: 176px;
   color: var(--app-ink-inverse); font-family: var(--font-sans, inherit);
-  box-shadow: 0 -1px 0 rgba(255,255,255,.14) inset,
-    0 12px 22px -12px rgba(22,20,14,.7), 0 0 0 1px rgba(22,20,14,.16);
+  box-shadow: 0 -1px 0 rgba(255,255,255,.16) inset,
+    0 12px 22px -12px rgba(22,20,14,.72), 0 0 0 1px rgba(22,20,14,.18);
   transition: margin .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
+  /* Deal-in entrance — the deck fans out on mount, staggered top-to-bottom. */
+  animation: sw-deal .5s cubic-bezier(.22,1,.36,1) both;
+  animation-delay: calc(var(--sw-i, 0) * 55ms);
 }
 .sw-card:first-child { margin-top: 0; }
 .sw-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
+/* Lamination sheen — diagonal gloss band + corner vignette, so the face reads
+   as a physical card, not a flat panel. */
 .sw-card::after {
   content: ""; position: absolute; inset: 0; border-radius: var(--app-radius-lg);
-  pointer-events: none; mix-blend-mode: soft-light;
+  pointer-events: none; mix-blend-mode: soft-light; z-index: 2;
   background:
-    radial-gradient(140% 60% at 50% -20%, rgba(255,255,255,.16), transparent 60%),
-    radial-gradient(100% 120% at 120% 120%, rgba(0,0,0,.24), transparent 55%);
+    linear-gradient(118deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%),
+    radial-gradient(120% 80% at 50% -25%, rgba(255,255,255,.16), transparent 55%),
+    radial-gradient(120% 130% at 118% 125%, rgba(0,0,0,.28), transparent 55%);
 }
+/* One-shot gloss sweep across the face when a card is raised. */
+.sw-card::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,.22) 48%, transparent 60%);
+  transform: translateX(-125%);
+}
+.sw-card.is-open::before { animation: sw-sweep .75s ease-out forwards; }
 .sw-card.is-open {
   margin-top: 14px; min-height: 226px;
-  box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset,
-    0 26px 46px -18px rgba(22,20,14,.78), 0 0 0 1px rgba(22,20,14,.2);
+  box-shadow: 0 -1px 0 rgba(255,255,255,.2) inset,
+    0 26px 46px -18px rgba(22,20,14,.8), 0 0 0 1px rgba(22,20,14,.22);
 }
 .sw-card:first-child.is-open { margin-top: 0; }
 
-.sw-row1 { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.sw-brand { display: flex; align-items: center; gap: 9px; min-width: 0; font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+/* Engraved guilloché / topo artwork filling the face — two sets of concentric
+   contour rings from opposite corners interfere like security print. The
+   field-guide analogue of the Citi swirl / DBS emboss. */
+.sw-art {
+  position: absolute; inset: 0; pointer-events: none; opacity: .9; z-index: 0;
+  background-image:
+    repeating-radial-gradient(circle at 116% 128%, transparent 0 12px, rgba(255,255,255,.055) 12px 13px),
+    repeating-radial-gradient(circle at -14% -22%, transparent 0 17px, rgba(255,255,255,.04) 17px 18px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 62%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0 62%, transparent 100%);
+}
+/* Big specimen glyph, card-art scale, bleeding off the trailing corner. */
+.sw-glyph { position: absolute; right: -22px; top: 50%; transform: translateY(-46%); width: 168px; height: 168px; opacity: .16; pointer-events: none; z-index: 0; }
+
+/* Brand lockup — top row. Glyph + serif name left, Radius "network" mark right. */
+.sw-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sw-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sw-brand svg { flex: none; }
-.sw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sw-plate { flex: none; text-align: right; line-height: 1.5; opacity: .82; font-family: var(--font-mono, monospace); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; }
-.sw-sub { position: relative; z-index: 1; margin: 24px 0 0; max-width: 80%; font-size: 12.5px; line-height: 1.4; opacity: .92;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sw-name {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-serif, Georgia, serif); font-weight: 600; font-size: 18px;
+  letter-spacing: -.01em; line-height: 1.1;
+}
+.sw-net { flex: none; width: 30px; height: 30px; color: var(--app-ink-inverse); opacity: .92; }
+.sw-net svg { width: 100%; height: 100%; }
 
-.sw-glyph { position: absolute; right: -16px; bottom: -20px; width: 148px; height: 148px; opacity: .14; pointer-events: none; }
-
-.sw-data {
+/* Foot — the "number" line: plate + category + live data + contactless glyph.
+   In flow after the lockup; fades in on raise (clipped when collapsed). */
+.sw-foot {
   position: relative; z-index: 1; margin-top: 15px; padding-top: 12px;
-  border-top: 1px solid rgba(238,230,212,.26);
-  display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center;
+  border-top: 1px solid rgba(238,230,212,.24);
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 10px;
   opacity: 0; transform: translateY(6px); transition: opacity .3s ease .08s, transform .3s ease .08s;
 }
-.sw-card.is-open .sw-data { opacity: .95; transform: none; }
-.sw-chip { font-family: var(--font-mono, monospace); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; opacity: .92; display: inline-flex; align-items: center; gap: 6px; }
-.sw-live b { width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand); box-shadow: 0 0 0 3px rgba(225,67,40,.3); }
+.sw-card.is-open .sw-foot { opacity: 1; transform: none; }
+.sw-data { display: flex; flex-wrap: wrap; gap: 5px 11px; align-items: center; min-width: 0; }
+.sw-chip { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .9; display: inline-flex; align-items: center; gap: 6px; }
+.sw-plate { opacity: 1; font-weight: 700; }
+.sw-live { opacity: 1; }
+.sw-live b {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand);
+  box-shadow: 0 0 0 0 rgba(225,67,40,.5);
+  animation: sw-beacon 2.2s ease-out infinite; /* breathing "live" pulse */
+}
+.sw-tap { flex: none; width: 20px; height: 20px; opacity: .8; margin-bottom: 1px; }
+.sw-tap svg { width: 100%; height: 100%; }
 
 .sw-open {
-  position: relative; z-index: 1; margin-top: 13px; display: inline-block;
-  font-size: 12.5px; font-weight: 700; color: var(--app-ink-inverse);
+  position: relative; z-index: 1; display: inline-block; margin-top: 10px;
+  font-size: 12px; font-weight: 700; color: var(--app-ink-inverse);
   text-decoration: underline; text-underline-offset: 3px;
-  opacity: 0; transform: translateY(6px); transition: opacity .3s ease .1s, transform .3s ease .1s;
+  opacity: 0; transform: translateY(6px); transition: opacity .3s ease .12s, transform .3s ease .12s;
   pointer-events: none;
 }
 .sw-card.is-open .sw-open { opacity: 1; transform: none; pointer-events: auto; }
 
 .sw-stamp {
-  position: absolute; z-index: 1; top: 58px; right: 18px; width: 84px; height: 84px;
+  position: absolute; z-index: 1; top: 52px; right: 20px; width: 80px; height: 80px;
   border-radius: 50%; transform: rotate(-13deg); pointer-events: none;
-  border: 2.5px solid rgba(238,230,212,.5); color: rgba(238,230,212,.62);
+  border: 2.5px solid rgba(238,230,212,.5); color: rgba(238,230,212,.64);
   display: grid; place-items: center; text-align: center;
   font-family: var(--font-mono, monospace); font-size: 8px; letter-spacing: .1em; line-height: 1.5; text-transform: uppercase;
   box-shadow: 0 0 0 4px rgba(238,230,212,.06) inset;
+  opacity: 0; transition: opacity .3s ease .1s;
 }
+/* The stamp belongs to the raised card — a collapsed card's peek shows only its
+   lockup, never a stray stamp bleeding across the fan seam. */
+.sw-card.is-open .sw-stamp { opacity: 1; }
 .sw-stamp span { display: block; font-size: 13px; margin-top: 2px; }
 
+@keyframes sw-deal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes sw-sweep { to { transform: translateX(125%); } }
+@keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 rgba(225,67,40,.5); } 70%, 100% { box-shadow: 0 0 0 6px rgba(225,67,40,0); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .sw-card, .sw-data, .sw-open { transition: none; }
+  .sw-card, .sw-foot, .sw-open { transition: none; animation: none; }
+  .sw-card.is-open::before { animation: none; }
+  .sw-live b { animation: none; }
 }
