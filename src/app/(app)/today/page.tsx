@@ -16,6 +16,8 @@ import LocationPrime from "@/components/today/LocationPrime";
 // lives at src/components/today/AdaptiveGreeting.tsx if we want to
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
+import MomentSpotlight from "@/components/today/MomentSpotlight";
+import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
@@ -195,6 +197,15 @@ export default async function HomePage() {
           <CivicAlerts />
         </div>
       </Suspense>
+
+      {/* ── MOMENT SPOTLIGHT — the big civic weekend (the Fourth, the Fair, the
+          holiday markets). Festive, not alarm-toned; self-hides outside a
+          moment's date window; dismissible for the session. */}
+      {activeMoment(now) && (
+        <div className="mb-4">
+          <MomentSpotlight moment={activeMoment(now)!} />
+        </div>
+      )}
 
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
           tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
