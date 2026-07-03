@@ -51,6 +51,16 @@ describe("data integrity (a bad hand-edit fails here)", () => {
     }
   });
 
+  it("every FAQ entry is a well-formed question and answer", () => {
+    for (const m of CIVIC_MOMENTS) {
+      for (const f of m.faq ?? []) {
+        expect(f.q.trim().length).toBeGreaterThan(0);
+        expect(f.q.trim().endsWith("?")).toBe(true);
+        expect(f.a.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("no em dashes in any user-facing moment copy", () => {
     const blob = JSON.stringify(CIVIC_MOMENTS);
     expect(blob).not.toContain("—");

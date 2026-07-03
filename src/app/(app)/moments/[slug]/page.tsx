@@ -148,10 +148,48 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
         </section>
       ))}
 
+      {m.faq && m.faq.length > 0 && (
+        <section>
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: m.accent }}>
+            Good to know
+          </h2>
+          <dl className="mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
+            {m.faq.map((f) => (
+              <div key={f.q} className="py-3">
+                <dt className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {f.q}
+                </dt>
+                <dd className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  {f.a}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
       {m.note && (
         <p className="rounded-[var(--app-radius-md)] px-1 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
           {m.note}
         </p>
+      )}
+
+      {m.faq && m.faq.length > 0 && (
+        <script
+          type="application/ld+json"
+          // FAQPage JSON-LD from the same curated Q&A rendered above.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: m.faq.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
+            }),
+          }}
+        />
       )}
     </div>
   );
