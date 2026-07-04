@@ -521,7 +521,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: jsonLdScript(
             breadcrumbJsonLd([
               { name: "Places", path: "/places" },
               ...(town ? [{ name: town.name, path: `/m/${place.municipality}` }] : []),

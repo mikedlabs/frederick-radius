@@ -162,7 +162,7 @@ export default async function MunicipalityPage(
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: jsonLdScript(
             breadcrumbJsonLd([
               { name: "Towns", path: "/towns" },
               { name: m.name, path: `/m/${m.slug}` },

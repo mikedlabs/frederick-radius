@@ -204,7 +204,7 @@ export default async function BetaPage({
           <PlateHeading eyebrow="Pl. V · the guide" title="Every place, pressed into a card" />
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <SpecimenCard hue="#C0871F" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
-            <SpecimenCard hue="#7E2C6F" kicker="Live music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
+            <SpecimenCard hue="#8A6A1E" kicker="Live music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
             <SpecimenCard hue="#20506A" kicker="Town · Pl. I" name="Downtown Frederick" line="Clustered spires · pop. 80,435" />
           </div>
           <p className="mx-auto mt-5 max-w-[30rem] text-center text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>

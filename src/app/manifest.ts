@@ -20,6 +20,9 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+      // Raster fallback for engines that don't honor sizes="any" SVG, and a
+      // real 192px target for Android home-screen install (audit 2026-07).
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [

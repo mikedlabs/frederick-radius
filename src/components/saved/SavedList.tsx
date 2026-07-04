@@ -21,6 +21,7 @@ import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
 import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route , ArrowRight, Layers } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
@@ -248,7 +249,10 @@ export default function SavedList() {
   const [homeOrigin, setHomeOrigin] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
     try {
-      const slug = window.localStorage.getItem("fr_home_muni");
+      // Use the canonical home-town source (getHomeMuni reads "fr:home-muni:v1");
+      // this used to read a stale "fr_home_muni" key that was never written, so
+      // the Distance sort silently tied every row at Infinity (audit 2026-07).
+      const slug = getHomeMuni();
       if (slug) {
         const m = MUNICIPALITY_BY_SLUG[slug];
         // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
