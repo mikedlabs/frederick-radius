@@ -315,6 +315,192 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       },
     ],
   },
+  {
+    slug: "great-frederick-fair-2026",
+    title: "The Great Frederick Fair",
+    subtitle: "Nine days of blue ribbons, midway lights, and grandstand nights.",
+    spotlightLead: "The county fair is on at the fairgrounds this week.",
+    starts: "2026-09-14",
+    ends: "2026-09-26",
+    accent: "var(--app-accent)",
+    icon: "Tent",
+    intro:
+      "The county's biggest agricultural gathering takes over the East Patrick Street fairgrounds for nine days every September, and 2026 runs Friday the 18th through Saturday the 26th. Expect the full county-fair sweep: livestock barns and 4-H judging, a carnival midway, fair food, and a grandstand that swings from touring concerts to demolition derbies. Gate admission is modest and kids ten and under get in free.",
+    note: "Times and prices are from the fair's official pages. Parking fees differed between two of those pages, so confirm at the gate.",
+    sections: [
+      {
+        heading: "The nine days",
+        items: [
+          {
+            kind: "activity",
+            title: "Fair run: nine days",
+            where: "The Great Frederick Fair",
+            address: "797 E. Patrick St, Frederick",
+            when: "Fri, Sept 18 to Sat, Sept 26",
+            note: "Gates open 4 PM on opening Friday, then 9 AM to 10 PM every day through the 26th.",
+            source_url: "https://thegreatfrederickfair.com/come-to-the-fair/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Admission",
+            where: "Fairgrounds gates",
+            note: "Adults 11 and over are $10 online or $15 at the gate; kids 10 and under are free. Advance grandstand tickets include gate admission. Senior, military, and kids' discount days are posted on the site.",
+            source_url: "https://thegreatfrederickfair.com/come-to-the-fair/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "tip",
+            title: "Parking",
+            where: "On-site fairgrounds lots",
+            note: "Lots open 9 AM daily. Expect roughly $10 to $15 for the infield and $5 to $10 for the outer lots; the fair's two pages list different figures, so confirm the price at the gate.",
+            source_url: "https://thegreatfrederickfair.com/come-to-the-fair/",
+            confidence: "pattern",
+          },
+        ],
+      },
+      {
+        heading: "Grandstand nights",
+        items: [
+          {
+            kind: "activity",
+            title: "Concerts",
+            where: "The Grandstand",
+            when: "Daughtry Fri 9/18, Pop 2000 Tour Sat 9/19, Neal McCoy Sun 9/20, Danny Gokey Thu 9/24, a Taylor Swift tribute Fri 9/25, Warren Zeiders Sat 9/26",
+            note: "Ticketed. Advance tickets include gate admission; doors open two hours before showtime.",
+            source_url: "https://thegreatfrederickfair.com/grandstand/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Motorsports",
+            where: "The Grandstand",
+            when: "Truck & Tractor Pull Mon 9/21, Demolition Derby (cars) Tue 9/22, Demolition Derby (trucks & vans) Wed 9/23",
+            note: "The ticketed grandstand nights between the concerts.",
+            source_url: "https://thegreatfrederickfair.com/grandstand/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+      {
+        heading: "On the grounds",
+        items: [
+          {
+            kind: "activity",
+            title: "Midway, livestock, and fair food",
+            where: "Across the fairgrounds",
+            when: "All nine days",
+            note: "Carnival rides, agricultural exhibits, livestock judging, and the food. A Jack Pass ($35) bundles a day's gate admission with a ride-all-day wristband.",
+            source_url: "https://thegreatfrederickfair.com/the-carnival/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "When is the fair?",
+        a: "Friday, September 18 through Saturday, September 26, 2026. It opens at 4 PM the first Friday, then runs 9 AM to 10 PM every day after.",
+      },
+      {
+        q: "How much is admission?",
+        a: "Adults are $10 online or $15 at the gate, and kids 10 and under are free. If you buy a grandstand concert ticket in advance, it includes gate admission.",
+      },
+      {
+        q: "Is it good for kids?",
+        a: "Yes. Kids 10 and under get in free, the midway and livestock barns are the heart of the day, and a Jack Pass bundles admission with a ride-all-day wristband.",
+      },
+      {
+        q: "Where do I park?",
+        a: "On-site lots open at 9 AM. Bring cash to be safe: the fair's pages quote different parking figures, so confirm the price at the gate.",
+      },
+    ],
+  },
+  {
+    slug: "in-the-street-2026",
+    title: "In The Streets",
+    subtitle: "Downtown's free September street festival, forty-plus years running.",
+    spotlightLead: "Market Street closes for In The Streets this Saturday.",
+    starts: "2026-09-09",
+    ends: "2026-09-12",
+    accent: "var(--app-brand)",
+    icon: "PartyPopper",
+    weatherSensitive: true,
+    intro:
+      "For more than four decades, In The Streets has closed Market Street to traffic and filled it with stages, food, and crowds that now top seventy-five thousand. In 2026 it lands on Saturday, September 12: the festival core runs late morning to late afternoon, with a morning road race, a midday craft-beverage garden, and an evening party along Carroll Creek. It is Celebrate Frederick's signature end-of-summer day, and it's free.",
+    note: "Times are from Celebrate Frederick's event page. Exact road-closure hours aren't published yet; check their parking and directions link closer to the day.",
+    sections: [
+      {
+        heading: "The day",
+        items: [
+          {
+            kind: "activity",
+            title: "In The Streets festival",
+            where: "Downtown Frederick, Market Street",
+            address: "N. Market St, Frederick",
+            when: "Sat, Sept 12 · 11 AM to 5 PM",
+            note: "Free. Several entertainment stages, food from Frederick restaurants, and vendors down the length of the street.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Market Street Mile",
+            where: "Market Street",
+            when: "Sat, Sept 12 · 9 AM",
+            note: "The morning road race that kicks the day off before the festival opens.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Craft Beverage Experience",
+            where: "Downtown Frederick",
+            when: "Sat, Sept 12 · noon to 5 PM",
+            note: "A midday tasting garden of local breweries, distilleries, and wineries.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "confirmed",
+          },
+          {
+            kind: "activity",
+            title: "Up The Creek party",
+            where: "Carroll Creek Urban Park",
+            when: "Sat, Sept 12 · 5 to 9 PM",
+            note: "The evening party along the creek that closes out the day.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "confirmed",
+          },
+        ],
+      },
+      {
+        heading: "Getting there",
+        items: [
+          {
+            kind: "closure",
+            title: "Market Street is closed to traffic",
+            where: "Downtown Frederick",
+            note: "The festival is staged in the street, so Market Street closes for the day. The exact hours and block boundaries aren't posted yet; use the city decks and check the organizer's parking link before you head in.",
+            source_url: "https://www.celebratefrederick.com/events/in-the-street/",
+            confidence: "pattern",
+          },
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "When is In The Streets?",
+        a: "Saturday, September 12, 2026. The festival itself runs 11 AM to 5 PM, with the Market Street Mile at 9 AM and the Up The Creek party from 5 to 9 PM.",
+      },
+      {
+        q: "Is it free?",
+        a: "Yes, the street festival is free to walk. The craft-beverage tasting garden and the Market Street Mile are the ticketed add-ons.",
+      },
+      {
+        q: "Where do I park?",
+        a: "Market Street is closed for the festival, so park in a city deck and walk in. Check Celebrate Frederick's parking and directions link for the day's closures.",
+      },
+    ],
+  },
 ];
 
 /** en-CA gives a lexicographically-sortable Eastern YYYY-MM-DD. */
@@ -349,8 +535,8 @@ export function momentBySlug(slug: string): CivicMoment | null {
  *   - Memorial Day (late May)       Parades (Middletown, Thurmont), pools open.
  *   - Fourth of July (this hub)     County-wide fireworks + parades.
  *   - Alive @ Five season (May–Sep) Thursday concerts — already an event series.
- *   - Great Frederick Fair (Sept)   The county's marquee week at the fairgrounds.
- *   - In the Street (Sept)          Downtown Frederick's street festival.
+ *   - Great Frederick Fair (Sept)   POPULATED (great-frederick-fair-2026).
+ *   - In the Street (Sept)          POPULATED (in-the-street-2026).
  *   - Oktoberfest / harvest (Oct)   Schifferstadt Oktoberfest, orchards, foliage.
  *   - Halloween (late Oct)          Trick-or-treat times per town, downtown events.
  *   - Veterans Day (Nov 11)         Ceremonies + parades.
