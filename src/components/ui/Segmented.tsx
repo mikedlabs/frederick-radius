@@ -62,8 +62,7 @@ function LinkSegment<K extends string>({
   const Icon = item.icon;
   return (
     <Link
-      role="tab"
-      aria-selected={active}
+      aria-current={active ? "page" : undefined}
       href={item.href!}
       className={`${SEG_BASE} ${SEG_SIZE[size]}`}
       style={segStyle(active)}
@@ -100,7 +99,7 @@ export default function Segmented<K extends string>({
   const labelCls = labelsOn === "sm" ? "hidden sm:inline" : "inline";
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label={ariaLabel}
       className={`tactile inline-flex shrink-0 overflow-hidden rounded-full ${className}`.trim()}
     >
@@ -116,8 +115,7 @@ export default function Segmented<K extends string>({
           <button
             key={item.key}
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-pressed={active}
             onClick={() => {
               haptic("light");
               onChange?.(item.key);

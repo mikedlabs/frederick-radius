@@ -96,6 +96,47 @@ export default function Sheet({
     }
   }, [open]);
 
+  // Focus management (WCAG 2.4.3 / 2.1.2): the sheet declared role=dialog +
+  // aria-modal but never moved focus INTO itself, and Tab could walk out to the
+  // obscured page behind it. On open, focus the first control (or the panel);
+  // while open, cycle Tab/Shift+Tab within the panel. (audit a11y)
+  useEffect(() => {
+    if (!open || !mounted) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const id = requestAnimationFrame(() => {
+      const first = panel.querySelector<HTMLElement>(SEL);
+      (first ?? panel).focus();
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = Array.from(panel.querySelectorAll<HTMLElement>(SEL)).filter(
+        (n) => n.offsetParent !== null,
+      );
+      if (list.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const firstEl = list[0];
+      const lastEl = list[list.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === firstEl || active === panel)) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && active === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open, mounted]);
+
   // Swipe-down dismiss. We track touchmove on the drag handle / header
   // area only; the scrollable body keeps its native scroll so a swipe
   // inside long content scrolls instead of dismissing. The threshold
@@ -144,7 +185,8 @@ export default function Sheet({
       {/* Panel */}
       <div
         ref={panelRef}
-        className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
+        tabIndex={-1}
+        className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3 outline-none"
         style={{
           maxHeight,
           paddingBottom: "env(safe-area-inset-bottom)",

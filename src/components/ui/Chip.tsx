@@ -48,6 +48,13 @@ export function Chip({
   children?: ReactNode;
 }) {
   const color = colorOverride ?? TONE[tone];
+  // A raw color override (a category or per-source hue) is usually a vivid
+  // pin/fill color that fails WCAG AA as small text. Darken it toward ink for
+  // the TEXT while keeping the true hue for the tint, so category chips stay
+  // legible. Tone presets are already text-safe, so leave them untouched. (a11y)
+  const textColor = colorOverride
+    ? `color-mix(in srgb, ${colorOverride} 55%, var(--app-ink))`
+    : color;
   return (
     <span
       title={title}
@@ -56,7 +63,7 @@ export function Chip({
       } ${className}`.trim()}
       style={{
         background: `color-mix(in srgb, ${color} 14%, transparent)`,
-        color,
+        color: textColor,
         ...style,
       }}
     >

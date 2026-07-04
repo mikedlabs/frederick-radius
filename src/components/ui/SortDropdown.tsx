@@ -87,7 +87,7 @@ export default function SortDropdown<K extends string = string>({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
@@ -118,7 +118,7 @@ export default function SortDropdown<K extends string = string>({
 
       {open && (
         <div
-          role="listbox"
+          role="menu"
           aria-label={label}
           className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
             align === "right" ? "right-0" : "left-0"
@@ -131,8 +131,8 @@ export default function SortDropdown<K extends string = string>({
               <button
                 key={opt.key}
                 type="button"
-                role="option"
-                aria-selected={active}
+                role="menuitemradio"
+                aria-checked={active}
                 onClick={() => {
                   onChange(opt.key);
                   setOpen(false);
