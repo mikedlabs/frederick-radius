@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Sparkles, Flag, TriangleAlert, Star, Info, ExternalLink, CloudSun } from "lucide-react";
 import { CIVIC_MOMENTS, momentBySlug, type MomentItem, type MomentItemKind } from "@/data/civic-moments";
 import PageBloom from "@/components/ui/PageBloom";
+import { jsonLdScript } from "@/lib/seo/jsonld";
 
 /**
  * /moments/[slug] — a curated hub for a big county occasion (the Fourth, the
@@ -22,11 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const m = momentBySlug(slug);
   if (!m) notFound();
+  const ogImage = { url: `/api/og?type=moment&slug=${slug}`, width: 1200, height: 630 };
   return {
     title: m.title,
     description: m.subtitle,
     alternates: { canonical: `/moments/${slug}` },
-    openGraph: { title: m.title, description: m.subtitle },
+    openGraph: { title: m.title, description: m.subtitle, images: [ogImage] },
+    twitter: { card: "summary_large_image", title: m.title, description: m.subtitle, images: [ogImage.url] },
   };
 }
 
@@ -177,9 +180,11 @@ export default async function MomentPage({ params }: { params: Promise<{ slug: s
       {m.faq && m.faq.length > 0 && (
         <script
           type="application/ld+json"
-          // FAQPage JSON-LD from the same curated Q&A rendered above.
+          // FAQPage JSON-LD from the same curated Q&A rendered above, routed
+          // through the hardened serializer (consistent with the app's JSON-LD
+          // invariant; safe if this content ever becomes dynamic). (audit)
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: jsonLdScript({
               "@context": "https://schema.org",
               "@type": "FAQPage",
               mainEntity: m.faq.map((f) => ({

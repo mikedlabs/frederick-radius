@@ -4,6 +4,7 @@ import { EVENT_BY_SLUG } from "@/data/events";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { COLLECTION_BY_SLUG } from "@/data/collections";
+import { momentBySlug } from "@/data/civic-moments";
 
 // Token → hex mapping for the OG image runtime, which has no DOM
 // and so can't resolve CSS variables. Keep in sync with globals.css.
@@ -102,6 +103,18 @@ export async function GET(request: Request) {
     kicker = "Private beta · Frederick Radius";
     blurb = "A living field guide to Frederick County. What's open, what's on, and what's worth your time.";
     accent = "#E14328";
+  } else if (type === "moment") {
+    // Civic-moment hubs (/moments/[slug]) — the most-shared, timely content.
+    // Not time-baked to a specific clock (social caches at share time); the
+    // subtitle reads true across the whole window. Accent token → hex via the
+    // shared map so the card matches the in-app hue. (audit)
+    const m = momentBySlug(slug);
+    if (m) {
+      title = m.title;
+      kicker = "A Frederick moment";
+      blurb = m.subtitle;
+      accent = COLLECTION_ACCENT_HEX[m.accent] ?? accent;
+    }
   }
 
   // OG card palette — Brand Book No. 01 (May 2026): paper cream
