@@ -4,6 +4,7 @@ import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 import { COLLECTIONS } from "@/data/collections";
+import { CIVIC_MOMENTS } from "@/data/civic-moments";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
@@ -82,5 +83,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));
-  return [...top, ...munis, ...cats, ...collections, ...places, ...events];
+  // Civic-moment hubs (/moments/[slug]) — closed, prerendered set, indexable,
+  // self-canonical. High-intent timely content ("the Fourth in Frederick
+  // County") that was never advertised to crawlers. (audit 2026-07)
+  const moments = CIVIC_MOMENTS.map((m) => ({
+    url: `${BASE}/moments/${m.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+  return [...top, ...munis, ...cats, ...collections, ...moments, ...places, ...events];
 }

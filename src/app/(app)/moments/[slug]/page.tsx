@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const m = momentBySlug(slug);
   if (!m) notFound();
   return {
-    title: `${m.title} · Frederick Radius`,
+    title: m.title,
     description: m.subtitle,
     alternates: { canonical: `/moments/${slug}` },
     openGraph: { title: m.title, description: m.subtitle },

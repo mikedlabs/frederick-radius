@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
+import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -207,14 +208,15 @@ function eventTimePredicate(
     };
   }
   if (mode === "weekend") {
-    // Friday 5 PM ET → Monday 12:00 AM ET, in Eastern wall time.
-    const { year, month, day, weekday } = easternParts(now);
-    const daysToFri = (5 - weekday + 7) % 7;
-    const fMs = Date.parse(easternWallToUtcISO(year, month, day + daysToFri, 17, 0));
-    const mMs = Date.parse(easternWallToUtcISO(year, month, day + daysToFri + 3, 0, 0));
+    // Friday 5 PM ET → Monday 12:00 AM ET, from the SHARED horizon window so
+    // /map agrees with /today and /events. The old inline `(5 - weekday + 7) % 7`
+    // math jumped to NEXT Friday once it was already the weekend, so on Sat/Sun
+    // /map showed next weekend and hid the one the user was standing in
+    // (audit 2026-07). buildHorizonBounds clamps the current weekend correctly.
+    const { weekendStart, weekendEnd } = buildHorizonBounds(now);
     return (s) => {
       const sMs = Date.parse(s);
-      return Number.isFinite(sMs) && sMs >= fMs && sMs <= mMs;
+      return Number.isFinite(sMs) && sMs >= weekendStart && sMs <= weekendEnd;
     };
   }
   // "all" — next 7 days. The cap is applied in the caller's loop.
