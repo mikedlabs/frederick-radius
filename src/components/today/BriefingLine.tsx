@@ -164,7 +164,9 @@ export default async function BriefingLine() {
 
   if (band === "morning" || band === "midday" || band === "afternoon") {
     if (openCount >= 3) {
-      fragments.push(`${openCount} places open now`);
+      // Confidence-based phrasing (build review): hours come from Google + local
+      // data and can be stale, so we say "likely open," not a hard claim.
+      fragments.push(`${openCount} places likely open now`);
     }
   }
 

@@ -8,6 +8,7 @@ import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
+import FreshnessGuard from "@/components/today/FreshnessGuard";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -163,6 +164,12 @@ export default async function EventsIndexPage({
   return (
     <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
+
+      {/* Freshness guard (build review): /events is ISR + carries day-relative
+          labels ("today", weekday dateline), so a cached shell served on a
+          later day would mislabel the calendar. Same self-healing guard /today
+          uses: silent one-time reload, then an honest "rendered on {day}" banner. */}
+      <FreshnessGuard renderedAtIso={now.toISOString()} />
 
       {/* ── HEADER — the almanac nameplate. Premium masthead: a hairline
           rule, a "Frederick County / Mon · Jun 15" dateline, the serif
