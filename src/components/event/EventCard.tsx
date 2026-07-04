@@ -68,7 +68,12 @@ export default function EventCard({
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
   // Badge palette: red for cancelled, amber for postponed.
-  const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning)";
+  // Text-safe status color. Plain --app-warning (amber) fails WCAG AA both as
+  // inline text on cream and as white-on-fill badge; --app-warning-press is the
+  // darkened AA-safe variant (white clears 4.5:1 on it, and it clears 4.5:1 as
+  // text on cream). Cancelled already uses --app-danger, which passes. This one
+  // value feeds every status spot below (inline text + white pills). (audit a11y)
+  const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL
@@ -77,6 +82,11 @@ export default function EventCard({
   // business and made the feed read inconsistent (the "everything looks
   // Civic" bug). A wrong label is worse than a neutral one.
   const accent: string = cat?.color ?? "#7A7975";
+  // AA-safe variant of the category hue for use as small TEXT (uppercase
+  // eyebrows) on cream/card: mix the vivid color toward ink so it clears 4.5:1
+  // while staying recognizably the category's hue. The raw `accent` stays for
+  // icon fills / tint grounds (3:1 domain). (audit a11y: category eyebrows)
+  const accentText = `color-mix(in srgb, ${accent} 55%, var(--app-ink))`;
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
 
   // Utility variant — TINY single muted line for the civic / municipal
@@ -145,7 +155,7 @@ export default function EventCard({
         <div className="flex shrink-0 flex-col items-center gap-0.5 leading-none">
           <span
             className="text-[10px] font-bold uppercase tracking-[0.1em]"
-            style={{ color: accent }}
+            style={{ color: accentText }}
           >
             {date.month}
           </span>
@@ -241,7 +251,7 @@ export default function EventCard({
     const onPhoto = Boolean(event.hero_image);
     const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
     const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
-    const eyebrowColor = onPhoto ? "color-mix(in srgb, " + accent + " 45%, #fff)" : accent;
+    const eyebrowColor = onPhoto ? "color-mix(in srgb, " + accent + " 45%, #fff)" : accentText;
     const capColor = onPhoto ? "rgba(255,255,255,0.82)" : "var(--app-ink-2)";
     return (
       <article
@@ -359,7 +369,7 @@ export default function EventCard({
             className="flex shrink-0 flex-col items-center justify-center self-start rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
             style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accentText }}>{date.month}</span>
             <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
             <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
           </div>
@@ -570,7 +580,7 @@ export default function EventCard({
           background: `color-mix(in srgb, ${accent} 10%, var(--app-bg-sunken))`,
         }}
       >
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accentText }}>
           {date.month}
         </span>
         <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
