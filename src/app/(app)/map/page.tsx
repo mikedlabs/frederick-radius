@@ -30,7 +30,6 @@ import MapModeToggle from "@/components/map/MapModeToggle";
 import MapWarmup from "@/components/map/MapWarmup";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
-import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isUtilityEvent } from "@/lib/event-kind";
@@ -285,13 +284,30 @@ function upcomingEventsBucket(now: Date): number {
 // /radius route used to derive). Inlined here so the radius branch
 // can compute its amenity set without dragging the full Place loader
 // into the SSR payload — we only need name/category/geom for dedup.
-const CLIENT_PLACES_FOR_DEDUPE = (
-  CLIENT_PLACES_RAW as unknown as Array<{
-    name: string;
-    category: string;
-    geom: { lng: number; lat: number };
-  }>
-).map((p) => ({ name: p.name, category: p.category, geom: p.geom }));
+//
+// Loaded + projected lazily via dynamic import, then memoized.
+// places-client.json is ~1.8MB. A static top-level import forced that
+// JSON into the module graph so it was parsed on EVERY /map render —
+// including the default browse path, which never touches it (browse
+// reads publicPlaces()). Only the radius branch below needs it, so we
+// defer the whole file behind first use: cold browse instances skip the
+// parse + array allocation entirely.
+let _clientDedupeProjection:
+  | Array<{ name: string; category: string; geom: { lng: number; lat: number } }>
+  | null = null;
+async function clientDedupeProjection() {
+  if (_clientDedupeProjection === null) {
+    const raw = (await import("@/data/places-client.json")).default;
+    _clientDedupeProjection = (
+      raw as unknown as Array<{
+        name: string;
+        category: string;
+        geom: { lng: number; lat: number };
+      }>
+    ).map((p) => ({ name: p.name, category: p.category, geom: p.geom }));
+  }
+  return _clientDedupeProjection;
+}
 
 export default async function MapPage({
   searchParams,
@@ -331,7 +347,7 @@ export default async function MapPage({
     const radiusField = await withTimeout(getFieldAmenities(), 6000, []);
     const radiusAmenities = dedupeAmenities(
       [...allAmenities(), ...radiusField],
-      CLIENT_PLACES_FOR_DEDUPE,
+      await clientDedupeProjection(),
     );
     // Upcoming events with coordinates, slimmed to just what the reach
     // view needs (no SSR bloat). RadiusBuilder filters these to the
