@@ -218,6 +218,21 @@ export default function AppMapDeck({
   // with how /browse interprets the URL.
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Every active layer across all tiers, so the "Layers" trigger badge +
+  // highlight tell the truth. Previously only categories + amenities counted,
+  // so a user with Transit / an overlay / Aerial / Saved on saw a plain,
+  // un-badged button — the one always-visible summary of state was wrong.
+  const activeLayerCount =
+    activeCats.size +
+    activeAmenityGroupCount +
+    activeOverlays.length +
+    (showCivic ? 1 : 0) +
+    (showTransit ? 1 : 0) +
+    (showTrails ? 1 : 0) +
+    (showAerial ? 1 : 0) +
+    (showSavedOnly ? 1 : 0) +
+    (fieldNotesOnly ? 1 : 0);
   const router = useRouter();
   const openNow = searchParams?.get("open") === "now";
   const clearOpenHref = (() => {
@@ -355,19 +370,19 @@ export default function AppMapDeck({
             // at the cost of ~30px width.
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
             style={{
-              borderColor: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-border)",
-              color: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+              borderColor: filtersOpen || activeLayerCount > 0 ? "var(--app-brand)" : "var(--app-border)",
+              color: filtersOpen || activeLayerCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
               background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
               boxShadow: "var(--app-shadow-2)",
             }}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             <span>Layers</span>
-            {activeCats.size + activeAmenityGroupCount > 0 && (
+            {activeLayerCount > 0 && (
               <span
                 className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand-press)] px-1 text-[10px] font-bold tabular-nums text-white"
               >
-                {activeCats.size + activeAmenityGroupCount}
+                {activeLayerCount}
               </span>
             )}
           </button>
@@ -734,7 +749,10 @@ export default function AppMapDeck({
             chips (parks, markets, art, ...) are always available, so the
             group now always appears. */}
         {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || OVERLAYS.length > 0) && (
-          <LayerGroup title="Overlays & live layers" defaultOpen>
+          /* Collapsed by default: opening "Layers" used to explode into a
+             ~30-chip wall (both groups open). Places-by-type leads; overlays
+             are one tap away. */
+          <LayerGroup title="Overlays & live layers">
             <ul className="flex flex-wrap items-center gap-2 py-0.5">
           {amenityCount > 0 && (
             <li>
