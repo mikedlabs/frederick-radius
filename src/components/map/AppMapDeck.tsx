@@ -411,7 +411,10 @@ export default function AppMapDeck({
                     aria-label={`Remove ${cat.name} filter`}
                     className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
                     style={{
-                      background: cat.color,
+                      // Deepen the category color toward ink so white text clears
+                      // AA even on light categories (e.g. gold family #C0871F,
+                      // where white alone was ~2.4:1). Dark categories barely shift.
+                      background: `color-mix(in srgb, ${cat.color} 80%, var(--app-ink))`,
                       color: "white",
                       boxShadow: "var(--app-shadow-1)",
                     }}
@@ -831,13 +834,15 @@ export default function AppMapDeck({
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
                 style={{
                   background: showAerial ? "var(--app-accent)" : "var(--app-bg-elevated)",
-                  color: showAerial ? "white" : "var(--app-ink-2)",
+                  // Gold is a FILL token, not a text color (see --app-accent-press):
+                  // white on gold fails AA (~2.4:1), so use ink on the gold fill.
+                  color: showAerial ? "var(--app-ink)" : "var(--app-ink-2)",
                   border: `1px solid ${showAerial ? "var(--app-accent)" : "var(--app-border)"}`,
                   boxShadow: showAerial ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
                 title="Drone photos from the Frederick Radius seasonal archive. Each pin marks where a shot was taken"
               >
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "white" : "var(--app-accent)" }} />
+                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "var(--app-ink)" : "var(--app-accent)" }} />
                 Aerial photos · {aerialCount}
               </button>
             </li>
