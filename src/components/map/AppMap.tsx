@@ -211,6 +211,16 @@ import AppMapDeck from "./AppMapDeck";
 import TimeScrubber from "./TimeScrubber";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
+import { getOpenStatus, isOpenNow } from "@/lib/hours";
+
+/** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
+ *  from "now" by the delta so getOpenStatus (which reads Frederick time)
+ *  evaluates hours at the scrubbed hour without constructing a zoned date. */
+function scrubInstant(scrubHour: number): Date {
+  const local = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const curH = local.getHours() + local.getMinutes() / 60;
+  return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
+}
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
@@ -815,6 +825,45 @@ export default function AppMap({
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
   }), [filteredPlaces]);
+
+  // ── Living-map scrub → place open/closed via feature-state ──────────────
+  // Snappy by design: rather than re-serializing the GeoJSON source, flip a
+  // per-pin `dim` feature-state and let the icon-opacity expression paint it
+  // on the GPU. The compact client hours bundle is lazy-loaded on first scrub
+  // (the deliberately-slimmed browse payload carries no hours), then reused.
+  // Reapplied whenever the source data changes (Mapbox clears feature-state on
+  // setData) or the hour moves; cleared when the scrubber turns off.
+  const clientHoursRef = useRef<globalThis.Map<string, { hours: PlaceCardData["hours"]; verified: boolean }> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function apply() {
+      const m = mapRef.current?.getMap();
+      if (!m || !m.getSource("curated-places")) return;
+      if (scrubHour == null) {
+        m.removeFeatureState({ source: "curated-places" });
+        return;
+      }
+      if (!clientHoursRef.current) {
+        const mod = await import("@/lib/loaders/places-client");
+        if (cancelled) return;
+        clientHoursRef.current = new globalThis.Map(
+          mod.clientPlaces().map((p) => [p.slug, { hours: p.hours, verified: p.hours_verified ?? false }] as const),
+        );
+      }
+      const hoursBySlug = clientHoursRef.current;
+      if (!hoursBySlug) return;
+      const at = scrubInstant(scrubHour);
+      for (const p of filteredPlaces) {
+        const h = hoursBySlug.get(p.slug);
+        const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
+        m.setFeatureState({ source: "curated-places", id: p.slug }, { dim: !open });
+      }
+    }
+    const m = mapRef.current?.getMap();
+    if (m && m.isSourceLoaded("curated-places")) apply();
+    else if (m) m.once("idle", apply);
+    return () => { cancelled = true; };
+  }, [scrubHour, curatedGeoJson, filteredPlaces]);
 
   // The single selected place — drives a soft glow ring under its icon.
   const selectedGeoJson = useMemo(() => {
@@ -1915,6 +1964,7 @@ export default function AppMap({
             id="curated-places"
             type="geojson"
             data={curatedGeoJson}
+            promoteId="slug"
             cluster
             clusterRadius={64}
             clusterMaxZoom={15}
@@ -2049,6 +2099,12 @@ export default function AppMap({
                 "icon-ignore-placement": true,
                 "symbol-sort-key": ["get", "pri"],
                 "icon-anchor": "center",
+              }}
+              paint={{
+                // Living-map scrub: a pin dims when it's closed at the
+                // scrubbed hour (feature-state set client-side). No state =
+                // full opacity, so this is inert until the scrubber is used.
+                "icon-opacity": ["case", ["boolean", ["feature-state", "dim"], false], 0.28, 1],
               }}
             />
             {/* Invisible tap-target pad — expands each curated pin's

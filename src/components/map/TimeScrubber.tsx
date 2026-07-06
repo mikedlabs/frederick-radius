@@ -66,7 +66,10 @@ export default function TimeScrubber({
 
   if (!active) {
     return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center">
+      <div
+        className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
+        style={{ bottom: "calc(var(--app-bottomnav-reserve, 0px) + 10px)" }}
+      >
         <button
           type="button"
           onClick={() => onChange(currentFrederickHour())}
@@ -95,7 +98,10 @@ export default function TimeScrubber({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-3">
+    <div
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-3"
+      style={{ bottom: "calc(var(--app-bottomnav-reserve, 0px) + 10px)" }}
+    >
       <div
         className="pointer-events-auto w-full max-w-[420px] rounded-[var(--app-radius-lg)] px-3.5 pb-3 pt-2.5 shadow-[var(--app-shadow-2)] backdrop-blur"
         style={{
