@@ -222,6 +222,14 @@ function scrubInstant(scrubHour: number): Date {
   return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
 }
 
+/** True when the viewer asked for reduced motion. The CSS `*` gate can't
+ *  reach Mapbox's JS-driven camera, so camera moves check this and pass
+ *  duration:0 (instant, no glide). */
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined"
+    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
+
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
    *  so SavedList/radius callers pass full records; /map browse passes the
@@ -972,7 +980,19 @@ export default function AppMap({
       // (photo, rating, hours, directions, save) instead of a cramped popup.
       // Distance must be from the USER, never a fixed city point — show it
       // only when we actually have their location, else omit it (honest).
-      if (place) openPlaceSheet(place);
+      if (place) {
+        openPlaceSheet(place);
+        // Lift the tapped pin above the bottom sheet (Google/Apple pattern):
+        // shift the camera up so the pin + its selected glow stay visible
+        // instead of hiding under the sheet that just rose over them.
+        const m = mapRef.current?.getMap();
+        m?.easeTo({
+          center: [place.geom.lng, place.geom.lat],
+          offset: [0, -120],
+          duration: prefersReducedMotion() ? 0 : 500,
+          essential: true,
+        });
+      }
       track("map_pin", { category: place?.category ?? "unknown" });
       return;
     }
@@ -1216,7 +1236,7 @@ export default function AppMap({
           mapRef.current?.getMap().flyTo({
             center: FREDERICK,
             zoom: 12,
-            duration: 1100,
+            duration: prefersReducedMotion() ? 0 : 1100,
             curve: 1.25,
             easing: CAM_EASE,
             essential: true,
@@ -1230,7 +1250,7 @@ export default function AppMap({
         mapRef.current?.getMap().flyTo({
           center: [loc.lng, loc.lat],
           zoom: 14,
-          duration: 1100,
+          duration: prefersReducedMotion() ? 0 : 1100,
           curve: 1.25,
           easing: CAM_EASE,
           essential: true,
@@ -2108,13 +2128,13 @@ export default function AppMap({
               }}
             />
             {/* Invisible tap-target pad — expands each curated pin's
-                hit area to a Fitts-friendly ~36px regardless of how
+                hit area to a Fitts-friendly ~44px regardless of how
                 tiny the rendered icon gets at street zoom. The single-
                 place pins shrink under the iOS 44pt floor; this layer
-                keeps the touchable region usable without making the
-                visual pins themselves bigger. Same source as
-                curated-icons so the click handler can resolve back to
-                the same slug via props.slug. */}
+                keeps the touchable region usable (radius 22 = 44px, the
+                iOS minimum) without making the visual pins themselves
+                bigger. Same source as curated-icons so the click handler
+                can resolve back to the same slug via props.slug. */}
             <Layer
               id="curated-hit"
               type="circle"
@@ -2122,7 +2142,7 @@ export default function AppMap({
               paint={{
                 "circle-color": "#000000",
                 "circle-opacity": 0,
-                "circle-radius": 18,
+                "circle-radius": 22,
               }}
             />
             {/* Names reveal as you get closer — fade in past street zoom */}

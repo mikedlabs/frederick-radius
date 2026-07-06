@@ -185,7 +185,11 @@ export function smoothFocus(
   const cur = map.getZoom();
   const want = Math.max(cur, opts?.minZoom ?? 14.5);
   const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
-  map.easeTo({ center, zoom, duration: 900, easing: CAM_EASE, essential: true });
+  // The CSS reduced-motion gate can't reach Mapbox's JS camera — honor it here
+  // so the glide becomes an instant jump for viewers who asked for less motion.
+  const reduce = typeof window !== "undefined"
+    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  map.easeTo({ center, zoom, duration: reduce ? 0 : 900, easing: CAM_EASE, essential: true });
 }
 
 export function isTrustedOsm(p: OsmPlace): boolean {
