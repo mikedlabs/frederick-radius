@@ -208,6 +208,9 @@ import {
   PlacePopup,
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
+import TimeScrubber from "./TimeScrubber";
+import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
+import { easternDayKey } from "@/lib/tz";
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
@@ -420,6 +423,10 @@ export default function AppMap({
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
+  // Time scrubber (living map): null = live/off; otherwise a 0-24 Frederick
+  // hour the map re-evaluates against. Pure client state — no refetch, no
+  // server mode change.
+  const [scrubHour, setScrubHour] = useState<number | null>(null);
   // Cluster index drawer: tapping a curated cluster used to ONLY zoom-step —
   // a dense downtown "47" bubble took 2-3 taps to resolve and there was no
   // way to see what it contained (the synced list was deliberately removed:
@@ -1192,6 +1199,35 @@ export default function AppMap({
     );
   };
 
+  // Per-event Frederick hour-of-day + day key, derived once from the events
+  // prop (deterministic over fixed timestamps). The scrubber filters same-day
+  // events to those live/soon at the chosen hour; other-day events stay put so
+  // a weekend event isn't hidden while scrubbing today.
+  const eventScrubTimes = useMemo(
+    () =>
+      events.map((e) => {
+        const start = new Date(e.starts_at);
+        const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
+        const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
+        let endH = NaN;
+        if (e.ends_at) {
+          const localEnd = new Date(new Date(e.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" }));
+          endH = easternHourFloat({ hour: localEnd.getHours(), minute: localEnd.getMinutes() });
+        }
+        return { startH, endH, dayKey: easternDayKey(start) };
+      }),
+    [events],
+  );
+  const scrubTodayKey = easternDayKey(new Date());
+  const visibleEvents =
+    scrubHour == null
+      ? events
+      : events.filter((_, i) => {
+          const t = eventScrubTimes[i];
+          if (!t || t.dayKey !== scrubTodayKey) return true;
+          return withinScrubWindow(t.startH, t.endH, scrubHour);
+        });
+
   return (
     <div
       className={
@@ -1246,6 +1282,10 @@ export default function AppMap({
         fieldNotesOnly={fieldNotesOnly}
         setFieldNotesOnly={setFieldNotesOnly}
       />
+
+      {/* Living-map time scrubber — drag through the day to see what's on.
+          Only on the full-bleed browse canvas (not embedded/saved maps). */}
+      {fullBleed && <TimeScrubber hour={scrubHour} onChange={setScrubHour} />}
 
         {/* Pinpoint-first empty state — the control surface. With nothing
             added, the map is calm and this invites the user to compose
@@ -2293,7 +2333,7 @@ export default function AppMap({
               as a circular photo bubble (or category-colored badge when
               there's no hero image). Tapping opens a popup with a link
               to the event detail. */}
-          {events.map((e) => (
+          {visibleEvents.map((e) => (
             <Marker
               key={`ev:${e.slug}`}
               longitude={e.lng}
