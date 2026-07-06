@@ -2419,13 +2419,13 @@ export default function AppMap({
               >
                 <span
                   aria-hidden
+                  className="fr-ev-pulse"
                   style={{
                     position: "absolute",
                     inset: 4,
                     borderRadius: 9999,
                     background: e.category_color || "var(--app-brand)",
                     opacity: 0.32,
-                    animation: "fr-ev-pulse 2.6s ease-out infinite",
                   }}
                 />
                 <span

@@ -1009,6 +1009,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   70%  { opacity: 0; }
   100% { transform: scale(2.0); opacity: 0; }
 }
+/* Applied as a class (not an inline style) so prefers-reduced-motion can
+ * silence the ring — an inline `animation` can't be overridden by a media
+ * query. The dot itself stays; only the pulse halo stops. */
+.fr-ev-pulse { animation: fr-ev-pulse 2.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-ev-pulse { animation: none; }
+}
 
 /* ─────────────────────────────────────────────────────
  * Shader rim — a slow conic-gradient stroke that rotates
