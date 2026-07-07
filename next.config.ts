@@ -227,6 +227,13 @@ const nextConfig: NextConfig = {
       // remains permanently redirected so bookmarks + iOS Share Sheet
       // saves don't 404.
       { source: "/saved", destination: "/my-radius", permanent: true },
+      // Civic-hub aliases (QW-9). Neither /services nor /civic has ever
+      // been a real route here, but both are natural guesses (and appear
+      // in older notes) for the county-services hub that lives at
+      // /contacts. Fold them permanently so a typed or linked guess lands
+      // on the real page instead of a 404.
+      { source: "/services", destination: "/contacts", permanent: true },
+      { source: "/civic", destination: "/contacts", permanent: true },
       // /guide (the old discovery funnel) is retired — PR #624 dropped its
       // tab on the thesis that /today's craving strip + global search now
       // cover the find-what-you-want intent, and the page is now removed.

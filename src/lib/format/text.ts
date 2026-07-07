@@ -73,6 +73,27 @@ export function cleanFeedText(raw: string): string {
 }
 
 /**
+ * Scrape-fragment repair for one-line place blurbs. The DFP scrape cut some
+ * blurbs mid-sentence, leaving fragments that read broken on a card:
+ *   "is a family-owned … boutique"   (the place NAME was stripped)
+ *   "com 301-266- Peaceful Massage Studio …" (domain tail + partial phone)
+ *   "museum in downtown Frederick."  (template fragment, lowercase start)
+ * Boundary cleaning per the data-pipeline rule: fix here once, never at
+ * render. A no-op on already-clean sentences.
+ */
+export function cleanBlurbFragment(blurb: string): string {
+  let b = blurb.trim();
+  // Domain-tail + phone debris before the real sentence starts.
+  const debris = b.match(/^[a-z]{2,6}\s+[\d()\s.-]{4,}\s*(?=[A-Z])/);
+  if (debris) b = b.slice(debris[0].length);
+  // Name-stripped copula: "is a family-owned…" → "A family-owned…".
+  b = b.replace(/^is\s+(a|an|the)\s+/i, (_m, art: string) => `${art[0].toUpperCase()}${art.slice(1).toLowerCase()} `);
+  // Any remaining lowercase start reads as a fragment — sentence-case it.
+  if (/^[a-z]/.test(b)) b = b[0].toUpperCase() + b.slice(1);
+  return b;
+}
+
+/**
  * Fix the two address-concatenation bugs the county and DFP feeds
  * produce, where a street suffix runs straight into the city with no
  * separator:

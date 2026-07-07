@@ -45,6 +45,19 @@ describe("matchMeal — honest category gate, never a service claim", () => {
   it("late night keeps a bar (a late-bite answer at 11pm)", () => {
     expect(matchMeal(MEALS.late, place("bar"))).toBe(true);
   });
+
+  it("dinner excludes caterers, juice bars, and delivery-only kitchens", () => {
+    // By Google primary_type when the record carries one…
+    expect(matchMeal(MEALS.dinner, { category: "restaurant", name: "Somewhere", primary_type: "caterer" })).toBe(false);
+    expect(matchMeal(MEALS.dinner, { category: "restaurant", name: "Somewhere", primary_type: "juice_shop" })).toBe(false);
+    expect(matchMeal(MEALS.dinner, { category: "restaurant", name: "Somewhere", primary_type: "meal_delivery" })).toBe(false);
+    // …and by name on the slimmed client set (primary_type stripped).
+    expect(matchMeal(MEALS.dinner, place("restaurant", "Vitality Protein Smoothie Bar"))).toBe(false);
+    expect(matchMeal(MEALS.dinner, place("restaurant", "BK Juices"))).toBe(false);
+    expect(matchMeal(MEALS.dinner, place("restaurant", "Canapes Catering"))).toBe(false);
+    // The lunch band still welcomes a smoothie bar.
+    expect(matchMeal(MEALS.lunch, place("restaurant", "Tropical Smoothie Cafe"))).toBe(true);
+  });
 });
 
 describe("meal key helpers", () => {

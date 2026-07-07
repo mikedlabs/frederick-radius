@@ -95,9 +95,23 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   const hour = easternHour(now);
   const evening = hour >= 17 || hour < 4;
 
-  // 1. Storms, the loudest read, always wins.
+  // 1. Storms, the loudest read, always wins — current hour first, then
+  //    the same six-hour window rule 4 uses for rain timing. A "Clear"
+  //    current hour with thunderstorms at 8 PM must not read as a patio
+  //    evening.
   if (STORM.test(shortForecast)) {
     return { line: "Storms around, stay close to cover.", tone: "rough" };
+  }
+  const stormHorizon = now.getTime() + 6 * 3_600_000;
+  const stormHour = hourly.find((h) => {
+    const t = Date.parse(h.startTime);
+    return Number.isFinite(t) && t > now.getTime() && t <= stormHorizon && STORM.test(h.shortForecast);
+  });
+  if (stormHour) {
+    return {
+      line: `Storms around by ${hourLabel(stormHour.startTime)}, stay close to cover.`,
+      tone: "rough",
+    };
   }
 
   // 2. Snow.
@@ -131,6 +145,19 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   if (rainHour) {
     return {
       line: `Dry now, showers by ${hourLabel(rainHour.startTime)}, so get out before then.`,
+      tone: "mixed",
+    };
+  }
+
+  // 4.5. Rain in the TEXT but below the actively-wet bar ("Scattered
+  //      Rain Showers" at 30%): the sky glyph keys on the text
+  //      (mentionsWet), so a cheerful line here would contradict the
+  //      rain cloud beside it. Neutral, honest, not alarmed.
+  if (mentionsWet(shortForecast)) {
+    return {
+      line: evening
+        ? "A stray shower possible, worth a light layer."
+        : "A stray shower possible, nothing to cancel over.",
       tone: "mixed",
     };
   }

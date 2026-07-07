@@ -31,7 +31,7 @@ function parseHHMM(s: string): number {
 export type OpenStatus =
   | { state: "open"; closesAt: string; closingSoon: boolean; allDay?: boolean }
   | { state: "closing-soon"; closesAt: string }
-  | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek }
+  | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek; opensToday?: boolean }
   | { state: "unverified" }
   | { state: "unknown" };
 
@@ -114,7 +114,7 @@ export function getOpenStatus(
     if (!windows || windows.length === 0) continue;
     if (i === 0) {
       const upcoming = windows.find((w) => parseHHMM(w.open) > minutes);
-      if (upcoming) return { state: "closed", opensAt: upcoming.open, opensDay: d };
+      if (upcoming) return { state: "closed", opensAt: upcoming.open, opensDay: d, opensToday: true };
     } else {
       return { state: "closed", opensAt: windows[0].open, opensDay: d };
     }
@@ -139,7 +139,11 @@ export function formatHoursLine(status: OpenStatus): string {
   if (status.state === "open") return status.allDay ? "Open 24 hours" : `Open until ${formatTime(status.closesAt)}`;
   if (status.state === "closing-soon") return `Closing soon · ${formatTime(status.closesAt)}`;
   if (status.state === "closed" && status.opensAt && status.opensDay) {
-    return `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
+    // Same-day reopen drops the day token: "Closed · Opens Tue 11am" read
+    // like a next-week wait when the doors open later TODAY.
+    return status.opensToday
+      ? `Closed · Opens ${formatTime(status.opensAt)}`
+      : `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
   }
   if (status.state === "closed") return "Closed";
   if (status.state === "unverified") return "Hours not confirmed";

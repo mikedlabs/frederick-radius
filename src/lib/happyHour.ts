@@ -45,11 +45,17 @@ function daysFromClause(s: string): number[] {
 }
 
 function timeWindow(s: string): { start: number; end: number } | null {
-  if (/all\s*day/.test(s)) return { start: 0, end: 1440 };
+  // An explicit range beats "all day" wording: "Sun-Fri 3-6 PM (all day
+  // Thursday)" read as all-day EVERY day when the all-day test ran first
+  // (the Bentztown bug) — the parenthetical exception is its own clause,
+  // handled by parseHappyHour's split below.
   const m = s.match(
     /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:[-–]|to)\s*(?:(\d{1,2})(?::(\d{2}))?\s*(am|pm)?|(close|midnight))/i,
   );
-  if (!m) return null;
+  if (!m) {
+    if (/all\s*day/.test(s)) return { start: 0, end: 1440 };
+    return null;
+  }
   let smer = m[3]?.toLowerCase();
   let emer = m[6]?.toLowerCase();
   const closeEnd = Boolean(m[7]);
@@ -74,7 +80,22 @@ function timeWindow(s: string): { start: number; end: number } | null {
 /** Parse a schedule string into day+time windows. Empty when unparseable. */
 export function parseHappyHour(schedule: string): HHWindow[] {
   if (!schedule) return [];
-  const clauses = schedule.toLowerCase().split(/;|(?:\s+and\s+)|(?:\.\s)/);
+  const clauses = schedule
+    .toLowerCase()
+    .split(/;|(?:\s+and\s+)|(?:\.\s)/)
+    // A parenthetical is its own clause: "Sun-Fri 3-6 PM (all day Thursday)"
+    // must yield the 3-6 window on Sun-Fri PLUS an all-day window on
+    // Thursday only — parsed as one clause, the "(all day Thursday)"
+    // exception widened the whole Sun-Fri window to all-day (JoJo's/
+    // Bentztown bug).
+    .flatMap((c) => {
+      const inner: string[] = [];
+      const rest = c.replace(/\(([^)]*)\)/g, (_full, p: string) => {
+        inner.push(p);
+        return " ";
+      });
+      return [rest, ...inner];
+    });
   const windows: HHWindow[] = [];
   for (const c of clauses) {
     const days = daysFromClause(c);

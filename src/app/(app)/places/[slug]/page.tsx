@@ -27,6 +27,7 @@ import PlaceNoteCard from "@/components/place/PlaceNoteCard";
 import PlaceListsCard from "@/components/place/PlaceListsCard";
 import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 import { businessInfoFor } from "@/lib/loaders/businessInfo";
+import { FOOD_CATS } from "@/lib/place-actions";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
@@ -365,7 +366,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
         <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
-        {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
+        {/* On a food place the website IS the menu answer (we hold no menu
+            data), so the label says where the answer lives. */}
+        {place.website && (
+          <ActionButton
+            href={place.website}
+            icon={Globe}
+            label={FOOD_CATS.has(place.category) ? "Website · menu" : "Website"}
+            external
+          />
+        )}
       </div>
 
       {/* Personal "been here" marker — demoted below the directional/contact

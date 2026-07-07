@@ -3,6 +3,7 @@ import {
   cleanDescription,
   cleanVenueName,
   cleanTitle,
+  splitPresenter,
   dedupeSentences,
   clampDescription,
   isOfficialsRoster,
@@ -44,6 +45,29 @@ describe("cleanTitle sponsor strip", () => {
 
   it("does not mistake prose 'by' for a sponsor clause", () => {
     expect(cleanTitle("Painting by Candlelight")).toBe("Painting by Candlelight");
+  });
+});
+
+describe("splitPresenter", () => {
+  it("splits a normal 'Organization - Event' title", () => {
+    expect(splitPresenter("Frederick Arts Council - Annual Members Show")).toEqual({
+      presenter: "Frederick Arts Council",
+      title: "Annual Members Show",
+    });
+  });
+
+  it("refuses a cut inside a parenthesized span (the shipped '18)' title)", () => {
+    // A hyphen inside "(June 17-18)" is a date range, not a presenter
+    // separator — splitting there published the event titled "18) …".
+    expect(splitPresenter("Frederick Arts Council Show (June 17-18) Downtown")).toEqual({
+      title: "Frederick Arts Council Show (June 17-18) Downtown",
+    });
+  });
+
+  it("refuses a cut whose right side starts with a digit", () => {
+    expect(splitPresenter("Lions Club Festival June 17-19 Fireworks")).toEqual({
+      title: "Lions Club Festival June 17-19 Fireworks",
+    });
   });
 });
 
@@ -107,6 +131,24 @@ describe("cleanVenueName", () => {
     expect(cleanVenueName("")).toBeNull();
     expect(cleanVenueName(null)).toBeNull();
     expect(cleanVenueName(undefined)).toBeNull();
+  });
+
+  it("nulls degenerate state/county tokens (the 'at MD' / 'at .' audit copy)", () => {
+    expect(cleanVenueName("MD")).toBeNull();
+    expect(cleanVenueName("Maryland")).toBeNull();
+    expect(cleanVenueName("Frederick County")).toBeNull();
+    expect(cleanVenueName("Frederick County, MD")).toBeNull();
+  });
+
+  it("nulls sub-3-char scraps after trimming", () => {
+    expect(cleanVenueName("  a ")).toBeNull();
+    expect(cleanVenueName("--")).toBeNull();
+  });
+
+  it("keeps real names that merely contain the county", () => {
+    expect(cleanVenueName("Frederick County Fairgrounds")).toBe(
+      "Frederick County Fairgrounds",
+    );
   });
 });
 

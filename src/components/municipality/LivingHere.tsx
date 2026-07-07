@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { Landmark } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
 import CivicCard from "./CivicCard";
 import TownLinks from "./TownLinks";
 import { TOWN_WEBSITE_BY_SLUG } from "@/data/town-websites";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { civicContacts, type MunicipalCivic } from "@/lib/loaders/municipalCivic";
 
 /**
@@ -28,7 +30,11 @@ export default function LivingHere({
   const hasCivic = civic ? civicContacts(civic).length > 0 : false;
   const town = TOWN_WEBSITE_BY_SLUG[slug];
   const hasLinks = Boolean(town?.homepage && town?.verified);
-  if (!hasCivic && !hasLinks) return null;
+  // Unincorporated places (Urbana) have no town hall to list — but that
+  // absence is itself the resident answer, so the section still renders
+  // with a one-line pointer to the county hub instead of hiding.
+  const isUnincorporated = MUNICIPALITY_BY_SLUG[slug]?.type === "unincorporated";
+  if (!hasCivic && !hasLinks && !isUnincorporated) return null;
 
   return (
     <section className="space-y-3">
@@ -47,7 +53,7 @@ export default function LivingHere({
             className="font-serif text-[18px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Town hall, services &amp; official links
+            {isUnincorporated ? "Services & who to call" : "Town hall, services & official links"}
           </h2>
         </div>
       </div>
@@ -62,9 +68,28 @@ export default function LivingHere({
         <TownLinks slug={slug} hideContact={hasCivic} />
       </div>
 
-      <p className="px-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        Civic answers for {townName}, sourced from the town, with freshness shown.
-      </p>
+      {isUnincorporated && (
+        <p className="px-0.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+          {townName} is unincorporated, so there is no town hall. Services here
+          come from Frederick County; see{" "}
+          <Link
+            href="/contacts"
+            className="tap-44-y font-semibold underline underline-offset-2"
+            style={{ color: "var(--app-cool)" }}
+          >
+            county services
+          </Link>{" "}
+          for who to call.
+        </p>
+      )}
+
+      {/* The freshness promise is only honest when a civic record with
+          dated contacts actually renders above it. */}
+      {hasCivic && (
+        <p className="px-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Civic answers for {townName}, sourced from the town, with freshness shown.
+        </p>
+      )}
     </section>
   );
 }

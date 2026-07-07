@@ -13,6 +13,7 @@ import {
   HeartHandshake,
   Users,
   Trash2,
+  Car,
   type LucideIcon,
 } from "lucide-react";
 import { DEPARTMENTS, formatPhone, type DepartmentContact } from "@/data/departments";
@@ -117,11 +118,19 @@ const INTENTS: Intent[] = [
     slug: "county-solid-waste",
     hint: "Pickup schedule, large item, recycling rules",
   },
+  {
+    label: "License or REAL ID",
+    icon: Car,
+    accent: "var(--app-cool)",
+    slug: "state-mva",
+    hint: "Driver's license, registration, REAL ID (MVA)",
+  },
 ];
 export default function ContactsPage() {
   const emergency = DEPARTMENTS.filter((d) => d.jurisdiction === "emergency");
   const city = DEPARTMENTS.filter((d) => d.jurisdiction === "city");
   const county = DEPARTMENTS.filter((d) => d.jurisdiction === "county");
+  const state = DEPARTMENTS.filter((d) => d.jurisdiction === "state");
   const bySlug = new Map(DEPARTMENTS.map((d) => [d.slug, d] as const));
 
   return (
@@ -244,6 +253,13 @@ export default function ContactsPage() {
         icon={Shield}
         accent="var(--app-cool)"
         items={county}
+      />
+
+      <Section
+        title="State of Maryland"
+        icon={Landmark}
+        accent="var(--app-brand-2)"
+        items={state}
       />
 
       {/* How do I… — the county's resident-intent tasks, browsable.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isActivelyWet } from "@/lib/weather-verdict";
+import { isActivelyWet, weatherVerdict } from "@/lib/weather-verdict";
 
 // Regression guard: the /today "Right now" move + the TodayCard mood line
 // were claiming "Rain's in play" off the forecast TEXT alone, so a
@@ -27,5 +27,50 @@ describe("isActivelyWet", () => {
   it("treats missing precip probability as not-wet (never over-claim)", () => {
     expect(isActivelyWet("Rain Showers", null)).toBe(false);
     expect(isActivelyWet("Rain Showers", undefined)).toBe(false);
+  });
+});
+
+// UX audit QW-7: the verdict must not contradict the sky it sits beside.
+describe("weatherVerdict horizon honesty", () => {
+  const now = new Date("2026-07-07T18:00:00-04:00"); // 6 PM ET
+  const hour = (offsetH: number, shortForecast: string, pop = 0) => ({
+    startTime: new Date(now.getTime() + offsetH * 3_600_000).toISOString(),
+    probabilityOfPrecipitation: pop,
+    shortForecast,
+  });
+
+  it("warns when storms sit in the next six hours, even if now is clear", () => {
+    const v = weatherVerdict({
+      temp: 78,
+      shortForecast: "Mostly Clear",
+      precipNow: 0,
+      hourly: [hour(1, "Mostly Clear"), hour(3, "Scattered Thunderstorms", 60)],
+      now,
+    });
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/storms/i);
+  });
+
+  it("gives a neutral line (not a cheerful one) when rain is in the text below the wet bar", () => {
+    const v = weatherVerdict({
+      temp: 72,
+      shortForecast: "Scattered Rain Showers",
+      precipNow: 30,
+      hourly: [],
+      now,
+    });
+    expect(v.tone).toBe("mixed");
+    expect(v.line).not.toMatch(/patio|clear|good day/i);
+  });
+
+  it("still reads clear when the horizon is clean", () => {
+    const v = weatherVerdict({
+      temp: 75,
+      shortForecast: "Clear",
+      precipNow: 0,
+      hourly: [hour(2, "Clear"), hour(4, "Mostly Clear")],
+      now,
+    });
+    expect(v.tone).toBe("good");
   });
 });

@@ -24,9 +24,16 @@ function eventBlurb(e: {
   description?: string;
   category_name: string;
   venue_name: string;
+  municipality_name?: string;
 }): string {
   const d = (e.description ?? "").trim();
-  return d.length > 0 ? d : `${e.category_name} at ${e.venue_name}.`;
+  if (d.length > 0) return d;
+  // A venue-less row must not produce the broken "Music at ." — fall to
+  // the town, then to the bare category.
+  const venue = (e.venue_name ?? "").trim();
+  if (venue) return `${e.category_name} at ${venue}.`;
+  const town = (e.municipality_name ?? "").trim();
+  return town ? `${e.category_name} in ${town}.` : `${e.category_name}.`;
 }
 import { decoratePlace, publicPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -62,10 +69,19 @@ export async function generateStaticParams() {
   return EVENTS.map((e) => ({ slug: e.slug }));
 }
 
+// Cheap unknown-slug short-circuit (QW-13): every resolvable slug —
+// seed, live (cleanEventSlug / legacy "live-…"), ingested — is lowercase
+// kebab ([a-z0-9-]). Anything else (uppercase, "_", ".", encoded chars) can
+// NEVER resolve, so 404 it before paying the full live-feed union. Slugs
+// that LOOK valid still have to consult the feeds — a genuinely cheap slug
+// index isn't possible without restructuring the feed caches (deferred).
+const RESOLVABLE_SLUG = /^[a-z0-9-]+$/;
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
+  if (!RESOLVABLE_SLUG.test(slug)) notFound();
   const event = getEventBySlug(slug) ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
   // notFound() HERE, not just in the page body: metadata resolves before
   // the response streams, so the 404 status actually reaches the wire. A
@@ -89,6 +105,7 @@ export async function generateMetadata(
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  if (!RESOLVABLE_SLUG.test(slug)) notFound();
   const seed = getEventBySlug(slug);
   const resolved = seed ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
   if (!resolved) notFound();
@@ -225,16 +242,22 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       seriesKey(e) !== currentSeries &&
       Date.parse(e.starts_at) > nowMs,
   );
-  const venueKey = event.venue_place_slug ?? event.venue_name.toLowerCase();
-  const sameVenueUpcoming = upcomingPool
-    .filter((e) => {
-      const k = e.venue_place_slug ?? e.venue_name.toLowerCase();
-      return k === venueKey;
-    })
-    .slice(0, 4);
+  // A venue-less event has no same-venue shelf: a null/empty key would both
+  // group unrelated venue-less rows together and render the broken header
+  // "More at " — go straight to the county-wide list instead.
+  const eventVenueName = (event.venue_name ?? "").trim();
+  const venueKey = event.venue_place_slug ?? (eventVenueName ? eventVenueName.toLowerCase() : null);
+  const sameVenueUpcoming = venueKey
+    ? upcomingPool
+        .filter((e) => {
+          const k = e.venue_place_slug ?? e.venue_name.toLowerCase();
+          return k === venueKey;
+        })
+        .slice(0, 4)
+    : [];
   const moreUpcoming =
-    sameVenueUpcoming.length >= 2
-      ? { title: `More at ${event.venue_name}`, items: sameVenueUpcoming }
+    sameVenueUpcoming.length >= 2 && eventVenueName
+      ? { title: `More at ${eventVenueName}`, items: sameVenueUpcoming }
       : { title: "More upcoming events", items: upcomingPool.slice(0, 6) };
 
   return (
@@ -414,9 +437,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" aria-hidden /> {event.venue_name}
-            </span>
+            {eventVenueName && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" aria-hidden /> {eventVenueName}
+              </span>
+            )}
             {event.is_free ? (
               <span className="font-medium" style={{ color: "var(--app-positive)" }}>Free</span>
             ) : event.price_text && (

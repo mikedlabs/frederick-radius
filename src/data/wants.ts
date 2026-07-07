@@ -75,8 +75,11 @@ export const WANTS: WantCategory[] = [
     icon: "Trees",
     color: "var(--app-positive)",
     subs: [
-      { label: "Parks", icon: "Trees", href: "/nearby?c=outside" },
+      // Parks points at the curated /parks guide (the geo-ranked list is
+      // one link onward from there) — the guide was orphaned behind /nearby.
+      { label: "Parks", icon: "Trees", href: "/parks" },
       { label: "Trails", icon: "Mountain", href: "/trails" },
+      { label: "Playgrounds", icon: "ToyBrick", href: "/category/playground" },
       { label: "Rivers & creeks", icon: "Waves", href: "/rivers" },
       { label: "Dog parks", icon: "PawPrint", href: "/nearby?c=outside&facet=dog" },
       { label: "Pools & swimming", icon: "Waves", href: "/nearby?c=pools" },

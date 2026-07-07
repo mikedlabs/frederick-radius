@@ -5,6 +5,7 @@ import Map, { Source, Layer } from "react-map-gl/mapbox";
 import type { RasterLayerSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import ExitChip from "@/components/from-above/ExitChip";
 
 /**
  * Aerial Time Machine — scrub Frederick's history on a real, pannable map.
@@ -128,6 +129,10 @@ export default function AerialTimeMachine() {
           );
         })}
       </Map>
+
+      {/* Persistent way back into the app — same affordance as the book
+          at /from-above/preview (this route also has no TopBar). */}
+      <ExitChip />
 
       {orthoFailed && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4">
