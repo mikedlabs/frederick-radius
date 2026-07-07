@@ -187,46 +187,23 @@ export default function RootLayout({
           rel="dns-prefetch"
           href="https://ijszzixn2rzddhti.public.blob.vercel-storage.com"
         />
-        {/* Map + image origin preconnects. Mapbox tiles + the Google
-            Places photo CDN are the next-most-requested third-party
-            origins after the Vercel blob CDN, and they're hit
-            simultaneously on /map and any place detail page. Same
-            "save 50-150ms per first asset" logic as the blob host.
-            Crossorigin="anonymous" matches the actual fetch (Mapbox
-            tiles and Google photos are anonymous CORS); without it
-            the browser skips the warm connection. */}
-        <link
-          rel="preconnect"
-          href="https://api.mapbox.com"
-          crossOrigin="anonymous"
-        />
+        {/* Third-party origins beyond the blob CDN get dns-prefetch ONLY.
+            They used to be full global preconnects, but eager preconnects
+            compete for the connection pool the LCP asset needs, and none
+            of these is used on most routes: Mapbox only matters on the map
+            surfaces (which add their own preconnect, see map/page.tsx);
+            the Google photo origins are proxied through /_next/image or
+            /api/place-photo (same-origin) for nearly every render; and
+            Supabase only ever sees authenticated traffic. dns-prefetch
+            keeps the cheap DNS head start without holding sockets open. */}
         <link rel="dns-prefetch" href="https://api.mapbox.com" />
-        <link
-          rel="preconnect"
-          href="https://events.mapbox.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preconnect"
-          href="https://places.googleapis.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="dns-prefetch" href="https://events.mapbox.com" />
         <link rel="dns-prefetch" href="https://places.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://lh3.googleusercontent.com"
-          crossOrigin="anonymous"
-        />
         <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
-        {/* Supabase project — auth + DB read/write origins. Only
-            useful once the user has a session (anon route handlers
-            still POST to the Supabase URL), but the cost of a
-            never-used preconnect is ~zero. */}
         {process.env.NEXT_PUBLIC_SUPABASE_URL && (
           <link
-            rel="preconnect"
+            rel="dns-prefetch"
             href={process.env.NEXT_PUBLIC_SUPABASE_URL}
-            crossOrigin="anonymous"
           />
         )}
       </head>
@@ -251,7 +228,14 @@ export default function RootLayout({
             filter state lives in the URL so views are shareable +
             restorable. No-op cost when no component uses nuqs. */}
         <NuqsAdapter>
-          <div id="main">{children}</div>
+          {/* tabIndex={-1}: the skip link must MOVE FOCUS here, not just
+              scroll — without it Safari resumes tabbing from the link. The
+              ring suppression lives in globals.css (#main:focus-visible) —
+              Tailwind's outline-none is layered and loses to the global
+              unlayered :focus-visible rule, so a class here would be inert. */}
+          <div id="main" tabIndex={-1}>
+            {children}
+          </div>
         </NuqsAdapter>
         {/* Two complementary analytics layers:
             - Plausible (self-hosted feel; product metrics, no IP storage)

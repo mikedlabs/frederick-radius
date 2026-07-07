@@ -514,8 +514,9 @@ export default function EventsExplorer({
           type="button"
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
-          aria-controls="evt-filter-panel"
-          className="tactile inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
+          // No aria-controls: the filter panel became a <Sheet> and the old
+          // "evt-filter-panel" id exists nowhere (dangling ref, axe violation).
+          className="tactile tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
           style={{
             background:
               filterCount > 0
@@ -808,7 +809,7 @@ export default function EventsExplorer({
         // grouping so the order the user chose is the order they see.
         // Capped at 100 to keep the page snappy; the rest are reachable
         // by tightening filters or switching to the calendar/map view.
-        <ul className="space-y-2">
+        <ul className="grid gap-2 lg:grid-cols-2">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} />
@@ -882,7 +883,7 @@ export default function EventsExplorer({
                 {rest.length > 0 && (
                   <>
                     {shown.length > 0 && (
-                      <ol className="reveal-up space-y-2.5">
+                      <ol className="reveal-up grid gap-2.5 lg:grid-cols-2">
                         {shown.map((e) => (
                           <li key={`${e.slug}-${e.starts_at}`}>
                             <EventCard event={e} variant="glance" live={live.has(e.slug)} />

@@ -32,15 +32,26 @@ export default function BetaEmailField() {
     }
   }
 
-  if (state === "done") {
-    return (
-      <p className="mx-auto mt-8 max-w-[22rem] text-[13px] font-semibold" style={{ color: "var(--app-brand-2)" }}>
-        You&rsquo;re on the list. We&rsquo;ll write when the doors open.
-      </p>
-    );
-  }
-
   return (
+    <>
+      {/* Persistent live region for the success confirmation. It exists from
+          first render and only its TEXT changes on submit — live regions
+          announce text changes, not regions mounted with content (the old
+          early-return swapped the whole subtree, which several SRs never
+          announced). When done it doubles as the visible confirmation. */}
+      <p
+        role="status"
+        aria-live="polite"
+        className={
+          state === "done"
+            ? "mx-auto mt-8 max-w-[22rem] text-[13px] font-semibold"
+            : "sr-only"
+        }
+        style={state === "done" ? { color: "var(--app-brand-2)" } : undefined}
+      >
+        {state === "done" ? "You’re on the list. We’ll write when the doors open." : ""}
+      </p>
+      {state !== "done" && (
     <form onSubmit={submit} className="mx-auto mt-8 max-w-[20rem] space-y-2">
       <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         No password? Leave an email and we&rsquo;ll tell you when Frederick Radius opens up.
@@ -72,10 +83,12 @@ export default function BetaEmailField() {
         </button>
       </div>
       {state === "error" && (
-        <p className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+        <p role="alert" className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
           Couldn&rsquo;t save that right now. Try again in a minute.
         </p>
       )}
     </form>
+      )}
+    </>
   );
 }

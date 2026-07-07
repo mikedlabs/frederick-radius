@@ -351,6 +351,14 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
 .focus-ring-inset:focus-visible {
   outline-offset: -3px;
 }
+/* The skip-link target: #main takes programmatic focus (tabindex="-1") so
+   the skip link MOVES focus, but the wrapper itself must not draw the ring
+   around the entire page. Must live HERE (unlayered) — Tailwind's
+   `outline-none` utility sits in @layer utilities and loses to the
+   unlayered :focus-visible rule above regardless of specificity. */
+#main:focus-visible {
+  outline: none;
+}
 
 /* Range slider thumb — sized to the Apple HIG / Material Design 44pt
    minimum touch target so the /radius distance slider is usable with
@@ -1140,6 +1148,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 @keyframes vt-fade-out { to { opacity: 0; transform: translateY(-6px); } }
 @keyframes vt-fade-in  { from { opacity: 0; transform: translateY(6px); } }
+/* Reduced motion: unlike .route-fade below, these had no gate, so every
+ * navigation still slid for prefers-reduced-motion users (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
 
 /* Route crossfade for the (app) template.tsx wrapper (server component, no JS).
  * template.tsx re-mounts on every navigation, so this plays each time. Opacity

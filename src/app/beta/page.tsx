@@ -9,13 +9,15 @@ import { getBetaPulse } from "@/lib/loaders/betaPulse";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Frederick Radius: private beta",
+  // Positioning rev. 2 (docs/social/facebook-page-copy.md): center the
+  // city-and-county connection; "a living field guide" is retired copy.
   description:
-    "A living field guide to Frederick County. What's open, what's on, and what's worth your time. Now in private beta.",
+    "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time, right now. Now in private beta.",
   // The share card that Facebook renders for the tease post — a dedicated
   // branded "You're early" cover (api/og?type=beta), not the generic site card.
   openGraph: {
     title: "You're early. · Frederick Radius",
-    description: "A living field guide to Frederick County. Private beta.",
+    description: "Downtown Frederick and the county, connected. Private beta.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
@@ -27,12 +29,13 @@ export const metadata: Metadata = {
  * The middleware redirects un-unlocked visitors here with a `next` param; the
  * form posts to /api/beta, which sets the unlock cookie and returns them.
  *
- * The whole pitch is "a living field guide," so the page proves it: past the
- * fast access gate, real county data streams in (places mapped, what's on today,
- * tonight's Keys score, what's stocked) under a Suspense boundary — the page is
- * literally alive as you read it. Below that: a specimen-card preview, an
- * engraved marquee of all the towns, the field-guide manifesto, and a second
- * way in. Access + email-capture logic is unchanged; only the shell grew.
+ * The pitch is "the city and the county, connected — right now," so the page
+ * proves the "right now": past the fast access gate, real county data streams
+ * in (places mapped, what's on today, tonight's Keys score, what's stocked)
+ * under a Suspense boundary — the page is literally alive as you read it.
+ * Below that: a specimen-card preview, an engraved marquee of all the towns,
+ * the manifesto, and a second way in. Access + email-capture logic is
+ * unchanged; only the shell grew.
  * All motion reuses reduced-motion-safe keyframes and avoids heavy blur.
  */
 export default async function BetaPage({
@@ -89,8 +92,8 @@ export default async function BetaPage({
           </h1>
 
           <p className="mx-auto mt-4 max-w-[23rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            A living field guide to Frederick County: what&rsquo;s open, what&rsquo;s on, and
-            what&rsquo;s worth your time. Enter the password you were given to come in.
+            Downtown Frederick and the county, connected: what&rsquo;s open, what&rsquo;s on,
+            and what&rsquo;s worth your time. Enter the password you were given to come in.
           </p>
 
           <form action="/api/beta" method="post" className="mx-auto mt-6 max-w-[20rem] space-y-2.5">

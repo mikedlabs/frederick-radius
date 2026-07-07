@@ -140,6 +140,10 @@ export default function SearchOverlay({
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  /** Element focused before the overlay opened — focus returns to it on
+   *  close (WCAG 2.4.3; previously focus was dropped on the body). */
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const recent = useRecentSearches();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
@@ -187,8 +191,16 @@ export default function SearchOverlay({
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read of a client-only cached fix when the overlay opens
       setCoords(readCachedPosition());
+      // Remember what had focus (the TopBar search button) so closing the
+      // overlay puts the keyboard user back where they were.
+      returnFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const t = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
+      return () => {
+        clearTimeout(t);
+        returnFocusRef.current?.focus?.();
+        returnFocusRef.current = null;
+      };
     }
   }, [open]);
 
@@ -210,13 +222,42 @@ export default function SearchOverlay({
         onClose();
         return;
       }
+      // Focus trap: this is role="dialog" aria-modal, so Tab must cycle
+      // WITHIN the overlay instead of walking into the page behind the
+      // backdrop (WCAG 2.4.3). Wrap at both ends.
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length > 0) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          const active = document.activeElement;
+          if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+        return;
+      }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActiveIdx((i) => Math.min(results.length - 1, i + 1));
+        // Clamp at 0 when results are empty (mid-debounce): min(-1, ...)
+        // would set -1 and aria-activedescendant would point at a
+        // nonexistent id once results land, with Enter going dead.
+        setActiveIdx((i) => (results.length === 0 ? 0 : Math.min(results.length - 1, i + 1)));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIdx((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter") {
+        // Only hijack Enter while the COMBOBOX INPUT owns focus. If the
+        // user has Tabbed to the Clear button, the backdrop, or a result
+        // link, native activation must win — preventDefault here would
+        // cancel it and navigate to results[activeIdx] instead.
+        if (document.activeElement !== inputRef.current) return;
         const r = results[activeIdx];
         if (r) {
           e.preventDefault();
@@ -264,14 +305,19 @@ export default function SearchOverlay({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="Search Frederick Radius"
     >
-      {/* Backdrop */}
+      {/* Backdrop — tabIndex={-1} keeps the invisible full-screen button out
+          of the Tab cycle (the focus trap would otherwise wrap to it and the
+          global focus ring would trace the whole viewport). Pointer taps and
+          Escape still dismiss. */}
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Close search"
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -295,6 +341,18 @@ export default function SearchOverlay({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search places, events, towns…"
             aria-label="Search"
+            // Combobox wiring: DOM focus stays here while ArrowUp/Down move
+            // aria-activedescendant across the options, so a screen reader
+            // announces the active result (it was visual-only before).
+            role="combobox"
+            aria-expanded={results.length > 0}
+            // Conditional: a dangling aria-controls to an unrendered listbox
+            // is an aria-valid-attr-value violation.
+            aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              query.trim() && results.length > 0 ? `search-opt-${activeIdx}` : undefined
+            }
             className="flex-1 bg-transparent text-base outline-none placeholder:text-[var(--app-ink-3)]"
             style={{ color: "var(--app-ink)" }}
             autoComplete="off"
@@ -395,6 +453,9 @@ export default function SearchOverlay({
               onClearRecent={clearRecent}
             />
           ) : results.length === 0 ? (
+            // No live role on this block — regions mounted WITH content aren't
+            // announced by several SRs; the persistent footer count region
+            // carries the "No matches" announcement instead.
             hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
@@ -407,7 +468,7 @@ export default function SearchOverlay({
             // keep the API's relevance ordering. The flat `activeIdx`
             // is preserved across groups via the `idx` recorded in each
             // bucket, so arrow-key nav still walks the full result list.
-            <ul ref={listRef} role="listbox" className="py-1">
+            <ul ref={listRef} id="search-results" role="listbox" className="py-1">
               {groupByTypePreservingOrder(results).map((group, gi) => {
                 const color = COLOR_BY_TYPE[group.type];
                 return (
@@ -430,7 +491,13 @@ export default function SearchOverlay({
                         const active = idx === activeIdx;
                         const trust = r.trust ?? null;
                         return (
-                          <li key={r.id} role="option" aria-selected={active} data-idx={idx}>
+                          <li
+                            key={r.id}
+                            id={`search-opt-${idx}`}
+                            role="option"
+                            aria-selected={active}
+                            data-idx={idx}
+                          >
                             <Link
                               href={r.href}
                               onClick={() => {
@@ -438,7 +505,9 @@ export default function SearchOverlay({
                                 onClose();
                               }}
                               onMouseEnter={() => setActiveIdx(idx)}
-                              className="flex items-start gap-3 px-4 py-2.5 outline-none"
+                              // No outline-none: the global :focus-visible ring
+                              // must show if a user Tabs onto a result directly.
+                              className="flex items-start gap-3 px-4 py-2.5"
                               style={{
                                 background: active ? "var(--app-bg-sunken)" : "transparent",
                               }}
@@ -507,7 +576,18 @@ export default function SearchOverlay({
             <KbdHint label="↵" desc="open" />
             <KbdHint label="esc" desc="close" />
           </div>
-          <p>{results.length > 0 ? `${results.length} match${results.length === 1 ? "" : "es"}` : ""}</p>
+          {/* Polite live region: announces the match count as the query
+              changes, so SR users hear that results updated at all. This
+              element PERSISTS across renders (live regions only announce
+              text CHANGES, not regions mounted with content), so it also
+              carries the zero-result case. */}
+          <p role="status" aria-live="polite">
+            {results.length > 0
+              ? `${results.length} match${results.length === 1 ? "" : "es"}`
+              : query.trim()
+                ? "No matches"
+                : ""}
+          </p>
         </div>
       </div>
     </div>
@@ -618,7 +698,7 @@ function EmptyHint({
             <button
               type="button"
               onClick={onClearRecent}
-              className="text-[10px] font-semibold uppercase tracking-[0.08em]"
+              className="tap-44 px-1 text-[10px] font-semibold uppercase tracking-[0.08em]"
               style={{ color: "var(--app-ink-3)" }}
               aria-label="Clear recent searches"
             >
@@ -631,7 +711,7 @@ function EmptyHint({
                 <button
                   type="button"
                   onClick={() => onPick(s)}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+                  className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
                   style={{
                     borderColor: "var(--app-border)",
                     color: "var(--app-ink)",
@@ -660,7 +740,7 @@ function EmptyHint({
               <button
                 type="button"
                 onClick={() => onPick(s)}
-                className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+                className="tap-44-y inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
                 {s}

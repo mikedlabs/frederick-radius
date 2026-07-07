@@ -117,7 +117,7 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-2"
+          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md lg:max-w-screen-lg lg:pl-24 items-center gap-2"
           // Horizontal padding is max(1rem base, side-inset): a notched
           // phone in landscape puts the notch on a side edge, which could
           // clip the search field / back button. max() keeps the 1rem base
