@@ -74,8 +74,15 @@ export default function TrustPage() {
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Live event feeds.</strong>{" "}
             Downtown Frederick Partnership, Celebrate Frederick, Hood College,
-            Frederick County government calendar. Pulled fresh, multiple times
-            a day.
+            Frederick County government calendar, plus ticketed listings from
+            Ticketmaster, Bandsintown, and the Weinberg Center. Pulled fresh,
+            multiple times a day.
+          </li>
+          <li>
+            <strong style={{ color: "var(--app-ink)" }}>Google Places.</strong>{" "}
+            Fills the gaps our hand-picked notes don&apos;t cover: verified
+            hours, phone numbers, ratings, and photos. Always labeled, never
+            passed off as our own verification.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Owner-claimed listings.</strong>{" "}

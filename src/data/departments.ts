@@ -25,7 +25,7 @@ export type DepartmentContact = {
   /** URL-safe slug, used as the React key and anchor. */
   slug: string;
   /** What jurisdiction owns this line. Drives section grouping. */
-  jurisdiction: "city" | "county" | "emergency";
+  jurisdiction: "city" | "county" | "state" | "emergency";
   /** Display name as a resident would say it. */
   name: string;
   /** One-sentence "call us about" line in resident voice. */
@@ -321,10 +321,25 @@ const COUNTY: DepartmentContact[] = [
   },
 ];
 
+// ─── State of Maryland ──────────────────────────────────────────────────
+// State lines residents ask the county app for anyway. Phone verified
+// from mva.maryland.gov (July 2026).
+const STATE: DepartmentContact[] = [
+  {
+    slug: "state-mva",
+    jurisdiction: "state",
+    name: "MVA (Motor Vehicle Administration)",
+    about: "Driver's license, vehicle registration, REAL ID, and permits. Book the Frederick branch online.",
+    website: "https://mva.maryland.gov/",
+    phone: "4107687000",
+  },
+];
+
 export const DEPARTMENTS: readonly DepartmentContact[] = [
   ...EMERGENCY,
   ...CITY,
   ...COUNTY,
+  ...STATE,
 ];
 
 /**
@@ -384,5 +399,8 @@ export function findDepartments(query: string, limit = 2): DepartmentContact[] {
 
 /** Resident-facing source label for an answer's provenance line. */
 export function jurisdictionLabel(j: DepartmentContact["jurisdiction"]): string {
-  return j === "city" ? "City of Frederick" : j === "county" ? "Frederick County" : "Emergency";
+  return j === "city" ? "City of Frederick"
+    : j === "county" ? "Frederick County"
+    : j === "state" ? "State of Maryland"
+    : "Emergency";
 }
