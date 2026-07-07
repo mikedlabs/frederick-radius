@@ -515,7 +515,7 @@ export default function EventsExplorer({
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
           aria-controls="evt-filter-panel"
-          className="tactile inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
+          className="tactile tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
           style={{
             background:
               filterCount > 0

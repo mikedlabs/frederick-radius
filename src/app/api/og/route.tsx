@@ -101,7 +101,7 @@ export async function GET(request: Request) {
     // so it reads true whenever it surfaces in a feed.
     title = "You're early.";
     kicker = "Private beta · Frederick Radius";
-    blurb = "A living field guide to Frederick County. What's open, what's on, and what's worth your time.";
+    blurb = "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time.";
     accent = "#E14328";
   } else if (type === "moment") {
     // Civic-moment hubs (/moments/[slug]) — the most-shared, timely content.

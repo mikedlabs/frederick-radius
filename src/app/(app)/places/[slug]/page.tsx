@@ -276,7 +276,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <MyRadiusButton slug={place.slug} name={place.name} />
           </div>
           {desc && (
-            <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            // max-w-[68ch]: cap the reading measure — on desktop the content
+            // column is ~900px, which ran this prose past 100ch (UX audit).
+            <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {desc}
             </p>
           )}

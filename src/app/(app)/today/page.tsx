@@ -227,7 +227,7 @@ export default async function HomePage() {
           the name, so this states what the thing IS, not who it is. */}
       <p className="mb-2 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
         <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          A living field guide to Frederick County.
+          Downtown Frederick and the county, connected.
         </span>{" "}
         What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time.
       </p>

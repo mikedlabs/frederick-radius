@@ -894,7 +894,7 @@ export default function SavedList() {
                       )}
                     </div>
                   </header>
-                  <ul className="space-y-2">
+                  <ul className="grid gap-2 lg:grid-cols-2">
                     {group.map((p) => (
                       <li key={p.slug}>
                         <PlaceCard place={p} />
@@ -905,7 +905,7 @@ export default function SavedList() {
               ))}
             </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="grid gap-2 lg:grid-cols-2">
               {places.map((p) => (
                 <li key={p.slug}>
                   <PlaceCard place={p} />

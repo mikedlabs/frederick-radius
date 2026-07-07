@@ -385,6 +385,9 @@ export default async function MapPage({
       }));
     return (
       <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
+        {/* Same map-only Mapbox preconnects as the browse branch below. */}
+        <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
         <h1 className="sr-only">Frederick County map: places within reach</h1>
         <PageBloom variant="cool" />
         {/* Mode toggle is handed to RadiusBuilder, which renders it in two
@@ -407,6 +410,12 @@ export default async function MapPage({
   // the slowest upstream AND the Mapbox JS downloads during that fetch.
   return (
     <div className="relative -mx-4 -mt-4 lg:ml-0">
+      {/* Mapbox preconnects live HERE, not in the root layout: the map is
+          the only surface that talks to these origins, and eager global
+          preconnects competed with the LCP asset on every other route
+          (speed audit). React hoists these into <head>. */}
+      <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
       <h1 className="sr-only">Frederick County map</h1>
       {/* Warm the mapbox-gl chunk from the shell, in parallel with the
           streamed data fetch below — see MapWarmup. */}

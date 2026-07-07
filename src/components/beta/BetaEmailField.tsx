@@ -34,7 +34,12 @@ export default function BetaEmailField() {
 
   if (state === "done") {
     return (
-      <p className="mx-auto mt-8 max-w-[22rem] text-[13px] font-semibold" style={{ color: "var(--app-brand-2)" }}>
+      <p
+        role="status"
+        aria-live="polite"
+        className="mx-auto mt-8 max-w-[22rem] text-[13px] font-semibold"
+        style={{ color: "var(--app-brand-2)" }}
+      >
         You&rsquo;re on the list. We&rsquo;ll write when the doors open.
       </p>
     );
@@ -72,7 +77,7 @@ export default function BetaEmailField() {
         </button>
       </div>
       {state === "error" && (
-        <p className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+        <p role="alert" className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
           Couldn&rsquo;t save that right now. Try again in a minute.
         </p>
       )}
