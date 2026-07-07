@@ -207,28 +207,32 @@ export default function MapIntentChips({
           surfaces. */}
       {activeIntent?.subIntents && activeIntent.subIntents.length > 0 && (
         <div
-          className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-1.5 overflow-x-auto rounded-full p-1 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="pointer-events-auto mx-auto flex w-full max-w-[680px] items-stretch gap-4 overflow-x-auto rounded-[var(--app-radius-md)] px-3.5 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{
-            background: `color-mix(in srgb, ${activeIntent.color} 10%, var(--app-bg-elevated) 88%)`,
+            // Running head: no per-word pills — the words sit on one quiet
+            // paper bar and the ACTIVE word is inked in the intent color and
+            // sits on a colored underline rule (typography carries the state,
+            // not a box). The bar itself stays neutral so the color language
+            // belongs to the selection, not the container.
+            background: "color-mix(in srgb, var(--app-bg-elevated) 90%, transparent)",
             boxShadow: "var(--app-shadow-1)",
           }}
           aria-label={`Narrow ${activeIntent.label}`}
         >
-          {/* "All" sub-chip — clears the sub filter while keeping the
-              parent intent active. Same shape as the parent's "All"
-              chip but smaller. */}
+          {/* "All" — clears the sub filter while keeping the parent intent
+              active. First word in the running head. */}
           <Link
             href={`/map?intent=${activeIntent.key}${openSuffix}`}
             aria-current={!activeSub ? "page" : undefined}
-            className="tap-44 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
+            className="tap-44-y group inline-flex shrink-0 items-center gap-1 border-b-2 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] transition"
             style={{
-              background: !activeSub ? activeIntent.color : "transparent",
-              color: !activeSub ? "var(--app-on-brand)" : activeIntent.color,
+              borderColor: !activeSub ? activeIntent.color : "transparent",
+              color: !activeSub ? activeIntent.color : "var(--app-ink-2)",
             }}
           >
             All
             {typeof activeCount === "number" && (
-              <span className="ml-1 tabular-nums opacity-80">
+              <span className="tabular-nums opacity-70">
                 {activeCount.toLocaleString()}
               </span>
             )}
@@ -242,18 +246,16 @@ export default function MapIntentChips({
                 key={sub.key}
                 href={`/map?intent=${activeIntent.key}&sub=${sub.key}${openSuffix}`}
                 aria-current={isActive ? "page" : undefined}
-                className="tap-44 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
+                className="tap-44-y inline-flex shrink-0 items-center gap-1 border-b-2 py-2 text-[12px] font-semibold tracking-tight transition"
                 style={{
-                  background: isActive
-                    ? activeIntent.color
-                    : "transparent",
-                  color: isActive ? "var(--app-on-brand)" : activeIntent.color,
+                  borderColor: isActive ? activeIntent.color : "transparent",
+                  color: isActive ? activeIntent.color : "var(--app-ink-2)",
                 }}
               >
                 {SubIcon && <SubIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
                 {sub.label}
                 {typeof count === "number" && count > 0 && (
-                  <span className="tabular-nums opacity-75">{count}</span>
+                  <span className="tabular-nums opacity-60">{count}</span>
                 )}
               </Link>
             );
