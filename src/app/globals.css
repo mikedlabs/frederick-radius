@@ -2132,13 +2132,29 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* The wallet is a hand-held object: cap the stack at phone width and center
    it, so desktop doesn't stretch each card to the full content column. */
 .sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
+/* Apple-Wallet stack rhythm lives on the SLOT (the listitem wrapper), not the
+   card: each card is the :first-child of its own wrapper, so a card-level
+   first-child margin reset matched every card and the tuck never happened.
+   Each slot tucks under the next leaving a 56px lip — tall enough for the
+   full brand row (logo + name + tier), the reference's defining beat. */
+.sw-slot {
+  margin-top: -144px;
+  transition: margin .42s cubic-bezier(.22,1,.36,1);
+}
+.sw-slot:first-child { margin-top: 0; }
+/* A raised slot loosens (not leaves) the deck: still overlapping its
+   predecessor, just less, so the card above widens to a ~100px lip
+   instead of popping fully out alongside the raised one. */
+.sw-slot.is-open { margin-top: -100px; }
+.sw-slot:first-child.is-open { margin-top: 0; }
+/* The card AFTER the raised one relaxes its tuck so the raised card's foot
+   and Open-page link are never covered — the raised pass comes fully
+   forward, the deck resumes underneath (same move as the reference). */
+.sw-slot.is-open + .sw-slot { margin-top: -44px; }
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
   border: none; border-radius: 16px; overflow: hidden;
-  /* Apple-Wallet stack rhythm: each card tucks under the next leaving a
-     56px lip — tall enough for the full brand row (logo + name + tier),
-     the screenshot's defining beat (was a 38px sliver). */
-  margin-top: -144px; padding: 15px 17px; min-height: 200px;
+  padding: 15px 17px; min-height: 200px;
   color: var(--app-ink-inverse); font-family: var(--font-sans, inherit);
   /* The -y shadow is the SEAM: later cards paint on top of earlier ones, so
      the downward shadow hides under the next card — the visible depth cue at
@@ -2146,12 +2162,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset,
     0 -12px 20px -12px rgba(22,20,14,.55),
     0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1px rgba(22,20,14,.2);
-  transition: margin .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
+  transition: min-height .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
   /* Deal-in entrance — the deck fans out on mount, staggered top-to-bottom. */
   animation: sw-deal .5s cubic-bezier(.22,1,.36,1) both;
   animation-delay: calc(var(--sw-i, 0) * 55ms);
 }
-.sw-card:first-child { margin-top: 0; }
 .sw-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
 /* Lamination — a diagonal gloss band + top glare + corner vignette, tuned
    stronger so the face reads as a physical, laminated card. */
@@ -2173,12 +2188,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-card.is-open {
   /* Taller reveal window so the (possibly 2-line) foot + Open-page link always
      clear the next card's overlap — sized against the deeper -144px tuck so
-     the revealed region stays ≥128px. */
-  margin-top: 14px; min-height: 272px;
+     the revealed region stays ≥128px. (The raise margins live on .sw-slot.) */
+  min-height: 272px;
   box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset,
     0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1px rgba(22,20,14,.24);
 }
-.sw-card:first-child.is-open { margin-top: 0; }
 
 /* ── Card ARTWORK — each category family gets a DISTINCT full-bleed motif, the
    way every issuer's card in Apple Wallet is its own design (Citi swirl / UOB
@@ -2307,7 +2321,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes sw-holo { 0% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sw-card, .sw-foot, .sw-open { transition: none; animation: none; }
+  .sw-slot, .sw-card, .sw-foot, .sw-open { transition: none; animation: none; }
   .sw-card.is-open::before { animation: none; }
   .sw-live b { animation: none; }
   /* Keep a still, subtle holo sheen — no sweep. */

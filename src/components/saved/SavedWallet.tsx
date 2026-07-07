@@ -208,16 +208,24 @@ export default function SavedWallet({ places }: { places: PlaceCardData[] }) {
   const openValid = places.some((p) => p.slug === openSlug);
   return (
     <div className="sw-stack" role="list" aria-label="Saved places, as a card wallet">
-      {places.map((p, i) => (
-        <div role="listitem" key={p.slug}>
-          <Card
-            place={p}
-            index={i}
-            open={openValid ? p.slug === openSlug : i === 0}
-            onOpen={() => setOpenSlug(p.slug)}
-          />
-        </div>
-      ))}
+      {places.map((p, i) => {
+        const open = openValid ? p.slug === openSlug : i === 0;
+        return (
+          // The SLOT carries the stack geometry (the -144px tuck and the
+          // raise). It must live on this wrapper, not .sw-card: each card is
+          // the :first-child of its own listitem, so a card-level
+          // margin-top:0 first-child reset matched EVERY card and the wallet
+          // rendered as full-height cards with no overlap (the shipped bug).
+          <div role="listitem" key={p.slug} className={`sw-slot${open ? " is-open" : ""}`}>
+            <Card
+              place={p}
+              index={i}
+              open={open}
+              onOpen={() => setOpenSlug(p.slug)}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
