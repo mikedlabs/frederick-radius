@@ -57,11 +57,20 @@ const run = async () => {
     }
   } catch (e) { bad(`/sw.js fetch failed: ${e.message}`); }
 
-  // 1. Nav — the 4-tab bottom bar (Today · Map · Events · Saved). The Ask/Find
-  //    tab was dropped in #624, so assert the current front-door tab instead.
+  // 1. Front door — /today is the app's front tab. The bottom tab bar
+  //    itself renders in a CLIENT component (hydrated from tabs.ts), so no
+  //    nav markup (<nav>, role, tab labels/hrefs) is in the SSR HTML at all
+  //    — the old `>Today<` text assertion could never pass and cried wolf on
+  //    every deploy. A raw-HTML audit can't verify a client nav, so assert
+  //    what SSR genuinely guarantees: /today is a real 200 with the branded
+  //    document shell (not an error/empty page).
   try {
-    const { html } = await get("/today");
-    check(/<[^>]*>\s*Today\s*</.test(html), "nav shows the 'Today' tab", "nav 'Today' tab not found");
+    const { status, html } = await get("/today");
+    check(
+      status === 200 && html.includes("Frederick Radius") && html.length > 20_000,
+      "/today front door is a healthy branded 200",
+      `/today unhealthy (status ${status}, ${html.length} bytes)`,
+    );
   } catch (e) { bad(`/today fetch failed: ${e.message}`); }
 
   // 2. Events laning (#443) — no private/cancelled anywhere in the HTML.
