@@ -24,7 +24,10 @@ SHIPPED brand deck (see `src/app/globals.css` tokens) is:
   delete or "fix" them.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
-  "Open now"). Counts are supporting detail, never the headline.
+  "Open now"). Counts are supporting detail, never the headline. Full rules
+  + banned-words list + worked copy per surface: `docs/VOICE.md` (the
+  source of truth — no metaphors, say the true thing plainly, "around here"
+  carries the name). Tagline: "Around here."
 - **Aesthetic bar:** a well-made field guide — dense, organized, calm.
   Typography carries hierarchy before boxes/borders/badges. One primary
   action per view. Honest empty states. If a change reads like a generic
