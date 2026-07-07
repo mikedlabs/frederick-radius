@@ -659,9 +659,17 @@ export type PlaceDetail = PlaceCardData & {
 // kid-friendly for playgrounds — so the "Good to know" row, faceting, and
 // search have real data without fabricating per-place editorial claims. Unioned
 // with any hand-curated tags; never replaces them.
-const OUTDOOR_CATS = new Set(["park", "trail", "playground", "golf"]);
-const INDOOR_CATS = new Set(["museum", "library", "gallery"]);
-function deriveTags(category: string, tags?: string[]): string[] {
+// Factual by category. OUTDOOR = weather-dependent, the places a rainy-day
+// answer must EXCLUDE (parks/trails/golf/playgrounds, and farms/orchards/PYO).
+// INDOOR = under-a-roof destinations a rainy-day plan can lean on: the
+// cultural venues (museum/library/gallery/theater) plus the sit-inside
+// commerce a local would actually suggest when it's pouring (a coffee shop,
+// a bakery, a bookstore). Deliberately NOT every indoor category — food/bars/
+// shopping are already discoverable by their own strong categories, so this
+// stays a coherent "somewhere to duck in" set, not "everything with walls."
+const OUTDOOR_CATS = new Set(["park", "trail", "playground", "golf", "agritourism"]);
+const INDOOR_CATS = new Set(["museum", "library", "gallery", "theater", "coffee", "bakery", "book-store"]);
+export function deriveTags(category: string, tags?: string[]): string[] {
   const out = new Set(tags ?? []);
   if (OUTDOOR_CATS.has(category)) out.add("outdoor");
   if (INDOOR_CATS.has(category)) out.add("indoor");

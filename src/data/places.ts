@@ -1187,7 +1187,7 @@ export const PLACES: Place[] = [
     category: "food",
     subcategories: ["market"],
     tags: [],
-    short_blurb: "Taste-before-you-buy olive oils and aged balsamics. Hidden gem on East Patrick.",
+    short_blurb: "Taste-before-you-buy olive oils and aged balsamics. A quiet find on East Patrick.",
     address: "214 E Patrick St",
     city: "Frederick", state: "MD", postal_code: "21701",
     municipality: "frederick",

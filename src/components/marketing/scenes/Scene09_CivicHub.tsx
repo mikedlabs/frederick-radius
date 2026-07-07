@@ -13,8 +13,8 @@ export default function Scene09_CivicHub() {
         {
             id: "parking",
             icon: Car,
-            title: "Smart Parking",
-            description: "Real-time parking availability across all municipal lots",
+            title: "Parking",
+            description: "Space counts across municipal garages, updated through the day",
             stat: "342 spots available",
             color: "from-blue-500 to-cyan-600"
         },

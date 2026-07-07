@@ -166,7 +166,7 @@ export default function Scene06_CommercialIntegration() {
                             Data-Backed Visibility
                         </h4>
                         <p className="text-sm text-gray-300">
-                            Every business gets enterprise-grade analytics. Track real-time performance, optimize offerings, and reach 305,000+ residents instantly.
+                            Every business sees who&apos;s finding them, what&apos;s working, and how to reach 305,000 county residents.
                         </p>
                     </motion.div>
                 </motion.div>

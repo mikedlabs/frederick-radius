@@ -260,7 +260,7 @@ export async function GET(request: Request) {
             <div>frederickradius.app</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: INK_3 }}>
               <span style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : type === "collection" ? "Collection" : "Local discovery"}
+              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : type === "collection" ? "Collection" : "Field guide"}
             </div>
           </div>
         </div>

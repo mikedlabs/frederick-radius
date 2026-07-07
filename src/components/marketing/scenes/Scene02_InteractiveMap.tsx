@@ -28,7 +28,7 @@ export default function Scene02_InteractiveMap() {
                     The <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">12</span> Communities
                 </h2>
                 <p className="text-gray-400 text-lg font-light">
-                    Hover to explore each municipality
+                    Hover any town to see what&apos;s there
                 </p>
             </motion.div>
 
