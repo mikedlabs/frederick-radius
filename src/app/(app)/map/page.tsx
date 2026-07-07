@@ -19,6 +19,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
+import { getEvChargingStations, evDetailLine } from "@/lib/integrations/evCharging";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
@@ -493,6 +494,7 @@ async function BrowseMapArea({
     municipalBoundaries,
     countyBoundary,
     waterSites,
+    evStations,
     fieldAmenities,
     communityReports,
     allWeek,
@@ -523,6 +525,10 @@ async function BrowseMapArea({
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
     withTimeout(getFrederickWaterSites(), 3000, []),
+    // EV charging — authoritative MD iMAP stations (network + connector
+    // counts). Upgrades the OSM-crowdsourced ev_charging amenity layer;
+    // fail-soft to [] so the map falls back to the OSM points.
+    withTimeout(getEvChargingStations(), 3500, []),
     // Field-collected amenities (the /collect walkabout tool). Reads
     // the field_amenities table; fail-soft to [] (no DB / error) so the
     // map degrades to the static + OSM amenity set, never a 503.
@@ -569,8 +575,26 @@ async function BrowseMapArea({
     lat: s.lat,
   }));
 
+  // Authoritative EV charging (MD iMAP) hydrated into Amenity shape, ids
+  // prefixed "mdev:" so they never collide with OSM amenity ids. The detail
+  // line carries network + connector counts ("ChargePoint · 4 fast, 2 Level
+  // 2 · CCS"). When present these REPLACE the crowd-sourced OSM ev_charging
+  // points; if the fetch failed (empty), the OSM points stay as the fallback.
+  const evChargingAmenities = evStations.map((s) => ({
+    id: `mdev:${s.id}`,
+    kind: "ev_charging" as const,
+    name: s.name,
+    detail: evDetailLine(s) || undefined,
+    municipality: s.municipality,
+    lng: s.lng,
+    lat: s.lat,
+  }));
+  const baseAmenities = evStations.length
+    ? allAmenities().filter((a) => a.kind !== "ev_charging")
+    : allAmenities();
+
   const amenities = dedupeAmenities(
-    [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
+    [...baseAmenities, ...evChargingAmenities, ...riverGaugeAmenities, ...fieldAmenities],
     allPlaces.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 
