@@ -21,6 +21,7 @@ import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import { upgradeEventGeom } from "@/lib/integrations/mapboxGeocode";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -176,10 +177,14 @@ export async function getLiveCardEventBySlug(
   if (!hit && slug.startsWith("live-")) {
     hit = events.find((e) => liveEventSlug(e) === slug);
   }
-  // Venue-thumb borrow (same trust gates as the list assembly): without it
-  // the DETAIL page rendered the gradient fallback for an event whose list
-  // card carried a real venue photo (image audit 2026-07-07).
-  if (hit) return withVenueThumb(liveToCardEvent(hit));
+  // Centroid-geom upgrade FIRST (same pass the unified assembly runs, so the
+  // detail page's pin/mini-map agrees with the list card's — normally a 30-day
+  // geocode-cache hit, fail-soft), then the venue-thumb borrow (same trust
+  // gates as the list assembly): without it the DETAIL page rendered the
+  // gradient fallback for an event whose list card carried a real venue photo
+  // (image audit 2026-07-07). The thumb join runs AFTER the upgrade so its
+  // precise-geo containment gate sees the repaired coordinate.
+  if (hit) return withVenueThumb(await upgradeEventGeom(liveToCardEvent(hit)));
   // FIFTH + SIXTH sources: extracted venue lineups — the committed
   // venue-events.json snapshot (the Weinberg's cinema/talk slate) AND the
   // runtime Squarespace `?format=json` lineups (The Banyan). The listing

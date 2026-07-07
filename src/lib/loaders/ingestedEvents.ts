@@ -24,6 +24,7 @@ import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isPublicEvent } from "@/lib/events/classify";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
+import { upgradeEventGeom } from "@/lib/integrations/mapboxGeocode";
 import type { Event } from "@/data/events";
 
 /** Ingest source domains we lift into the main rails (library + fire company).
@@ -146,8 +147,10 @@ export async function getIngestedCardBySlug(slug: string): Promise<EventWithMeta
     if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
     for (const occ of s.occurrences) {
       const card = occurrenceToCard(s, occ);
-      // Venue-thumb borrow for the detail page (see liveEvents.ts note).
-      if (card?.slug === slug) return withVenueThumb(card);
+      // Centroid-geom upgrade first (matches the unified assembly, so the
+      // detail pin agrees with the list card; normally a geocode-cache hit),
+      // then the venue-thumb borrow (see liveEvents.ts note).
+      if (card?.slug === slug) return withVenueThumb(await upgradeEventGeom(card));
     }
   }
   return null;
