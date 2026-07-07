@@ -36,7 +36,7 @@ type AboutIntent = {
 const ABOUT_INTENTS: AboutIntent[] = [
   {
     label: "Submit a place",
-    hint: "A spot we're missing: a cafe, a trail, a hidden gem",
+    hint: "A spot we're missing: a cafe, a trail, a spot only locals know",
     icon: MapPin,
     accent: "var(--app-brand)",
     href: "/submit/place",

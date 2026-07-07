@@ -232,13 +232,13 @@ export default function TopBar() {
             onClick={() => setMoreOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
-            aria-label="Explore"
-            title="Explore"
+            aria-label="Browse"
+            title="Browse"
             className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-medium leading-none sm:inline">Explore</span>
+            <span className="hidden text-[14px] font-medium leading-none sm:inline">Browse</span>
           </button>
         </div>
       </header>

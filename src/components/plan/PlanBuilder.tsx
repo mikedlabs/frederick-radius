@@ -507,7 +507,7 @@ export default function PlanBuilder({
           <section className="space-y-2.5">
             <div className="flex items-baseline justify-between">
               <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                Curated outings
+                Ready-made outings
               </p>
               <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                 The combos people search for
@@ -516,7 +516,7 @@ export default function PlanBuilder({
             <div className="-mx-4 px-4 sm:-mx-0 sm:px-0">
               <ul
                 className="shelf-rail gap-2 pb-1"
-                aria-label="Curated plan presets"
+                aria-label="Ready-made plan presets"
               >
                 {PRESETS.map((p) => (
                   <li key={p.id} className="shrink-0 snap-start">

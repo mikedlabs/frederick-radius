@@ -149,7 +149,7 @@ export default function PlacesIndexPage() {
             { label: "Outdoors", href: "/map?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
             { label: "Parking", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
             { label: "Restrooms", href: "/amenities", icon: Toilet, color: "var(--app-cool)" },
-            { label: "Explore by town", href: "/towns", icon: Building2, color: "var(--app-brand)" },
+            { label: "Browse by town", href: "/towns", icon: Building2, color: "var(--app-brand)" },
           ].map((m) => {
             const Icon = m.icon;
             return (

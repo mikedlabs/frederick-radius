@@ -54,7 +54,7 @@ export const COLLECTIONS: CollectionDef[] = [
     // Sourced from the curated HIDDEN_GEM_SLUGS (one source of truth, shared
     // with the place card's "Hidden gem" chip + the /guide rail).
     slug: "hidden-gems",
-    title: "Hidden gems",
+    title: "Small finds",
     blurb:
       "Small finds locals actually remember. The spots a resident sends a visitor to, not the names everyone already knows.",
     accent: "var(--app-accent)",

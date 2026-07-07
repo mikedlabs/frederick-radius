@@ -35,21 +35,21 @@ export const CATEGORIES: Category[] = [
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#E14328", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
   { slug: "ice-cream", name: "Ice cream & treats", parent: "food", icon: "IceCream", color: "#D6739B", display_order: 17, blurb: "Ice cream, gelato, frozen custard, snowballs, and sweet shops." },
-  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17.5, blurb: "Frederick's food trucks rotate weekly. Here's where they reliably park, plus the festivals built around them." },
+  { slug: "food-truck", name: "Food trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17.5, blurb: "Frederick's food trucks rotate weekly. Here's where they reliably park, plus the festivals built around them." },
 
-  { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
+  { slug: "outdoors", name: "Parks & trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
   { slug: "trail", name: "Trails", parent: "outdoors", icon: "Mountain", color: "#16352B", display_order: 22, blurb: "200+ miles of hikes, towpaths, and rail-trails." },
   { slug: "playground", name: "Playgrounds", parent: "outdoors", icon: "ToyBrick", color: "#1E6B3A", display_order: 23, blurb: "Where to take the kids when it's nice out." },
   { slug: "golf", name: "Golf", parent: "outdoors", icon: "Flag", color: "#2E7D5B", display_order: 24, blurb: "Public, championship, and country-club courses across the county." },
   { slug: "agritourism", name: "Farms & pick-your-own", parent: "outdoors", icon: "Tractor", color: "#6B8E23", display_order: 25, blurb: "Orchards, pick-your-own, farm stands, creameries, corn mazes, and petting farms across the county." },
 
-  { slug: "arts", name: "Arts & Culture", icon: "Palette", color: "#7E2C6F", display_order: 30, blurb: "Galleries, theaters, museums, and live performance." },
+  { slug: "arts", name: "Arts & culture", icon: "Palette", color: "#7E2C6F", display_order: 30, blurb: "Galleries, theaters, museums, and live performance." },
   { slug: "museum", name: "Museums", parent: "arts", icon: "Landmark", color: "#5B1E55", display_order: 31, blurb: "Civil War, civic history, science, and art." },
   { slug: "gallery", name: "Galleries", parent: "arts", icon: "ImageIcon", color: "#7E2C6F", display_order: 32, blurb: "Independent art spaces and First Friday venues." },
   { slug: "theater", name: "Theaters", parent: "arts", icon: "Theater", color: "#5B1E55", display_order: 33, blurb: "Stage, film, and live performance venues." },
-  { slug: "music", name: "Live Music", parent: "arts", icon: "Music", color: "#7E2C6F", display_order: 34, blurb: "Venues, regular nights, and outdoor stages." },
-  { slug: "public-art", name: "Public Art", parent: "arts", icon: "Palette", color: "#9B3F8A", display_order: 35, blurb: "Murals, sculptures, and installations out in the open." },
+  { slug: "music", name: "Live music", parent: "arts", icon: "Music", color: "#7E2C6F", display_order: 34, blurb: "Venues, regular nights, and outdoor stages." },
+  { slug: "public-art", name: "Public art", parent: "arts", icon: "Palette", color: "#9B3F8A", display_order: 35, blurb: "Murals, sculptures, and installations out in the open." },
 
   { slug: "family", name: "Family", icon: "Baby", color: "#C0871F", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks.", see_also: ["playground"] },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#20506A", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },
@@ -58,17 +58,17 @@ export const CATEGORIES: Category[] = [
 
   { slug: "shopping", name: "Shopping", icon: "ShoppingBag", color: "#B26B00", display_order: 50, blurb: "Boutique, antique, and Main Street commerce." },
   { slug: "antiques", name: "Antiques", parent: "shopping", icon: "Lamp", color: "#8B5A2B", display_order: 51, blurb: "Twelve blocks of New Market and beyond." },
-  { slug: "book-store", name: "Book Stores", parent: "shopping", icon: "BookOpen", color: "#8B5A2B", display_order: 52, blurb: "Independent booksellers." },
+  { slug: "book-store", name: "Book stores", parent: "shopping", icon: "BookOpen", color: "#8B5A2B", display_order: 52, blurb: "Independent booksellers." },
   { slug: "market", name: "Markets", parent: "shopping", icon: "Apple", color: "#1E6B3A", display_order: 53, blurb: "Farmers markets, makers markets, seasonal events." },
 
   { slug: "wellness", name: "Wellness", icon: "Heart", color: "#A02929", display_order: 60, blurb: "Yoga, fitness, spas, and outdoor wellness." },
-  { slug: "yoga", name: "Yoga & Fitness", parent: "wellness", icon: "Activity", color: "#A02929", display_order: 61, blurb: "Studios, gyms, and group classes." },
+  { slug: "yoga", name: "Yoga & fitness", parent: "wellness", icon: "Activity", color: "#A02929", display_order: 61, blurb: "Studios, gyms, and group classes." },
 
-  { slug: "civic", name: "Civic & Public", icon: "Building2", color: "#20506A", display_order: 70, blurb: "Government services, public buildings, civic infrastructure.", kind: "utility" },
+  { slug: "civic", name: "Civic & public", icon: "Building2", color: "#20506A", display_order: 70, blurb: "Government services, public buildings, civic infrastructure.", kind: "utility" },
   { slug: "government", name: "Government", parent: "civic", icon: "Building", color: "#20506A", display_order: 71, blurb: "City and county government buildings and services.", kind: "utility" },
-  { slug: "public-safety", name: "Public Safety", parent: "civic", icon: "ShieldCheck", color: "#A02929", display_order: 72, blurb: "Police, fire, and emergency services.", kind: "utility" },
+  { slug: "public-safety", name: "Public safety", parent: "civic", icon: "ShieldCheck", color: "#A02929", display_order: 72, blurb: "Police, fire, and emergency services.", kind: "utility" },
   { slug: "voting", name: "Voting", parent: "civic", icon: "Vote", color: "#20506A", display_order: 73, blurb: "Election day and early voting centers.", kind: "utility" },
-  { slug: "worship", name: "Churches & Worship", parent: "civic", icon: "Church", color: "#5B3A8F", display_order: 74, blurb: "Churches, temples, and houses of worship across the county." },
+  { slug: "worship", name: "Churches & worship", parent: "civic", icon: "Church", color: "#5B3A8F", display_order: 74, blurb: "Churches, temples, and houses of worship across the county." },
 
   // The honest catch-all for events that don't fit a sharper bucket —
   // fundraisers, neighborhood gatherings, holiday lighting walks,

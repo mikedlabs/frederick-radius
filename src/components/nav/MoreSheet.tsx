@@ -73,8 +73,8 @@ const DISCOVER: Item[] = [
   { href: "/events?lens=weekend", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
   { href: "/live-music", label: "Live music", description: "Who's playing tonight and this week across the county", icon: Music, color: "var(--app-accent)" },
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
-  { href: "/collections", label: "Collections", description: "Editor's curated lists: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
-  { href: "/towns", label: "Towns", description: "Explore all 12 municipalities + Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
+  { href: "/collections", label: "Collections", description: "Editor's picks: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
+  { href: "/towns", label: "Towns", description: "All 12 municipalities, plus Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
   { href: "/contacts", label: "County services", description: "Who to call and how to do it: 311, permits, trash, taxes, voting, and every county + city department", icon: Landmark, color: "var(--app-cool)" },
   { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "var(--app-accent-press)" },
   { href: "/overhead", label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
@@ -115,7 +115,7 @@ export default function MoreSheet({
     <BottomDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Explore"
+      title="The county"
       subtitle="Every page, tool, and way to help"
     >
       {/* The field-guide index: every surface in the app, in one place, grouped
@@ -123,7 +123,7 @@ export default function MoreSheet({
           (Renamed from "More" — it's a directory of the whole app, not an
           overflow afterthought.) */}
       <div className="space-y-5 px-4 pt-3 pb-6">
-        <IconCluster heading="Discover" items={DISCOVER} onClose={close} columns={3} />
+        <IconCluster heading="Around the county" items={DISCOVER} onClose={close} columns={3} />
         <IconCluster heading="Contribute" items={CONTRIBUTE} onClose={close} columns={3} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>

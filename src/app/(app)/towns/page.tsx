@@ -5,7 +5,7 @@ import { townStats } from "@/lib/guided/town-stats";
 import { getWeeklyPublicEventCountsByMunicipality } from "@/lib/guided/town-event-counts";
 
 export const metadata: Metadata = {
-  title: "Explore towns",
+  title: "Towns",
   description: "Pick a Frederick County town to start. Real place counts and what's on this week.",
   alternates: { canonical: "/towns" },
 };
