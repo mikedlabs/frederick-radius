@@ -15,11 +15,25 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { PLACE_BY_SLUG } from "@/data/places";
+import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import {
   getPlaceDetails,
   resolveAndEnrich,
   type PlaceEnrichment,
 } from "@/lib/integrations/google-places";
+
+// Wrong-business quarantine (UX audit P0): these slugs were bound to a
+// DIFFERENT business's Google listing, and the base record's stored
+// google_place_id points at that wrong business — so this on-demand path
+// would re-serve the law office's hours to the restaurant's sheet. Serve
+// EMPTY until the slug is re-enriched with the correct listing.
+const QUARANTINED = new Set(
+  Object.entries(
+    (OVERRIDES_RAW as { patch?: Record<string, { clearEnrichment?: boolean }> }).patch ?? {},
+  )
+    .filter(([, p]) => p.clearEnrichment)
+    .map(([slug]) => slug),
+);
 
 export const runtime = "nodejs";
 
@@ -42,7 +56,7 @@ const EMPTY: EnrichResponse = { photos: [], hours: [] };
 const enrichSlug = unstable_cache(
   async (slug: string): Promise<EnrichResponse> => {
     const p = PLACE_BY_SLUG[slug];
-    if (!p) return EMPTY;
+    if (!p || QUARANTINED.has(slug)) return EMPTY;
 
     const data =
       p.google_place_id && /^ChIJ/.test(p.google_place_id)

@@ -253,6 +253,24 @@ const OV_KEEP: ReadonlySet<string> = new Set(OVERRIDES.keepApart ?? []);
 const OV_PATCH = OVERRIDES.patch;
 
 /**
+ * Wrong-business enrichment QUARANTINE (UX audit P0, 2026-07-07): these slugs
+ * were bound to a DIFFERENT business's Google listing (a restaurant carrying a
+ * law office's hours/phone/photos under a "Confirmed" badge). Every enrichment
+ * read goes through enrichmentFor(), which treats a quarantined slug as
+ * UNENRICHED — curated data stays, borrowed Google facts drop. The
+ * enrichment-binding data-health spec fails the build if a new suspect
+ * binding lands without a quarantine entry.
+ */
+const ENRICHMENT_QUARANTINE: ReadonlySet<string> = new Set(
+  Object.entries(OV_PATCH ?? {})
+    .filter(([, patch]) => patch.clearEnrichment)
+    .map(([slug]) => slug),
+);
+function enrichmentFor(slug: string): Enrichment | undefined {
+  return ENRICHMENT_QUARANTINE.has(slug) ? undefined : ENRICHMENT[slug];
+}
+
+/**
  * Slugs the automatic engine must never fold away: the curator's
  * `canonical === self` markers in places-dedup.json PLUS every
  * `keepApart` slug in the overrides file. The one-line manual veto.
@@ -291,7 +309,7 @@ const AUTO_FOLD: Map<string, string> = DEDUPE_ON
         municipality: p.municipality,
         google_place_id: p.google_place_id,
         feature_score: p.feature_score,
-        hasEnrichment: Boolean(ENRICHMENT[p.slug]),
+        hasEnrichment: Boolean(enrichmentFor(p.slug)),
       })),
       PINNED,
     )
@@ -488,7 +506,7 @@ function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source">
 }
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
-  const e = ENRICHMENT[p.slug];
+  const e = enrichmentFor(p.slug);
   if (!e)
     return {
       ...p,
@@ -499,6 +517,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
       // No Google profile to derive from, but an editorial hand-pick
       // still counts (and that is the whole reason hand-picks exist).
       local_favorite: resolveLocalFavorite(p.slug, undefined, undefined, p.is_verified),
+      // Editorial hidden-gem flag is enrichment-independent — an
+      // unenriched (or quarantined) gem is still a gem.
+      hidden_gem: HIDDEN_GEM_SLUGS.has(p.slug),
     };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
@@ -676,7 +697,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // Hours provenance, Phase 1 precedence: Google enrichment, then a
   // curated manual schedule. OSM hours apply to the map's OSM layer,
   // not the static place records, so they are not stamped here.
-  const e = ENRICHMENT[p.slug];
+  const e = enrichmentFor(p.slug);
   const hours_source: Place["hours_source"] = e?.has_hours
     ? "google_places"
     : enriched.hours && enriched.hours_verified
@@ -947,7 +968,7 @@ export function isOperational(p: Place): boolean {
   // raw Place field can lie (Serendipity Market, Brass Copper Shop,
   // …). Read the live enrichment business_status first; only fall
   // back to the Place field when there is no enrichment.
-  const e = ENRICHMENT[p.slug];
+  const e = enrichmentFor(p.slug);
   if (e?.business_status === "CLOSED_PERMANENTLY") return false;
   if (e?.business_status === "CLOSED_TEMPORARILY") return false;
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
@@ -973,7 +994,7 @@ const RELEVANCE_ON = process.env.RADIUS_RELEVANCE !== "0";
 export function isDiscoverable(p: Place): boolean {
   if (!RELEVANCE_ON) return true;
   if (p.source !== "dfp") return true; // never hide curated content
-  return !isNonDiscoverable(ENRICHMENT[p.slug]?.primary_type);
+  return !isNonDiscoverable(enrichmentFor(p.slug)?.primary_type);
 }
 
 // Default ON (owner: "prune the bare entries", 2026-05-18). Hides the
@@ -1008,7 +1029,7 @@ export function isSubstantive(p: Place): boolean {
   // a real editorial summary. Hidden only when it has NONE of these —
   // a name + category + point and nothing else.
   if (p.hero_image || getLandmarkPhoto(p.slug)) return true;
-  const e = ENRICHMENT[p.slug];
+  const e = enrichmentFor(p.slug);
   if (!e) return false;
   return Boolean(
     e.rating ||
