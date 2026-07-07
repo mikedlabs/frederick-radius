@@ -63,6 +63,20 @@ const GENERIC_VENUE_TOKENS: Set<string> = new Set([
   "tbd",
 ]);
 
+/**
+ * Hand-curated feed-shorthand → place-slug aliases, trusted like
+ * venue_place_slug. Feeds often carry a SHORT venue name whose normalized
+ * form neither equals nor contains the place's official name ("Frederick
+ * Fairgrounds" vs "Frederick Fairgrounds - Home of The Great Frederick
+ * Fair" misses exact match, and the fair feed's centroid geocode gates
+ * off the containment path). Verified by eyeball (image audit
+ * 2026-07-07); extend only with hand-checked pairs.
+ */
+const VENUE_ALIASES: Record<string, string> = {
+  frederickfairgrounds:
+    "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
+};
+
 let _byNorm: Map<string, PlaceCardData[]> | null = null;
 function placesByNorm(): Map<string, PlaceCardData[]> {
   if (_byNorm) return _byNorm;
@@ -88,6 +102,12 @@ function findByVenueName(
   // A bare town/region name is not a venue — bail before it can match (e.g. a
   // county event located only as "Frederick" must not borrow "<x> in Frederick").
   if (GENERIC_VENUE_TOKENS.has(k)) return null;
+  // 0. Hand-curated alias — trusted like venue_place_slug, no proximity gate.
+  const alias = VENUE_ALIASES[k];
+  if (alias) {
+    const p = clientPlaceBySlug(alias);
+    if (p) return p;
+  }
   // 1. Exact normalized name match within 800m (highest trust). Closest wins
   //    when two places share a name across the county.
   const bucket = placesByNorm().get(k);
@@ -98,6 +118,19 @@ function findByVenueName(
       if (d <= 800 && (!best || d < best.d)) best = { p, d };
     }
     if (best) return best.p;
+    // 1b. UNIQUE exact match, relaxed radius. Most live-feed events sit on
+    //     their feed's town CENTROID, which can be >800m from the venue even
+    //     when the name is an exact full match ("Monocacy Brewing Company"
+    //     events sit 1,025m off). When the normalized name matches exactly
+    //     ONE place county-wide, the name IS the identity — the 800m gate
+    //     only exists to disambiguate same-named places. Keep a 10km cap so
+    //     an out-of-county namesake can never borrow the photo. (Diagnosed
+    //     2026-07-07: recovers correct matches only; multi-candidate buckets
+    //     keep the strict proximity rule above.)
+    if (bucket.length === 1) {
+      const d = haversineMeters(eventGeom, bucket[0].geom);
+      if (d <= 10_000) return bucket[0];
+    }
   }
   // 2. Containment fallback. A feed's venue name is often a SHORT form of the
   //    place's official name ("Sky Stage" vs "Frederick Arts Council Sky
@@ -122,6 +155,17 @@ function findByVenueName(
     if (best) return best.p;
   }
   return null;
+}
+
+/**
+ * Single-event form of withVenueThumbs, for the /events/[slug] detail
+ * resolvers. The list card borrows the venue photo via the unified
+ * assembly, but the slug resolvers returned the raw feed row — so the
+ * DETAIL page rendered the gradient fallback for an event whose list
+ * card had a real photo (image audit 2026-07-07). Same trust gates.
+ */
+export function withVenueThumb(e: EventWithMeta): EventWithMeta {
+  return withVenueThumbs([e])[0];
 }
 
 export function withVenueThumbs(events: EventWithMeta[]): EventWithMeta[] {

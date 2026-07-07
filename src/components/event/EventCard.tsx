@@ -29,6 +29,7 @@ export default function EventCard({
   variant = "glance",
   live = false,
   whyItMatters,
+  priorityImage = true,
 }: {
   event: EventWithMeta;
   /**
@@ -58,6 +59,14 @@ export default function EventCard({
    * fabricated. Rendered under the meta row. Ignored by other variants.
    */
   whyItMatters?: string;
+  /**
+   * Whether a feature-variant photo may claim next/image `priority`
+   * (the LCP preload). Defaults true (the historical single-hero
+   * behavior); pass false for feature cards below the fold now that a
+   * page can carry one photo lead PER horizon group — multiple priority
+   * images compete for bandwidth and hurt the real LCP.
+   */
+  priorityImage?: boolean;
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -265,7 +274,7 @@ export default function EventCard({
               src={event.hero_image!}
               alt=""
               fill
-              priority
+              priority={priorityImage}
               sizes="(max-width: 640px) 100vw, 720px"
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}

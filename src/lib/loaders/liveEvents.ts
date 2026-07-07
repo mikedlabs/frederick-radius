@@ -20,6 +20,7 @@ import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
+import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -175,7 +176,10 @@ export async function getLiveCardEventBySlug(
   if (!hit && slug.startsWith("live-")) {
     hit = events.find((e) => liveEventSlug(e) === slug);
   }
-  if (hit) return liveToCardEvent(hit);
+  // Venue-thumb borrow (same trust gates as the list assembly): without it
+  // the DETAIL page rendered the gradient fallback for an event whose list
+  // card carried a real venue photo (image audit 2026-07-07).
+  if (hit) return withVenueThumb(liveToCardEvent(hit));
   // FIFTH + SIXTH sources: extracted venue lineups — the committed
   // venue-events.json snapshot (the Weinberg's cinema/talk slate) AND the
   // runtime Squarespace `?format=json` lineups (The Banyan). The listing
@@ -186,5 +190,5 @@ export async function getLiveCardEventBySlug(
     ...venueEventsAsCards(new Date()),
     ...venueEventsToCards(sqRaw),
   ].find((c) => c.slug === slug);
-  return venueHit ?? null;
+  return venueHit ? withVenueThumb(venueHit) : null;
 }
