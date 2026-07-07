@@ -59,7 +59,9 @@ export default function FromAboveCta() {
       <span className="min-w-0 flex-1">
         <span
           className="block text-[10px] font-bold uppercase tracking-[0.12em]"
-          style={{ color: "var(--app-accent)" }}
+          // accent-press (text-safe 4.56:1); --app-accent is fill-only (2.42:1
+          // on cream) and fails AA as text — see docs/CONTRAST_AUDIT.md.
+          style={{ color: "var(--app-accent-press)" }}
         >
           From above
         </span>

@@ -32,6 +32,20 @@ import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
 import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
+// /map browse feeds — the SAME loaders the browse map render awaits. They were
+// NOT covered here (only the event caches were), so a cold /map visit paid the
+// full live-fetch cost of all of them (measured: ~6-7s cold TTFB, ~500ms warm).
+// Warming their shared Vercel Data Cache on the 5-min schedule means even a cold
+// lambda reads them from cache and paints fast. Purely additive + fail-soft.
+import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
+import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
+import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
+import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
+import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
+import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
+import { getEvChargingStations } from "@/lib/integrations/evCharging";
+import { getCommunityReports } from "@/lib/loaders/communityReports";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +71,28 @@ export async function GET(request: Request) {
     getCachedLiveEvents(60),
     getCachedLiveEvents(90),
   ]);
+
+  // Warm the /map browse feeds too (their caches, not the event caches above).
+  // Fire-and-report: a rejected map-feed warm is noted but does NOT fail the
+  // whole cron the way an event-cache miss does — the map self-hides each empty
+  // layer, so a stale map feed degrades far more gently than stale events.
+  const MAP_FEEDS: Array<[string, () => Promise<unknown>]> = [
+    ["chart", () => getChartIncidentsFrederick()],
+    ["fixit", () => getFixItIssues(30)],
+    ["mapillary", () => fetchMapillaryTrash()],
+    ["trails", () => getFrederickTrailShapes()],
+    ["transit", () => getFrederickTransitRouteShapes()],
+    ["muni-bounds", () => getMunicipalBoundaries()],
+    ["county-bounds", () => getCountyBoundary()],
+    ["water", () => getFrederickWaterSites()],
+    ["ev", () => getEvChargingStations()],
+    ["reports", () => getCommunityReports()],
+  ];
+  const mapResults = await Promise.allSettled(MAP_FEEDS.map(([, fn]) => fn()));
+  const mapFeeds: Record<string, boolean> = {};
+  mapResults.forEach((r, i) => {
+    mapFeeds[MAP_FEEDS[i][0]] = r.status === "fulfilled";
+  });
 
   // obs-3: this cron is the ONLY thing between users and cold-miss TTFB, so a
   // rejected warm must be loud — not silently 200'd (which Vercel records as
@@ -92,7 +128,7 @@ export async function GET(request: Request) {
     ),
   };
 
-  const body = { ok: failures.length === 0, duration_ms: Date.now() - t0, warmed };
+  const body = { ok: failures.length === 0, duration_ms: Date.now() - t0, warmed, mapFeeds };
 
   if (failures.length > 0) {
     Sentry.captureMessage(

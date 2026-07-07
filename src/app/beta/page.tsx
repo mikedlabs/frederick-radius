@@ -102,7 +102,7 @@ export default async function BetaPage({
               autoComplete="off"
               aria-label="Beta password"
               placeholder="Password"
-              className="w-full rounded-[var(--app-radius-md)] border px-4 py-3 text-center text-[16px] tracking-wide focus:outline-none"
+              className="w-full rounded-[var(--app-radius-md)] border px-4 py-3 text-center text-[16px] tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
               style={{
                 borderColor: error ? "var(--app-brand)" : "var(--app-border-strong)",
                 background: "var(--app-bg-elevated-solid)",

@@ -55,7 +55,7 @@ export default function BetaEmailField() {
           inputMode="email"
           aria-label="Email for launch news"
           placeholder="you@example.com"
-          className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] focus:outline-none"
+          className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
           style={{
             borderColor: "var(--app-border-strong)",
             background: "var(--app-bg-elevated-solid)",
