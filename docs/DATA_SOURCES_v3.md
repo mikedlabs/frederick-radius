@@ -24,24 +24,36 @@ what's already built vs the genuine gaps, so we don't rebuild what exists.
 | County GIS (parks/trails/rec/streets) | `fcGis.ts`, `fcParks.ts`, `fcTrails.ts`, `fcParkLocations.ts`, `fcRecLocations.ts` |
 | Brewery roster cross-check | `openBreweryDb.ts` |
 
-## Genuine gaps — not yet built (ranked)
+## Genuine gaps — build status
 
-1. **EV charging (authoritative).** No dedicated integration today (only OSM
-   crowd-sourced chargers via `overpass.ts`). Audit Must-have.
-   - MD iMAP EV FeatureServer: `mdgeodata.md.gov/imap/rest/services/Transportation/MD_AlternativeFuel/FeatureServer/2/query?where=City='Frederick'`
-   - NREL AFDC: `developer.nrel.gov/api/alt-fuel-stations/v1.json?state=MD&fuel_type=ELEC` (free key, better radius search)
+1. **EV charging (authoritative). ✅ BUILT (2026-07).**
+   `src/lib/integrations/evCharging.ts` — MD iMAP EV FeatureServer (keyless
+   ArcGIS), gated to the county ring, hydrated into the map's `ev_charging`
+   amenity layer (replaces OSM when present, OSM fallback on failure).
+   - MD iMAP EV FeatureServer layer 2 (no County field → bbox envelope + ring gate).
 
-2. **MD DNR state-park open/closed status.** Have federal (NPS) + trout, not
-   state-park status (Cunningham Falls, Gambrill, Greenbrier, South Mountain).
-   - `dnr.maryland.gov/Pages/park-status-dashboard.aspx` (HTML/JS, JSON underneath — confirm endpoint)
+2. **Wikipedia GeoSearch context. ✅ BUILT (2026-07).**
+   `src/lib/integrations/wikiContext.ts` + `components/places/NearbyContext.tsx`
+   — "Around here" section on place pages, Suspense-streamed, CC BY-SA credited.
+   (Wikidata SPARQL enrichment not added — GeoSearch alone answers the
+   "what am I looking at" need; SPARQL is a future add for structured facts.)
 
-3. **Wikidata + Wikipedia GeoSearch context.** `wikimedia.ts` exists but does
-   not do GeoSearch/SPARQL. A "what am I looking at" landmark panel.
-   - Wikidata SPARQL: `query.wikidata.org/sparql` (county `wd:Q501345`, CC0)
-   - Wikipedia GeoSearch: `en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=LAT|LNG&gsradius=1500` (CC BY-SA)
+3. **MD DNR state-park open/closed status. ⛔ BLOCKED — needs a confirmed endpoint.**
+   The park-status dashboard is a SharePoint page embedding an ArcGIS dashboard;
+   no public FeatureService/JSON endpoint is discoverable (ArcGIS Online search +
+   item lookups returned nothing). The audit itself marked this "Needs check."
+   Not shipping a guessed endpoint (would risk wrong open/closed data).
+   - Reliable subset already live: NPS closures/alerts for Catoctin + Monocacy
+     (federal) surface on /today via `getNpsAlerts` + `CivicAlerts.tsx`.
+   - To unblock: find the dashboard's backing FeatureService (network tab on
+     `dnr.maryland.gov/Pages/park-status-dashboard.aspx`) or a DNR park-alerts API.
 
-4. **Overture Places gap-fill.** Incremental over existing OSM/Overpass — catch
-   POI gaps in outer towns (Brunswick, Emmitsburg, Woodsboro, Rosemont).
+4. **Overture Places gap-fill. 📋 SCOPED — offline candidate pipeline, not a runtime feed.**
+   Overture is GeoParquet on S3 (monthly), queried with DuckDB — an offline job.
+   Per the hand-vetted / no-auto-fill philosophy it must produce a REVIEW QUEUE of
+   new outer-town candidates (Brunswick, Emmitsburg, Woodsboro, Rosemont) for the
+   owner to vet, NOT auto-added pins. Belongs with the existing review-queue tooling
+   (`docs/category-review-queue.md`), run as `scripts/*`, not a `src/lib` loader.
    - `s3://overturemaps-us-west-2/release/*/theme=places` (GeoParquet, monthly)
 
 ### Minor / optional
