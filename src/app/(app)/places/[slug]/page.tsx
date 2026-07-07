@@ -17,6 +17,7 @@ import EventCard from "@/components/event/EventCard";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
+import NearbyContext from "@/components/places/NearbyContext";
 import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import CourseInfoStrip from "@/components/place/CourseInfoStrip";
 import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
@@ -475,6 +476,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           ))}
         </ul>
       </section>
+
+      {/* "Around here" — nearest Wikipedia articles (the what-am-I-looking-at
+          context layer). Streamed so a slow Wikipedia fetch never blocks the
+          page; renders nothing when there's no nearby history. */}
+      <Suspense fallback={null}>
+        <NearbyContext lat={place.geom.lat} lng={place.geom.lng} excludeName={place.name} />
+      </Suspense>
 
       <footer className="space-y-2 pt-4">
         <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />

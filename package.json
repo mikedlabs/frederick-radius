@@ -33,6 +33,7 @@
     "ingest:venues": "tsx --tsconfig tsconfig.json scripts/ingest-venue-events.ts",
     "ingest:business": "tsx --tsconfig tsconfig.json scripts/ingest-business-info.ts",
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
+    "discover:overture": "tsx --tsconfig tsconfig.json scripts/overture-candidates.ts",
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
     "audit:categories": "tsx --tsconfig tsconfig.json scripts/category-audit.ts",
     "coverage:scorecard": "tsx --tsconfig tsconfig.json scripts/coverage-scorecard.ts",

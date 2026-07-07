@@ -208,6 +208,27 @@ import {
   PlacePopup,
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
+import TimeScrubber from "./TimeScrubber";
+import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
+import { easternDayKey } from "@/lib/tz";
+import { getOpenStatus, isOpenNow } from "@/lib/hours";
+
+/** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
+ *  from "now" by the delta so getOpenStatus (which reads Frederick time)
+ *  evaluates hours at the scrubbed hour without constructing a zoned date. */
+function scrubInstant(scrubHour: number): Date {
+  const local = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const curH = local.getHours() + local.getMinutes() / 60;
+  return new Date(Date.now() + (scrubHour - curH) * 3_600_000);
+}
+
+/** True when the viewer asked for reduced motion. The CSS `*` gate can't
+ *  reach Mapbox's JS-driven camera, so camera moves check this and pass
+ *  duration:0 (instant, no glide). */
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined"
+    && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
 
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
@@ -420,6 +441,10 @@ export default function AppMap({
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
+  // Time scrubber (living map): null = live/off; otherwise a 0-24 Frederick
+  // hour the map re-evaluates against. Pure client state — no refetch, no
+  // server mode change.
+  const [scrubHour, setScrubHour] = useState<number | null>(null);
   // Cluster index drawer: tapping a curated cluster used to ONLY zoom-step —
   // a dense downtown "47" bubble took 2-3 taps to resolve and there was no
   // way to see what it contained (the synced list was deliberately removed:
@@ -809,6 +834,45 @@ export default function AppMap({
     })),
   }), [filteredPlaces]);
 
+  // ── Living-map scrub → place open/closed via feature-state ──────────────
+  // Snappy by design: rather than re-serializing the GeoJSON source, flip a
+  // per-pin `dim` feature-state and let the icon-opacity expression paint it
+  // on the GPU. The compact client hours bundle is lazy-loaded on first scrub
+  // (the deliberately-slimmed browse payload carries no hours), then reused.
+  // Reapplied whenever the source data changes (Mapbox clears feature-state on
+  // setData) or the hour moves; cleared when the scrubber turns off.
+  const clientHoursRef = useRef<globalThis.Map<string, { hours: PlaceCardData["hours"]; verified: boolean }> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function apply() {
+      const m = mapRef.current?.getMap();
+      if (!m || !m.getSource("curated-places")) return;
+      if (scrubHour == null) {
+        m.removeFeatureState({ source: "curated-places" });
+        return;
+      }
+      if (!clientHoursRef.current) {
+        const mod = await import("@/lib/loaders/places-client");
+        if (cancelled) return;
+        clientHoursRef.current = new globalThis.Map(
+          mod.clientPlaces().map((p) => [p.slug, { hours: p.hours, verified: p.hours_verified ?? false }] as const),
+        );
+      }
+      const hoursBySlug = clientHoursRef.current;
+      if (!hoursBySlug) return;
+      const at = scrubInstant(scrubHour);
+      for (const p of filteredPlaces) {
+        const h = hoursBySlug.get(p.slug);
+        const open = h?.hours ? isOpenNow(getOpenStatus(h.hours, { verified: h.verified }, at)) : true;
+        m.setFeatureState({ source: "curated-places", id: p.slug }, { dim: !open });
+      }
+    }
+    const m = mapRef.current?.getMap();
+    if (m && m.isSourceLoaded("curated-places")) apply();
+    else if (m) m.once("idle", apply);
+    return () => { cancelled = true; };
+  }, [scrubHour, curatedGeoJson, filteredPlaces]);
+
   // The single selected place — drives a soft glow ring under its icon.
   const selectedGeoJson = useMemo(() => {
     const p = selectedSlug ? places.find((x) => x.slug === selectedSlug) : null;
@@ -916,7 +980,19 @@ export default function AppMap({
       // (photo, rating, hours, directions, save) instead of a cramped popup.
       // Distance must be from the USER, never a fixed city point — show it
       // only when we actually have their location, else omit it (honest).
-      if (place) openPlaceSheet(place);
+      if (place) {
+        openPlaceSheet(place);
+        // Lift the tapped pin above the bottom sheet (Google/Apple pattern):
+        // shift the camera up so the pin + its selected glow stay visible
+        // instead of hiding under the sheet that just rose over them.
+        const m = mapRef.current?.getMap();
+        m?.easeTo({
+          center: [place.geom.lng, place.geom.lat],
+          offset: [0, -120],
+          duration: prefersReducedMotion() ? 0 : 500,
+          essential: true,
+        });
+      }
       track("map_pin", { category: place?.category ?? "unknown" });
       return;
     }
@@ -1160,7 +1236,7 @@ export default function AppMap({
           mapRef.current?.getMap().flyTo({
             center: FREDERICK,
             zoom: 12,
-            duration: 1100,
+            duration: prefersReducedMotion() ? 0 : 1100,
             curve: 1.25,
             easing: CAM_EASE,
             essential: true,
@@ -1174,7 +1250,7 @@ export default function AppMap({
         mapRef.current?.getMap().flyTo({
           center: [loc.lng, loc.lat],
           zoom: 14,
-          duration: 1100,
+          duration: prefersReducedMotion() ? 0 : 1100,
           curve: 1.25,
           easing: CAM_EASE,
           essential: true,
@@ -1191,6 +1267,35 @@ export default function AppMap({
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
+
+  // Per-event Frederick hour-of-day + day key, derived once from the events
+  // prop (deterministic over fixed timestamps). The scrubber filters same-day
+  // events to those live/soon at the chosen hour; other-day events stay put so
+  // a weekend event isn't hidden while scrubbing today.
+  const eventScrubTimes = useMemo(
+    () =>
+      events.map((e) => {
+        const start = new Date(e.starts_at);
+        const localStart = new Date(start.toLocaleString("en-US", { timeZone: "America/New_York" }));
+        const startH = easternHourFloat({ hour: localStart.getHours(), minute: localStart.getMinutes() });
+        let endH = NaN;
+        if (e.ends_at) {
+          const localEnd = new Date(new Date(e.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" }));
+          endH = easternHourFloat({ hour: localEnd.getHours(), minute: localEnd.getMinutes() });
+        }
+        return { startH, endH, dayKey: easternDayKey(start) };
+      }),
+    [events],
+  );
+  const scrubTodayKey = easternDayKey(new Date());
+  const visibleEvents =
+    scrubHour == null
+      ? events
+      : events.filter((_, i) => {
+          const t = eventScrubTimes[i];
+          if (!t || t.dayKey !== scrubTodayKey) return true;
+          return withinScrubWindow(t.startH, t.endH, scrubHour);
+        });
 
   return (
     <div
@@ -1246,6 +1351,10 @@ export default function AppMap({
         fieldNotesOnly={fieldNotesOnly}
         setFieldNotesOnly={setFieldNotesOnly}
       />
+
+      {/* Living-map time scrubber — drag through the day to see what's on.
+          Only on the full-bleed browse canvas (not embedded/saved maps). */}
+      {fullBleed && <TimeScrubber hour={scrubHour} onChange={setScrubHour} />}
 
         {/* Pinpoint-first empty state — the control surface. With nothing
             added, the map is calm and this invites the user to compose
@@ -1875,6 +1984,7 @@ export default function AppMap({
             id="curated-places"
             type="geojson"
             data={curatedGeoJson}
+            promoteId="slug"
             cluster
             clusterRadius={64}
             clusterMaxZoom={15}
@@ -2010,15 +2120,21 @@ export default function AppMap({
                 "symbol-sort-key": ["get", "pri"],
                 "icon-anchor": "center",
               }}
+              paint={{
+                // Living-map scrub: a pin dims when it's closed at the
+                // scrubbed hour (feature-state set client-side). No state =
+                // full opacity, so this is inert until the scrubber is used.
+                "icon-opacity": ["case", ["boolean", ["feature-state", "dim"], false], 0.28, 1],
+              }}
             />
             {/* Invisible tap-target pad — expands each curated pin's
-                hit area to a Fitts-friendly ~36px regardless of how
+                hit area to a Fitts-friendly ~44px regardless of how
                 tiny the rendered icon gets at street zoom. The single-
                 place pins shrink under the iOS 44pt floor; this layer
-                keeps the touchable region usable without making the
-                visual pins themselves bigger. Same source as
-                curated-icons so the click handler can resolve back to
-                the same slug via props.slug. */}
+                keeps the touchable region usable (radius 22 = 44px, the
+                iOS minimum) without making the visual pins themselves
+                bigger. Same source as curated-icons so the click handler
+                can resolve back to the same slug via props.slug. */}
             <Layer
               id="curated-hit"
               type="circle"
@@ -2026,7 +2142,7 @@ export default function AppMap({
               paint={{
                 "circle-color": "#000000",
                 "circle-opacity": 0,
-                "circle-radius": 18,
+                "circle-radius": 22,
               }}
             />
             {/* Names reveal as you get closer — fade in past street zoom */}
@@ -2293,7 +2409,7 @@ export default function AppMap({
               as a circular photo bubble (or category-colored badge when
               there's no hero image). Tapping opens a popup with a link
               to the event detail. */}
-          {events.map((e) => (
+          {visibleEvents.map((e) => (
             <Marker
               key={`ev:${e.slug}`}
               longitude={e.lng}
@@ -2323,13 +2439,13 @@ export default function AppMap({
               >
                 <span
                   aria-hidden
+                  className="fr-ev-pulse"
                   style={{
                     position: "absolute",
                     inset: 4,
                     borderRadius: 9999,
                     background: e.category_color || "var(--app-brand)",
                     opacity: 0.32,
-                    animation: "fr-ev-pulse 2.6s ease-out infinite",
                   }}
                 />
                 <span

@@ -19,6 +19,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
+import { getEvChargingStations, evDetailLine } from "@/lib/integrations/evCharging";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
@@ -493,37 +494,52 @@ async function BrowseMapArea({
     municipalBoundaries,
     countyBoundary,
     waterSites,
+    evStations,
     fieldAmenities,
     communityReports,
     allWeek,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
     // missing layer instead of hanging the render into a 503.
-    withTimeout(getChartIncidentsFrederick(), 6000, []),
-    withTimeout(getFixItIssues(30), 6000, []),
-    withTimeout(fetchMapillaryTrash(), 6000, []),
-    withTimeout(getFrederickTrailShapes(), 6000, EMPTY_FC),
-    withTimeout(getFrederickTransitRouteShapes(), 6000, EMPTY_FC),
+    //
+    // PERF: the browse map canvas is downstream of this Promise.all, so the
+    // MAP DOESN'T PAINT until the slowest feed settles — the whole array's
+    // wall-clock is its longest timeout. Ceilings were trimmed (cold-cache
+    // worst case ~8s → ~5s) so a slow upstream costs the user seconds less
+    // before the map appears; every one of these self-hides when empty, so a
+    // trimmed-out layer degrades exactly as a failed one already did. Warm
+    // loads (the common case, kept hot by the warm-events cron + weekly
+    // caches) are unaffected. The real fix — painting the map + pins first and
+    // streaming these layers in after — is a separate structural change.
+    withTimeout(getChartIncidentsFrederick(), 4500, []),
+    withTimeout(getFixItIssues(30), 4500, []),
+    withTimeout(fetchMapillaryTrash(), 3000, []),
+    withTimeout(getFrederickTrailShapes(), 4000, EMPTY_FC),
+    withTimeout(getFrederickTransitRouteShapes(), 4000, EMPTY_FC),
     // County GIS municipal boundary polygons — quiet always-on map
     // outline. Fail-soft to empty so the county server never blocks.
-    withTimeout(getMunicipalBoundaries(), 6000, EMPTY_FC),
+    withTimeout(getMunicipalBoundaries(), 3000, EMPTY_FC),
     // County boundary outline — committed static GeoJSON, the quiet
     // always-on county edge (6.1). Fail-soft to empty.
-    withTimeout(getCountyBoundary(), 6000, EMPTY_FC),
+    withTimeout(getCountyBoundary(), 3000, EMPTY_FC),
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
-    withTimeout(getFrederickWaterSites(), 6000, []),
+    withTimeout(getFrederickWaterSites(), 3000, []),
+    // EV charging — authoritative MD iMAP stations (network + connector
+    // counts). Upgrades the OSM-crowdsourced ev_charging amenity layer;
+    // fail-soft to [] so the map falls back to the OSM points.
+    withTimeout(getEvChargingStations(), 3500, []),
     // Field-collected amenities (the /collect walkabout tool). Reads
     // the field_amenities table; fail-soft to [] (no DB / error) so the
     // map degrades to the static + OSM amenity set, never a 503.
-    withTimeout(getFieldAmenities(), 6000, []),
+    withTimeout(getFieldAmenities(), 3000, []),
     // Community reports (the /report crowdsourced layer). Fail-soft to [] (no
     // DB / table not migrated / error) so the map degrades cleanly.
-    withTimeout(getCommunityReports(), 6000, []),
+    withTimeout(getCommunityReports(), 3000, []),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
-    withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 8000, [] as EventWithMeta[]),
+    withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 5000, [] as EventWithMeta[]),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -559,8 +575,26 @@ async function BrowseMapArea({
     lat: s.lat,
   }));
 
+  // Authoritative EV charging (MD iMAP) hydrated into Amenity shape, ids
+  // prefixed "mdev:" so they never collide with OSM amenity ids. The detail
+  // line carries network + connector counts ("ChargePoint · 4 fast, 2 Level
+  // 2 · CCS"). When present these REPLACE the crowd-sourced OSM ev_charging
+  // points; if the fetch failed (empty), the OSM points stay as the fallback.
+  const evChargingAmenities = evStations.map((s) => ({
+    id: `mdev:${s.id}`,
+    kind: "ev_charging" as const,
+    name: s.name,
+    detail: evDetailLine(s) || undefined,
+    municipality: s.municipality,
+    lng: s.lng,
+    lat: s.lat,
+  }));
+  const baseAmenities = evStations.length
+    ? allAmenities().filter((a) => a.kind !== "ev_charging")
+    : allAmenities();
+
   const amenities = dedupeAmenities(
-    [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
+    [...baseAmenities, ...evChargingAmenities, ...riverGaugeAmenities, ...fieldAmenities],
     allPlaces.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 
