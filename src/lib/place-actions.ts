@@ -30,7 +30,9 @@ export type PlaceAction = {
   accent: string;
 };
 
-const FOOD_CATS = new Set(["restaurant", "bar", "brewery", "pizza", "bakery", "coffee", "food", "food-truck"]);
+// Exported for the place page's Website action: on a food place the
+// website IS the menu answer, so the label says so ("Website · menu").
+export const FOOD_CATS = new Set(["restaurant", "bar", "brewery", "pizza", "bakery", "coffee", "food", "food-truck"]);
 const RESERVE_CATS = new Set(["restaurant", "bar", "brewery"]);
 
 function q(s: string): string {

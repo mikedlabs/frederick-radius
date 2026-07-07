@@ -23,6 +23,7 @@ import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
 import { isEventEnded } from "@/lib/eventWhenLabel";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
@@ -403,7 +404,10 @@ export default function EventsExplorer({
   if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
   if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
   if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
-  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? town, drop: () => setTown(null) });
+  // Resolve the town name from the canonical municipality vocab, not just the
+  // event-derived towns list — a town with zero matching events would
+  // otherwise render as its raw slug ("burkittsville") in the zero state.
+  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => setTown(null) });
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 

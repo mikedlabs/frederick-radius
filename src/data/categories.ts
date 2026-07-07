@@ -15,6 +15,13 @@ export type Category = {
    * everywhere. Omitted = "draw" (the common case).
    */
   kind?: "draw" | "utility";
+  /**
+   * Cross-tree doorways: sub-chips to show on this category's page IN
+   * ADDITION to its own children. For hubs whose audience overlaps
+   * another branch (Family → Playgrounds lives under outdoors) — a slug
+   * can only have one `parent`, but families still need the door.
+   */
+  see_also?: string[];
 };
 
 export const CATEGORIES: Category[] = [
@@ -44,7 +51,7 @@ export const CATEGORIES: Category[] = [
   { slug: "music", name: "Live Music", parent: "arts", icon: "Music", color: "#7E2C6F", display_order: 34, blurb: "Venues, regular nights, and outdoor stages." },
   { slug: "public-art", name: "Public Art", parent: "arts", icon: "Palette", color: "#9B3F8A", display_order: 35, blurb: "Murals, sculptures, and installations out in the open." },
 
-  { slug: "family", name: "Family", icon: "Baby", color: "#C0871F", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks." },
+  { slug: "family", name: "Family", icon: "Baby", color: "#C0871F", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks.", see_also: ["playground"] },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#20506A", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },
 
   { slug: "sports", name: "Sports", icon: "Activity", color: "#0F8A5F", display_order: 45, blurb: "Games to go see: Frederick Keys, Hood Blazers, and local league play." },

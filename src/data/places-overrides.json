@@ -509,6 +509,19 @@
     "american-air-llc": { "clearEnrichment": true },
     "rice-tire": { "clearEnrichment": true },
     "south-frederick-arboretum": { "clearEnrichment": true },
-    "the-cozy-creamery-thurmont": { "clearEnrichment": true }
+    "the-cozy-creamery-thurmont": { "clearEnrichment": true },
+    "emporium-antiques": { "category": "antiques" },
+    "emmitsburg-antique-mall-emmitsburg": { "category": "antiques" },
+    "ben-gue-antiques-gifts-mount-airy": { "category": "antiques" },
+    "antiques-n-ole-stuff-brunswick": { "category": "antiques" },
+    "fleshmans-antiques-new-market": { "category": "antiques" },
+    "old-glory-antique-market-place-frederick": { "category": "antiques" },
+    "cannon-hill-place-antiques-frederick": { "category": "antiques" },
+    "frederick-antiques-online-frederick": { "category": "antiques" },
+    "cozy-house-of-curiosity-antiques-vintage-collectibles-thurmont": { "category": "antiques" },
+    "swans-antiques-emmitsburg": { "category": "antiques" },
+    "r-p-brady-antiques-new-market": { "category": "antiques" },
+    "robert-esterly-antiques-new-market": { "category": "antiques" },
+    "dibs-authentic-antiques-frederick": { "category": "antiques" }
   }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Trees, ExternalLink } from "lucide-react";
 import { getFrederickParks, type Park } from "@/lib/integrations/fcParks";
 import {
@@ -10,12 +11,8 @@ import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export const metadata: Metadata = {
-  // Orphan-by-design: this surface has real content but no
-  // internal links from primary nav. Keep it reachable by direct
-  // URL while telling crawlers not to compete it against the
-  // focused surfaces in /sitemap. Reversible if the route is
-  // promoted back into nav.
-  robots: { index: false, follow: true },
+  // Promoted back into nav (the Outdoors want's Parks chip lands here),
+  // so the orphan-era noindex is lifted per its own reversal note.
   title: "Parks",
   description:
     "Every park and open-space area in Frederick County: type, size, address, and who maintains it. Live from Frederick County GIS.",
@@ -85,6 +82,15 @@ export default async function ParksPage() {
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Every park and open-space area the county tracks: its type,
           size, and who maintains it. Tap one to see it on the map.
+        </p>
+        <p className="text-[13px]">
+          <Link
+            href="/nearby?c=outside"
+            className="tap-44-y inline-flex items-center font-medium underline underline-offset-2"
+            style={{ color: "var(--app-brand-2, #2E3B2C)" }}
+          >
+            Find what&rsquo;s nearest you
+          </Link>
         </p>
       </header>
 

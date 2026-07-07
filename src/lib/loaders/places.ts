@@ -24,7 +24,7 @@ import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
-import { cleanFeedText } from "@/lib/format/text";
+import { cleanFeedText, cleanBlurbFragment } from "@/lib/format/text";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
@@ -520,6 +520,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
       // Editorial hidden-gem flag is enrichment-independent — an
       // unenriched (or quarantined) gem is still a gem.
       hidden_gem: HIDDEN_GEM_SLUGS.has(p.slug),
+      // Same boundary clean the enriched branch gets: scrape fragments
+      // ("is a family-owned…") read broken regardless of enrichment.
+      short_blurb: p.short_blurb ? cleanBlurbFragment(cleanFeedText(p.short_blurb)) : p.short_blurb,
     };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
@@ -568,7 +571,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
       ? e.editorial_summary.trim()
       : p.short_blurb;
-  const short_blurb = rawBlurb ? cleanFeedText(rawBlurb) : rawBlurb;
+  const short_blurb = rawBlurb ? cleanBlurbFragment(cleanFeedText(rawBlurb)) : rawBlurb;
   // Hours: a hand-curated structured schedule (seed/manual, e.g. the
   // parks) always wins; otherwise parse Google's weekday strings into the
   // structured shape getOpenStatus needs. THIS is the line that lifts

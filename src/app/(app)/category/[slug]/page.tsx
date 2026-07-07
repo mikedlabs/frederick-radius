@@ -98,7 +98,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // slimForList drops google_photos[]/google_hours[] (no card renders them)
   // before the set crosses to the client PlaceList — ~1.4MB off big categories.
   const places = rankPlaces({ category: slug, origin }).map(slimForList);
-  const subs = CATEGORIES.filter((x) => x.parent === c.slug);
+  // Children plus cross-tree see_also doorways (Family → Playgrounds, which
+  // lives under outdoors): a category has one parent, but hub pages whose
+  // audience overlaps another branch still get the chip.
+  const subs = [
+    ...CATEGORIES.filter((x) => x.parent === c.slug),
+    ...(c.see_also ?? [])
+      .map((s) => CATEGORIES.find((x) => x.slug === s))
+      .filter((x): x is (typeof CATEGORIES)[number] => Boolean(x)),
+  ];
   // Recommendation eligibility: "Worth your time" + the photo wall are
   // PROMOTIONAL, so institutions (schools/daycares/admissions offices that
   // happen to carry this category) must not lead them. Browse below keeps
