@@ -1,14 +1,20 @@
 import type { LngLat } from "@/lib/geo";
 
-// "village" was dropped: Maryland has no legal village municipal
-// class, so after Burkittsville/Rosemont were corrected to "town"
-// (#87) nothing used it. Add it back only if a non-MD use arises.
-export type MunicipalityType = "city" | "town" | "unincorporated";
+// Classifications follow the county's own municipal list (2026-07 fact
+// check): two cities, nine towns, and ONE village — Rosemont, whose
+// incorporated name is "Village of Rosemont" (1953). Maryland municipal
+// law doesn't distinguish the classes, but residents do, and the
+// county's list is the styling we mirror. Burkittsville is styled a
+// town (its charter name), even though everyone calls it a village.
+export type MunicipalityType = "city" | "town" | "village" | "unincorporated";
 
 export type Municipality = {
   slug: string;
   name: string;
   type: MunicipalityType;
+  /** 2020 decennial census count (Urbana: CDP figure). Surfaces render
+   *  the raw number with no year, so keep these on the one dated,
+   *  defensible source rather than mixing in drifting estimates. */
   population: number;
   centroid: LngLat;
   bbox: [number, number, number, number];
@@ -25,7 +31,7 @@ export const MUNICIPALITIES: Municipality[] = [
     slug: "frederick",
     name: "Downtown Frederick",
     type: "city",
-    population: 80_435,
+    population: 78_171,
     centroid: { lng: -77.4105, lat: 39.4143 },
     bbox: [-77.460, 39.385, -77.370, 39.450],
     description:
@@ -120,7 +126,7 @@ export const MUNICIPALITIES: Municipality[] = [
     centroid: { lng: -77.1547, lat: 39.3754 },
     bbox: [-77.180, 39.355, -77.130, 39.400],
     description:
-      "Four counties meet under one zip code (Frederick, Carroll, Howard, Montgomery). A Main Street revival, two wineries on the ridge, and the highest elevation in the county.",
+      "Four counties meet under one zip code (Frederick, Carroll, Howard, Montgomery); the town itself straddles the Carroll and Frederick county line. A Main Street revival, two wineries, and the old B&O grade over Parr's Ridge.",
     hero_blurb: "The town at the meeting of four counties.",
     fact: "Where four counties meet.",
     est: 1830,
@@ -155,23 +161,25 @@ export const MUNICIPALITIES: Municipality[] = [
     slug: "burkittsville",
     name: "Burkittsville",
     // Incorporated municipality (Town of Burkittsville, inc. 1894).
-    // Maryland has no legal "village" class — it is a town.
+    // Styled a town in its charter and the county's list, though the
+    // prose "village" is how everyone, including locals, describes it.
     type: "town",
-    population: 153,
+    population: 142,
     centroid: { lng: -77.6253, lat: 39.3940 },
     bbox: [-77.635, 39.388, -77.615, 39.400],
     description:
-      "South Mountain village of just over 150 people. Best known beyond its size for a 1999 film that took its name; locals would rather you visit for the Gathland State Park overlooks.",
-    hero_blurb: "South Mountain village, 153 strong.",
+      "South Mountain village of about 140 people. Best known beyond its size for a 1999 film that took its name; locals would rather you visit for the Gathland State Park overlooks.",
+    hero_blurb: "South Mountain village, tiny and historic.",
     fact: "The “Blair Witch” town, go for Gathland.",
     est: 1824,
   },
   {
     slug: "rosemont",
     name: "Rosemont",
-    // Incorporated municipality (Town of Rosemont, inc. 1953).
-    type: "town",
-    population: 280,
+    // Incorporated municipality — the Village of Rosemont (inc. 1953),
+    // the county's only chartered village.
+    type: "village",
+    population: 272,
     centroid: { lng: -77.6608, lat: 39.3261 },
     bbox: [-77.670, 39.320, -77.650, 39.335],
     description:

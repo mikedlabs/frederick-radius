@@ -117,19 +117,35 @@ describe("places-client data health", () => {
 });
 
 describe("places-overrides referential integrity", () => {
-  const ov = overrides as { patch?: Record<string, unknown> };
+  const ov = overrides as { patch?: Record<string, { clearEnrichment?: boolean }> };
+  // A clearEnrichment quarantine (wrong-business sweep, UX audit P0) strips
+  // ALL Google data from its slug, which usually drops the record below the
+  // isSubstantive bar and out of the PUBLIC set — by design ("no page > a
+  // lying page"). Those keys are not stale orphans: the base record still
+  // exists and the patch is what hides it. Exempt them here; the base-record
+  // typo check they still need lives in enrichmentBinding.spec.ts, which
+  // resolves every quarantined slug against the base data files.
+  const quarantined = new Set(
+    Object.entries(ov.patch ?? {})
+      .filter(([, p]) => p?.clearEnrichment)
+      .map(([slug]) => slug),
+  );
 
   it("every patch key resolves to a live place (no stale orphans)", () => {
-    const orphans = Object.keys(ov.patch ?? {}).filter((s) => !slugs.has(s));
+    const orphans = Object.keys(ov.patch ?? {}).filter(
+      (s) => !slugs.has(s) && !quarantined.has(s),
+    );
     expect(orphans).toEqual([]);
   });
 
   // keepApart names the slugs the dedupe engine must NEVER fold together (the
   // manual veto on a false merge). If a dedupe change folded one away it would
-  // vanish from the public set — assert every veto'd slug still resolves live.
+  // vanish from the public set — assert every veto'd slug still resolves live,
+  // unless the slug is deliberately hidden by an enrichment quarantine (the
+  // veto still applies to the base record; it just isn't public right now).
   it("every keepApart slug survives as a distinct live place", () => {
     const ka = (overrides as { keepApart?: string[] }).keepApart ?? [];
-    const folded = ka.filter((s) => !slugs.has(s));
+    const folded = ka.filter((s) => !slugs.has(s) && !quarantined.has(s));
     expect(folded).toEqual([]);
   });
 });
@@ -146,7 +162,19 @@ describe("wikimedia landmark-photo integrity", () => {
 
 describe("field-notes referential integrity", () => {
   it("every field-note key resolves to a live place", () => {
-    const orphans = Object.keys(fieldNotes as Record<string, unknown>).filter((s) => !slugs.has(s));
+    // Quarantine exemption (same as the overrides checks above): a field note
+    // on an enrichment-quarantined record stays attached to the hidden base
+    // record pending the owner's per-record disposition pass — deleting or
+    // reassigning owner-authored notes is a human call, not a build step.
+    const ovq = overrides as { patch?: Record<string, { clearEnrichment?: boolean }> };
+    const quarantined = new Set(
+      Object.entries(ovq.patch ?? {})
+        .filter(([, p]) => p?.clearEnrichment)
+        .map(([slug]) => slug),
+    );
+    const orphans = Object.keys(fieldNotes as Record<string, unknown>).filter(
+      (s) => !slugs.has(s) && !quarantined.has(s),
+    );
     expect(orphans).toEqual([]);
   });
 });

@@ -150,18 +150,18 @@
     "lima-soul-restaurant-frederick": { "hours": { "wed": [{ "open": "17:00", "close": "22:00" }], "thu": [{ "open": "17:00", "close": "22:00" }], "fri": [{ "open": "17:00", "close": "22:00" }], "sat": [{ "open": "12:00", "close": "22:00" }], "sun": [{ "open": "12:00", "close": "21:00" }] } },
     "walkers-village-shopping-center-walkersville": { "hours": { "mon": [{ "open": "10:00", "close": "21:30" }], "tue": [{ "open": "10:00", "close": "21:30" }], "wed": [{ "open": "10:00", "close": "00:00" }], "thu": [{ "open": "10:00", "close": "00:00" }], "fri": [{ "open": "10:00", "close": "00:00" }], "sat": [{ "open": "10:00", "close": "21:30" }], "sun": [{ "open": "10:00", "close": "21:30" }] } },
     "happiness-is-balance-frederick-md": { "hours": { "mon": [{ "open": "12:00", "close": "20:00" }], "tue": [{ "open": "12:00", "close": "20:00" }], "thu": [{ "open": "12:00", "close": "20:00" }], "fri": [{ "open": "12:00", "close": "20:00" }], "sat": [{ "open": "10:00", "close": "16:00" }] } },
-    "community-bridge": { "clearGoogle": true },
-    "immersion-active": { "clearGoogle": true },
+    "community-bridge": { "clearEnrichment": true, "clearGoogle": true },
+    "immersion-active": { "clearEnrichment": true, "clearGoogle": true },
     "hill-house-bed-and-breakfast": { "clearGoogle": true },
-    "red-winged-blackbird-records": { "clearGoogle": true },
+    "red-winged-blackbird-records": { "clearEnrichment": true, "clearGoogle": true },
     "the-healing-temple": { "clearGoogle": true },
-    "frederick-county-coalition-for-the-homeless": { "clearGoogle": true },
+    "frederick-county-coalition-for-the-homeless": { "clearEnrichment": true, "clearGoogle": true },
     "new-hope-cafe": { "clearGoogle": true },
-    "hydro-designs": { "clearGoogle": true },
-    "the-inkery": { "clearGoogle": true },
-    "liberty-community-church-inc": { "clearGoogle": true, "clearPhoto": true },
+    "hydro-designs": { "clearEnrichment": true, "clearGoogle": true },
+    "the-inkery": { "clearEnrichment": true, "clearGoogle": true },
+    "liberty-community-church-inc": { "clearEnrichment": true, "clearGoogle": true, "clearPhoto": true },
     "serenity-tearoom-fine-dining": { "clearGoogle": true, "clearPhoto": true },
-    "ananda-shala-yoga": { "clearGoogle": true },
+    "ananda-shala-yoga": { "clearEnrichment": true, "clearGoogle": true },
     "the-alley-wagon": { "clearGoogle": true },
     "post-office-4": { "category": "services" },
     "united-states-postal-service-66": { "category": "services" },
@@ -213,6 +213,7 @@
       "category": "wellness"
     },
     "drewskiithebarber": {
+      "clearEnrichment": true,
       "clearGoogle": true,
       "category": "services"
     },
@@ -253,9 +254,11 @@
       "category": "services"
     },
     "la-villa-nails": {
+      "clearEnrichment": true,
       "category": "services"
     },
     "lohmanflynn-counseling-llc": {
+      "clearEnrichment": true,
       "category": "wellness"
     },
     "maria-hawkins-aesthetics": {
@@ -331,6 +334,7 @@
       "category": "services"
     },
     "the-affiliated-barbershop": {
+      "clearEnrichment": true,
       "clearGoogle": true,
       "category": "services"
     },
@@ -444,6 +448,7 @@
       "category": "services"
     },
     "cm3-solutions": {
+      "clearEnrichment": true,
       "clearGoogle": true,
       "clearPhoto": true,
       "category": "services"
@@ -457,6 +462,53 @@
     },
     "edward-p-thomas-memorial-pool-playground": {
       "category": "playground"
-    }
+    },
+    "acacia-house-frederick": { "clearEnrichment": true },
+    "tabu-frederick": { "clearEnrichment": true },
+    "el-rancho-frederick": { "clearEnrichment": true },
+    "the-gw-team-of-compass": { "clearEnrichment": true },
+    "grasshopper-print-shop": { "clearEnrichment": true },
+    "best-of-business-listings": { "clearEnrichment": true },
+    "mrs-sophia-wilmot-rn-msn-crnp-family-nurse-practitioner": { "clearEnrichment": true },
+    "nicole-holovach": { "clearEnrichment": true },
+    "sa-design-art-tattoo": { "clearEnrichment": true },
+    "aleman-team": { "clearEnrichment": true },
+    "fmh-regional-cancer-therapy-center": { "clearEnrichment": true },
+    "hwy-15": { "clearEnrichment": true },
+    "laura-michie": { "clearEnrichment": true },
+    "nicklas-sinton": { "clearEnrichment": true },
+    "cranberryjade-services-middletown-md": { "clearEnrichment": true },
+    "harper-associates": { "clearEnrichment": true },
+    "leroux-winik-llc": { "clearEnrichment": true },
+    "city-of-frederick-parking-department": { "clearEnrichment": true },
+    "fresh-coat-painters-of-frederick": { "clearEnrichment": true },
+    "cafe-anglais-british-tearoom": { "clearEnrichment": true },
+    "frederick-county-families-first": { "clearEnrichment": true },
+    "cmt-african-hair": { "clearEnrichment": true },
+    "fcps-maryland": { "clearEnrichment": true },
+    "law-office-of-steven-selzer": { "clearEnrichment": true },
+    "parent-resource-center": { "clearEnrichment": true },
+    "rotary-club": { "clearEnrichment": true },
+    "charles-attorney-frey-at-law": { "clearEnrichment": true },
+    "xpoxy": { "clearEnrichment": true },
+    "pride-on-the-patio": { "clearEnrichment": true },
+    "john-hanson-national-memorial": { "clearEnrichment": true },
+    "mdtix": { "clearEnrichment": true },
+    "mmci": { "clearEnrichment": true },
+    "alive-five": { "clearEnrichment": true },
+    "municipal-office-annex": { "clearEnrichment": true },
+    "city-of-frederick-hpc": { "clearEnrichment": true },
+    "dr-ritu-goel": { "clearEnrichment": true },
+    "bhangers": { "clearEnrichment": true },
+    "slam-snowcones": { "clearEnrichment": true },
+    "the-downtown-dip": { "clearEnrichment": true },
+    "advanced-biofuels-usa": { "clearEnrichment": true },
+    "ohair-salon-and-spa": { "clearEnrichment": true },
+    "skin-care-shop": { "clearEnrichment": true },
+    "baker-park-6": { "clearEnrichment": true },
+    "american-air-llc": { "clearEnrichment": true },
+    "rice-tire": { "clearEnrichment": true },
+    "south-frederick-arboretum": { "clearEnrichment": true },
+    "the-cozy-creamery-thurmont": { "clearEnrichment": true }
   }
 }

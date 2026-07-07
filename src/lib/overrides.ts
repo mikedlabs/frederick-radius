@@ -36,6 +36,15 @@ export type PatchFields = {
   clearGoogle?: boolean;
   /** Null the misattributed hero photo (it shows the OTHER business). */
   clearPhoto?: boolean;
+  /** QUARANTINE the whole Google enrichment record: this slug was bound to a
+   *  DIFFERENT business's Google listing (wrong-business sweep, 2026-07-07 UX
+   *  audit P0 — e.g. a restaurant rendering a law office's hours, phone, and
+   *  photos under a "Confirmed" badge). The loader treats the slug as
+   *  unenriched: curated data stays; every Google-derived field (hours,
+   *  status, rating, review, photos, geom snap, category-from-type) drops.
+   *  Stronger than clearGoogle+clearPhoto, which null only rating/photo.
+   *  Remove after re-enriching the slug with the CORRECT listing. */
+  clearEnrichment?: boolean;
   /** Replace the derived (Google-parsed) weekly hours with a hand-verified
    *  schedule. Patches win over the automated parser by design, so this is the
    *  fix for a "PM entered as AM" close typo (e.g. a restaurant Google reports
