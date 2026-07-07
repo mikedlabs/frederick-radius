@@ -2129,13 +2129,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    set inline; cream text (--app-ink-inverse) clears AA against them. Vermilion
    appears ONLY as the live "Open now" dot.
    ========================================================================== */
-.sw-stack { display: flex; flex-direction: column; }
+/* The wallet is a hand-held object: cap the stack at phone width and center
+   it, so desktop doesn't stretch each card to the full content column. */
+.sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
   border: none; border-radius: 16px; overflow: hidden;
-  margin-top: -138px; padding: 15px 17px; min-height: 176px;
+  /* Apple-Wallet stack rhythm: each card tucks under the next leaving a
+     56px lip — tall enough for the full brand row (logo + name + tier),
+     the screenshot's defining beat (was a 38px sliver). */
+  margin-top: -144px; padding: 15px 17px; min-height: 200px;
   color: var(--app-ink-inverse); font-family: var(--font-sans, inherit);
+  /* The -y shadow is the SEAM: later cards paint on top of earlier ones, so
+     the downward shadow hides under the next card — the visible depth cue at
+     each lip's bottom edge has to be cast UPWARD by the covering card. */
   box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset,
+    0 -12px 20px -12px rgba(22,20,14,.55),
     0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1px rgba(22,20,14,.2);
   transition: margin .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
   /* Deal-in entrance — the deck fans out on mount, staggered top-to-bottom. */
@@ -2163,8 +2172,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .sw-card.is-open::before { animation: sw-sweep .75s ease-out forwards; }
 .sw-card.is-open {
   /* Taller reveal window so the (possibly 2-line) foot + Open-page link always
-     clear the next card's overlap — the gold-seal plate widened the foot. */
-  margin-top: 14px; min-height: 264px;
+     clear the next card's overlap — sized against the deeper -144px tuck so
+     the revealed region stays ≥128px. */
+  margin-top: 14px; min-height: 272px;
   box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset,
     0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1px rgba(22,20,14,.24);
 }
