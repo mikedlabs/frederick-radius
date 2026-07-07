@@ -23,7 +23,7 @@ export type EventPin = {
 /**
  * Center + zoom for the current pin set. A heuristic (not fitBounds) so a
  * single event or a tight cluster never degenerates into a max-zoom jump,
- * and so the county-wide "all events" view frames all twelve towns.
+ * and so the county-wide "all events" view frames all twelve municipalities.
  */
 function viewFor(events: EventPin[]): { longitude: number; latitude: number; zoom: number } {
   if (events.length === 0) {

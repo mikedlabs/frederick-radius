@@ -204,7 +204,7 @@ export default async function MunicipalityPage(
           )}
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
-              {m.type === "city" ? "City" : m.type === "town" ? "Town" : "Community"} · Frederick County
+              {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
             </p>
             <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
               {m.name}, Maryland

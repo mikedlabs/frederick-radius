@@ -1,7 +1,7 @@
 # Municipal civic ingestion (the town-parity agent)
 
 **Problem:** the City of Frederick + the County have rich civic data;
-the 12 towns publish **no feeds**, so they were getting unequal
+the 12 municipalities publish **no feeds**, so they were getting unequal
 treatment. **Solution:** a Claude-powered extraction agent that reads
 each town's official gov page(s) and produces structured civic data with
 **source + freshness**, on a schedule — so every town reaches parity.
