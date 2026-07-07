@@ -514,7 +514,8 @@ export default function EventsExplorer({
           type="button"
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
-          aria-controls="evt-filter-panel"
+          // No aria-controls: the filter panel became a <Sheet> and the old
+          // "evt-filter-panel" id exists nowhere (dangling ref, axe violation).
           className="tactile tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
           style={{
             background:

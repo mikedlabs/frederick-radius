@@ -245,11 +245,19 @@ export default function SearchOverlay({
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActiveIdx((i) => Math.min(results.length - 1, i + 1));
+        // Clamp at 0 when results are empty (mid-debounce): min(-1, ...)
+        // would set -1 and aria-activedescendant would point at a
+        // nonexistent id once results land, with Enter going dead.
+        setActiveIdx((i) => (results.length === 0 ? 0 : Math.min(results.length - 1, i + 1)));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIdx((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter") {
+        // Only hijack Enter while the COMBOBOX INPUT owns focus. If the
+        // user has Tabbed to the Clear button, the backdrop, or a result
+        // link, native activation must win — preventDefault here would
+        // cancel it and navigate to results[activeIdx] instead.
+        if (document.activeElement !== inputRef.current) return;
         const r = results[activeIdx];
         if (r) {
           e.preventDefault();
@@ -303,9 +311,13 @@ export default function SearchOverlay({
       aria-modal="true"
       aria-label="Search Frederick Radius"
     >
-      {/* Backdrop */}
+      {/* Backdrop — tabIndex={-1} keeps the invisible full-screen button out
+          of the Tab cycle (the focus trap would otherwise wrap to it and the
+          global focus ring would trace the whole viewport). Pointer taps and
+          Escape still dismiss. */}
       <button
         type="button"
+        tabIndex={-1}
         aria-label="Close search"
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -334,7 +346,9 @@ export default function SearchOverlay({
             // announces the active result (it was visual-only before).
             role="combobox"
             aria-expanded={results.length > 0}
-            aria-controls="search-results"
+            // Conditional: a dangling aria-controls to an unrendered listbox
+            // is an aria-valid-attr-value violation.
+            aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
             aria-autocomplete="list"
             aria-activedescendant={
               query.trim() && results.length > 0 ? `search-opt-${activeIdx}` : undefined
@@ -439,8 +453,11 @@ export default function SearchOverlay({
               onClearRecent={clearRecent}
             />
           ) : results.length === 0 ? (
+            // No live role on this block — regions mounted WITH content aren't
+            // announced by several SRs; the persistent footer count region
+            // carries the "No matches" announcement instead.
             hasAnswer ? null : (
-            <div role="status" className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
+            <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
               <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
             </div>
@@ -560,9 +577,16 @@ export default function SearchOverlay({
             <KbdHint label="esc" desc="close" />
           </div>
           {/* Polite live region: announces the match count as the query
-              changes, so SR users hear that results updated at all. */}
+              changes, so SR users hear that results updated at all. This
+              element PERSISTS across renders (live regions only announce
+              text CHANGES, not regions mounted with content), so it also
+              carries the zero-result case. */}
           <p role="status" aria-live="polite">
-            {results.length > 0 ? `${results.length} match${results.length === 1 ? "" : "es"}` : ""}
+            {results.length > 0
+              ? `${results.length} match${results.length === 1 ? "" : "es"}`
+              : query.trim()
+                ? "No matches"
+                : ""}
           </p>
         </div>
       </div>

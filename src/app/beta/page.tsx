@@ -29,12 +29,13 @@ export const metadata: Metadata = {
  * The middleware redirects un-unlocked visitors here with a `next` param; the
  * form posts to /api/beta, which sets the unlock cookie and returns them.
  *
- * The whole pitch is "a living field guide," so the page proves it: past the
- * fast access gate, real county data streams in (places mapped, what's on today,
- * tonight's Keys score, what's stocked) under a Suspense boundary — the page is
- * literally alive as you read it. Below that: a specimen-card preview, an
- * engraved marquee of all the towns, the field-guide manifesto, and a second
- * way in. Access + email-capture logic is unchanged; only the shell grew.
+ * The pitch is "the city and the county, connected — right now," so the page
+ * proves the "right now": past the fast access gate, real county data streams
+ * in (places mapped, what's on today, tonight's Keys score, what's stocked)
+ * under a Suspense boundary — the page is literally alive as you read it.
+ * Below that: a specimen-card preview, an engraved marquee of all the towns,
+ * the manifesto, and a second way in. Access + email-capture logic is
+ * unchanged; only the shell grew.
  * All motion reuses reduced-motion-safe keyframes and avoids heavy blur.
  */
 export default async function BetaPage({

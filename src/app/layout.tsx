@@ -229,8 +229,11 @@ export default function RootLayout({
             restorable. No-op cost when no component uses nuqs. */}
         <NuqsAdapter>
           {/* tabIndex={-1}: the skip link must MOVE FOCUS here, not just
-              scroll — without it Safari resumes tabbing from the link. */}
-          <div id="main" tabIndex={-1} className="outline-none">
+              scroll — without it Safari resumes tabbing from the link. The
+              ring suppression lives in globals.css (#main:focus-visible) —
+              Tailwind's outline-none is layered and loses to the global
+              unlayered :focus-visible rule, so a class here would be inert. */}
+          <div id="main" tabIndex={-1}>
             {children}
           </div>
         </NuqsAdapter>

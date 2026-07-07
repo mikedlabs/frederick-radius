@@ -351,6 +351,14 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
 .focus-ring-inset:focus-visible {
   outline-offset: -3px;
 }
+/* The skip-link target: #main takes programmatic focus (tabindex="-1") so
+   the skip link MOVES focus, but the wrapper itself must not draw the ring
+   around the entire page. Must live HERE (unlayered) — Tailwind's
+   `outline-none` utility sits in @layer utilities and loses to the
+   unlayered :focus-visible rule above regardless of specificity. */
+#main:focus-visible {
+  outline: none;
+}
 
 /* Range slider thumb — sized to the Apple HIG / Material Design 44pt
    minimum touch target so the /radius distance slider is usable with
