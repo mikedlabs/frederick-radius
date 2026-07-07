@@ -25,6 +25,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/towns", label: "Towns" },
   { href: "/places", label: "All places" },
   { href: "/events", label: "Events" },
+  { href: "/contacts", label: "County services" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
 ];

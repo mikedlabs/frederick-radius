@@ -31,6 +31,22 @@ describe("all-day windows", () => {
     expect(formatWindows([{ open: "09:00", close: "17:00" }])).toBe("9am–5pm");
     expect(formatWindows([])).toBe("Closed");
   });
+  it("drops the day token when the place opens later TODAY", () => {
+    // Tuesday 8:00 AM ET; doors open at 11. "Closed · Opens Tue 11am" read
+    // like a next-week wait.
+    const now = new Date("2026-07-07T12:00:00.000Z"); // Tue 8:00 AM EDT
+    const hours: Hours = { tue: [{ open: "11:00", close: "17:00" }] };
+    const status = getOpenStatus(hours, { verified: true }, now);
+    expect(formatHoursLine(status)).toBe("Closed · Opens 11am");
+  });
+
+  it("keeps the day token when the next open day is not today", () => {
+    const now = new Date("2026-07-07T12:00:00.000Z"); // Tue 8:00 AM EDT
+    const hours: Hours = { wed: [{ open: "09:00", close: "17:00" }] };
+    const status = getOpenStatus(hours, { verified: true }, now);
+    expect(formatHoursLine(status)).toBe("Closed · Opens Wed 9am");
+  });
+
   it("reports an open-24h place as 'Open 24 hours' in the status line", () => {
     const allDay: Hours = {
       mon: [{ open: "00:00", close: "24:00" }],

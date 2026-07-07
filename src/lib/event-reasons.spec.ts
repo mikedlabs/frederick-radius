@@ -1,0 +1,55 @@
+import { describe, it, expect } from "vitest";
+import { eventReasons } from "./event-reasons";
+import type { EventWithMeta } from "@/lib/loaders/events";
+
+function mkEvent(over: Partial<EventWithMeta>): EventWithMeta {
+  return {
+    slug: "e",
+    title: "Event",
+    starts_at: "2026-07-07T23:00:00.000Z",
+    ends_at: "2026-07-08T01:00:00.000Z",
+    venue_name: "Baker Park",
+    municipality: "frederick",
+    category: "music",
+    geom: { lng: -77.41, lat: 39.41 },
+    ...over,
+  } as unknown as EventWithMeta;
+}
+
+describe("eventReasons time chips", () => {
+  it("says 'Today', not 'Tonight', for a morning start within the 6h window", () => {
+    // 10:00 AM ET start, seen at 7:00 AM ET — 3h away (inside the 6h
+    // window, outside the 90m 'starting soon' band). Morning is not
+    // tonight.
+    const chip = eventReasons(
+      mkEvent({
+        starts_at: "2026-07-07T14:00:00.000Z", // 10:00 AM EDT
+        ends_at: "2026-07-07T16:00:00.000Z",
+      }),
+      new Date("2026-07-07T11:00:00.000Z"), // 7:00 AM EDT
+    )[0];
+    expect(chip.kind).toBe("tonight");
+    expect(chip.label).toBe("Today");
+  });
+
+  it("keeps 'Tonight' for an evening start within the 6h window", () => {
+    // 7:00 PM ET start, seen at 2:00 PM ET — 5h away.
+    const chip = eventReasons(
+      mkEvent({
+        starts_at: "2026-07-07T23:00:00.000Z", // 7:00 PM EDT
+        ends_at: "2026-07-08T01:00:00.000Z",
+      }),
+      new Date("2026-07-07T18:00:00.000Z"), // 2:00 PM EDT
+    )[0];
+    expect(chip.kind).toBe("tonight");
+    expect(chip.label).toBe("Tonight");
+  });
+
+  it("still says 'Starting soon' inside the 90m band", () => {
+    const chip = eventReasons(
+      mkEvent({ starts_at: "2026-07-07T23:00:00.000Z" }),
+      new Date("2026-07-07T22:00:00.000Z"),
+    )[0];
+    expect(chip.kind).toBe("starting_soon");
+  });
+});

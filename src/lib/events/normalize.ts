@@ -42,7 +42,21 @@ export function splitPresenter(raw: string): { presenter?: string; title: string
     const left = m[1].trim();
     const right = m[2].trim();
     const leftWords = left.split(/\s+/).length;
-    if (ORG_TOKENS.test(left) && leftWords <= 7 && right.length >= 3) {
+    // Refuse a cut that lands INSIDE a parenthesized span ("… (June 17-18)…"
+    // leaves an unbalanced "(" on the left), or whose right side doesn't
+    // start with a letter — both mean the hyphen is part of a date/number
+    // range, not an "Organization - Event" separator. The shipped failure:
+    // a title cut at "17-18" published the event as "18)".
+    const parensBalanced =
+      (left.match(/\(/g)?.length ?? 0) === (left.match(/\)/g)?.length ?? 0);
+    const rightStartsWithLetter = /^[a-z]/i.test(right);
+    if (
+      parensBalanced &&
+      rightStartsWithLetter &&
+      ORG_TOKENS.test(left) &&
+      leftWords <= 7 &&
+      right.length >= 3
+    ) {
       return { presenter: left, title: right };
     }
   }
@@ -259,6 +273,14 @@ export function cleanVenueName(raw: string | null | undefined): string | null {
   const v = cleanFeedText(raw ?? "").trim();
   if (!v) return null;
   if (new RegExp(`\\b(?:${ANY_LABEL})\\s*:`, "i").test(v) || v.includes("?")) {
+    return null;
+  }
+  // Degenerate location tokens are not venues: a bare state ("MD",
+  // "Maryland"), the bare county, or a sub-3-char scrap all render as the
+  // broken "at ." / "at MD" copy the audit flagged. Null them so callers
+  // fall back to their honest default instead.
+  if (v.length < 3) return null;
+  if (/^(?:md|maryland|frederick\s+county(?:,?\s*(?:md|maryland))?)$/i.test(v)) {
     return null;
   }
   return v;

@@ -3,6 +3,7 @@
 import { track } from "@/lib/track";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Map, { type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -47,6 +48,7 @@ export default function ReportClient({
    *  (instead of re-geolocating). Parsed server-side from `?c=lng,lat,zoom`. */
   initialCamera?: { longitude: number; latitude: number; zoom: number } | null;
 } = {}) {
+  const router = useRouter();
   const mapRef = useRef<MapRef | null>(null);
   const [category, setCategory] = useState<string>("hazard");
   const [subtype, setSubtype] = useState<string | null>(null);
@@ -216,6 +218,28 @@ export default function ReportClient({
       <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white shadow">
         Mark a spot
       </div>
+
+      {/* In-app exit — this full-bleed surface has no TopBar/BottomNav, so
+          without this X the only way out is the browser chrome. Prefer real
+          history; fall back to /map (the surface that links here) when the
+          user landed cold via a deep link. */}
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/map");
+          }
+        }}
+        aria-label="Close and go back"
+        className="tap-44 absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-ink)]/15 bg-white text-[var(--app-ink)] shadow"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      </button>
 
       {/* Control card */}
       <div className="absolute inset-x-0 bottom-0 space-y-2.5 rounded-t-[var(--app-radius-lg,18px)] border-t border-[var(--app-ink)]/10 bg-[var(--app-bg)]/97 p-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.6rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur">

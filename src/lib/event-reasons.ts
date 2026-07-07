@@ -1,5 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
+import { daypart } from "@/lib/daypart";
 
 /**
  * Derive the small "why this is shown" chips for an event, from data
@@ -55,7 +56,12 @@ export function eventReasons(
     if (minsAway <= STARTING_SOON_MIN) {
       out.push({ kind: "starting_soon", label: "Starting soon", tone: "open" });
     } else if (minsAway <= TONIGHT_HOURS * 60) {
-      out.push({ kind: "tonight", label: "Tonight", tone: "open" });
+      // "Tonight" only when the event actually STARTS in the evening/late
+      // band (the shared daypart bands eventWhenLabel's callers key off) —
+      // a 10 AM start three hours out is "Today", not "Tonight".
+      const startBand = daypart(new Date(startsMs));
+      const isEveningStart = startBand === "evening" || startBand === "late";
+      out.push({ kind: "tonight", label: isEveningStart ? "Tonight" : "Today", tone: "open" });
     } else {
       // Weekend window: Friday 5 PM ET through Monday 00:00 ET (local).
       // Compute here rather than threading from the server so a card
