@@ -458,7 +458,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
             Upcoming at {place.name}
           </h2>
-          <ul className="space-y-2">
+          <ul className="grid gap-2 lg:grid-cols-2">
             {eventsAtThisVenue.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
             ))}
@@ -470,7 +470,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
           Near here
         </h2>
-        <ul className="space-y-2">
+        <ul className="grid gap-2 lg:grid-cols-2">
           {place.nearby_places.slice(0, 5).map((p) => (
             <li key={p.slug}><PlaceCard place={p} /></li>
           ))}

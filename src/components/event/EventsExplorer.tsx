@@ -808,7 +808,7 @@ export default function EventsExplorer({
         // grouping so the order the user chose is the order they see.
         // Capped at 100 to keep the page snappy; the rest are reachable
         // by tightening filters or switching to the calendar/map view.
-        <ul className="space-y-2">
+        <ul className="grid gap-2 lg:grid-cols-2">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} />
@@ -882,7 +882,7 @@ export default function EventsExplorer({
                 {rest.length > 0 && (
                   <>
                     {shown.length > 0 && (
-                      <ol className="reveal-up space-y-2.5">
+                      <ol className="reveal-up grid gap-2.5 lg:grid-cols-2">
                         {shown.map((e) => (
                           <li key={`${e.slug}-${e.starts_at}`}>
                             <EventCard event={e} variant="glance" live={live.has(e.slug)} />
