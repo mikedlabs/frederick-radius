@@ -30,15 +30,15 @@ describe("mapLayerPrefs", () => {
   });
 
   it("drops empty/false noise and clears the key when everything is off", () => {
-    writeMapLayerPrefs({ cats: [], amenities: [], civic: false, transit: false, trails: false, aerial: false });
+    writeMapLayerPrefs({ cats: [], amenities: [], civic: false, transit: false, trails: false, aerial: false, cemeteries: false });
     expect(readMapLayerPrefs()).toEqual({});
     expect(window.localStorage.getItem("fr:map-layers:v1")).toBeNull();
   });
 
   it("keeps only the truthy flags", () => {
-    writeMapLayerPrefs({ cats: ["food"], civic: false, aerial: true });
+    writeMapLayerPrefs({ cats: ["food"], civic: false, aerial: true, cemeteries: true });
     const p = readMapLayerPrefs();
-    expect(p).toEqual({ cats: ["food"], aerial: true });
+    expect(p).toEqual({ cats: ["food"], aerial: true, cemeteries: true });
     expect(p.civic).toBeUndefined();
   });
 

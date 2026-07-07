@@ -147,6 +147,12 @@ export type AppMapDeckProps = {
   setShowAerial: SetState<boolean>;
   aerialCount: number;
 
+  // Historic cemeteries — the county-GIS heritage overlay. Off until
+  // the user opts in; the chip renders only when the feed delivered.
+  cemeteryCount: number;
+  showCemeteries: boolean;
+  setShowCemeteries: SetState<boolean>;
+
   // GIS overlays (6.3/6.4): the active toggleable layer set + a toggle.
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
@@ -202,6 +208,9 @@ export default function AppMapDeck({
   showAerial,
   setShowAerial,
   aerialCount,
+  cemeteryCount,
+  showCemeteries,
+  setShowCemeteries,
   activeOverlays,
   toggleOverlay,
   savedCount,
@@ -231,6 +240,7 @@ export default function AppMapDeck({
     (showTransit ? 1 : 0) +
     (showTrails ? 1 : 0) +
     (showAerial ? 1 : 0) +
+    (showCemeteries ? 1 : 0) +
     (showSavedOnly ? 1 : 0) +
     (fieldNotesOnly ? 1 : 0);
   const router = useRouter();
@@ -402,6 +412,7 @@ export default function AppMapDeck({
           showTransit ||
           showTrails ||
           showAerial ||
+          showCemeteries ||
           showSavedOnly ||
           fieldNotesOnly ||
           openNow) && (
@@ -530,6 +541,24 @@ export default function AppMapDeck({
                 </button>
               </li>
             )}
+            {showCemeteries && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowCemeteries(false)}
+                  aria-label="Hide historic cemeteries"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-ink-2)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Cemeteries
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
             {openNow && (
               <li className="shrink-0">
                 <button
@@ -570,7 +599,7 @@ export default function AppMapDeck({
             )}
             {/* Clear-all escape hatch — only worth the row when there
                 are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showSavedOnly ? 1 : 0) + (fieldNotesOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showCemeteries ? 1 : 0) + (showSavedOnly ? 1 : 0) + (fieldNotesOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
               <li className="shrink-0">
                 <button
                   type="button"
@@ -581,6 +610,7 @@ export default function AppMapDeck({
                     setShowTransit(false);
                     setShowTrails(false);
                     setShowAerial(false);
+                    setShowCemeteries(false);
                     setShowSavedOnly(false);
                     setFieldNotesOnly(false);
                     if (openNow) router.push(clearOpenHref);
@@ -748,7 +778,7 @@ export default function AppMapDeck({
             still render only when their data exists; the GIS overlay
             chips (parks, markets, art, ...) are always available, so the
             group now always appears. */}
-        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || OVERLAYS.length > 0) && (
+        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || cemeteryCount > 0 || OVERLAYS.length > 0) && (
           /* Collapsed by default: opening "Layers" used to explode into a
              ~30-chip wall (both groups open). Places-by-type leads; overlays
              are one tap away. */
@@ -862,6 +892,26 @@ export default function AppMapDeck({
               >
                 <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "var(--app-ink)" : "var(--app-accent)" }} />
                 Aerial photos · {aerialCount}
+              </button>
+            </li>
+          )}
+          {cemeteryCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowCemeteries((v) => !v)}
+                aria-pressed={showCemeteries}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: showCemeteries ? "var(--app-ink-2)" : "var(--app-bg-elevated)",
+                  color: showCemeteries ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${showCemeteries ? "var(--app-ink-2)" : "var(--app-border)"}`,
+                  boxShadow: showCemeteries ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Historic cemeteries from county records. Church yards, family plots, and burial grounds"
+              >
+                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showCemeteries ? "white" : "var(--app-ink-2)" }} />
+                Cemeteries · {cemeteryCount}
               </button>
             </li>
           )}
