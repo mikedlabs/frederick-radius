@@ -53,8 +53,8 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export type { CivicPin, MapLineFC, EventPin } from "./types";
-import type { CivicPin, MapLineFC, EventPin } from "./types";
+export type { CivicPin, MapLineFC, EventPin, CemeteryPin } from "./types";
+import type { CivicPin, MapLineFC, EventPin, CemeteryPin } from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
@@ -68,6 +68,7 @@ export default function AppMapClient({
   transitLines = EMPTY_FC,
   municipalBoundaries = EMPTY_FC,
   countyBoundary = EMPTY_FC,
+  cemeteries = [],
   events = [],
   fullBleed = false,
   recenterToKnownLocation = false,
@@ -98,6 +99,9 @@ export default function AppMapClient({
   municipalBoundaries?: MapLineFC;
   /** County boundary polygon — the quiet always-on county edge (6.1). */
   countyBoundary?: MapLineFC;
+  /** Historic cemeteries (county GIS heritage points) — the opt-in
+   *  overlay behind the Layers panel; OFF by default. */
+  cemeteries?: CemeteryPin[];
   /** Upcoming events as photo pins — passed through to AppMap. The
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
@@ -143,6 +147,7 @@ export default function AppMapClient({
           transitLines={transitLines}
           municipalBoundaries={municipalBoundaries}
           countyBoundary={countyBoundary}
+          cemeteries={cemeteries}
           events={events}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
@@ -156,7 +161,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} initialCenter={initialCenter} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }

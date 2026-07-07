@@ -20,6 +20,7 @@ import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getEvChargingStations, evDetailLine } from "@/lib/integrations/evCharging";
+import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
@@ -273,7 +274,9 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
  */
 const cachedUpcomingEvents = unstable_cache(
   (bucket: number) => loadUpcomingEvents(new Date(bucket * 300_000)),
-  ["map-upcoming-events-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  // v3: the unified assembly now geocodes centroid-grade venue geoms
+  // (unified-events-v17) — the cached rows' geom/geo_confidence change.
+  ["map-upcoming-events-v3", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300, tags: ["events"] },
 );
 
@@ -504,6 +507,7 @@ async function BrowseMapArea({
     countyBoundary,
     waterSites,
     evStations,
+    cemeteries,
     fieldAmenities,
     communityReports,
     allWeek,
@@ -538,6 +542,10 @@ async function BrowseMapArea({
     // counts). Upgrades the OSM-crowdsourced ev_charging amenity layer;
     // fail-soft to [] so the map falls back to the OSM points.
     withTimeout(getEvChargingStations(), 3500, []),
+    // Historic cemeteries — county GIS heritage layer, opt-in via the
+    // Layers panel (OFF by default). Fail-soft to [] so the chip simply
+    // doesn't render when the county feed is unreachable.
+    withTimeout(getHistoricCemeteries(), 3000, []),
     // Field-collected amenities (the /collect walkabout tool). Reads
     // the field_amenities table; fail-soft to [] (no DB / error) so the
     // map degrades to the static + OSM amenity set, never a 503.
@@ -728,6 +736,7 @@ async function BrowseMapArea({
           transitLines={transitLines}
           municipalBoundaries={municipalBoundaries}
           countyBoundary={countyBoundary}
+          cemeteries={cemeteries}
           events={events}
           fullBleed
           // Arriving via a category tile (?intent=…): center on the

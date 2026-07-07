@@ -34,6 +34,20 @@ export type CivicPin = {
 };
 
 /**
+ * Historic-cemetery pin (fcCemeteries.getHistoricCemeteries) — the
+ * opt-in heritage overlay. Slim by design: name + locale + the county's
+ * own located/approximate flag, nothing else rides the flight payload.
+ */
+export type CemeteryPin = {
+  id: string;
+  name: string;
+  place?: string;
+  approximate: boolean;
+  lng: number;
+  lat: number;
+};
+
+/**
  * Compact shape we render as an event pin on the map. Server-fetched on
  * /map/page.tsx from allUpcoming() and filtered to the next 48 hours so
  * the layer reads as "what's happening soon" instead of "all events

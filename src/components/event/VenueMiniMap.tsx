@@ -1,6 +1,4 @@
-import Image from "next/image";
 import Link from "next/link";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
 
 /**
  * VenueMiniMap — a static map thumbnail of the venue on the event page.
@@ -21,10 +19,12 @@ export default function VenueMiniMap({
 }) {
   const lng = geom.lng.toFixed(5);
   const lat = geom.lat.toFixed(5);
-  const src =
-    `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/` +
-    `pin-s+e14328(${lng},${lat})/${lng},${lat},14.6,0/640x280@2x` +
-    `?access_token=${MAPBOX_TOKEN}`;
+  // Via /api/static-map, NOT next/image against api.mapbox.com: the
+  // token is URL-restricted and the image optimizer fetches with no
+  // Referer, so the direct form 403s upstream and 502s to the user
+  // (which is exactly how this component shipped broken). The proxy
+  // adds the Referer and caches the PNG for a month.
+  const src = `/api/static-map?lng=${lng}&lat=${lat}&pin=e14328&size=640x280`;
   return (
     <Link
       href={`/map?c=${lng},${lat},15.5`}
@@ -32,15 +32,17 @@ export default function VenueMiniMap({
       className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <div className="relative h-[140px] w-full">
-        <Image
-          src={src}
-          alt={`Map showing ${name}`}
-          fill
-          sizes="(max-width: 720px) 100vw, 720px"
-          className="object-cover"
-        />
-      </div>
+      {/* Plain <img>: the proxy already serves a right-sized @2x PNG. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Map showing ${name}`}
+        width={1280}
+        height={560}
+        loading="lazy"
+        decoding="async"
+        className="h-[140px] w-full object-cover"
+      />
     </Link>
   );
 }

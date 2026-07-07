@@ -22,6 +22,7 @@ export type MapLayerPrefs = {
   transit?: boolean;
   trails?: boolean;
   aerial?: boolean;
+  cemeteries?: boolean;
 };
 
 export function readMapLayerPrefs(): MapLayerPrefs {
@@ -48,6 +49,7 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     if (p.transit) slim.transit = true;
     if (p.trails) slim.trails = true;
     if (p.aerial) slim.aerial = true;
+    if (p.cemeteries) slim.cemeteries = true;
     if (Object.keys(slim).length === 0) window.localStorage.removeItem(KEY);
     else window.localStorage.setItem(KEY, JSON.stringify(slim));
   } catch {

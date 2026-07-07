@@ -37,6 +37,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
 import { haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
+import { WALK_LABEL_MAX_METERS, shouldFetchWalkTime, walkTimeQuery } from "@/lib/walkTime";
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
@@ -167,6 +168,7 @@ function townSlug(name: string): string {
 // the pin/cluster layers out the same way.
 import {
   EMPTY_LINE_FC,
+  type CemeteryPin,
   type CivicPin,
   type EventPin,
   type MapLineFC,
@@ -270,6 +272,11 @@ type Props = {
   /** County boundary polygon — the quiet always-on county edge (6.1),
    *  drawn under the place pins. Empty FC when unavailable. */
   countyBoundary?: MapLineFC;
+  /** Historic cemeteries (county GIS heritage points). Opt-in via the
+   *  Layers panel, OFF by default — a niche heritage layer, never part
+   *  of the clean cold open. Empty when the county feed is unreachable
+   *  (the toggle simply doesn't render). */
+  cemeteries?: CemeteryPin[];
   /** Upcoming events as map pins — phase 1 differentiator vs Google /
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
@@ -308,6 +315,7 @@ export default function AppMap({
   transitLines = EMPTY_LINE_FC,
   municipalBoundaries = EMPTY_LINE_FC,
   countyBoundary = EMPTY_LINE_FC,
+  cemeteries = [],
   events = [],
   initialAmenityGroups,
 }: Props) {
@@ -472,6 +480,11 @@ export default function AppMap({
   // one opens a Popup with the photo thumbnail + season + date.
   const [showAerial, setShowAerial] = useState(() => layerPrefs.aerial ?? false);
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
+  // Historic cemeteries — opt-in heritage overlay (county GIS). OFF by
+  // default: 250+ pins of local history is a deliberate interest, not
+  // part of the clean cold open. Tapping one opens a small popup.
+  const [showCemeteries, setShowCemeteries] = useState(() => layerPrefs.cemeteries ?? false);
+  const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -481,6 +494,33 @@ export default function AppMap({
   // Tap-a-town: the municipality under the last empty-map tap (name +
   // tap point for the popup anchor). Null when no town sheet is open.
   const [civicTown, setCivicTown] = useState<{ name: string; lng: number; lat: number } | null>(null);
+
+  // 3D relief while browsing the drone archive. The aerial layer is the
+  // one mode where the county's terrain IS the content, so toggling it
+  // on drapes the map over the DEM the hillshade already loads (fr-dem,
+  // no extra tile pyramid) and eases to a gentle pitch; toggling off
+  // flattens back to the field-guide plan view. Reduced motion snaps
+  // instead of easing. Fail-soft: if the style hasn't installed fr-dem
+  // yet (or WebGL is struggling), the map just stays flat.
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const apply = () => {
+      try {
+        if (showAerial && map.getSource("fr-dem")) {
+          map.setTerrain({ source: "fr-dem", exaggeration: 1.35 });
+          map.easeTo({ pitch: 52, duration: aerialFade === 0 ? 0 : 900 });
+        } else {
+          map.setTerrain(null);
+          if (map.getPitch() > 0) map.easeTo({ pitch: 0, duration: aerialFade === 0 ? 0 : 600 });
+        }
+      } catch {
+        /* terrain is a garnish; never let it break the map */
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [showAerial, aerialFade]);
 
   // Remember the user's explicit layer choices (per device) so a customized map
   // survives reload. Transient focus filters (saved-only / field-notes-only)
@@ -493,8 +533,9 @@ export default function AppMap({
       transit: showTransit,
       trails: showTrails,
       aerial: showAerial,
+      cemeteries: showCemeteries,
     });
-  }, [activeCats, amenityGroups, showCivic, showTransit, showTrails, showAerial]);
+  }, [activeCats, amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -1007,6 +1048,16 @@ export default function AppMap({
       return;
     }
 
+    if (layer === "cemetery-icons") {
+      const id = String(feature.properties?.id ?? "");
+      const cem = cemeteries.find((c) => c.id === id);
+      if (cem) {
+        haptic("light");
+        setSelectedCemetery(cem);
+      }
+      return;
+    }
+
     if (layer === "osm-icons" || layer === "amenity-icons") {
       const props = feature.properties as Record<string, string>;
       setSelectedSlug(null);
@@ -1161,21 +1212,50 @@ export default function AppMap({
         }]
       : [],
   }), [userLoc, selectedPlace]);
+  // Real walking minutes for the SELECTED place only (Mapbox Directions
+  // via /api/walk-time — never fetched per pin). The chip renders the
+  // straight-line estimate immediately and swaps the routed figure in
+  // place when it lands: same slot, no spinner, no layout shift. The
+  // tilde is the honesty marker — "~4 min walk" is the estimate, "5 min
+  // walk" is the routed truth. Gated on a real geolocation fix plus
+  // walkable range (shouldFetchWalkTime); reselecting aborts the
+  // in-flight fetch, and the slug key drops any stale late response.
+  const [realWalk, setRealWalk] = useState<{ slug: string; minutes: number } | null>(null);
+  useEffect(() => {
+    setRealWalk(null);
+    if (!userLoc || !selectedPlace) return;
+    if (!shouldFetchWalkTime(haversineMeters(userLoc, selectedPlace.geom))) return;
+    const slug = selectedPlace.slug;
+    const ctrl = new AbortController();
+    fetch(`/api/walk-time?${walkTimeQuery(userLoc, selectedPlace.geom)}`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { ok?: boolean; minutes?: number } | null) => {
+        if (d?.ok && typeof d.minutes === "number" && d.minutes >= 1) {
+          setRealWalk({ slug, minutes: Math.round(d.minutes) });
+        }
+      })
+      .catch(() => {
+        /* aborted or offline — the straight-line estimate stands */
+      });
+    return () => ctrl.abort();
+  }, [userLoc, selectedPlace]);
   const routeInfo = useMemo(() => {
     if (!userLoc || !selectedPlace) return null;
     const m = haversineMeters(userLoc, selectedPlace.geom);
     // Honest mode for the estimate: downtown the answer is a WALK ("~1 min
     // drive" for a place 300m away read as parody). Under ~800m show walk
     // minutes; beyond that, drive.
-    const walkable = m <= 800;
+    const walkable = m <= WALK_LABEL_MAX_METERS;
     const mins = Math.max(1, Math.round(metersToMinutes(walkable ? "walk" : "drive", m)));
+    const routedMin =
+      walkable && realWalk && realWalk.slug === selectedPlace.slug ? realWalk.minutes : null;
     return {
       dist: formatDistance(m),
-      eta: `~${mins} min ${walkable ? "walk" : "drive"}`,
+      eta: routedMin != null ? `${routedMin} min walk` : `~${mins} min ${walkable ? "walk" : "drive"}`,
       href: `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.geom.lat},${selectedPlace.geom.lng}`,
       name: selectedPlace.name,
     };
-  }, [userLoc, selectedPlace]);
+  }, [userLoc, selectedPlace, realWalk]);
 
   // Mode-aware scoping for civic pins. Visitor mode keeps only
   // major closures (Closed / Detour / Crash / Down …) and hides 311
@@ -1214,6 +1294,17 @@ export default function AppMap({
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
     })),
   }), []);
+
+  // Historic cemeteries GeoJSON. `name` in properties powers the generic
+  // hover preview; the click handler reads the full pin back by `id`.
+  const cemeteryGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: cemeteries.map((c) => ({
+      type: "Feature" as const,
+      properties: { id: c.id, name: c.name },
+      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+    })),
+  }), [cemeteries]);
 
   const goNearMe = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -1342,6 +1433,9 @@ export default function AppMap({
         showAerial={showAerial}
         setShowAerial={setShowAerial}
         aerialCount={AERIAL_PHOTOS.length}
+        cemeteryCount={cemeteries.length}
+        showCemeteries={showCemeteries}
+        setShowCemeteries={setShowCemeteries}
         activeOverlays={activeOverlays}
         toggleOverlay={toggleOverlay}
         savedCount={followedSlugs.size}
@@ -1535,7 +1629,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -2400,6 +2494,65 @@ export default function AppMap({
                     </p>
                   )}
                 </div>
+              </div>
+            </Popup>
+          )}
+
+          {/* Historic cemeteries — the opt-in heritage overlay (county
+              GIS). Small muted stone-gray dots, quieter than any live
+              layer: history is context, not a call to action. Tapping
+              one opens the popup below with the name + locale. */}
+          <Source
+            id="cemeteries"
+            type="geojson"
+            data={(showCemeteries ? cemeteryGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
+          >
+            <Layer
+              id="cemetery-icons"
+              type="circle"
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2.5, 13, 4, 16, 5.5],
+                // Muted stone gray — an ink tint, not a brand color, so
+                // 250+ history dots read as texture under the live pins.
+                "circle-color": "#6E6657",
+                "circle-opacity": 0.85,
+                "circle-stroke-color": "#FFFFFF",
+                "circle-stroke-width": 1.2,
+              }}
+            />
+          </Source>
+
+          {/* Cemetery popup — name, the locale the county files it
+              under, and an honest note when the county itself marks the
+              point approximate. No established date: the county layer
+              doesn't carry one, and we never invent data. */}
+          {selectedCemetery && (
+            <Popup
+              longitude={selectedCemetery.lng}
+              latitude={selectedCemetery.lat}
+              anchor="bottom"
+              offset={12}
+              closeOnClick={true}
+              onClose={() => setSelectedCemetery(null)}
+              maxWidth="240px"
+            >
+              <div style={{ padding: "2px 2px 4px", minWidth: 170 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--app-ink-3, #5C5A50)", margin: 0 }}>
+                  Historic cemetery
+                </p>
+                <strong className="font-serif" style={{ display: "block", fontSize: 16, lineHeight: 1.2, color: "var(--app-ink, #16140E)", marginTop: 1 }}>
+                  {selectedCemetery.name}
+                </strong>
+                {selectedCemetery.place && (
+                  <p style={{ marginTop: 4, fontSize: 12, color: "var(--app-ink-2, #423E34)" }}>
+                    {selectedCemetery.place}
+                  </p>
+                )}
+                {selectedCemetery.approximate && (
+                  <p style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
+                    Approximate location, per county records.
+                  </p>
+                )}
               </div>
             </Popup>
           )}

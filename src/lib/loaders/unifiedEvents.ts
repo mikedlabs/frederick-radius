@@ -42,6 +42,7 @@ import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
+import { upgradeEventGeoms } from "@/lib/integrations/mapboxGeocode";
 import { getIngestedSeries } from "@/lib/loaders/ingested";
 import { ingestedSeriesToCards } from "@/lib/loaders/ingestedEvents";
 import { isPublicEvent } from "@/lib/events/classify";
@@ -153,22 +154,26 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane), ...ingestedCards.filter(sane)]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
+  // Centroid-geom repair AFTER dedupe (each unique address geocodes once
+  // for the whole merged set) and BEFORE withVenueThumbs, whose fuzzy
+  // photo-join paths gate on a precise geocode — an upgraded geom both
+  // moves the /map pin onto the venue and opens that join. Fail-soft and
+  // 30-day-cached per address (see mapboxGeocode.ts); a warm pass adds ~0.
+  const positioned = await upgradeEventGeoms(
+    dedupeKeysHomeGames(
+      dedupeCuratedClusters(
+        [...bySlug.values()].sort(
+          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+        ),
+      ),
+    ),
+  );
+
   // Owner event-notices stamp LAST, after every dedupe, so a cancellation
   // wins no matter which source's row survived the merge. A cancelled/
   // postponed stamp flows from here to every surface: classify.ts lanes it
   // out of "What's on", cards badge it, the detail banner reads it.
-  const unified = applyEventNotices(
-    withVenueThumbs(
-      dedupeKeysHomeGames(
-        dedupeCuratedClusters(
-          [...bySlug.values()].sort(
-            (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-          ),
-        ),
-      ),
-    ),
-    now,
-  );
+  const unified = applyEventNotices(withVenueThumbs(positioned), now);
 
   return { unified, publicEvents: unified.filter(isPublicEvent) };
 }
@@ -220,9 +225,10 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  // v16: venue-thumb join gained the alias map + unique-exact relaxed
-  // radius (2026-07-07 image audit) — the cached rows' hero_image changes.
-  ["unified-events-v16", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  // v17: centroid-grade geoms with a street address are now Mapbox-geocoded
+  // (upgradeEventGeoms) — the cached rows' geom / placement / geo_confidence
+  // (and, via the thumb join, hero_image) change.
+  ["unified-events-v17", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

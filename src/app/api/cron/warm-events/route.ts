@@ -45,6 +45,7 @@ import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFreder
 import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getEvChargingStations } from "@/lib/integrations/evCharging";
+import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
 import { getCommunityReports } from "@/lib/loaders/communityReports";
 
 export const runtime = "nodejs";
@@ -86,6 +87,7 @@ export async function GET(request: Request) {
     ["county-bounds", () => getCountyBoundary()],
     ["water", () => getFrederickWaterSites()],
     ["ev", () => getEvChargingStations()],
+    ["cemeteries", () => getHistoricCemeteries()],
     ["reports", () => getCommunityReports()],
   ];
   const mapResults = await Promise.allSettled(MAP_FEEDS.map(([, fn]) => fn()));

@@ -14,8 +14,10 @@
  *   1. Keep the Mapbox token's URL restrictions intact. The token is
  *      domain-locked to frederickradius.app, so client-side fetches
  *      from a different origin (preview deploys, scrapers) would 401.
- *      Going through this route uses the token server-to-server where
- *      restrictions don't apply.
+ *      Server-to-server the restriction STILL applies (Mapbox matches
+ *      the Referer header), so this route must send
+ *      MAPBOX_SERVER_HEADERS — without it every upstream call 403s and
+ *      the client silently falls back to a circle.
  *   2. Edge-cache the polygon by (lng,lat,mode,minutes). Mapbox bills
  *      per request; a 5-minute walk from Carroll Creek is the same
  *      polygon for everyone, so we let one server fetch serve everyone.
@@ -25,7 +27,7 @@
  * fall back to a circle. Map should never go blank because of this.
  */
 import { NextRequest } from "next/server";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
@@ -92,7 +94,7 @@ export async function GET(req: NextRequest) {
     `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_TOKEN}`;
 
   try {
-    const r = await fetch(upstream, { next: { revalidate: 86400 } });
+    const r = await fetch(upstream, { headers: MAPBOX_SERVER_HEADERS, next: { revalidate: 86400 } });
     if (!r.ok) {
       return Response.json({ ok: false, reason: `upstream-${r.status}` });
     }

@@ -1,34 +1,58 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
-import DeferUntilVisible from "@/components/ui/DeferUntilVisible";
-
-const Map = dynamic(() => import("./PlaceMiniMapInner"), {
-  ssr: false,
-  loading: () => <MiniMapSkeleton />,
-});
-
-function MiniMapSkeleton() {
-  return (
-    <div
-      className="h-44 w-full animate-pulse rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)]"
-      style={{ borderColor: "var(--app-border)" }}
-    />
-  );
-}
+import Link from "next/link";
 
 /**
- * The mini-map sits in the Location section, well below the fold on a
- * place page. Wrapping it in DeferUntilVisible means the mapbox-gl chunk
- * (~200KB+) is NOT downloaded on initial render — it loads only when the
- * user scrolls toward it. The place page paints and becomes interactive
- * without waiting on the map's JS.
+ * PlaceMiniMap — the Location-section locator on a place page.
+ *
+ * Was a full mapbox-gl instance (a ~200KB deferred chunk, a WebGL
+ * context, and a billed map LOAD per scroll-into-view, styled dark-v11
+ * against the paper app). Now one static locator <img> — zero GL cost,
+ * CDN-cached, on-brand light style, category-colored pin — that taps
+ * through to the live map centered on the place.
+ *
+ * Served via /api/static-map (NOT next/image): the Mapbox token is
+ * URL-restricted and the image optimizer fetches with no Referer, so
+ * a direct next/image of api.mapbox.com 502s. The proxy adds the
+ * Referer and caches the PNG for a month. Attribution/logo stay baked
+ * into the image (Mapbox ToS).
  */
-export default function PlaceMiniMap(props: ComponentProps<typeof Map>) {
+export default function PlaceMiniMap({
+  lng,
+  lat,
+  name,
+  color,
+}: {
+  lng: number;
+  lat: number;
+  /** For the alt text + tap-through label. */
+  name: string;
+  /** Category hex like "#E14328"; non-hex values fall back to brand. */
+  color?: string;
+}) {
+  const pin =
+    color && /^#[0-9a-fA-F]{6}$/.test(color)
+      ? color.slice(1).toLowerCase()
+      : "e14328";
+  const src = `/api/static-map?lng=${lng.toFixed(5)}&lat=${lat.toFixed(5)}&pin=${pin}&size=640x352`;
   return (
-    <DeferUntilVisible placeholder={<MiniMapSkeleton />} minHeight={176}>
-      <Map {...props} />
-    </DeferUntilVisible>
+    <Link
+      href={`/map?c=${lng.toFixed(5)},${lat.toFixed(5)},15.5`}
+      aria-label={`Open the map centered on ${name}`}
+      className="tactile tactile-interactive block overflow-hidden rounded-[var(--app-radius-md)] border"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      {/* Plain <img>: the proxy already serves a right-sized @2x PNG;
+          a second pass through the image optimizer would just re-encode
+          it (and can't cache better than the route's s-maxage). */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Map showing ${name}`}
+        width={1280}
+        height={704}
+        loading="lazy"
+        decoding="async"
+        className="h-44 w-full object-cover"
+      />
+    </Link>
   );
 }
