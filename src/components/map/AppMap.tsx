@@ -1478,7 +1478,7 @@ export default function AppMap({
                   type="button"
                   onClick={() => { setAerialSeason(s.key); haptic("light"); }}
                   aria-pressed={on}
-                  className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
+                  className="tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
                   style={{ background: on ? s.color : "transparent", color: on ? "#fff" : "var(--app-ink-2)" }}
                 >
                   <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "#fff" : s.color }} />

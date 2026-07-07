@@ -68,7 +68,11 @@ export default function TimeScrubber({
     return (
       <div
         className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
-        style={{ bottom: "calc(var(--app-bottomnav-reserve, 0px) + 10px)" }}
+        // Sit ABOVE the Nearby/County mode toggle (which lives at
+        // safe-area + bottomnav-reserve, ~44px tall) instead of on top of it,
+        // and include the same safe-area term so the two don't diverge on
+        // notched phones. (Mobile UX audit: the two centered controls overlapped.)
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 56px)" }}
       >
         <button
           type="button"
@@ -117,7 +121,7 @@ export default function TimeScrubber({
             <button
               type="button"
               onClick={() => { setPlaying(false); onChange(currentFrederickHour()); }}
-              className="tap-44 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              className="tap-44-y rounded-full px-2.5 py-1 text-[11px] font-semibold"
               style={{ color: "var(--app-cool)" }}
             >
               Now
@@ -126,7 +130,7 @@ export default function TimeScrubber({
               type="button"
               onClick={() => setPlaying((p) => !p)}
               aria-label={playing ? "Pause" : "Play the day"}
-              className="tap-44 grid h-7 w-7 place-items-center rounded-full"
+              className="tap-44-y grid h-7 w-7 place-items-center rounded-full"
               style={{ background: playing ? "var(--app-brand)" : "var(--app-brand-tint-2, color-mix(in srgb, var(--app-brand) 14%, transparent))", color: playing ? "#fff" : "var(--app-brand)" }}
             >
               {playing ? <Pause className="h-3.5 w-3.5" strokeWidth={2.5} /> : <Play className="h-3.5 w-3.5" strokeWidth={2.5} />}
@@ -135,7 +139,7 @@ export default function TimeScrubber({
               type="button"
               onClick={() => { setPlaying(false); onChange(null); }}
               aria-label="Back to now"
-              className="tap-44 grid h-7 w-7 place-items-center rounded-full"
+              className="tap-44-y grid h-7 w-7 place-items-center rounded-full"
               style={{ color: "var(--app-ink-3)" }}
             >
               <X className="h-4 w-4" strokeWidth={2} />
