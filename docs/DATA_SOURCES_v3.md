@@ -48,13 +48,15 @@ what's already built vs the genuine gaps, so we don't rebuild what exists.
    - To unblock: find the dashboard's backing FeatureService (network tab on
      `dnr.maryland.gov/Pages/park-status-dashboard.aspx`) or a DNR park-alerts API.
 
-4. **Overture Places gap-fill. 📋 SCOPED — offline candidate pipeline, not a runtime feed.**
-   Overture is GeoParquet on S3 (monthly), queried with DuckDB — an offline job.
-   Per the hand-vetted / no-auto-fill philosophy it must produce a REVIEW QUEUE of
-   new outer-town candidates (Brunswick, Emmitsburg, Woodsboro, Rosemont) for the
-   owner to vet, NOT auto-added pins. Belongs with the existing review-queue tooling
-   (`docs/category-review-queue.md`), run as `scripts/*`, not a `src/lib` loader.
-   - `s3://overturemaps-us-west-2/release/*/theme=places` (GeoParquet, monthly)
+4. **Overture Places gap-fill. ✅ BUILT as a review-queue pipeline (2026-07).**
+   Two-step, no auto-merge (matches scripts/discover-places.ts discipline):
+   - Offline pull: `overturemaps download --bbox=-77.70,39.265,-77.15,39.745 -f geojson --type=place -o /tmp/overture-frederick.geojson`
+   - Diff: `npm run discover:overture -- --in /tmp/overture-frederick.geojson`
+   `scripts/overture-candidates.ts` + pure `src/lib/overture/candidates.ts`
+   (7 tests) normalize + county-ring-gate the Overture rows, subtract anything
+   already curated via the app's own `isSamePlace`, self-dedupe, and write
+   `src/data/overture-candidates.json` grouped by town (outer-town gap first).
+   NOTHING is added to the app — the owner hand-vets the queue.
 
 ### Minor / optional
 - MD iMAP Hospitals FeatureServer + CMS star ratings (only OSM/Google today).
