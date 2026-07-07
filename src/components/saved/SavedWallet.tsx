@@ -61,6 +61,41 @@ function motifClass(category: string): string {
   return `sw-m-${MOTIF_BY_FAMILY[category] ?? "swirl"}`;
 }
 
+/**
+ * Wallet card GROUND, per place category — a deliberately more saturated,
+ * jewel-toned set than the app's quiet category inks (categories.ts). A
+ * wallet of cards wants VARIETY, like the reference (every issuer's card is
+ * its own color); the app's category inks stay muted because they mark
+ * badges and chips against paper, where loud color would be noise.
+ *
+ * Crucially it SEPARATES the categories that share one ink app-wide, which
+ * on the wallet collapsed whole families to a single hue — park/market/
+ * playground/pharmacy were all one green, coffee/antiques/books all one
+ * brown, civic/library/government/transit all one blue. Families stay
+ * recognizable (food warm, outdoors green, arts purple, civic blue) but each
+ * member gets its own shade. Every value clears WCAG AA for cream text on
+ * the darkened gradient ground below (verified: worst case 4.86:1). Anything
+ * unlisted falls back to the category ink, then a civic blue.
+ */
+const WALLET_GROUND: Record<string, string> = {
+  // Food & drink — warm reds, ambers, a wine, a rose
+  restaurant: "#C23A22", pizza: "#D2481F", bakery: "#C77A1E", coffee: "#6F4A2F",
+  bar: "#8A2433", brewery: "#C0871F", winery: "#7A2D5A", distillery: "#A6602E",
+  "ice-cream": "#C85C86", market: "#3E8E41", agritourism: "#6B8E23",
+  // Outdoors — greens + a playful teal for the kids' surface
+  park: "#1E6B3A", trail: "#1B4638", playground: "#2E8B8B", golf: "#2E7D5B",
+  // Arts & culture — a purple family, split
+  gallery: "#8E2C6F", music: "#A63F5C", museum: "#5B3A8F", theater: "#7A2E9F",
+  library: "#285C8A", family: "#D98324",
+  // Civic — a blue family, split; parking/services stay graphite
+  civic: "#20506A", government: "#3E6488", transit: "#2A7A9A", parking: "#55534E",
+  "public-safety": "#962633", worship: "#5B3A8F",
+  // Shops, services, wellness, stay
+  shopping: "#B26B00", antiques: "#8B5A2B", "book-store": "#6B4E8A",
+  services: "#4A4A48", wellness: "#A83A4A", yoga: "#B85C6E",
+  lodging: "#3E5A6E", pharmacy: "#2E7D6B",
+};
+
 function openLabel(p: PlaceCardData): { text: string; live: boolean } | null {
   const s = p.open_status;
   if (!s) return null;
@@ -86,7 +121,7 @@ function Card({
 }) {
   const router = useRouter();
   const cat = CATEGORY_BY_SLUG[place.category];
-  const hue = cat?.color ?? "#20506A";
+  const hue = WALLET_GROUND[place.category] ?? cat?.color ?? "#20506A";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
   const ol = openLabel(place);
   const dist =
