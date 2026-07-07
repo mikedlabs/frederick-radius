@@ -18,6 +18,7 @@
  */
 import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -83,6 +84,7 @@ function Card({
   open: boolean;
   onOpen: () => void;
 }) {
+  const router = useRouter();
   const cat = CATEGORY_BY_SLUG[place.category];
   const hue = cat?.color ?? "#20506A";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
@@ -95,7 +97,14 @@ function Card({
       : null;
 
   function toggle() {
-    if (open) return; // already raised — the Open-page link is the next action
+    if (open) {
+      // Wallet behavior: a tap on the RAISED card opens it (like tapping a
+      // pass). The visible "Open page" link stays as the discoverable route.
+      haptic("light");
+      track("saved_wallet_open_page", { category: place.category });
+      router.push(`/places/${place.slug}`);
+      return;
+    }
     onOpen();
     haptic("light");
     track("saved_wallet_raise", { category: place.category });
@@ -112,7 +121,7 @@ function Card({
       role="button"
       tabIndex={0}
       aria-expanded={open}
-      aria-label={`${place.name}${open ? "" : ", tap to open"}`}
+      aria-label={`${place.name}${open ? ", tap again to open its page" : ", tap to raise"}`}
       onClick={toggle}
       onKeyDown={onKey}
       className={`sw-card${open ? " is-open" : ""}${ol?.live ? " sw-live-card" : ""}`}
