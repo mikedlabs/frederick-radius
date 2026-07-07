@@ -54,4 +54,40 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
       expect(out.hero_image, `${town} should not borrow a photo`).toBeUndefined();
     }
   });
+
+  it("resolves a hand-curated alias regardless of distance (fair feed shorthand)", () => {
+    const fairgrounds = clientPlaces().find(
+      (p) => p.slug === "frederick-fairgrounds-home-of-the-great-frederick-fair-frederick",
+    );
+    if (!fairgrounds?.google_photo_url) return; // dataset changed; alias sweep will catch
+    const [out] = withVenueThumbs([
+      // Event far from the fairgrounds with only the feed's short name.
+      ev({ venue_name: "Frederick Fairgrounds", geom: { lng: -77.6, lat: 39.6 }, geo_confidence: "area" }),
+    ]);
+    expect(out.hero_image).toBe(fairgrounds.google_photo_url);
+  });
+
+  it("accepts a UNIQUE exact name match past 800m (centroid-geocode events) but caps at 10km", () => {
+    // Find a place whose normalized name is unique county-wide and has a photo.
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const counts = new Map<string, number>();
+    for (const p of clientPlaces()) counts.set(norm(p.name), (counts.get(norm(p.name)) ?? 0) + 1);
+    const unique = clientPlaces().find(
+      (p) => p.google_photo_url && counts.get(norm(p.name)) === 1 && norm(p.name).length >= 8,
+    );
+    expect(unique, "dataset should have a unique-named place with a photo").toBeTruthy();
+    if (!unique) return;
+    // ~2km offset: outside the strict 800m gate, inside the 10km unique cap.
+    const near = { lng: unique.geom.lng + 0.02, lat: unique.geom.lat };
+    const [borrowed] = withVenueThumbs([
+      ev({ venue_name: unique.name, geom: near, geo_confidence: "area" }),
+    ]);
+    expect(borrowed.hero_image).toBe(unique.google_photo_url);
+    // ~40km offset: past the cap — an out-of-county namesake must not match.
+    const far = { lng: unique.geom.lng + 0.45, lat: unique.geom.lat };
+    const [notBorrowed] = withVenueThumbs([
+      ev({ venue_name: unique.name, geom: far, geo_confidence: "area" }),
+    ]);
+    expect(notBorrowed.hero_image).toBeUndefined();
+  });
 });

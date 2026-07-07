@@ -79,7 +79,10 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 // A single slow/hanging events upstream can't stall the board past this.
 const FEED_MS = 8000;
 
-async function assembleRaw(now: Date): Promise<UnifiedEvents> {
+// Exported for offline diagnostics only (tsx scripts can't call the
+// unstable_cache wrapper — no Next incremental cache outside the runtime).
+// App code must keep calling assembleUnifiedEvents.
+export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
   const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
@@ -217,7 +220,9 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v15", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  // v16: venue-thumb join gained the alias map + unique-exact relaxed
+  // radius (2026-07-07 image audit) — the cached rows' hero_image changes.
+  ["unified-events-v16", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

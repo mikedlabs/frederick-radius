@@ -447,6 +447,16 @@
       "clearGoogle": true,
       "clearPhoto": true,
       "category": "services"
+    },
+    "overlook-park-brunswick": {
+      "clearPhoto": true
+    },
+    "memorial-grounds": {
+      "category": "park",
+      "short_blurb": "Downtown memorial park with the county's World War I memorial."
+    },
+    "edward-p-thomas-memorial-pool-playground": {
+      "category": "playground"
     }
   }
 }

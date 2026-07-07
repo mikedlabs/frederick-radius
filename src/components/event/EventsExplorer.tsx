@@ -854,7 +854,14 @@ export default function EventsExplorer({
             // floats a real draw (then imagery, then soonest); the rest of
             // the window keeps its chronological order below.
             const lead = pickLeadEvent(g.events) ?? g.events[0];
-            const leadIsFeature = groupIdx === 0;
+            // Feature (photo) treatment for the FIRST group's lead always,
+            // and for later groups' leads ONLY when a real venue photo
+            // exists — one photograph per horizon window down the browse
+            // spine (image audit: the page read as a wall of text because
+            // exactly one card could ever carry a large photo). Photoless
+            // leads keep the glance row: an oversized glyph plate per
+            // window would be ornament, not information.
+            const leadIsFeature = groupIdx === 0 || Boolean(lead.hero_image);
             const rest = g.events.filter((e) => e !== lead);
             const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
             const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
@@ -876,6 +883,9 @@ export default function EventsExplorer({
                     event={lead}
                     variant={leadIsFeature ? "feature" : "glance"}
                     live={live.has(lead.slug)}
+                    // Only the first group's hero is the LCP candidate; the
+                    // later per-group photo leads lazy-load.
+                    priorityImage={groupIdx === 0}
                   />
                 </div>
                 {/* Drop-down — the rest of this window, one tap away. The

@@ -23,6 +23,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isPublicEvent } from "@/lib/events/classify";
 import { isEventEnded } from "@/lib/eventWhenLabel";
+import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import type { Event } from "@/data/events";
 
 /** Ingest source domains we lift into the main rails (library + fire company).
@@ -145,7 +146,8 @@ export async function getIngestedCardBySlug(slug: string): Promise<EventWithMeta
     if (!isPublicEvent({ title: s.title, category: s.category ?? undefined })) continue;
     for (const occ of s.occurrences) {
       const card = occurrenceToCard(s, occ);
-      if (card?.slug === slug) return card;
+      // Venue-thumb borrow for the detail page (see liveEvents.ts note).
+      if (card?.slug === slug) return withVenueThumb(card);
     }
   }
   return null;

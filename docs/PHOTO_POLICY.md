@@ -6,6 +6,21 @@
 
 ---
 
+## ⚠️ Amendment — 2026-07-07 (one photo lead per events horizon group)
+
+Image audit follow-up. On /events, the feature (photo-hero) treatment was
+hard-limited to the FIRST horizon group's lead; every later group's lead was a
+glance row even when it carried a real venue photo, so the browse spine read
+as a wall of text. Now **each horizon group's lead renders the feature variant
+when (and only when) it has a `hero_image`** — one photograph per window,
+strictly leads-only. Photoless leads keep the glance row (an oversized glyph
+plate per window would be ornament); peeks, expansions, compact/utility/agenda
+stay photoless per the 2026-06-16 rule below. Only the first group's hero may
+claim the LCP `priority` preload (`EventCard.priorityImage`). The venue-thumb
+borrow also gained a hand-curated alias map + a unique-exact-match relaxed
+radius (see `src/lib/loaders/eventThumb.ts`), and now runs in the
+/events/[slug] detail resolvers so the detail hero matches the list card.
+
 ## ⚠️ Revision — 2026-06-16 (places now lead with photos)
 
 The owner reversed the places-on-cards rule below. **Place RESULT cards now lead
