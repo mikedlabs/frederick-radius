@@ -8,8 +8,10 @@
  * one surface where the "cards you carry" metaphor earns its keep. Cards fan
  * in a vertical stack showing a header peek; tapping one raises it (accordion,
  * one open at a time) to reveal its mono data strip and an Open-page link.
- * Every card wears its category's color as a DARKENED ground so the cream text
- * always clears WCAG AA (the contrast pass, 2026-07-02) — never the raw hue.
+ * Every card wears the BUSINESS's own brand hue (extracted from its Google
+ * photo at build time, place-hues.json) when we have one, else its category's
+ * color — always as a DARKENED ground so the cream text always clears WCAG AA
+ * (the contrast pass, 2026-07-02) — never the raw hue.
  * Vermilion stays on its diet: the only vermilion here is the live "Open now"
  * dot, so the signal color still means one thing.
  *
@@ -21,6 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import placeHues from "@/data/place-hues.json";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haptic } from "@/lib/haptics";
@@ -77,6 +80,17 @@ function motifClass(category: string): string {
  * the darkened gradient ground below (verified: worst case 4.86:1). Anything
  * unlisted falls back to the category ink, then a civic blue.
  */
+/**
+ * Per-BUSINESS brand hue, extracted from the place's own Google photo at
+ * build time (scripts/build-place-hues.ts) — a real wallet's cards wear
+ * their issuer's brand, not their spending category's, so a saved place
+ * wears the color of its own storefront/product photo when we have one.
+ * Every value is pre-clamped to the wallet's jewel-tone register and
+ * pre-verified AA for cream text on the darkened gradient ground below.
+ * `_doc` rides along in the JSON; the string index keeps it out of the way.
+ */
+const PLACE_HUES = placeHues as Record<string, string>;
+
 const WALLET_GROUND: Record<string, string> = {
   // Food & drink — warm reds, ambers, a wine, a rose
   restaurant: "#C23A22", pizza: "#D2481F", bakery: "#C77A1E", coffee: "#6F4A2F",
@@ -121,7 +135,10 @@ function Card({
 }) {
   const router = useRouter();
   const cat = CATEGORY_BY_SLUG[place.category];
-  const hue = WALLET_GROUND[place.category] ?? cat?.color ?? "#20506A";
+  // Brand-first: the business's own extracted hue, then the category's
+  // wallet ground, then the category ink, then a civic blue.
+  const hue =
+    PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#20506A";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
   const ol = openLabel(place);
   const dist =
