@@ -11,6 +11,7 @@
 import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { openNowHighlights } from "@/lib/loaders/places";
 import { getKeysScoreToday, type KeysScore } from "@/lib/integrations/keysScore";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
@@ -19,6 +20,9 @@ export type BetaPulse = {
   places: number;
   towns: number;
   eventsToday: number | null;
+  /** County-wide open-right-now: the shared countOpenNow population, plus
+   *  a few real names so the proof strip can say who, not just how many. */
+  openNow: { count: number; names: string[] } | null;
   keys: KeysScore | null;
   troutThisWeek: boolean;
 };
@@ -35,6 +39,16 @@ export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
   const places = Array.isArray(CLIENT_PLACES) ? CLIENT_PLACES.length : 0;
   const towns = MUNICIPALITIES.length;
 
+  // Synchronous CPU work over the decorated pipeline — fail-soft like the
+  // network facts: a throw means the strip omits the open-now line, never
+  // a fabricated number.
+  let openNow: BetaPulse["openNow"] = null;
+  try {
+    openNow = openNowHighlights(3, now);
+  } catch {
+    openNow = null;
+  }
+
   const [events, keys, trout] = await Promise.all([
     // Canonical unified set (cached), windowed to today and not-yet-ended.
     withTimeout(
@@ -48,5 +62,5 @@ export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
     withTimeout(getFrederickStockings(7).then((s) => s.length > 0), 2500, false),
   ]);
 
-  return { places, towns, eventsToday: events, keys, troutThisWeek: trout };
+  return { places, towns, eventsToday: events, openNow, keys, troutThisWeek: trout };
 }

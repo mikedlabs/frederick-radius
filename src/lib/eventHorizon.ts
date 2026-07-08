@@ -12,6 +12,7 @@
  * so it is deterministic and runs identically on server and client.
  */
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
+import { MAX_LIVE_SESSION_MS } from "@/lib/eventWhenLabel";
 
 export type Horizon = "live" | "today" | "weekend" | "week" | "later";
 
@@ -105,7 +106,12 @@ export function horizonOf<E extends EventLike>(
     // force a FUTURE event live — that's what let an upstream feed's mis-dated
     // occurrence (a far-future instance) render "Happening now". So the gate is:
     // started AND (still running OR flagged live). A future start can never match.
-    if (start <= b.now && (end >= b.now || b.live.has(e.slug))) return "live";
+    // "Still running" trusts the stated end only up to MAX_LIVE_SESSION_MS
+    // after start: feeds stamp end-of-day ends on daytime events, which kept
+    // a noon event in "Happening now" at 11 PM (beta-reviewer catch, Jul
+    // 2026). Past the cap it falls to the dated buckets like any over event.
+    const liveUntil = Math.min(end, start + MAX_LIVE_SESSION_MS);
+    if (start <= b.now && (liveUntil >= b.now || b.live.has(e.slug))) return "live";
     if (end < b.now) return null; // over, and not live → not upcoming
   }
 

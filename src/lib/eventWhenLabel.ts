@@ -45,6 +45,37 @@ export function isEventEnded(
   return end < now.getTime();
 }
 
+/** Cap on how long a "Live now" claim may ride a STATED end. Feeds stamp
+ *  end-of-day (or longer) ends on daytime events, so a noon street fair
+ *  with ends_at 11:59 PM read "Live now" at 11 PM (beta-reviewer catch,
+ *  Jul 2026). Eight hours covers any real single session; past that the
+ *  badge lies more often than it informs. */
+export const MAX_LIVE_SESSION_MS = 8 * 3_600_000;
+
+/**
+ * Is this event plausibly happening THIS MINUTE? The shared gate for every
+ * "Live now" badge/set (loaders eventsLive, event-reasons chip, the
+ * horizon's Happening-now bucket). Stricter than !isEventEnded on purpose:
+ *  - all-day rows are "today", never "live" (a feed's all-day event spans
+ *    midnight-to-midnight; the 3 AM audit found Senior Yoga "live");
+ *  - a stated end is trusted only up to MAX_LIVE_SESSION_MS after start,
+ *    so end-of-day/range stamps can't keep a noon event live at 11 PM;
+ *  - no/invalid/zero duration gets the same ASSUMED_RUNTIME_MS grace
+ *    isEventEnded grants.
+ */
+export function isEventLiveNow(
+  e: { starts_at: string; ends_at?: string; is_all_day?: boolean },
+  now: Date,
+): boolean {
+  if (e.is_all_day) return false;
+  const start = Date.parse(e.starts_at);
+  if (!Number.isFinite(start) || start > now.getTime()) return false;
+  const rawEnd = e.ends_at ? Date.parse(e.ends_at) : NaN;
+  const stated =
+    Number.isFinite(rawEnd) && rawEnd > start ? rawEnd : start + ASSUMED_RUNTIME_MS;
+  return now.getTime() < Math.min(stated, start + MAX_LIVE_SESSION_MS);
+}
+
 export function eventWhenLabel(
   startsAtIso: string,
   now: Date,

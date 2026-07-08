@@ -1169,13 +1169,36 @@ export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): Place
  * the shared isOpenNow predicate over decorated open_status.
  */
 export function countOpenNow(now: Date = new Date()): number {
-  return BASE_PLACES
+  return openNowHighlights(0, now).count;
+}
+
+/**
+ * The county-wide open-now count PLUS a few real names to prove it —
+ * for surfaces (the /beta cover) that want "N open right now: A, B, C"
+ * instead of a bare number. Exactly the countOpenNow population and
+ * predicate (countOpenNow delegates here), so the headline count and
+ * the named sample can never disagree. Names are the highest
+ * feature_score open places — recognizable anchors, not a random draw.
+ */
+export function openNowHighlights(
+  limit: number,
+  now: Date = new Date(),
+): { count: number; names: string[] } {
+  const open = BASE_PLACES
     .filter(isOperational)
     .filter(isDiscoverable)
     .filter(isSubstantive)
     .filter(isRecommendable)
-    .filter((p) => isOpenNow(decoratePlace(p, undefined, now).open_status))
-    .length;
+    .map((p) => decoratePlace(p, undefined, now))
+    .filter((p) => isOpenNow(p.open_status));
+  const names =
+    limit > 0
+      ? [...open]
+          .sort((a, b) => b.feature_score - a.feature_score)
+          .slice(0, limit)
+          .map((p) => p.name)
+      : [];
+  return { count: open.length, names };
 }
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {

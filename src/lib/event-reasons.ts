@@ -1,6 +1,7 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
 import { daypart } from "@/lib/daypart";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 
 /**
  * Derive the small "why this is shown" chips for an event, from data
@@ -45,11 +46,12 @@ export function eventReasons(
 ): EventReasonChip[] {
   const out: EventReasonChip[] = [];
   const startsMs = Date.parse(e.starts_at);
-  const endsMs = e.ends_at ? Date.parse(e.ends_at) : startsMs + 2 * 3600_000;
   const nowMs = now.getTime();
 
-  // 1. Time relevance — strongest first.
-  if (startsMs <= nowMs && endsMs > nowMs) {
+  // 1. Time relevance — strongest first. Liveness goes through the shared
+  // gate (all-day and end-of-day/range end stamps must not read "Live now"
+  // at 11 PM — beta-reviewer catch, Jul 2026).
+  if (isEventLiveNow(e, now)) {
     out.push({ kind: "live_now", label: "Live now", tone: "open" });
   } else if (startsMs > nowMs) {
     const minsAway = (startsMs - nowMs) / 60_000;
