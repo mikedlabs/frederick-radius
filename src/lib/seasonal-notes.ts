@@ -34,7 +34,7 @@ export type SeasonalNote = {
 
 /** Notes whose claim is derived purely from the calendar (no curated dates), so
  *  they are exempt from the source-required invariant. */
-export const COMPUTABLE_NOTE_IDS = new Set(["first-saturday", "market-season"]);
+export const COMPUTABLE_NOTE_IDS = new Set(["first-saturday"]);
 
 /** Is `now` the nth occurrence of `weekday` (0=Sun..6=Sat) in its Eastern month?
  *  Derives the occurrence from the Eastern day-of-month so it never reads
@@ -111,21 +111,13 @@ export const SEASONAL_NOTES: SeasonalNote[] = [
     hrefLabel: "Find a park",
     source: "Hawk Migration Association",
   },
-  {
-    // COMPUTABLE: farmers-market season (May to October in Maryland). States the
-    // SEASON only and links to the category. The live per-day market count is
-    // OnNowBand's job, so the two never disagree.
-    id: "market-season",
-    priority: 40,
-    active: (now) => {
-      const { month } = easternParts(now);
-      return month >= 5 && month <= 10;
-    },
-    lead: "Market season",
-    detail: "County farmers markets are running through October.",
-    href: "/category/market",
-    hrefLabel: "All markets",
-  },
+  // The "Market season" note was RETIRED here (owner call, 2026-07-08): a
+  // generic "the season is running through October" blurb read as brochure
+  // prose in the /today masthead, and it always duplicated the real live signal
+  // anyway — the honest per-DAY market ("Farmers markets today: …", only when
+  // one is actually open) lives in OnNowBand's MarketsTodayBeat, and now also
+  // as a chip in the OnNowStrip. Removing the season blurb leaves only dated,
+  // decision-useful almanac notes (First Saturday, the nature rhythms).
 ];
 
 /** The single most relevant active note for `now`, or null. Lowest priority

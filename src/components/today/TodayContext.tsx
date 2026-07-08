@@ -109,11 +109,14 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
 
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-snug" suppressHydrationWarning>
-      {/* A plain LOCATION control, not a time-of-day greeting (the old "Morning
-          in…" read oddly on a picker): a pin + the town you're browsing. */}
+      {/* A minimal, quiet LOCATION affordance — a pin + a town select — NOT a
+          verbose sentence (owner call, 2026-07-08: "Browsing all of Frederick
+          County" read as filler copy in the masthead band). The control stays
+          fully functional: picking a town writes the home town (localStorage +
+          cookie) and refreshes so the town-ranked server surfaces re-rank. The
+          leading "Browsing" word was dropped so it reads as a scope chip. */}
       <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-3)" }}>
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
-        {!homeMuni && <span>Browsing</span>}
         <span className="tap-44 relative inline-flex items-center">
           <select
             aria-label="Choose the town you're browsing"

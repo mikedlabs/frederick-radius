@@ -4,6 +4,7 @@ import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import MastheadTitle from "@/components/today/MastheadTitle";
 import OnNowBand from "@/components/today/OnNowBand";
+import OnNowStrip from "@/components/today/OnNowStrip";
 import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
@@ -253,6 +254,18 @@ export default async function HomePage() {
         />
         <div className="fg-rule mt-3" aria-hidden />
       </header>
+
+      {/* ── ON NOW, NEAR YOU — a compact live strip in the gap the copy-heavy
+          "Market season" seasonal band used to fill (owner call, 2026-07-08:
+          the band read as brochure prose). Two or three TAPPABLE chips of what
+          is genuinely on THIS MINUTE — a live event, a place open now (a happy
+          hour pouring), today's farmers market if one is actually open — each
+          linking to its surface. Honest + self-hiding: shows only what's real,
+          and the whole strip disappears (no empty box) when nothing qualifies.
+          Streams on the shared events promise. */}
+      <Suspense fallback={null}>
+        <OnNowStrip now={now} eventsPromise={eventsPromise} />
+      </Suspense>
 
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify

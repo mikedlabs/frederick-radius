@@ -28,21 +28,24 @@ describe("seasonal-notes", () => {
     expect(sunday?.id).not.toBe("first-saturday");
   });
 
-  it("falls back to market season on a non-first-Saturday in season", () => {
-    // 2026-07-11 16:00Z = Sat Jul 11 2026 (second Saturday) — market season wins.
-    const note = pickSeasonalNote(new Date("2026-07-11T16:00:00Z"));
-    expect(note?.id).toBe("market-season");
+  it("no longer surfaces the retired 'market season' blurb in summer", () => {
+    // 2026-07-11 16:00Z = Sat Jul 11 2026 (second Saturday). The "Market season"
+    // note was retired (the honest per-day market lives in OnNowBand /
+    // OnNowStrip), so a mid-July non-first-Saturday day now has no seasonal note.
+    expect(pickSeasonalNote(new Date("2026-07-11T16:00:00Z"))).toBeNull();
+    expect(SEASONAL_NOTES.some((n) => n.id === "market-season")).toBe(false);
   });
 
   it("renders nothing on an ordinary off-season day", () => {
-    // 2026-01-14 = Wed in January: not first Saturday, market season off, foliage disabled.
+    // 2026-01-14 = Wed in January: not first Saturday, no active almanac note.
     expect(pickSeasonalNote(new Date("2026-01-14T16:00:00Z"))).toBeNull();
   });
 
   it("never surfaces the foliage note while it ships disabled", () => {
-    // 2026-10-20 sits inside the would-be foliage window, but foliage is disabled,
-    // so the active October note is market season, never foliage-peak.
+    // 2026-10-20 sits inside the would-be foliage window, but foliage is
+    // disabled and market-season is retired, so October now has no note at all.
     const note = pickSeasonalNote(new Date("2026-10-20T16:00:00Z"));
     expect(note?.id).not.toBe("foliage-peak");
+    expect(note).toBeNull();
   });
 });
