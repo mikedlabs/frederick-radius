@@ -3326,3 +3326,252 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     transition: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+ * /pulse — the state-aware bento board
+ *
+ * Cream/paper throughout. The numeric feeds render as conic-gradient
+ * gauge rings with a serif number counting up in the center; the rest
+ * as compact status tiles; weather as the wide feature. Reduced motion
+ * parks the ticker + sparkline draw at their final state (the count-ups
+ * and gauge fills are parked in JS).
+ * ───────────────────────────────────────────────────────────── */
+
+/* Incident ticker — only rendered when a situation is active. */
+.pulse-ticker {
+  overflow: hidden;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--app-danger) 26%, var(--app-border));
+  background: color-mix(in srgb, var(--app-danger) 8%, var(--app-bg-elevated));
+  padding: 9px 0;
+}
+.pulse-ticker-track {
+  display: inline-flex;
+  gap: 34px;
+  white-space: nowrap;
+  padding-left: 100%;
+  font-size: 11.5px;
+  color: var(--app-ink-2);
+  will-change: transform;
+  animation: pulse-tick 34s linear infinite;
+}
+@keyframes pulse-tick {
+  to { transform: translateX(-50%); }
+}
+.pulse-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pulse-ticker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Segmented filter (a real tablist). */
+.pulse-seg {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--app-bg-sunken);
+  border: 1px solid var(--app-border);
+}
+.pulse-seg-btn {
+  position: relative;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--app-ink-2);
+  padding: 8px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.pulse-seg-btn:hover { color: var(--app-ink); }
+.pulse-seg-btn.is-on {
+  /* Text-safe brand press behind white text holds AA contrast. */
+  background: var(--app-brand-press);
+  color: var(--on-brand, #fcfbf8);
+}
+.pulse-seg-count {
+  font-size: 9.5px;
+  opacity: 0.7;
+}
+.pulse-seg-btn.is-on .pulse-seg-count { opacity: 0.85; }
+
+/* Bento grid. */
+.pulse-bento {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+/* Shared tile shell. */
+.pulse-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  padding: 12px;
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.pulse-tile.is-hot {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 13%, var(--app-bg-elevated)), var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--app-border));
+}
+.pulse-tile:active { transform: scale(0.99); }
+.pulse-tlab {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+
+/* Weather feature (wide). */
+.pulse-tile--wx {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--app-cool) 11%, var(--app-bg-elevated)), var(--app-bg-elevated));
+}
+.pulse-wx-deg {
+  font-size: 50px;
+  font-weight: 600;
+  line-height: 0.85;
+  color: var(--app-ink);
+}
+.pulse-wx-spark {
+  width: 100%;
+  height: 44px;
+  margin-top: 8px;
+  display: block;
+}
+
+/* Gauge tile. */
+.pulse-tile--gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 150px;
+}
+.pulse-gauge {
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  margin: 4px auto 2px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  background: conic-gradient(var(--gc) calc(var(--pct) * 1%), color-mix(in srgb, var(--app-ink) 8%, transparent) 0);
+}
+.pulse-gauge::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--app-bg-elevated);
+}
+.pulse-tile--gauge.is-hot .pulse-gauge::before {
+  background: color-mix(in srgb, var(--accent) 13%, var(--app-bg-elevated));
+}
+.pulse-gauge-in {
+  position: relative;
+  text-align: center;
+}
+.pulse-gauge-num {
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--app-ink);
+}
+.pulse-gauge-unit {
+  display: block;
+  margin-top: 3px;
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+
+/* Status tile. */
+.pulse-tile--status {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+}
+.pulse-sdot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.pulse-sval {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--app-ink);
+  overflow-wrap: anywhere;
+}
+.pulse-sval.is-mono {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.pulse-ssub {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--app-ink-3);
+}
+
+/* Honest empty state for the filter. */
+.pulse-filter-empty {
+  padding: 24px 16px;
+  text-align: center;
+  border: 1px dashed var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-ink-2);
+}
+
+/* Sparkline draw-in (normalized pathLength). */
+.pulse-spark-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pulse-draw 0.9s ease-out forwards;
+}
+@keyframes pulse-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ticker-track { animation: none; padding-left: 0; }
+  .pulse-spark-line { animation: none; stroke-dashoffset: 0; }
+  .pulse-tile { transition: none; }
+}
