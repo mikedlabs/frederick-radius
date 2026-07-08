@@ -16,6 +16,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import SavedWallet from "@/components/saved/SavedWallet";
+import SavedEventWallet from "@/components/saved/SavedEventWallet";
 import { fmtClockShort } from "@/components/saved/walletFacts";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
@@ -560,6 +561,14 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     return m;
   }, [placeRefsAll]);
 
+  // saved_at per EVENT slug, for the event wallet stub's Saved cell. Events
+  // are device-local by contract, so the local ref's stamp is the truth.
+  const savedAtByEventSlug = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const i of items) if (i.type === "event") m[i.id] = i.saved_at;
+    return m;
+  }, [items]);
+
   // Show the skeleton in two cases: before the device-local items
   // resolve (mounted=false) AND while the /api/places/by-slugs round
   // trip is in flight. Both windows are short; the matched layout
@@ -980,7 +989,9 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         </section>
       )}
 
-      {/* Events — compact rows: date plate, serif title, mono where/when. */}
+      {/* Events — a wallet DECK in the same craft as the place cards above:
+          laminated category-hued faces, serif titles, a mono ledger on the
+          raised stub. The two decks read as one collection. */}
       {events.length > 0 && (
         <section aria-label="Saved events" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
@@ -1000,20 +1011,15 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             </span>
           </header>
           {upcomingEvents.length > 0 ? (
-            <ul className="space-y-2">
-              {upcomingEvents.map((e: DecoratedEvent) => (
-                <li key={`${e.slug}-${e.starts_at}`}>
-                  <EventRow event={e} today={isEventToday(e.starts_at, now)} />
-                </li>
-              ))}
-            </ul>
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
           ) : (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               Nothing upcoming. Your saved shows have all passed.
             </p>
           )}
 
-          {/* Past saved events — kept, but tucked behind a toggle. */}
+          {/* Past saved events — kept, but tucked behind a toggle; the same
+              deck, calm and dimmed, with no card raised by default. */}
           {pastEvents.length > 0 && (
             <div className="space-y-2">
               <button
@@ -1026,13 +1032,14 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
                 {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
               </button>
               {showPast && (
-                <ul className="space-y-2 opacity-70">
-                  {pastEvents.map((e: DecoratedEvent) => (
-                    <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventRow event={e} today={false} />
-                    </li>
-                  ))}
-                </ul>
+                <div className="opacity-70">
+                  <SavedEventWallet
+                    events={pastEvents}
+                    savedAt={savedAtByEventSlug}
+                    now={now}
+                    startRaised={false}
+                  />
+                </div>
               )}
             </div>
           )}
