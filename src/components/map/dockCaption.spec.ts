@@ -4,6 +4,7 @@ import {
   defaultTimeMode,
   dockDirty,
   formatHourLabel,
+  layersCaption,
   whatCaption,
   whenCaption,
 } from "./dockCaption";
@@ -50,6 +51,23 @@ describe("whatCaption", () => {
       whatCaption({ layerCount: 1, singleLayerLabel: "Trails" }).plus,
     ).toBe("+ Trails");
     expect(whatCaption({ layerCount: 3 }).plus).toBe("+ 3 layers");
+  });
+});
+
+describe("layersCaption (the fourth caption word)", () => {
+  it("rests on No layers", () => {
+    expect(layersCaption([])).toEqual({ main: "No layers", active: false });
+  });
+  it("names a single layer", () => {
+    expect(layersCaption(["Trails"])).toEqual({ main: "Trails", active: true });
+  });
+  it("names the first and tallies the rest", () => {
+    expect(layersCaption(["Trails", "Transit"])).toEqual({
+      main: "Trails",
+      plus: "+1",
+      active: true,
+    });
+    expect(layersCaption(["Trails", "Transit", "Aerial photos", "Saved"]).plus).toBe("+3");
   });
 });
 

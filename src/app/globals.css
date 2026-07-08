@@ -2629,12 +2629,112 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    positioned pane. */
 .dock {
   position: absolute;
-  top: 60px;
+  /* v2: search folded IN, so the dock is the ONE top instrument — it sits
+     right at the map's top edge (no separate search bar above it), leaving
+     the map to fill the frame below. */
+  top: 8px;
   left: 10px;
   right: 10px;
   z-index: var(--z-sticky);
   margin-inline: auto;
   max-width: 680px;
+}
+
+/* ── Search, folded into the dock's top row (the map's ONE search) ── */
+.dock-search-wrap {
+  position: relative;
+}
+.dock-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  color: var(--app-ink-3);
+  border-bottom: 1px solid var(--app-border);
+}
+.dock-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13.5px;
+  color: var(--app-ink);
+}
+.dock-search-input::placeholder {
+  color: var(--app-ink-3);
+}
+.dock-search-kbd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: var(--app-ink-3);
+  border: 1px solid var(--app-border);
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: var(--app-bg-sunken);
+}
+.dock-search-clear {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--app-ink-3);
+}
+.dock-search-results {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 100%;
+  z-index: 4;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--app-shadow-3);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.dock-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+}
+.dock-search-result:hover {
+  background: var(--app-bg-sunken);
+}
+.dock-search-result-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.dock-search-result-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.dock-search-result-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--app-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-search-result-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--app-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The pinned head: caption tab bar + count line. Frosted paper so the map
@@ -2898,10 +2998,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: relative;
 }
 .dock-seg-what {
-  flex: 1.2 1 0;
+  flex: 1.25 1 0;
 }
 .dock-seg-where {
   flex: 1.15 1 0;
+}
+.dock-seg-layers {
+  flex: 1.05 1 0;
 }
 .dock-seg + .dock-seg {
   border-left: 1px solid var(--app-border);
@@ -2950,11 +3053,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-left: 1px solid var(--app-border);
 }
 
-/* The living mono count line — also the polite live region. A hairline rule
-   separates it from the caption tabs above. */
-.dock-countline {
-  padding: 5px 12px 6px;
+/* The foot: the living count line + the map ↔ list toggle, on one row
+   under a hairline rule. */
+.dock-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border-top: 1px solid var(--app-border);
+  padding-right: 8px;
+}
+/* The living mono count line — also the polite live region. */
+.dock-countline {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 12px 6px;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9.5px;
   color: var(--app-ink-3);
@@ -2962,6 +3074,271 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Map ↔ list toggle — a small pill in the foot. */
+.dock-viewtoggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.dock-viewtoggle[aria-pressed="true"] {
+  background: var(--app-brand);
+  border-color: var(--app-brand);
+  color: #fff;
+}
+
+/* ── Persistent "near me" locate FAB — above the zoom cluster ── */
+.map-locate-fab {
+  position: absolute;
+  right: 10px;
+  bottom: 118px;
+  z-index: var(--z-map-control);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--app-shadow-2);
+  color: var(--app-ink-2);
+  transition: opacity 0.25s, transform 0.08s;
+}
+.map-locate-fab:active {
+  transform: scale(0.94);
+}
+.map-locate-fab[data-on] {
+  color: var(--app-brand);
+  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
+}
+/* Hidden while a dock pane is open (the scrim owns the surface). */
+.dock-host[data-dock-pane="open"] .map-locate-fab {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Pin peek card — the compact bottom card a tapped pin raises ── */
+.map-peek {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px);
+  z-index: var(--z-sticky);
+  margin-inline: auto;
+  max-width: 460px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--app-shadow-3);
+}
+.map-peek-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: var(--app-ink-3);
+  background: var(--app-bg-sunken);
+}
+.map-peek-body {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+  padding-right: 22px;
+}
+.map-peek-thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--app-radius-md);
+  overflow: hidden;
+  display: block;
+}
+.map-peek-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.map-peek-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.map-peek-cat {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-peek-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--app-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-peek-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--app-ink-2);
+}
+.map-peek-dot {
+  color: var(--app-ink-3);
+}
+.map-peek-dist {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--app-ink-3);
+}
+.map-peek-acts {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.map-peek-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.map-peek-act[data-on] {
+  background: var(--app-brand);
+  border-color: var(--app-brand);
+  color: #fff;
+}
+.map-peek-act-go {
+  background: var(--app-brand);
+  border-color: var(--app-brand);
+  color: var(--app-on-brand, #fff);
+}
+
+/* ── The map's list face ── */
+.map-list {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--z-sticky) - 1);
+  overflow-y: auto;
+  background: var(--app-bg);
+  /* Clear the dock head above (search + caption + foot) and the nav below. */
+  padding: 150px 12px calc(var(--app-bottomnav-reserve, 0px) + 16px);
+}
+.map-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 680px;
+  margin-inline: auto;
+}
+.map-list-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 11px 10px;
+  border-radius: var(--app-radius-sm);
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 8%, transparent);
+}
+.map-list-row:hover {
+  background: var(--app-bg-elevated);
+}
+.map-list-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+.map-list-main {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.map-list-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--app-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-list-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--app-ink-2);
+}
+.map-list-mid {
+  color: var(--app-ink-3);
+}
+.map-list-dist {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--app-ink-3);
+}
+.map-list-empty {
+  max-width: 400px;
+  margin: 24px auto 0;
+  text-align: center;
+}
+.map-list-empty-title {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--app-ink);
+  margin-bottom: 6px;
+}
+.map-list-empty-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-ink-3);
 }
 
 /* Reduced motion: no expand animation, no scrim fade — state changes

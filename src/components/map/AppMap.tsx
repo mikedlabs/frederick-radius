@@ -214,7 +214,10 @@ import {
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
 import MapDock from "./MapDock";
+import MapPeek from "./MapPeek";
+import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
+import { LocateFixed } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -303,6 +306,12 @@ type Props = {
    *  When present the dock renders and the legacy floating controls
    *  (scrubber, aerial season chips, locate homes) stand down. */
   dock?: BrowseDockInfo;
+  /** The slugs of places that MATCH the active What/Open-now filter, when
+   *  one is on. Non-matching pins are faded (not removed), so the map
+   *  visibly reacts to the dock. Null/undefined = nothing filtered =
+   *  nothing faded. Provided by BrowseMapClient (which also passes the
+   *  FULL place set as `places` in that case). */
+  activeSlugs?: string[] | null;
 };
 
 export default function AppMap({
@@ -327,6 +336,7 @@ export default function AppMap({
   events = [],
   initialAmenityGroups,
   dock,
+  activeSlugs = null,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   // Effective camera home: when we arrived via a category and already
@@ -468,6 +478,13 @@ export default function AppMap({
   // "Mark a spot" — and submitted reports still render via the community
   // reports layer.)
   const [q, setQ] = useState("");
+  // Pin peek — the compact bottom card that rises when a curated pin is
+  // tapped (photo, open state, distance, Save + Directions). Upgrades the
+  // cramped popup into a real card you can act on without leaving the map.
+  const [peekPlace, setPeekPlace] = useState<MapPinPlace | null>(null);
+  // Map ↔ list toggle: flip the currently-filtered pins into a scannable
+  // list. Pure client state layered over the same filtered pool.
+  const [listView, setListView] = useState(false);
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
@@ -646,6 +663,22 @@ export default function AppMap({
     // /map browse, which always shows the whole clustered set).
     return pinpointDefault ? [] : base;
   }, [places, pinpointDefault, showSavedOnly, followedSlugs, fieldNotesOnly]);
+
+  // The set of pins that MATCH the active What/Open-now filter. When a
+  // filter is on, BrowseMapClient hands us the FULL place set plus these
+  // slugs, and we FADE the rest (rather than removing them) so the map
+  // visibly reacts to the dock. Null = no filter = everything matches.
+  const matchSet = useMemo(
+    () => (activeSlugs ? new Set(activeSlugs) : null),
+    [activeSlugs],
+  );
+  // What the dock counts + the list show: the drawn pins (lens-filtered)
+  // intersected with the active match set. The faded pins stay on the map
+  // but don't count as "on the map".
+  const visiblePlaces = useMemo(
+    () => (matchSet ? filteredPlaces.filter((p) => matchSet.has(p.slug)) : filteredPlaces),
+    [filteredPlaces, matchSet],
+  );
 
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
@@ -854,10 +887,13 @@ export default function AppMap({
         // Draw order within the curated tier: verified places first so
         // the strongest pins win the spot when icons stack.
         pri: p.is_verified ? 0 : 1,
+        // Faded when an active What/Open-now filter doesn't match this pin
+        // (interaction: the map reacts to the dock, not just the count).
+        dimmed: matchSet ? !matchSet.has(p.slug) : false,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
-  }), [filteredPlaces]);
+  }), [filteredPlaces, matchSet]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -897,6 +933,31 @@ export default function AppMap({
     else if (m) m.once("idle", apply);
     return () => { cancelled = true; };
   }, [scrubHour, curatedGeoJson, filteredPlaces]);
+
+  // Cluster fade to match the pin fade: a cluster disc mixes matched +
+  // unmatched pins, so it can't be dimmed per-feature — instead the whole
+  // cluster tier softens uniformly while a What/Open-now filter is active,
+  // then returns to full when it clears (mirrors the mockup's `.cl{opacity:.3}`).
+  // A garnish: wrapped so a paint hiccup never breaks the map.
+  useEffect(() => {
+    const m = mapRef.current?.getMap();
+    if (!m) return;
+    const apply = () => {
+      try {
+        if (!m.getLayer("curated-clusters")) return;
+        const on = matchSet != null;
+        m.setPaintProperty("curated-clusters", "circle-opacity", on ? 0.3 : 0.62);
+        if (m.getLayer("curated-cluster-glow"))
+          m.setPaintProperty("curated-cluster-glow", "circle-opacity", on ? 0.09 : 0.18);
+        if (m.getLayer("curated-cluster-counts"))
+          m.setPaintProperty("curated-cluster-counts", "text-opacity", on ? 0.55 : 1);
+      } catch {
+        /* paint is a garnish; never let it break the map */
+      }
+    };
+    if (m.isStyleLoaded()) apply();
+    else m.once("idle", apply);
+  }, [matchSet]);
 
   // The single selected place — drives a soft glow ring under its icon.
   const selectedGeoJson = useMemo(() => {
@@ -1006,10 +1067,15 @@ export default function AppMap({
       // Distance must be from the USER, never a fixed city point — show it
       // only when we actually have their location, else omit it (honest).
       if (place) {
-        openPlaceSheet(place);
-        // Lift the tapped pin above the bottom sheet (Google/Apple pattern):
+        // A quick PEEK card rises from the bottom (photo, open state,
+        // distance, Save + Directions) so the user can act without leaving
+        // the map; "Open page" in the peek hands off to the full sheet.
+        setSelected(null);
+        setSelectedEvent(null);
+        setPeekPlace(place);
+        // Lift the tapped pin above the bottom card (Google/Apple pattern):
         // shift the camera up so the pin + its selected glow stay visible
-        // instead of hiding under the sheet that just rose over them.
+        // instead of hiding under the card that just rose over them.
         const m = mapRef.current?.getMap();
         m?.easeTo({
           center: [place.geom.lng, place.geom.lat],
@@ -1153,7 +1219,7 @@ export default function AppMap({
         setSelectedSlug(p.slug);
         setQ("");
         if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
-        openPlaceSheet(p);
+        setPeekPlace(p);
         return;
       }
     }
@@ -1373,8 +1439,8 @@ export default function AppMap({
   // "Closes within the hour" — the dock's living count line. open_status
   // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
   const closingSoonCount = useMemo(
-    () => filteredPlaces.filter((p) => p.open_status?.state === "closing-soon").length,
-    [filteredPlaces],
+    () => visiblePlaces.filter((p) => p.open_status?.state === "closing-soon").length,
+    [visiblePlaces],
   );
 
   // Season rows for the dock's Aerial nested strip (label + count per
@@ -1400,16 +1466,21 @@ export default function AppMap({
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
     >
-      {/* ── The search bar — alone on the top edge. Search FINDS; the
-          dock below FILTERS. On dock-less embeds (SavedList) the bar
-          keeps its locate icon so that surface loses nothing. ── */}
-      <AppMapDeck
-        q={q}
-        setQ={setQ}
-        searchMatches={searchMatches}
-        pickSearch={pickSearch}
-        {...(!dock ? { goNearMe, locating, userLoc } : {})}
-      />
+      {/* ── The search bar. On /map browse it's FOLDED INTO the dock's top
+          row (MapDock) so there is one instrument and one map-search; the
+          floating bar renders only on dock-less embeds (SavedList's map),
+          where it also keeps its locate icon. ── */}
+      {!dock && (
+        <AppMapDeck
+          q={q}
+          setQ={setQ}
+          searchMatches={searchMatches}
+          pickSearch={pickSearch}
+          goNearMe={goNearMe}
+          locating={locating}
+          userLoc={userLoc}
+        />
+      )}
 
       {/* Living-map time scrubber. On /map browse it lives INSIDE the
           dock's When pane ("The day"); the floating card remains only
@@ -1469,7 +1540,9 @@ export default function AppMap({
             on a healthy map nothing shows here now. */}
         {(osmLoading || osmError) && (
           <div
-            className="absolute left-3 top-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+              dock ? "top-[168px]" : "top-3"
+            }`}
             style={{ color: "var(--app-ink-2)" }}
             aria-live="polite"
           >
@@ -2171,10 +2244,23 @@ export default function AppMap({
                 "icon-anchor": "center",
               }}
               paint={{
-                // Living-map scrub: a pin dims when it's closed at the
-                // scrubbed hour (feature-state set client-side). No state =
-                // full opacity, so this is inert until the scrubber is used.
-                "icon-opacity": ["case", ["boolean", ["feature-state", "dim"], false], 0.28, 1],
+                // Two ways a pin fades, ORed together:
+                //  - feature-state `dim`: closed at the scrubbed hour (set
+                //    client-side by the scrub effect), and
+                //  - the `dimmed` property: doesn't match the active What /
+                //    Open-now filter, so it fades instead of vanishing.
+                // No state + no filter = full opacity, so this stays inert
+                // on the clean map.
+                "icon-opacity": [
+                  "case",
+                  [
+                    "any",
+                    ["boolean", ["feature-state", "dim"], false],
+                    ["==", ["get", "dimmed"], true],
+                  ],
+                  0.28,
+                  1,
+                ],
               }}
             />
             {/* Invisible tap-target pad — expands each curated pin's
@@ -2651,9 +2737,15 @@ export default function AppMap({
         {dock && (
           <MapDock
             browse={dock}
-            placeCount={filteredPlaces.length}
+            placeCount={visiblePlaces.length}
             eventCount={visibleEvents.length}
             closingSoonCount={closingSoonCount}
+            q={q}
+            setQ={setQ}
+            searchMatches={searchMatches}
+            pickSearch={pickSearch}
+            listView={listView}
+            onToggleList={() => setListView((v) => !v)}
             savedCount={followedSlugs.size}
             showSavedOnly={showSavedOnly}
             setShowSavedOnly={setShowSavedOnly}
@@ -2703,6 +2795,52 @@ export default function AppMap({
           />
         )}
 
+        {/* Persistent "near me" locate button — locate is the most-used
+            map gesture, so it lives ON the map (above the zoom cluster),
+            not only inside the Where pane. Dock surface only; hidden while
+            a dock pane or the list is open. */}
+        {dock && !listView && (
+          <button
+            type="button"
+            className="map-locate-fab tap-44"
+            onClick={goNearMe}
+            aria-label="Find places near me"
+            aria-busy={locating || undefined}
+            data-on={userLoc ? true : undefined}
+          >
+            <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+          </button>
+        )}
+
+        {/* The map's LIST face — the same filtered pins as a scannable
+            roll. Honest empty state when nothing matches. */}
+        {dock && listView && (
+          <MapList
+            places={visiblePlaces}
+            userLoc={userLoc}
+            onPick={(p) => {
+              setListView(false);
+              setSelectedSlug(p.slug);
+              const m = mapRef.current?.getMap();
+              if (m && p.geom) smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });
+              setPeekPlace(p);
+            }}
+          />
+        )}
+
+        {/* The pin peek card. */}
+        {peekPlace && !listView && (
+          <MapPeek
+            place={peekPlace}
+            userLoc={userLoc}
+            onClose={() => {
+              setPeekPlace(null);
+              setSelectedSlug(null);
+            }}
+            onDetails={() => openPlaceSheet(peekPlace)}
+          />
+        )}
+
         {/* Cluster index — "what's in this bubble", as a field-guide index
             page. Tapping a row focuses the pin + opens its sheet; the drawer
             dismisses itself so the map stays the page. */}
@@ -2725,7 +2863,7 @@ export default function AppMap({
                     haptic("light");
                     const m = mapRef.current?.getMap();
                     if (m) smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
-                    openPlaceSheet(pin);
+                    setPeekPlace(pin);
                   }}
                   className="tap-44 flex w-full items-center gap-2.5 rounded-[var(--app-radius-sm)] px-2 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
                 >

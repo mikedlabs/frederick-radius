@@ -82,6 +82,27 @@ export function whatCaption(args: {
   return { main, plus };
 }
 
+export type LayersCaption = {
+  /** The lead label: "No layers", "Trails", "Aerial photos". */
+  main: string;
+  /** The quiet mono tally suffix when more than one is on: "+2". */
+  plus?: string;
+  /** Whether any layer/lens is on (drives the inked gold caption color). */
+  active: boolean;
+};
+
+/**
+ * The Layers word — the caption's fourth cell. Reads "No layers" until a
+ * map drape or a Yours lens is on, then the first one's name, with a mono
+ * "+N" tally when several are lit. The label set is passed in already
+ * ordered (drapes first, then lenses) so the lead word is stable.
+ */
+export function layersCaption(labels: string[]): LayersCaption {
+  if (labels.length === 0) return { main: "No layers", active: false };
+  if (labels.length === 1) return { main: labels[0], active: true };
+  return { main: labels[0], plus: `+${labels.length - 1}`, active: true };
+}
+
 export type WhenTone = "quiet" | "open" | "window" | "scrub";
 
 export type WhenCaption = {

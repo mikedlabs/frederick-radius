@@ -223,9 +223,18 @@ export default function BrowseMapClient({
   const intentCounts: Record<string, number> = {};
   for (const i of INTENTS) intentCounts[i.key] = allPlaces.filter(i.match).length;
 
+  // Interaction: the map FADES non-matching pins rather than removing them.
+  // So when a What/Open-now filter is active we hand the map the FULL place
+  // set for the pins plus the matched slugs; the map dims the rest and the
+  // dock counts only the matches. With no place filter we pass nothing extra
+  // and every pin stays at full strength.
+  const anyPlaceFilter = Boolean(intent || activeSub || openNow);
+  const activeSlugs = anyPlaceFilter ? places.map((p) => p.slug) : null;
+
   return (
     <AppMapClient
-      places={places}
+      places={allPlaces}
+      activeSlugs={activeSlugs}
       civic={civic}
       extraAmenities={extraAmenities}
       amenities={amenities}

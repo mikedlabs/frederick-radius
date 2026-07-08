@@ -76,6 +76,7 @@ export default function AppMapClient({
   initialCenter,
   initialAmenityGroups,
   dock,
+  activeSlugs = null,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -129,6 +130,9 @@ export default function AppMapClient({
   /** Browse-view state + counts for the map dock (/map browse only).
    *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
   dock?: BrowseDockInfo;
+  /** Slugs matching the active What/Open-now filter — the map fades the
+   *  rest instead of removing them. Forwarded to AppMap. */
+  activeSlugs?: string[] | null;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
@@ -158,6 +162,7 @@ export default function AppMapClient({
           initialCenter={initialCenter}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
+          activeSlugs={activeSlugs}
         />
       </div>
     );

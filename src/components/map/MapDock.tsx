@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, LocateFixed, NotebookPen, X } from "lucide-react";
+import { Clock, List, LocateFixed, Map as MapIcon, NotebookPen, Search as SearchIcon, X } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import type { BrowseDockInfo } from "./types";
 import type { LngLat } from "@/lib/geo";
+import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -16,13 +17,17 @@ import {
   TIME_WINDOWS,
   countLine,
   dockDirty,
+  layersCaption,
   whatCaption,
   whenCaption,
 } from "./dockCaption";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
-type Pane = "what" | "when" | "where";
+/** The four caption tabs. What is now purely KINDS OF PLACES; the map
+ *  drapes (trails, transit, aerial, …) and the Yours lenses split out
+ *  into their own Layers tab. */
+type Pane = "what" | "when" | "where" | "layers";
 
 /** Where the camera is pointed, per the user's own choice in the Where
  *  pane. Camera moves only — Where NEVER filters what's on the map. */
@@ -39,19 +44,23 @@ const COUNTY_VIEW: { center: [number, number]; zoom: number } = {
 const TOWN_ZOOM = 13.4;
 
 /**
- * MapDock — ONE instrument for the /map browse surface. The collapsed
- * face is a caption that states the current view in three words
- * (What · When · Where); each word is a ≥44px tab that expands the dock
- * into its pane. The caption is the state readout, the tab bar, and
- * (via the single ×) the clear-all. Everything the map's controls had
- * accreted — intent chips, the sub-intent strip, the Layers drawer,
- * Open now, the ?t= windows, the time scrubber, the aerial season
- * chips, locate, towns — folds into the three panes.
+ * MapDock — ONE instrument for the /map browse surface, v2. The whole
+ * thing reads as: a folded-in search field, then a four-word caption
+ * (What · When · Where · Layers) whose words are ≥44px tabs that drop a
+ * pane DOWN over the scrim-dimmed map. The caption is the state readout,
+ * the tab bar, and (via the single ×) the clear-all; a slim mono count
+ * line and a map ↔ list toggle sit beneath it.
+ *
+ *   - What   — kinds of places (the intent chips + the sub strip).
+ *   - When   — Open now, the event windows, the day scrubber.
+ *   - Where  — Find me, the towns, Whole county (camera only).
+ *   - Layers — the map drapes (Trails, Transit, Roads & alerts,
+ *              Amenities, Aerial photos, Cemeteries, Farmers markets…)
+ *              plus the Yours lenses (Saved, Field notes).
  *
  * State split:
  *   - URL params (?intent/?sub/?open/?t) are written here via
- *     router.replace and interpreted by BrowseMapClient (the existing
- *     params — deep links keep working unchanged).
+ *     router.replace and interpreted by BrowseMapClient.
  *   - Layer toggles / lenses / scrub hour stay owned by AppMap (they
  *     persist via mapLayerPrefs and ?layers exactly as before); the
  *     dock is a presentational surface over their setters.
@@ -65,7 +74,13 @@ export type MapDockProps = {
   eventCount: number;
   closingSoonCount: number;
 
-  // ── What pane: lenses + overlays ──
+  // ── Search, folded into the dock's top row (the map's ONE search). ──
+  q: string;
+  setQ: SetState<string>;
+  searchMatches: SearchResult[];
+  pickSearch: (r: SearchResult) => void;
+
+  // ── Layers pane: lenses + overlays ──
   savedCount: number;
   showSavedOnly: boolean;
   setShowSavedOnly: SetState<boolean>;
@@ -108,6 +123,10 @@ export type MapDockProps = {
   geoMsg: string | null;
   goNearMe: () => void;
   flyTo: (center: [number, number], zoom: number) => void;
+
+  // ── Map ↔ list toggle ──
+  listView: boolean;
+  onToggleList: () => void;
 
   /** Lets AppMap hide the zoom corner + mark the host while a pane is open. */
   onPaneOpenChange: (open: boolean) => void;
@@ -226,9 +245,7 @@ export default function MapDock(props: MapDockProps) {
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // A landed location fix means the camera is on the user — the Where
-  // word reads "Near me" until they choose somewhere else. Render-time
-  // derived-state adjustment (not an effect): react to the fix arriving,
-  // while a later town/county pick still wins.
+  // word reads "Near me" until they choose somewhere else.
   const [prevLoc, setPrevLoc] = useState(props.userLoc);
   if (props.userLoc !== prevLoc) {
     setPrevLoc(props.userLoc);
@@ -248,8 +265,7 @@ export default function MapDock(props: MapDockProps) {
   }, [pane]);
 
   // ── URL writes: the EXISTING params, via replace so chip taps don't
-  //    stack history entries. BrowseMapClient re-reads them and hands
-  //    the filtered pools back down — same loop the old chips drove.
+  //    stack history entries. ──
   const setParams = (mutate: (q: URLSearchParams) => void) => {
     const q = new URLSearchParams(sp?.toString() ?? "");
     mutate(q);
@@ -284,7 +300,6 @@ export default function MapDock(props: MapDockProps) {
   const pickWindow = (k: string) => {
     haptic("light");
     setParams((q) => {
-      // Re-tapping the explicit window returns to the time-aware default.
       if (browse.timeModeExplicit && browse.timeMode === k) q.delete("t");
       else q.set("t", k);
     });
@@ -305,6 +320,8 @@ export default function MapDock(props: MapDockProps) {
   const intent = browse.intentKey ? INTENTS.find((i) => i.key === browse.intentKey) : undefined;
   const sub = intent?.subIntents?.find((s) => s.key === browse.subKey);
 
+  // Layer drapes, in a stable order (drapes first, then Yours lenses) so
+  // the Layers caption's lead word doesn't jump as toggles flip.
   const layerBits: string[] = [];
   if (props.amenityGroups.size > 0) layerBits.push("Amenities");
   if (props.showCivic) layerBits.push("Roads & alerts");
@@ -316,6 +333,10 @@ export default function MapDock(props: MapDockProps) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
   }
+  const lensLabels: string[] = [];
+  if (props.showSavedOnly) lensLabels.push("Saved");
+  if (props.fieldNotesOnly) lensLabels.push("Field notes");
+
   const layerCount =
     props.amenityGroups.size +
     props.activeOverlays.length +
@@ -325,16 +346,11 @@ export default function MapDock(props: MapDockProps) {
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0);
 
-  const lensLabels: string[] = [];
-  if (props.showSavedOnly) lensLabels.push("Saved");
-  if (props.fieldNotesOnly) lensLabels.push("Field notes");
-
+  // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
-    lensLabels,
     intentLabel: intent?.label,
     subLabel: sub?.label,
-    layerCount,
-    singleLayerLabel: layerCount === 1 ? layerBits[0] : undefined,
+    layerCount: 0,
   });
   const when = whenCaption({
     scrubHour: props.scrubHour,
@@ -345,6 +361,8 @@ export default function MapDock(props: MapDockProps) {
     whereSel.kind === "county" ? "Whole county"
     : whereSel.kind === "nearme" ? "Near me"
     : whereSel.name;
+  // Layers = the drapes + the Yours lenses, tallied into the fourth word.
+  const layers = layersCaption([...layerBits, ...lensLabels]);
 
   const dirty = dockDirty({
     intentActive: Boolean(intent),
@@ -365,20 +383,20 @@ export default function MapDock(props: MapDockProps) {
 
   const whatColor = intent
     ? `color-mix(in srgb, ${intent.color} 82%, var(--app-ink))`
-    : lensLabels.length > 0 || layerCount > 0
-      ? "var(--app-brand-press)"
-      : "var(--app-ink)";
+    : "var(--app-ink)";
   const whenColor =
     when.tone === "scrub" ? "var(--app-cool)"
     : when.tone === "open" ? "var(--app-positive)"
     : when.tone === "window" ? "var(--app-brand-2)"
     : "var(--app-ink)";
   const whereColor = whereSel.kind === "county" ? "var(--app-ink)" : "var(--app-cool)";
+  // Text-safe gold (AA on the paper ground) so the inked Layers word is
+  // legible; quiet ink when nothing's on.
+  const layersColor = layers.active ? "var(--app-accent-press, #875C10)" : "var(--app-ink-3)";
 
   const clearAll = () => {
     haptic("light");
     track("map_dock", { pane: "clear", pick: "all" });
-    // Client-owned layers/lenses off…
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
     props.setShowTransit(false);
@@ -391,12 +409,9 @@ export default function MapDock(props: MapDockProps) {
     props.setScrubHour(null);
     for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
     setAmenExpanded(false);
-    // …the camera home…
     setWhereSel({ kind: "county" });
     props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
     setPane(null);
-    // …and the URL back to the clean map (drops intent/sub/open/t/
-    // layers/amenity — the whole filter state).
     router.replace(pathname, { scroll: false });
   };
 
@@ -439,7 +454,11 @@ export default function MapDock(props: MapDockProps) {
   };
 
   const paneTitle =
-    pane === "what" ? "What’s shown" : pane === "when" ? "When" : pane === "where" ? "Where" : "";
+    pane === "what" ? "Kinds of places"
+    : pane === "when" ? "When"
+    : pane === "where" ? "Where"
+    : pane === "layers" ? "Map layers"
+    : "";
 
   return (
     <>
@@ -452,7 +471,7 @@ export default function MapDock(props: MapDockProps) {
 
       <div className={`dock${pane ? " dock-open" : ""}`}>
         {/* ── The top-sheet pane — drops DOWN from under the caption bar
-            over the scrim-dimmed map (mirrors the /events masthead-dock). ── */}
+            over the scrim-dimmed map. ── */}
         <div
           className="dock-pane"
           id="dock-pane"
@@ -470,10 +489,10 @@ export default function MapDock(props: MapDockProps) {
               </button>
             </div>
 
-            {/* ── WHAT ── */}
+            {/* ── WHAT — kinds of places only ── */}
             {pane === "what" && (
               <div>
-                <Sect>Places</Sect>
+                <Sect>Kinds of places</Sect>
                 <div className="dock-chips">
                   <Chip on={!intent} onClick={() => pickIntent(null)} count={browse.everythingCount}>
                     Everything
@@ -512,39 +531,96 @@ export default function MapDock(props: MapDockProps) {
                     ]}
                   />
                 )}
+              </div>
+            )}
 
-                {(props.savedCount > 0 || props.fieldNotesCount > 0) && (
-                  <>
-                    <Sect>Yours</Sect>
-                    <div className="dock-chips">
-                      {props.savedCount > 0 && (
-                        <Chip
-                          on={props.showSavedOnly}
-                          color="var(--app-brand)"
-                          onClick={() => props.setShowSavedOnly((v) => !v)}
-                          count={props.savedCount}
-                          title="Show only the places you saved"
-                        >
-                          Saved
-                        </Chip>
-                      )}
-                      {props.fieldNotesCount > 0 && (
-                        <Chip
-                          on={props.fieldNotesOnly}
-                          color="var(--app-brand)"
-                          onClick={() => props.setFieldNotesOnly((v) => !v)}
-                          count={props.fieldNotesCount}
-                          title="Only places with verified Field Notes: happy hour, a deal, parking, or an insider tip"
-                        >
-                          <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                          Field notes
-                        </Chip>
-                      )}
-                    </div>
-                  </>
+            {/* ── WHEN ── */}
+            {pane === "when" && (
+              <div>
+                <Sect>Places</Sect>
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  data-on={browse.openNow || undefined}
+                  aria-pressed={browse.openNow}
+                  onClick={toggleOpenNow}
+                >
+                  <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Open now
+                  <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
+                </button>
+
+                <Sect>Events</Sect>
+                <div className="dock-chips">
+                  {TIME_WINDOWS.map((w) => (
+                    <Chip
+                      key={w.key}
+                      on={browse.timeMode === w.key}
+                      color="var(--app-brand-2)"
+                      onClick={() => pickWindow(w.key)}
+                      count={browse.eventWindowCounts[w.key] ?? 0}
+                    >
+                      {w.label}
+                    </Chip>
+                  ))}
+                </div>
+
+                <Sect>The day</Sect>
+                <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
+              </div>
+            )}
+
+            {/* ── WHERE ── */}
+            {pane === "where" && (
+              <div>
+                <Sect>You</Sect>
+                <button
+                  type="button"
+                  className="dock-findme"
+                  data-on={whereSel.kind === "nearme" || undefined}
+                  onClick={props.goNearMe}
+                  aria-busy={props.locating || undefined}
+                >
+                  <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  {props.locating
+                    ? "Finding you…"
+                    : whereSel.kind === "nearme"
+                      ? "You're on the map"
+                      : "Find me"}
+                </button>
+                <p className="dock-hint">
+                  Your location sorts the map by what&rsquo;s close. It moves the camera; it
+                  never hides anything.
+                </p>
+                {props.geoMsg && (
+                  <p className="dock-hint" role="status" style={{ color: "var(--app-warning-press)" }}>
+                    {props.geoMsg}
+                  </p>
                 )}
 
-                <Sect>Overlays</Sect>
+                <Sect>Towns</Sect>
+                <div className="dock-chips">
+                  <Chip on={whereSel.kind === "county"} color="var(--app-cool)" onClick={goCounty}>
+                    Whole county
+                  </Chip>
+                  {MUNICIPALITIES.map((m) => (
+                    <Chip
+                      key={m.slug}
+                      on={whereSel.kind === "town" && whereSel.slug === m.slug}
+                      color="var(--app-cool)"
+                      onClick={() => goTown(m.slug, m.name, [m.centroid.lng, m.centroid.lat])}
+                    >
+                      {m.name}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── LAYERS — the map drapes + the Yours lenses ── */}
+            {pane === "layers" && (
+              <div>
+                <Sect>Map layers</Sect>
                 <div className="dock-chips">
                   {props.amenityCount > 0 && (
                     <Chip
@@ -564,10 +640,6 @@ export default function MapDock(props: MapDockProps) {
                   {props.civicAvailable && (
                     <Chip
                       on={props.showCivic}
-                      // Darkened amber (press variant) so the active fill clears
-                      // AA behind white text: #B26B00 is only 4.20:1, #8F5600 is
-                      // 6.00:1 (the gold "Aerial" chip solves the same problem the
-                      // other way, via inkOnFill).
                       color="var(--app-warning-press)"
                       onClick={() => props.setShowCivic((v) => !v)}
                       title="Live traffic incidents and county-published issue reports (311)"
@@ -666,97 +738,94 @@ export default function MapDock(props: MapDockProps) {
                     }))}
                   />
                 )}
-              </div>
-            )}
 
-            {/* ── WHEN ── */}
-            {pane === "when" && (
-              <div>
-                <Sect>Places</Sect>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={browse.openNow || undefined}
-                  aria-pressed={browse.openNow}
-                  onClick={toggleOpenNow}
-                >
-                  <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Open now
-                  <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
-                </button>
-
-                <Sect>Events</Sect>
-                <div className="dock-chips">
-                  {TIME_WINDOWS.map((w) => (
-                    <Chip
-                      key={w.key}
-                      on={browse.timeMode === w.key}
-                      color="var(--app-brand-2)"
-                      onClick={() => pickWindow(w.key)}
-                      count={browse.eventWindowCounts[w.key] ?? 0}
-                    >
-                      {w.label}
-                    </Chip>
-                  ))}
-                </div>
-
-                <Sect>The day</Sect>
-                <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
-              </div>
-            )}
-
-            {/* ── WHERE ── */}
-            {pane === "where" && (
-              <div>
-                <Sect>You</Sect>
-                <button
-                  type="button"
-                  className="dock-findme"
-                  data-on={whereSel.kind === "nearme" || undefined}
-                  onClick={props.goNearMe}
-                  aria-busy={props.locating || undefined}
-                >
-                  <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                  {props.locating
-                    ? "Finding you…"
-                    : whereSel.kind === "nearme"
-                      ? "You're on the map"
-                      : "Find me"}
-                </button>
-                <p className="dock-hint">
-                  Your location sorts the map by what&rsquo;s close. It moves the camera; it
-                  never hides anything.
-                </p>
-                {props.geoMsg && (
-                  <p className="dock-hint" role="status" style={{ color: "var(--app-warning-press)" }}>
-                    {props.geoMsg}
-                  </p>
+                {(props.savedCount > 0 || props.fieldNotesCount > 0) && (
+                  <>
+                    <Sect>Yours</Sect>
+                    <div className="dock-chips">
+                      {props.savedCount > 0 && (
+                        <Chip
+                          on={props.showSavedOnly}
+                          color="var(--app-brand)"
+                          onClick={() => props.setShowSavedOnly((v) => !v)}
+                          count={props.savedCount}
+                          title="Show only the places you saved"
+                        >
+                          Saved
+                        </Chip>
+                      )}
+                      {props.fieldNotesCount > 0 && (
+                        <Chip
+                          on={props.fieldNotesOnly}
+                          color="var(--app-brand)"
+                          onClick={() => props.setFieldNotesOnly((v) => !v)}
+                          count={props.fieldNotesCount}
+                          title="Only places with verified Field Notes: happy hour, a deal, parking, or an insider tip"
+                        >
+                          <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          Field notes
+                        </Chip>
+                      )}
+                    </div>
+                  </>
                 )}
-
-                <Sect>Towns</Sect>
-                <div className="dock-chips">
-                  <Chip on={whereSel.kind === "county"} color="var(--app-cool)" onClick={goCounty}>
-                    Whole county
-                  </Chip>
-                  {MUNICIPALITIES.map((m) => (
-                    <Chip
-                      key={m.slug}
-                      on={whereSel.kind === "town" && whereSel.slug === m.slug}
-                      color="var(--app-cool)"
-                      onClick={() => goTown(m.slug, m.name, [m.centroid.lng, m.centroid.lat])}
-                    >
-                      {m.name}
-                    </Chip>
-                  ))}
-                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* ── The head: caption tab bar + living count line, pinned at the
-            top of the map, directly beneath the search bar. ── */}
+        {/* ── The head: search row + caption tab bar + count line, pinned
+            at the top of the map. ── */}
         <div className="dock-head">
+          {/* Search, folded in as the top row — the map's ONE search. */}
+          <div className="dock-search-wrap">
+            <div className="dock-search" role="search">
+              <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+              <input
+                type="search"
+                value={props.q}
+                onChange={(e) => props.setQ(e.target.value)}
+                placeholder="Search this map"
+                aria-label="Search this map"
+                className="dock-search-input"
+              />
+              {props.q.trim().length > 0 ? (
+                <button
+                  type="button"
+                  className="dock-search-clear tap-44"
+                  onClick={() => props.setQ("")}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : (
+                <span aria-hidden className="dock-search-kbd">Find</span>
+              )}
+            </div>
+            {props.searchMatches.length > 0 && (
+              <ul className="dock-search-results">
+                {props.searchMatches.map((r) => {
+                  const dot =
+                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                    : r.type === "action" ? "var(--app-brand, #E14328)"
+                    : "var(--app-ink-3, #7A828C)";
+                  return (
+                    <li key={r.id}>
+                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
+                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                        <span className="dock-search-result-text">
+                          <span className="dock-search-result-title">{r.title}</span>
+                          <span className="dock-search-result-sub">{r.subtitle}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           <div className="dock-readout" role="tablist" aria-label="Map view controls">
             <button
               type="button"
@@ -769,7 +838,6 @@ export default function MapDock(props: MapDockProps) {
               <span className="dock-seg-k">What</span>
               <span className="dock-seg-v" style={{ color: whatColor }}>
                 {what.main}
-                {what.plus && <span className="dock-seg-plus"> {what.plus}</span>}
               </span>
             </button>
             <button
@@ -777,7 +845,7 @@ export default function MapDock(props: MapDockProps) {
               role="tab"
               aria-selected={pane === "when"}
               aria-controls="dock-pane"
-              className={`dock-seg${pane === "when" ? " active" : ""}`}
+              className={`dock-seg dock-seg-when${pane === "when" ? " active" : ""}`}
               onClick={() => toggle("when")}
             >
               <span className="dock-seg-k">When</span>
@@ -798,6 +866,20 @@ export default function MapDock(props: MapDockProps) {
                 {whereText}
               </span>
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pane === "layers"}
+              aria-controls="dock-pane"
+              className={`dock-seg dock-seg-layers${pane === "layers" ? " active" : ""}`}
+              onClick={() => toggle("layers")}
+            >
+              <span className="dock-seg-k">Layers</span>
+              <span className="dock-seg-v" style={{ color: layersColor }}>
+                {layers.main}
+                {layers.plus && <span className="dock-seg-plus"> {layers.plus}</span>}
+              </span>
+            </button>
             {dirty && (
               <button
                 type="button"
@@ -810,13 +892,37 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
-          {/* The living caption — counts + a spoken state summary, announced
-              politely as filters change. */}
-          <div className="dock-countline" aria-live="polite">
-            {line}
-            <span className="sr-only">
-              {` Showing ${what.main}${what.plus ? ` ${what.plus}` : ""}, ${when.text}, ${whereText}.`}
-            </span>
+          {/* The living caption — counts + a spoken state summary — and the
+              map ↔ list toggle. */}
+          <div className="dock-foot">
+            <div className="dock-countline" aria-live="polite">
+              {line}
+              <span className="sr-only">
+                {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="dock-viewtoggle tap-44"
+              aria-pressed={props.listView}
+              onClick={() => {
+                haptic("light");
+                track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
+                props.onToggleList();
+              }}
+            >
+              {props.listView ? (
+                <>
+                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  Map
+                </>
+              ) : (
+                <>
+                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  List
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
