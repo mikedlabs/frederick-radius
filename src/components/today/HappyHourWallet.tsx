@@ -182,7 +182,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2.5">
       {/* LIVE masthead — this is the most time-urgent thing on the page, so it
           leads with a confident serif title + a pulsing vermilion ON-NOW line.
-          A deliberately different identity from Today's briefing's calm spruce
+          A deliberately different identity from Today's specials' calm spruce
           verified-seal dossier below: vermilion live language = "act before it
           ends," so the "now" section reads as the priority. */}
       <div className="flex items-end justify-between gap-3 px-0.5">
