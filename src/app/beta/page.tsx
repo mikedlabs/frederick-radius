@@ -199,7 +199,7 @@ export default async function BetaPage({
             <PulseGrid />
           </Suspense>
           <p className="mt-4 text-center font-mono text-[10.5px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-            Not a brochure. This page is reading the county live.
+            Not a brochure. These are the county&rsquo;s numbers, right now.
           </p>
         </section>
       </RevealOnScroll>
@@ -207,15 +207,15 @@ export default async function BetaPage({
       {/* ── WHAT'S INSIDE — specimen preview ───────────────────────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 pb-16 sm:pb-20">
-          <PlateHeading eyebrow="Pl. V · the guide" title="Every place, pressed into a card" />
+          <PlateHeading eyebrow="Pl. V · the guide" title="Every place, on its own card" />
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
-            <SpecimenCard hue="#C0871F" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
-            <SpecimenCard hue="#8A6A1E" kicker="Live music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
-            <SpecimenCard hue="#20506A" kicker="Town · Pl. I" name="Downtown Frederick" line="Clustered spires · pop. 80,435" />
+            <SpecimenCard hue="var(--app-accent)" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
+            <SpecimenCard hue="var(--app-brand-2)" kicker="Music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
+            <SpecimenCard hue="var(--app-cool)" kicker="Town · Pl. I" name="Downtown Frederick" line="Clustered spires · pop. 80,435" />
           </div>
           <p className="mx-auto mt-5 max-w-[30rem] text-center text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Save the ones you love. They fan out in your pocket like a wallet of
-            field specimens, each with a plate number and a live open-now line.
+            Save the ones you love. They land in your pocket, each with a plate
+            number and its open-now line.
           </p>
         </section>
       </RevealOnScroll>
@@ -331,8 +331,8 @@ function SpecimenCard({ hue, kicker, name, line }: { hue: string; kicker: string
       style={{
         minHeight: 132,
         color: "var(--app-ink-inverse)",
-        background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
-        boxShadow: "0 12px 22px -12px rgba(22,20,14,.7), 0 0 0 1px rgba(22,20,14,.16)",
+        background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, var(--app-ink)), color-mix(in srgb, ${hue} 34%, var(--app-bedrock)))`,
+        boxShadow: "0 12px 22px -12px color-mix(in srgb, var(--app-ink) 70%, transparent), 0 0 0 1px color-mix(in srgb, var(--app-ink) 16%, transparent)",
       }}
     >
       <span aria-hidden className="bt-guilloche" />
@@ -461,8 +461,8 @@ function SignalFilter() {
 function LandscapeTable() {
   const rows: Array<[string, string, string, string, string]> = [
     ["Primary output", "Noise", "Pins", "Lists", "Signals"],
-    ["Timeliness", "Algorithmic", "Static", "Stale", "Live"],
-    ["Curation", "Zero", "Automated", "Variable", "High"],
+    ["Timeliness", "Algorithmic", "Static", "Stale", "Right now"],
+    ["Human filter", "None", "Automated", "Variable", "High"],
     ["Core metric", "Attention", "Search volume", "Page views", "Utility & action"],
   ];
   const ours = { background: "color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid))", color: "var(--app-ink)" };
@@ -510,8 +510,8 @@ function LandscapeTable() {
 /* ── Intent: the questions the guide answers, each with its live answer ─ */
 function IntentGrid() {
   const qs: Array<[string, string]> = [
-    ["What’s open?", "Live open-now line"],
-    ["What’s happening?", "17 events on today"],
+    ["What’s open?", "Its open-now line"],
+    ["What’s happening?", "Today’s event list"],
     ["What’s nearby?", "0.4 mi away"],
     ["What’s worth my time?", "Field notes by a local"],
     ["What should I know before I go?", "Weather & road closures"],
