@@ -18,6 +18,9 @@ import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getEvChargingStations, evDetailLine } from "@/lib/integrations/evCharging";
 import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
+import { occupancyByGarageSlug } from "@/lib/integrations/parking-live";
+import { PARKING_GARAGES } from "@/data/parking-garages";
+import type { ParkingPin } from "@/lib/map/parking";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { CivicPin, EventPin } from "@/components/map/AppMapClient";
@@ -421,6 +424,7 @@ async function BrowseMapArea() {
     cemeteries,
     fieldAmenities,
     communityReports,
+    parkingOccupancy,
     allWeek,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
@@ -460,6 +464,13 @@ async function BrowseMapArea() {
     // Community reports (the /report crowdsourced layer). Fail-soft to [] (no
     // DB / table not migrated / error) so the map degrades cleanly.
     withTimeout(getCommunityReports(), 3000, []),
+    // Live downtown-garage occupancy (the Parking layer). Server-fetched +
+    // cached like the other feeds; DORMANT by default (no PARKING_OCCUPANCY_URL
+    // env), in which case this resolves to an empty map and every garage shows
+    // WITHOUT a fabricated number. Fail-soft to empty so a slow/failed vendor
+    // call never blocks the render — the markers still draw from the static
+    // garage list, just neutral-tinted.
+    withTimeout(occupancyByGarageSlug(), 3000, new Map()),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
@@ -573,10 +584,33 @@ async function BrowseMapArea() {
     if (weekEvents.length >= 400) break;
   }
 
+  // Downtown parking garages as map pins: the static curated metadata
+  // (name / address / coords / rate) merged with the live availability
+  // snapshot keyed by garage slug. Only garages with real coordinates draw.
+  // Every live field falls back to its honest empty (available null, isFull
+  // false) so a dormant feed yields neutral markers with no invented count.
+  const parking: ParkingPin[] = PARKING_GARAGES.filter((g) => g.geom).map((g) => {
+    const occ = parkingOccupancy.get(g.slug);
+    return {
+      slug: g.slug,
+      name: g.name,
+      address: g.address,
+      lng: g.geom!.lng,
+      lat: g.geom!.lat,
+      rate: g.hourly_rate,
+      available: occ?.available ?? null,
+      percentFull: occ?.percentFull ?? null,
+      isFull: occ?.isFull ?? false,
+      isFilling: occ?.isFilling ?? false,
+      updated: occ?.updated ?? null,
+    };
+  });
+
   return (
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
       <BrowseMapClient
         places={allPlaces}
+        parking={parking}
         civic={civic}
         extraAmenities={[...mapillaryTrash, ...reportsAsOsm]}
         amenities={amenities}

@@ -9,6 +9,7 @@ import AppMapClient, {
   type CemeteryPin,
 } from "@/components/map/AppMapClient";
 import type { MapPinPlace } from "@/components/map/types";
+import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { AMENITY_GROUPS } from "@/components/map/constants";
@@ -110,6 +111,7 @@ export default function BrowseMapClient({
   municipalBoundaries,
   countyBoundary,
   cemeteries,
+  parking,
   weekEvents,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
@@ -122,6 +124,9 @@ export default function BrowseMapClient({
   municipalBoundaries: MapLineFC;
   countyBoundary: MapLineFC;
   cemeteries: CemeteryPin[];
+  /** Downtown parking garages (static metadata + live availability),
+   *  drawn as the opt-in Parking layer. */
+  parking: ParkingPin[];
   /** Draw-only, geolocated events for the next ~7 days, pre-shaped as
    *  pins server-side. This component windows them per ?t=. */
   weekEvents: EventPin[];
@@ -243,6 +248,7 @@ export default function BrowseMapClient({
       municipalBoundaries={municipalBoundaries}
       countyBoundary={countyBoundary}
       cemeteries={cemeteries}
+      parking={parking}
       events={events}
       fullBleed
       // Arriving via a category tile (?intent=…): center on the user's

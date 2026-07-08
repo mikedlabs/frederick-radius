@@ -215,6 +215,8 @@ import {
 import AppMapDeck from "./AppMapDeck";
 import MapDock from "./MapDock";
 import MapPeek from "./MapPeek";
+import MapParkingPeek from "./MapParkingPeek";
+import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
 import { LocateFixed } from "lucide-react";
@@ -284,6 +286,11 @@ type Props = {
    *  of the clean cold open. Empty when the county feed is unreachable
    *  (the toggle simply doesn't render). */
   cemeteries?: CemeteryPin[];
+  /** Downtown parking garages (static metadata + live availability). The
+   *  opt-in Parking layer, OFF by default — five garage markers tinted by
+   *  live occupancy, honest about missing counts. Empty when there's no
+   *  garage data (embeds). */
+  parking?: ParkingPin[];
   /** Upcoming events as map pins — phase 1 differentiator vs Google /
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
@@ -333,6 +340,7 @@ export default function AppMap({
   municipalBoundaries = EMPTY_LINE_FC,
   countyBoundary = EMPTY_LINE_FC,
   cemeteries = [],
+  parking = [],
   events = [],
   initialAmenityGroups,
   dock,
@@ -502,6 +510,12 @@ export default function AppMap({
   // part of the clean cold open. Tapping one opens a small popup.
   const [showCemeteries, setShowCemeteries] = useState(() => layerPrefs.cemeteries ?? false);
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
+  // Downtown parking garages — opt-in Parking layer, OFF by default (five
+  // garage markers tinted by live availability). Tapping one raises the
+  // parking peek; live numbers hydrate from the server-fetched snapshot when
+  // the feed is configured, otherwise the markers stay neutral (no fake count).
+  const [showParking, setShowParking] = useState(() => layerPrefs.parking ?? false);
+  const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -553,8 +567,9 @@ export default function AppMap({
       trails: showTrails,
       aerial: showAerial,
       cemeteries: showCemeteries,
+      parking: showParking,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -1072,6 +1087,7 @@ export default function AppMap({
         // the map; "Open page" in the peek hands off to the full sheet.
         setSelected(null);
         setSelectedEvent(null);
+        setParkingPeek(null);
         setPeekPlace(place);
         // Lift the tapped pin above the bottom card (Google/Apple pattern):
         // shift the camera up so the pin + its selected glow stay visible
@@ -1219,6 +1235,7 @@ export default function AppMap({
         setSelectedSlug(p.slug);
         setQ("");
         if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+        setParkingPeek(null);
         setPeekPlace(p);
         return;
       }
@@ -2670,6 +2687,38 @@ export default function AppMap({
             </Marker>
           ))}
 
+          {/* Parking layer — the five downtown city garages as "P" glyph
+              markers, tinted by LIVE availability (green plenty / amber
+              filling / red full / ink unknown). DOM markers (not a GeoJSON
+              layer) so each is a real ≥44px, keyboard-reachable button and
+              the glyph stays crisp. Tapping raises the parking peek. */}
+          {showParking &&
+            parking.map((g) => {
+              const tone = parkingTone(g);
+              const { fill, ink } = PARKING_TONE_STYLE[tone];
+              return (
+                <Marker key={`park:${g.slug}`} longitude={g.lng} latitude={g.lat} anchor="bottom">
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      haptic("light");
+                      setSelected(null);
+                      setSelectedEvent(null);
+                      setPeekPlace(null);
+                      setSelectedSlug(null);
+                      setParkingPeek(g);
+                    }}
+                    aria-label={`${g.name} parking garage`}
+                    className="fr-park-marker"
+                    style={{ "--park-fill": fill, "--park-ink": ink } as React.CSSProperties}
+                  >
+                    <span aria-hidden className="fr-park-glyph">P</span>
+                  </button>
+                </Marker>
+              );
+            })}
+
           {selectedEvent && (
             <Popup
               longitude={selectedEvent.lng}
@@ -2773,6 +2822,9 @@ export default function AppMap({
             cemeteryCount={cemeteries.length}
             showCemeteries={showCemeteries}
             setShowCemeteries={setShowCemeteries}
+            parkingCount={parking.length}
+            showParking={showParking}
+            setShowParking={setShowParking}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
             scrubHour={scrubHour}
@@ -2823,13 +2875,14 @@ export default function AppMap({
               setSelectedSlug(p.slug);
               const m = mapRef.current?.getMap();
               if (m && p.geom) smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });
+              setParkingPeek(null);
               setPeekPlace(p);
             }}
           />
         )}
 
         {/* The pin peek card. */}
-        {peekPlace && !listView && (
+        {peekPlace && !parkingPeek && !listView && (
           <MapPeek
             place={peekPlace}
             userLoc={userLoc}
@@ -2839,6 +2892,12 @@ export default function AppMap({
             }}
             onDetails={() => openPlaceSheet(peekPlace)}
           />
+        )}
+
+        {/* The parking garage peek — its own compact card (a garage isn't a
+            saveable place): live spaces, hourly rate, and Directions. */}
+        {parkingPeek && !listView && (
+          <MapParkingPeek pin={parkingPeek} onClose={() => setParkingPeek(null)} />
         )}
 
         {/* Cluster index — "what's in this bubble", as a field-guide index
@@ -2863,6 +2922,7 @@ export default function AppMap({
                     haptic("light");
                     const m = mapRef.current?.getMap();
                     if (m) smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
+                    setParkingPeek(null);
                     setPeekPlace(pin);
                   }}
                   className="tap-44 flex w-full items-center gap-2.5 rounded-[var(--app-radius-sm)] px-2 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"

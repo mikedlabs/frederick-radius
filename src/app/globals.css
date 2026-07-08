@@ -3129,6 +3129,44 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
 }
 
+/* ── Parking layer marker — a "P" glyph pin tinted by live availability.
+   A real ≥44px, keyboard-reachable button (DOM Marker, not a GL layer). ── */
+.fr-park-marker {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.fr-park-glyph {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--park-fill, var(--app-cool));
+  color: var(--park-ink, var(--app-on-brand, #FCFBF8));
+  border: 2px solid #fff;
+  box-shadow: var(--app-shadow-2);
+  font-family: var(--font-sans, Inter, system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+.fr-park-marker:active .fr-park-glyph {
+  transform: scale(0.94);
+}
+.fr-park-marker:focus-visible {
+  outline: none;
+}
+.fr-park-marker:focus-visible .fr-park-glyph {
+  outline: 3px solid var(--app-brand);
+  outline-offset: 2px;
+}
+
 /* ── Pin peek card — the compact bottom card a tapped pin raises ── */
 .map-peek {
   position: absolute;

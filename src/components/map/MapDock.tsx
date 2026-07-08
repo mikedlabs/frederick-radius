@@ -110,6 +110,9 @@ export type MapDockProps = {
   cemeteryCount: number;
   showCemeteries: boolean;
   setShowCemeteries: SetState<boolean>;
+  parkingCount: number;
+  showParking: boolean;
+  setShowParking: SetState<boolean>;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
@@ -329,6 +332,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showTrails) layerBits.push("Trails");
   if (props.showAerial) layerBits.push("Aerial photos");
   if (props.showCemeteries) layerBits.push("Cemeteries");
+  if (props.showParking) layerBits.push("Parking");
   for (const k of props.activeOverlays) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
@@ -344,7 +348,8 @@ export default function MapDock(props: MapDockProps) {
     (props.showTransit ? 1 : 0) +
     (props.showTrails ? 1 : 0) +
     (props.showAerial ? 1 : 0) +
-    (props.showCemeteries ? 1 : 0);
+    (props.showCemeteries ? 1 : 0) +
+    (props.showParking ? 1 : 0);
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -403,6 +408,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowTrails(false);
     props.setShowAerial(false);
     props.setShowCemeteries(false);
+    props.setShowParking(false);
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
@@ -688,6 +694,17 @@ export default function MapDock(props: MapDockProps) {
                       title="Historic cemeteries from county records"
                     >
                       Cemeteries
+                    </Chip>
+                  )}
+                  {props.parkingCount > 0 && (
+                    <Chip
+                      on={props.showParking}
+                      color="var(--app-cool)"
+                      onClick={() => props.setShowParking((v) => !v)}
+                      count={props.parkingCount}
+                      title="Downtown city parking garages, tinted by live availability"
+                    >
+                      Parking
                     </Chip>
                   )}
                   {OVERLAYS.map((o) => (
