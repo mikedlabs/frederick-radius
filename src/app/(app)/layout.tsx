@@ -4,6 +4,7 @@ import TopBar from "@/components/nav/TopBar";
 import RouteAccent from "@/components/nav/RouteAccent";
 import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
+import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
@@ -56,6 +57,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
+          {/* Beta-only "Send feedback" affordance. Self-gates on the fr_beta
+              cookie (renders nothing for the public post-beta) and offsets
+              clear of the BottomNav pill + the map's bottom-right controls. */}
+          <FeedbackWidget />
           {/* The global Cmd/Ctrl+K search is the TopBar's SearchOverlay
               (full /api/search). A second cmdk palette used to mount here
               and also grab Cmd+K, so the chord opened two overlays at
