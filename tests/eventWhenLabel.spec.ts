@@ -4,21 +4,31 @@ import { eventWhenLabel, isEventToday } from "@/lib/eventWhenLabel";
 // Now = Monday June 15 2026, 7:00 PM Eastern (EDT, UTC-4).
 const now = new Date("2026-06-15T19:00:00-04:00");
 const todayEvt = "2026-06-15T20:00:00-04:00"; // Mon 8 PM
+const todayNoonEvt = "2026-06-15T12:00:00-04:00"; // Mon 12 PM
 const tomorrowEvt = "2026-06-16T19:00:00-04:00"; // Tue
 const wedEvt = "2026-06-17T19:00:00-04:00"; // Wed
+const at4am = new Date("2026-06-15T04:18:00-04:00"); // the Jul-8 audit's overnight render hour
+const at10am = new Date("2026-06-15T10:00:00-04:00");
 
-describe("eventWhenLabel — honest 'when' (no false Tonight)", () => {
-  it("labels a same-day event 'Tonight' in the evening band", () => {
-    expect(eventWhenLabel(todayEvt, now, true)).toBe("Tonight");
+describe("eventWhenLabel — honest 'when' (labels by the EVENT's clock, not the viewer's band)", () => {
+  it("labels a same-day evening event 'Tonight' whatever hour the page is opened", () => {
+    expect(eventWhenLabel(todayEvt, now)).toBe("Tonight");
+    expect(eventWhenLabel(todayEvt, at10am)).toBe("Tonight");
+    expect(eventWhenLabel(todayEvt, at4am)).toBe("Tonight");
   });
-  it("labels a same-day event 'Today' in a daytime band", () => {
-    expect(eventWhenLabel(todayEvt, now, false)).toBe("Today");
+  it("labels a same-day DAYTIME event 'Today', even at 4 AM (was stamped TONIGHT by the late band)", () => {
+    expect(eventWhenLabel(todayNoonEvt, at4am)).toBe("Today");
+    expect(eventWhenLabel(todayNoonEvt, now)).toBe("Today");
   });
-  it("labels a next-day event 'Tomorrow' even in the evening band", () => {
-    expect(eventWhenLabel(tomorrowEvt, now, true)).toBe("Tomorrow");
+  it("5 PM is the evening boundary (matches the shared daypart)", () => {
+    expect(eventWhenLabel("2026-06-15T17:00:00-04:00", at10am)).toBe("Tonight");
+    expect(eventWhenLabel("2026-06-15T16:59:00-04:00", at10am)).toBe("Today");
+  });
+  it("labels a next-day event 'Tomorrow' even in the evening", () => {
+    expect(eventWhenLabel(tomorrowEvt, now)).toBe("Tomorrow");
   });
   it("labels a 2-3 day-out event by weekday — never 'Tonight' (the Jason Hannan bug)", () => {
-    expect(eventWhenLabel(wedEvt, now, true)).toBe("Wednesday");
+    expect(eventWhenLabel(wedEvt, now)).toBe("Wednesday");
   });
 });
 

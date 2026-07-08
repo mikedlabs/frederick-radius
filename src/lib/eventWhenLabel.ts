@@ -1,4 +1,4 @@
-import { easternDayKey } from "@/lib/tz";
+import { easternDayKey, easternParts } from "@/lib/tz";
 
 /**
  * Honest "when" label for an event relative to now, in America/New_York.
@@ -7,8 +7,12 @@ import { easternDayKey } from "@/lib/tz";
  * event, which the page picks from a 72-HOUR window — so a Wednesday show
  * was being labeled "Tonight" just because the user opened the page in the
  * evening (the label keyed off the time-of-day band, not the event's date).
- * This labels by the event's REAL Eastern day:
- *   - same day  → "Tonight" in the evening/late band, else "Today"
+ * This labels by the event's REAL Eastern day AND its own clock:
+ *   - same day  → "Tonight" when the EVENT starts in the evening (≥5 PM),
+ *                 else "Today" (a noon reading is never "Tonight", no
+ *                 matter what hour the reader opens the page — the 4:18 AM
+ *                 audit render stamped TONIGHT on a 12 PM event because the
+ *                 label keyed off the viewer's late band)
  *   - next day  → "Tomorrow"
  *   - 2-3 days  → the weekday name ("Friday")
  */
@@ -76,14 +80,16 @@ export function isEventLiveNow(
   return now.getTime() < Math.min(stated, start + MAX_LIVE_SESSION_MS);
 }
 
-export function eventWhenLabel(
-  startsAtIso: string,
-  now: Date,
-  isEveningBand: boolean,
-): string {
+/** An event is a "tonight" event only when IT starts in the Eastern
+ *  evening. 5 PM matches the shared daypart evening boundary. */
+const EVENING_START_HOUR = 17;
+
+export function eventWhenLabel(startsAtIso: string, now: Date): string {
   const start = new Date(startsAtIso);
   const startKey = easternDayKey(start);
-  if (startKey === easternDayKey(now)) return isEveningBand ? "Tonight" : "Today";
+  if (startKey === easternDayKey(now)) {
+    return easternParts(start).hour >= EVENING_START_HOUR ? "Tonight" : "Today";
+  }
   // +24h real time always lands on the next Eastern calendar day (DST
   // transitions happen at 2am, nowhere near the midnight boundary).
   const tomorrow = new Date(now.getTime() + 24 * 3_600_000);
