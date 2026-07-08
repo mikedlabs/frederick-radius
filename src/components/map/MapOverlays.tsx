@@ -30,8 +30,6 @@ const COLOR: Partial<Record<OverlayKey, string>> = {
   parks: "#1E6B3A",     // --app-positive
   markets: "#B26B00",   // --app-warning
   art: "#E14328",       // --app-brand (Signal vermilion)
-  trails: "#1E6B3A",    // --app-positive
-  historic: "#423E34",  // --app-ink-2
   bridges: "#16352B",   // --app-brand-2 (Spruce)
 };
 

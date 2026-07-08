@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
-import { BETA_COOKIE } from "@/lib/beta-gate";
+import { BETA_ID_COOKIE } from "@/lib/beta-gate";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
 
 /**
@@ -16,18 +16,20 @@ import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
  * already carries the a11y contract: role=dialog + aria-modal, focus trap, ESC,
  * and focus restore to the trigger on close.
  *
- * Gated on the `fr_beta` cookie so it shows ONLY to unlocked beta visitors and
- * vanishes for the public the moment the beta wall comes down (no cookie set →
- * nothing renders). The check is client-side after mount, so both the server
- * render and the first client render return null (no hydration mismatch), and
- * the trigger simply appears once we've confirmed the cookie.
+ * Gated on the readable `fr_who` beta-identity cookie so it shows ONLY to
+ * unlocked beta visitors and vanishes for the public the moment the beta wall
+ * comes down (no cookie set → nothing renders). We key off `fr_who`, NOT the
+ * credential cookie `fr_beta`: that one is httpOnly and invisible to JS, so a
+ * document.cookie check for it can never be true. The check is client-side
+ * after mount, so both the server render and the first client render return
+ * null (no hydration mismatch), and the trigger appears once we confirm it.
  */
 
 type Phase = "idle" | "sending" | "ok" | "error";
 
 function hasBetaCookie(): boolean {
   if (typeof document === "undefined") return false;
-  return new RegExp(`(?:^|;\\s*)${BETA_COOKIE}=`).test(document.cookie);
+  return new RegExp(`(?:^|;\\s*)${BETA_ID_COOKIE}=`).test(document.cookie);
 }
 
 export default function FeedbackWidget() {
@@ -105,6 +107,12 @@ export default function FeedbackWidget() {
   const sending = phase === "sending";
   const succeeded = phase === "ok";
 
+  // Place- and event-detail pages pin a MobileActionBar ~76px above the
+  // nav; lift the feedback trigger clear of it so the two don't overlap on
+  // the bottom-left. Every other route keeps the base 76px clearance.
+  const overActionBar = /^\/(places|events)\/[^/]+$/.test(pathname || "");
+  const triggerBottom = overActionBar ? 150 : 76;
+
   return (
     <>
       <button
@@ -115,7 +123,7 @@ export default function FeedbackWidget() {
         style={{
           zIndex: "var(--z-fab)",
           left: "max(0.75rem, env(safe-area-inset-left, 0px))",
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${triggerBottom}px)`,
           background: "var(--app-bg-elevated-solid)",
           borderColor: "var(--app-border)",
           color: "var(--app-ink-2)",

@@ -248,7 +248,7 @@ export default function SavedEventWallet({
   events,
   savedAt,
   now,
-  startRaised = true,
+  startRaised = false, // decks always start fully closed unless a caller opts in
 }: {
   events: Event[];
   /** saved_at ISO per event slug, for the stub ledger's Saved cell. */

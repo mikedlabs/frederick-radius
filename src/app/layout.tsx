@@ -53,6 +53,23 @@ const mono = JetBrains_Mono({
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
+/**
+ * Common iPhone screens for iOS launch (splash) images. Each entry is the
+ * device's CSS width/height and device-pixel-ratio; the href renders the
+ * /apple-splash route at the matching PIXEL size. Ordered newest-first so the
+ * current lineup is covered; add rows (or iPad sizes) as a follow-up.
+ */
+const APPLE_LAUNCH_IMAGES: ReadonlyArray<{ w: number; h: number; dpr: number }> = [
+  { w: 430, h: 932, dpr: 3 }, // 14/15/16 Pro Max, 15/16 Plus
+  { w: 428, h: 926, dpr: 3 }, // 12/13 Pro Max, 14 Plus
+  { w: 393, h: 852, dpr: 3 }, // 14 Pro, 15/16, 15/16 Pro
+  { w: 390, h: 844, dpr: 3 }, // 12/13/14, 13/14 Pro
+  { w: 414, h: 896, dpr: 3 }, // XS Max, 11 Pro Max
+  { w: 414, h: 896, dpr: 2 }, // XR, 11
+  { w: 375, h: 812, dpr: 3 }, // X/XS/11 Pro, 12/13 mini
+  { w: 375, h: 667, dpr: 2 }, // SE (2nd/3rd gen), 8
+];
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {
@@ -206,6 +223,22 @@ export default function RootLayout({
             href={process.env.NEXT_PUBLIC_SUPABASE_URL}
           />
         )}
+        {/* iOS launch images. Unlike Android (which composits its own splash
+            from the manifest), iOS only paints an apple-touch-startup-image
+            whose media query matches the device EXACTLY — so we emit one per
+            common iPhone, each pointing at the /apple-splash route rendered at
+            that device's pixel size. Without these the installed app opens on a
+            blank (background_color) flash instead of the branded mark. iPad and
+            less-common phones are a follow-up; the route already renders any
+            requested size. */}
+        {APPLE_LAUNCH_IMAGES.map(({ w, h, dpr }) => (
+          <link
+            key={`${w}x${h}@${dpr}`}
+            rel="apple-touch-startup-image"
+            media={`(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)`}
+            href={`/apple-splash?w=${w * dpr}&h=${h * dpr}`}
+          />
+        ))}
       </head>
       <body
         suppressHydrationWarning

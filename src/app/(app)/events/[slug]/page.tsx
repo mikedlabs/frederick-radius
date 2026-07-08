@@ -48,6 +48,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
+import { MobileActionBar, MobileBarLink, MobileBarControl } from "@/components/ui/MobileActionBar";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
@@ -261,7 +262,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       : { title: "More upcoming events", items: upcomingPool.slice(0, 6) };
 
   return (
-    <div className="space-y-6">
+    // pb under lg leaves room so the last content clears the sticky
+    // MobileActionBar (which floats ~76px above the nav pill).
+    <div className="space-y-6 pb-28 lg:pb-0">
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -795,6 +798,47 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
+
+      {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
+          grid above; this reuses the same .ics calendar button, ticket +
+          directions links, and the SaveButton. The vermilion primary is
+          Tickets when they exist, otherwise Add to calendar. */}
+      <MobileActionBar ariaLabel={`Actions for ${event.title}`}>
+        <EventCalendarButton
+          event={{
+            slug: event.slug,
+            title: event.title,
+            starts_at: event.starts_at,
+            ends_at: event.ends_at,
+            description: event.description,
+            venue_name: event.venue_name,
+            address: event.address,
+            is_all_day: event.is_all_day,
+          }}
+          barVariant={event.ticket_url ? "quiet" : "primary"}
+          label="Calendar"
+        />
+        {event.ticket_url && (
+          <MobileBarLink
+            href={event.ticket_url}
+            icon={Ticket}
+            label="Tickets"
+            ariaLabel={`Tickets for ${event.title}`}
+            external
+            primary
+          />
+        )}
+        <MobileBarLink
+          href={directionsUrl}
+          icon={Navigation}
+          label="Directions"
+          ariaLabel={`Directions to ${event.venue_name || event.title}`}
+          external
+        />
+        <MobileBarControl label="Save">
+          <SaveButton refType="event" refId={event.slug} label={event.title} />
+        </MobileBarControl>
+      </MobileActionBar>
     </div>
   );
 }

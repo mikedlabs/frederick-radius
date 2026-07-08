@@ -41,7 +41,10 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
+import { MobileActionBar, MobileBarLink, MobileBarControl } from "@/components/ui/MobileActionBar";
+import SaveButton from "@/components/saved/SaveButton";
 import SourceBadge from "@/components/place/SourceBadge";
+import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 /**
@@ -208,7 +211,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   };
 
   return (
-    <div className="space-y-6 reveal-up">
+    // pb under lg leaves room so the last content clears the sticky
+    // MobileActionBar (which floats ~76px above the nav pill).
+    <div className="space-y-6 reveal-up pb-28 lg:pb-0">
       {/* Records this slug into the device-local recent-places list
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
@@ -516,14 +521,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           >
             Report incorrect info
           </a>
-          {/* Owner front door — deep-links a claim with the slug pre-attached;
-              the claim -> manage -> post -> push flow is already built. */}
-          <Link
-            href={`/business/claim?place=${place.slug}`}
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Claim this business
-          </Link>
+          {/* Owner front door. The claim -> manage -> post -> push flow is
+              built, but turning it on for owners is a deferred owner call, so
+              this reads as a calm coming-soon promise, not a live link. */}
+          <ClaimComingSoon lead="Own this business?" />
           <ShareButton
             title={place.name}
             text={safeBlurb(place)}
@@ -551,6 +552,32 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           ),
         }}
       />
+
+      {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
+          grid above; this reuses the same directions/call links + the
+          follow-backed SaveButton, pinned within thumb reach. Directions
+          is the one vermilion primary. */}
+      <MobileActionBar ariaLabel={`Actions for ${place.name}`}>
+        <MobileBarControl label="Save">
+          <SaveButton refType="place" refId={place.slug} label={place.name} />
+        </MobileBarControl>
+        <MobileBarLink
+          href={googleUrl}
+          icon={Navigation}
+          label="Directions"
+          ariaLabel={`Directions to ${place.name}`}
+          external
+          primary
+        />
+        {place.phone && (
+          <MobileBarLink
+            href={`tel:${place.phone}`}
+            icon={Phone}
+            label="Call"
+            ariaLabel={`Call ${place.name}`}
+          />
+        )}
+      </MobileActionBar>
     </div>
   );
 }

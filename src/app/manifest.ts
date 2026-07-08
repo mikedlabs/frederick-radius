@@ -7,13 +7,15 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "A better way to use Frederick County.",
     start_url: "/today",
     scope: "/",
+    id: "/",
     display: "standalone",
     orientation: "portrait-primary",
-    // Brand-deck launch: Spruce field (matches the app-icon ground) with
-    // a Paper in-app toolbar tint that blends with the UI ground.
-    background_color: "#16352B",
-    // Match the actual paper ground (--app-bg = #EBE2CD) so the installed-PWA
-    // toolbar tint blends with the UI instead of leaving a seam.
+    // Launch on the paper-cream ground so the OS splash (Android shows the
+    // maskable icon centered on background_color; iOS falls back to it when a
+    // matched startup image is absent) reads as the same light app you land in
+    // — no spruce-to-cream flash. Both colors are the real UI ground
+    // (--app-bg = #EBE2CD) so the installed toolbar tint blends seamlessly.
+    background_color: "#EBE2CD",
     theme_color: "#EBE2CD",
     lang: "en-US",
     categories: ["lifestyle", "navigation", "travel", "utilities"],

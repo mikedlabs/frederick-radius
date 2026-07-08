@@ -5,6 +5,7 @@ import RouteAccent from "@/components/nav/RouteAccent";
 import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
+import BetaTelemetry from "@/components/beta/BetaTelemetry";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
@@ -57,6 +58,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
+          {/* Attributes beta usage to the tester's access code (once per
+              session). Renders nothing; no-op outside the beta wall. */}
+          <BetaTelemetry />
           {/* Beta-only "Send feedback" affordance. Self-gates on the fr_beta
               cookie (renders nothing for the public post-beta) and offsets
               clear of the BottomNav pill + the map's bottom-right controls. */}

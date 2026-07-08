@@ -25,10 +25,16 @@ const PAPER_2 = "#E4DAC3"; // a hair under paper, for landuse/landcover
 const WATER = "#8DACC0"; // light Creek-slate fill (kept lighter than --app-cool so a big water fill stays legible on the cream ground)
 const WATER_LINE = "#4A7090"; // --app-cool-2: confident creek/river lines (the Monocacy spine)
 const PARK = "#C3D1B3"; // spruce-tinted park green over paper (--app-brand-2 family)
+const FARM = "#DDD5B6"; // warm hay tint for farmland/orchard — Frederick is farm country
 const BUILDING = "#E1D5BD"; // --app-bg-sunken: warm building card
+const BUILDING_LINE = "#D0C4A8"; // hairline warm outline so buildings read as blocks, not blobs
+const BARE = "#E4DAC3"; // sand/rock/quarry — bare ground, a hair under paper
 const ROAD_MINOR = "#D8CDB1"; // hairline, between paper and --app-border
 const ROAD_MAJOR = "#C9BD9F"; // --app-border: warm road
 const ROAD_HWY = "#AD9E80"; // warm taupe highway
+const ROAD_CASE = "#C0B393"; // warm edge under minor/major road fills, so roads read as ribbons not flat washes
+const ROAD_HWY_CASE = "#94856A"; // darker taupe edge that gives highways a confident spine
+const BOUNDARY = "#B39F7C"; // muted warm admin/boundary line — places a town without a hard black rule
 const LABEL = "#16140E"; // --app-ink: warm near-black primary label
 const LABEL_2 = "#5C5A50"; // --app-ink-3: secondary label
 const HALO = "#EBE2CD"; // paper halo (= --app-bg) around dark text
@@ -132,8 +138,19 @@ export function applyFrederickPalette(map: GLMap): () => void {
 
       if (layer.type === "fill") {
         if (has(id, "water")) set("fill-color", WATER);
-        else if (has(id, "park", "green", "grass", "wood", "forest", "pitch", "cemetery"))
+        else if (has(id, "farmland", "orchard", "vineyard", "agricult"))
+          // Frederick's working farmland reads as warm hay, not forest green.
+          set("fill-color", FARM);
+        else if (
+          has(
+            id,
+            "park", "green", "grass", "wood", "forest", "pitch", "cemetery",
+            "wetland", "scrub", "heath", "golf", "recreation", "national-park", "meadow",
+          )
+        )
           set("fill-color", PARK);
+        else if (has(id, "sand", "beach", "rock", "quarry", "bare-ground"))
+          set("fill-color", BARE);
         else if (has(id, "building")) {
           set("fill-color", BUILDING);
           set("fill-opacity", 0.7);
@@ -167,10 +184,27 @@ export function applyFrederickPalette(map: GLMap): () => void {
           ]);
           continue;
         }
-        if (has(id, "motorway", "trunk")) set("line-color", ROAD_HWY);
-        else if (has(id, "primary", "secondary", "main")) set("line-color", ROAD_MAJOR);
+        if (has(id, "admin", "boundary")) {
+          // County + municipal edges: a muted warm line so a reader can
+          // place a town without a hard black rule cutting the paper.
+          set("line-color", BOUNDARY);
+          set("line-opacity", 0.55);
+          continue;
+        }
+        if (has(id, "building")) {
+          set("line-color", BUILDING_LINE);
+          set("line-opacity", 0.6);
+          continue;
+        }
+        // Casing layers ("road-…-case") get a warmer, darker edge than the
+        // fill so roads read as printed ribbons, never white/blue seams.
+        const isCase = has(id, "case", "casing", "outline");
+        if (has(id, "motorway", "trunk"))
+          set("line-color", isCase ? ROAD_HWY_CASE : ROAD_HWY);
+        else if (has(id, "primary", "secondary", "main"))
+          set("line-color", isCase ? ROAD_CASE : ROAD_MAJOR);
         else if (has(id, "road", "street", "bridge", "tunnel", "path", "rail", "transit"))
-          set("line-color", ROAD_MINOR);
+          set("line-color", isCase ? ROAD_CASE : ROAD_MINOR);
         else set("line-color", ROAD_MINOR);
         continue;
       }

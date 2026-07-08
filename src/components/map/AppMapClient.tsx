@@ -8,6 +8,7 @@ import type { MapPinPlace } from "./types";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import type { ParkingPin } from "@/lib/map/parking";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -69,6 +70,7 @@ export default function AppMapClient({
   municipalBoundaries = EMPTY_FC,
   countyBoundary = EMPTY_FC,
   cemeteries = [],
+  parking = [],
   events = [],
   fullBleed = false,
   recenterToKnownLocation = false,
@@ -76,6 +78,7 @@ export default function AppMapClient({
   initialCenter,
   initialAmenityGroups,
   dock,
+  activeSlugs = null,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -103,6 +106,9 @@ export default function AppMapClient({
   /** Historic cemeteries (county GIS heritage points) — the opt-in
    *  overlay behind the Layers panel; OFF by default. */
   cemeteries?: CemeteryPin[];
+  /** Downtown parking garages (static metadata + live availability) — the
+   *  opt-in Parking layer, forwarded to AppMap. Empty on embeds. */
+  parking?: ParkingPin[];
   /** Upcoming events as photo pins — passed through to AppMap. The
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
@@ -129,6 +135,9 @@ export default function AppMapClient({
   /** Browse-view state + counts for the map dock (/map browse only).
    *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
   dock?: BrowseDockInfo;
+  /** Slugs matching the active What/Open-now filter — the map fades the
+   *  rest instead of removing them. Forwarded to AppMap. */
+  activeSlugs?: string[] | null;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
@@ -151,6 +160,7 @@ export default function AppMapClient({
           municipalBoundaries={municipalBoundaries}
           countyBoundary={countyBoundary}
           cemeteries={cemeteries}
+          parking={parking}
           events={events}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
@@ -158,6 +168,7 @@ export default function AppMapClient({
           initialCenter={initialCenter}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
+          activeSlugs={activeSlugs}
         />
       </div>
     );

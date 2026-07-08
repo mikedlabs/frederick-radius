@@ -37,8 +37,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Siren,
-  ShieldCheck,
   ExternalLink, MapPin, Clock, ChevronRight,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
@@ -67,10 +65,10 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
-import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
+import PulseBoard, { type PulseTile, type PulseHero, type PulseTicketItem } from "@/components/pulse/PulseBoard";
+import { clampPercent } from "@/components/pulse/format";
 import TransitMap from "@/components/transit/TransitMapClient";
 import NextStopsBoard from "@/components/transit/NextStopsBoard";
-import PulseFreshness from "@/components/pulse/PulseFreshness";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
@@ -520,10 +518,56 @@ export default async function PulsePage({
     </div>
   ) : null;
 
+  // ── Presentation data for the bento board ──────────────────────────
+  // The bento shows the numeric feeds as animated conic gauge rings; the rest
+  // as compact status tiles; weather as the wide feature. `attention` marks a
+  // tile as one of the hero's active situations so the "Needs attention" filter
+  // resolves to exactly those. Gauge percents are fill ratios only (visual
+  // severity), never a claimed reading.
+  const hourlyTemps = (forecast?.hourly ?? [])
+    .map((h) => h.temperature)
+    .filter((n): n is number => Number.isFinite(n))
+    .slice(0, 12);
+  const dailyDay = forecast?.daily?.find((p) => p.isDaytime === true);
+  const dailyNight = forecast?.daily?.find((p) => p.isDaytime === false);
+  const wxHl =
+    [
+      dailyDay ? `H ${dailyDay.temperature}°` : null,
+      dailyNight ? `L ${dailyNight.temperature}°` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined;
+
+  const aqiShort = (id: number): string =>
+    id >= 6 ? "hazardous"
+      : id === 5 ? "very unhealthy"
+      : id === 4 ? "unhealthy"
+      : id === 3 ? "sensitive groups"
+      : id === 2 ? "moderate"
+      : "good";
+  const aqiPct = aqiWorst ? clampPercent((aqiWorst.aqi / 300) * 100) : 0;
+
+  const powerPct = outagesActive ? clampPercent((outages.total_out / 2000) * 100) : 0;
+
+  const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
+  const riverFloodRef = riverPeekSite?.floodStages?.minor ?? null;
+  const riverPct =
+    riverPeekHeight != null ? clampPercent((riverPeekHeight / (riverFloodRef || 15)) * 100) : 0;
+
+  const fixitPct = clampPercent((fixit.length / 25) * 100);
+
+  const situationActive: Record<string, boolean> = {
+    alerts: activeAlerts.length > 0,
+    safety: safety.length > 0,
+    traffic: traffic.length > 0,
+    power: outagesActive,
+    schools: schoolAlerts.length > 0,
+  };
+
   const pulseTiles: PulseTile[] = [
-    // Weather LEADS the board: "what's it doing out" is the most-asked live
-    // question. An ambient tile (not an alarm) carrying the current reading;
-    // tapping it opens the full conditions + hourly + 7-day panel as its body.
+    // Weather LEADS the board as the wide feature tile: "what's it doing out"
+    // is the most-asked live question. Tapping it opens the full conditions +
+    // hourly + 7-day panel as its body.
     ...(wxCur
       ? [{
           key: "weather",
@@ -532,13 +576,21 @@ export default async function PulsePage({
           countLabel: `${wxCur.temperature}°`,
           accent: "var(--app-cool)",
           active: false,
+          attention: false,
+          kind: "feature",
+          feature: {
+            temp: wxCur.temperature,
+            condition: wxCondition ?? "Frederick",
+            hl: wxHl,
+            spark: hourlyTemps,
+          },
           sourceLabel: "NWS · weather.gov",
-          peek: wxCondition ?? undefined,
           body: <PulseWeatherPanel />,
         } as PulseTile]
       : []),
-    // Air quality rides right after weather — an ambient environmental reading,
-    // not an alarm. Self-hides when the AirNow key is unset or the feed is down.
+    // ── Numeric feeds → animated gauge rings ──
+    // Air quality: an ambient environmental reading. Self-hides when the AirNow
+    // key is unset or the feed is down.
     ...(aqiWorst
       ? [{
           key: "air",
@@ -547,119 +599,29 @@ export default async function PulsePage({
           countLabel: `AQI ${aqiWorst.aqi}`,
           accent: aqiAccent,
           active: aqiActive,
+          attention: false,
+          kind: "gauge",
+          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `AQI · ${aqiShort(aqiWorst.category.id)}` },
           sourceLabel: "AirNow · EPA",
-          // Face carries the category + the reporting AREA so "AQI 69" reads as
-          // "the nearest EPA monitor, near Frederick" — not a bare claim that
-          // looks wrong for the city (there's no monitor inside Frederick).
-          peek: `${aqiWorst.category.name} · ${aqiWorst.reportingArea}`,
           body: aqiBody,
         } as PulseTile]
       : []),
-    // Trout stockings — seasonal, self-hides mid-summer. Frederick's waters
-    // (Carroll Creek included) get near-daily drops in the spring/fall runs;
-    // no other local app shows this (data audit, new-source #1).
-    ...(troutStockings.length > 0
-      ? [{
-          key: "trout",
-          label: "Trout stocking",
-          iconName: "Fish",
-          countLabel: `${troutStockings.length} recent`,
-          accent: "var(--app-cool)",
-          active: false,
-          sourceLabel: "Maryland DNR",
-          peek: `${troutStockings[0].location} · ${troutStockings[0].species}`,
-          body: troutStockings.map((t) => (
-            <Row
-              key={`${t.location}-${t.date}`}
-              tone="cool"
-              title={t.location}
-              meta={[
-                `${t.fish} ${t.species}`,
-                new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(new Date(t.date)),
-                t.regulations,
-              ]}
-            />
-          )),
-        } as PulseTile]
-      : []),
-    // Camp David airspace — renders ONLY while the P-40 ring is expanded.
-    // Airspace status in the calm civic voice, never presidential tracking.
-    ...(campDavidTfr
-      ? [{
-          key: "airspace",
-          label: "Camp David airspace",
-          iconName: "Plane",
-          countLabel: "Expanded",
-          accent: "var(--app-warning)",
-          active: true,
-          sourceLabel: "FAA TFR",
-          peek: "Flight restrictions widened around Thurmont",
-          body: (
-            <p className="px-1 py-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              The FAA has expanded the flight-restriction ring around Camp David
-              (NOTAM {campDavidTfr.notamId}). Expect helicopters and extra
-              activity around Thurmont and Catoctin Mountain Park.
-            </p>
-          ),
-        } as PulseTile]
-      : []),
-    {
-      key: "safety",
-      label: "Fire & rescue",
-      iconName: "Siren",
-      countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
-      accent: "var(--app-danger)",
-      active: safety.length > 0,
-      sourceLabel: "PulsePoint",
-      peek: safety.length > 0 ? safety[0].type : undefined,
-      body: safety.length > 0
-        ? safety.slice(0, 12).map((s) => (
-            <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
-          ))
-        : emptyNote("No active fire or rescue calls right now."),
-    },
-    {
-      key: "traffic",
-      label: "Traffic",
-      iconName: "Construction",
-      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
-      accent: "var(--app-warning)",
-      active: traffic.length > 0,
-      sourceLabel: "MDOT CHART",
-      peek:
-        traffic.length > 0
-          ? `${traffic[0].road}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
-          : undefined,
-      body: traffic.length > 0
-        ? traffic.slice(0, 12).map((i) => (
-            <Row
-              key={i.id}
-              tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
-              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
-              body={i.description}
-              meta={[
-                i.location,
-                i.lanes_affected,
-                i.expected_end
-                  ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
-                  : undefined,
-              ]}
-            />
-          ))
-        : emptyNote("No traffic incidents or roadwork reported right now."),
-    },
     {
       key: "power",
-      label: "Power",
+      label: "Power out",
       iconName: "Zap",
       countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "Clear",
-      accent: "var(--app-danger)",
+      accent: outagesActive ? "var(--app-danger)" : "var(--app-positive)",
       active: outagesActive,
+      attention: situationActive.power,
+      kind: "gauge",
+      gauge: {
+        value: outages.total_out,
+        pct: powerPct,
+        comma: true,
+        unit: outagesActive ? "customers out" : "all served",
+      },
       sourceLabel: "FirstEnergy / Potomac Edison",
-      peek:
-        outagesActive && outages.munis.length > 0
-          ? `${outages.munis[0].area}, ${outages.munis[0].customers_out.toLocaleString()} out`
-          : undefined,
       body: outagesActive ? (
         <>
           <div
@@ -689,13 +651,65 @@ export default async function PulsePage({
         </>
       ) : emptyNote("No significant power outages right now."),
     },
+    // ── The rest → compact status tiles ──
+    {
+      key: "safety",
+      label: "Fire & rescue",
+      iconName: "Siren",
+      countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
+      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
+      active: safety.length > 0,
+      attention: situationActive.safety,
+      kind: "status",
+      sourceLabel: "PulsePoint",
+      peek: safety.length > 0 ? safety[0].type : "no active calls",
+      body: safety.length > 0
+        ? safety.slice(0, 12).map((s) => (
+            <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
+          ))
+        : emptyNote("No active fire or rescue calls right now."),
+    },
+    {
+      key: "traffic",
+      label: "Traffic",
+      iconName: "Construction",
+      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
+      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+      active: traffic.length > 0,
+      attention: situationActive.traffic,
+      kind: "status",
+      sourceLabel: "MDOT CHART",
+      peek:
+        traffic.length > 0
+          ? `${traffic[0].road}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
+          : "roads moving",
+      body: traffic.length > 0
+        ? traffic.slice(0, 12).map((i) => (
+            <Row
+              key={i.id}
+              tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
+              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
+              body={i.description}
+              meta={[
+                i.location,
+                i.lanes_affected,
+                i.expected_end
+                  ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
+                  : undefined,
+              ]}
+            />
+          ))
+        : emptyNote("No traffic incidents or roadwork reported right now."),
+    },
     {
       key: "schools",
       label: "Schools",
       iconName: "School",
       countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "Clear",
-      accent: "var(--app-warning)",
+      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
       active: schoolAlerts.length > 0,
+      attention: situationActive.schools,
+      kind: "status",
       sourceLabel: "FCPS RSS",
       peek:
         schoolAlerts.length > 0
@@ -706,7 +720,7 @@ export default async function PulsePage({
               : schoolAlerts[0].status === "early_dismissal"
                 ? "Early dismissal"
                 : "Update"
-          : undefined,
+          : "no alerts today",
       body: schoolAlerts.length > 0
         ? schoolAlerts.map((a) => (
             <Row
@@ -726,13 +740,15 @@ export default async function PulsePage({
     },
     {
       key: "fixit",
-      label: "311 reports",
+      label: "311 open",
       iconName: "AlertTriangle",
       countLabel: fixit.length > 0 ? `${fixit.length} open` : "Clear",
       accent: "var(--app-cool)",
-      active: fixit.length > 0,
+      active: false,
+      attention: false,
+      kind: "gauge",
+      gauge: { value: fixit.length, pct: fixitPct, unit: "open reports" },
       sourceLabel: "FCG FixIT · SeeClickFix",
-      peek: fixit.length > 0 ? fixit[0].summary : undefined,
       body: fixit.length > 0
         ? fixit.slice(0, 10).map((i) => (
             <Row
@@ -749,11 +765,13 @@ export default async function PulsePage({
       key: "alerts",
       label: "Weather alerts",
       iconName: "CloudAlert",
-      countLabel: activeAlerts.length > 0 ? `${activeAlerts.length} active` : "Clear",
-      accent: "var(--app-danger)",
+      countLabel: activeAlerts.length > 0 ? activeAlerts[0].event : "None",
+      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
       active: activeAlerts.length > 0,
+      attention: situationActive.alerts,
+      kind: "status",
       sourceLabel: "NWS · weather.gov",
-      peek: activeAlerts.length > 0 ? activeAlerts[0].event : undefined,
+      peek: activeAlerts.length > 0 ? `${activeAlerts.length} active` : "nothing posted",
       body: activeAlerts.length > 0
         ? activeAlerts.slice(0, 6).map((a) => {
             const tone =
@@ -777,15 +795,26 @@ export default async function PulsePage({
       // river with height + streamflow + observed-ago, and links to the full
       // /rivers dashboard for 24-hour trends + the map.
       key: "rivers",
-      label: "Rivers",
+      label: riverPeekHeight != null ? (riverGroups[0]?.river ?? "River") : "Rivers",
       iconName: "Waves",
       countLabel: rivers.length > 0
         ? `${rivers.length} ${rivers.length === 1 ? "gauge" : "gauges"}`
         : "No data",
       accent: "var(--app-cool)",
       active: false,
+      attention: false,
+      kind: riverPeekHeight != null ? "gauge" : "status",
+      ...(riverPeekHeight != null
+        ? {
+            gauge: {
+              value: riverPeekHeight,
+              pct: riverPct,
+              decimals: 1,
+              unit: `ft · ${riverPeekDir ?? "steady"}`,
+            },
+          }
+        : { peek: riverPeek }),
       sourceLabel: "USGS Water Services",
-      peek: riverPeek,
       body: rivers.length > 0
         ? (
           <div className="space-y-4">
@@ -885,8 +914,10 @@ export default async function PulsePage({
           countLabel: airportIssues.length > 0 ? `${airportIssues.length} delayed` : "On time",
           accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
           active: airportIssues.length > 0,
+          attention: false,
+          kind: "status",
           sourceLabel: "FAA",
-          peek: airportPeek,
+          peek: airportPeek ?? "BWI · IAD · DCA",
           body: (
             <div className="space-y-1.5">
               {airports.map((a) => (
@@ -918,6 +949,9 @@ export default async function PulsePage({
       countLabel: !marcBoard.serviceToday ? "No service" : marcNext ? marcNext.label : "Done today",
       accent: marcAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: marcAlerts.length > 0,
+      attention: false,
+      kind: "status",
+      mono: marcBoard.serviceToday && !!marcNext,
       sourceLabel: "MTA MARC · Brunswick Line",
       peek: marcAlerts.length > 0
         ? marcAlerts[0].header || "Service alert"
@@ -928,7 +962,57 @@ export default async function PulsePage({
             : undefined,
       body: <NextTrainBoard />,
     },
-    // ── Reference feeds, now first-class tiles (were stacked text sections).
+    // Trout stockings — seasonal, self-hides mid-summer. Frederick's waters
+    // (Carroll Creek included) get near-daily drops in the spring/fall runs.
+    ...(troutStockings.length > 0
+      ? [{
+          key: "trout",
+          label: "Trout stocking",
+          iconName: "Fish",
+          countLabel: `${troutStockings.length} recent`,
+          accent: "var(--app-cool)",
+          active: false,
+          attention: false,
+          kind: "status",
+          sourceLabel: "Maryland DNR",
+          peek: `${troutStockings[0].location} · ${troutStockings[0].species}`,
+          body: troutStockings.map((t) => (
+            <Row
+              key={`${t.location}-${t.date}`}
+              tone="cool"
+              title={t.location}
+              meta={[
+                `${t.fish} ${t.species}`,
+                new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(new Date(t.date)),
+                t.regulations,
+              ]}
+            />
+          )),
+        } as PulseTile]
+      : []),
+    // Camp David airspace — renders ONLY while the P-40 ring is expanded.
+    ...(campDavidTfr
+      ? [{
+          key: "airspace",
+          label: "Camp David airspace",
+          iconName: "Plane",
+          countLabel: "Expanded",
+          accent: "var(--app-warning)",
+          active: true,
+          attention: false,
+          kind: "status",
+          sourceLabel: "FAA TFR",
+          peek: "Restrictions widened over Thurmont",
+          body: (
+            <p className="px-1 py-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              The FAA has expanded the flight-restriction ring around Camp David
+              (NOTAM {campDavidTfr.notamId}). Expect helicopters and extra
+              activity around Thurmont and Catoctin Mountain Park.
+            </p>
+          ),
+        } as PulseTile]
+      : []),
+    // ── Reference feeds, first-class status tiles (were stacked text sections).
     {
       key: "news",
       label: "In the news",
@@ -936,6 +1020,8 @@ export default async function PulsePage({
       countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "Quiet",
       accent: "var(--app-cool)",
       active: false,
+      attention: false,
+      kind: "status",
       sourceLabel: "Google News · Frederick County",
       peek: news[0]?.title,
       body: newsBody,
@@ -947,6 +1033,8 @@ export default async function PulsePage({
       countLabel: blotter.length > 0 ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}` : "CFS map",
       accent: "var(--app-cool)",
       active: false,
+      attention: false,
+      kind: "status",
       sourceLabel: "Frederick PD · City + County",
       peek: breakingPolice?.title ?? blotter[0]?.title,
       body: policeBody,
@@ -959,6 +1047,8 @@ export default async function PulsePage({
           countLabel: `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
           accent: "var(--app-cool)",
           active: false,
+          attention: false,
+          kind: "status",
           sourceLabel: "City + County advisories",
           peek: advisories[0]?.title,
           body: roadworkBody,
@@ -968,123 +1058,79 @@ export default async function PulsePage({
       key: "scanner",
       label: "Scanner",
       iconName: "Radio",
-      countLabel: "Live on X",
+      countLabel: "On X",
       accent: "var(--app-cool)",
       active: false,
+      attention: false,
+      kind: "status",
       sourceLabel: "Frederick Scanner · X",
       peek: "Police, fire & EMS calls",
       body: <ScannerTimeline />,
     },
   ];
 
+  // ── Hero + ticker for the board ──────────────────────────────────
+  const hero: PulseHero = {
+    allClear,
+    line: heroLine,
+    sub: heroSub,
+    renderedAt: nowMs,
+    refreshedClock: nowClock(),
+    temp: wxCur?.temperature ?? null,
+    spark: hourlyTemps,
+    // Temperature reads cool on a calm day; a gold curve on an active one.
+    sparkStroke: allClear ? "var(--app-cool)" : "var(--app-accent)",
+    situationCount: totalActive,
+  };
+
+  // The incident ticker runs ONLY when a situation is active, and carries just
+  // the hero's situations, one honest line each (no em dashes).
+  const ticker: PulseTicketItem[] = [];
+  if (!allClear) {
+    for (const a of activeAlerts.slice(0, 3)) {
+      const ends = a.ends_at
+        ? ` until ${new Date(a.ends_at).toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })}`
+        : "";
+      ticker.push({ tone: "danger", text: `${a.event}${ends} · NWS` });
+    }
+    if (outagesActive) {
+      ticker.push({
+        tone: "danger",
+        text: `${outages.total_out.toLocaleString()} without power · Potomac Edison`,
+      });
+    }
+    for (const i of traffic.slice(0, 3)) {
+      ticker.push({
+        tone: "warning",
+        text: `${i.road}${i.direction ? ` ${i.direction}` : ""} ${i.type} · MDOT`,
+      });
+    }
+    for (const s of safety.slice(0, 2)) {
+      ticker.push({ tone: "danger", text: `${s.type} · ${s.address || "Frederick County"}` });
+    }
+    for (const sa of schoolAlerts.slice(0, 2)) {
+      ticker.push({ tone: "warning", text: `${sa.title} · FCPS` });
+    }
+  }
+
   return (
     <div className="relative space-y-6 pb-4">
       <PageBloom variant={allClear ? "warm-cool" : "single"} />
 
-      {/* ── Hero ───────────────────────────────────────────────── */}
-      {/* The hero is a card-with-edge-tint when there's active data,
-          so the page itself signals "something is up" before the user
-          reads the headline. Calm states keep the standard paper-cream
-          look so the page doesn't yell at users on quiet days. */}
-      {/* The masthead is a CONTAINED tactile card (no longer an edge-to-edge
-          band on mobile) so it sits "within the main part" like every other
-          card on the page. It signals state: a sage shield + calm paper when
-          all-clear, a danger siren + a faint danger wash + a slow breathing
-          ring (the shared .alert-pulse) when something is live, so a glance
-          reads the county's status before the headline does. */}
-      <header
-        className={`tactile relative overflow-hidden rounded-[var(--app-radius-lg)]${allClear ? "" : " alert-pulse"}`}
-        style={{
-          backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: allClear
-            ? "var(--app-paper-light)"
-            : "var(--app-paper-light), linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 9%, transparent) 0%, transparent 68%)",
-          boxShadow: "var(--app-elev-2), var(--app-hi), var(--app-edge)",
-        }}
-      >
-        {/* Top accent bar — sage when all clear, danger when active. */}
-        <span
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-[3px]"
-          style={{
-            background: allClear ? "var(--app-positive)" : "var(--app-danger)",
-            opacity: allClear ? 0.6 : 1,
-          }}
-        />
-        <div className="space-y-3 px-4 py-4 sm:px-5">
-          {/* Masthead row: the Live Pulse nameplate (left) + freshness (right),
-              split so neither wraps awkwardly. */}
-          <div className="flex items-center justify-between gap-3">
-            <span
-              className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              <span
-                aria-hidden
-                className="pulse-dot inline-block h-2 w-2 rounded-full"
-                style={{ background: allClear ? "var(--app-positive)" : "var(--app-danger)" }}
-              />
-              Live Pulse
-            </span>
-            <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-              <PulseFreshness renderedAt={nowMs} />
-            </span>
-          </div>
-
-          {/* Status hero: a state glyph anchors the headline + sub. */}
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden
-              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full"
-              style={{
-                background: `color-mix(in srgb, ${allClear ? "var(--app-positive)" : "var(--app-danger)"} 14%, transparent)`,
-                color: allClear ? "var(--app-positive)" : "var(--app-danger)",
-              }}
-            >
-              {allClear ? <ShieldCheck className="h-5 w-5" strokeWidth={2} /> : <Siren className="h-5 w-5" strokeWidth={2} />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <h1
-                className="font-serif text-[24px] font-semibold leading-[1.1] tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {heroLine}
-              </h1>
-              <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {heroSub}
-              </p>
-            </div>
-          </div>
-
-          {/* The live conditions now lead the dashboard as a full PulseWeatherPanel
-              (below) instead of a compact line buried in the header. */}
-          <p
-            className="flex items-center gap-1.5 text-[11px] tabular-nums"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-            Refreshed {nowClock()} · auto-updates every couple of minutes
-          </p>
-        </div>
-      </header>
-
-      {/* ── Breaking: the latest police / public-safety press release from
-          the City or County, straight from their official .gov newsroom.
-          Rides above the dashboard because it's the most time-sensitive
-          civic signal a resident wants. Absent when there's no recent one. */}
-      {breakingPolice && <PoliceBreakingStrip item={breakingPolice} now={nowMs} />}
-
-      {/* Weather is now the LEADING dashboard tile (key: "weather") rather than
-          a standalone panel: tapping it opens the full PulseWeatherPanel (sky
-          header, realtime stats, hourly curve, sun, 7-day) as the tile's body,
-          so weather is a first-class main category consistent with every other
-          feed's tap-to-open pattern. */}
-
-      {/* ── Status dashboard — each tile opens the feed's detail in a
-          bottom-sheet "window"; no more scroll-to-section. Seven tiles now
-          (the six operational feeds + Rivers). Police stays a quiet card
-          below (no feed to count); News + Scanner too. */}
-      <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
+      {/* ── The board — a state-aware hero, an incident ticker that appears
+          only when something is active, a working All / Needs attention / Calm
+          filter, and the bento grid. The numeric feeds (air, power, the lead
+          river, 311) render as animated conic gauge rings; the rest as compact
+          status tiles; weather leads as the wide feature. Each tile still opens
+          its feed's full detail in the tap-to-open bottom sheet. The breaking
+          police strip rides between the ticker and the filter. */}
+      <PulseBoard
+        hero={hero}
+        ticker={ticker}
+        tiles={pulseTiles}
+        breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
+        initialOpen={openParam}
+      />
 
       {/* ── Where the buses are — the live TransIT map. The route network +
           stops on the real basemap, with live vehicle badges that glide

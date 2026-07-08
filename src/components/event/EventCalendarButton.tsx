@@ -3,6 +3,7 @@
 import { Calendar } from "lucide-react";
 import { buildIcs } from "@/lib/ics";
 import { haptic } from "@/lib/haptics";
+import { barCellClass, barCellStyle, barIconStyle } from "@/components/ui/MobileActionBar";
 
 /**
  * "Add to calendar" cell for the event detail page, for events that have
@@ -24,7 +25,20 @@ type CalendarEvent = {
   is_all_day?: boolean;
 };
 
-export default function EventCalendarButton({ event }: { event: CalendarEvent }) {
+export default function EventCalendarButton({
+  event,
+  barVariant,
+  label = "Add to calendar",
+}: {
+  event: CalendarEvent;
+  /**
+   * Render as a MobileActionBar cell instead of the default grid cell.
+   * "primary" gets the vermilion emphasis; "quiet" is a plain cell.
+   */
+  barVariant?: "primary" | "quiet";
+  /** Override the visible label (e.g. a shorter "Calendar" in a tight bar). */
+  label?: string;
+}) {
   function download() {
     haptic("medium");
     const origin =
@@ -51,15 +65,27 @@ export default function EventCalendarButton({ event }: { event: CalendarEvent })
     URL.revokeObjectURL(href);
   }
 
+  const inBar = Boolean(barVariant);
+  const primary = barVariant === "primary";
   return (
     <button
       type="button"
       onClick={download}
-      className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      aria-label="Add to calendar"
+      className={
+        inBar
+          ? barCellClass(primary)
+          : "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+      }
+      style={inBar ? barCellStyle(primary) : { borderColor: "var(--app-border)", color: "var(--app-ink)" }}
     >
-      <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-      Add to calendar
+      <Calendar
+        className="h-5 w-5"
+        strokeWidth={1.75}
+        aria-hidden
+        style={inBar ? barIconStyle(primary) : { color: "var(--app-brand)" }}
+      />
+      {label}
     </button>
   );
 }

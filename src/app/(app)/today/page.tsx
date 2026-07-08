@@ -22,6 +22,8 @@ import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
+import KeysCard from "@/components/today/KeysCard";
+import { isKeysEvent } from "@/lib/today/keysEvent";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
@@ -672,7 +674,9 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         {feature || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 ? (
           <div className="space-y-3">
             {feature && (
-              <EventCard event={feature} variant="feature" />
+              isKeysEvent(feature)
+                ? <KeysCard event={feature} variant="feature" />
+                : <EventCard event={feature} variant="feature" />
             )}
             {upcomingRest.length > 0 && (
               <div className="-mx-4 px-4">
@@ -680,7 +684,9 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                   {upcomingRest.map((e) => (
                     <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
                       <div className="tactile-ring rounded-[var(--app-radius-lg)]">
-                        <EventCard event={e} variant="tile" />
+                        {isKeysEvent(e)
+                          ? <KeysCard event={e} variant="tile" />
+                          : <EventCard event={e} variant="tile" />}
                       </div>
                       {/* Real walk minutes from the user's cached fix (LocationPrime
                           consent), for precisely-located venues only — the single
