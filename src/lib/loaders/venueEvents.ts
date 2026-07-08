@@ -8,6 +8,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import { isNonMusicTitle } from "@/lib/events/live-music";
 
 /**
  * Venue events — produced by the extraction agent
@@ -104,7 +105,14 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
   const place = resolveVenuePlace(e.venue_slug, e.venue_name);
   const geom = place?.geom ?? FREDERICK_CENTER;
   const municipality = place?.municipality ?? "frederick";
-  const category = e.category || place?.category || "music";
+  // The "music" fallback is earned by the source (these are live-music
+  // venue lineups) — but only for titles that could BE music. A yoga or
+  // trivia night on a taproom's feed falls back to the venue's own
+  // category, then "community", so it never inherits a music claim it
+  // didn't make (Jul-8 audit: "Yoga in the Taproom" under "Live music
+  // tonight").
+  const category =
+    e.category || place?.category || (isNonMusicTitle(e.title) ? "community" : "music");
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   const isFree = e.price ? /free|no cover/i.test(e.price) : false;
   // A resolved venue gives us the real Place geom → placement "venue"

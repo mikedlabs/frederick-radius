@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isLiveMusicEvent } from "./live-music";
+import { isLiveMusicEvent, isNonMusicTitle } from "./live-music";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 
 // A real verified music venue from the curated set, so the test exercises
@@ -38,6 +38,13 @@ describe("isLiveMusicEvent", () => {
     // The category is the stronger signal; the title heuristic only gates
     // the venue join.
     expect(isLiveMusicEvent({ category: "music", venue_place_slug: VENUE, title: "Yoga Pants: 90s cover band" })).toBe(true);
+  });
+
+  it("exports the title gate for the venue-feed ingest boundaries", () => {
+    // squarespace-live + venueEvents use this to stop blanket-stamping
+    // category "music" on every item of a music venue's calendar.
+    expect(isNonMusicTitle("Yoga in the Taproom")).toBe(true);
+    expect(isNonMusicTitle("Bluegrass Jam")).toBe(false);
   });
 
   it("rejects events at non-music venues without a music category", () => {

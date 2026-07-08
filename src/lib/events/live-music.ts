@@ -28,6 +28,15 @@ import { easternParts, easternWallToUtcISO } from "@/lib/tz";
  *  its word over this heuristic. */
 const NON_MUSIC_TITLE = /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club)\b/i;
 
+/** Shared with the venue-feed INGEST boundaries (squarespace-live,
+ *  venueEvents' category fallback), which used to blanket-stamp every
+ *  item on a music venue's calendar as category "music" — the upstream
+ *  version of the same any-event-at-a-music-venue join. One list, every
+ *  seam. */
+export function isNonMusicTitle(title: string): boolean {
+  return NON_MUSIC_TITLE.test(title);
+}
+
 /**
  * Is this a live-music event? Two honest signals:
  *  - it's classified music/concert (curated seeds, Ticketmaster music, BIT), OR
