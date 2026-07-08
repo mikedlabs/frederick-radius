@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/Button";
 import { MobileActionBar, MobileBarLink, MobileBarControl } from "@/components/ui/MobileActionBar";
 import SaveButton from "@/components/saved/SaveButton";
 import SourceBadge from "@/components/place/SourceBadge";
+import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 /**
@@ -520,14 +521,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           >
             Report incorrect info
           </a>
-          {/* Owner front door — deep-links a claim with the slug pre-attached;
-              the claim -> manage -> post -> push flow is already built. */}
-          <Link
-            href={`/business/claim?place=${place.slug}`}
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Claim this business
-          </Link>
+          {/* Owner front door. The claim -> manage -> post -> push flow is
+              built, but turning it on for owners is a deferred owner call, so
+              this reads as a calm coming-soon promise, not a live link. */}
+          <ClaimComingSoon lead="Own this business?" />
           <ShareButton
             title={place.name}
             text={safeBlurb(place)}
