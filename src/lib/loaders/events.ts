@@ -10,6 +10,7 @@ import { stampEventProvenance, type Provenance } from "@/lib/provenance";
 import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confidence";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
+import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import {
   partitionEvents,
   logPlacementWarnings,
@@ -336,13 +337,10 @@ export function eventsOnDay(day: Date): EventWithMeta[] {
 }
 
 export function eventsLive(now: Date = new Date()): EventWithMeta[] {
-  return EVENTS
-    .filter((e) => {
-      const start = new Date(e.starts_at);
-      const end = new Date(e.ends_at);
-      return start <= now && end >= now;
-    })
-    .map((e) => decorate(e));
+  // The shared liveness gate (eventWhenLabel.isEventLiveNow): trusting the
+  // stated end unconditionally kept a noon event with an end-of-day stamp
+  // "Live now" at 11 PM (beta-reviewer catch, Jul 2026).
+  return EVENTS.filter((e) => isEventLiveNow(e, now)).map((e) => decorate(e));
 }
 
 export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
