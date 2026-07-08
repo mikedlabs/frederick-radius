@@ -2637,10 +2637,11 @@ export default function AppMap({
             </Popup>
           )}
 
-          {/* Zoom stays as corner furniture — camera, not filter — and the
-              dock-host CSS floats it above the dock + hides it while a
-              pane is open. GeolocateControl only rides dock-less maps:
-              on /map browse, locate's one home is the Where pane. */}
+          {/* Zoom stays as corner furniture — camera, not filter. With the
+              dock now pinned at the TOP, the bottom-right corner is
+              unobstructed, so dock-host CSS returns the zoom cluster there.
+              GeolocateControl only rides dock-less maps: on /map browse,
+              locate's one home is the Where pane. */}
           <NavigationControl position="bottom-right" showCompass={false} />
           {!dock && <GeolocateControl position="bottom-right" trackUserLocation />}
         </Map>

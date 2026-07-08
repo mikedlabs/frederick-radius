@@ -2585,28 +2585,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. The collapsed face is the What · When · Where caption (also the
-   tab bar + clear-all); each word expands the card into its pane. The dock
-   never overlaps the bottom nav: it lives inside the map canvas, which
-   already ends above the nav reserve.
+   dock-*. It pins to the TOP of the map, directly beneath the search bar,
+   mirroring the /events masthead-dock: the What · When · Where caption is
+   the tab bar + clear-all, and each word drops its pane DOWN over the
+   scrim-dimmed map. Living at the top permanently clears the floating
+   BottomNav (which owned the bottom edge and used to collide with the old
+   bottom dock).
    ========================================================================== */
 
-/* Host marker on the map container: floats the Mapbox bottom corner
-   furniture (zoom, attribution wordmark) above the collapsed dock, and
-   hides it while a pane is open (the scrim owns the map then). Wins the
-   cascade over the mobile top-corner relocation rule above (equal
-   specificity, later in the file), so on dock maps the zoom pair returns
-   to its conventional corner — riding the dock, camera not filter. */
+/* Host marker on the map container: with the dock now at the TOP, the map's
+   bottom corners are unobstructed, so the Mapbox zoom + attribution return
+   to their conventional bottom-right corner (camera furniture, not filter).
+   The scrim dims them while a pane is open — no separate hide needed. Wins
+   the cascade over the mobile top-corner relocation rule above (equal
+   specificity, later in the file), which would otherwise send them up under
+   the search + caption bar. */
 .dock-host .mapboxgl-ctrl-bottom-right,
 .dock-host .mapboxgl-ctrl-bottom-left {
   top: auto !important;
-  bottom: 96px !important;
-  transition: opacity 0.2s;
-}
-.dock-host[data-dock-pane="open"] .mapboxgl-ctrl-bottom-right,
-.dock-host[data-dock-pane="open"] .mapboxgl-ctrl-bottom-left {
-  opacity: 0;
-  pointer-events: none;
+  bottom: 14px !important;
 }
 
 /* Scrim behind the open pane — tap to close. Sits above the map + its
@@ -2625,47 +2622,70 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: auto;
 }
 
-/* The card. One rounded glass plate: pane on top, caption row + count
-   line beneath, all inside the same border. */
+/* The dock wrapper — positions the whole instrument at the top of the map,
+   under the search pill. It carries no paint of its own: .dock-head is the
+   frosted caption card and .dock-pane hangs off it at top:100%. Keeping the
+   wrapper unfiltered means it stays the containing block for the absolutely
+   positioned pane. */
 .dock {
   position: absolute;
+  top: 60px;
   left: 10px;
   right: 10px;
-  bottom: 10px;
   z-index: var(--z-sticky);
   margin-inline: auto;
   max-width: 680px;
-  display: flex;
-  flex-direction: column;
+}
+
+/* The pinned head: caption tab bar + count line. Frosted paper so the map
+   reads beneath the blur. Rounds all four corners at rest; squares its
+   bottom edge while a pane is dropped so head + pane read as one card. */
+.dock-head {
+  position: relative;
+  z-index: 2;
   border-radius: var(--app-radius-md);
   border: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--app-shadow-2);
-  overflow: hidden;
   transition: box-shadow 0.25s;
 }
-.dock.dock-open {
+.dock.dock-open .dock-head {
   box-shadow: var(--app-shadow-3);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
-/* Pane: expands ABOVE the caption row, inside the same card. Collapsed
-   via max-height so the caption row never moves. Reduced motion is
-   covered by the global gate; the explicit rule below keeps the intent
-   obvious if that gate ever narrows. */
+/* The top-sheet pane — drops DOWN from directly under the caption bar
+   (top: 100% of the dock wrapper) over the dimmed map. Collapsed via
+   max-height so the head above it never shifts. Reduced motion is covered
+   by the global gate; the explicit rule below keeps the intent obvious if
+   that gate ever narrows. */
 .dock-pane {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
   max-height: 0;
   overflow: hidden;
+  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--app-border);
+  border-top: none;
+  border-radius: 0 0 var(--app-radius-md) var(--app-radius-md);
+  box-shadow: var(--app-shadow-3);
   transition: max-height 0.32s ease;
 }
 .dock-open .dock-pane {
-  max-height: min(470px, 58dvh);
+  max-height: min(470px, 56dvh);
 }
 .dock-pane-scroll {
-  max-height: min(470px, 58dvh);
+  max-height: min(470px, 56dvh);
   overflow-y: auto;
-  padding: 12px 14px 8px;
+  padding: 12px 14px 14px;
   scrollbar-width: thin;
 }
 .dock-pane-head {
@@ -2859,14 +2879,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* The caption row: three labeled cells + the clear ×. Each cell is a
-   ≥44px tab; the active one carries a brand top rule. */
+   ≥44px tab; the active one carries a brand rule along its BOTTOM (the
+   pane drops down from there). */
 .dock-readout {
   display: flex;
   align-items: stretch;
-  border-top: 1px solid transparent;
-}
-.dock-open .dock-readout {
-  border-top-color: var(--app-border);
 }
 .dock-seg {
   flex: 1 1 0;
@@ -2919,10 +2936,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: absolute;
   left: 10px;
   right: 10px;
-  top: 0;
+  bottom: 0;
   height: 2.5px;
   background: var(--app-brand);
-  border-radius: 0 0 3px 3px;
+  border-radius: 3px 3px 0 0;
 }
 .dock-clear {
   flex: 0 0 44px;
@@ -2933,25 +2950,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-left: 1px solid var(--app-border);
 }
 
-/* The living mono count line — also the polite live region. */
+/* The living mono count line — also the polite live region. A hairline rule
+   separates it from the caption tabs above. */
 .dock-countline {
-  padding: 0 12px 7px;
+  padding: 5px 12px 6px;
+  border-top: 1px solid var(--app-border);
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9.5px;
   color: var(--app-ink-3);
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Reduced motion: no expand animation, no scrim fade — state changes
    land instantly. (The global gate covers this too; kept explicit so
    the dock honors it even if that gate is ever scoped down.) */
 @media (prefers-reduced-motion: reduce) {
-  .dock,
+  .dock-head,
   .dock-pane,
   .dock-scrim,
-  .dock-chip,
-  .dock-host .mapboxgl-ctrl-bottom-right,
-  .dock-host .mapboxgl-ctrl-bottom-left {
+  .dock-chip {
     transition: none !important;
   }
 }
