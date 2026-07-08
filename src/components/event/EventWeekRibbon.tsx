@@ -16,11 +16,20 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  * EventsExplorer honors), so the ribbon is a fast temporal filter, not
  * just decoration. Today/active days get a quiet brand wash.
  *
- * Client component: it reads the active ?d= from the live URL itself —
- * /events is a static (ISR) shell, so the server can't know the param.
- * Counts still come from the same server-provided `events` list the
- * explorer renders — no day shows a fabricated number, and an empty day
- * honestly shows a muted dot rather than "0".
+ * Two modes, one look:
+ *   - UNCONTROLLED (default): reads the active ?d= from the live URL and
+ *     each cell is a <Link> that deep-links the day. Used when the ribbon
+ *     stands alone at the top of a page.
+ *   - CONTROLLED (`onPickDay` supplied): each cell is a <button> that
+ *     drives the caller's `day` state directly, so the ribbon can live
+ *     inside the board's When pane as a peer of the other pane controls
+ *     (no navigation / remount, no lost scroll or closed pane).
+ *
+ * Client component: in uncontrolled mode it reads the active ?d= from the
+ * live URL itself — /events is a static (ISR) shell, so the server can't
+ * know the param. Counts always come from the same server-provided
+ * `events` list the explorer renders — no day shows a fabricated number,
+ * and an empty day honestly shows a muted dot rather than "0".
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -63,11 +72,21 @@ function dateForOffset(now: Date, offset: number): Date {
 
 export default function EventWeekRibbon({
   events,
+  activeDay: activeDayProp,
+  onPickDay,
 }: {
   events: EventWithMeta[];
+  /** Controlled: the picked day key (YYYY-MM-DD), or null/undefined. */
+  activeDay?: string | null;
+  /** Controlled: called with the tapped day key, or null when tapping the
+   *  already-active day (a toggle-off). Presence flips the ribbon from
+   *  <Link> navigation to in-place <button> state. */
+  onPickDay?: (day: string | null) => void;
 }) {
-  // The currently deep-linked day (?d=), read from the live URL.
-  const activeDay = useSearchParams().get("d") ?? undefined;
+  const controlled = typeof onPickDay === "function";
+  // The active day: the caller's state when controlled, else the live URL.
+  const urlDay = useSearchParams().get("d") ?? undefined;
+  const activeDay = controlled ? activeDayProp ?? undefined : urlDay;
   const now = new Date();
   const todayKey = easternDateKey(now);
 
@@ -115,31 +134,28 @@ export default function EventWeekRibbon({
         // Active toggles off (back to /events); else deep-links the day.
         const href = isActive ? "/events" : `/events?d=${d.key}`;
         const highlighted = isActive || (!activeDay && d.isToday);
-        return (
-          <Link
-            key={d.key}
-            href={href}
-            scroll={false}
-            aria-current={isActive ? "date" : undefined}
-            aria-label={`${d.full} ${d.dom}${d.isToday ? ", today" : ""}, ${d.count} ${d.count === 1 ? "event" : "events"}`}
-            className="group flex flex-col items-center gap-1 py-2 transition active:scale-[0.96]"
-            style={{
-              // Today/active: quiet brand wash + a top accent rule via an
-              // inset shadow. Hairline left dividers keep the seven cells
-              // legible as a row without a heavy grid.
-              background: highlighted
-                ? "color-mix(in srgb, var(--app-brand) 8%, transparent)"
-                : d.isWeekend
-                  ? "color-mix(in srgb, var(--app-cool) 4%, transparent)"
-                  : "transparent",
-              boxShadow: [
-                highlighted ? "inset 0 2px 0 0 var(--app-brand)" : null,
-                i > 0 ? "inset 1px 0 0 0 var(--app-border)" : null,
-              ]
-                .filter(Boolean)
-                .join(", ") || "none",
-            }}
-          >
+        const cellClass =
+          "group flex flex-col items-center gap-1 py-2 transition active:scale-[0.96]";
+        const cellStyle: React.CSSProperties = {
+          // Today/active: quiet brand wash + a top accent rule via an
+          // inset shadow. Hairline left dividers keep the seven cells
+          // legible as a row without a heavy grid.
+          background: highlighted
+            ? "color-mix(in srgb, var(--app-brand) 8%, transparent)"
+            : d.isWeekend
+              ? "color-mix(in srgb, var(--app-cool) 4%, transparent)"
+              : "transparent",
+          boxShadow:
+            [
+              highlighted ? "inset 0 2px 0 0 var(--app-brand)" : null,
+              i > 0 ? "inset 1px 0 0 0 var(--app-border)" : null,
+            ]
+              .filter(Boolean)
+              .join(", ") || "none",
+        };
+        const ariaLabel = `${d.full} ${d.dom}${d.isToday ? ", today" : ""}, ${d.count} ${d.count === 1 ? "event" : "events"}`;
+        const cellInner = (
+          <>
             <span
               className="text-[10px] font-bold uppercase tracking-[0.1em]"
               style={{
@@ -181,6 +197,36 @@ export default function EventWeekRibbon({
                 }}
               />
             )}
+          </>
+        );
+        // Controlled: an in-place button driving the caller's day state.
+        if (controlled) {
+          return (
+            <button
+              key={d.key}
+              type="button"
+              aria-pressed={isActive}
+              aria-label={ariaLabel}
+              onClick={() => onPickDay?.(isActive ? null : d.key)}
+              className={cellClass}
+              style={cellStyle}
+            >
+              {cellInner}
+            </button>
+          );
+        }
+        // Uncontrolled: the standalone deep-linking ribbon.
+        return (
+          <Link
+            key={d.key}
+            href={href}
+            scroll={false}
+            aria-current={isActive ? "date" : undefined}
+            aria-label={ariaLabel}
+            className={cellClass}
+            style={cellStyle}
+          >
+            {cellInner}
           </Link>
         );
       })}

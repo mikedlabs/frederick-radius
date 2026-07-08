@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Utensils,
@@ -52,6 +52,7 @@ import { WANTS, type WantSub } from "@/data/wants";
 import { GLYPHS } from "@/components/glyphs";
 import { getHomeMuni } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
+import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
 
 const ICONS: Record<string, LucideIcon> = {
   Utensils, UtensilsCrossed, Coffee, IceCream, Cookie, ShoppingCart, Croissant,
@@ -95,6 +96,21 @@ export default function WantsAccordion({
   defaultOpen?: string;
 }) {
   const [openKey, setOpenKey] = useState<string>(defaultOpen);
+  // Saved-taste default: once the user's saves show a dominant craving, open THAT
+  // main drawer instead of the time-of-day guess (coffee-heavy saves open Eat,
+  // brewery-heavy opens Drink). Purely additive — resolves post-mount, falls back
+  // to the time default when there's no clear pattern, and never overrides a tile
+  // the user has already tapped (touchedRef). First paint stays the SSR default,
+  // so there's no hydration mismatch.
+  const savedWant = useSavedTasteWant();
+  const touchedRef = useRef(false);
+  useEffect(() => {
+    if (touchedRef.current || !savedWant) return;
+    if (WANTS.some((w) => w.key === savedWant)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- apply the client-only saved-taste default after the by-slugs join resolves; SSR can't see localStorage saves
+      setOpenKey(savedWant);
+    }
+  }, [savedWant]);
   // Home town (read post-mount, client-only). When set, the geo-aware /nearby
   // answers default to that town — so picking a town in the masthead actually
   // scopes what you find here. Curated/page links (/trails, /brunch…) are left
@@ -140,6 +156,7 @@ export default function WantsAccordion({
               aria-expanded={open}
               onClick={() => {
                 haptic("light");
+                touchedRef.current = true; // a manual pick wins over the saved-taste default
                 setOpenKey((k) => (k === cat.key ? "" : cat.key));
               }}
               className="tactile-interactive group relative flex min-h-[82px] flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-sm)] px-1 py-2.5 text-center transition-transform"

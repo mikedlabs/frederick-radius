@@ -4,6 +4,7 @@ import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import MastheadTitle from "@/components/today/MastheadTitle";
 import OnNowBand from "@/components/today/OnNowBand";
+import OnNowStrip from "@/components/today/OnNowStrip";
 import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
@@ -41,21 +42,24 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { eventDateBlock, type EventWithMeta } from "@/lib/loaders/events";
+import { eventDateBlock } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { compareForLead, pickLeadEvent } from "@/lib/events/lead-rank";
+import { compareForLead } from "@/lib/events/lead-rank";
 import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { FREDERICK_CENTER, isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
-import { easternParts, easternDayKey } from "@/lib/tz";
+import { pickTonightEvent } from "@/lib/today/tonight";
+import { daypart, sectionOrder, type TodaySection } from "@/lib/daypart";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import NowIntel from "@/components/today/NowIntel";
+import TomorrowPreview from "@/components/today/TomorrowPreview";
+import GoldenHourCard from "@/components/today/GoldenHourCard";
+import EventWalkTime from "@/components/today/EventWalkTime";
 
 /**
  * Now — the daily briefing.
@@ -112,38 +116,9 @@ export const metadata: Metadata = {
 };
 
 
-// Event titles that look like internal/admin business — board meetings,
-// hearings, classes, rehearsals. Public meetings live on /events under
-// their own section; they don't carry a "Don't miss" hero card.
-// (EVENING_CATEGORIES + pickFeaturedCandidates retired in Push 2:
-// RightNowStrip's "Weekend bet" card now carries the editorial-place
-// answer. The filter logic moved into RightNowStrip's NIGHT_OUT_CATS.)
-const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
-
-/** Tonight's marquee event: the best still-catchable DRAW happening TODAY.
- *
- *  History: this picker used to lead-rank a 72-hour pool, and its callers then
- *  nulled the result unless the winner started today — so whenever the ranked
- *  winner was a photo-backed Thursday event, the masthead showed NOTHING on a
- *  night with a live game downtown (the 7:55 PM audit render). It now filters
- *  FIRST — today's Eastern day, not yet ended, non-administrative — and
- *  lead-ranks inside that pool, so the hero is alive on exactly the nights it
- *  matters and can never carry an event the user already missed. If nothing
- *  qualifies, no hero: honest beats padded.
- */
-function pickTonightEvent(now: Date, pool: EventWithMeta[]) {
-  const tonight = pool.filter(
-    (e) =>
-      isEventToday(e.starts_at, now) &&
-      !isEventEnded(e, now) &&
-      !NON_PUBLIC_EVENT.test(e.title ?? ""),
-  );
-  // Lead-rank, not raw chronology: a photo-led draw, then any real draw, then a
-  // routine recurring program (storytime/class) last — so the cron-ingested
-  // library calendar (PR #894) can't put a storytime in the hero ahead of
-  // tonight's carnival or concert.
-  return pickLeadEvent(tonight);
-}
+// pickTonightEvent + its NON_PUBLIC_EVENT filter moved to src/lib/today/tonight
+// so the SkyHero teaser, the What's-On feature, AND the composed "right now"
+// line (NowIntel) all speak ONE agreed headliner instead of re-deriving it.
 
 // /today is time-sensitive, but force-dynamic made every visit pay the
 // external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
@@ -279,6 +254,18 @@ export default async function HomePage() {
         <div className="fg-rule mt-3" aria-hidden />
       </header>
 
+      {/* ── ON NOW, NEAR YOU — a compact live strip in the gap the copy-heavy
+          "Market season" seasonal band used to fill (owner call, 2026-07-08:
+          the band read as brochure prose). Two or three TAPPABLE chips of what
+          is genuinely on THIS MINUTE — a live event, a place open now (a happy
+          hour pouring), today's farmers market if one is actually open — each
+          linking to its surface. Honest + self-hiding: shows only what's real,
+          and the whole strip disappears (no empty box) when nothing qualifies.
+          Streams on the shared events promise. */}
+      <Suspense fallback={null}>
+        <OnNowStrip now={now} eventsPromise={eventsPromise} />
+      </Suspense>
+
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
           themselves before seeing any value, and most people never touch a
@@ -304,11 +291,6 @@ export default async function HomePage() {
       <div className="mt-4" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <CravingStrip
           locationSlot={<LocationPrime />}
-          intelSlot={
-            <Suspense fallback={null}>
-              <NowIntel now={now} />
-            </Suspense>
-          }
           contextSlot={
             <Suspense fallback={null}>
               <RightNowSlot eventsPromise={eventsPromise} now={now} />
@@ -317,30 +299,40 @@ export default async function HomePage() {
         />
       </div>
 
-      {/* ── PLAN THE MOMENT — the editorial counterpart to the craving grid.
-          Where "I want ___ right now" answers a single need, this surfaces the
-          hand-picked collections (walkable date night, kid energy burners,
-          rainy day, hidden gems) a beta review found personas hunting for in the
-          category icons. Pure discoverability of content that already lives at
-          /collections; server-rendered, no client JS. */}
-      <CuratedPicks />
+      {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
+          the day; once it's past ~9 PM (the "late" daypart, strictly on the
+          Eastern clock) it leads the editorial spine with tomorrow's top draw +
+          weather look, so a spent day isn't a dead end. */}
+      <Suspense fallback={null}>
+        <TomorrowPreview now={now} eventsPromise={eventsPromise} />
+      </Suspense>
 
-      {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
-          ABOVE the moat (owner call): the day's events are the headline answer.
-          Soonest first; the rest of the calendar is one tap away via "See all".
-          Streamed: the section awaits the shared events promise inside its own
-          Suspense boundary so the chrome above it never waits on the feeds. */}
-      <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-        <Suspense
-          fallback={
-            <section className="mt-6 space-y-3" aria-label="What's on">
-              <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-            </section>
-          }
-        >
-          <WhatsOn eventsPromise={eventsPromise} now={now} />
-        </Suspense>
-      </div>
+      {/* ── EDITORIAL SPINE, DAYPART-ORDERED — the SAME daypart spine the On-now
+          band orders by, lifted to the page's two swappable sections. Morning /
+          midday lead with the day-ahead plan (Plan the moment: walkable date
+          night, kid energy burners, rainy-day, hidden gems — pure
+          discoverability of /collections, no client JS); evening / late lead
+          with tonight's events (the headline answer, soonest first, the rest one
+          tap away via "See all"). Both always render — daypart only picks which
+          comes first, so the page BEHAVES like a local instead of saying so.
+          What's-on streams inside its own Suspense boundary. */}
+      {sectionOrder(daypart(now)).map((section: TodaySection) =>
+        section === "curated" ? (
+          <CuratedPicks key="curated" />
+        ) : (
+          <div key="whats-on" id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+            <Suspense
+              fallback={
+                <section className="mt-6 space-y-3" aria-label="What's on">
+                  <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+                </section>
+              }
+            >
+              <WhatsOn eventsPromise={eventsPromise} now={now} />
+            </Suspense>
+          </div>
+        ),
+      )}
 
       {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
           the live layer): a returning user's own saved places that are open
@@ -357,6 +349,12 @@ export default async function HomePage() {
           the band header reads "On now" when something's genuinely live and
           "Coming up" when the only card is the next happy hour. Streams on the
           shared events promise (it needs tonight's events for the parking play). */}
+      {/* Golden hour — a calm almanac beat in the live layer: today's sunset +
+          the ~hour of good light before it (real NOAA sun math). Self-hides
+          outside the pre-sunset window, so it appears exactly when it's the most
+          decision-useful — and romantic — number on the page. */}
+      <GoldenHourCard now={now} />
+
       {/* Live Keys score — client island that self-hides unless there's a game
           today (home or away). Polls only while the game is live. Leads the live
           layer because a game in progress is the most time-sensitive thing on
@@ -615,6 +613,17 @@ async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromi
   return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
 }
 
+/** A walk time is only honest for a venue we KNOW the position of — the loader
+ *  stamps "venue_match" / "exact_address" on those (and lists "area"/"unknown"
+ *  ones without a distance). Gate the tile's walk figure on that + a valid
+ *  in-county coordinate, so we never measure a stroll to a guessed point. */
+function hasPreciseGeo(e: { geo_confidence?: string; geom?: { lng: number; lat: number } | null }): boolean {
+  return (
+    (e.geo_confidence === "venue_match" || e.geo_confidence === "exact_address") &&
+    isValidCoord(e.geom ?? null)
+  );
+}
+
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
  *  sink to the end; civic/utility business shows quietly as "Also today". */
@@ -634,20 +643,9 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   const todaysEvents = ahead.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
   const todaysCivic = ahead.filter((e) => isUtilityEvent(e));
   const earlierToday = ended.filter((e) => !isUtilityEvent(e));
-  // OVERNIGHT (10 PM - 5 AM Eastern): today's rail is honest but thin — most
-  // draws have ended and "what's worth your time right now" is usually
-  // "sleep". Give the night owl tomorrow's answer: the first few lead-ranked
-  // draws of the coming day, as a quiet strip. Empty outside the overnight
-  // band, so daytime renders are untouched.
-  const easternHour = easternParts(now).hour;
-  const overnight = easternHour >= 22 || easternHour < 5;
-  const tomorrowKey = easternDayKey(new Date(now.getTime() + 24 * 3_600_000));
-  const firstTomorrow = overnight
-    ? publicEvents
-        .filter((e) => easternDayKey(new Date(e.starts_at)) === tomorrowKey && !isUtilityEvent(e))
-        .sort(compareForLead)
-        .slice(0, 3)
-    : [];
+  // (The overnight "First thing tomorrow" strip that used to live here grew into
+  // its own composed TomorrowPreview beat above — top draw + weather look, gated
+  // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
   const featuredEvent = pickTonightEvent(now, publicEvents);
   // The SkyHero teaser (TonightTeaser) already carries pickTonightEvent's #1,
   // so the feature card here takes the NEXT-best draw and the rail carries the
@@ -671,7 +669,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         eyebrow="What's on"
         plateNo="Pl. I"
       >
-        {feature || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 || firstTomorrow.length > 0 ? (
+        {feature || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 ? (
           <div className="space-y-3">
             {feature && (
               <EventCard event={feature} variant="feature" />
@@ -680,8 +678,16 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               <div className="-mx-4 px-4">
                 <div className="reveal-up shelf-rail gap-3 pb-1">
                   {upcomingRest.map((e) => (
-                    <div key={`${e.slug}-${e.starts_at}`} className="tactile-ring w-[280px] shrink-0 rounded-[var(--app-radius-lg)]">
-                      <EventCard event={e} variant="tile" />
+                    <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
+                      <div className="tactile-ring rounded-[var(--app-radius-lg)]">
+                        <EventCard event={e} variant="tile" />
+                      </div>
+                      {/* Real walk minutes from the user's cached fix (LocationPrime
+                          consent), for precisely-located venues only — the single
+                          most decision-useful number on a downtown event tile.
+                          Client + self-hiding: no fix, or no precise coordinate,
+                          renders nothing. Never fabricated. */}
+                      {hasPreciseGeo(e) && <EventWalkTime dest={e.geom} />}
                     </div>
                   ))}
                 </div>
@@ -696,22 +702,6 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 </p>
                 <ul>
                   {todaysCivic.map((e) => (
-                    <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} variant="utility" />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {/* Overnight only: tomorrow's first draws, so the 2 AM open isn't
-                a dead end. Quiet one-liners; the full day is one tap away. */}
-            {firstTomorrow.length > 0 && (
-              <div className="space-y-1">
-                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                  First thing tomorrow
-                </p>
-                <ul>
-                  {firstTomorrow.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" />
                     </li>

@@ -305,7 +305,16 @@ html, body {
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  /* CLIP, not hidden: `overflow-x: hidden` computes overflow-y to `auto`,
+     which makes <body> a (non-scrolling) scroll container and silently
+     breaks EVERY `position: sticky` on the page — the document scrolls on
+     <html>, so a sticky element measured against <body> never pins and just
+     scrolls away (the /events masthead-dock, and the TopBar, both failed to
+     stick). `overflow-x: clip` clips the same horizontal overflow WITHOUT
+     establishing a scroll container, so sticky pins to the viewport as
+     intended. Visually identical (no horizontal scroll); only the latent
+     sticky bug changes. */
+  overflow-x: clip;
   /* Native-feel: no gray/blue flash on tap (the biggest "this is a website"
      tell on Android), native UI (scrollbars/pickers) in the paper palette,
      and no browser pull-to-refresh / bottom rubber-band on the document. */
@@ -2959,6 +2968,357 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-chip,
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
+    transition: none !important;
+  }
+}
+
+/* ============================================================================
+   /events masthead-dock (EventsBoardDock.tsx). The collapsing almanac
+   nameplate FUSED with the pinned "What · When · Where" caption bar: at rest
+   the full plate shows; scroll and the nameplate folds to zero, leaving only
+   the caption pinned at the top edge. Each caption word is a ≥44px tab that
+   drops a top-sheet pane DOWN over the scrim-dimmed list. Sibling grammar to
+   the /map .dock — the chips (.dock-chip family below is mirrored as .eb-chip
+   with an AA-correct darkened active fill) and the .dock-sect / .dock-subrow /
+   .dock-pane-head / .dock-done classes are shared — but this dock pins to the
+   TOP and the pane opens downward, not up. Design tokens only.
+   ========================================================================== */
+.eb-dock {
+  position: sticky;
+  top: var(--app-topbar-h);
+  z-index: var(--z-sticky);
+}
+
+/* The pinned head: nameplate + caption bar + sub bar. Frosted paper so the
+   list scrolls legibly beneath it. Kept a SEPARATE element from .eb-dock so
+   the fixed scrim / absolute pane below are NOT inside its backdrop-filter
+   (which would trap fixed positioning). */
+.eb-head {
+  position: relative;
+  z-index: 2;
+  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--app-border);
+  border-radius: 0 0 var(--app-radius-md) var(--app-radius-md);
+  box-shadow: var(--app-shadow-1);
+  transition: box-shadow 0.25s;
+}
+.eb-dock.eb-collapsed .eb-head {
+  box-shadow: var(--app-shadow-2);
+}
+
+/* The almanac nameplate — collapses to zero on scroll. */
+.eb-masthead {
+  overflow: hidden;
+  max-height: 96px;
+  opacity: 1;
+  padding: 12px 14px 6px;
+  transition: max-height 0.3s ease, opacity 0.22s ease, padding 0.3s ease;
+}
+.eb-dock.eb-collapsed .eb-masthead {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.eb-dateline {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+  margin-bottom: 3px;
+}
+.eb-title {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+  color: var(--app-ink);
+}
+.eb-title-on {
+  color: var(--app-brand-press);
+}
+
+/* The caption bar — always pinned. Three labeled cells (each a tab) + the
+   clear ×. The active tab carries a brand rule along its BOTTOM (the pane
+   drops down from here). */
+.eb-capbar {
+  display: flex;
+  align-items: stretch;
+  padding: 0 3px;
+}
+.eb-seg {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  text-align: left;
+  position: relative;
+}
+.eb-seg-what {
+  flex: 1.25 1 0;
+}
+.eb-seg-where {
+  flex: 1.05 1 0;
+}
+.eb-seg + .eb-seg {
+  border-left: 1px solid var(--app-border);
+}
+.eb-seg-k {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+.eb-seg-v {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--app-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.eb-seg-v.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+.eb-seg.active-tab::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2.5px;
+  background: var(--app-brand);
+  border-radius: 3px 3px 0 0;
+}
+.eb-clear {
+  flex: 0 0 42px;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  color: var(--app-ink-3);
+  border-left: 1px solid var(--app-border);
+}
+
+/* The sub bar — the mono count line (also the polite live region) on the
+   left, the "how you look" controls (sort + view lens) on the right. Kept
+   visually distinct from the caption so a viewing choice never reads as a
+   filter. */
+.eb-subbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 7px;
+  border-top: 1px solid var(--app-border);
+}
+.eb-countline {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  color: var(--app-ink-3);
+  letter-spacing: 0.02em;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eb-how {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.eb-lensseg {
+  display: flex;
+  align-items: center;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  overflow: hidden;
+}
+.eb-lensseg button {
+  width: 34px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--app-ink-3);
+  position: relative;
+}
+.eb-lensseg button::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+.eb-lensseg button + button {
+  border-left: 1px solid var(--app-border);
+}
+.eb-lensseg button.on {
+  color: var(--app-brand-press);
+  background: color-mix(in srgb, var(--app-brand) 12%, transparent);
+}
+
+/* The scrim — dims the whole list while a pane is open; a tap closes it.
+   Fixed (viewport) so it covers the list regardless of scroll; painted below
+   the head (z 2) but above page content, so the caption tabs stay lit and
+   tappable. */
+.eb-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--app-ink) 22%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.eb-scrim.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The top-sheet pane — drops DOWN from directly under the caption bar (top:
+   100% of the sticky dock) over the dimmed list. Collapsed via max-height so
+   nothing above it ever shifts. */
+.eb-pane {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--app-bg-elevated);
+  border: 1px solid var(--app-border);
+  border-top: none;
+  border-radius: 0 0 var(--app-radius-lg) var(--app-radius-lg);
+  box-shadow: var(--app-shadow-3);
+  transition: max-height 0.32s ease;
+}
+.eb-dock.eb-open .eb-pane {
+  max-height: min(70dvh, 560px);
+}
+.eb-pane-scroll {
+  max-height: min(70dvh, 560px);
+  overflow-y: auto;
+  padding: 10px 15px 16px;
+  scrollbar-width: thin;
+}
+
+/* Chips — mirror .dock-chip, but the ACTIVE fill darkens the accent toward
+   ink (the *-press analog), so white text clears AA even on light golds /
+   ambers (Sports, Food, Community, Happy hour). Same rule the shipped cards
+   use for category text on light accents. ≥44px effective via .tap-44-y. */
+.eb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.eb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  transition: transform 0.08s;
+}
+.eb-chip:active {
+  transform: scale(0.96);
+}
+.eb-chip.eb-chip-quiet {
+  color: var(--app-ink-3);
+}
+.eb-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--c, var(--app-ink-3));
+}
+.eb-chip[data-on] {
+  background: color-mix(in srgb, var(--c, var(--app-brand)) 82%, var(--app-ink));
+  border-color: color-mix(in srgb, var(--c, var(--app-brand)) 82%, var(--app-ink));
+  color: #fff;
+}
+.eb-chip[data-on] .eb-chip-dot {
+  background: rgba(255, 255, 255, 0.85);
+}
+.eb-chip-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.62;
+}
+.eb-chip[data-on] .eb-chip-n {
+  opacity: 0.85;
+}
+
+/* The q-search field at the top of the What pane. */
+.eb-filterfield {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 44px;
+  padding: 0 13px;
+  margin-top: 2px;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid var(--app-border);
+  background: var(--app-bg);
+  color: var(--app-ink-3);
+}
+.eb-filterfield input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--app-ink);
+}
+.eb-filterfield input::placeholder {
+  color: var(--app-ink-3);
+}
+
+/* Jump to next weekend — the When pane's one quiet secondary action. */
+.eb-jumpwk {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--app-ink-2);
+}
+.eb-jumpwk svg {
+  color: var(--app-cool);
+}
+
+/* Reduced motion: no fold, no drop animation, no scrim fade — the masthead
+   stays static and pane state lands instantly (the global gate covers this;
+   kept explicit so the dock honors it even if that gate narrows). */
+@media (prefers-reduced-motion: reduce) {
+  .eb-masthead,
+  .eb-head,
+  .eb-pane,
+  .eb-scrim,
+  .eb-chip {
     transition: none !important;
   }
 }
