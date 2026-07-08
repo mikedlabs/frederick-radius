@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { BETA_COOKIE, betaToken } from "@/lib/beta-gate";
+import { BETA_COOKIE, betaToken, verifyCodeCookie } from "@/lib/beta-gate";
 
 /**
  * Edge middleware: three independent gates, applied conditionally
@@ -97,7 +97,12 @@ async function betaGate(req: NextRequest): Promise<NextResponse | null> {
     return null;
   }
   const cookie = req.cookies.get(BETA_COOKIE)?.value;
-  if (cookie && cookie === (await expectedBetaToken(pw))) return null; // unlocked
+  // Two ways the cookie unlocks: the shared-password token (owner master key),
+  // or a signed per-user access code. Both are pure crypto checks — no DB.
+  if (cookie) {
+    if (cookie === (await expectedBetaToken(pw))) return null; // master password
+    if (await verifyCodeCookie(cookie)) return null; // valid per-user code
+  }
   const url = new URL("/beta", req.url);
   url.searchParams.set("next", pathname + req.nextUrl.search);
   return NextResponse.redirect(url);

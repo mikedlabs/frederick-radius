@@ -323,6 +323,38 @@ export const beta_emails = pgTable(
   }),
 );
 
+/**
+ * beta_codes — per-tester access codes. Replaces the single shared password as
+ * the way people come in, so each beta user is individually attributable (the
+ * code rides into the analytics cohort) and individually revocable (flip
+ * `revoked` and only that person is locked out). The shared BETA_PASSWORD stays
+ * as an owner master key alongside these, so we can never lock ourselves out.
+ *
+ * `code` is a readable slug (e.g. "frederick-ada7") the owner texts to a tester;
+ * `label` is who it's for ("Jane from the co-op"). `redeemed_at` is first unlock,
+ * `uses` counts redemptions (a person may unlock on phone + laptop),
+ * `last_seen_at` is refreshed by a once-per-session ping so the admin list shows
+ * who is actually active. RLS deny-all like every table — the BYPASSRLS server
+ * role owns all reads/writes; the edge middleware never touches the DB (it
+ * verifies a signed cookie), so the hot path stays fast.
+ */
+export const beta_codes = pgTable(
+  "beta_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    label: text("label"),
+    revoked: boolean("revoked").notNull().default(false),
+    uses: integer("uses").notNull().default(0),
+    redeemed_at: timestamp("redeemed_at", { withTimezone: true }),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUq: uniqueIndex("beta_codes_code_uq").on(t.code),
+  }),
+);
+
 export const saved_events = pgTable(
   "saved_events",
   {

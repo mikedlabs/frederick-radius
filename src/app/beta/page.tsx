@@ -93,7 +93,7 @@ export default async function BetaPage({
 
           <p className="mx-auto mt-4 max-w-[23rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Downtown Frederick and the county, connected: what&rsquo;s open, what&rsquo;s on,
-            and what&rsquo;s worth your time. Enter the password you were given to come in.
+            and what&rsquo;s worth your time. Enter the access code you were given to come in.
           </p>
 
           {/* Live proof, directly under the headline block — real county data
@@ -107,12 +107,15 @@ export default async function BetaPage({
           <form action="/api/beta" method="post" className="mx-auto mt-6 max-w-[20rem] space-y-2.5">
             <input type="hidden" name="next" value={safeNext} />
             <input
-              type="password"
+              type="text"
               name="password"
               required
               autoComplete="off"
-              aria-label="Beta password"
-              placeholder="Password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Access code"
+              placeholder="Access code"
               className="w-full rounded-[var(--app-radius-md)] border px-4 py-3 text-center text-[16px] tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
               style={{
                 borderColor: error ? "var(--app-brand)" : "var(--app-border-strong)",
@@ -123,7 +126,7 @@ export default async function BetaPage({
             />
             {error && (
               <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-                That password did not match. Try again.
+                That code did not match. Try again.
               </p>
             )}
             <button
@@ -269,14 +272,14 @@ export default async function BetaPage({
             Come see your county.
           </h2>
           <p className="mx-auto mt-3 max-w-[24rem] text-[14.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Have a password? Scroll back up and come in. No password yet? Leave your
+            Have an access code? Scroll back up and come in. No code yet? Leave your
             email and we&rsquo;ll wave you through at launch.
           </p>
           <div className="mt-5">
             <BetaEmailField />
           </div>
           <Link href="#top" className="mt-6 inline-block font-mono text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
-            &uarr; Enter a password
+            &uarr; Enter an access code
           </Link>
           <div
             className="mx-auto mt-8 flex max-w-[24rem] items-center justify-center gap-2.5 border-t pt-3 font-mono text-[10.5px] uppercase tracking-[0.12em]"
