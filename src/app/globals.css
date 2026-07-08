@@ -2600,6 +2600,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
 }
 
+/* Mobile: the browse map is full-bleed and the BottomNav is a floating pill
+   fixed at bottom-0 (z-nav 40, above the dock's z-sticky 30), so the dock's
+   bottom:10px put its caption directly under the nav pill. On phones, lift the
+   dock — and the zoom pair that rides above it — clear of the nav, matching the
+   FeedbackWidget's ~76px lift. Desktop (>=lg) has a SideRail, not a bottom pill,
+   so it keeps the tighter bottom:10px / 96px. */
+@media (max-width: 1023.98px) {
+  .dock {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .dock-host .mapboxgl-ctrl-bottom-right,
+  .dock-host .mapboxgl-ctrl-bottom-left {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Scrim behind the open pane — tap to close. Sits above the map + its
    floating chrome, below the dock card. */
 .dock-scrim {
