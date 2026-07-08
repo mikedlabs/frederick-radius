@@ -5,7 +5,6 @@ import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
-import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -111,9 +110,12 @@ export const metadata: Metadata = {
     "Live event feeds from Celebrate Frederick, the County calendar, Ticketmaster (including the Frederick Keys), Bandsintown, and the Weinberg Center lineup." },
 };
 
-// 10 min, not an hour: the "Tonight" hero + weekend buckets are computed
-// against now, so a tighter window keeps them from drifting stale.
-export const revalidate = 600;
+// 5 min: the "Tonight" hero + weekend buckets are computed against now,
+// so a tight window keeps them from drifting stale. This page is now a
+// STATIC (ISR) shell — see the restructure note below — so revalidate is
+// the ONLY staleness bound; the warm cron keeps the feed caches hot
+// underneath, which makes the revalidation render cheap.
+export const revalidate = 300;
 
 /**
  * /events — DISCOVERY-FIRST: one premium masthead + one results region.
@@ -143,12 +145,20 @@ export const revalidate = 600;
  * the count line and the entire board await the ONE shared events promise
  * inside their own <Suspense> boundaries, so a cold ISR miss streams the board
  * in instead of holding the whole page on the slowest third-party feed.
+ *
+ * STATIC (ISR) RESTRUCTURE (owner-approved 2026-07): this page no longer
+ * reads `searchParams` — in Next 16 that single read opted the route out
+ * of static rendering, so EVERY request (worst: the first after a deploy)
+ * re-rendered server-side against cold feed caches (~8s TTFB). The
+ * deep-link view (?cats/?m/?when/?d) is now parsed CLIENT-side inside
+ * EventsExplorer/EventWeekRibbon (nuqs already owned the other params);
+ * the app-level template remounts per navigation, so mount-time parsing
+ * is equivalent to the old server parse. Tradeoff: the board region
+ * (ribbon + explorer) client-renders behind the Suspense boundary below —
+ * its skeleton is what the prebuilt HTML carries — while the masthead,
+ * JSON-LD, civic sections, and footer stay fully prerendered.
  */
-export default async function EventsIndexPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function EventsIndexPage() {
   const now = new Date();
 
   // Shared, intentionally NOT awaited here — see the streaming note above. A
@@ -231,7 +241,7 @@ export default async function EventsIndexPage({
           </SlowSuspenseFallback>
         }
       >
-        <EventsBoard searchParams={searchParams} now={now} eventsPromise={eventsPromise} />
+        <EventsBoard now={now} eventsPromise={eventsPromise} />
       </Suspense>
 
       {/* ── Honesty footer — static, so it never waits on the feeds. ──── */}
@@ -246,7 +256,7 @@ export default async function EventsIndexPage({
           Live event data pulled from Celebrate Frederick, the Frederick
           County calendar, Ticketmaster (music + Frederick Keys home
           games), Bandsintown, the Weinberg Center lineup, and the county
-          municipal calendars. Refreshed about every 10 minutes.
+          municipal calendars. Refreshed about every five minutes.
         </p>
         <p>
           Missing an event?{" "}
@@ -286,11 +296,9 @@ async function EventCounts({ eventsPromise }: { eventsPromise: EventsPromise }) 
  * inline at the top of the server component.
  */
 async function EventsBoard({
-  searchParams,
   now,
   eventsPromise,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
   now: Date;
   eventsPromise: EventsPromise;
 }) {
@@ -372,17 +380,10 @@ async function EventsBoard({
   const monday = new Date(bounds.weekendEnd);
   const todayEnd = new Date(bounds.next24);
 
-  // Parse the deep-link view server-side so the explorer's first paint
-  // already reflects it.
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(await searchParams)) {
-    if (typeof v === "string") sp.set(k, v);
-    else if (Array.isArray(v) && typeof v[0] === "string") sp.set(k, v[0]);
-  }
-  const initialView: ViewState = parseViewState(sp);
-  const dParam = sp.get("d");
-  const initialDay =
-    dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
+  // The deep-link view (?cats/?m/?when/?d) is parsed CLIENT-side now —
+  // EventsExplorer and EventWeekRibbon read the URL themselves, which is
+  // what keeps this route static (reading searchParams here would opt
+  // the whole page out of ISR).
 
   // Structured data (June-9 audit P2): the listing as an ItemList of the
   // next public events, mirroring what the page renders.
@@ -407,22 +408,28 @@ async function EventsBoard({
           lead + glance cards) + map + search are now the single results
           region, so every event lands in exactly one place. */}
       {/* The week at a glance — the tappable 7-day axis (?d= deep links the
-          explorer, which already honors initialDay). Built long ago, imported
+          explorer, which reads it from the URL). Built long ago, imported
           nowhere until now (experience review, events #4): 'what's on
           Saturday?' was scroll-archaeology; now it's one tap. */}
-      <EventWeekRibbon events={eventsForExplorer} activeDay={sp.get("d") ?? undefined} />
-      <EventsExplorer
-        events={eventsForExplorer}
-        liveSlugs={liveSlugs}
-        categories={categories}
-        towns={towns}
-        nowISO={now.toISOString()}
-        next24ISO={todayEnd.toISOString()}
-        weekendStartISO={friday.toISOString()}
-        weekendEndISO={monday.toISOString()}
-        initialView={initialView}
-        initialDay={initialDay}
-      />
+      {/* The ribbon + explorer read the live URL via useSearchParams, so in
+          this STATIC route they client-render up to this boundary — the
+          prebuilt HTML carries the skeleton, and the board mounts on
+          hydration with the deep-linked view already applied (no
+          default-view flash: there is no server-rendered board to flash
+          from). Everything outside this boundary stays prerendered. */}
+      <Suspense fallback={<Skeleton.Block height={480} round="var(--app-radius-lg)" />}>
+        <EventWeekRibbon events={eventsForExplorer} />
+        <EventsExplorer
+          events={eventsForExplorer}
+          liveSlugs={liveSlugs}
+          categories={categories}
+          towns={towns}
+          nowISO={now.toISOString()}
+          next24ISO={todayEnd.toISOString()}
+          weekendStartISO={friday.toISOString()}
+          weekendEndISO={monday.toISOString()}
+        />
+      </Suspense>
 
       {/* ── 6b. GOVERNMENT & NOTICES — civic meetings + town reminders,
           fenced off from social discovery by a clear divider + label so

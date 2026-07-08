@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
-import { isOpenNow } from "@/lib/hours";
-import { easternParts, easternWallToUtcISO } from "@/lib/tz";
-import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -23,16 +20,14 @@ import { getEvChargingStations, evDetailLine } from "@/lib/integrations/evChargi
 import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
 import { unstable_cache } from "next/cache";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
+import type { CivicPin, EventPin } from "@/components/map/AppMapClient";
 import type { MapPinPlace } from "@/components/map/types";
-import { AMENITY_GROUPS } from "@/components/map/constants";
-import MapIntentChips from "@/components/map/MapIntentChips";
-import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
+import BrowseMapClient from "@/components/map/BrowseMapClient";
+import MapModeGate from "@/components/map/MapModeGate";
 import MapModeToggle from "@/components/map/MapModeToggle";
 import MapWarmup from "@/components/map/MapWarmup";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
-import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isUtilityEvent } from "@/lib/event-kind";
 
@@ -135,9 +130,9 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 // /map fans out to ~10 external APIs (Ticketmaster, Bandsintown, Chart
 // traffic, FixIt 311, Mapillary, transit/trail/boundary GIS, USGS).
-// Give the render headroom over the platform default so a cold cache
-// doesn't 503 — but the real protection is withTimeout() below, which
-// stops any single slow upstream from blocking the whole page.
+// Give the (re)validation render headroom over the platform default so a
+// cold cache doesn't 503 — but the real protection is withTimeout()
+// below, which stops any single slow upstream from blocking the render.
 export const maxDuration = 30;
 
 /**
@@ -155,81 +150,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
     Promise.resolve(p).catch(() => fallback),
     new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
   ]);
-}
-
-/**
- * /map — the map IS the page.
- *
- * A user who taps "Map" expects a map, not a directory. The map paints
- * full-bleed under the chrome with the intent chip strip pinned to the
- * top so filtering is one tap away. The synced "in view" list lives in
- * the bottom drawer (peek by default). Discover-style intent depth is
- * still reachable via the chips — colored, iconned, and recognizable.
- */
-/**
- * Decide which event-time window the map shows. The brief's "time is
- * a first-class dimension" rule: every event surface gets a temporal
- * lens. Returns a predicate so the seed loop stays a single pass.
- *
- * Modes:
- *   - "now":     live right now (start ≤ now ≤ end) OR starting in the
- *                next 90 minutes
- *   - "tonight": starting between now (clamped to today 16:00 ET) and
- *                tomorrow 02:30 ET — so "tonight" still means "tonight"
- *                at 11pm, and not "yesterday"
- *   - "weekend": Friday 17:00 ET → Monday 00:00 ET of the next weekend
- *   - "all":     next 7 days, capped at 80 by the loop below
- */
-function eventTimePredicate(
-  mode: TimeMode,
-  now: Date,
-): (startsAt: string, endsAt?: string) => boolean {
-  const nowMs = now.getTime();
-  if (mode === "now") {
-    const horizon = nowMs + 90 * 60_000;
-    return (s, e) => {
-      const sMs = Date.parse(s);
-      const eMs = e ? Date.parse(e) : sMs;
-      if (!Number.isFinite(sMs)) return false;
-      // Live now OR starting in the next 90 min
-      return (sMs <= nowMs && eMs >= nowMs) || (sMs >= nowMs && sMs <= horizon);
-    };
-  }
-  if (mode === "tonight") {
-    // Anchor "tonight" to America/New_York WALL TIME so it matches /today
-    // and /events on a UTC (Vercel) server. 4:00 PM ET today → 2:30 AM ET
-    // tomorrow. easternWallToUtcISO converts to the correct UTC instant
-    // (DST-aware); Date.UTC inside it normalizes the day+1 overflow.
-    const { year, month, day } = easternParts(now);
-    const start = Math.max(nowMs, Date.parse(easternWallToUtcISO(year, month, day, 16, 0)));
-    const end = Date.parse(easternWallToUtcISO(year, month, day + 1, 2, 30));
-    return (s) => {
-      const sMs = Date.parse(s);
-      return Number.isFinite(sMs) && sMs >= start && sMs <= end;
-    };
-  }
-  if (mode === "weekend") {
-    // Friday 5 PM ET → Monday 12:00 AM ET, from the SHARED horizon window so
-    // /map agrees with /today and /events. The old inline `(5 - weekday + 7) % 7`
-    // math jumped to NEXT Friday once it was already the weekend, so on Sat/Sun
-    // /map showed next weekend and hid the one the user was standing in
-    // (audit 2026-07). buildHorizonBounds clamps the current weekend correctly.
-    const { weekendStart, weekendEnd } = buildHorizonBounds(now);
-    return (s) => {
-      const sMs = Date.parse(s);
-      return Number.isFinite(sMs) && sMs >= weekendStart && sMs <= weekendEnd;
-    };
-  }
-  // "all" — next 7 days. The cap is applied in the caller's loop.
-  const horizon = nowMs + 7 * 24 * 3_600_000;
-  return (s) => {
-    const sMs = Date.parse(s);
-    return Number.isFinite(sMs) && sMs >= nowMs && sMs <= horizon;
-  };
-}
-
-function isTimeMode(s: string | undefined): s is TimeMode {
-  return s === "now" || s === "tonight" || s === "weekend" || s === "all";
 }
 
 /**
@@ -260,17 +180,14 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
 }
 
 /**
- * Cached wrapper around loadUpcomingEvents (isr-6). The radius branch is the
- * DEFAULT /map view and previously re-ran the full feed union + liveToCardEvent
- * + collapseRecurringEvents + dedupe + sort on EVERY render — and re-fetched
- * Ticketmaster/Bandsintown uncached (only getCachedLiveEvents was warm). Cache
- * the assembled result per 300s bucket (matching cachedAssemble in
- * unifiedEvents.ts), tagged "events" so the ingest crons bust it, and SHA-pinned
- * so a deploy auto-invalidates (the #509 lesson). `now` is rounded to the bucket
- * and rebuilt INSIDE the cached fn — passing the raw Date would make every
- * render a unique key and the cache a no-op. The page still windows the result
- * against the REAL now downstream (eventsForMode), so "tonight/weekend" stay
- * exact.
+ * Cached wrapper around loadUpcomingEvents (isr-6). Cache the assembled
+ * result per 300s bucket (matching cachedAssemble in unifiedEvents.ts),
+ * tagged "events" so the ingest crons bust it, and SHA-pinned so a deploy
+ * auto-invalidates (the #509 lesson). `now` is rounded to the bucket and
+ * rebuilt INSIDE the cached fn — passing the raw Date would make every
+ * render a unique key and the cache a no-op. The page still windows the
+ * result against the real clock downstream (client-side, in
+ * BrowseMapClient), so "tonight/weekend" stay exact.
  */
 const cachedUpcomingEvents = unstable_cache(
   (bucket: number) => loadUpcomingEvents(new Date(bucket * 300_000)),
@@ -313,116 +230,140 @@ async function clientDedupeProjection() {
   return _clientDedupeProjection;
 }
 
-export default async function MapPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    intent?: string;
-    sub?: string;
-    t?: string;
-    open?: string;
-    /** Amenity-tray group keys to pre-activate, comma-separated (e.g.
-     *  `?amenity=restroom,water`) — deep-link from /amenities + /today. */
-    amenity?: string;
-    /** `browse` (DEFAULT — the clean full-map surface: intent + time
-     *  chips, no isochrone, no bottom sheet) or `radius` (the guided
-     *  "Nearby" tool: isochrone + the within-reach control sheet). The
-     *  May 2026 brand review made radius the default ("soul of the
-     *  map"), but the owner's repeated direction is the map IS the page:
-     *  land clean, no bottom panel narrating places. Radius stays a
-     *  deliberate opt-in via the "Nearby" pill. When unset, browse. */
-    mode?: string;
-  }>;
-}) {
-  // Peek the mode param BEFORE doing the heavy browse-mode data
-  // loads. The radius branch only needs amenities — no need to
-  // fetch traffic / fixit / mapillary / trails / transit lines /
-  // event feeds when we're going to render RadiusBuilder.
-  const earlyParams = await searchParams;
-  const mode: "radius" | "browse" =
-    earlyParams.mode === "radius" ? "radius" : "browse";
-
-  if (mode === "radius") {
-    // Radius mode: minimal SSR payload (just amenities) — RadiusBuilder
-    // is a client component that reads clientPlaces() itself. Result:
-    // the radius surface ships ~⅒ the HTML the browse surface does.
-    // Field-collected amenities ride the radius "within reach" set too, so a
-    // collected restroom/water/etc. counts toward Nearby, not just browse.
-    const radiusField = await withTimeout(getFieldAmenities(), 6000, []);
-    const radiusAmenities = dedupeAmenities(
-      [...allAmenities(), ...radiusField],
-      await clientDedupeProjection(),
-    );
-    // Upcoming events with coordinates, slimmed to just what the reach
-    // view needs (no SSR bloat). RadiusBuilder filters these to the
-    // chosen reach. Same shared loader as browse, so the event set is
-    // identical across modes; ISR caching bounds the cold-path cost.
-    const radiusNow = new Date();
-    const radiusEvents = getVisibleEvents(
-      await withTimeout(cachedUpcomingEvents(upcomingEventsBucket(radiusNow)), 8000, [] as EventWithMeta[]),
-      radiusNow,
-    )
-      // Belt-and-suspenders against past events leaking into "within reach":
-      // getVisibleEvents (above) is the shared rule, applied here so a merged
-      // live-feed row can't slip a finished event past the curated
-      // allUpcoming() filter (the audit saw a May event under radius).
-      // Draw-only on the map: civic meetings/hearings aren't map answers
-      // (shared event-kind rule — consistent with Today and /events).
-      .filter((e) => !isUtilityEvent(e))
-      // Geo confidence (audit #2 P1): "within reach" is a reachability
-      // promise, so ONLY addressable events qualify. A feed event pinned to
-      // the "Frederick" centroid has no honest distance — including it made
-      // the map claim "113 ft away" for a county-wide event. Drop the
-      // area-level/unknown ones here rather than render a false distance.
-      .filter(isGeoPrecise)
-      .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
-      .slice(0, 120)
-      .map((e) => ({
-        slug: e.slug,
-        title: e.title,
-        startsAt: e.starts_at,
-        venueName: e.venue_name ?? null,
-        lng: e.geom.lng,
-        lat: e.geom.lat,
-        category: e.category,
-      }));
-    return (
-      <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
-        {/* Same map-only Mapbox preconnects as the browse branch below. */}
-        <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
-        <h1 className="sr-only">Frederick County map: places within reach</h1>
-        <PageBloom variant="cool" />
-        {/* Mode toggle is handed to RadiusBuilder, which renders it in two
-            places: a modest floating copy over the collapsed map (always
-            visible, so "Whole county" is reachable without expanding) and
-            inside the sheet body for the expanded state. Clear of the map's
-            camera controls and the locate button. */}
-        <RadiusBuilder
-          amenities={radiusAmenities}
-          events={radiusEvents}
-          modeToggle={<MapModeToggle mode="radius" />}
-        />
-      </div>
-    );
-  }
-
-  // Browse mode — stream it. The shell (the two thin mode strips)
-  // paints immediately; the heavy ~10-feed data load + the map render
-  // stream in via Suspense, so the page no longer blocks first paint on
-  // the slowest upstream AND the Mapbox JS downloads during that fetch.
+/**
+ * /map — the map IS the page, and now it's a STATIC (ISR) page.
+ *
+ * This route used to `await searchParams` to pick browse vs radius mode
+ * and to apply the ?intent/?sub/?t/?open/?at/?amenity view — which, in
+ * Next 16, opted the whole route out of static rendering. Every request
+ * (worst: the first after a deploy) re-ran the ~10-feed fan-out
+ * server-side (~8s TTFB cold). Restructured 2026-07:
+ *
+ *   - ALL data loading is param-independent and happens here at
+ *     build/revalidate time (revalidate = 300, feeds kept hot by the
+ *     warm cron underneath).
+ *   - BOTH mode branches render server-side; MapModeGate (client) picks
+ *     one from the live URL. Only the chosen branch mounts.
+ *   - The URL-driven browse view (intent/sub/open/t/at/amenity) moved
+ *     into BrowseMapClient, which reads useSearchParams — the map was
+ *     always a client-only canvas (`ssr: false`), so nothing visual left
+ *     the prebuilt HTML except what was never in it.
+ *
+ * Staleness bounds: open_status and the event week are baked per ISR
+ * render (≤300s + the in-flight revalidation window); the event TIME
+ * WINDOWS (now/tonight/weekend) are computed against the browser clock,
+ * so they can't drift at all.
+ */
+export default function MapPage() {
   return (
-    <div className="relative -mx-4 -mt-4 lg:ml-0">
+    <>
       {/* Mapbox preconnects live HERE, not in the root layout: the map is
           the only surface that talks to these origins, and eager global
           preconnects competed with the LCP asset on every other route
-          (speed audit). React hoists these into <head>. */}
+          (speed audit). React hoists these into <head>. Hoisted above the
+          mode gate so they're in the STATIC shell for both modes. */}
       <link rel="preconnect" href="https://api.mapbox.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://events.mapbox.com" crossOrigin="anonymous" />
-      <h1 className="sr-only">Frederick County map</h1>
-      {/* Warm the mapbox-gl chunk from the shell, in parallel with the
-          streamed data fetch below — see MapWarmup. */}
+      {/* Warm the mapbox-gl chunk from the static shell, in parallel with
+          hydration — both modes render a Mapbox canvas. */}
       <MapWarmup />
+      {/* useSearchParams (the mode gate + the browse view state) client-
+          renders up to this boundary in a static route, so the prebuilt
+          HTML carries the map-shaped skeleton below — which is exactly
+          what the dynamic page showed while its data streamed anyway. */}
+      <Suspense fallback={<MapShellFallback />}>
+        <MapModeGate browse={<BrowseMode />} radius={<RadiusMode />} />
+      </Suspense>
+    </>
+  );
+}
+
+/** The prebuilt-HTML placeholder: browse-shaped (browse is the default
+ *  and the mode that must be instant); a ?mode=radius arrival sees it
+ *  for one hydration beat before RadiusBuilder mounts. */
+function MapShellFallback() {
+  return (
+    <div className="relative -mx-4 -mt-4 lg:ml-0">
+      <div
+        className="animate-pulse"
+        style={{ height: BROWSE_MAP_HEIGHT, background: "var(--app-bg-sunken)" }}
+        aria-busy="true"
+        aria-label="Loading map"
+      />
+    </div>
+  );
+}
+
+/** Radius ("Nearby") mode — no UI entry point (owner call 2026-07-08),
+ *  reachable via /map?mode=radius. Minimal payload: RadiusBuilder is a
+ *  client component that reads clientPlaces() itself; only amenities +
+ *  slim events ship from the server. Rendered at build/revalidate time
+ *  like everything else on this page — the loads below are cached +
+ *  fail-soft, so keeping the branch warm costs little. */
+async function RadiusMode() {
+  // Field-collected amenities ride the radius "within reach" set too, so a
+  // collected restroom/water/etc. counts toward Nearby, not just browse.
+  const radiusField = await withTimeout(getFieldAmenities(), 6000, []);
+  const radiusAmenities = dedupeAmenities(
+    [...allAmenities(), ...radiusField],
+    await clientDedupeProjection(),
+  );
+  // Upcoming events with coordinates, slimmed to just what the reach
+  // view needs (no SSR bloat). RadiusBuilder filters these to the
+  // chosen reach. Same shared loader as browse, so the event set is
+  // identical across modes; ISR caching bounds the cold-path cost.
+  const radiusNow = new Date();
+  const radiusEvents = getVisibleEvents(
+    await withTimeout(cachedUpcomingEvents(upcomingEventsBucket(radiusNow)), 8000, [] as EventWithMeta[]),
+    radiusNow,
+  )
+    // Belt-and-suspenders against past events leaking into "within reach":
+    // getVisibleEvents (above) is the shared rule, applied here so a merged
+    // live-feed row can't slip a finished event past the curated
+    // allUpcoming() filter (the audit saw a May event under radius).
+    // Draw-only on the map: civic meetings/hearings aren't map answers
+    // (shared event-kind rule — consistent with Today and /events).
+    .filter((e) => !isUtilityEvent(e))
+    // Geo confidence (audit #2 P1): "within reach" is a reachability
+    // promise, so ONLY addressable events qualify. A feed event pinned to
+    // the "Frederick" centroid has no honest distance — including it made
+    // the map claim "113 ft away" for a county-wide event. Drop the
+    // area-level/unknown ones here rather than render a false distance.
+    .filter(isGeoPrecise)
+    .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
+    .slice(0, 120)
+    .map((e) => ({
+      slug: e.slug,
+      title: e.title,
+      startsAt: e.starts_at,
+      venueName: e.venue_name ?? null,
+      lng: e.geom.lng,
+      lat: e.geom.lat,
+      category: e.category,
+    }));
+  return (
+    <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
+      <h1 className="sr-only">Frederick County map: places within reach</h1>
+      <PageBloom variant="cool" />
+      {/* Mode toggle is handed to RadiusBuilder, which renders it in two
+          places: a modest floating copy over the collapsed map (always
+          visible, so "Whole county" is reachable without expanding) and
+          inside the sheet body for the expanded state. Clear of the map's
+          camera controls and the locate button. */}
+      <RadiusBuilder
+        amenities={radiusAmenities}
+        events={radiusEvents}
+        modeToggle={<MapModeToggle mode="radius" />}
+      />
+    </div>
+  );
+}
+
+/** Browse mode — the clean whole-county default surface. */
+function BrowseMode() {
+  return (
+    <div className="relative -mx-4 -mt-4 lg:ml-0">
+      <h1 className="sr-only">Frederick County map</h1>
       <Suspense
         fallback={
           <div
@@ -433,7 +374,7 @@ export default async function MapPage({
           />
         }
       >
-        <BrowseMapArea params={earlyParams} />
+        <BrowseMapArea />
       </Suspense>
       {/* The Nearby / Whole county mode toggle was removed from the browse
           surface (owner call 2026-07-08): "the map IS the page" — the clean
@@ -460,35 +401,11 @@ export default async function MapPage({
 // can never drift (that drift caused a visible canvas jump on tab-in).
 const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
 
-/** The heavy half of browse mode — ~10 upstream feeds + the map render.
- *  Split into its own async component so the page shell can stream
- *  while this resolves (Suspense boundary in MapPage above). */
-async function BrowseMapArea({
-  params,
-}: {
-  params: { intent?: string; sub?: string; t?: string; open?: string; at?: string; amenity?: string };
-}) {
-  const { intent: intentParam, sub: subParam, t: tParam, open: openParam, at: atParam, amenity: amenityParam } = params;
-  // Deep-link a specific amenity layer on (/map?amenity=restroom,water from
-  // /amenities or /today). Validate against the real tray group keys so a junk
-  // param can't activate a nonexistent layer; undefined → clean map as before.
-  const validAmenityGroups = new Set(AMENITY_GROUPS.map((g) => g.key));
-  const initialAmenityGroups = amenityParam
-    ? amenityParam.split(",").map((s) => s.trim()).filter((k) => validAmenityGroups.has(k))
-    : undefined;
-  // Deep-link camera: a park/trail "see it on the map" row links to
-  // /map?at=lat,lng. Parse + sanity-bound to Frederick County (a bad coord
-  // falls through to the county default), and seed the map there. Returns
-  // [lng, lat] for Mapbox; the row emits lat,lng.
-  const initialCenter = ((): [number, number] | undefined => {
-    if (!atParam) return undefined;
-    const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(atParam.trim());
-    if (!m) return undefined;
-    const lat = +m[1];
-    const lng = +m[2];
-    if (lat < 38.8 || lat > 39.9 || lng < -77.9 || lng > -76.9) return undefined;
-    return [lng, lat];
-  })();
+/** The heavy half of browse mode — the ~10 upstream feeds, all
+ *  param-INDEPENDENT now. Loads everything unfiltered and hands it to
+ *  BrowseMapClient, which applies the URL-driven view (intent/sub/open/
+ *  t/at/amenity) on the client. */
+async function BrowseMapArea() {
   const now = new Date();
   const allPlaces = openPlaces(now);
   const [
@@ -509,15 +426,11 @@ async function BrowseMapArea({
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
     // missing layer instead of hanging the render into a 503.
     //
-    // PERF: the browse map canvas is downstream of this Promise.all, so the
-    // MAP DOESN'T PAINT until the slowest feed settles — the whole array's
-    // wall-clock is its longest timeout. Ceilings were trimmed (cold-cache
-    // worst case ~8s → ~5s) so a slow upstream costs the user seconds less
-    // before the map appears; every one of these self-hides when empty, so a
-    // trimmed-out layer degrades exactly as a failed one already did. Warm
-    // loads (the common case, kept hot by the warm-events cron + weekly
-    // caches) are unaffected. The real fix — painting the map + pins first and
-    // streaming these layers in after — is a separate structural change.
+    // Under ISR these run at build/revalidate time, not per request —
+    // the user never waits on them anymore. The ceilings stay so a slow
+    // upstream can't stall a revalidation render; every one of these
+    // self-hides when empty, so a trimmed-out layer degrades exactly as
+    // a failed one already did.
     withTimeout(getChartIncidentsFrederick(), 4500, []),
     withTimeout(getFixItIssues(30), 4500, []),
     withTimeout(fetchMapillaryTrash(), 3000, []),
@@ -628,83 +541,24 @@ async function BrowseMapArea({
     };
   });
 
-  const intent =
-    intentParam && intentParam in INTENT_BY_KEY
-      ? INTENT_BY_KEY[intentParam as IntentKey]
-      : null;
-  // First-tier filter: top intent.
-  const intentPlaces = intent ? allPlaces.filter(intent.match) : allPlaces;
-  // Sub-counts (parent-scoped) — computed BEFORE the sub-filter is
-  // applied so each sub-chip shows the population reachable from the
-  // current parent state. Users see "Pizza · 12" and don't tap into
-  // an empty filter. Empty when no intent active or no subIntents
-  // defined; sub-strip simply doesn't render in that case.
-  const subCounts: Record<string, number> = {};
-  if (intent?.subIntents) {
-    for (const s of intent.subIntents) {
-      subCounts[s.key] = intentPlaces.filter(s.match).length;
-    }
-  }
-  // Second-tier filter: sub-intent, scoped to the active parent.
-  // Ignored when the parent intent doesn't define this sub key — so
-  // a stale ?sub= param from a parent switch doesn't quietly wipe the
-  // result set.
-  const activeSub = intent?.subIntents?.find((s) => s.key === subParam);
-  const subFiltered = activeSub
-    ? intentPlaces.filter(activeSub.match)
-    : intentPlaces;
-  // Third-tier filter: ?open=now collapses the pool to places that are
-  // verifiably open right this minute (open or closing-soon). The
-  // brief's "time as a first-class dimension" applied to places —
-  // Google's map answers "is it open?" one place at a time; this
-  // answers it across the whole viewport. The count next to the chip
-  // is computed AFTER intent/sub filtering so it reflects what the
-  // user is actually browsing.
-  const openNow = openParam === "now";
-  const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
-  const places = openNow
-    ? subFiltered.filter((p) => isOpenNow(p.open_status))
-    : subFiltered;
-
-  // Events as map pins, scoped to the active temporal window. The
-  // brief's "what's happening now / tonight / this weekend" filter
-  // lives in the ?t= search param. `allWeek` (curated + live feeds,
-  // deduped + sorted) comes from loadUpcomingEvents in the Promise.all
-  // above, shared with the radius branch.
-  // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
-  // without forcing a click into an empty map.
-  // Draw-only base for BOTH the chip counts and the rendered pins, so a
-  // "Tonight · 3" count can never include a civic hearing the map won't
-  // plot (shared event-kind rule).
-  const drawWeek = allWeek.filter((e) => !isUtilityEvent(e));
-  const counts: Partial<Record<TimeMode, number>> = {};
-  for (const mode of ["now", "tonight", "weekend", "all"] as const) {
-    const pred = eventTimePredicate(mode, now);
-    counts[mode] = drawWeek.filter((e) => pred(e.starts_at, e.ends_at)).length;
-  }
-  // Default time mode: was hard-wired to "tonight" which produced an
-  // empty event layer most days/hours. Now picks the first populated
-  // window in priority order Now → Tonight → Weekend → Upcoming. The
-  // user can still tap any chip; this just stops the map from opening
-  // with zero event pins when there are events one chip over.
-  function pickDefaultTimeMode(): TimeMode {
-    if ((counts.now ?? 0) > 0) return "now";
-    if ((counts.tonight ?? 0) > 0) return "tonight";
-    if ((counts.weekend ?? 0) > 0) return "weekend";
-    return "all";
-  }
-  const timeMode: TimeMode = isTimeMode(tParam) ? tParam : pickDefaultTimeMode();
-
-  const matchTime = eventTimePredicate(timeMode, now);
-  const inWindow = drawWeek.filter((e) => matchTime(e.starts_at, e.ends_at));
-  const seenCells = new Set<string>();
-  const events: EventPin[] = [];
-  for (const e of inWindow) {
+  // The week's mappable events, pre-shaped as pins. Draw-only (civic
+  // meetings/hearings aren't map answers — shared event-kind rule) and
+  // geolocated; BrowseMapClient windows these per ?t= against the
+  // browser clock and caps the drawn set at 80. Shipped for the WIDEST
+  // window ("all" = next 7 days, plus in-progress events) so every time
+  // mode can be computed client-side; capped at 400 so the flight
+  // payload stays bounded (~pin fields only, no descriptions).
+  const weekHorizonMs = now.getTime() + 7 * 24 * 3_600_000;
+  const weekEvents: EventPin[] = [];
+  for (const e of allWeek) {
+    if (isUtilityEvent(e)) continue;
     if (!Number.isFinite(e.geom?.lng) || !Number.isFinite(e.geom?.lat)) continue;
-    const cell = `${e.geom.lat.toFixed(4)}:${e.geom.lng.toFixed(4)}`;
-    if (seenCells.has(cell)) continue;
-    seenCells.add(cell);
-    events.push({
+    const sMs = Date.parse(e.starts_at);
+    if (!Number.isFinite(sMs) || sMs > weekHorizonMs) continue;
+    const eMs = e.ends_at ? Date.parse(e.ends_at) : sMs;
+    // Already over (with a small grace for ISR staleness): skip.
+    if (Math.max(sMs, eMs) < now.getTime() - 300_000) continue;
+    weekEvents.push({
       slug: e.slug,
       title: e.title,
       starts_at: e.starts_at,
@@ -716,56 +570,23 @@ async function BrowseMapArea({
       category_color: CATEGORY_BY_SLUG[e.category]?.color,
       hero_image: e.hero_image,
     });
-    if (events.length >= 80) break;
+    if (weekEvents.length >= 400) break;
   }
 
   return (
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
-        <AppMapClient
-          places={places}
-          civic={civic}
-          extraAmenities={[...mapillaryTrash, ...reportsAsOsm]}
-          amenities={amenities}
-          trailLines={trailLines}
-          transitLines={transitLines}
-          municipalBoundaries={municipalBoundaries}
-          countyBoundary={countyBoundary}
-          cemeteries={cemeteries}
-          events={events}
-          fullBleed
-          // Arriving via a category tile (?intent=…): center on the
-          // user's known location and measure from there.
-          recenterToKnownLocation={Boolean(intent)}
-          // Show the county by default — never an empty map. The curated
-          // places ride a CLUSTERED source, so "all ~1,700" reads as a
-          // handful of tidy numbered bubbles that answer "what's here?" at a
-          // glance and break apart as you zoom; the chips then REFINE rather
-          // than gate. (Was pinpoint-first: blank until you tapped a chip,
-          // which assumed you didn't want to see anything yet.)
-          pinpointDefault={false}
-          // Park/trail "see it on the map" deep-link (/map?at=lat,lng).
-          initialCenter={initialCenter}
-          // Amenity deep-link (/map?amenity=restroom) from /amenities + /today.
-          initialAmenityGroups={initialAmenityGroups}
-        >
-          {/* In-context filter UI — passed as children so it overlays
-              only the map column, never the desktop list pane. */}
-          <MapIntentChips
-            active={intent?.key}
-            activeCount={intent ? places.length : undefined}
-            activeSub={activeSub?.key}
-            subCounts={subCounts}
-            openNow={openNow}
-          >
-            <MapTimeChips
-              active={timeMode}
-              intent={intent?.key}
-              sub={activeSub?.key}
-              openNow={openNow}
-              openNowCount={openNowCount}
-            />
-          </MapIntentChips>
-        </AppMapClient>
-      </div>
+      <BrowseMapClient
+        places={allPlaces}
+        civic={civic}
+        extraAmenities={[...mapillaryTrash, ...reportsAsOsm]}
+        amenities={amenities}
+        trailLines={trailLines}
+        transitLines={transitLines}
+        municipalBoundaries={municipalBoundaries}
+        countyBoundary={countyBoundary}
+        cemeteries={cemeteries}
+        weekEvents={weekEvents}
+      />
+    </div>
   );
 }

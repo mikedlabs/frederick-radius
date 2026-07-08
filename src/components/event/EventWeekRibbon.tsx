@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 /**
@@ -9,13 +12,15 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  * frosted chip carrying the weekday letter, the day numeral, and a small
  * event-count badge.
  *
- * Tapping a day deep-links the explorer to ?d=YYYY-MM-DD (the param the
- * page + EventsExplorer already honor), so the ribbon is a fast temporal
- * filter, not just decoration. Today/active days get a quiet brand wash.
+ * Tapping a day deep-links the explorer to ?d=YYYY-MM-DD (the param
+ * EventsExplorer honors), so the ribbon is a fast temporal filter, not
+ * just decoration. Today/active days get a quiet brand wash.
  *
- * Server component. Pure data: counts come from the same `allEvents`
- * list the explorer renders — no day shows a fabricated number, and an
- * empty day honestly shows a muted dot rather than "0".
+ * Client component: it reads the active ?d= from the live URL itself —
+ * /events is a static (ISR) shell, so the server can't know the param.
+ * Counts still come from the same server-provided `events` list the
+ * explorer renders — no day shows a fabricated number, and an empty day
+ * honestly shows a muted dot rather than "0".
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -58,12 +63,11 @@ function dateForOffset(now: Date, offset: number): Date {
 
 export default function EventWeekRibbon({
   events,
-  activeDay,
 }: {
   events: EventWithMeta[];
-  /** The currently deep-linked day (?d=), if any. */
-  activeDay?: string;
 }) {
+  // The currently deep-linked day (?d=), read from the live URL.
+  const activeDay = useSearchParams().get("d") ?? undefined;
   const now = new Date();
   const todayKey = easternDateKey(now);
 

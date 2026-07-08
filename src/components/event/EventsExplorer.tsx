@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
 import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
@@ -19,7 +20,7 @@ import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
 import { daypart, type Daypart } from "@/lib/daypart";
 import EventsSavedRail from "@/components/event/EventsSavedRail";
-import { toQuery, type ViewState, type When } from "@/lib/view-state";
+import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
 import { isEventEnded } from "@/lib/eventWhenLabel";
@@ -81,13 +82,6 @@ type Props = {
   next24ISO: string;
   weekendStartISO: string;
   weekendEndISO: string;
-  /** Deep-link view, parsed server-side so first paint matches the URL. */
-  initialView?: ViewState;
-  /** Optional ?d=YYYY-MM-DD deep-link from WeekStrip — restricts the
-   *  list to a single Eastern calendar day. Coexists with the existing
-   *  time-window filter (Tonight / Weekend / This week); the day wins
-   *  when both are set. */
-  initialDay?: string;
 };
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
@@ -129,22 +123,35 @@ export default function EventsExplorer({
   next24ISO,
   weekendStartISO,
   weekendEndISO,
-  initialView,
-  initialDay,
 }: Props) {
-  const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
+  // Deep-link view (?cats/?m/?when + ?d), parsed CLIENT-side once at
+  // mount. The /events page is a static (ISR) shell now — reading
+  // searchParams server-side would opt the whole route out of static
+  // rendering — and this component already client-renders behind a
+  // Suspense boundary (nuqs reads useSearchParams), so the first thing
+  // the user sees of the board is already the deep-linked view: no
+  // default-view flash. The app-level template remounts this component
+  // on every navigation, so mount-time parsing == navigation-time URL.
+  const urlParams = useSearchParams();
+  const [initial] = useState(() => {
+    const sp = new URLSearchParams(urlParams.toString());
+    const view: ViewState = parseViewState(sp);
+    const d = sp.get("d");
+    return { view, day: d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null };
+  });
+  const [cat, setCat] = useState<string | null>(initial.view.cats?.[0] ?? null);
   // Lens (Now / Tonight / Weekend / This week / All) — URL-synced via
   // ?lens=foo so shared links restore the view, and the EventsCompartmented
   // "See all" deep-links land on the right tab. nuqs handles the param
   // codec (parseAsStringEnum) and rerenders on browser back/forward.
-  // Default falls through to the server-parsed initialView so first paint
+  // Default falls through to the mount-parsed ?when= so first paint
   // still matches the URL with no hydration flash.
   const [time, setTime] = useQueryState<TimeKey>(
     "lens",
     parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
-      .withDefault(whenToTime(initialView?.when)),
+      .withDefault(whenToTime(initial.view.when)),
   );
-  const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
+  const [town, setTown] = useState<string | null>(initial.view.municipality ?? null);
   // Intent + sub — the new category front door (EventsIntentRail). The
   // seven human intents roll up the ~25 place-categories; `sub` is a real
   // category slug shown as a second row when an intent has curated subs.
@@ -155,7 +162,11 @@ export default function EventsExplorer({
     parseAsStringEnum<IntentId>(INTENT_IDS),
   );
   const [sub, setSub] = useQueryState("sub");
-  const [day, setDay] = useState<string | null>(initialDay ?? null);
+  // ?d=YYYY-MM-DD deep-link from the week ribbon / WeekStrip — restricts
+  // the list to a single Eastern calendar day. Coexists with the
+  // time-window filter (Tonight / Weekend / This week); the day wins
+  // when both are set.
+  const [day, setDay] = useState<string | null>(initial.day);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
@@ -342,8 +353,8 @@ export default function EventsExplorer({
   );
 
   // Mirror the structural view into the URL (deep-linkable, shareable).
-  // Initial state is parsed server-side (initialView), so no hydrate
-  // effect is needed. history.replaceState, not router navigation:
+  // Initial state is parsed from the URL at mount (see `initial` above),
+  // so no hydrate effect is needed. history.replaceState, not router navigation:
   // filtering is fully client-side, so re-running the page's live-feed
   // loaders would be wasteful. Search text stays out of the URL by design.
   // Day filter rides along as ?d= so a tap on the WeekStrip survives a
