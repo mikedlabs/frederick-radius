@@ -25,8 +25,15 @@
  * new data path, no change to the unified assembly — so it is purely
  * additive and fail-soft: a warm miss just means the next user
  * repopulates as before, never worse than today.
+ *
+ * Two callers hit this route: the 5-minute Vercel cron, and a deploy-time
+ * boot kick from src/instrumentation.ts (`?source=boot`) that closes the
+ * post-deploy cold window the cron alone leaves open (up to 5 minutes of
+ * cold-miss TTFB after every SHA-keyed cache bust). Boot kicks are deduped
+ * per deploy — see claimBootWarm below.
  */
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -58,9 +65,43 @@ function errMsg(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
+/**
+ * Boot-kick dedupe (instrumentation.ts fires `?source=boot` on every lambda
+ * cold start, for the deployment's whole life — not just the first one after
+ * deploy). One Data Cache entry keyed by the deploy SHA turns all but the
+ * first kick per deploy into instant no-ops:
+ *
+ * Each route instance has its own random CLAIM_ID. The first boot kick per
+ * deploy computes the cache entry, storing ITS instance's id; that instance
+ * sees its own id come back and proceeds to warm. Every later kick reads the
+ * first instance's id, sees it isn't theirs, and skips. A same-instance repeat
+ * (the cached id matches by construction) is caught by the local boolean.
+ * Two kicks racing before the entry lands both warm — harmless, the warm is a
+ * read-through. If the claimed warm then FAILS there is no boot-level retry;
+ * the 5-minute cron is the backstop, and the failure path below still alerts.
+ * The cron itself (no ?source=boot) is never deduped.
+ */
+const BOOT_CLAIM_ID = Math.random().toString(36).slice(2);
+let bootWarmedThisInstance = false;
+const claimBootWarm = unstable_cache(
+  async () => BOOT_CLAIM_ID,
+  ["warm-events-boot-claim", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: false },
+);
+
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
+
+  if (new URL(request.url).searchParams.get("source") === "boot") {
+    // Fail-open: a cache error means we can't prove another instance already
+    // warmed, so warm anyway (worst case is a redundant read-through).
+    const claimed = await claimBootWarm().catch(() => BOOT_CLAIM_ID);
+    if (claimed !== BOOT_CLAIM_ID || bootWarmedThisInstance) {
+      return NextResponse.json({ ok: true, skipped: "already-warmed-this-deploy" });
+    }
+    bootWarmedThisInstance = true;
+  }
 
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:
