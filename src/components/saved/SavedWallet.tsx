@@ -352,7 +352,9 @@ export default function SavedWallet({
   // One card raised at a time (accordion), like Wallet. Keyed by slug so a
   // re-sort of `places` keeps the SAME card raised rather than whichever now
   // sits at the old index. Defaults to the top card.
-  const [internalSlug, setInternalSlug] = useState<string | null>(places[0]?.slug ?? null);
+  // Start fully closed — no card raised until the user taps one (or the
+  // parent controls it via openSlug).
+  const [internalSlug, setInternalSlug] = useState<string | null>(null);
   const controlled = openSlug !== undefined;
   const current = controlled ? openSlug : internalSlug;
   if (places.length === 0) return null;

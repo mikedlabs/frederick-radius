@@ -171,13 +171,14 @@ function DealCard({
 export default function DealsWallet({ deals }: { deals: TodaysDeal[] }) {
   // One card raised at a time (accordion), like the Saved wallet. Keyed by slug
   // so a re-render keeps the SAME card raised. Defaults to the top card.
-  const [openSlug, setOpenSlug] = useState<string | null>(deals[0]?.slug ?? null);
+  // Start fully closed — no card raised until the user taps one.
+  const [openSlug, setOpenSlug] = useState<string | null>(null);
   if (deals.length === 0) return null;
   const openValid = deals.some((d) => d.slug === openSlug);
   return (
     <div className="sw-stack" role="list" aria-label="Today's specials, as a card wallet">
       {deals.map((d, i) => {
-        const open = openValid ? d.slug === openSlug : i === 0;
+        const open = openValid && d.slug === openSlug;
         return (
           <div role="listitem" key={d.slug} className={`sw-slot${open ? " is-open" : ""}`}>
             <DealCard deal={d} index={i} open={open} onOpen={() => setOpenSlug(d.slug)} />
