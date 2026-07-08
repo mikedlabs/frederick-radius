@@ -435,18 +435,12 @@ export default async function MapPage({
       >
         <BrowseMapArea params={earlyParams} />
       </Suspense>
-      {/* The mode toggle floats over the map as a control near the bottom
-          edge. Lifted ABOVE the floating bottom-nav reserve (84px) so on a
-          narrow phone the centered toggle and the centered nav pill never
-          overlap (they collided at +16px). lg pins it to the right gutter. */}
-      <div
-        className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3 lg:justify-end lg:px-4"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve))" }}
-      >
-        <div className="pointer-events-auto">
-          <MapModeToggle mode="browse" />
-        </div>
-      </div>
+      {/* The Nearby / Whole county mode toggle was removed from the browse
+          surface (owner call 2026-07-08): "the map IS the page" — the clean
+          whole-county map is now the sole default and the floating pill read
+          as clutter. Radius ("Nearby") mode still exists and is reachable via
+          `/map?mode=radius` (it keeps its own toggle to return to browse), so
+          nothing breaks and this is fully reversible. */}
       {/* Mark-a-spot left the map entirely (owner call 2026-07-02): the FAB
           and in-map mark mode read as overlay clutter. Marking lives at
           /report (More → "Mark a spot"); submitted reports still render on
