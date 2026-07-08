@@ -301,7 +301,7 @@ export default function PreferencesPanel() {
           </button>
         </div>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          Quiet local notes like Pride Month and Sunday places of worship. On by default; this hides all of them.
+          Quiet local notes on Today: cultural observances and community resources, each shown on the day it&rsquo;s relevant. On by default. Turn it off to hide them.
         </p>
       </SectionShell>
 
