@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { withVenueThumbs } from "./eventThumb";
 import { clientPlaces } from "./places-client";
+import { EVENTS } from "@/data/events";
 import type { EventWithMeta } from "./events";
 
 // withVenueThumbs only reads a handful of fields; build a minimal event and
@@ -89,5 +90,33 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
       ev({ venue_name: unique.name, geom: far, geo_confidence: "area" }),
     ]);
     expect(notBorrowed.hero_image).toBeUndefined();
+  });
+
+  it("gives the real Alive @ Five series its Carroll Creek amphitheater photo", () => {
+    // The series led with an empty gradient plate because the curated rows
+    // carried a venue NAME ("Carroll Creek Amphitheater") with no place
+    // literally named that in the client set. The fix links each row to the
+    // real venue via venue_place_slug. Assert the canonical place is present
+    // WITH a photo, and that every Alive @ Five row resolves to it — so the
+    // card can never regress to the plate.
+    const amphitheater = clientPlaces().find(
+      (p) => p.slug === "carroll-creek-outdoor-amphitheater",
+    );
+    expect(
+      amphitheater?.google_photo_url,
+      "Carroll Creek amphitheater must be in the slim set with a real photo",
+    ).toBeTruthy();
+    if (!amphitheater?.google_photo_url) return;
+
+    const aliveAtFive = (EVENTS as EventWithMeta[]).filter((e) =>
+      e.slug.startsWith("alive-at-five-"),
+    );
+    expect(aliveAtFive.length).toBeGreaterThan(0);
+    for (const e of withVenueThumbs(aliveAtFive)) {
+      expect(
+        e.hero_image,
+        `${e.slug} should wear the amphitheater's real venue photo`,
+      ).toBe(amphitheater.google_photo_url);
+    }
   });
 });
