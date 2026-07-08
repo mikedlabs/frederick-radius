@@ -337,6 +337,18 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
   user-select: none;
 }
 
+/* iOS Safari auto-zooms the page whenever a focused form control has a
+   font-size below 16px — the jarring jump you get tapping a search box or
+   feedback field. On touch devices, hold every input/textarea/select at
+   16px so focus never triggers that zoom. Scoped to (pointer: coarse) so
+   mouse-driven desktop keeps the design's intentionally smaller field text
+   (no zoom risk there). Unlayered, so it wins over Tailwind's text-[Npx]
+   utilities on the few sub-16px fields (feedback, notes, lists, report,
+   radius select) without editing each component. */
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px; }
+}
+
 /* Skip-link visibility */
 .sr-only {
   position: absolute;
@@ -2785,6 +2797,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-pane-scroll {
   max-height: min(470px, 56dvh);
   overflow-y: auto;
+  /* Momentum scrolling for the dock pane on iOS (harmless no-op on modern
+     Safari where it's the default; restores it on older WebKit). */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 12px 14px 14px;
   scrollbar-width: thin;
 }
@@ -3100,7 +3116,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-locate-fab {
   position: absolute;
   right: 10px;
-  bottom: 118px;
+  /* Lift clear of the iPhone home indicator in standalone/notched mode —
+     add the bottom inset to the existing 118px offset (never below it). */
+  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-map-control);
   display: grid;
   place-items: center;
@@ -3172,7 +3190,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px);
+  /* Sit above the floating nav reserve AND the iPhone home indicator so the
+     peek card's actions never fall under the home bar in standalone mode. */
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-sticky);
   margin-inline: auto;
   max-width: 460px;
