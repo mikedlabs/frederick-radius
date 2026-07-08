@@ -1,282 +1,55 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Clock, NotebookPen } from "lucide-react";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import BottomDrawer from "@/components/ui/BottomDrawer";
-import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
+import { Search as SearchIcon, Navigation as NavIcon } from "lucide-react";
 import type { SearchResult } from "@/lib/search/index";
 import type { LngLat } from "@/lib/geo";
-import { AMENITY_GROUPS, CHIP_GLYPH } from "./constants";
-import type { CivicPin, MapLineFC } from "./types";
-import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
 /**
- * One-tap "featured" category chips that aren't top-level CATEGORIES rows but
- * earn a shortcut: coffee (a food sub-type) and worship/churches (its own
- * slug). Kept as DATA here — not hardcoded twice in the drawer JSX with raw
- * hexes — so a chip is edited in one place and the swatch stays consistent
- * (the hex is a category data-color, same convention as categories.ts).
- */
-const FEATURED_CATEGORIES: ReadonlyArray<{
-  slug: string;
-  label: string;
-  glyph: string;
-  color: string;
-  title: string;
-}> = [
-  { slug: "coffee", label: "Coffee", glyph: "☕", color: "#8B5A2B", title: "Just coffee: cafes, roasters, espresso bars" },
-  { slug: "worship", label: "Churches", glyph: "⛪", color: "#5B3A8F", title: "Churches, temples, and houses of worship" },
-];
-
-/**
- * A collapsible layer group in the drawer. Native <details>/<summary> so the
- * header is keyboard-focusable and screen-reader "expanded/collapsed" for free
- * (no hand-rolled aria). Uncontrolled with `defaultOpen`, OR controlled via
- * `open`/`onToggle` (the Amenities group stays controlled so an intent chip can
- * still open it programmatically). The chevron mirrors the open state. Turns
- * the old wall of ~40 chips into named, foldable sections.
- */
-function LayerGroup({
-  title,
-  meta,
-  defaultOpen = false,
-  open: openProp,
-  onToggle,
-  children,
-}: {
-  title: string;
-  meta?: ReactNode;
-  defaultOpen?: boolean;
-  open?: boolean;
-  onToggle?: (open: boolean) => void;
-  children: ReactNode;
-}) {
-  const [local, setLocal] = useState(defaultOpen);
-  const open = openProp ?? local;
-  return (
-    <details
-      open={open}
-      onToggle={(e) => {
-        const v = (e.currentTarget as HTMLDetailsElement).open;
-        onToggle?.(v);
-        if (openProp === undefined) setLocal(v);
-      }}
-      className="border-t first:border-t-0"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <summary className="tap-44 flex cursor-pointer list-none items-center justify-between py-3 [&::-webkit-details-marker]:hidden">
-        <span className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {title}
-        </span>
-        <span className="flex items-center gap-2">
-          {meta}
-          <span
-            aria-hidden
-            className="text-[11px] transition-transform duration-200"
-            style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
-          >
-            ▾
-          </span>
-        </span>
-      </summary>
-      <div className="pb-2">{children}</div>
-    </details>
-  );
-}
-
-/**
- * Props for the in-map control deck. All state is owned by AppMap; the
- * deck is a pure presentational layer that calls back into setters. That
- * keeps the deck testable in isolation and makes the prop list the deck's
- * full contract.
+ * AppMapDeck — the search bar, and now ONLY the search bar.
  *
- * The interface is wide because the deck is wide — search + locate-me +
- * filters + category chips + civic/transit/trails toggles + amenity sub-
- * tray. Splitting further would require lifting state up further (e.g.
- * to a context), which is a bigger change than this PR is for.
+ * This used to be the whole accreted control surface: search + locate +
+ * the Layers pill/badge + the active-filters chip strip + the Layers
+ * drawer (places by type, lenses, overlays, the amenity sub-tray).
+ * Everything except search moved into the map dock (MapDock.tsx) — one
+ * card above the nav whose collapsed face is the What · When · Where
+ * caption. Search stays at the top edge because search FINDS; the dock
+ * FILTERS.
+ *
+ * The locate icon renders only when `goNearMe` is passed — dock-less
+ * embeds (SavedList's map) keep it; /map's home for locate is the
+ * dock's Where pane ("Find me"), so browse passes nothing here.
  */
 export type AppMapDeckProps = {
-  // Search.
   q: string;
   setQ: SetState<string>;
   searchMatches: SearchResult[];
   pickSearch: (r: SearchResult) => void;
 
-  // Locate-me.
-  goNearMe: () => void;
-  locating: boolean;
-  userLoc: LngLat | null;
-
-  // Layers panel toggle + the chips/tray it reveals.
-  filtersOpen: boolean;
-  setFiltersOpen: SetState<boolean>;
-  activeCats: Set<string>;
-  setActiveCats: SetState<Set<string>>;
-
-  amenityOpen: boolean;
-  setAmenityOpen: SetState<boolean>;
-  amenityGroups: Set<string>;
-  setAmenityGroups: SetState<Set<string>>;
-  amenityCount: number;
-  activeAmenityGroupCount: number;
-
-  // Counts used by the "All" chip and the active-filters badge.
-  places: { length: number };
-  trustedOsmCount: number;
-
-  // Optional layer toggles — each chip renders only if the data exists.
-  civic: CivicPin[];
-  showCivic: boolean;
-  setShowCivic: SetState<boolean>;
-
-  transitLines: MapLineFC;
-  showTransit: boolean;
-  setShowTransit: SetState<boolean>;
-
-  trailLines: MapLineFC;
-  showTrails: boolean;
-  setShowTrails: SetState<boolean>;
-
-  // Aerial photo overlay — the Frederick Radius–only moat. 100+
-  // georeferenced drone shots from the user's seasonal archive
-  // plotted on the map; off until the user opts in.
-  showAerial: boolean;
-  setShowAerial: SetState<boolean>;
-  aerialCount: number;
-
-  // Historic cemeteries — the county-GIS heritage overlay. Off until
-  // the user opts in; the chip renders only when the feed delivered.
-  cemeteryCount: number;
-  showCemeteries: boolean;
-  setShowCemeteries: SetState<boolean>;
-
-  // GIS overlays (6.3/6.4): the active toggleable layer set + a toggle.
-  activeOverlays: OverlayKey[];
-  toggleOverlay: (k: OverlayKey) => void;
-
-  // Saved-only lens: filter pins to the user's saved places. The chip
-  // renders only when savedCount > 0 — an empty collection earns no UI.
-  savedCount: number;
-  showSavedOnly: boolean;
-  setShowSavedOnly: SetState<boolean>;
-
-  // Field-notes lens: filter pins to places with VERIFIED Field Notes (the
-  // moat) — happy hour, a deal, parking, or an insider tip.
-  fieldNotesCount: number;
-  fieldNotesOnly: boolean;
-  setFieldNotesOnly: SetState<boolean>;
+  /** Locate-me in the bar — dock-less surfaces only. */
+  goNearMe?: () => void;
+  locating?: boolean;
+  userLoc?: LngLat | null;
 };
 
-/**
- * The floating glass control deck pinned to the top of the map. Extracted
- * from AppMap.tsx as part of the PR series that's carving the 2,576-line
- * file into focused siblings. No behavior change: same JSX, same handlers
- * — only the prop boundary is new.
- */
 export default function AppMapDeck({
   q,
   setQ,
   searchMatches,
   pickSearch,
   goNearMe,
-  locating,
-  userLoc,
-  filtersOpen,
-  setFiltersOpen,
-  activeCats,
-  setActiveCats,
-  amenityOpen,
-  setAmenityOpen,
-  amenityGroups,
-  setAmenityGroups,
-  amenityCount,
-  activeAmenityGroupCount,
-  places,
-  trustedOsmCount,
-  civic,
-  showCivic,
-  setShowCivic,
-  transitLines,
-  showTransit,
-  setShowTransit,
-  trailLines,
-  showTrails,
-  setShowTrails,
-  showAerial,
-  setShowAerial,
-  aerialCount,
-  cemeteryCount,
-  showCemeteries,
-  setShowCemeteries,
-  activeOverlays,
-  toggleOverlay,
-  savedCount,
-  showSavedOnly,
-  setShowSavedOnly,
-  fieldNotesCount,
-  fieldNotesOnly,
-  setFieldNotesOnly,
+  locating = false,
+  userLoc = null,
 }: AppMapDeckProps) {
-  // Open-now state lives in the URL (?open=now), not in client state —
-  // the server filters the place pool, so the deck just reads the
-  // param to render the active-filters chip and a clear link. Building
-  // a "strip ?open" href client-side keeps the chip's X consistent
-  // with how /browse interprets the URL.
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  // Every active layer across all tiers, so the "Layers" trigger badge +
-  // highlight tell the truth. Previously only categories + amenities counted,
-  // so a user with Transit / an overlay / Aerial / Saved on saw a plain,
-  // un-badged button — the one always-visible summary of state was wrong.
-  const activeLayerCount =
-    activeCats.size +
-    activeAmenityGroupCount +
-    activeOverlays.length +
-    (showCivic ? 1 : 0) +
-    (showTransit ? 1 : 0) +
-    (showTrails ? 1 : 0) +
-    (showAerial ? 1 : 0) +
-    (showCemeteries ? 1 : 0) +
-    (showSavedOnly ? 1 : 0) +
-    (fieldNotesOnly ? 1 : 0);
-  const router = useRouter();
-  const openNow = searchParams?.get("open") === "now";
-  const clearOpenHref = (() => {
-    if (!searchParams) return pathname ?? "/map";
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete("open");
-    const qs = next.toString();
-    return qs ? `${pathname}?${qs}` : (pathname ?? "/map");
-  })();
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] px-2.5 pt-2.5 sm:px-3 sm:pt-3">
-      <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
-        {/* The Visitor / Resident mode-switch pill used to sit here on the
-            map deck. The whole user-facing toggle was collapsed away
-            (2026-07-01, owner call): one unified experience, no self-
-            classification. Mode still exists but SILENT — useMode leans the
-            map's DEFAULT layer set by geolocation (in-county → resident set)
-            and quietly flavors a little /today copy (AdaptiveGreeting), with
-            no chooser anywhere. */}
-        {/* Unified search deck: a single rounded-pill bar with the
-            search input filling the row and two icon-only buttons
-            tucked into the bar's right side. The previous three
-            floating pills (Search · Near me · Layers) read as
-            disconnected controls; this one container reads as one
-            tool. Locate-me lives at the search bar's right edge so
-            users find it where Apple Maps users expect it. Layers
-            is a separate small pill so the active-count badge still
-            has room to surface. */}
-        <div className="flex items-center gap-2">
-          {/* Outer positioning context: the results dropdown is a SIBLING of
-              the pill (not a child), so the pill's overflow-hidden — which it
-              needs to clip the input's rounded corners — can't clip the
-              dropdown that drops below it. */}
-          <div className="relative flex-1">
+      <div className="pointer-events-auto mx-auto w-full max-w-[680px]">
+        {/* Outer positioning context: the results dropdown is a SIBLING of
+            the pill (not a child), so the pill's overflow-hidden — which it
+            needs to clip the input's rounded corners — can't clip the
+            dropdown that drops below it. */}
+        <div className="relative">
           <div
             className="flex w-full items-center overflow-hidden rounded-full border backdrop-blur"
             style={{
@@ -300,718 +73,71 @@ export default function AppMapDeck({
               className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none"
               style={{ color: "var(--app-ink)" }}
             />
-            {/* Locate-me icon button — sits at the search bar's
-                right edge. Brand-tinted when the user has shared
-                their location, neutral otherwise. Tap target keeps
-                the iOS minimum (44pt) via the parent height. */}
-            <button
-              type="button"
-              onClick={goNearMe}
-              aria-label="Find places near me"
-              aria-busy={locating || undefined}
-              title={locating ? "Locating…" : "Find places near me"}
-              className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92]"
-              style={{
-                color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-                background: userLoc
-                  ? "color-mix(in srgb, var(--app-brand) 12%, transparent)"
-                  : "transparent",
-              }}
-            >
-              <NavIcon
-                className="h-4 w-4"
-                strokeWidth={userLoc ? 2.5 : 2}
-                fill={userLoc ? "currentColor" : "none"}
-                aria-hidden
-              />
-            </button>
-          </div>
-            {searchMatches.length > 0 && (
-              <ul
-                className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
-                  boxShadow: "var(--app-shadow-3)",
-                }}
-              >
-                {searchMatches.map((r) => {
-                  // Type-tinted dot so a town, event, or layer reads as a
-                  // different thing from a place at a glance.
-                  const dot =
-                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
-                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
-                    : r.type === "action" ? "var(--app-brand, #E14328)"
-                    : "var(--app-ink-3, #7A828C)";
-                  return (
-                    <li key={r.id}>
-                      <button
-                        type="button"
-                        onClick={() => pickSearch(r)}
-                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
-                      >
-                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-                            {r.title}
-                          </span>
-                          <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                            {r.subtitle}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-pressed={filtersOpen}
-            aria-expanded={filtersOpen}
-            aria-label="Layers"
-            // v2 (May 2026): "Layers" label is ALWAYS visible (was
-            // hidden on mobile via `hidden sm:inline`). The button
-            // was discoverable only as a slider-icon on phones, and
-            // the brand review flagged it — users didn't know they
-            // could filter the map. Always-visible label fixes that
-            // at the cost of ~30px width.
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
-            style={{
-              borderColor: filtersOpen || activeLayerCount > 0 ? "var(--app-brand)" : "var(--app-border)",
-              color: filtersOpen || activeLayerCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
-              background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-              boxShadow: "var(--app-shadow-2)",
-            }}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            <span>Layers</span>
-            {activeLayerCount > 0 && (
-              <span
-                className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand-press)] px-1 text-[10px] font-bold tabular-nums text-white"
-              >
-                {activeLayerCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Active-filters strip — chips for every category currently
-            ON, each tappable to remove. Sits directly under the
-            search bar so the user can see WHAT's filtering the map
-            without opening the drawer. Renders only when something
-            is filtered; on a clean map this row is hidden so the
-            deck stays minimal. Includes the overlays (Roads &
-            alerts, Transit, Trails) and Amenities group too — every
-            active layer surfaces here. */}
-        {(activeCats.size > 0 ||
-          activeAmenityGroupCount > 0 ||
-          showCivic ||
-          showTransit ||
-          showTrails ||
-          showAerial ||
-          showCemeteries ||
-          showSavedOnly ||
-          fieldNotesOnly ||
-          openNow) && (
-          <ul
-            className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            aria-label="Active filters"
-          >
-            {[...activeCats].map((slug) => {
-              const cat = CATEGORY_BY_SLUG[slug];
-              if (!cat) return null;
-              return (
-                <li key={`f-${slug}`} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveCats((prev) => {
-                        const next = new Set(prev);
-                        next.delete(slug);
-                        return next;
-                      })
-                    }
-                    aria-label={`Remove ${cat.name} filter`}
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                    style={{
-                      // Deepen the category color toward ink so white text clears
-                      // AA even on light categories (e.g. gold family #C0871F,
-                      // where white alone was ~2.4:1). Dark categories barely shift.
-                      background: `color-mix(in srgb, ${cat.color} 80%, var(--app-ink))`,
-                      color: "white",
-                      boxShadow: "var(--app-shadow-1)",
-                    }}
-                  >
-                    {cat.name}
-                    <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                  </button>
-                </li>
-              );
-            })}
-            {activeAmenityGroupCount > 0 && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setAmenityGroups(new Set())}
-                  aria-label="Clear all amenity filters"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-cool)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Amenities · {activeAmenityGroupCount}
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {showCivic && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCivic(false)}
-                  aria-label="Hide roads & alerts"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-warning)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Roads &amp; alerts
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {showTransit && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowTransit(false)}
-                  aria-label="Hide transit"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-cool)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Transit
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {showTrails && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowTrails(false)}
-                  aria-label="Hide trails"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-positive)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Trails
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {showAerial && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowAerial(false)}
-                  aria-label="Hide aerial photos"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-accent)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Aerial photos
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {showCemeteries && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCemeteries(false)}
-                  aria-label="Hide historic cemeteries"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-ink-2)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  Cemeteries
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {openNow && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => router.push(clearOpenHref)}
-                  aria-label="Show all places (not just open)"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-positive)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  <Clock className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                  Open now
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {fieldNotesOnly && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setFieldNotesOnly(false)}
-                  aria-label="Show all places (not just ones with Field Notes)"
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    background: "var(--app-brand)",
-                    color: "white",
-                    boxShadow: "var(--app-shadow-1)",
-                  }}
-                >
-                  <NotebookPen className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                  Field notes
-                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-                </button>
-              </li>
-            )}
-            {/* Clear-all escape hatch — only worth the row when there
-                are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showCemeteries ? 1 : 0) + (showSavedOnly ? 1 : 0) + (fieldNotesOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
-              <li className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveCats(new Set());
-                    setAmenityGroups(new Set());
-                    setShowCivic(false);
-                    setShowTransit(false);
-                    setShowTrails(false);
-                    setShowAerial(false);
-                    setShowCemeteries(false);
-                    setShowSavedOnly(false);
-                    setFieldNotesOnly(false);
-                    if (openNow) router.push(clearOpenHref);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-                    color: "var(--app-ink-2)",
-                  }}
-                >
-                  Clear all
-                </button>
-              </li>
-            )}
-          </ul>
-        )}
-      </div>
-      {/* Layers drawer — slides up from the bottom (Vaul). On mobile
-          this reads as the native map app pattern; on desktop the
-          drawer caps at 90vh and still feels like a focused tool tray.
-          Owned state stays in AppMap.tsx so deep-links and intent
-          chips can open it programmatically. */}
-      <BottomDrawer
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        title="Layers"
-        subtitle="Choose what to show on the map"
-      >
-        <div className="space-y-3 px-4 pt-3">
-        {/* CATEGORIES group — places by type. A foldable group (open by
-            default) instead of a flat wrap, so the drawer reads as named
-            sections rather than a wall of chips. */}
-        <LayerGroup
-          title="Places by type"
-          defaultOpen
-          meta={
-            <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-              {(places.length + trustedOsmCount).toLocaleString()} mapped
-            </span>
-          }
-        >
-          <ul className="flex flex-wrap items-center gap-2 py-0.5">
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveCats(new Set())}
-              aria-pressed={activeCats.size === 0}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-              style={{
-                background: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
-                border: `1px solid ${activeCats.size === 0 ? "var(--app-brand)" : "var(--app-border)"}`,
-                boxShadow: activeCats.size === 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-              }}
-            >
-              All · {(places.length + trustedOsmCount).toLocaleString()}
-            </button>
-          </li>
-          {savedCount > 0 && (
-            <li>
+            {goNearMe && (
               <button
                 type="button"
-                onClick={() => setShowSavedOnly((v) => !v)}
-                aria-pressed={showSavedOnly}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                onClick={goNearMe}
+                aria-label="Find places near me"
+                aria-busy={locating || undefined}
+                title={locating ? "Locating…" : "Find places near me"}
+                className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92]"
                 style={{
-                  background: showSavedOnly ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                  color: showSavedOnly ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${showSavedOnly ? "var(--app-brand)" : "var(--app-border)"}`,
-                  boxShadow: showSavedOnly ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+                  background: userLoc
+                    ? "color-mix(in srgb, var(--app-brand) 12%, transparent)"
+                    : "transparent",
                 }}
-                title="Show only the places you saved"
               >
-                Saved · {savedCount}
-              </button>
-            </li>
-          )}
-          {fieldNotesCount > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setFieldNotesOnly((v) => !v)}
-                aria-pressed={fieldNotesOnly}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: fieldNotesOnly ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                  color: fieldNotesOnly ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${fieldNotesOnly ? "var(--app-brand)" : "var(--app-border)"}`,
-                  boxShadow: fieldNotesOnly ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Show only places with verified Field Notes: happy hour, a deal, parking, or an insider tip"
-              >
-                <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                Field notes · {fieldNotesCount}
-              </button>
-            </li>
-          )}
-          {FEATURED_CATEGORIES.map((c) => {
-            const active = activeCats.has(c.slug);
-            return (
-              <li key={c.slug}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveCats((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.slug)) next.delete(c.slug);
-                      else next.add(c.slug);
-                      return next;
-                    })
-                  }
-                  aria-pressed={active}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                  style={{
-                    background: active ? c.color : "var(--app-bg-elevated)",
-                    color: active ? "white" : "var(--app-ink-2)",
-                    border: `1px solid ${active ? c.color : "var(--app-border)"}`,
-                    boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                  }}
-                  title={c.title}
-                >
-                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{c.glyph}</span>
-                  {c.label}
-                </button>
-              </li>
-            );
-          })}
-          {TOP_CATEGORIES.map((c) => {
-            const active = activeCats.has(c.slug);
-            return (
-              <li key={c.slug}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveCats((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.slug)) next.delete(c.slug);
-                      else next.add(c.slug);
-                      return next;
-                    });
-                  }}
-                  aria-pressed={active}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                  style={{
-                    background: active ? c.color : "var(--app-bg-elevated)",
-                    color: active ? "white" : "var(--app-ink-2)",
-                    border: `1px solid ${active ? c.color : "var(--app-border)"}`,
-                    boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                  }}
-                >
-                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1, color: active ? "rgba(255,255,255,0.92)" : c.color }}>
-                    {CHIP_GLYPH[c.slug] ?? "●"}
-                  </span>
-                  {c.name}
-                </button>
-              </li>
-            );
-          })}
-          </ul>
-        </LayerGroup>
-
-        {/* OVERLAYS group: infrastructure / situation layers. The
-            data-dependent chips (amenities, roads, transit, trails)
-            still render only when their data exists; the GIS overlay
-            chips (parks, markets, art, ...) are always available, so the
-            group now always appears. */}
-        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || cemeteryCount > 0 || OVERLAYS.length > 0) && (
-          /* Collapsed by default: opening "Layers" used to explode into a
-             ~30-chip wall (both groups open). Places-by-type leads; overlays
-             are one tap away. */
-          <LayerGroup title="Overlays & live layers">
-            <ul className="flex flex-wrap items-center gap-2 py-0.5">
-          {amenityCount > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setAmenityOpen((v) => !v)}
-                aria-pressed={amenityOpen || activeAmenityGroupCount > 0}
-                aria-expanded={amenityOpen}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: activeAmenityGroupCount > 0 ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: activeAmenityGroupCount > 0 ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
-                  boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Amenities: restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
-              >
-                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
-                Amenities
-                {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
-                <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
-              </button>
-            </li>
-          )}
-          {civic.length > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowCivic((v) => !v)}
-                aria-pressed={showCivic}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: showCivic ? "var(--app-warning)" : "var(--app-bg-elevated)",
-                  color: showCivic ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${showCivic ? "var(--app-warning)" : "var(--app-border)"}`,
-                  boxShadow: showCivic ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Live traffic incidents and county-published issue reports (311)"
-              >
-                <span
+                <NavIcon
+                  className="h-4 w-4"
+                  strokeWidth={userLoc ? 2.5 : 2}
+                  fill={userLoc ? "currentColor" : "none"}
                   aria-hidden
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ background: showCivic ? "white" : "var(--app-warning)" }}
                 />
-                Roads &amp; alerts
               </button>
-            </li>
-          )}
-          {/* Transit is ALWAYS available: live buses ride this toggle even
-              when the route-shape feed is empty (the vehicle feed is the
-              reliable part). Route lines draw under the buses when shapes
-              are present; the label shows the route count only then. */}
-          <li>
-            <button
-              type="button"
-              onClick={() => setShowTransit((v) => !v)}
-              aria-pressed={showTransit}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-              style={{
-                background: showTransit ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                color: showTransit ? "white" : "var(--app-ink-2)",
-                border: `1px solid ${showTransit ? "var(--app-cool)" : "var(--app-border)"}`,
-                boxShadow: showTransit ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-              }}
-              title="TransIT bus routes and live buses"
-            >
-              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTransit ? "white" : "var(--app-cool)" }} />
-              Transit{transitLines.features.length > 0 ? ` · ${transitLines.features.length}` : ""}
-            </button>
-          </li>
-          {trailLines.features.length > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowTrails((v) => !v)}
-                aria-pressed={showTrails}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: showTrails ? "var(--app-positive)" : "var(--app-bg-elevated)",
-                  color: showTrails ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${showTrails ? "var(--app-positive)" : "var(--app-border)"}`,
-                  boxShadow: showTrails ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="County trails"
-              >
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTrails ? "white" : "var(--app-positive)" }} />
-                Trails · {trailLines.features.length}
-              </button>
-            </li>
-          )}
-          {aerialCount > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowAerial((v) => !v)}
-                aria-pressed={showAerial}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: showAerial ? "var(--app-accent)" : "var(--app-bg-elevated)",
-                  // Gold is a FILL token, not a text color (see --app-accent-press):
-                  // white on gold fails AA (~2.4:1), so use ink on the gold fill.
-                  color: showAerial ? "var(--app-ink)" : "var(--app-ink-2)",
-                  border: `1px solid ${showAerial ? "var(--app-accent)" : "var(--app-border)"}`,
-                  boxShadow: showAerial ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Drone photos from the Frederick Radius seasonal archive. Each pin marks where a shot was taken"
-              >
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "var(--app-ink)" : "var(--app-accent)" }} />
-                Aerial photos · {aerialCount}
-              </button>
-            </li>
-          )}
-          {cemeteryCount > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowCemeteries((v) => !v)}
-                aria-pressed={showCemeteries}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: showCemeteries ? "var(--app-ink-2)" : "var(--app-bg-elevated)",
-                  color: showCemeteries ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${showCemeteries ? "var(--app-ink-2)" : "var(--app-border)"}`,
-                  boxShadow: showCemeteries ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Historic cemeteries from county records. Church yards, family plots, and burial grounds"
-              >
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showCemeteries ? "white" : "var(--app-ink-2)" }} />
-                Cemeteries · {cemeteryCount}
-              </button>
-            </li>
-          )}
-          {/* GIS overlays (6.3/6.4): one chip per registered overlay.
-              Ready layers toggle the active set (persisted to the URL);
-              coming-soon layers render disabled so the reader can see
-              what is on the way without toggling an empty source. */}
-          {OVERLAYS.map((o) => {
-            const on = activeOverlays.includes(o.key);
-            return (
-              <li key={o.key}>
-                <button
-                  type="button"
-                  onClick={() => o.ready && toggleOverlay(o.key)}
-                  aria-pressed={on}
-                  disabled={!o.ready}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96] disabled:cursor-default"
-                  style={{
-                    background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                    color: on ? "white" : "var(--app-ink-2)",
-                    border: `1px solid ${on ? "var(--app-brand)" : "var(--app-border)"}`,
-                    boxShadow: on ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                    opacity: o.ready ? 1 : 0.5,
-                  }}
-                  title={o.ready ? o.sources : `${o.sources} (coming soon)`}
-                >
-                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "white" : "var(--app-brand)" }} />
-                  {o.label}
-                  {!o.ready && <span style={{ fontSize: 9, opacity: 0.8 }}>soon</span>}
-                </button>
-              </li>
-            );
-          })}
-            </ul>
-          </LayerGroup>
-        )}
-
-        {/* Amenities sub-tray — toggled by the Amenities chip,
-            nested inside the same glass filter panel. */}
-        {amenityOpen && (
-          <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
-          <ul className="flex flex-wrap items-center gap-2 py-0.5">
-            {AMENITY_GROUPS.map((g) => {
-              const on = amenityGroups.has(g.key);
-              // Registered-ahead-of-data kinds (Pools, Dog stations) render
-              // dimmed + disabled with a "soon" tag, never an empty toggle
-              // that turns on and shows nothing on the map.
-              const soon = g.comingSoon === true;
-              return (
-                <li key={g.key}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (soon) return;
-                      setAmenityGroups((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(g.key)) next.delete(g.key);
-                        else next.add(g.key);
-                        return next;
-                      });
-                    }}
-                    aria-pressed={soon ? undefined : on}
-                    disabled={soon}
-                    title={soon ? `${g.label}: coming soon` : undefined}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96] disabled:cursor-default"
-                    style={{
-                      background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                      color: on ? "white" : "var(--app-ink-2)",
-                      border: `1px solid ${on ? "var(--app-cool)" : "var(--app-border)"}`,
-                      boxShadow: on ? "var(--app-shadow-1)" : "none",
-                      opacity: soon ? 0.5 : 1,
-                    }}
-                  >
-                    <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{g.glyph}</span>
-                    {g.label}
-                    {soon && <span style={{ fontSize: 9, opacity: 0.8 }}>soon</span>}
-                  </button>
-                </li>
-              );
-            })}
-            {activeAmenityGroupCount > 0 && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setAmenityGroups(new Set())}
-                  className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96]"
-                  style={{ background: "transparent", color: "var(--app-ink-3)", border: "1px solid var(--app-border)" }}
-                >
-                  Clear
-                </button>
-              </li>
             )}
-          </ul>
-            <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-              Pick what you need. It appears on the map and folds into your Radius results.
-            </p>
           </div>
-        )}
+          {searchMatches.length > 0 && (
+            <ul
+              className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
+                boxShadow: "var(--app-shadow-3)",
+              }}
+            >
+              {searchMatches.map((r) => {
+                // Type-tinted dot so a town, event, or layer reads as a
+                // different thing from a place at a glance.
+                const dot =
+                  r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                  : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                  : r.type === "action" ? "var(--app-brand, #E14328)"
+                  : "var(--app-ink-3, #7A828C)";
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => pickSearch(r)}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
+                    >
+                      <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+                          {r.title}
+                        </span>
+                        <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                          {r.subtitle}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-      </BottomDrawer>
+      </div>
     </div>
   );
 }
