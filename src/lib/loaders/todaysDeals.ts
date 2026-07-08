@@ -186,12 +186,16 @@ function stripHours(offer: string): string {
  * and undercut it, so they come off at the boundary. Only end-anchored
  * parentheticals are removed (a legit mid-phrase "(all IPAs)" is kept), both
  * balanced and dangling-open, then orphaned trailing punctuation is tidied.
+ * A sentence period after the note ("...(stated on the official bar page).")
+ * counts as end-anchored too — most Field Notes deals end with one, and the
+ * first cut of this fix missed them, so the notes kept rendering (Jul-8
+ * audit).
  */
 export function stripProvenance(s: string): string {
   let out = s.trim();
   for (let i = 0; i < 4; i++) {
     const next = out
-      .replace(/\s*\([^()]*\)\s*$/, "") // trailing balanced "(...)"
+      .replace(/\s*\([^()]*\)[\s.]*$/, "") // trailing balanced "(...)", incl. a sentence period after it
       .replace(/\s*\([^()]*$/, "") // trailing UNCLOSED "(..." (truncated note)
       .trim();
     if (next === out) break;

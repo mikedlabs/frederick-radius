@@ -33,6 +33,10 @@ describe("eventDrawsParking", () => {
     expect(eventDrawsParking(ev({ category: "government" }), NOW)).toBe(false);
     expect(eventDrawsParking(ev({ starts_at: "not-a-date" }), NOW)).toBe(false);
   });
+  it("rejects family/community events: a parenting class does not fill a deck", () => {
+    expect(eventDrawsParking(ev({ category: "family", title: "Baby & Me Yoga" }), NOW)).toBe(false);
+    expect(eventDrawsParking(ev({ category: "community" }), NOW)).toBe(false);
+  });
   it("rejects events too soon or too far out", () => {
     const tooSoon = new Date(NOW.getTime() + (FORECAST_LEAD_MIN_MINUTES - 10) * 60_000).toISOString();
     const tooFar = new Date(NOW.getTime() + 5 * 60 * 60_000).toISOString();
