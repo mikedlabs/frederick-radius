@@ -2,49 +2,52 @@
 
 /**
  * SavedWallet — the user's saved places as an Apple Wallet-style fan of
- * pressed field-guide specimen cards (owner concept, 2026-07-02).
+ * field-guide specimen PLATES (owner concept 2026-07-02; specimen-stub
+ * redesign approved 2026-07-08, scratchpad/saved-redesign.html).
  *
- * The Saved page is already a personal collection of kept places, so it's the
- * one surface where the "cards you carry" metaphor earns its keep. Cards fan
- * in a vertical stack showing a header peek; tapping one raises it (accordion,
- * one open at a time) to reveal its mono data strip and an Open-page link.
- * Every card wears the BUSINESS's own brand hue (extracted from its Google
- * photo at build time, place-hues.json) when we have one, else its category's
- * color — always as a DARKENED ground so the cream text always clears WCAG AA
- * (the contrast pass, 2026-07-02) — never the raw hue.
- * Vermilion stays on its diet: the only vermilion here is the live "Open now"
- * dot, so the signal color still means one thing.
+ * The deck: every card tucks to a 62px lip showing the serif name and ONE
+ * mono fact chosen by value (walletFacts.lipFact). Tapping a lip raises the
+ * card (accordion, one at a time); tapping the raised card opens its page.
+ * A raised card keeps its brand-hued face (name, tier, the owner's field
+ * note, a gold deal tag) and tears out a cream SPECIMEN-LABEL STUB below —
+ * perforation and all — where the dense mono ledger (rating, price, today's
+ * hours, town, kind, saved date) prints in ink on paper, plus the actions.
+ * Field-guide plates carried their caption on the label, not on the plate.
  *
- * Pure presentation over the already-hydrated + already-sorted PlaceCardData
- * the parent hands down — no data fetching, no store reads.
+ * Two designed promises ride the stub, both plainly "coming soon", never
+ * fake numbers or dead buttons: a gold-ruled Radius Points slot under the
+ * plate seal, and a disabled Notify bell in the action row.
+ *
+ * Cards wear the BUSINESS's own brand hue (place-hues.json, extracted from
+ * its Google photo at build time) when we have one, else the category's
+ * wallet ground — always as a DARKENED gradient so cream text clears AA.
+ * Vermilion stays on its diet: only the live dot and the live card ring.
+ *
+ * Pure presentation over already-hydrated, already-sorted PlaceCardData.
+ * Raise state can be CONTROLLED by the parent (openSlug/onOpenSlug) so the
+ * On-now running line above the deck can raise a card; uncontrolled use
+ * keeps the old internal accordion.
  */
-import { useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Bell } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import placeHues from "@/data/place-hues.json";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-
-/** "21:00" -> "9 PM" for the open-until line; null on a bad value. */
-function fmtClock(hhmm?: string): string | null {
-  if (!hhmm) return null;
-  const [h, m] = hhmm.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  const mer = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${h12} ${mer}` : `${h12}:${String(m).padStart(2, "0")} ${mer}`;
-}
-
-/** The plate number climbs with stack position — Pl. I, II, III… — so the
- *  fan reads as a numbered field-guide collection, not a list. */
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-function plate(i: number): string {
-  return i < ROMAN.length ? ROMAN[i] : String(i + 1);
-}
+import {
+  distanceLabel,
+  lipFact,
+  plate,
+  priceGlyphs,
+  savedDateLabel,
+  todayHoursLine,
+} from "@/components/saved/walletFacts";
 
 /**
  * The card's background MOTIF, by category family — the thing that makes the
@@ -65,32 +68,23 @@ function motifClass(category: string): string {
 }
 
 /**
- * Wallet card GROUND, per place category — a deliberately more saturated,
- * jewel-toned set than the app's quiet category inks (categories.ts). A
- * wallet of cards wants VARIETY, like the reference (every issuer's card is
- * its own color); the app's category inks stay muted because they mark
- * badges and chips against paper, where loud color would be noise.
- *
- * Crucially it SEPARATES the categories that share one ink app-wide, which
- * on the wallet collapsed whole families to a single hue — park/market/
- * playground/pharmacy were all one green, coffee/antiques/books all one
- * brown, civic/library/government/transit all one blue. Families stay
- * recognizable (food warm, outdoors green, arts purple, civic blue) but each
- * member gets its own shade. Every value clears WCAG AA for cream text on
- * the darkened gradient ground below (verified: worst case 4.86:1). Anything
- * unlisted falls back to the category ink, then a civic blue.
- */
-/**
  * Per-BUSINESS brand hue, extracted from the place's own Google photo at
  * build time (scripts/build-place-hues.ts) — a real wallet's cards wear
- * their issuer's brand, not their spending category's, so a saved place
- * wears the color of its own storefront/product photo when we have one.
- * Every value is pre-clamped to the wallet's jewel-tone register and
- * pre-verified AA for cream text on the darkened gradient ground below.
- * `_doc` rides along in the JSON; the string index keeps it out of the way.
+ * their issuer's brand, not their spending category's. Every value is
+ * pre-clamped to the wallet's jewel-tone register and pre-verified AA for
+ * cream text on the darkened gradient ground. `_doc` rides along in the
+ * JSON; the string index keeps it out of the way.
  */
 const PLACE_HUES = placeHues as Record<string, string>;
 
+/**
+ * Wallet card GROUND, per place category — a deliberately more saturated,
+ * jewel-toned set than the app's quiet category inks (categories.ts), used
+ * when a place has no extracted brand hue. Families stay recognizable
+ * (food warm, outdoors green, arts purple, civic blue) but each member
+ * gets its own shade; every value clears WCAG AA for cream text on the
+ * darkened gradient ground (verified: worst case 4.86:1).
+ */
 const WALLET_GROUND: Record<string, string> = {
   // Food & drink — warm reds, ambers, a wine, a rose
   restaurant: "#C23A22", pizza: "#D2481F", bakery: "#C77A1E", coffee: "#6F4A2F",
@@ -110,27 +104,17 @@ const WALLET_GROUND: Record<string, string> = {
   lodging: "#3E5A6E", pharmacy: "#2E7D6B",
 };
 
-function openLabel(p: PlaceCardData): { text: string; live: boolean } | null {
-  const s = p.open_status;
-  if (!s) return null;
-  // closesAt lives only on the open / closing-soon variants of the union.
-  if (s.state === "open" || s.state === "closing-soon") {
-    const till = fmtClock(s.closesAt);
-    return { text: till ? `Open till ${till}` : "Open now", live: true };
-  }
-  if (s.state === "closed") return { text: "Closed now", live: false };
-  return null;
-}
-
 function Card({
   place,
   index,
   open,
+  savedAt,
   onOpen,
 }: {
   place: PlaceCardData;
   index: number;
   open: boolean;
+  savedAt?: string;
   onOpen: () => void;
 }) {
   const router = useRouter();
@@ -140,18 +124,28 @@ function Card({
   const hue =
     PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#20506A";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
-  const ol = openLabel(place);
-  const dist =
-    typeof place.distance_m === "number" && Number.isFinite(place.distance_m)
-      ? place.distance_m < 1000
-        ? `${Math.round(place.distance_m)} m`
-        : `${(place.distance_m / 1609.34).toFixed(1)} mi`
+  const kind = cat?.name ?? "Place";
+  const fact = lipFact(place, town);
+  const live = Boolean(fact?.live);
+  const rating =
+    typeof place.google_rating === "number" && Number.isFinite(place.google_rating)
+      ? place.google_rating.toFixed(1)
       : null;
+  const ratingCount =
+    typeof place.google_rating_count === "number" && place.google_rating_count > 0
+      ? place.google_rating_count.toLocaleString("en-US")
+      : null;
+  const price = priceGlyphs(place.price_band);
+  const sched = todayHoursLine(place.hours);
+  const dist = distanceLabel(place.distance_m);
+  const saved = savedDateLabel(savedAt);
+  // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph in the mono ledger, not prose
+  const dash = "—";
 
   function toggle() {
     if (open) {
       // Wallet behavior: a tap on the RAISED card opens it (like tapping a
-      // pass). The visible "Open page" link stays as the discoverable route.
+      // pass). The visible "Open page" action stays as the discoverable route.
       haptic("light");
       track("saved_wallet_open_page", { category: place.category });
       router.push(`/places/${place.slug}`);
@@ -167,19 +161,22 @@ function Card({
       toggle();
     }
   }
+  // Links and real buttons inside the stub handle themselves; without this
+  // a Directions tap would ALSO fire the card's open-page toggle.
+  const stop = (e: MouseEvent) => e.stopPropagation();
 
   return (
     <div
       role="button"
       tabIndex={0}
       aria-expanded={open}
-      aria-label={`${place.name}${open ? ", tap again to open its page" : ", tap to raise"}`}
+      aria-label={`${place.name}${open ? ", raised. Tap again to open its page" : ", tap to raise"}`}
       onClick={toggle}
       onKeyDown={onKey}
-      className={`sw-card${open ? " is-open" : ""}${ol?.live ? " sw-live-card" : ""}`}
+      className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
       style={
         {
-          // Darkened category ground so cream text always clears AA — never the raw hue.
+          // Darkened brand ground so cream text always clears AA — never the raw hue.
           background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
@@ -190,90 +187,202 @@ function Card({
           / emboss / topo / strata / grid), the field-guide answer to the Citi
           swirl / UOB facets / DBS emboss that make each Wallet card its own. */}
       <span className={`sw-art ${motifClass(place.category)}`} aria-hidden />
-      {/* Holographic foil — an iridescent band that sweeps across a raised card,
-          the premium "holo" pop, tinted via soft-light so it never fights the
-          brand palette. Reduced-motion users get a still, subtle sheen. */}
+      {/* Holographic foil — an iridescent band swept across a raised card.
+          Reduced-motion users get a still, subtle sheen. */}
       <span className="sw-holo" aria-hidden />
+      {/* Foil edge — a hairline metallic rim that reads as the card's
+          laminated cut edge. Pure decoration, brand-neutral. */}
+      <span className="sw-foil-edge" aria-hidden />
       {/* Big category glyph as the card's watermark "logo". */}
       <span className="sw-glyph" aria-hidden>
         <CategoryIcon slug={place.category} className="h-full w-full" strokeWidth={1.5} />
       </span>
 
-      {/* Lockup — bold glyph "logo" + name left; category TIER wordmark right,
-          the logo-left / product-right structure of a real card. */}
-      <div className="sw-top">
-        <span className="sw-brand">
-          <CategoryIcon slug={place.category} className="h-[22px] w-[22px]" strokeWidth={2.25} />
-          <span className="sw-name">{place.name}</span>
-        </span>
-        <span className="sw-tier">{(cat?.name ?? "Place").toUpperCase()}</span>
-      </div>
-
-      {/* Field-note stamp — the pressed mark for a place you've vouched for. */}
-      {place.field_notes && (
-        <span className="sw-stamp" aria-hidden>
-          Field note<span>&#10003;</span>
-        </span>
-      )}
-
-      {/* Foot — the card's "number" line: plate + category + live data, with a
-          contactless glyph at the trailing edge. Revealed on raise. */}
-      <div className="sw-foot">
-        <div className="sw-data">
-          <span className="sw-chip sw-plate">Pl. {plate(index)}</span>
-          {ol && (
-            <span className={`sw-chip${ol.live ? " sw-live" : ""}`}>
-              {ol.live && <b aria-hidden />}
-              {ol.text}
+      <div className="sw-face">
+        {/* Lockup — bold glyph "logo" + serif name left. Right slot: the ONE
+            mono lip fact while tucked; the category TIER wordmark on raise
+            (the ledger below takes over the facts). */}
+        <div className="sw-top">
+          <span className="sw-brand">
+            <CategoryIcon slug={place.category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
+            <span className="sw-name">{place.name}</span>
+          </span>
+          {fact && (
+            <span className={`sw-lipfact${fact.dim ? " is-dim" : ""}`}>
+              {fact.live && <b className="sw-dot" aria-hidden />}
+              {fact.text}
             </span>
           )}
-          {dist && <span className="sw-chip">{dist}</span>}
-          {town && <span className="sw-chip">{town}</span>}
+          <span className="sw-tier">{kind.toUpperCase()}</span>
         </div>
-        <span className="sw-tap" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M8 7a7 7 0 0 1 0 10" />
-            <path d="M12 4a11 11 0 0 1 0 16" />
-            <path d="M4 10a3.5 3.5 0 0 1 0 4" />
-          </svg>
-        </span>
+
+        {/* Raised-only face content: the verified field note + deal tag —
+            the rich, human fields stay on the brand plate. */}
+        {(place.field_note_tip || place.deal_hook) && (
+          <div className="sw-facebody">
+            {place.field_note_tip && (
+              <>
+                <p className="sw-tip">{place.field_note_tip}</p>
+                <p className="sw-tipsrc">Field note · verified at the source</p>
+              </>
+            )}
+            {place.deal_hook && <span className="sw-dealtag">{place.deal_hook}</span>}
+          </div>
+        )}
       </div>
 
-      <Link
-        href={`/places/${place.slug}`}
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={open ? 0 : -1}
-        className="sw-open"
-      >
-        Open page &rarr;
-      </Link>
+      {/* THE STUB — cream specimen label, perforated off the card foot.
+          The dense mono ledger prints in ink on paper, where it's legible. */}
+      <div className="sw-stub">
+        <div className="sw-stub-grid">
+          <dl className="sw-ledger">
+            <div className="sw-cell">
+              <dt>Rating</dt>
+              <dd>
+                {rating ? (
+                  <>
+                    <span className="sw-star" aria-hidden>★</span> {rating}
+                    {ratingCount && <small> · {ratingCount}</small>}
+                  </>
+                ) : (
+                  dash
+                )}
+              </dd>
+            </div>
+            <div className="sw-cell">
+              <dt>Price</dt>
+              <dd>
+                {price ? (
+                  <>
+                    {price.shown}
+                    {price.off && <span className="sw-dollar-off">{price.off}</span>}
+                  </>
+                ) : (
+                  dash
+                )}
+              </dd>
+            </div>
+            {/* Full-width cell: a split schedule ("11 AM – 2 PM, 5 – 11 PM")
+                never survives half a column. */}
+            <div className="sw-cell sw-cell-wide">
+              <dt>{sched?.label ?? "Hours"}</dt>
+              <dd>{sched?.value ?? dash}</dd>
+            </div>
+            {dist && (
+              <div className="sw-cell">
+                <dt>From you</dt>
+                <dd>{dist}</dd>
+              </div>
+            )}
+            <div className="sw-cell">
+              <dt>Town</dt>
+              <dd>{town ?? dash}</dd>
+            </div>
+            <div className="sw-cell">
+              <dt>Kind</dt>
+              <dd>{kind}</dd>
+            </div>
+            {saved && (
+              <div className="sw-cell">
+                <dt>Saved</dt>
+                <dd>{saved}</dd>
+              </div>
+            )}
+          </dl>
+          <div className="sw-rail">
+            <span className="sw-plateseal">Pl. {plate(index)}</span>
+            {/* Radius Points — a designed promise, not a fake score: the
+                gold-ruled slot where this place's points will print. */}
+            <span className="sw-pts" aria-label="Radius Points, coming soon">
+              <b aria-hidden>PTS</b>
+              <span aria-hidden>{dash}</span>
+              <i aria-hidden>soon</i>
+            </span>
+          </div>
+        </div>
+        <div className="sw-actions">
+          <Link href={`/places/${place.slug}`} onClick={stop} tabIndex={open ? 0 : -1} className="sw-act-primary">
+            Open page
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+          <a
+            href={googleMapsDirections(place.geom.lat, place.geom.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={stop}
+            tabIndex={open ? 0 : -1}
+            className="sw-act-quiet"
+          >
+            Directions
+          </a>
+          {/* Notify me — the per-place nudge lands here. Disabled on purpose:
+              a quiet bell with a mono tag, a promise rather than a dead end. */}
+          <button
+            type="button"
+            disabled
+            aria-label="Notify me about this place. Coming soon"
+            className="sw-notify"
+          >
+            <Bell className="h-[13px] w-[13px]" strokeWidth={2.25} aria-hidden />
+            Notify
+            <i aria-hidden>soon</i>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function SavedWallet({ places }: { places: PlaceCardData[] }) {
+export default function SavedWallet({
+  places,
+  savedAt,
+  openSlug,
+  onOpenSlug,
+}: {
+  places: PlaceCardData[];
+  /** saved_at ISO per slug, for the stub ledger's Saved cell. */
+  savedAt?: Record<string, string>;
+  /** Controlled raise (SavedList's On-now line raises cards). When omitted,
+   *  the wallet keeps its own internal accordion state. */
+  openSlug?: string | null;
+  onOpenSlug?: (slug: string) => void;
+}) {
   // One card raised at a time (accordion), like Wallet. Keyed by slug so a
   // re-sort of `places` keeps the SAME card raised rather than whichever now
   // sits at the old index. Defaults to the top card.
-  const [openSlug, setOpenSlug] = useState<string | null>(places[0]?.slug ?? null);
+  const [internalSlug, setInternalSlug] = useState<string | null>(places[0]?.slug ?? null);
+  const controlled = openSlug !== undefined;
+  const current = controlled ? openSlug : internalSlug;
   if (places.length === 0) return null;
-  const openValid = places.some((p) => p.slug === openSlug);
+  const openValid = places.some((p) => p.slug === current);
   return (
     <div className="sw-stack" role="list" aria-label="Saved places, as a card wallet">
       {places.map((p, i) => {
-        const open = openValid ? p.slug === openSlug : i === 0;
+        const open = openValid ? p.slug === current : i === 0;
         return (
-          // The SLOT carries the stack geometry (the -144px tuck and the
+          // The SLOT carries the stack geometry (the -124px tuck and the
           // raise). It must live on this wrapper, not .sw-card: each card is
           // the :first-child of its own listitem, so a card-level
           // margin-top:0 first-child reset matched EVERY card and the wallet
           // rendered as full-height cards with no overlap (the shipped bug).
-          <div role="listitem" key={p.slug} className={`sw-slot${open ? " is-open" : ""}`}>
+          // The id is the On-now line's scroll target.
+          <div
+            role="listitem"
+            key={p.slug}
+            id={`sw-slot-${p.slug}`}
+            className={`sw-slot${open ? " is-open" : ""}`}
+          >
             <Card
               place={p}
               index={i}
               open={open}
-              onOpen={() => setOpenSlug(p.slug)}
+              savedAt={savedAt?.[p.slug]}
+              onOpen={() => {
+                onOpenSlug?.(p.slug);
+                if (!controlled) setInternalSlug(p.slug);
+              }}
             />
           </div>
         );
