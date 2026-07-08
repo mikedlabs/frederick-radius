@@ -1198,8 +1198,11 @@ export default function AppMap({
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       fetch(`/api/search?q=${encodeURIComponent(term)}&limit=6`, { signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((d: SearchResult[]) => setSearchMatches(Array.isArray(d) ? d : []))
+        .then((r) => (r.ok ? r.json() : { results: [] }))
+        // /api/search returns { results: [...] } (same shape SearchOverlay
+        // reads). Unwrap it — reading the response as a bare array left the
+        // map dock's search silently empty on every keystroke.
+        .then((d: { results?: SearchResult[] }) => setSearchMatches(Array.isArray(d?.results) ? d.results : []))
         .catch(() => {
           /* aborted or offline — keep the previous list */
         });
