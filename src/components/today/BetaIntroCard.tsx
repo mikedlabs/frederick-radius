@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, ArrowRight } from "lucide-react";
 
-// Bumped to v9 so the slim strip shows once even for people who
-// dismissed the old full-screen essay card (different UX, fresh key).
-const STORAGE_KEY = "fr:beta-intro-dismissed:v9";
+// Bumped to v10 so the sharper first-run orientation line shows once even
+// for people who dismissed the older welcome strip (fresh copy, fresh key).
+const STORAGE_KEY = "fr:beta-intro-dismissed:v10";
 
 /**
  * BetaIntroCard — a SLIM first-visit welcome strip.
@@ -63,10 +63,10 @@ export default function BetaIntroCard() {
       </span>
       <Link href="/about" onClick={dismiss} className="min-w-0 flex-1">
         <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-          New here? Frederick County, organized around your day.
+          New here? What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time around here.
         </span>
         <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: "var(--app-brand)" }}>
-          Why we built this
+          How it works
           <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         </span>
       </Link>
