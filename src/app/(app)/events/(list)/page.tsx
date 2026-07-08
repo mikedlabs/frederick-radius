@@ -6,7 +6,6 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
 import EventsExplorer from "@/components/event/EventsExplorer";
-import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -166,11 +165,6 @@ export default async function EventsIndexPage() {
   // assembleUnifiedEvents is itself unstable_cache-wrapped.
   const eventsPromise = assembleUnifiedEvents(now);
 
-  // Masthead dateline — Eastern "Mon · Jun 15" for the almanac nameplate.
-  // Event-independent, so it renders immediately.
-  const dlWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
-  const dlDate = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(now);
-
   return (
     <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
@@ -181,55 +175,14 @@ export default async function EventsIndexPage() {
           uses: silent one-time reload, then an honest "rendered on {day}" banner. */}
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
-      {/* ── HEADER — the almanac nameplate. Premium masthead: a hairline
-          rule, a "Frederick County / Mon · Jun 15" dateline, the serif
-          title dropping into an italic continuation, a mono count, and a
-          single vermilion accent tick. Typography carries it; high contrast
-          on the deepened paper ground. */}
-      <header className="pt-0.5">
-        <div
-          aria-hidden
-          className="h-px"
-          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
-        />
-        <div className="flex items-center justify-between py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
-            Frederick County
-          </span>
-          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-            {dlWeekday} &middot; {dlDate}
-          </span>
-        </div>
-        <h1
-          className="font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.02em]"
-          style={{ color: "var(--app-ink)" }}
-        >
-          What&rsquo;s on
-          <span className="block font-medium italic" style={{ color: "var(--app-ink-2)" }}>
-            in Frederick County
-          </span>
-        </h1>
-        {/* Count line streams in with the feed; reserve its line height so the
-            tick below doesn't jump when the numbers arrive. */}
-        <Suspense
-          fallback={
-            <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-              &nbsp;
-            </p>
-          }
-        >
-          <EventCounts eventsPromise={eventsPromise} />
-        </Suspense>
-        <div
-          aria-hidden
-          className="mt-2.5 h-[3px] w-[42px] rounded-full"
-          style={{ background: "var(--app-brand)", boxShadow: "0 1px 4px color-mix(in srgb, var(--app-brand) 40%, transparent)" }}
-        />
-      </header>
-
-      {/* ── THE BOARD — the explorer + the fenced civic sections, all
-          event-dependent, streamed behind one boundary so the masthead never
-          waits on the feeds. */}
+      {/* ── THE BOARD — the almanac nameplate is now the FIRST thing inside the
+          masthead-dock (EventsBoardDock): the collapsing "What's on" nameplate +
+          the pinned What·When·Where caption bar + the mono count line all live
+          together in one sticky header that leads the board (owner-approved
+          "Sticky masthead-dock" redesign). The old static server <header>
+          nameplate was removed so the board carries exactly one nameplate — the
+          collapsing one. Everything event-dependent still streams behind the
+          boundary below so the route stays a static (ISR) shell. */}
       <Suspense
         fallback={
           <SlowSuspenseFallback
@@ -274,20 +227,6 @@ export default async function EventsIndexPage() {
 }
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
-
-/** The masthead count line ("N events · M towns"), streamed from the shared
- *  events promise so the serif title above it paints first. */
-async function EventCounts({ eventsPromise }: { eventsPromise: EventsPromise }) {
-  const { publicEvents } = await eventsPromise;
-  const eventCount = publicEvents.length;
-  const townCount = new Set(publicEvents.map((e) => e.municipality).filter(Boolean)).size;
-  return (
-    <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-      <span style={{ color: "var(--app-brand-press)" }}>{eventCount}</span> events &middot;{" "}
-      <span style={{ color: "var(--app-brand-press)" }}>{townCount}</span> towns
-    </p>
-  );
-}
 
 /**
  * The event-dependent body: the explorer board + the fenced "Government &
@@ -407,18 +346,15 @@ async function EventsBoard({
           the explorer's quick doorways + reflowing horizon spine (feature
           lead + glance cards) + map + search are now the single results
           region, so every event lands in exactly one place. */}
-      {/* The week at a glance — the tappable 7-day axis (?d= deep links the
-          explorer, which reads it from the URL). Built long ago, imported
-          nowhere until now (experience review, events #4): 'what's on
-          Saturday?' was scroll-archaeology; now it's one tap. */}
-      {/* The ribbon + explorer read the live URL via useSearchParams, so in
-          this STATIC route they client-render up to this boundary — the
-          prebuilt HTML carries the skeleton, and the board mounts on
-          hydration with the deep-linked view already applied (no
-          default-view flash: there is no server-rendered board to flash
-          from). Everything outside this boundary stays prerendered. */}
+      {/* The board reads the live URL via useSearchParams, so in this STATIC
+          route it client-renders up to this boundary — the prebuilt HTML
+          carries the skeleton, and the board mounts on hydration with the
+          deep-linked view already applied (no default-view flash: there is
+          no server-rendered board to flash from). Everything outside this
+          boundary stays prerendered. The 7-day week ribbon (?d=) now lives
+          inside the masthead-dock's When pane, so it is no longer rendered
+          standalone here. */}
       <Suspense fallback={<Skeleton.Block height={480} round="var(--app-radius-lg)" />}>
-        <EventWeekRibbon events={eventsForExplorer} />
         <EventsExplorer
           events={eventsForExplorer}
           liveSlugs={liveSlugs}

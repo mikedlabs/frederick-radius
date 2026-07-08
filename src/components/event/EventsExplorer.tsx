@@ -4,22 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
-import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, X, ChevronDown } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
-import EventsIntentRail from "@/components/event/EventsIntentRail";
+import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
-import Sheet from "@/components/ui/Sheet";
-import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
-import Pill from "@/components/ui/Pill";
-import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
-import { daypart, type Daypart } from "@/lib/daypart";
-import EventsSavedRail from "@/components/event/EventsSavedRail";
+import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
@@ -27,7 +22,6 @@ import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
-type EventSortKey = "time" | "az" | "venue";
 
 // The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
 // lib/events/intents.ts (civic included — it's tucked in the rail, not
@@ -53,24 +47,10 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // lib/event-kind.ts (taxonomy kind + a keyword net for mistagged feeds),
 // so Today / events / map can never drift on what counts as "utility."
 
-const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
-  { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
-  { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
-  { key: "venue", label: "Venue", hint: "Cluster by venue name" },
-];
-
-type ViewKey = "list" | "compact" | "calendar" | "map";
-
-// The four lenses on the same filtered set. List = grouped browse;
-// Compact = dense 48px "Rolodex" rows; Agenda = day-grouped schedule;
-// Map = the pins. One Segmented control, labels collapse to icons on
-// narrow screens.
-const VIEW_ITEMS: ReadonlyArray<SegmentItem<ViewKey>> = [
-  { key: "list", label: "List", icon: ListIcon },
-  { key: "compact", label: "Compact", icon: Rows3 },
-  { key: "calendar", label: "Agenda", icon: CalendarDays },
-  { key: "map", label: "Map", icon: MapIcon },
-];
+// The view lens (List / Compact / Agenda / Map) and sort options now live
+// in the masthead-dock (EventsBoardDock) — how you look at the filtered
+// set, kept visually apart from the filter caption. ViewKey / EventSortKey
+// are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
   events: EventWithMeta[];
@@ -168,10 +148,7 @@ export default function EventsExplorer({
   // when both are set.
   const [day, setDay] = useState<string | null>(initial.day);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
-  // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
-  // collapsed by default so the page leads with events, not controls.
-  const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState<ViewKey>("list");
   // Free-only toggle — URL-synced via ?free=1 so a filtered view is
   // shareable. Boolean codec maps 0/1 to false/true; default false so
   // an empty URL = no filter (no extra param on first load).
@@ -380,12 +357,6 @@ export default function EventsExplorer({
     cat !== null || intent !== null || sub !== null || town !== null ||
     time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
     tod !== null || kidsOnly || recurringOnly || day !== null;
-  // Count only the panel facets (search + the quick row + the intent rail
-  // show their own active state, so they're not tallied here). These are
-  // the deeper facets that live behind the Filters button.
-  const filterCount =
-    (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0) +
-    (tod !== null ? 1 : 0) + (kidsOnly ? 1 : 0) + (recurringOnly ? 1 : 0);
   const clear = () => {
     setCat(null);
     setIntent(null);
@@ -422,302 +393,55 @@ export default function EventsExplorer({
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 
-  // Daypart-aware lead chip — mirrors the /today time-of-day character on
-  // /events: in the evening it offers "Tonight," in the morning "This
-  // morning," each scoping to today + that Eastern daypart in one tap.
-  // Derived from the server `nowISO` prop, so render stays deterministic.
-  const nowDaypart = daypart(new Date(nowISO));
-  const DAYPART_CHIP: Record<Daypart, string> = {
-    morning: "This morning",
-    midday: "This afternoon",
-    evening: "Tonight",
-    late: "Late tonight",
-  };
-  const daypartOn = tod === nowDaypart && time === "today";
-
-  // Orthogonal time / price facets — the WHEN and the deal, separate from
-  // the WHAT (which the intent rail owns). Category-based chips (music,
-  // family, civic) moved into the rail as first-class intents, so this
-  // row no longer double-encodes the taxonomy.
-  const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
-    {
-      key: "daypart",
-      label: DAYPART_CHIP[nowDaypart],
-      on: daypartOn,
-      toggle: () => {
-        if (daypartOn) { setTod(null); setTime("all"); }
-        else { setTod(nowDaypart); setTime("today"); }
-      },
-    },
-    { key: "today", label: "Today", on: time === "today" && tod === null, toggle: () => setTime(time === "today" ? "all" : "today") },
-    { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
-    { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
-    { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
-  ];
-
   return (
     <div className="space-y-3">
-      {/* Your saved — upcoming saves surfaced first, closing the
-          find → save → resurface loop on the page people browse from.
-          Self-hides when there's nothing saved or ahead. */}
-      <EventsSavedRail events={events} nowISO={nowISO} liveSlugs={liveSlugs} />
-
-      {/* Category front door — the seven human intents (+ tucked civic) as
-          a scannable icon rail, with a second row of sub-categories when an
-          intent has them. Replaces the old flat alphabetical category dump;
-          owns the WHAT, leaving the WHEN/price to the quick facets below. */}
-      <EventsIntentRail
-        activeIntent={intent}
-        activeSub={sub}
-        counts={intentCounts}
-        onIntent={setIntent}
-        onSub={setSub}
+      {/* The masthead-dock — the almanac nameplate (collapses on scroll) +
+          the pinned What · When · Where caption bar (each word a tab into a
+          top-sheet pane) + the mono count line and the "how you look"
+          controls (view lens + sort). It REPLACES the old five stacked
+          rows (intent rail + quick pills + search + view toggle + Filters
+          button/sheet). Every filter param and the results engine below
+          are untouched: the dock is pure control chrome over this
+          component's state. Saved events live on /my-radius now, so there's
+          no saved rail above the first event — the board leads with events. */}
+      <EventsBoardDock
+        nowISO={nowISO}
+        events={events}
+        filteredCount={filtered.length}
+        intentCounts={intentCounts}
+        categories={categories}
+        towns={towns}
+        intent={intent}
+        setIntent={setIntent}
+        sub={sub}
+        setSub={setSub}
+        cat={cat}
+        setCat={setCat}
+        lens={time}
+        setLens={setTime}
+        tod={tod}
+        setTod={setTod}
+        day={day}
+        setDay={setDay}
+        town={town}
+        setTown={setTown}
+        q={q}
+        setQ={setQ}
+        freeOnly={freeOnly}
+        setFreeOnly={setFreeOnly}
+        happyOnly={happyOnly}
+        setHappyOnly={setHappyOnly}
+        kidsOnly={kidsOnly}
+        setKidsOnly={setKidsOnly}
+        recurringOnly={recurringOnly}
+        setRecurringOnly={setRecurringOnly}
+        anyFilter={anyFilter}
+        clear={clear}
+        view={view}
+        setView={setView}
+        sort={sort}
+        setSort={setSort}
       />
-
-      {/* Quick facets — WHEN (today / weekend) and the deal (free / happy
-          hour). One tap; orthogonal to the intent rail above. */}
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
-        {QUICK.map((c) => (
-          <Pill key={c.key} tone="prominent" active={c.on} onClick={c.toggle}>
-            {c.label}
-          </Pill>
-        ))}
-      </div>
-
-      {/* Search + view toggle */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            // Scoped-FILTER label, not "Search" — the sticky global bar already
-            // owns "search". This one narrows the list already on screen, so
-            // naming it a filter stops it reading as a duplicate search box.
-            placeholder="Filter these events…"
-            aria-label="Filter the events shown"
-            className="tactile w-full rounded-full py-2.5 pl-9 pr-3 text-sm"
-            style={{
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink)",
-            }}
-          />
-        </div>
-        {/* View toggle — labels collapse to icons on narrow screens so
-            the row never crowds the search field. Compact "Rolodex"
-            mode = 48px rows for density; Agenda + Map are the other two
-            lenses on the same filtered set. */}
-        <Segmented
-          ariaLabel="View"
-          labelsOn="sm"
-          value={view}
-          onChange={setView}
-          items={VIEW_ITEMS}
-        />
-      </div>
-
-      {/* One Filters button instead of an always-on facet wall, so the
-          page leads with events. The facets (type/town) tuck into a
-          panel. State / ViewState / lens / deeplink wiring is unchanged
-          — this is purely how the controls are presented. */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowFilters((v) => !v)}
-          aria-expanded={showFilters}
-          // No aria-controls: the filter panel became a <Sheet> and the old
-          // "evt-filter-panel" id exists nowhere (dangling ref, axe violation).
-          className="tactile tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
-          style={{
-            background:
-              filterCount > 0
-                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-                : "var(--app-bg-elevated)",
-            color: filterCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
-          }}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          Filters
-          {filterCount > 0 && (
-            <span
-              className="inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-              style={{ background: "var(--app-brand)" }}
-            >
-              {filterCount}
-            </span>
-          )}
-          <ChevronDown
-            className="h-3.5 w-3.5 transition-transform"
-            strokeWidth={2.25}
-            style={{ transform: showFilters ? "rotate(180deg)" : "none", color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-        </button>
-        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {filtered.length} {filtered.length === 1 ? "event" : "events"}
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clear}
-              className="ml-2 inline-flex items-center gap-1 font-semibold"
-              style={{ color: "var(--app-brand)" }}
-            >
-              <X className="h-3 w-3" aria-hidden /> Clear
-            </button>
-          )}
-        </span>
-        <SortDropdown
-          className="ml-auto"
-          options={EVENT_SORT_OPTIONS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-
-      {/* Filters bottom sheet — same wiring, app-grade presentation.
-          The deeper facets (type + town) live here so the page leads
-          with events, not controls. */}
-      <Sheet
-        open={showFilters}
-        onClose={() => setShowFilters(false)}
-        title="Filter events"
-        subtitle={
-          filterCount > 0
-            ? `${filterCount} active`
-            : "Refine by type or town"
-        }
-        footer={
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                clear();
-              }}
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFilters(false)}
-              className="tactile tactile-interactive tactile-lift tactile-glow-brand rounded-full px-5 py-2 text-[13px] font-semibold text-white"
-              style={{ backgroundColor: "var(--app-brand)" }}
-            >
-              Show {filtered.length} {filtered.length === 1 ? "event" : "events"}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-5">
-          {/* Type */}
-          <div>
-            <h3
-              className="eyebrow mb-2"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Type
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <Pill tone="brand" size="sm" active={cat === null} onClick={() => setCat(null)}>
-                All types
-              </Pill>
-              {categories.map((c) => {
-                const on = cat === c.slug;
-                return (
-                  <Pill
-                    key={c.slug}
-                    tone="brand"
-                    size="sm"
-                    active={on}
-                    onClick={() => setCat(on ? null : c.slug)}
-                  >
-                    {c.name}
-                  </Pill>
-                );
-              })}
-            </div>
-          </div>
-          {/* Town */}
-          <div>
-            <h3
-              className="eyebrow mb-2"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Town
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <Pill tone="cool" size="sm" active={town === null} onClick={() => setTown(null)}>
-                All towns
-              </Pill>
-              {towns.map((t) => {
-                const on = town === t.slug;
-                return (
-                  <Pill
-                    key={t.slug}
-                    tone="cool"
-                    size="sm"
-                    active={on}
-                    onClick={() => setTown(on ? null : t.slug)}
-                  >
-                    {t.name}
-                  </Pill>
-                );
-              })}
-            </div>
-          </div>
-          {/* Time of day — the four Eastern dayparts as a composable facet,
-              orthogonal to the Today/Weekend lens above (which is the WHICH
-              DAYS window). Single-select; tap again to clear. */}
-          <div>
-            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
-              Time of day
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <Pill tone="brand" size="sm" active={tod === null} onClick={() => setTod(null)}>
-                Any time
-              </Pill>
-              {DAYPARTS.map((d) => {
-                const on = tod === d.key;
-                return (
-                  <Pill
-                    key={d.key}
-                    tone="brand"
-                    size="sm"
-                    active={on}
-                    onClick={() => setTod(on ? null : d.key)}
-                  >
-                    {d.label}
-                  </Pill>
-                );
-              })}
-            </div>
-          </div>
-          {/* Good for — orthogonal "good to know" toggles that compose with
-              everything else. Kid-friendly reads the audience tags; Recurring
-              flags series that repeat on a schedule. */}
-          <div>
-            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
-              Good for
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <Pill tone="cool" size="sm" active={kidsOnly} onClick={() => setKidsOnly((v) => !v)}>
-                Kid-friendly
-              </Pill>
-              <Pill tone="cool" size="sm" active={recurringOnly} onClick={() => setRecurringOnly((v) => !v)}>
-                Recurring
-              </Pill>
-              <Pill tone="cool" size="sm" active={freeOnly} onClick={() => setFreeOnly((v) => !v)}>
-                Free
-              </Pill>
-            </div>
-          </div>
-        </div>
-      </Sheet>
 
       {/* Results */}
       {view === "calendar" ? (
