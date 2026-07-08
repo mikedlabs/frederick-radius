@@ -96,6 +96,14 @@ export default async function BetaPage({
             and what&rsquo;s worth your time. Enter the password you were given to come in.
           </p>
 
+          {/* Live proof, directly under the headline block — real county data
+              (open-now count with names, today's event count), streamed so the
+              access gate never waits on it. The page leads with what it
+              actually knows before the pitch asks for trust. */}
+          <Suspense fallback={<ProofStripShell />}>
+            <ProofStrip />
+          </Suspense>
+
           <form action="/api/beta" method="post" className="mx-auto mt-6 max-w-[20rem] space-y-2.5">
             <input type="hidden" name="next" value={safeNext} />
             <input
@@ -132,11 +140,6 @@ export default async function BetaPage({
           </form>
 
           <BetaEmailField />
-
-          {/* Live proof line — streams in; the gate above never waits on it. */}
-          <Suspense fallback={null}>
-            <PulseLine />
-          </Suspense>
         </div>
 
         <span
@@ -563,26 +566,61 @@ function TownMarquee() {
   );
 }
 
-/* ── Live proof: the compact hero line ───────────────────────────────── */
-async function PulseLine() {
+/* ── Live proof: the strip under the headline ────────────────────────────
+   One quiet card, real data: the county-wide open-now count with two or
+   three actual names, plus today's event count. Every field is fail-soft
+   (betaPulse) — a fact that can't resolve is omitted, and the always-true
+   places-mapped total carries the line when the open count is out. */
+async function ProofStrip() {
   const p = await getBetaPulse(new Date());
-  const bits: string[] = [`${p.places.toLocaleString()} places mapped`];
-  if (p.eventsToday && p.eventsToday > 0) bits.push(`${p.eventsToday} on today`);
-  if (p.keys) {
-    bits.push(
-      p.keys.state === "live"
-        ? `Keys ${p.keys.keys.runs}–${p.keys.opponent.runs} live`
-        : p.keys.state === "final"
-          ? `Keys ${p.keys.keys.runs}–${p.keys.opponent.runs} final`
-          : "Keys play today",
-    );
-  }
-  if (p.troutThisWeek) bits.push("trout stocked this week");
+  const openCount = p.openNow && p.openNow.count > 0 ? p.openNow.count : null;
+  const names = p.openNow?.names ?? [];
   return (
-    <p className="mx-auto mt-6 max-w-[22rem] font-mono text-[10.5px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-      <span aria-hidden className="pulse-dot mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
-      {bits.join("  ·  ")}
-    </p>
+    <div
+      className="mx-auto mt-6 max-w-[24rem] rounded-[var(--app-radius-md)] border px-4 py-3 text-left"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-hi)" }}
+    >
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
+        <span aria-hidden className="pulse-dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
+        Right now
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
+        {openCount != null ? (
+          <>
+            <span className="font-mono font-semibold tabular-nums">{openCount.toLocaleString()}</span>{" "}
+            places open across the county
+          </>
+        ) : (
+          <>
+            <span className="font-mono font-semibold tabular-nums">{p.places.toLocaleString()}</span>{" "}
+            places mapped across the county
+          </>
+        )}
+        {p.eventsToday != null && p.eventsToday > 0 && (
+          <>
+            {" · "}
+            <span className="font-mono font-semibold tabular-nums">{p.eventsToday}</span> on today
+          </>
+        )}
+      </p>
+      {openCount != null && names.length >= 2 && (
+        <p className="mt-1 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Open at this hour: {names.join(", ")}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* Reserves the strip's footprint while it streams so the password form
+   doesn't jump when the data lands. */
+function ProofStripShell() {
+  return (
+    <div
+      aria-hidden
+      className="mx-auto mt-6 h-[88px] max-w-[24rem] animate-pulse rounded-[var(--app-radius-md)] border"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+    />
   );
 }
 

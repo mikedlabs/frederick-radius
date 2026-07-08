@@ -858,14 +858,18 @@ export default function EventsExplorer({
             // floats a real draw (then imagery, then soonest); the rest of
             // the window keeps its chronological order below.
             const lead = pickLeadEvent(g.events) ?? g.events[0];
-            // Feature (photo) treatment for the FIRST group's lead always,
-            // and for later groups' leads ONLY when a real venue photo
-            // exists — one photograph per horizon window down the browse
-            // spine (image audit: the page read as a wall of text because
-            // exactly one card could ever carry a large photo). Photoless
-            // leads keep the glance row: an oversized glyph plate per
-            // window would be ornament, not information.
-            const leadIsFeature = groupIdx === 0 || Boolean(lead.hero_image);
+            // Feature (photo) treatment for a group's lead ONLY when a real
+            // venue photo exists — one photograph per horizon window down
+            // the browse spine (image audit: the page read as a wall of text
+            // because exactly one card could ever carry a large photo).
+            // Photoless leads keep the glance row, INCLUDING the first
+            // group's: the old `groupIdx === 0 ||` escape hatch put a tall
+            // empty glyph plate at the very top of the page whenever the
+            // first lead had no photo (beta trust audit 2026-07-08). An
+            // oversized plate is ornament, not information — the photo
+            // policy's "photoless leads keep the glance row" rule now holds
+            // everywhere (EventCard also enforces it at the card seam).
+            const leadIsFeature = Boolean(lead.hero_image);
             const rest = g.events.filter((e) => e !== lead);
             const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
             const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;

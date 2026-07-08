@@ -71,6 +71,15 @@ export default function PlaceHero({
   const golden =
     livingFrame && nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng)?.label === "Golden hour now";
 
+  // Photoless places don't get to reserve photo real estate. The designed
+  // plate renders instantly (server component, no client boot), but at the
+  // full 16/10 aspect it held a phone-viewport-eating void with one glyph in
+  // the middle — the beta trust audit read it as an empty placeholder. With
+  // no photo the hero collapses to a short identity band: same plate, same
+  // category pill, a quarter of the height, and the place name is on screen
+  // from the first paint.
+  const hasPhoto = Boolean(src);
+
   return (
     <div
       // The detail-page hero is clamped to ~half the viewport height so a
@@ -80,8 +89,8 @@ export default function PlaceHero({
       // off-screen. The cap never binds in portrait (16/10 of phone width
       // is well under 52vh), so it only kicks in where the bug lived. The
       // card variant keeps its exact aspect for list layouts.
-      className={`relative w-full overflow-hidden${size === "hero" ? " max-h-[38vh]" : ""}`}
-      style={{ aspectRatio }}
+      className={`relative w-full overflow-hidden${size === "hero" && hasPhoto ? " max-h-[38vh]" : ""}`}
+      style={hasPhoto ? { aspectRatio } : { height: size === "hero" ? 148 : 96 }}
     >
       {/* Gradient fallback — always rendered behind the photo so 404s look intentional */}
       <div
@@ -163,8 +172,11 @@ export default function PlaceHero({
             aria-hidden
             className="grid place-items-center rounded-[var(--app-radius-md)]"
             style={{
-              width: size === "hero" ? 96 : 52,
-              height: size === "hero" ? 96 : 52,
+              // Sized for the SHORT photoless band (148px hero / 96px card),
+              // not the old full-aspect void — the seal reads as a mark on a
+              // plate, with room for the category pill above it.
+              width: size === "hero" ? 68 : 48,
+              height: size === "hero" ? 68 : 48,
               background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`,
               boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset, var(--app-edge)",
               color,
@@ -172,7 +184,7 @@ export default function PlaceHero({
           >
             <CategoryIcon
               slug={category}
-              className={size === "hero" ? "h-12 w-12" : "h-7 w-7"}
+              className={size === "hero" ? "h-9 w-9" : "h-6 w-6"}
               strokeWidth={1.25}
             />
           </span>

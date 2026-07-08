@@ -68,6 +68,13 @@ export default function EventCard({
    */
   priorityImage?: boolean;
 }) {
+  // A photoless "feature" demotes to the glance row. The 3:2 glyph plate
+  // read as a tall, mostly empty media block on a phone (beta trust audit
+  // 2026-07-08), and the photo policy already says photoless leads keep the
+  // calm glance row — enforced HERE at the card seam so every caller
+  // (EventsExplorer leads, the /today hero) gets it without local gating.
+  if (variant === "feature" && !event.hero_image) variant = "glance";
+
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
   // Lifecycle status — a cancelled or postponed event still shows
@@ -248,13 +255,13 @@ export default function EventCard({
     );
   }
 
-  // Feature variant — the editorial lead card for a horizon group, now a
+  // Feature variant — the editorial lead card for a horizon group, a
   // PHOTO-LED hero: the event borrows its venue's photo (≈85% of the live set
   // carry one), filling a 3:2 face with the title/when overlaid in white over a
-  // legibility scrim. The ~15% with no photo get a designed engraved-glyph
-  // plate (never a blank box, never a saturated per-category fill) and render
-  // their text in INK. This is the one above-fold image, so it carries
-  // priority; everything else lazy-loads.
+  // legibility scrim. A photoless event never reaches this branch (the guard
+  // above demotes it to glance), so the plate fallback below is defensive
+  // only. This is the one above-fold image, so it carries priority;
+  // everything else lazy-loads.
   if (variant === "feature") {
     const reasons = eventReasons(event);
     const onPhoto = Boolean(event.hero_image);
