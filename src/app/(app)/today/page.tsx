@@ -57,7 +57,6 @@ import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import NowIntel from "@/components/today/NowIntel";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import GoldenHourCard from "@/components/today/GoldenHourCard";
 import EventWalkTime from "@/components/today/EventWalkTime";
@@ -292,11 +291,6 @@ export default async function HomePage() {
       <div className="mt-4" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <CravingStrip
           locationSlot={<LocationPrime />}
-          intelSlot={
-            <Suspense fallback={null}>
-              <NowIntel now={now} eventsPromise={eventsPromise} />
-            </Suspense>
-          }
           contextSlot={
             <Suspense fallback={null}>
               <RightNowSlot eventsPromise={eventsPromise} now={now} />
