@@ -54,16 +54,14 @@ function IntelCard({ deal: d }: { deal: TodaysDeal }) {
         boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
       }}
     >
-      {/* Venue photo (or a designed plate) — larger for presence. */}
-      <div
-        className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]"
-        style={{ backgroundColor: "var(--app-brand-2)" }}
-      >
-        {d.photo ? (
-          <Image src={d.photo} alt="" fill sizes="76px" className="object-cover" />
-        ) : (
-          <PhotoFallback category={d.category} />
-        )}
+      {/* Venue photo (or a designed plate) — larger for presence. The tinted
+          glyph plate ALWAYS renders as the base layer, with the photo layered
+          over it, so a missing OR failed photo shows the designed plate — a
+          card can never render as a bare spruce rectangle (Jul-8 audit: five
+          of seven cards were flat green slabs when photos didn't load). */}
+      <div className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]">
+        <PhotoFallback category={d.category} />
+        {d.photo && <Image src={d.photo} alt="" fill sizes="76px" className="object-cover" />}
       </div>
 
       {/* The deal — venue, the offer as clause lines, the when/where. Every card
@@ -96,7 +94,7 @@ export default function TodaysDealsStack({
   const shown = deals.slice(0, MAX_ROWS);
 
   return (
-    <section aria-label={`Today's briefing for ${weekday}`} className="space-y-3">
+    <section aria-label={`Today's specials for ${weekday}`} className="space-y-3">
       {/* Dossier masthead — a pressed VERIFIED seal (the moat's trust anchor),
           the serif section title, and a mono dateline carrying the weekday +
           count, closed with the field-guide hairline rule. Reads as a filed
@@ -115,8 +113,12 @@ export default function TodaysDealsStack({
             <BadgeCheck className="h-[22px] w-[22px]" strokeWidth={2} />
           </span>
           <div className="min-w-0">
+            {/* "Today's specials", not "Today's briefing": the bottom drawer is
+                already "The full briefing", and two things named "briefing" on
+                one page is a naming collision (Jul-8 audit). This header says
+                the true thing — the tally line underneath already earns it. */}
             <h2 className="font-serif text-[19px] font-semibold leading-none tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-              Today&rsquo;s briefing
+              Today&rsquo;s specials
             </h2>
             <p className="fg-eyebrow mt-1.5">
               {weekday} · {deals.length} verified {deals.length === 1 ? "special" : "specials"}

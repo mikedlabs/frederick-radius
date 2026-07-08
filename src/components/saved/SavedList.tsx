@@ -15,16 +15,16 @@ import { useBeenList } from "@/hooks/useBeenHere";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
-import EventCard from "@/components/event/EventCard";
 import SavedWallet from "@/components/saved/SavedWallet";
+import SavedEventWallet from "@/components/saved/SavedEventWallet";
+import { fmtClockShort } from "@/components/saved/walletFacts";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route , ArrowRight, Layers } from "lucide-react";
-import IconStamp from "@/components/ui/IconStamp";
+import { MapPin, Calendar, Building2, Search, Settings, ArrowRight, Layers } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -32,6 +32,7 @@ import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isEventToday } from "@/lib/eventWhenLabel";
+import type { ReactNode } from "react";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
@@ -70,18 +71,59 @@ function planTokenFromSaved(slugs: string[]): string {
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** "21:00" → "9 PM" for the open-until label. Returns null on a bad value so
- *  the caller can fall back to a plain "Open now". */
-function fmtClock(hhmm?: string): string | null {
-  if (!hhmm) return null;
-  const [h, m] = hhmm.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  const mer = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${h12} ${mer}` : `${h12}:${String(m).padStart(2, "0")} ${mer}`;
+type DecoratedEvent = ReturnType<typeof decorateEvent>;
+
+/** Compact event date/time parts for the sv-evrow calendar plate,
+ *  rendered in Frederick's timezone regardless of the device. */
+function evParts(iso: string): { day: string; mon: string; time: string } | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(d);
+  const mon = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short" }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
+    .format(d)
+    .replace(":00 ", " ");
+  return { day, mon, time };
 }
 
-type DecoratedEvent = ReturnType<typeof decorateEvent>;
+/** One compact saved-event row: date plate + serif title + mono where/when. */
+function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
+  const parts = evParts(event.starts_at);
+  const where = [today ? "Today" : null, event.venue_name || null, parts?.time ?? null]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Link href={`/events/${event.slug}`} className="sv-evrow tactile-interactive">
+      <span className="cal" aria-hidden>
+        <b>{parts?.day ?? ""}</b>
+        <span>{parts?.mon ?? ""}</span>
+      </span>
+      <span className="who">
+        <b>{event.title}</b>
+        {where && <span className={today ? "is-today" : undefined}>{where}</span>}
+      </span>
+      <span className="arr" aria-hidden>→</span>
+    </Link>
+  );
+}
+
+/** The page masthead: title + a mono standfirst that carries the counts as
+ *  supporting detail, plus the 44px settings gear. Rendered by every branch
+ *  (skeleton, empty, full) so the page opens the same way in all three. */
+function Masthead({ stand }: { stand: ReactNode }) {
+  return (
+    <header className="sv-mast">
+      <div className="min-w-0">
+        <h1>Saved</h1>
+        <p className="sv-stand truncate">{stand}</p>
+      </div>
+      <Link href="/settings" aria-label="Settings" className="sv-gear tactile tactile-interactive">
+        <Settings className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
+      </Link>
+    </header>
+  );
+}
 
 function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   return {
@@ -94,7 +136,7 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   };
 }
 
-export default function SavedList() {
+export default function SavedList({ userEmail }: { userEmail?: string | null }) {
   const mounted = useMounted();
   const items = useSavedList();
   // ── Split-store fix (experience review, save-loop finding #1). Signed-in
@@ -236,6 +278,24 @@ export default function SavedList() {
     } catch {
       /* ignore */
     }
+  }
+
+  // The wallet's raised card, lifted here so the On-now running line can
+  // raise a card by name — the strip and the deck are one instrument.
+  // null = the wallet's default (top card).
+  const [raisedSlug, setRaisedSlug] = useState<string | null>(null);
+  function raiseCard(slug: string) {
+    setRaisedSlug(slug);
+    // Raising implies the wallet. Deliberately setView, not setViewAndStore:
+    // a chip tap shouldn't overwrite the user's stored view preference.
+    if (view !== "wallet") setView("wallet");
+    // Bring the raised card into view once the accordion margins settle.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
+      document
+        .getElementById(`sw-slot-${slug}`)
+        ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    }, 60);
   }
 
   // Past saved events are kept (you saved them) but tucked behind a toggle so a
@@ -492,18 +552,38 @@ export default function SavedList() {
     return out;
   }, [recentSlugs, savedSlugs, placesBySlug]);
 
+  // saved_at per slug for the wallet stub's Saved cell. The epoch sentinel
+  // (a DB follow whose local stamp we never saw) is refused downstream by
+  // walletFacts.savedDateLabel, so it never prints as Jan 1 1970.
+  const savedAtBySlug = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of placeRefsAll) m[r.id] = r.saved_at;
+    return m;
+  }, [placeRefsAll]);
+
+  // saved_at per EVENT slug, for the event wallet stub's Saved cell. Events
+  // are device-local by contract, so the local ref's stamp is the truth.
+  const savedAtByEventSlug = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const i of items) if (i.type === "event") m[i.id] = i.saved_at;
+    return m;
+  }, [items]);
+
   // Show the skeleton in two cases: before the device-local items
   // resolve (mounted=false) AND while the /api/places/by-slugs round
   // trip is in flight. Both windows are short; the matched layout
   // avoids any jump when content arrives.
   if (!mounted || placesBySlug === null) {
     return (
-      <div aria-busy="true" className="space-y-3">
-        <Skeleton.Block height={88} round="var(--app-radius-lg)" />
-        <Skeleton.Block height={56} round="var(--app-radius-md)" />
-        <Skeleton.Row />
-        <Skeleton.Row />
-        <Skeleton.Row />
+      <div aria-busy="true" className="space-y-4">
+        <Masthead stand="Your field guide" />
+        <div className="space-y-3">
+          <Skeleton.Block height={46} round="var(--app-radius-sm)" />
+          <Skeleton.Block height={56} round="var(--app-radius-md)" />
+          <Skeleton.Row />
+          <Skeleton.Row />
+          <Skeleton.Row />
+        </div>
       </div>
     );
   }
@@ -511,7 +591,14 @@ export default function SavedList() {
   // Notes OR visited places alone are enough to skip the blank-journal empty
   // state — a user can annotate or mark "been here" without bookmarking.
   // (placesBySlug is resolved by here, so both lists are final — no flash.)
-  if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) return <EmptyState />;
+  if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Masthead stand={<>Your field guide · {userEmail ?? "on this device"}</>} />
+        <EmptyState />
+      </div>
+    );
+  }
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -530,286 +617,157 @@ export default function SavedList() {
   const planHref =
     planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan";
 
+  // Masthead standfirst: the counts as supporting detail, never a headline.
+  // Places + towns only — events would overflow 390px, and the colophon's
+  // fin line already carries the full tally.
+  const townN = townTally.size;
+  const standParts: ReactNode[] = [];
+  if (places.length > 0) {
+    standParts.push(
+      <em key="p">{places.length} place{places.length === 1 ? "" : "s"}</em>,
+    );
+    if (townN > 1) standParts.push(<span key="t">{townN} towns</span>);
+  } else if (events.length > 0) {
+    standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
+  }
+
   return (
     <div className="space-y-4">
-      {/* ── ON NOW IN YOUR RADIUS — the actionable lead. Turns the archive into
-          a "what can I do with my saves right now" tool: saved places open this
-          minute (closing-soonest first, deal hook if they have one) and saved
-          events happening today. Self-hides when nothing of yours is live, so a
-          quiet day opens on the At-a-glance briefing as before. */}
-      {(liveNowPlaces.length > 0 || eventsToday.length > 0) && (
-        <section
-          aria-label="On now in your radius"
-          className="space-y-2.5 rounded-[var(--app-radius-lg)] border p-3.5"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 30%, var(--app-border))",
-            background: "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated))",
-            boxShadow: "var(--app-elev-1), var(--app-hi)",
-          }}
-        >
-          <header className="flex items-center gap-2 px-0.5">
-            <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-            <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-2)" }}>
-              On now in your radius
-            </h2>
-            <span className="ml-auto font-mono text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {[liveNowPlaces.length > 0 ? `${liveNowPlaces.length} open` : null, eventsToday.length > 0 ? `${eventsToday.length} today` : null].filter(Boolean).join(" · ")}
-            </span>
-          </header>
+      <Masthead
+        stand={
+          <>
+            Your field guide
+            {standParts.map((part, i) => (
+              <span key={i}> · {part}</span>
+            ))}
+          </>
+        }
+      />
 
-          {liveNowPlaces.length > 0 && (
-            <ul className="space-y-1.5">
-              {liveNowPlaces.slice(0, 4).map((p) => {
-                const closing = p.open_status.state === "closing-soon";
-                const till = p.open_status.state === "open" || p.open_status.state === "closing-soon" ? fmtClock(p.open_status.closesAt) : null;
-                const townName = MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? null;
-                return (
-                  <li key={p.slug}>
-                    <Link
-                      href={`/places/${p.slug}`}
-                      className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
-                      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-serif text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                          {p.name}
-                        </span>
-                        <span className="block truncate font-mono text-[10.5px] uppercase tracking-[0.04em]" style={{ color: closing ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
-                          {closing ? "Closing soon" : till ? `Open till ${till}` : "Open now"}
-                          {townName ? ` · ${townName}` : ""}
-                        </span>
-                      </span>
-                      {p.deal_hook && (
-                        <span
-                          className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.04em]"
-                          style={{ background: "color-mix(in srgb, var(--app-accent) 18%, transparent)", color: "var(--app-accent-press)" }}
-                        >
-                          {p.deal_hook}
-                        </span>
-                      )}
-                      <span aria-hidden className="shrink-0 text-[12px] font-bold" style={{ color: "var(--app-ink-3)" }}>→</span>
-                    </Link>
-                  </li>
-                );
-              })}
-              {liveNowPlaces.length > 4 && (
-                <li className="px-0.5 pt-0.5 font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-                  +{liveNowPlaces.length - 4} more open, in Places below
-                </li>
-              )}
-            </ul>
-          )}
-
-          {eventsToday.length > 0 && (
-            <ul className="space-y-1.5">
-              {eventsToday.slice(0, 3).map((e) => (
-                <li key={`${e.slug}-${e.starts_at}`}>
-                  <Link
-                    href={`/events/${e.slug}`}
-                    className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
-                    style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-                  >
-                    <Calendar className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-serif text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                        {e.title}
-                      </span>
-                      <span className="block truncate font-mono text-[10.5px] uppercase tracking-[0.04em]" style={{ color: "var(--app-brand-press)" }}>
-                        Today{e.venue_name ? ` · ${e.venue_name}` : ""}
-                      </span>
-                    </span>
-                    <span aria-hidden className="shrink-0 text-[12px] font-bold" style={{ color: "var(--app-ink-3)" }}>→</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      {/* ── ON NOW — a ruled running line under the masthead, not a boxed
+          module. Saved places open this minute, closing-soonest first; each
+          name RAISES its card in the wallet below, so the strip and the deck
+          are one instrument. Self-hides when nothing of yours is live. */}
+      {liveNowPlaces.length > 0 && (
+        <div className="sv-onnow" role="group" aria-label="Open right now">
+          <span className="sv-onnow-label">
+            <span aria-hidden className="sw-dot" />
+            On now
+          </span>
+          <div className="sv-onnow-scroll">
+            {liveNowPlaces.map((p) => {
+              const allDay = p.open_status.state === "open" && p.open_status.allDay;
+              const till =
+                !allDay && (p.open_status.state === "open" || p.open_status.state === "closing-soon")
+                  ? fmtClockShort(p.open_status.closesAt)
+                  : null;
+              const when = allDay ? "24 hours" : till ? `till ${till}` : "open now";
+              return (
+                <button
+                  key={p.slug}
+                  type="button"
+                  className="sv-onnow-chip"
+                  onClick={() => raiseCard(p.slug)}
+                  aria-label={`${p.name}, open now${allDay ? ", 24 hours" : till ? ` till ${till}` : ""}. Raise its card`}
+                >
+                  <b>{p.name}</b>
+                  {when}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Personal hero — the "your Frederick" briefing. Stitches the
-          tallies into one editorial sentence; the bar of stat pills
-          underneath gives the at-a-glance read without a heavy 4-cell
-          dark stat block. */}
-      <section
-        aria-label="Saved"
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(80% 110% at 100% 0%, color-mix(in srgb, var(--app-brand) 14%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative space-y-2">
-          <div className="flex items-center gap-2">
-            {/* The eyebrow + serif summary below are the masthead; the brand
-                icon-pill that used to lead here fought the quiet 3px-rule
-                eyebrows on every section below it. Radial bloom kept. */}
-            <p
-              className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
+      {/* Saved events happening today ride the same line's register. */}
+      {eventsToday.length > 0 && (
+        <ul className="space-y-2">
+          {eventsToday.slice(0, 3).map((e) => (
+            <li key={`${e.slug}-${e.starts_at}`}>
+              <EventRow event={e} today />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {places.length > 0 && (
+        <section aria-label="Saved places" className="space-y-3">
+          {/* ONE quiet control row: view + sort together. No section header —
+              the wallet IS the page. */}
+          <div className="flex items-center justify-between gap-2">
+            <div
+              role="tablist"
+              aria-label="View saved places as a wallet, list, or map"
+              className="inline-flex rounded-full border p-0.5"
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
             >
-              At a glance
-            </p>
-            {/* Share your radius — turns a private list into a "here's my
-                Frederick" recommendation a friend can open. Places only. */}
-            {shareUrl && (
-              <ShareButton
-                title="My Frederick radius"
-                text="Places I'm keeping an eye on in Frederick County"
-                url={shareUrl}
-                className="tap-44 ml-auto inline-flex items-center gap-1 text-[12px] font-semibold transition active:scale-95"
+              {(["wallet", "list", "map"] as const).map((v) => {
+                const active = view === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setViewAndStore(v)}
+                    className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                    style={{
+                      background: active ? "var(--app-bg-elevated)" : "transparent",
+                      color: active ? "var(--app-ink)" : "var(--app-ink-3)",
+                      boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
+                    }}
+                  >
+                    {v === "wallet" && <Layers className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                    {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                    {v === "wallet" ? "Wallet" : v === "list" ? "List" : "Map"}
+                  </button>
+                );
+              })}
+            </div>
+            {view !== "map" && (
+              <SortDropdown
+                options={SORT_OPTIONS}
+                value={sort}
+                onChange={setSortAndStore}
               />
             )}
           </div>
-          <p
-            className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {summarySentence(places.length, events.length, townTally.size)}
-          </p>
-          {/* Stat-pill scoreboard removed: the serif summary sentence above
-              already states places/towns/events in prose, and the section +
-              chapter headers carry per-group counts. Pills repeated the same
-              numbers up to five times and read as a SaaS dashboard widget. */}
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Saved on this device
-          </p>
-        </div>
-      </section>
 
-      {/* Personal lists filter — the user's own labels ("date night",
-          "takeout") become one-tap collections. Only shows once at least one
-          saved place has been labelled (on the place page). */}
-      {availableLists.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <FilterChip label="All" active={effectiveList === null} onClick={() => setActiveList(null)} />
-          {availableLists.map(([label, n]) => (
-            <FilterChip
-              key={label}
-              label={label}
-              count={n}
-              active={effectiveList === label}
-              onClick={() => setActiveList(effectiveList === label ? null : label)}
-            />
-          ))}
-          {listPlanHref && (
-            <Link
-              href={listPlanHref}
-              className="tap-44-y ml-auto inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              Plan this list
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Smart suggestion strip — only when there's a real cluster. */}
-      {dominantMuni && (
-        <Link
-          href={planHref}
-          className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-              color: "var(--app-cool)",
-            }}
-          >
-            <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span
-              className="block text-[13px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Plan a day in {dominantMuni.name}
-            </span>
-            <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {dominantTown![1]} of your saves are here. Turn them into a route →
-            </span>
-          </span>
-          <span
-            aria-hidden
-            className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            →
-          </span>
-        </Link>
-      )}
-
-      {/* Places — grouped by top-level category when sort is "category"
-          (default), or rendered as a flat sorted list otherwise. The
-          sort dropdown sits next to the section label so a returning
-          user sees their current preference in one glance. */}
-      {places.length > 0 && (
-        <section aria-label="Saved places" className="space-y-3">
-          <header className="flex items-center justify-between gap-3">
-            <div className="flex items-baseline gap-2.5">
-              <span
-                aria-hidden
-                className="block h-[3px] w-7 rounded-full"
-                style={{ background: "var(--app-cool)" }}
-              />
-              <h2
-                className="text-[11px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-cool)" }}
-              >
-                Places
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* List ↔ map view of your saved places. */}
-              <div
-                role="tablist"
-                aria-label="View saved places as a wallet, list, or map"
-                className="inline-flex rounded-full border p-0.5"
-                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-              >
-                {(["wallet", "list", "map"] as const).map((v) => {
-                  const active = view === v;
-                  return (
-                    <button
-                      key={v}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setViewAndStore(v)}
-                      className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
-                      style={{
-                        background: active ? "var(--app-bg-elevated)" : "transparent",
-                        color: active ? "var(--app-ink)" : "var(--app-ink-3)",
-                        boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
-                      }}
-                    >
-                      {v === "wallet" && <Layers className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-                      {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-                      {v === "wallet" ? "Wallet" : v === "list" ? "List" : "Map"}
-                    </button>
-                  );
-                })}
-              </div>
-              {view !== "map" && (
-                <SortDropdown
-                  options={SORT_OPTIONS}
-                  value={sort}
-                  onChange={setSortAndStore}
+          {/* Personal lists filter — the user's own labels ("date night",
+              "takeout") become one-tap collections. Only shows once at least
+              one saved place has been labelled (on the place page). */}
+          {availableLists.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FilterChip label="All" active={effectiveList === null} onClick={() => setActiveList(null)} />
+              {availableLists.map(([label, n]) => (
+                <FilterChip
+                  key={label}
+                  label={label}
+                  count={n}
+                  active={effectiveList === label}
+                  onClick={() => setActiveList(effectiveList === label ? null : label)}
                 />
+              ))}
+              {listPlanHref && (
+                <Link
+                  href={listPlanHref}
+                  className="tap-44-y ml-auto inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold"
+                  style={{ color: "var(--app-brand-press)" }}
+                >
+                  Plan this list
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                </Link>
               )}
             </div>
-          </header>
+          )}
+
           {view === "wallet" ? (
-            <SavedWallet places={places} />
+            <SavedWallet
+              places={places}
+              savedAt={savedAtBySlug}
+              openSlug={raisedSlug}
+              onOpenSlug={setRaisedSlug}
+            />
           ) : view === "map" ? (
             (() => {
               const mapPlaces = places.filter((p) => p.geom);
@@ -916,6 +874,17 @@ export default function SavedList() {
         </section>
       )}
 
+      {/* Plan-a-day — one ruled line, only when there's a real cluster. */}
+      {dominantMuni && (
+        <Link href={planHref} className="sv-planline">
+          <span className="txt">
+            <b>{dominantTown![1]} of your saves are in {dominantMuni.name}.</b>{" "}
+            String them into one day out.
+          </span>
+          <span className="go">Plan a day →</span>
+        </Link>
+      )}
+
       {/* Your notes — the user's own margin notes on places. A naturalist's
           jottings ("great patio, ask for Maria"), shown under each place as an
           accent-ruled note. Distinct from the verified Field Notes moat. */}
@@ -984,12 +953,9 @@ export default function SavedList() {
         </section>
       )}
 
-      {/* Recently viewed — soft signal. Surfaces places the user has
-          opened (via PlaceSheet) but hasn't explicitly bookmarked, so
-          returning users can pick a thread back up without having to
-          remember the exact name. Quieter visual weight than the
-          deliberate Saved sections above. Only renders when there's
-          something to show that isn't already in Saved. */}
+      {/* Recently viewed — soft signal. Surfaces places the user has opened
+          (via PlaceSheet) but hasn't explicitly bookmarked. Quieter visual
+          weight than the deliberate Saved sections above. */}
       {recentPlaces.length > 0 && (
         <section aria-label="Recently viewed" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
@@ -1023,8 +989,11 @@ export default function SavedList() {
         </section>
       )}
 
+      {/* Events — a wallet DECK in the same craft as the place cards above:
+          laminated category-hued faces, serif titles, a mono ledger on the
+          raised stub. The two decks read as one collection. */}
       {events.length > 0 && (
-        <section aria-label="Events in your Radius" className="space-y-2">
+        <section aria-label="Saved events" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
             <span
               aria-hidden
@@ -1037,27 +1006,20 @@ export default function SavedList() {
             >
               Events
             </h2>
-            {pastEvents.length > 0 && (
-              <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {upcomingEvents.length} upcoming
-              </span>
-            )}
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {upcomingEvents.length} upcoming
+            </span>
           </header>
           {upcomingEvents.length > 0 ? (
-            <ul className="space-y-2">
-              {upcomingEvents.map((e: DecoratedEvent) => (
-                <li key={`${e.slug}-${e.starts_at}`}>
-                  <EventCard event={e} />
-                </li>
-              ))}
-            </ul>
+            <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
           ) : (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               Nothing upcoming. Your saved shows have all passed.
             </p>
           )}
 
-          {/* Past saved events — kept, but tucked behind a toggle. */}
+          {/* Past saved events — kept, but tucked behind a toggle; the same
+              deck, calm and dimmed, with no card raised by default. */}
           {pastEvents.length > 0 && (
             <div className="space-y-2">
               <button
@@ -1070,125 +1032,108 @@ export default function SavedList() {
                 {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
               </button>
               {showPast && (
-                <ul className="space-y-2 opacity-70">
-                  {pastEvents.map((e: DecoratedEvent) => (
-                    <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} />
-                    </li>
-                  ))}
-                </ul>
+                <div className="opacity-70">
+                  <SavedEventWallet
+                    events={pastEvents}
+                    savedAt={savedAtByEventSlug}
+                    now={now}
+                    startRaised={false}
+                  />
+                </div>
               )}
             </div>
           )}
         </section>
       )}
+
+      {/* The almanac colophon: every teaser demoted to one quiet ledger —
+          the coming points layer, share, sync, and the notifications nudge
+          each get one ruled line, no boxes, no hype. */}
+      <footer className="sv-colophon" aria-label="About this page">
+        <div className="inner">
+          <div className="sv-colophon-row">
+            <span className="k">Radius Points, for the field checks you contribute</span>
+            <span className="v">Coming soon</span>
+          </div>
+          {shareUrl && (
+            <div className="sv-colophon-row">
+              <span className="k">Share this list with a friend</span>
+              <ShareButton
+                title="My Frederick radius"
+                text="Places I'm keeping an eye on in Frederick County"
+                url={shareUrl}
+                className="v tap-44-y inline-flex items-center gap-1 font-semibold"
+              />
+            </div>
+          )}
+          {!userEmail && (
+            <Link className="sv-colophon-row" href="/auth/login?next=/my-radius">
+              <span className="k">Keep this list on your other devices</span>
+              <span className="v link">Magic link →</span>
+            </Link>
+          )}
+          <Link className="sv-colophon-row" href="/settings/notifications">
+            <span className="k">A nudge before a saved place closes</span>
+            <span className="v link">Turn on →</span>
+          </Link>
+        </div>
+        <p className="sv-colophon-fin">
+          {userEmail ? `Synced as ${userEmail}` : "Saved on this device"}
+          {places.length > 0 && ` · ${places.length} place${places.length === 1 ? "" : "s"}`}
+          {events.length > 0 && ` · ${events.length} event${events.length === 1 ? "" : "s"}`}
+        </p>
+      </footer>
     </div>
   );
 }
 
-function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Nothing saved yet, but you've started your field guide.";
-  const parts: string[] = [];
-  if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
-  if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
-  let body = parts.join(" and ");
-  if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body} in your field guide.`;
-}
 
 /**
- * EmptyState — a field-guide "blank journal page," not a bare list. It reads
- * as the FIRST page of a guide you're about to fill: a contour-plate hero with
- * the journal metaphor, the three things this page collects for you (places /
- * events / routes — what saving is FOR, taught with engraved-glyph stamps),
- * and four confident doorways to the surfaces that fill it. The old curated
- * "Worth starting with" seed grid is gone (owner call) — the value is taught,
- * not pre-stuffed, so the page sets itself apart from a generic favorites bin.
+ * EmptyState — honest, never a dead end (voice rule): the blank page of the
+ * guide, stated plainly. A serif line, a ruled list of what this page keeps
+ * (places / events / routes), and four confident doorways to the surfaces
+ * that fill it. No fake shelf, no pre-stuffed seeds, no box art.
  */
 function EmptyState() {
-  // What this page keeps for you — the value, in the field-guide's own terms.
-  const KEEPS: { Icon: typeof Bookmark; color: string; title: string; desc: string }[] = [
-    { Icon: MapPin, color: "var(--app-brand)", title: "Places", desc: "The taproom, trail, or table you mean to get to." },
-    { Icon: Calendar, color: "var(--app-accent)", title: "Events", desc: "Shows and happenings worth the trip." },
-    { Icon: Route, color: "var(--app-cool)", title: "Routes", desc: "String saved stops into one good day out." },
+  const KEEPS: { title: string; desc: string }[] = [
+    { title: "Places", desc: "The taproom, trail, or table you mean to get to." },
+    { title: "Events", desc: "Shows and happenings worth the trip." },
+    { title: "Routes", desc: "String saved stops into one good day out." },
   ];
-  // Four confident doorways — the lane language from /places, pointing at the
-  // surfaces that fill this page. A guided launchpad, not a paragraph.
-  const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
-    { href: "/today", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
-    { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
-    { href: "/events", label: "Events", Icon: Calendar, color: "var(--app-accent)" },
-    { href: "/towns", label: "Towns", Icon: Building2, color: "var(--app-civic)" },
+  const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
+    { href: "/today", label: "Find", Icon: Search },
+    { href: "/map", label: "Map", Icon: MapPin },
+    { href: "/events", label: "Events", Icon: Calendar },
+    { href: "/towns", label: "Towns", Icon: Building2 },
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Blank-journal hero — a field-guide page waiting to be filled. The
-          contour plate bleeds off the corner (the same specimen-plate mark the
-          page header uses); a stamp + serif line set the journal metaphor. */}
-      <section
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5"
-        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
-      >
-        <div className="relative max-w-[19rem] space-y-2.5">
-          <IconStamp accent="var(--app-brand)" size="md">
-            <Bookmark aria-hidden />
-          </IconStamp>
-          <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Your Frederick field guide, blank for now
-          </h2>
-          <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Tap the bookmark on any place or event and it lives here, grouped by town and ready to turn into a plan.
-          </p>
-        </div>
-      </section>
+    <div className="space-y-4">
+      <div className="sv-empty-hero">
+        <h2>Blank for now, and that&rsquo;s fine.</h2>
+        <p>
+          Tap the bookmark on any place or event and it lands here as a card
+          you carry, grouped by town, ready to turn into a plan.
+        </p>
+      </div>
 
-      {/* What you'll keep here — the value, three engraved-glyph rows. */}
-      <ul className="space-y-2">
-        {KEEPS.map(({ Icon, color, title, desc }) => (
-          <li
-            key={title}
-            className="flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5"
-            style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-          >
-            <IconStamp accent={color} size="sm">
-              <Icon aria-hidden />
-            </IconStamp>
-            <div className="min-w-0">
-              <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</p>
-              <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{desc}</p>
-            </div>
+      <ul className="sv-empty-keeps">
+        {KEEPS.map(({ title, desc }) => (
+          <li key={title}>
+            <b>{title}</b>
+            <span>{desc}</span>
           </li>
         ))}
       </ul>
 
-      {/* Start here — four doorways to the surfaces that fill this page. */}
-      <section className="space-y-2">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-          Start here
-        </p>
-        <ul className="grid grid-cols-4 gap-2">
-          {LANES.map(({ href, label, Icon, color }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5 backdrop-blur-md"
-                style={{
-                  background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
-                  boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-                }}
-              >
-                <IconStamp accent={color} size="sm">
-                  <Icon aria-hidden />
-                </IconStamp>
-                <span className="text-[11px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  {label}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <nav className="sv-doors" aria-label="Start here">
+        {DOORS.map(({ href, label, Icon }) => (
+          <Link key={href} href={href} className="tactile-interactive">
+            <Icon strokeWidth={2} aria-hidden />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }

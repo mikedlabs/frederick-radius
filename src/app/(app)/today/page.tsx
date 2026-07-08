@@ -55,7 +55,6 @@ import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
 
 /**
@@ -253,14 +252,11 @@ export default async function HomePage() {
             ("Middletown, today.") once one is set. Client swap post-mount; SSR
             keeps the brand line for crawlers. */}
         <MastheadTitle />
-        {/* The descriptive standfirst orients a NEWCOMER; a returning daily user
-            scrolls past it to reach the grid, so it shows on the first visit
-            only and then retires itself (returning users never render it). */}
-        <FirstVisitNote>
-          <p className="mt-1 text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
-          </p>
-        </FirstVisitNote>
+        {/* The FirstVisitNote standfirst ("From Downtown to the surrounding
+            towns…") was cut here (Jul-8 audit): first visit is exactly when the
+            welcome line above the sky ALSO renders, so two identity sentences
+            sandwiched the hero saying the same thing. The welcome line is the
+            one identity beat; the masthead stays personal, not promotional. */}
         {/* The masthead almanac notes, capped + prioritized by MastheadNotes so
             the stack never piles up: at most one dated note (holiday / First
             Saturday / Pride / season) plus the streamed weather "duck inside"
@@ -653,10 +649,17 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         .slice(0, 3)
     : [];
   const featuredEvent = pickTonightEvent(now, publicEvents);
-  const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
-  const upcomingRest = showHero
-    ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
+  // The SkyHero teaser (TonightTeaser) already carries pickTonightEvent's #1,
+  // so the feature card here takes the NEXT-best draw and the rail carries the
+  // rest — one event never renders twice on one page (the Jul-8 audit render
+  // showed the same reading as the hero's tappable row AND the big photo
+  // feature two screens later). When there's no teaser there's no feature
+  // card either, same as before.
+  const withoutTeaser = featuredEvent
+    ? todaysEvents.filter((e) => e.slug !== featuredEvent.slug)
     : todaysEvents;
+  const feature = featuredEvent ? withoutTeaser[0] : undefined;
+  const upcomingRest = feature ? withoutTeaser.slice(1) : withoutTeaser;
 
   return (
     <section className="mt-6 space-y-3" aria-label="What's on">
@@ -668,10 +671,10 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         eyebrow="What's on"
         plateNo="Pl. I"
       >
-        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 || firstTomorrow.length > 0 ? (
+        {feature || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 || firstTomorrow.length > 0 ? (
           <div className="space-y-3">
-            {showHero && featuredEvent && (
-              <EventCard event={featuredEvent} variant="feature" />
+            {feature && (
+              <EventCard event={feature} variant="feature" />
             )}
             {upcomingRest.length > 0 && (
               <div className="-mx-4 px-4">

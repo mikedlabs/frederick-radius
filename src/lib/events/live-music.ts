@@ -18,19 +18,41 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 
+/** Titles that are clearly NOT a show, even at a verified music venue.
+ *  Breweries/taprooms host yoga, trivia, bingo, paint nights, and run
+ *  clubs on the same calendars as their bands; the venue join alone
+ *  admitted all of them ("Yoga in the Taproom" listed under "Live music
+ *  tonight" in the Jul-8 audit). The chip asserts who is ON STAGE, so a
+ *  non-music title is excluded from the venue-join path. The explicit
+ *  music/concert category path is untouched — a classified show keeps
+ *  its word over this heuristic. */
+const NON_MUSIC_TITLE = /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club)\b/i;
+
+/** Shared with the venue-feed INGEST boundaries (squarespace-live,
+ *  venueEvents' category fallback), which used to blanket-stamp every
+ *  item on a music venue's calendar as category "music" — the upstream
+ *  version of the same any-event-at-a-music-venue join. One list, every
+ *  seam. */
+export function isNonMusicTitle(title: string): boolean {
+  return NON_MUSIC_TITLE.test(title);
+}
+
 /**
  * Is this a live-music event? Two honest signals:
  *  - it's classified music/concert (curated seeds, Ticketmaster music, BIT), OR
  *  - it's hosted by a VERIFIED live-music venue (the breweries/wineries/bars
  *    that stage most of Frederick's music but are categorized by what they
- *    sell, so their shows inherit the venue's sell-category, not "music").
- * The venue join is what catches the shows the category alone drops.
+ *    sell, so their shows inherit the venue's sell-category, not "music")
+ *    AND its title doesn't say it's something else entirely (yoga, trivia).
+ * The venue join is what catches the shows the category alone drops; the
+ * title gate is what keeps it a MUSIC-intent join, not an any-event join.
  */
 export function isLiveMusicEvent(
-  e: Pick<EventWithMeta, "category" | "venue_place_slug">,
+  e: Pick<EventWithMeta, "category" | "venue_place_slug" | "title">,
 ): boolean {
   if (e.category === "music" || e.category === "concert") return true;
-  return e.venue_place_slug != null && LIVE_MUSIC_VENUE_SLUGS.has(e.venue_place_slug);
+  if (e.venue_place_slug == null || !LIVE_MUSIC_VENUE_SLUGS.has(e.venue_place_slug)) return false;
+  return !NON_MUSIC_TITLE.test(e.title ?? "");
 }
 
 /**

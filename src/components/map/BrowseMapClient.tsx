@@ -12,9 +12,8 @@ import type { MapPinPlace } from "@/components/map/types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { AMENITY_GROUPS } from "@/components/map/constants";
-import MapIntentChips from "@/components/map/MapIntentChips";
-import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
-import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
+import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
+import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -191,22 +190,19 @@ export default function BrowseMapClient({
     : subFiltered;
 
   // Events as map pins, scoped to the active temporal window (?t=).
-  // Per-mode counts drive the default-window pick so the map never opens
-  // with zero event pins when there are events one window over. (Counts
-  // now run over the MAPPABLE week set — events without coordinates were
-  // never drawn, so they no longer influence the default pick.)
+  // Per-mode counts drive the time-aware default-window pick
+  // (dockCaption.defaultTimeMode) so the map never opens with zero event
+  // pins when there are events one window over — and so the dock's When
+  // word can name the window the map is genuinely showing. (Counts run
+  // over the MAPPABLE week set — events without coordinates were never
+  // drawn, so they don't influence the default pick.)
   const counts: Partial<Record<TimeMode, number>> = {};
   for (const mode of ["now", "tonight", "weekend", "all"] as const) {
     const pred = eventTimePredicate(mode, now);
     counts[mode] = weekEvents.filter((e) => pred(e.starts_at, e.ends_at)).length;
   }
-  function pickDefaultTimeMode(): TimeMode {
-    if ((counts.now ?? 0) > 0) return "now";
-    if ((counts.tonight ?? 0) > 0) return "tonight";
-    if ((counts.weekend ?? 0) > 0) return "weekend";
-    return "all";
-  }
-  const timeMode: TimeMode = isTimeMode(tParam) ? tParam : pickDefaultTimeMode();
+  const timeModeExplicit = isTimeMode(tParam);
+  const timeMode: TimeMode = timeModeExplicit ? tParam : defaultTimeMode(counts);
 
   const matchTime = eventTimePredicate(timeMode, now);
   const seenCells = new Set<string>();
@@ -220,6 +216,12 @@ export default function BrowseMapClient({
     events.push(e);
     if (events.length >= 80) break;
   }
+
+  // Per-intent counts over the unfiltered pool — the What pane's chips.
+  // ~12 single-pass filters over ~1,700 pin records; cheap, and this
+  // component only re-renders when the URL view changes.
+  const intentCounts: Record<string, number> = {};
+  for (const i of INTENTS) intentCounts[i.key] = allPlaces.filter(i.match).length;
 
   return (
     <AppMapClient
@@ -239,28 +241,25 @@ export default function BrowseMapClient({
       recenterToKnownLocation={Boolean(intent)}
       // Show the county by default — never an empty map. The curated
       // places ride a CLUSTERED source, so "all ~1,700" reads as tidy
-      // numbered bubbles; the chips REFINE rather than gate.
+      // numbered bubbles; the dock REFINES rather than gates.
       pinpointDefault={false}
       initialCenter={initialCenter}
       initialAmenityGroups={initialAmenityGroups}
-    >
-      {/* In-context filter UI — passed as children so it overlays only
-          the map column, never the desktop list pane. */}
-      <MapIntentChips
-        active={intent?.key}
-        activeCount={intent ? places.length : undefined}
-        activeSub={activeSub?.key}
-        subCounts={subCounts}
-        openNow={openNow}
-      >
-        <MapTimeChips
-          active={timeMode}
-          intent={intent?.key}
-          sub={activeSub?.key}
-          openNow={openNow}
-          openNowCount={openNowCount}
-        />
-      </MapIntentChips>
-    </AppMapClient>
+      // The map dock (MapDock) — the one instrument that replaced the
+      // intent banner, sub strip, Open-now pill, and Layers drawer. The
+      // dock writes the same URL params this component reads.
+      dock={{
+        intentKey: intent?.key,
+        subKey: activeSub?.key,
+        openNow,
+        openNowCount,
+        timeMode,
+        timeModeExplicit,
+        everythingCount: allPlaces.length,
+        intentCounts,
+        subCounts,
+        eventWindowCounts: counts,
+      }}
+    />
   );
 }

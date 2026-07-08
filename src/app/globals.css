@@ -2123,38 +2123,41 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ============================================================================
-   Saved wallet — the /my-radius "cards you carry" fan (SavedWallet.tsx).
-   A vertical stack of pressed field-guide specimen cards; each shows only a
-   header peek until raised (accordion). Grounds are darkened category hues
-   set inline; cream text (--app-ink-inverse) clears AA against them. Vermilion
-   appears ONLY as the live "Open now" dot.
+   Saved wallet — the /my-radius "cards you carry" deck (SavedWallet.tsx).
+   Redesign 2026-07-08 (scratchpad/saved-redesign.html): every card tucks to a
+   62px lip (serif name + ONE mono fact); raising a card keeps the brand-hued
+   face (tier, field note, deal tag) and tears out a cream SPECIMEN-LABEL STUB
+   below it — perforation and all — carrying the mono ledger + actions.
+   Grounds are darkened brand/category hues set inline; cream text
+   (--app-ink-inverse) clears AA against them. Vermilion appears ONLY as the
+   live dot / live-card ring.
    ========================================================================== */
 /* The wallet is a hand-held object: cap the stack at phone width and center
    it, so desktop doesn't stretch each card to the full content column. */
 .sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
-/* Apple-Wallet stack rhythm lives on the SLOT (the listitem wrapper), not the
-   card: each card is the :first-child of its own wrapper, so a card-level
-   first-child margin reset matched every card and the tuck never happened.
-   Each slot tucks under the next leaving a 56px lip — tall enough for the
-   full brand row (logo + name + tier), the reference's defining beat. */
+/* Deck rhythm lives on the SLOT (the listitem wrapper), not the card: each
+   card is the :first-child of its own wrapper, so a card-level first-child
+   margin reset matched every card and the tuck never happened (the shipped
+   bug — do not move these margins onto .sw-card). Each slot tucks under the
+   next leaving a 62px lip: the full brand row, nothing else. */
 .sw-slot {
-  margin-top: -144px;
+  margin-top: -124px;
   transition: margin .42s cubic-bezier(.22,1,.36,1);
 }
 .sw-slot:first-child { margin-top: 0; }
 /* A raised slot loosens (not leaves) the deck: still overlapping its
-   predecessor, just less, so the card above widens to a ~100px lip
-   instead of popping fully out alongside the raised one. */
-.sw-slot.is-open { margin-top: -100px; }
+   predecessor, just less, so the card above widens its lip instead of
+   popping fully out alongside the raised one. */
+.sw-slot.is-open { margin-top: -64px; }
 .sw-slot:first-child.is-open { margin-top: 0; }
-/* The card AFTER the raised one relaxes its tuck so the raised card's foot
-   and Open-page link are never covered — the raised pass comes fully
-   forward, the deck resumes underneath (same move as the reference). */
-.sw-slot.is-open + .sw-slot { margin-top: -44px; }
+/* The deck resumes BELOW the raised pass: the next card drops fully clear so
+   the raised card's stub (ledger + actions) is never covered. */
+.sw-slot.is-open + .sw-slot { margin-top: 10px; }
+
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
   border: none; border-radius: 16px; overflow: hidden;
-  padding: 15px 17px; min-height: 200px;
+  padding: 0; min-height: 186px;
   color: var(--app-ink-inverse); font-family: var(--font-sans, inherit);
   /* The -y shadow is the SEAM: later cards paint on top of earlier ones, so
      the downward shadow hides under the next card — the visible depth cue at
@@ -2162,21 +2165,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset,
     0 -12px 20px -12px rgba(22,20,14,.55),
     0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1px rgba(22,20,14,.2);
-  transition: min-height .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
+  transition: box-shadow .3s ease;
   /* Deal-in entrance — the deck fans out on mount, staggered top-to-bottom. */
   animation: sw-deal .5s cubic-bezier(.22,1,.36,1) both;
   animation-delay: calc(var(--sw-i, 0) * 55ms);
 }
 .sw-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
-/* Lamination — a diagonal gloss band + top glare + corner vignette, tuned
-   stronger so the face reads as a physical, laminated card. */
+/* Lamination — a diagonal gloss band + top glare + corner vignette + a faint
+   pressed edge along the foot, so the face reads as a laminated card. */
 .sw-card::after {
   content: ""; position: absolute; inset: 0; border-radius: 16px;
   pointer-events: none; mix-blend-mode: soft-light; z-index: 2;
   background:
     linear-gradient(116deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0) 66%, rgba(255,255,255,.12) 100%),
     radial-gradient(130% 90% at 50% -30%, rgba(255,255,255,.22), transparent 52%),
-    radial-gradient(130% 130% at 118% 128%, rgba(0,0,0,.34), transparent 55%);
+    radial-gradient(130% 130% at 118% 128%, rgba(0,0,0,.34), transparent 55%),
+    linear-gradient(0deg, rgba(0,0,0,.28), transparent 9%);
 }
 /* One-shot gloss sweep across the face when a card is raised. */
 .sw-card::before {
@@ -2186,10 +2190,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sw-card.is-open::before { animation: sw-sweep .75s ease-out forwards; }
 .sw-card.is-open {
-  /* Taller reveal window so the (possibly 2-line) foot + Open-page link always
-     clear the next card's overlap — sized against the deeper -144px tuck so
-     the revealed region stays ≥128px. (The raise margins live on .sw-slot.) */
-  min-height: 272px;
   box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset,
     0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1px rgba(22,20,14,.24);
 }
@@ -2234,99 +2234,316 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sw-card.is-open .sw-holo { opacity: .2; animation: sw-holo 4.8s ease-in-out infinite; }
 
+/* Foil edge — a 1px metallic rim tracing the card's cut edge (bright at the
+   light corner, dim in the vignette), the lamination's finishing pass. */
+.sw-foil-edge {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border-radius: inherit; padding: 1px; opacity: .5;
+  background: linear-gradient(140deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.08) 30%, rgba(255,255,255,.03) 58%, rgba(255,255,255,.3) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+}
+
 /* Open-now cards carry a soft vermilion glow-edge so you can spot what you can
-   actually go to right now while scanning the fan. Clever + useful. */
+   actually go to right now while scanning the deck. */
 .sw-live-card { box-shadow: 0 -1px 0 rgba(255,255,255,.18) inset, 0 14px 24px -12px rgba(22,20,14,.78), 0 0 0 1.5px color-mix(in srgb, var(--app-brand) 55%, transparent); }
 .sw-live-card.is-open { box-shadow: 0 -1px 0 rgba(255,255,255,.22) inset, 0 28px 48px -18px rgba(22,20,14,.82), 0 0 0 1.5px color-mix(in srgb, var(--app-brand) 62%, transparent), 0 0 22px -6px color-mix(in srgb, var(--app-brand) 55%, transparent); }
 
 /* Big category glyph as the card's watermark "logo", letter-pressed into the
    stock (light top edge + shadow) and bleeding off the corner. */
 .sw-glyph {
-  position: absolute; right: -20px; top: 50%; transform: translateY(-48%);
-  width: 172px; height: 172px; opacity: .22; pointer-events: none; z-index: 0;
+  position: absolute; right: -18px; top: 6px;
+  width: 150px; height: 150px; opacity: .2; pointer-events: none; z-index: 0;
   filter: drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 -1px 1px rgba(0,0,0,.35));
 }
 
-/* Lockup — bold glyph "logo" + serif name left; category TIER wordmark right,
-   the logo-left / product-right structure of a real card (HSBC · TravelOne). */
-.sw-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* ── The FACE — brand plate content. Padding lives here (not on .sw-card) so
+   the stub below can bleed full-width. A raised face keeps plate height even
+   when the place has no field note, so the motif + watermark still read as a
+   card above the stub, not a sliver. */
+.sw-face { position: relative; z-index: 1; padding: 15px 17px 16px; }
+.sw-card.is-open .sw-face { min-height: 104px; }
+.sw-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .sw-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sw-brand svg { flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
 .sw-name {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-serif, Georgia, serif); font-weight: 600; font-size: 18.5px;
-  letter-spacing: -.01em; line-height: 1.1; text-shadow: 0 1px 2px rgba(0,0,0,.28);
+  font-family: var(--font-serif, Georgia, serif); font-weight: 600; font-size: 18px;
+  letter-spacing: -.01em; line-height: 1.15; text-shadow: 0 1px 2px rgba(0,0,0,.28);
 }
-.sw-tier {
-  flex: none; font-family: var(--font-mono, monospace); font-size: 9.5px; font-weight: 700;
-  letter-spacing: .16em; text-transform: uppercase; opacity: .78; white-space: nowrap;
-  padding-left: 8px; align-self: flex-start; padding-top: 3px;
+/* The ONE closed-lip fact: mono, right-set; swaps for the tier wordmark on
+   raise (the stub ledger takes over the facts). */
+.sw-lipfact {
+  flex: none; padding-top: 4px; font-family: var(--font-mono, monospace);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  white-space: nowrap; opacity: .95; display: inline-flex; align-items: center; gap: 6px;
 }
-
-/* Foot — the "number" line: plate + category + live data + contactless glyph.
-   In flow after the lockup; fades in on raise (clipped when collapsed). */
-.sw-foot {
-  position: relative; z-index: 1; margin-top: 15px; padding-top: 12px;
-  border-top: 1px solid rgba(238,230,212,.24);
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 10px;
-  opacity: 0; transform: translateY(6px); transition: opacity .3s ease .08s, transform .3s ease .08s;
-}
-.sw-card.is-open .sw-foot { opacity: 1; transform: none; }
-.sw-data { display: flex; flex-wrap: wrap; gap: 5px 11px; align-items: center; min-width: 0; }
-.sw-chip { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .9; display: inline-flex; align-items: center; gap: 6px; }
-/* The plate number as a pressed GOLD-FOIL seal — the field-guide signature no
-   bank card has. Dark ink on foil clears contrast; the inner highlight + drop
-   sells the stamp. */
-.sw-plate {
-  opacity: 1; font-weight: 800; color: #2a1d05;
-  background: linear-gradient(158deg, #F3D889 0%, #D3A748 46%, #B8862B 100%);
-  border-radius: 5px; padding: 2px 7px; letter-spacing: .06em;
-  box-shadow: 0 1px 0 rgba(255,255,255,.45) inset, 0 1px 2px rgba(0,0,0,.32);
-}
-.sw-live { opacity: 1; }
-.sw-live b {
+.sw-lipfact.is-dim { opacity: .62; font-weight: 600; }
+.sw-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--app-brand);
-  box-shadow: 0 0 0 0 rgba(225,67,40,.5);
+  flex: none; box-shadow: 0 0 0 0 rgba(225,67,40,.5);
   animation: sw-beacon 2.2s ease-out infinite; /* breathing "live" pulse */
 }
-.sw-tap { flex: none; width: 20px; height: 20px; opacity: .8; margin-bottom: 1px; }
-.sw-tap svg { width: 100%; height: 100%; }
-
-.sw-open {
-  position: relative; z-index: 1; display: inline-block; margin-top: 10px;
-  font-size: 12px; font-weight: 700; color: var(--app-ink-inverse);
-  text-decoration: underline; text-underline-offset: 3px;
-  opacity: 0; transform: translateY(6px); transition: opacity .3s ease .12s, transform .3s ease .12s;
-  pointer-events: none;
+.sw-tier {
+  flex: none; display: none; padding-top: 5px; font-family: var(--font-mono, monospace);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  opacity: .78; white-space: nowrap;
 }
-.sw-card.is-open .sw-open { opacity: 1; transform: none; pointer-events: auto; }
+.sw-card.is-open .sw-lipfact { display: none; }
+.sw-card.is-open .sw-tier { display: inline; }
 
-.sw-stamp {
-  position: absolute; z-index: 1; top: 52px; right: 20px; width: 80px; height: 80px;
-  border-radius: 50%; transform: rotate(-13deg); pointer-events: none;
-  border: 2.5px solid rgba(238,230,212,.5); color: rgba(238,230,212,.64);
-  display: grid; place-items: center; text-align: center;
-  font-family: var(--font-mono, monospace); font-size: 8px; letter-spacing: .1em; line-height: 1.5; text-transform: uppercase;
-  box-shadow: 0 0 0 4px rgba(238,230,212,.06) inset;
-  opacity: 0; transition: opacity .3s ease .1s;
+/* Raised-only face content: the owner's verified field note + deal tag. */
+.sw-facebody { margin-top: 14px; display: none; }
+.sw-card.is-open .sw-facebody { display: block; animation: sw-reveal .34s ease .06s both; }
+.sw-tip {
+  font-family: var(--font-serif, Georgia, serif); font-style: italic;
+  font-size: 14.5px; line-height: 1.45; max-width: 19.5rem;
+  color: var(--app-ink-inverse); text-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
-/* The stamp belongs to the raised card — a collapsed card's peek shows only its
-   lockup, never a stray stamp bleeding across the fan seam. */
-.sw-card.is-open .sw-stamp { opacity: 1; }
-.sw-stamp span { display: block; font-size: 13px; margin-top: 2px; }
+.sw-tip::before { content: "\201C"; }
+.sw-tip::after { content: "\201D"; }
+.sw-tipsrc {
+  margin-top: 5px; font-family: var(--font-mono, monospace); font-size: 8.5px;
+  letter-spacing: .14em; text-transform: uppercase; opacity: .7;
+}
+/* Gold-foil tags: the deal tag on the face and the plate seal on the stub
+   share one pressed-foil treatment — radial sheen, inset ring, letterpress. */
+.sw-dealtag, .sw-plateseal {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: #2a1d05;
+  background: radial-gradient(130% 170% at 28% 12%, #F7E3A4 0%, #EACB6F 30%, #D3A748 58%, #B8862B 100%);
+  border-radius: 5px; padding: 3px 8px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 -1px 0 rgba(122,84,20,.5) inset,
+    0 0 0 1px rgba(133,92,22,.4) inset, 0 1px 2px rgba(0,0,0,.32);
+  text-shadow: 0 1px 0 rgba(255,255,255,.3);
+}
+.sw-dealtag { margin-top: 11px; }
+
+/* ── THE STUB — cream specimen label, perforated off the card foot. The
+   dense mono ledger prints in ink on paper, where twelve cells are legible. */
+.sw-stub {
+  position: relative; z-index: 1; display: none;
+  background: var(--app-bg-elevated-solid); color: var(--app-ink);
+  margin-top: 2px; padding: 13px 17px 12px;
+  border-top: 2px dashed rgba(22,20,14,.28);
+}
+.sw-card.is-open .sw-stub { display: block; animation: sw-reveal .34s ease .06s both; }
+/* Perforation notches — punched half-rounds at the tear line. */
+.sw-stub::before, .sw-stub::after {
+  content: ""; position: absolute; top: -7px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--app-bg);
+  box-shadow: 0 0 0 1px rgba(22,20,14,.22) inset;
+}
+.sw-stub::before { left: -8px; }
+.sw-stub::after { right: -8px; }
+.sw-stub-grid { display: flex; align-items: flex-start; gap: 12px; }
+.sw-ledger { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 0; }
+.sw-cell { min-width: 0; }
+.sw-cell dt {
+  font-family: var(--font-mono, monospace); font-size: 8px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--app-ink-3);
+}
+.sw-cell dd {
+  margin: 3px 0 0; font-family: var(--font-mono, monospace); font-size: 12px;
+  font-weight: 600; color: var(--app-ink); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums;
+}
+.sw-cell dd small { font-size: 10px; font-weight: 500; color: var(--app-ink-3); }
+.sw-cell-wide { grid-column: 1 / -1; }
+.sw-star { color: var(--app-accent-press); }
+.sw-dollar-off { color: var(--app-border); }
+/* The right rail: plate seal on top, the Radius Points slot beneath it. */
+.sw-rail { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+/* Radius Points — a designed promise: a gold-ruled slot where the number
+   will print. Dashed rule + "soon", never a fake score. */
+.sw-pts {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono, monospace); font-size: 9px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--app-accent-press);
+  border: 1px dashed color-mix(in srgb, var(--app-accent) 55%, transparent);
+  border-radius: 5px; padding: 3px 7px;
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+}
+.sw-pts i {
+  font-style: normal; font-size: 8px; letter-spacing: .14em; color: var(--app-ink-3);
+  border-left: 1px solid var(--app-border); padding-left: 5px;
+}
+
+/* Stub actions — ONE primary (Open page), a quiet Directions link, and the
+   disabled Notify bell (a promise with a mono tag, not a broken button). */
+.sw-actions {
+  display: flex; align-items: center; gap: 12px; margin-top: 11px;
+  padding-top: 9px; border-top: 1px solid var(--app-border);
+}
+.sw-act-primary {
+  flex: none; display: inline-flex; align-items: center; gap: 7px;
+  min-height: 40px; padding: 0 16px; border-radius: 999px; position: relative;
+  background: var(--app-brand-2); color: var(--app-on-brand); text-decoration: none;
+  font-family: var(--font-sans, inherit); font-size: 13px; font-weight: 700;
+  box-shadow: 0 1px 0 rgba(255,255,255,.14) inset, 0 2px 5px -2px rgba(22,20,14,.5);
+}
+.sw-act-primary::before { content: ""; position: absolute; inset: -2px 0; } /* 44px effective */
+.sw-act-quiet {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px;
+  color: var(--app-ink-2); font-family: var(--font-sans, inherit); font-size: 12.5px;
+  font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
+.sw-notify {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: default;
+  font-family: var(--font-sans, inherit); font-size: 12px; font-weight: 600;
+  color: var(--app-ink-3);
+}
+.sw-notify i {
+  font-style: normal; font-family: var(--font-mono, monospace); font-size: 8.5px;
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--app-accent-press);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+  border-radius: 4px; padding: 1px 4px;
+}
 
 @keyframes sw-deal { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes sw-sweep { to { transform: translateX(125%); } }
 @keyframes sw-beacon { 0% { box-shadow: 0 0 0 0 rgba(225,67,40,.5); } 70%, 100% { box-shadow: 0 0 0 6px rgba(225,67,40,0); } }
 @keyframes sw-holo { 0% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
+@keyframes sw-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sw-slot, .sw-card, .sw-foot, .sw-open { transition: none; animation: none; }
+  .sw-slot, .sw-card { transition: none; animation: none; }
   .sw-card.is-open::before { animation: none; }
-  .sw-live b { animation: none; }
+  .sw-card.is-open .sw-facebody, .sw-card.is-open .sw-stub { animation: none; }
+  .sw-dot { animation: none; }
   /* Keep a still, subtle holo sheen — no sweep. */
   .sw-card.is-open .sw-holo { animation: none; opacity: .12; background-position: 40% 0; }
 }
+
+/* ============================================================================
+   Saved page furniture (SavedList.tsx) — the almanac frame around the wallet:
+   masthead, the On-now ruled running line, the plan-a-day rule, compact event
+   rows, and the colophon footer where every teaser is demoted to one quiet
+   ledger. Namespaced sv-*.
+   ========================================================================== */
+.sv-mast { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 2px; }
+.sv-mast h1 {
+  font-family: var(--font-serif, Georgia, serif); font-size: 27px; font-weight: 600;
+  letter-spacing: -.015em; line-height: 1.05; color: var(--app-ink);
+}
+.sv-stand {
+  margin-top: 5px; font-family: var(--font-mono, monospace); font-size: 10.5px;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--app-ink-3);
+}
+.sv-stand em { font-style: normal; color: var(--app-ink-2); }
+.sv-gear {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated); color: var(--app-ink-2);
+}
+
+/* On now — a ruled running line under the masthead, not a boxed module. The
+   names raise their card in the wallet below, so the strip and the deck are
+   one instrument. */
+.sv-onnow {
+  border-top: 1px solid var(--app-border); border-bottom: 1px solid var(--app-border);
+  display: flex; align-items: center; gap: 10px; padding: 0 2px; min-height: 46px;
+}
+.sv-onnow-label {
+  flex: none; display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--app-brand-press);
+}
+.sv-onnow-scroll { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.sv-onnow-scroll::-webkit-scrollbar { display: none; }
+.sv-onnow-chip {
+  flex: none; appearance: none; border: 0; background: none; cursor: pointer;
+  color: var(--app-ink-2); font-family: var(--font-mono, monospace); font-size: 10.5px;
+  letter-spacing: .03em; white-space: nowrap; min-height: 44px; padding: 0 9px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.sv-onnow-chip b { font-weight: 700; color: var(--app-ink); }
+.sv-onnow-chip + .sv-onnow-chip { border-left: 1px solid var(--app-border); }
+.sv-onnow-chip:hover b { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Plan-a-day — one ruled line, demoted from a sparkles module. */
+.sv-planline {
+  border-top: 1px solid var(--app-border); border-bottom: 1px solid var(--app-border);
+  min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 2px;
+  text-decoration: none;
+}
+.sv-planline .txt { min-width: 0; flex: 1; font-size: 12.5px; color: var(--app-ink-2); line-height: 1.35; }
+.sv-planline .txt b { color: var(--app-ink); font-weight: 600; }
+.sv-planline .go { flex: none; font-size: 12.5px; font-weight: 700; color: var(--app-brand-2); white-space: nowrap; }
+
+/* Compact saved-event rows: date plate + serif title + mono where/when. */
+.sv-evrow {
+  display: flex; align-items: center; gap: 11px;
+  background: var(--app-bg-elevated); border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md); padding: 11px 13px; min-height: 56px;
+  text-decoration: none; color: inherit;
+}
+.sv-evrow .cal { flex: none; width: 34px; text-align: center; font-family: var(--font-mono, monospace); }
+.sv-evrow .cal b { display: block; font-size: 15px; font-weight: 700; color: var(--app-ink); line-height: 1; }
+.sv-evrow .cal span { display: block; margin-top: 1px; font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--app-brand-press); }
+.sv-evrow .who { min-width: 0; flex: 1; }
+.sv-evrow .who b {
+  display: block; font-family: var(--font-serif, Georgia, serif); font-size: 14px;
+  font-weight: 600; color: var(--app-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sv-evrow .who span {
+  display: block; margin-top: 2px; font-family: var(--font-mono, monospace); font-size: 9.5px;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--app-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sv-evrow .who span.is-today { color: var(--app-brand-press); }
+.sv-evrow .arr { flex: none; color: var(--app-ink-3); font-weight: 700; font-size: 12px; }
+
+/* The almanac colophon: every teaser demoted to one quiet ledger. */
+.sv-colophon { border-top: 2px solid var(--app-ink); padding-top: 3px; }
+.sv-colophon .inner { border-top: 1px solid var(--app-border); }
+.sv-colophon-row {
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 2px;
+  border-bottom: 1px solid var(--app-border); text-decoration: none;
+}
+.sv-colophon-row .k { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--app-ink-2); }
+.sv-colophon-row .v {
+  flex: none; font-family: var(--font-mono, monospace); font-size: 10px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--app-ink-3); white-space: nowrap;
+}
+.sv-colophon-row .v.link { color: var(--app-brand-2); font-weight: 700; }
+.sv-colophon-fin {
+  padding: 13px 2px 0; text-align: center; font-family: var(--font-mono, monospace);
+  font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--app-ink-3);
+}
+
+/* Honest empty state — same masthead, no fake shelf. */
+.sv-empty-hero { padding: 4px 2px 0; }
+.sv-empty-hero h2 {
+  font-family: var(--font-serif, Georgia, serif); font-size: 22px; font-weight: 600;
+  letter-spacing: -.01em; line-height: 1.2; color: var(--app-ink); max-width: 17rem;
+}
+.sv-empty-hero p { margin-top: 9px; font-size: 13px; line-height: 1.5; color: var(--app-ink-2); max-width: 19rem; }
+.sv-empty-keeps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--app-border); }
+.sv-empty-keeps li {
+  display: flex; gap: 11px; align-items: baseline; min-height: 46px; padding: 10px 2px;
+  border-bottom: 1px solid var(--app-border);
+}
+.sv-empty-keeps b {
+  flex: none; width: 64px; font-family: var(--font-mono, monospace); font-size: 9.5px;
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--app-brand-2);
+}
+.sv-empty-keeps span { font-size: 12.5px; color: var(--app-ink-2); line-height: 1.4; }
+.sv-doors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sv-doors a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; min-height: 60px; background: var(--app-bg-elevated);
+  border: 1px solid var(--app-border); border-radius: var(--app-radius-md);
+  text-decoration: none;
+}
+.sv-doors a svg { width: 16px; height: 16px; color: var(--app-cool); }
+.sv-doors a span { font-size: 11px; font-weight: 600; color: var(--app-ink); }
 
 /* ============================================================================
    /beta launch cover — the "living almanac" landing (beta/page.tsx). Namespaced
@@ -2355,4 +2572,377 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (prefers-reduced-motion: reduce) {
   .bt-marquee-track { animation: none; }
   .bt-drift { animation: none; }
+}
+
+/* ============================================================================
+   /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
+   dock-*. The collapsed face is the What · When · Where caption (also the
+   tab bar + clear-all); each word expands the card into its pane. The dock
+   never overlaps the bottom nav: it lives inside the map canvas, which
+   already ends above the nav reserve.
+   ========================================================================== */
+
+/* Host marker on the map container: floats the Mapbox bottom corner
+   furniture (zoom, attribution wordmark) above the collapsed dock, and
+   hides it while a pane is open (the scrim owns the map then). Wins the
+   cascade over the mobile top-corner relocation rule above (equal
+   specificity, later in the file), so on dock maps the zoom pair returns
+   to its conventional corner — riding the dock, camera not filter. */
+.dock-host .mapboxgl-ctrl-bottom-right,
+.dock-host .mapboxgl-ctrl-bottom-left {
+  top: auto !important;
+  bottom: 96px !important;
+  transition: opacity 0.2s;
+}
+.dock-host[data-dock-pane="open"] .mapboxgl-ctrl-bottom-right,
+.dock-host[data-dock-pane="open"] .mapboxgl-ctrl-bottom-left {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Scrim behind the open pane — tap to close. Sits above the map + its
+   floating chrome, below the dock card. */
+.dock-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--z-sticky) - 1);
+  background: color-mix(in srgb, var(--app-ink) 20%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.dock-scrim.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The card. One rounded glass plate: pane on top, caption row + count
+   line beneath, all inside the same border. */
+.dock {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: var(--z-sticky);
+  margin-inline: auto;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--app-shadow-2);
+  overflow: hidden;
+  transition: box-shadow 0.25s;
+}
+.dock.dock-open {
+  box-shadow: var(--app-shadow-3);
+}
+
+/* Pane: expands ABOVE the caption row, inside the same card. Collapsed
+   via max-height so the caption row never moves. Reduced motion is
+   covered by the global gate; the explicit rule below keeps the intent
+   obvious if that gate ever narrows. */
+.dock-pane {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s ease;
+}
+.dock-open .dock-pane {
+  max-height: min(470px, 58dvh);
+}
+.dock-pane-scroll {
+  max-height: min(470px, 58dvh);
+  overflow-y: auto;
+  padding: 12px 14px 8px;
+  scrollbar-width: thin;
+}
+.dock-pane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.dock-pane-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--app-ink);
+}
+.dock-done {
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-ink-3);
+}
+
+/* Mono section kickers: PLACES · YOURS · OVERLAYS · EVENTS · THE DAY. */
+.dock-sect {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+  margin: 14px 2px 8px;
+}
+.dock-sect:first-child {
+  margin-top: 4px;
+}
+
+/* Chips. Color arrives per-chip via --c; lit chips fill with it. The
+   .tap-44-y extender keeps every ≤44px chip honest about its target. */
+.dock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.dock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  transition: transform 0.08s;
+}
+.dock-chip:active {
+  transform: scale(0.96);
+}
+.dock-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--c, var(--app-ink-3));
+}
+.dock-chip[data-on] {
+  background: var(--c, var(--app-brand));
+  border-color: var(--c, var(--app-brand));
+  color: #fff;
+}
+.dock-chip[data-on] .dock-chip-dot {
+  background: rgba(255, 255, 255, 0.85);
+}
+/* Gold-family fills need ink text, not white (AA — same rule as the old
+   Aerial chip). */
+.dock-chip[data-on][data-ink] {
+  color: var(--app-ink);
+}
+.dock-chip[data-on][data-ink] .dock-chip-dot {
+  background: var(--app-ink);
+}
+.dock-chip-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.65;
+}
+.dock-chip[data-on] .dock-chip-n {
+  opacity: 0.85;
+}
+.dock-chip-soon {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+/* The one nested-row pattern (running head) — sub-intents, amenity
+   kinds, aerial seasons. Words on a quiet sunken bar; the active word is
+   inked in the family color over an underline rule. */
+.dock-subrow {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  margin: 10px 0 2px;
+  padding: 0 8px;
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-sunken);
+  scrollbar-width: none;
+}
+.dock-subrow::-webkit-scrollbar {
+  display: none;
+}
+.dock-subrow button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-ink-2);
+  border-bottom: 2.5px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.dock-subrow button[data-on] {
+  color: var(--c, var(--app-brand-press));
+  border-bottom-color: var(--c, var(--app-brand-press));
+}
+.dock-subrow .dock-chip-n {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* When pane: the Open now row — one wide, factual toggle. */
+.dock-opennow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--app-positive) 35%, transparent);
+  background: var(--app-bg-elevated);
+  color: var(--app-positive);
+  font-weight: 600;
+  font-size: 14px;
+}
+.dock-opennow-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  margin-left: auto;
+  background: color-mix(in srgb, var(--app-positive) 12%, transparent);
+  border-radius: 99px;
+  padding: 3px 9px;
+}
+.dock-opennow[data-on] {
+  background: var(--app-positive);
+  border-color: var(--app-positive);
+  color: #fff;
+}
+.dock-opennow[data-on] .dock-opennow-n {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* Where pane: Find me — the pane's single primary action. */
+.dock-findme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  color: var(--app-on-brand, #fff);
+  font-size: 14.5px;
+  font-weight: 600;
+  box-shadow: var(--app-shadow-2);
+}
+.dock-findme[data-on] {
+  background: var(--app-brand-2);
+}
+.dock-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--app-ink-3);
+  line-height: 1.5;
+  padding: 0 2px;
+}
+
+/* The caption row: three labeled cells + the clear ×. Each cell is a
+   ≥44px tab; the active one carries a brand top rule. */
+.dock-readout {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid transparent;
+}
+.dock-open .dock-readout {
+  border-top-color: var(--app-border);
+}
+.dock-seg {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 9px 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  text-align: left;
+  position: relative;
+}
+.dock-seg-what {
+  flex: 1.2 1 0;
+}
+.dock-seg-where {
+  flex: 1.15 1 0;
+}
+.dock-seg + .dock-seg {
+  border-left: 1px solid var(--app-border);
+}
+.dock-seg-k {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+.dock-seg-v {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--app-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-seg-v.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.dock-seg-plus {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--app-ink-3);
+}
+.dock-seg.active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 0;
+  height: 2.5px;
+  background: var(--app-brand);
+  border-radius: 0 0 3px 3px;
+}
+.dock-clear {
+  flex: 0 0 44px;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  color: var(--app-ink-3);
+  border-left: 1px solid var(--app-border);
+}
+
+/* The living mono count line — also the polite live region. */
+.dock-countline {
+  padding: 0 12px 7px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  color: var(--app-ink-3);
+  letter-spacing: 0.02em;
+}
+
+/* Reduced motion: no expand animation, no scrim fade — state changes
+   land instantly. (The global gate covers this too; kept explicit so
+   the dock honors it even if that gate is ever scoped down.) */
+@media (prefers-reduced-motion: reduce) {
+  .dock,
+  .dock-pane,
+  .dock-scrim,
+  .dock-chip,
+  .dock-host .mapboxgl-ctrl-bottom-right,
+  .dock-host .mapboxgl-ctrl-bottom-left {
+    transition: none !important;
+  }
 }

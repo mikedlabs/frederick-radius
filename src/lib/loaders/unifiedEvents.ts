@@ -225,10 +225,13 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
+  // v18: venue-feed events with clearly non-music titles (yoga/trivia/
+  // bingo/paint/run club) no longer get the blanket "music" category —
+  // the cached rows' category/category_name change.
   // v17: centroid-grade geoms with a street address are now Mapbox-geocoded
   // (upgradeEventGeoms) — the cached rows' geom / placement / geo_confidence
   // (and, via the thumb join, hero_image) change.
-  ["unified-events-v17", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v18", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

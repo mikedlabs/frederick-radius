@@ -54,7 +54,11 @@ export const GARAGE_NEAR_METERS = 600;
 export const FORECAST_TODAY_HORIZON_HOURS = 12;
 
 // Categories whose events actually fill downtown decks. Daytime errands
-// (a library talk, a government meeting) don't, so they're left out. Tunable.
+// (a library talk, a government meeting) don't, so they're left out.
+// `family` and `community` came out too (Jul-8 audit): a parenting class
+// or a community meetup does not fill a deck, and "Heading to Baby & Me
+// Yoga? Court Street Garage fills fast." reads like a bot guessing.
+// Tunable.
 const DRAW_CATEGORIES = new Set([
   "music",
   "festival",
@@ -62,10 +66,8 @@ const DRAW_CATEGORIES = new Set([
   "arts",
   "food",
   "nightlife",
-  "community",
   "sports",
   "market",
-  "family",
 ]);
 
 /** Eastern-clock-agnostic day stamp for the dedupe key (UTC date is fine: the

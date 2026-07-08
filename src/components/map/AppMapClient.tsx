@@ -53,8 +53,8 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export type { CivicPin, MapLineFC, EventPin, CemeteryPin } from "./types";
-import type { CivicPin, MapLineFC, EventPin, CemeteryPin } from "./types";
+export type { CivicPin, MapLineFC, EventPin, CemeteryPin, BrowseDockInfo } from "./types";
+import type { CivicPin, MapLineFC, EventPin, CemeteryPin, BrowseDockInfo } from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
@@ -75,6 +75,7 @@ export default function AppMapClient({
   pinpointDefault = false,
   initialCenter,
   initialAmenityGroups,
+  dock,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -125,9 +126,11 @@ export default function AppMapClient({
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
-  /** Overlay content for the map column (the MapIntentChips strip).
-   *  Lives inside the map column so it overlays only the map, never the
-   *  desktop list pane. */
+  /** Browse-view state + counts for the map dock (/map browse only).
+   *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
+  dock?: BrowseDockInfo;
+  /** Overlay content for the map column. (Historically the intent-chip
+   *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
 }) {
   // The in-view list panel (the desktop side pane + the mobile slide-up
@@ -154,6 +157,7 @@ export default function AppMapClient({
           pinpointDefault={pinpointDefault}
           initialCenter={initialCenter}
           initialAmenityGroups={initialAmenityGroups}
+          dock={dock}
         />
       </div>
     );

@@ -5,7 +5,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { eventWhenLabel } from "@/lib/eventWhenLabel";
-import { isActivelyWet, mentionsWet } from "@/lib/weather-verdict";
+import { weatherVerdict } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
 import EventCountdown from "./EventCountdown";
@@ -42,7 +42,7 @@ type TonightEvent = {
   ends_at?: string | null;
 } | null;
 
-type Band = "morning" | "midday" | "afternoon" | "evening" | "late";
+type Band = "morning" | "midday" | "afternoon" | "evening" | "late" | "overnight";
 
 function easternHour(now: Date): number {
   return parseInt(
@@ -60,7 +60,11 @@ function bandFor(h: number): Band {
   if (h >= 11 && h < 14) return "midday";
   if (h >= 14 && h < 17) return "afternoon";
   if (h >= 17 && h < 22) return "evening";
-  return "late";
+  // The dark hours split in two: 22–02 is still "tonight" to a human;
+  // 02–05 is not — a calm local calls those the early hours (the 4:18 AM
+  // audit render greeted the reader with "Late tonight.").
+  if (h >= 22 || h < 2) return "late";
+  return "overnight";
 }
 
 const GREETING: Record<Band, string> = {
@@ -69,32 +73,15 @@ const GREETING: Record<Band, string> = {
   afternoon: "Afternoon.",
   evening: "This evening.",
   late: "Late tonight.",
+  overnight: "The early hours.",
 };
 
-/** A short weather read — DESCRIBES the conditions, never instructs ("Storms
- *  around," not "Keep it indoors"). Finding-not-telling: a calm local states
- *  what it's doing outside and lets the reader decide. */
-function moodLine(condition: string, temp: number | null, precipNow: number | null): string {
-  const c = condition.toLowerCase();
-  if (/thunder|storm/.test(c)) return "Storms moving through.";
-  // Rain comes BEFORE the fair-weather lines so the words can never
-  // contradict the sky glyph: any rain-text condition (the same signal that
-  // draws the rain cloud) yields a rain line, never "Patio weather." The PoP
-  // only decides HOW wet — likely (>=50%) reads as a washout, a lower chance
-  // as spotty showers.
-  if (mentionsWet(condition)) {
-    return isActivelyWet(condition, precipNow) ? "Rain in play right now." : "Spotty showers around.";
-  }
-  if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out there.";
-  if (/fog|mist|haze/.test(c)) return "Low and gray.";
-  if (temp != null && temp >= 88) return "A hot one out there.";
-  if (temp != null && temp <= 38) return "Cold and clear.";
-  if (/cloud|overcast/.test(c)) return "Soft, gray light over the county.";
-  if (temp != null && temp >= 60 && temp <= 84) return "Patio weather.";
-  // Time-neutral fallback that never repeats a word with the greeting
-  // ("Good morning. A good day…" doubled "good").
-  return "Clear and easy out.";
-}
+// The weather read beside the greeting comes from lib/weather-verdict —
+// the SAME engine NowIntel uses — so the hero and the "right now" line
+// can never disagree about one sky in one viewport. (This card used to
+// carry its own moodLine() with a fog branch the shared engine lacked;
+// the 4:18 AM audit caught "Low and gray." here over "A fine day to get
+// out." below. One engine owns the read now.)
 
 function fmtTime(d: Date | null): string | null {
   if (!d) return null;
@@ -141,7 +128,16 @@ export default async function TodayCard({
     if (tmrw.sunrise) sun = { label: "Sunrise", time: fmtTime(tmrw.sunrise)! };
   }
 
-  const mood = moodLine(condition, tempNow, cur?.probabilityOfPrecipitation ?? null);
+  const mood =
+    cur && forecast
+      ? weatherVerdict({
+          temp: cur.temperature,
+          shortForecast: cur.shortForecast,
+          precipNow: cur.probabilityOfPrecipitation ?? 0,
+          hourly: forecast.hourly,
+          now,
+        }).line
+      : null;
 
   // Daytime by real sun times (the glyph's sun/moon depends on it).
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;
@@ -173,7 +169,8 @@ export default async function TodayCard({
           The 3-second "I get it" line, now a tighter lead above one compact
           weather row (was a 28px headline stacked over a 64px number). */}
       <h2 className="mt-1.5 font-serif text-[18px] font-semibold leading-snug tracking-tight sm:text-[20px]">
-        {GREETING[band]} {mood}
+        {GREETING[band]}
+        {mood ? ` ${mood}` : ""}
       </h2>
 
       {/* One compact weather row: the animated glyph + the temperature + the
@@ -226,7 +223,7 @@ export default async function TodayCard({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-meta font-semibold uppercase tracking-[0.14em] opacity-65">
-              {eventWhenLabel(tonightEvent.starts_at, now, band === "evening" || band === "late")}
+              {eventWhenLabel(tonightEvent.starts_at, now)}
               <EventCountdown startsAt={tonightEvent.starts_at} endsAt={tonightEvent.ends_at} />
             </span>
             <span className="block truncate text-body font-semibold leading-snug">

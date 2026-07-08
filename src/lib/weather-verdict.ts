@@ -93,7 +93,12 @@ export function mentionsWet(shortForecast: string): boolean {
 export function weatherVerdict(input: VerdictInput): Verdict {
   const { temp, shortForecast, precipNow, hourly, now } = input;
   const hour = easternHour(now);
-  const evening = hour >= 17 || hour < 4;
+  // Three time frames, so the words match the clock: overnight (22–05,
+  // it is DARK — never claim a "day"), evening (17–22), else daytime.
+  // The old `hour < 4` evening tail made 4 AM a "fine day to get out";
+  // the overnight band owns the dark hours now.
+  const overnight = hour >= 22 || hour < 5;
+  const evening = hour >= 17 && hour < 22;
 
   // 1. Storms, the loudest read, always wins — current hour first, then
   //    the same six-hour window rule 4 uses for rain timing. A "Clear"
@@ -122,9 +127,11 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   // 3. Actively wet now (rain in the forecast + a real chance).
   if (isActivelyWet(shortForecast, precipNow)) {
     return {
-      line: evening
-        ? "Wet evening, pick somewhere with a roof."
-        : "Wet out, an indoor kind of day.",
+      line: overnight
+        ? "Rain moving through the night."
+        : evening
+          ? "Wet evening, pick somewhere with a roof."
+          : "Wet out, an indoor kind of day.",
       tone: "rough",
     };
   }
@@ -155,11 +162,23 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   //      rain cloud beside it. Neutral, honest, not alarmed.
   if (mentionsWet(shortForecast)) {
     return {
-      line: evening
-        ? "A stray shower possible, worth a light layer."
-        : "A stray shower possible, nothing to cancel over.",
+      line: overnight
+        ? "A stray shower possible out there."
+        : evening
+          ? "A stray shower possible, worth a light layer."
+          : "A stray shower possible, nothing to cancel over.",
       tone: "mixed",
     };
+  }
+
+  // 4.7. Fog/mist/haze — the branch this module was missing. TodayCard's
+  //      own moodLine had it ("Low and gray."), so the hero and NowIntel
+  //      read the same sky in OPPOSITE moods within one viewport (the
+  //      4:18 AM audit render: "Low and gray." over "A fine day to get
+  //      out."). One engine owns the read now; fog can never fall
+  //      through to a fine-day line again.
+  if (/fog|mist|haz[ey]/i.test(shortForecast)) {
+    return { line: "Low and gray, fog hanging around.", tone: "mixed" };
   }
 
   // 5. Temperature extremes.
@@ -176,24 +195,33 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   const cloudy = /cloud|overcast/i.test(shortForecast);
   if (clear) {
     return {
-      line: evening
-        ? "Clear and easy, a patio kind of evening."
-        : "Clear out, a good day to be outside.",
+      line: overnight
+        ? "Quiet and clear out there."
+        : evening
+          ? "Clear and easy, a patio kind of evening."
+          : "Clear out, a good day to be outside.",
       tone: "good",
     };
   }
   if (cloudy) {
     return {
-      line: evening
-        ? "Mild and grey, a comfortable evening to wander."
-        : "Soft and grey, an easy day to explore.",
+      line: overnight
+        ? "Quiet night, clouds over the county."
+        : evening
+          ? "Mild and grey, a comfortable evening to wander."
+          : "Soft and grey, an easy day to explore.",
       tone: "good",
     };
   }
 
-  // 7. Fallback, honest and calm.
+  // 7. Fallback, honest and calm. Overnight never claims a "day" — at
+  //    4 AM the honest read is a quiet night, not daylight.
   return {
-    line: evening ? "A fine evening to get out." : "A fine day to get out.",
+    line: overnight
+      ? "A quiet night out there."
+      : evening
+        ? "A fine evening to get out."
+        : "A fine day to get out.",
     tone: "good",
   };
 }

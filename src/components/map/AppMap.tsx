@@ -11,6 +11,8 @@ import Map, {
   type MapRef,
   type MapMouseEvent,
 } from "react-map-gl/mapbox";
+// (GeolocateControl stays imported for DOCK-LESS embeds only — on /map
+// browse the dock's Where pane is locate's one home.)
 import type { GeoJSONSource, StyleSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -168,6 +170,7 @@ function townSlug(name: string): string {
 // the pin/cluster layers out the same way.
 import {
   EMPTY_LINE_FC,
+  type BrowseDockInfo,
   type CemeteryPin,
   type CivicPin,
   type EventPin,
@@ -210,6 +213,7 @@ import {
   PlacePopup,
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
+import MapDock from "./MapDock";
 import TimeScrubber from "./TimeScrubber";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
@@ -295,6 +299,10 @@ type Props = {
    *  deep-link from /amenities or /today). Opens the tray showing that layer
    *  on first paint instead of a clean map. */
   initialAmenityGroups?: string[];
+  /** Browse-view state + counts for the map dock (/map browse only).
+   *  When present the dock renders and the legacy floating controls
+   *  (scrubber, aerial season chips, locate homes) stand down. */
+  dock?: BrowseDockInfo;
 };
 
 export default function AppMap({
@@ -318,6 +326,7 @@ export default function AppMap({
   cemeteries = [],
   events = [],
   initialAmenityGroups,
+  dock,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   // Effective camera home: when we arrived via a category and already
@@ -395,21 +404,15 @@ export default function AppMap({
   // to move the map — the "too responsive, snaps up something while moving"
   // complaint. Cached once; `(hover: hover)` is false on phones/tablets.
   const canHoverRef = useRef<boolean | null>(null);
-  // activeCats starts EMPTY (was: pre-seeded from the mode's default
-  // category set). The internal category filter is now opt-in via
-  // the Layers panel; the primary filter mechanism on /browse is
-  // the intent chip strip at the top (Coffee / Eat / Outdoors / etc),
-  // which works server-side through the URL ?intent= param. Seeding
-  // activeCats with mode defaults caused a double-filter bug: tapping
-  // "Outdoors" filtered server-side to park/trail places, then the
-  // visitor-default activeCats (["food", "arts", "parking"]) filtered
-  // those out → zero pins rendered. Empty default lets every intent
-  // chip work; the user opts INTO category narrowing if they want it.
   // Remembered layer choices (per device). Read ONCE on mount — layers on top
   // of the clean cold open without reversing it: only explicit prior choices
   // restore, a first-timer still gets the clean default, deep-links win below.
   const [layerPrefs] = useState(readMapLayerPrefs);
-  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set(layerPrefs.cats ?? []));
+  // The internal category-chip filter (activeCats) retired with the dock:
+  // "places by type" merged into the What pane's intent chips, which filter
+  // through the URL (?intent/?sub) like every shareable view. Stored cats
+  // prefs are ignored (and cleared on the next write) so no invisible
+  // filter can survive without UI to show or clear it.
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
@@ -442,12 +445,9 @@ export default function AppMap({
     // Deep-link (?amenity=) wins; otherwise restore the remembered set.
     () => new Set(initialAmenityGroups ?? layerPrefs.amenities ?? []),
   );
-  const [amenityOpen, setAmenityOpen] = useState(
-    (initialAmenityGroups?.length ?? layerPrefs.amenities?.length ?? 0) > 0,
-  );
-  // The category rail is heavy; collapsed by default so the in-map
-  // deck stays a clean glass bar. "Filters" reveals it as a panel.
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Whether a dock pane is open — mirrored onto the host container so
+  // CSS can hide the zoom corner furniture while the dock is expanded.
+  const [dockPaneOpen, setDockPaneOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   // Time scrubber (living map): null = live/off; otherwise a 0-24 Frederick
   // hour the map re-evaluates against. Pure client state — no refetch, no
@@ -527,7 +527,9 @@ export default function AppMap({
   // are intentionally excluded — see mapLayerPrefs.
   useEffect(() => {
     writeMapLayerPrefs({
-      cats: [...activeCats],
+      // cats retired with the dock (see above) — writing an empty list
+      // clears any previously stored set.
+      cats: [],
       amenities: [...amenityGroups],
       civic: showCivic,
       transit: showTransit,
@@ -535,7 +537,7 @@ export default function AppMap({
       aerial: showAerial,
       cemeteries: showCemeteries,
     });
-  }, [activeCats, amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -634,28 +636,16 @@ export default function AppMap({
   const filteredPlaces = useMemo(() => {
     let base = places;
     // Field-notes lens narrows the base set first, so it intersects cleanly
-    // with both the saved lens and category chips below.
+    // with the saved lens below. (The category-chip filter retired with the
+    // dock — "places by type" is the URL-driven intent filter now, applied
+    // upstream in BrowseMapClient before `places` arrives.)
     if (fieldNotesOnly) base = base.filter((p) => p.field_notes);
-    // Saved-only lens: a deliberate selection, so it shows the whole
-    // saved set even with no category active (it overrides the
-    // pinpoint-first empty state); category chips still intersect.
-    if (showSavedOnly) {
-      base = base.filter((p) => followedSlugs.has(p.slug));
-      if (activeCats.size === 0) return base;
-    } else if (activeCats.size === 0) {
-      // The field-notes lens is also deliberate — show its whole set with no
-      // category active, the way the saved lens does.
-      if (fieldNotesOnly) return base;
-      // Pinpoint-first: a clean map until the user adds a category. When a
-      // server-side intent already pre-filtered `places` (pinpointDefault
-      // false), empty activeCats still means "show the whole filtered set."
-      return pinpointDefault ? [] : base;
-    }
-    return base.filter((p) => {
-      const cat = CATEGORY_BY_SLUG[p.category];
-      return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
-    });
-  }, [places, activeCats, pinpointDefault, showSavedOnly, followedSlugs, fieldNotesOnly]);
+    if (showSavedOnly) return base.filter((p) => followedSlugs.has(p.slug));
+    if (fieldNotesOnly) return base;
+    // Pinpoint-first: a clean map until the user picks something (unused by
+    // /map browse, which always shows the whole clustered set).
+    return pinpointDefault ? [] : base;
+  }, [places, pinpointDefault, showSavedOnly, followedSlugs, fieldNotesOnly]);
 
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
@@ -748,15 +738,9 @@ export default function AppMap({
     // Drop OSM pins that duplicate a curated place (same name within
     // ~150 m) — the fix for "still duplicates on the map".
     pool = pool.filter((p) => !osmDupesCurated(p));
-    const filtered = activeCats.size === 0
-      ? pool
-      : pool.filter((p) => {
-          const cat = CATEGORY_BY_SLUG[p.category_slug];
-          return activeCats.has(p.category_slug) || (cat?.parent && activeCats.has(cat.parent));
-        });
     return {
       type: "FeatureCollection" as const,
-      features: filtered.map((p) => ({
+      features: pool.map((p) => ({
         type: "Feature" as const,
         properties: {
           osm_id: p.osm_id,
@@ -774,7 +758,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       })),
     };
-  }, [osmPlaces, activeCats, osmDupesCurated]);
+  }, [osmPlaces, osmDupesCurated]);
 
   // Which raw amenity category slugs are active, from the selected groups.
   const activeAmenityCats = useMemo(() => {
@@ -1109,13 +1093,11 @@ export default function AppMap({
     );
   };
 
-  const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
   // OSM amenities are flaky (live Overpass; empty in the sandbox). The
   // curated amenities.json is always present, so the Amenities tray is
   // gated on EITHER source having points — that is the fix for "I
   // don't see the water fountains / things we just added".
   const amenityCount = osmPlaces.filter(isAmenity).length + amenities.length;
-  const activeAmenityGroupCount = amenityGroups.size;
 
   // On-map search — match places already on the map by name/address/city.
   // Unified search (one-search): the map bar asks the same /api/search
@@ -1388,78 +1370,51 @@ export default function AppMap({
           return withinScrubWindow(t.startH, t.endH, scrubHour);
         });
 
+  // "Closes within the hour" — the dock's living count line. open_status
+  // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
+  const closingSoonCount = useMemo(
+    () => filteredPlaces.filter((p) => p.open_status?.state === "closing-soon").length,
+    [filteredPlaces],
+  );
+
+  // Season rows for the dock's Aerial nested strip (label + count per
+  // season, from the manifest).
+  const aerialSeasonItems = useMemo(
+    () =>
+      AERIAL_SEASONS.map((s) => ({
+        key: s.key,
+        label: s.label,
+        color: s.color,
+        count: s.key === "all" ? AERIAL_PHOTOS.length : (AERIAL_SEASON_COUNTS[s.key] ?? 0),
+      })),
+    [],
+  );
+
   return (
     <div
       className={
         fullBleed
-          ? "relative h-full w-full overflow-hidden"
+          ? `relative h-full w-full overflow-hidden${dock ? " dock-host" : ""}`
           : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
       }
+      data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
     >
-      {/* ── Floating in-map control deck (glass). The map renders
-          behind; controls overlay it, Apple/Google-Maps style. The
-          heavy category rail is tucked into a collapsible panel so the
-          default view is a clean, premium map. ── */}
+      {/* ── The search bar — alone on the top edge. Search FINDS; the
+          dock below FILTERS. On dock-less embeds (SavedList) the bar
+          keeps its locate icon so that surface loses nothing. ── */}
       <AppMapDeck
         q={q}
         setQ={setQ}
         searchMatches={searchMatches}
         pickSearch={pickSearch}
-        goNearMe={goNearMe}
-        locating={locating}
-        userLoc={userLoc}
-        filtersOpen={filtersOpen}
-        setFiltersOpen={setFiltersOpen}
-        activeCats={activeCats}
-        setActiveCats={setActiveCats}
-        amenityOpen={amenityOpen}
-        setAmenityOpen={setAmenityOpen}
-        amenityGroups={amenityGroups}
-        setAmenityGroups={setAmenityGroups}
-        amenityCount={amenityCount}
-        activeAmenityGroupCount={activeAmenityGroupCount}
-        places={places}
-        trustedOsmCount={trustedOsmCount}
-        civic={civic}
-        showCivic={showCivic}
-        setShowCivic={setShowCivic}
-        transitLines={transitLines}
-        showTransit={showTransit}
-        setShowTransit={setShowTransit}
-        trailLines={trailLines}
-        showTrails={showTrails}
-        setShowTrails={setShowTrails}
-        showAerial={showAerial}
-        setShowAerial={setShowAerial}
-        aerialCount={AERIAL_PHOTOS.length}
-        cemeteryCount={cemeteries.length}
-        showCemeteries={showCemeteries}
-        setShowCemeteries={setShowCemeteries}
-        activeOverlays={activeOverlays}
-        toggleOverlay={toggleOverlay}
-        savedCount={followedSlugs.size}
-        showSavedOnly={showSavedOnly}
-        setShowSavedOnly={setShowSavedOnly}
-        fieldNotesCount={fieldNotesCount}
-        fieldNotesOnly={fieldNotesOnly}
-        setFieldNotesOnly={setFieldNotesOnly}
+        {...(!dock ? { goNearMe, locating, userLoc } : {})}
       />
 
-      {/* Living-map time scrubber — drag through the day to see what's on.
-          Only on the full-bleed browse canvas (not embedded/saved maps). */}
-      {fullBleed && <TimeScrubber hour={scrubHour} onChange={setScrubHour} />}
-
-        {/* Pinpoint-first empty state — the control surface. With nothing
-            added, the map is calm and this invites the user to compose
-            what they want to see. Tapping a category drops its pins
-            instantly (toggles activeCats); the prompt then disappears. */}
-        {/* The empty-state "What do you want to see?" card was removed in
-            the browse-map declutter: the intent chip row at the top is now
-            the single "pick what to see" control (chips-led), so the map
-            opens clean with one slim chip row instead of a big card layered
-            over a preset bar. The chips populate the map on tap; Layers
-            still toggles individual categories. */}
+      {/* Living-map time scrubber. On /map browse it lives INSIDE the
+          dock's When pane ("The day"); the floating card remains only
+          for dock-less full-bleed maps so nothing regresses there. */}
+      {fullBleed && !dock && <TimeScrubber floating hour={scrubHour} onChange={setScrubHour} />}
 
         {mapError && (
           <div
@@ -1496,7 +1451,9 @@ export default function AppMap({
             </div>
           </div>
         )}
-        {geoMsg && (
+        {/* Geolocation notes surface inside the dock's Where pane when the
+            dock owns locate; the floating toast serves dock-less embeds. */}
+        {geoMsg && !dock && (
           <div
             className="absolute bottom-3 left-1/2 z-[var(--z-map-control)] flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
@@ -1552,11 +1509,10 @@ export default function AppMap({
           </div>
         )}
 
-        {/* Aerial time machine — scrub the drone archive by season.
-            Only present while the aerial layer is on; selecting a season
-            cross-fades the pins (handled by the layer opacity transition
-            above) so the county visibly shifts spring -> winter. */}
-        {showAerial && (
+        {/* Aerial time machine — scrub the drone archive by season. With a
+            dock, the seasons nest under the Aerial photos overlay chip in
+            the What pane; the floating strip serves dock-less maps only. */}
+        {showAerial && !dock && (
           <div
             className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)" }}
@@ -2681,9 +2637,70 @@ export default function AppMap({
             </Popup>
           )}
 
+          {/* Zoom stays as corner furniture — camera, not filter — and the
+              dock-host CSS floats it above the dock + hides it while a
+              pane is open. GeolocateControl only rides dock-less maps:
+              on /map browse, locate's one home is the Where pane. */}
           <NavigationControl position="bottom-right" showCompass={false} />
-          <GeolocateControl position="bottom-right" trackUserLocation />
+          {!dock && <GeolocateControl position="bottom-right" trackUserLocation />}
         </Map>
+
+        {/* ── The dock: one instrument for the browse map. Scrim + card;
+            collapsed face is the What · When · Where caption. ── */}
+        {dock && (
+          <MapDock
+            browse={dock}
+            placeCount={filteredPlaces.length}
+            eventCount={visibleEvents.length}
+            closingSoonCount={closingSoonCount}
+            savedCount={followedSlugs.size}
+            showSavedOnly={showSavedOnly}
+            setShowSavedOnly={setShowSavedOnly}
+            fieldNotesCount={fieldNotesCount}
+            fieldNotesOnly={fieldNotesOnly}
+            setFieldNotesOnly={setFieldNotesOnly}
+            amenityCount={amenityCount}
+            amenityGroups={amenityGroups}
+            setAmenityGroups={setAmenityGroups}
+            civicAvailable={civic.length > 0}
+            showCivic={showCivic}
+            setShowCivic={setShowCivic}
+            transitCount={transitLines.features.length}
+            showTransit={showTransit}
+            setShowTransit={setShowTransit}
+            trailCount={trailLines.features.length}
+            showTrails={showTrails}
+            setShowTrails={setShowTrails}
+            aerialCount={AERIAL_PHOTOS.length}
+            showAerial={showAerial}
+            setShowAerial={setShowAerial}
+            aerialSeasons={aerialSeasonItems}
+            aerialSeason={aerialSeason}
+            onAerialSeason={(k) => { setAerialSeason(k as AerialSeason); haptic("light"); }}
+            cemeteryCount={cemeteries.length}
+            showCemeteries={showCemeteries}
+            setShowCemeteries={setShowCemeteries}
+            activeOverlays={activeOverlays}
+            toggleOverlay={toggleOverlay}
+            scrubHour={scrubHour}
+            setScrubHour={setScrubHour}
+            userLoc={userLoc}
+            locating={locating}
+            geoMsg={geoMsg}
+            goNearMe={goNearMe}
+            flyTo={(center, zoom) => {
+              mapRef.current?.getMap().flyTo({
+                center,
+                zoom,
+                duration: prefersReducedMotion() ? 0 : 1100,
+                curve: 1.25,
+                easing: CAM_EASE,
+                essential: true,
+              });
+            }}
+            onPaneOpenChange={setDockPaneOpen}
+          />
+        )}
 
         {/* Cluster index — "what's in this bubble", as a field-guide index
             page. Tapping a row focuses the pin + opens its sheet; the drawer
