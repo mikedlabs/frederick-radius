@@ -35,7 +35,11 @@ SHIPPED brand deck (see `src/app/globals.css` tokens) is:
 
 ## Locked architecture (do not restructure)
 
-- Two modes on /map: map-first fast mode + guided discovery; the nav is
+- /map is the clean whole-county browse surface by default (owner call
+  2026-07-08: "the map IS the page" — the Nearby/Whole-county toggle pill
+  was removed as clutter). Radius ("Nearby") mode still exists behind
+  `/map?mode=radius` (isochrone + control sheet) but has no UI entry point;
+  don't re-add the floating toggle without an owner ask. The nav is
   `Ask(/guide) · Today · Map · Events · Saved(/my-radius)` from ONE
   source of truth (`src/components/nav/tabs.ts`).
 - Canonicals, sitemap, robots, JSON-LD were audited and fixed (June 2026,
