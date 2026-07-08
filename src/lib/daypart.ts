@@ -42,3 +42,29 @@ export function clusterOrder(part: Daypart): Array<"happy" | "deals" | "markets"
       return ["happy", "deals", "parking", "markets"];
   }
 }
+
+/**
+ * Section keys the /today spine can reorder by daypart, in priority order — the
+ * same "behave like a local, don't say so" instinct clusterOrder applies inside
+ * the On-now band, lifted to the page's two swappable editorial sections.
+ *
+ *   - "whatsOn" — today's events (the headline answer at night).
+ *   - "curated" — "Plan the moment" collections (evergreen; the day-ahead read).
+ *
+ * Morning/midday lead with the day-ahead plan (events are hours off); evening
+ * and late lead with tonight's events and let the evergreen collections yield.
+ * Both sections still render every daypart — this only decides which comes
+ * first. (The Tomorrow preview and On-now band are ordered by their own gates.)
+ */
+export type TodaySection = "whatsOn" | "curated";
+
+export function sectionOrder(part: Daypart): TodaySection[] {
+  switch (part) {
+    case "morning":
+    case "midday":
+      return ["curated", "whatsOn"];
+    case "evening":
+    case "late":
+      return ["whatsOn", "curated"];
+  }
+}
