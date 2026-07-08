@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Clock, LocateFixed, NotebookPen, X } from "lucide-react";
 import { INTENTS } from "@/data/intents";
@@ -208,6 +208,9 @@ function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export default function MapDock(props: MapDockProps) {
   const { browse, onPaneOpenChange } = props;
   const router = useRouter();
@@ -217,6 +220,10 @@ export default function MapDock(props: MapDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [amenExpanded, setAmenExpanded] = useState(() => props.amenityGroups.size > 0);
   const [whereSel, setWhereSel] = useState<WhereSel>({ kind: "county" });
+  // Focus management for the top-sheet pane (mirrors the /events dock):
+  // focus lands inside the pane on open, and the trigger is restored on close.
+  const paneRef = useRef<HTMLDivElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
 
   // A landed location fix means the camera is on the user — the Where
   // word reads "Near me" until they choose somewhere else. Render-time
@@ -231,6 +238,14 @@ export default function MapDock(props: MapDockProps) {
   useEffect(() => {
     onPaneOpenChange(pane !== null);
   }, [pane, onPaneOpenChange]);
+
+  // Focus into the pane when it opens (first focusable), so the drawer is
+  // reachable by keyboard the moment it drops down.
+  useEffect(() => {
+    if (!pane) return;
+    const first = paneRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    first?.focus();
+  }, [pane]);
 
   // ── URL writes: the EXISTING params, via replace so chip taps don't
   //    stack history entries. BrowseMapClient re-reads them and hands
@@ -385,9 +400,42 @@ export default function MapDock(props: MapDockProps) {
     router.replace(pathname, { scroll: false });
   };
 
+  const closePane = () => {
+    setPane(null);
+    restoreRef.current?.focus?.();
+  };
   const toggle = (p: Pane) => {
     haptic("light");
-    setPane((cur) => (cur === p ? null : p));
+    if (pane === p) {
+      closePane();
+    } else {
+      restoreRef.current = document.activeElement as HTMLElement | null;
+      setPane(p);
+    }
+  };
+
+  // Esc closes the pane; Tab is trapped within it while open.
+  const onPaneKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      closePane();
+      return;
+    }
+    if (e.key !== "Tab" || !paneRef.current) return;
+    const nodes = Array.from(
+      paneRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+    ).filter((n) => n.offsetParent !== null);
+    if (nodes.length === 0) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
   };
 
   const paneTitle =
@@ -395,20 +443,29 @@ export default function MapDock(props: MapDockProps) {
 
   return (
     <>
-      {/* Scrim — tap anywhere off the dock to close the pane. */}
+      {/* Scrim — dims the map; a tap closes the open pane. */}
       <div
         className={`dock-scrim${pane ? " on" : ""}`}
-        onClick={() => setPane(null)}
+        onClick={closePane}
         aria-hidden
       />
 
-      <section className={`dock${pane ? " dock-open" : ""}`} aria-label="Map view controls">
-        {/* ── Pane (above the caption row, same card) ── */}
-        <div className="dock-pane" id="dock-pane" aria-hidden={pane === null}>
+      <div className={`dock${pane ? " dock-open" : ""}`}>
+        {/* ── The top-sheet pane — drops DOWN from under the caption bar
+            over the scrim-dimmed map (mirrors the /events masthead-dock). ── */}
+        <div
+          className="dock-pane"
+          id="dock-pane"
+          role="tabpanel"
+          aria-label={paneTitle}
+          aria-hidden={pane === null}
+          ref={paneRef}
+          onKeyDown={onPaneKeyDown}
+        >
           <div className="dock-pane-scroll">
             <div className="dock-pane-head">
               <span className="dock-pane-title font-serif">{paneTitle}</span>
-              <button type="button" className="dock-done" onClick={() => setPane(null)}>
+              <button type="button" className="dock-done" onClick={closePane}>
                 Done
               </button>
             </div>
@@ -507,7 +564,11 @@ export default function MapDock(props: MapDockProps) {
                   {props.civicAvailable && (
                     <Chip
                       on={props.showCivic}
-                      color="var(--app-warning)"
+                      // Darkened amber (press variant) so the active fill clears
+                      // AA behind white text: #B26B00 is only 4.20:1, #8F5600 is
+                      // 6.00:1 (the gold "Aerial" chip solves the same problem the
+                      // other way, via inkOnFill).
+                      color="var(--app-warning-press)"
                       onClick={() => props.setShowCivic((v) => !v)}
                       title="Live traffic incidents and county-published issue reports (311)"
                     >
@@ -693,66 +754,72 @@ export default function MapDock(props: MapDockProps) {
           </div>
         </div>
 
-        {/* ── The caption row: readout + tab bar + clear-all ── */}
-        <div className="dock-readout">
-          <button
-            type="button"
-            className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
-            onClick={() => toggle("what")}
-            aria-expanded={pane === "what"}
-            aria-controls="dock-pane"
-          >
-            <span className="dock-seg-k">What</span>
-            <span className="dock-seg-v" style={{ color: whatColor }}>
-              {what.main}
-              {what.plus && <span className="dock-seg-plus"> {what.plus}</span>}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`dock-seg${pane === "when" ? " active" : ""}`}
-            onClick={() => toggle("when")}
-            aria-expanded={pane === "when"}
-            aria-controls="dock-pane"
-          >
-            <span className="dock-seg-k">When</span>
-            <span className={`dock-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
-              {when.text}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
-            onClick={() => toggle("where")}
-            aria-expanded={pane === "where"}
-            aria-controls="dock-pane"
-          >
-            <span className="dock-seg-k">Where</span>
-            <span className="dock-seg-v" style={{ color: whereColor }}>
-              {whereText}
-            </span>
-          </button>
-          {dirty && (
+        {/* ── The head: caption tab bar + living count line, pinned at the
+            top of the map, directly beneath the search bar. ── */}
+        <div className="dock-head">
+          <div className="dock-readout" role="tablist" aria-label="Map view controls">
             <button
               type="button"
-              className="dock-clear"
-              onClick={clearAll}
-              aria-label="Clear all filters"
+              role="tab"
+              aria-selected={pane === "what"}
+              aria-controls="dock-pane"
+              className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
+              onClick={() => toggle("what")}
             >
-              <X className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+              <span className="dock-seg-k">What</span>
+              <span className="dock-seg-v" style={{ color: whatColor }}>
+                {what.main}
+                {what.plus && <span className="dock-seg-plus"> {what.plus}</span>}
+              </span>
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pane === "when"}
+              aria-controls="dock-pane"
+              className={`dock-seg${pane === "when" ? " active" : ""}`}
+              onClick={() => toggle("when")}
+            >
+              <span className="dock-seg-k">When</span>
+              <span className={`dock-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
+                {when.text}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pane === "where"}
+              aria-controls="dock-pane"
+              className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
+              onClick={() => toggle("where")}
+            >
+              <span className="dock-seg-k">Where</span>
+              <span className="dock-seg-v" style={{ color: whereColor }}>
+                {whereText}
+              </span>
+            </button>
+            {dirty && (
+              <button
+                type="button"
+                className="dock-clear tap-44"
+                onClick={clearAll}
+                aria-label="Clear all filters"
+              >
+                <X className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+              </button>
+            )}
+          </div>
 
-        {/* The living caption — counts + a spoken state summary, announced
-            politely as filters change. */}
-        <div className="dock-countline" aria-live="polite">
-          {line}
-          <span className="sr-only">
-            {` Showing ${what.main}${what.plus ? ` ${what.plus}` : ""}, ${when.text}, ${whereText}.`}
-          </span>
+          {/* The living caption — counts + a spoken state summary, announced
+              politely as filters change. */}
+          <div className="dock-countline" aria-live="polite">
+            {line}
+            <span className="sr-only">
+              {` Showing ${what.main}${what.plus ? ` ${what.plus}` : ""}, ${when.text}, ${whereText}.`}
+            </span>
+          </div>
         </div>
-      </section>
+      </div>
     </>
   );
 }
