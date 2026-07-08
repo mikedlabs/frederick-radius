@@ -1,11 +1,18 @@
 /**
  * Map overlay registry (data brief 6.3, 6.4).
  *
- * One source of truth for the six overlays the map can draw. The Layers
+ * One source of truth for the GIS overlays the map can draw. The Layers
  * control renders from this list, the URL persists the active set as
- * ?layers=art,historic so a view is shareable, and every overlay ships
+ * ?layers=art,parks so a view is shareable, and every overlay ships
  * DARK by default: the map opens clean and the reader pulls a layer in
  * when they want it, never the other way around.
+ *
+ * Trails and cemeteries are NOT here: they ship as first-class live map
+ * layers with their own counts (showTrails / showCemeteries in AppMap),
+ * so listing them again as overlays double-printed them in the Layers
+ * tab (a live "Trails" plus a "soon" placeholder; "Cemeteries" plus a
+ * "Historic cemeteries"). This registry holds only the overlays that
+ * have no live-layer twin.
  *
  * Each overlay loads lazily on toggle from its endpoint (static GeoJSON
  * with a long cache and an ETag, per 6.3), so toggling one never blocks
@@ -15,9 +22,7 @@
  */
 
 export type OverlayKey =
-  | "trails"
   | "parks"
-  | "historic"
   | "art"
   | "markets"
   | "bridges";
@@ -37,24 +42,10 @@ export type OverlayDef = {
 
 export const OVERLAYS: OverlayDef[] = [
   {
-    key: "trails",
-    label: "Trails",
-    sources: "County park trails, the Appalachian Trail, and the C&O Towpath",
-    endpoint: "/api/overlays/trails",
-    ready: false,
-  },
-  {
     key: "parks",
     label: "Parks",
     sources: "County parks, from Frederick County GIS",
     endpoint: "/api/overlays/parks",
-    ready: true,
-  },
-  {
-    key: "historic",
-    label: "Historic cemeteries",
-    sources: "Frederick County historic cemeteries, from county open data",
-    endpoint: "/api/overlays/historic",
     ready: true,
   },
   {
@@ -99,8 +90,9 @@ export function parseLayersParam(raw: string | null | undefined): OverlayKey[] {
 
 /**
  * Serialize the active set back to a stable ?layers= value: registry
- * order, comma-joined, empty string when nothing is active (so the param
- * drops out of the URL rather than lingering as ?layers=).
+ * order (parks, art, markets, bridges), comma-joined, empty string when
+ * nothing is active (so the param drops out of the URL rather than
+ * lingering as ?layers=).
  */
 export function serializeLayers(active: Iterable<OverlayKey>): string {
   const set = new Set(active);
