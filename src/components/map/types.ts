@@ -67,6 +67,39 @@ export type EventPin = {
   hero_image?: string;
 };
 
+import type { TimeMode } from "./dockCaption";
+
+/**
+ * BrowseDockInfo — the URL-driven browse view state + the counts the
+ * map dock's panes and caption read. Computed by BrowseMapClient (which
+ * owns the ?intent/?sub/?open/?t interpretation and the unfiltered
+ * pools), threaded through AppMapClient → AppMap → MapDock. Present
+ * only on /map browse; embeds (SavedList) never pass it, so they never
+ * grow a dock.
+ */
+export type BrowseDockInfo = {
+  intentKey?: string;
+  subKey?: string;
+  /** ?open=now — places collapsed to verifiably open right now. */
+  openNow: boolean;
+  /** How many places in the current intent/sub pool are open now
+   *  (computed BEFORE the open filter, so the When pane can offer it). */
+  openNowCount: number;
+  /** The active event window (explicit ?t=, or the time-aware default). */
+  timeMode: TimeMode;
+  /** True only when ?t= is explicitly in the URL — the default pick is
+   *  never "dirt" the × would clear. */
+  timeModeExplicit: boolean;
+  /** Full unfiltered place count (the "Everything" chip). */
+  everythingCount: number;
+  /** Per-intent place counts over the unfiltered pool. */
+  intentCounts: Record<string, number>;
+  /** Per-sub counts, scoped to the active parent intent. */
+  subCounts: Record<string, number>;
+  /** Mappable-event counts per window (drives chip counts + default). */
+  eventWindowCounts: Partial<Record<TimeMode, number>>;
+};
+
 /** Map selection union. Discriminated by `_kind`. */
 export type SelectedOsm = OsmPlace & { _kind: "osm" };
 export type SelectedPlace = Place & { _kind: "place" };
