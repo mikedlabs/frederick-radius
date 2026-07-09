@@ -252,10 +252,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       {topPicks.length > 0 && (
         <section className="space-y-2.5">
           <SectionHeading title="Worth your time" accent={c.color} />
-          <ul className="grid gap-2 sm:grid-cols-3">
+          {/* Compact row cards — the SAME dense card /nearby and the browse
+              list use — so the visual language stays consistent from Today
+              through every listing surface, right up to the place page. (Was
+              the fixed-width "tile" shelf-card, which read as oversized and
+              out of place in a vertical stack.) */}
+          <ul className="space-y-2">
             {topPicks.map((p) => (
               <li key={p.slug}>
-                <PlaceCard place={p} variant="tile" />
+                <PlaceCard place={p} variant="row" />
               </li>
             ))}
           </ul>

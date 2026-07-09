@@ -113,11 +113,13 @@ export default function CategoryView({
         municipalities={municipalities}
       />
 
+      {/* Compact row cards (the default) so "Worth your time" matches the
+          other sections and every other listing surface — no oversized
+          fixed-width tiles breaking the rhythm on the way to a place. */}
       <CategorySection
         title="Worth your time"
         color={category.color}
         places={best}
-        variant="tile"
       />
 
       <CategorySection title="Open now" color={category.color} places={openNow} />
