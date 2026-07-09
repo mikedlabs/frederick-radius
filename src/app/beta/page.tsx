@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import BetaEmailField from "@/components/beta/BetaEmailField";
+import CountUp from "@/components/beta/CountUp";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { getBetaPulse } from "@/lib/loaders/betaPulse";
@@ -76,6 +77,8 @@ export default async function BetaPage({
         <div className="relative z-10 w-full max-w-[27rem] text-center">
           {/* Radius hero mark — rippling rings + breathing vermilion center. */}
           <div className="relative mx-auto grid h-24 w-24 place-items-center">
+            {/* Radar sweep orbiting the mark — the target reads as live radar. */}
+            <span aria-hidden className="radar-sweep absolute -inset-2" />
             <span aria-hidden className="radius-ripple absolute inset-0 rounded-full" style={{ border: "2px solid var(--app-brand)" }} />
             <span aria-hidden className="radius-ripple absolute inset-0 rounded-full" style={{ border: "2px solid var(--app-brand)", animationDelay: "1400ms" }} />
             <span aria-hidden className="absolute inset-[18px] rounded-full" style={{ border: "1.5px solid color-mix(in srgb, var(--app-brand) 38%, transparent)" }} />
@@ -578,40 +581,81 @@ async function ProofStrip() {
   const p = await getBetaPulse(new Date());
   const openCount = p.openNow && p.openNow.count > 0 ? p.openNow.count : null;
   const names = p.openNow?.names ?? [];
+
+  // Live signal ticker — a scrolling wire of genuinely-on-now facts drawn from
+  // the same pulse, so the cover reads as a feed, not a stat. Every item is
+  // real or omitted (honest by construction).
+  const signals: string[] = [];
+  for (const nm of names) signals.push(`${nm} · open now`);
+  if (p.eventsToday != null && p.eventsToday > 0) {
+    signals.push(`${p.eventsToday} ${p.eventsToday === 1 ? "event" : "events"} on today`);
+  }
+  if (p.keys) {
+    const k = p.keys;
+    signals.push(
+      k.state === "live"
+        ? `Keys ${k.keys.runs}–${k.opponent.runs}, live`
+        : k.state === "final"
+          ? `Keys final ${k.keys.runs}–${k.opponent.runs}`
+          : "Keys, first pitch tonight",
+    );
+  }
+  if (p.troutThisWeek) signals.push("Trout stocked this week");
+  signals.push(`${p.places.toLocaleString()} places mapped`);
+  signals.push(`${p.towns} towns, one radius`);
+  const ticker = [...signals, ...signals];
+
   return (
-    <div
-      className="mx-auto mt-6 max-w-[24rem] rounded-[var(--app-radius-md)] border px-4 py-3 text-left"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-hi)" }}
-    >
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
-        <span aria-hidden className="pulse-dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
-        Right now
-      </p>
-      <p className="mt-1.5 text-[13.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
-        {openCount != null ? (
-          <>
-            <span className="font-mono font-semibold tabular-nums">{openCount.toLocaleString()}</span>{" "}
-            places open across the county
-          </>
-        ) : (
-          <>
-            <span className="font-mono font-semibold tabular-nums">{p.places.toLocaleString()}</span>{" "}
-            places mapped across the county
-          </>
-        )}
-        {p.eventsToday != null && p.eventsToday > 0 && (
-          <>
-            {" · "}
-            <span className="font-mono font-semibold tabular-nums">{p.eventsToday}</span> on today
-          </>
-        )}
-      </p>
-      {openCount != null && names.length >= 2 && (
-        <p className="mt-1 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Open at this hour: {names.join(", ")}.
+    <>
+      <div
+        className="mx-auto mt-6 max-w-[24rem] rounded-[var(--app-radius-md)] border px-4 py-3 text-left"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-hi)" }}
+      >
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
+          <span aria-hidden className="pulse-dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
+          Right now
         </p>
+        <p className="mt-1.5 text-[13.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
+          {openCount != null ? (
+            <>
+              <CountUp value={openCount} className="font-mono font-semibold tabular-nums" />{" "}
+              places open across the county
+            </>
+          ) : (
+            <>
+              <CountUp value={p.places} className="font-mono font-semibold tabular-nums" />{" "}
+              places mapped across the county
+            </>
+          )}
+          {p.eventsToday != null && p.eventsToday > 0 && (
+            <>
+              {" · "}
+              <CountUp value={p.eventsToday} className="font-mono font-semibold tabular-nums" /> on today
+            </>
+          )}
+        </p>
+        {openCount != null && names.length >= 2 && (
+          <p className="mt-1 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Open at this hour: {names.join(", ")}.
+          </p>
+        )}
+      </div>
+
+      {signals.length >= 3 && (
+        <div className="bt-marquee mx-auto mt-2.5 max-w-[27rem]" aria-label="Live around the county">
+          <div className="bt-marquee-track" style={{ animationDuration: "32s" }}>
+            {ticker.map((s, i) => (
+              <span key={i} className="inline-flex items-center">
+                <span className="px-3 font-mono text-[11px] font-medium tracking-tight" style={{ color: "var(--app-ink-2)" }}>
+                  {s}
+                </span>
+                <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: "var(--app-brand)" }} />
+              </span>
+            ))}
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -621,7 +665,7 @@ function ProofStripShell() {
   return (
     <div
       aria-hidden
-      className="mx-auto mt-6 h-[88px] max-w-[24rem] animate-pulse rounded-[var(--app-radius-md)] border"
+      className="mx-auto mt-6 h-[116px] max-w-[24rem] animate-pulse rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
     />
   );
