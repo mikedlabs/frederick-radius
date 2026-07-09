@@ -108,8 +108,6 @@ export type PulseTile = {
   kind: "feature" | "gauge" | "status";
   /** Status tiles: the one-line read under the big value. */
   peek?: string;
-  /** Status tiles: render the value in mono (times, "5:42 PM"). */
-  mono?: boolean;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
   feature?: { temp: number; condition: string; hl?: string };
   /** The feed's full detail, rendered inside the tapped window. Server-rendered. */
@@ -186,12 +184,13 @@ function tileButtonProps(t: PulseTile, onOpen: () => void) {
   };
 }
 
-function FeatureTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
+function FeatureTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
   const f = t.feature!;
   return (
     <button
       {...tileButtonProps(t, onOpen)}
       className="pulse-tile pulse-tile--wx col-span-2 text-left"
+      style={{ "--pulse-i": index } as CSSProperties}
     >
       <span className="pulse-tlab">Right now · Frederick</span>
       <div className="mt-1 flex items-baseline gap-3">
@@ -215,22 +214,37 @@ function FeatureTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
   );
 }
 
-/** A numeric feed as a compact stat tile: icon + label, a big count-up
- *  value, and a one-line state. No gauge ring — typography carries it. */
-function GaugeTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
+/** The shared tile class list — the boot-in stagger index, the state accent,
+ *  the active tint (`is-hot`), and the alert glow (`is-alert`) for a tile the
+ *  hero is counting as a live situation. */
+function tileClass(t: PulseTile): string {
+  return `pulse-tile pulse-tile--status text-left${t.active ? " is-hot" : ""}${t.attention ? " is-alert" : ""}`;
+}
+function tileStyle(t: PulseTile, index: number): CSSProperties {
+  return { "--accent": t.accent, "--pulse-i": index } as CSSProperties;
+}
+
+/** The corner status dot: a quiet breathing "live" beacon on a feed that has
+ *  live data now, resting dim on a calm feed. */
+function StatusDot({ t }: { t: PulseTile }) {
+  return (
+    <span
+      aria-hidden
+      className={`pulse-sdot${t.active ? " is-live" : ""}`}
+      style={{ background: t.accent, opacity: t.active ? 1 : 0.5 }}
+    />
+  );
+}
+
+/** A numeric feed as a compact stat tile: icon + mono readout + a one-line
+ *  state, capped by a thin micro-meter gauge showing where the reading sits in
+ *  its range (AQI toward 300, outages toward the county, river toward flood). */
+function GaugeTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
   const g = t.gauge!;
   const Icon = ICONS[t.iconName] ?? AlertTriangle;
   return (
-    <button
-      {...tileButtonProps(t, onOpen)}
-      className={`pulse-tile pulse-tile--status text-left${t.active ? " is-hot" : ""}`}
-      style={{ "--accent": t.accent } as CSSProperties}
-    >
-      <span
-        aria-hidden
-        className="pulse-sdot"
-        style={{ background: t.accent, opacity: t.active ? 1 : 0.5 }}
-      />
+    <button {...tileButtonProps(t, onOpen)} className={tileClass(t)} style={tileStyle(t, index)}>
+      <StatusDot t={t} />
       <span className="mb-1 flex items-center gap-1.5">
         <Icon
           aria-hidden
@@ -244,27 +258,22 @@ function GaugeTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
         value={g.value}
         decimals={g.decimals}
         comma={g.comma}
-        className="pulse-sval font-serif tabular-nums"
+        className="pulse-sval font-mono tabular-nums"
         style={{ color: "var(--app-ink)" }}
       />
       <span className="pulse-ssub">{g.unit}</span>
+      <span className="pulse-meter" aria-hidden>
+        <span className="pulse-meter-fill" style={{ width: `${g.pct}%` }} />
+      </span>
     </button>
   );
 }
 
-function StatusTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
+function StatusTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
   const Icon = ICONS[t.iconName] ?? AlertTriangle;
   return (
-    <button
-      {...tileButtonProps(t, onOpen)}
-      className={`pulse-tile pulse-tile--status text-left${t.active ? " is-hot" : ""}`}
-      style={{ "--accent": t.accent } as CSSProperties}
-    >
-      <span
-        aria-hidden
-        className="pulse-sdot"
-        style={{ background: t.accent, opacity: t.active ? 1 : 0.5 }}
-      />
+    <button {...tileButtonProps(t, onOpen)} className={tileClass(t)} style={tileStyle(t, index)}>
+      <StatusDot t={t} />
       <span className="mb-1 flex items-center gap-1.5">
         <Icon
           aria-hidden
@@ -274,10 +283,7 @@ function StatusTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
         />
         <span className="pulse-tlab">{t.label}</span>
       </span>
-      <span
-        className={`pulse-sval${t.mono ? " is-mono font-mono" : " font-serif"}`}
-        style={{ color: "var(--app-ink)" }}
-      >
+      <span className="pulse-sval font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
         {t.countLabel}
       </span>
       {t.peek && <span className="pulse-ssub">{t.peek}</span>}
@@ -461,6 +467,9 @@ export default function PulseBoard({
           </span>
         </div>
 
+        {/* A hairline that reads live: a slow scan highlight sweeps it. */}
+        <div className="pulse-scanline" aria-hidden />
+
         <div className="pulse-seg" role="tablist" aria-label="Filter tiles by status">
           {FILTERS.map((f, i) => {
             const on = filter === f.id;
@@ -491,11 +500,11 @@ export default function PulseBoard({
 
         {ordered.length > 0 ? (
           <div id={panelId} role="tabpanel" aria-label="County status tiles" className="pulse-bento">
-            {ordered.map((t) => {
+            {ordered.map((t, i) => {
               const onOpen = () => setOpen(t.key);
-              if (t.kind === "feature") return <FeatureTile key={t.key} t={t} onOpen={onOpen} />;
-              if (t.kind === "gauge") return <GaugeTile key={t.key} t={t} onOpen={onOpen} />;
-              return <StatusTile key={t.key} t={t} onOpen={onOpen} />;
+              if (t.kind === "feature") return <FeatureTile key={t.key} t={t} index={i} onOpen={onOpen} />;
+              if (t.kind === "gauge") return <GaugeTile key={t.key} t={t} index={i} onOpen={onOpen} />;
+              return <StatusTile key={t.key} t={t} index={i} onOpen={onOpen} />;
             })}
           </div>
         ) : (
