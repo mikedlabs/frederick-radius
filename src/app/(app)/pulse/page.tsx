@@ -67,9 +67,8 @@ import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseBoard, { type PulseTile, type PulseHero, type PulseTicketItem } from "@/components/pulse/PulseBoard";
 import { clampPercent } from "@/components/pulse/format";
-import TransitMap from "@/components/transit/TransitMapClient";
-import NextStopsBoard from "@/components/transit/NextStopsBoard";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
+import BusesReveal from "@/components/pulse/BusesReveal";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
   Users,
@@ -519,15 +518,10 @@ export default async function PulsePage({
   ) : null;
 
   // ── Presentation data for the bento board ──────────────────────────
-  // The bento shows the numeric feeds as animated conic gauge rings; the rest
+  // The bento shows the numeric feeds as compact count-up stat tiles; the rest
   // as compact status tiles; weather as the wide feature. `attention` marks a
   // tile as one of the hero's active situations so the "Needs attention" filter
-  // resolves to exactly those. Gauge percents are fill ratios only (visual
-  // severity), never a claimed reading.
-  const hourlyTemps = (forecast?.hourly ?? [])
-    .map((h) => h.temperature)
-    .filter((n): n is number => Number.isFinite(n))
-    .slice(0, 12);
+  // resolves to exactly those.
   const dailyDay = forecast?.daily?.find((p) => p.isDaytime === true);
   const dailyNight = forecast?.daily?.find((p) => p.isDaytime === false);
   const wxHl =
@@ -582,7 +576,6 @@ export default async function PulsePage({
             temp: wxCur.temperature,
             condition: wxCondition ?? "Frederick",
             hl: wxHl,
-            spark: hourlyTemps,
           },
           sourceLabel: "NWS · weather.gov",
           body: <PulseWeatherPanel />,
@@ -1077,9 +1070,6 @@ export default async function PulsePage({
     renderedAt: nowMs,
     refreshedClock: nowClock(),
     temp: wxCur?.temperature ?? null,
-    spark: hourlyTemps,
-    // Temperature reads cool on a calm day; a gold curve on an active one.
-    sparkStroke: allClear ? "var(--app-cool)" : "var(--app-accent)",
     situationCount: totalActive,
   };
 
@@ -1132,10 +1122,11 @@ export default async function PulsePage({
         initialOpen={openParam}
       />
 
-      {/* ── Where the buses are — the live TransIT map. The route network +
-          stops on the real basemap, with live vehicle badges that glide
-          between polls. Tap a bus for its route + status. Code-split (mapbox
-          loads in its own chunk) so the page shell paints first. */}
+      {/* ── Where the buses are — the live TransIT map, behind one tap. The map
+          (mapbox + a 300px canvas) is the heaviest thing on the page; on a
+          scan-first board it stays collapsed so it never renders as a tall
+          empty placeholder. Tapping mounts the route network + live vehicle
+          badges + the arrivals board, and only then does mapbox download. */}
       <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
         <div className="flex items-center justify-between gap-3">
           <p id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
@@ -1146,22 +1137,7 @@ export default async function PulsePage({
             tap a bus · free
           </span>
         </div>
-        <TransitMap
-          shapes={transitShapes}
-          height={300}
-          /* Open on downtown Frederick (Market & Patrick) — the densest part of
-             the network and where most riders are. The lockToService leash keeps
-             the camera over the service area; the user zooms out for outer routes. */
-          center={[-77.4105, 39.4143]}
-          zoom={12.5}
-          liveBuses
-          highlightRoutes
-          hideBadge
-          lockToService
-        />
-        {/* Live arrivals board — every bus's NEXT stop + countdown, no tapping.
-            Polls the same vehicle feed as the map; self-hides when none. */}
-        <NextStopsBoard />
+        <BusesReveal shapes={transitShapes} />
         <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
           every 15 seconds. Tap a route to trace its path and follow just its

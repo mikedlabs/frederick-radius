@@ -3879,8 +3879,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .pulse-bento {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  align-items: start;
+  gap: 8px;
+  align-items: stretch;
 }
 
 /* Shared tile shell. */
@@ -3890,7 +3890,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: var(--app-radius-md);
   border: 1px solid var(--app-border);
   background: var(--app-bg-elevated);
-  padding: 12px;
+  padding: 10px 11px;
   box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
   transition: box-shadow 0.2s, transform 0.15s;
 }
@@ -3908,90 +3908,36 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-ink-3);
 }
 
-/* Weather feature (wide). */
+/* Weather feature (wide) — a compact temp reading, no chart. */
 .pulse-tile--wx {
-  min-height: 150px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   background: linear-gradient(160deg, color-mix(in srgb, var(--app-cool) 11%, var(--app-bg-elevated)), var(--app-bg-elevated));
 }
 .pulse-wx-deg {
-  font-size: 50px;
+  font-size: 42px;
   font-weight: 600;
-  line-height: 0.85;
+  line-height: 0.9;
   color: var(--app-ink);
 }
-.pulse-wx-spark {
-  width: 100%;
-  height: 44px;
-  margin-top: 8px;
-  display: block;
-}
 
-/* Gauge tile. */
-.pulse-tile--gauge {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-height: 150px;
-}
-.pulse-gauge {
-  width: 98px;
-  height: 98px;
-  border-radius: 50%;
-  margin: 4px auto 2px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  background: conic-gradient(var(--gc) calc(var(--pct) * 1%), color-mix(in srgb, var(--app-ink) 8%, transparent) 0);
-}
-.pulse-gauge::before {
-  content: "";
-  position: absolute;
-  inset: 9px;
-  border-radius: 50%;
-  background: var(--app-bg-elevated);
-}
-.pulse-tile--gauge.is-hot .pulse-gauge::before {
-  background: color-mix(in srgb, var(--accent) 13%, var(--app-bg-elevated));
-}
-.pulse-gauge-in {
-  position: relative;
-  text-align: center;
-}
-.pulse-gauge-num {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--app-ink);
-}
-.pulse-gauge-unit {
-  display: block;
-  margin-top: 3px;
-  font-size: 8px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--app-ink-3);
-}
-
-/* Status tile. */
+/* Status / stat tile — compact, dense, typography-led. */
 .pulse-tile--status {
-  min-height: 92px;
+  min-height: 74px;
   display: flex;
   flex-direction: column;
 }
 .pulse-sdot {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 11px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
 .pulse-sval {
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.1;
@@ -4027,18 +3973,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-ink-2);
 }
 
-/* Sparkline draw-in (normalized pathLength). */
-.pulse-spark-line {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: pulse-draw 0.9s ease-out forwards;
-}
-@keyframes pulse-draw {
-  to { stroke-dashoffset: 0; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pulse-ticker-track { animation: none; padding-left: 0; }
-  .pulse-spark-line { animation: none; stroke-dashoffset: 0; }
   .pulse-tile { transition: none; }
 }
