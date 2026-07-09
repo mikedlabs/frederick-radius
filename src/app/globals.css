@@ -3912,36 +3912,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .pulse-seg-btn.is-on .pulse-seg-count { opacity: 0.85; }
 
-/* A live hairline under the board header — a slow scan highlight sweeps
- * across it so the panel reads as powered-on, not a static card. */
-.pulse-scanline {
-  position: relative;
-  height: 1px;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-border) 85%, transparent);
-}
-.pulse-scanline::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 34%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--app-brand) 55%, transparent),
-    transparent
-  );
-  animation: pulse-scan 5.6s linear infinite;
-}
-@keyframes pulse-scan {
-  from { transform: translateX(-120%); }
-  to   { transform: translateX(420%); }
-}
-
 /* Bento grid. */
 .pulse-bento {
   display: grid;
@@ -4126,5 +4096,4 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .pulse-tile.is-alert { transition: none; animation: none; opacity: 1; transform: none; }
   .pulse-sdot.is-live { animation: none; }
   .pulse-meter-fill { animation: none; transform: none; }
-  .pulse-scanline::after { animation: none; opacity: 0; }
 }

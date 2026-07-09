@@ -468,7 +468,6 @@ export default function PulseBoard({
         </div>
 
         {/* A hairline that reads live: a slow scan highlight sweeps it. */}
-        <div className="pulse-scanline" aria-hidden />
 
         <div className="pulse-seg" role="tablist" aria-label="Filter tiles by status">
           {FILTERS.map((f, i) => {
