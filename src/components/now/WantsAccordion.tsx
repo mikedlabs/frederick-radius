@@ -215,7 +215,7 @@ export default function WantsAccordion({
             key={sub.href + sub.label}
             href={hrefFor(sub.href)}
             onClick={() => haptic("light")}
-            className="tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"
+            className="tap-44-y tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"
             style={{
               border: "1px solid var(--app-border)",
               background: "var(--app-bg-elevated)",

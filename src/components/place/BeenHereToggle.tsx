@@ -30,7 +30,7 @@ export default function BeenHereToggle({ placeSlug, label }: { placeSlug: string
       onClick={(e) => { e.preventDefault(); toggle(); }}
       aria-pressed={been}
       aria-label={been ? `Mark ${label} as not visited` : `Mark ${label} as visited`}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+      className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
       style={{
         borderColor: been ? "var(--app-cool)" : "var(--app-border)",
         background: been ? "var(--app-cool)" : "var(--app-bg-elevated)",
