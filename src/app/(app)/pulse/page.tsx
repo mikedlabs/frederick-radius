@@ -944,7 +944,6 @@ export default async function PulsePage({
       active: marcAlerts.length > 0,
       attention: false,
       kind: "status",
-      mono: marcBoard.serviceToday && !!marcNext,
       sourceLabel: "MTA MARC · Brunswick Line",
       peek: marcAlerts.length > 0
         ? marcAlerts[0].header || "Service alert"
