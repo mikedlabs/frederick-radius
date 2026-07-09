@@ -548,7 +548,11 @@ export default function EventsExplorer({
         // grouping so the order the user chose is the order they see.
         // Capped at 100 to keep the page snappy; the rest are reachable
         // by tightening filters or switching to the calendar/map view.
-        <ul className="grid gap-2 lg:grid-cols-2">
+        // grid-cols-1 (minmax(0,1fr)) clamps the mobile track to the container
+        // — a bare `grid` leaves an auto track that a card with a wide
+        // min-content (one long unbroken token) stretches past the page edge
+        // (397px track in a 358px column, Jul-9 mobile audit).
+        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} />
@@ -636,7 +640,9 @@ export default function EventsExplorer({
                 {rest.length > 0 && (
                   <>
                     {shown.length > 0 && (
-                      <ol className="reveal-up grid gap-2.5 lg:grid-cols-2">
+                      // grid-cols-1: clamp the peek track (see the sorted
+                      // list above) so no card can widen it past the page.
+                      <ol className="reveal-up grid grid-cols-1 gap-2.5 lg:grid-cols-2">
                         {shown.map((e) => (
                           <li key={`${e.slug}-${e.starts_at}`}>
                             <EventCard event={e} variant="glance" live={live.has(e.slug)} />

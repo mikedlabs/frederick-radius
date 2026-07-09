@@ -101,6 +101,13 @@ export type TodaysDeal = {
    *  face. Undefined when none — the surface draws a designed plate instead. */
   photo?: string;
   offer: string;
+  /** Short essence headline distilled from the offer at the boundary ("Nightly
+   *  AYCE Crabs special") — what the wallet lip prints. The full text stays in
+   *  `offer` for the raised card. */
+  headline: string;
+  /** Terms qualifier lifted from a parenthetical in the offer ("Eat-in only"),
+   *  shown as part of the mono lip fact next to the hours. */
+  terms?: string;
   /** The hours the deal runs ("5–9 PM", "All day"), parsed out of the offer
    *  text so the surface can show WHEN as its own distinct datum next to the
    *  place and the deal. Undefined when the text states no time. */
@@ -204,6 +211,101 @@ export function stripProvenance(s: string): string {
   return out.replace(/[\s,;:–-]+$/g, "").trim();
 }
 
+/* ── Headline distillation — the wallet lip is ~2 short lines, but Field
+   Notes offers are field-report sentences ("Nightly AYCE Crabs special
+   Tuesday, Wednesday, and Thursday: all-you-can-eat soup & salad bar…").
+   Distill at the boundary, not render time: strip embedded day-lists and
+   parentheticals (a terms-y one becomes the lip fact), then keep the first
+   essence clause — so the lip reads "Nightly AYCE Crabs special", never a
+   mid-thought ellipsis (Jul-9 mobile audit). The FULL offer still ships in
+   `offer` for the raised card body. */
+
+/** One weekday token, any common spelling ("tue", "tues", "tuesdays"…). */
+const DAY_WORD =
+  "(?:sun(?:days?)?|mon(?:days?)?|tues?(?:days?)?|wed(?:nesdays?|s)?|thur?s?(?:days?)?|fri(?:days?)?|sat(?:urdays?)?)";
+/** A RUN of two-plus weekday names ("Tuesday, Wednesday, and Thursday",
+ *  "Tue-Fri"), optionally led by a scheduling word. The deck header already
+ *  states the day, so an embedded day-list is noise in a headline. A single
+ *  mid-phrase day ("Taco Tuesday", "Crabby Wednesday") is a brand name and
+ *  stays. */
+const DAY_SEP = String.raw`(?:\s*,\s*(?:and\s+|&\s*)?|\s+(?:and|&)\s+|\s*[-–—]\s*|\s+(?:through|thru|to)\s+)`;
+const DAY_LIST_RE = new RegExp(
+  String.raw`(?:\b(?:every|each|on|served)\s+)?\b${DAY_WORD}(?:${DAY_SEP}${DAY_WORD}\b)+`,
+  "gi",
+);
+/** "every Thursday (night)" — scheduling, not identity; out of the headline. */
+const EVERY_DAY_RE = new RegExp(
+  String.raw`\b(?:every|each)\s+${DAY_WORD}(?:\s+(?:night|evening|morning|afternoon)s?)?\b`,
+  "gi",
+);
+/** Parenthetical qualifiers worth surfacing as the lip fact ("eat-in only"). */
+const TERMS_RE =
+  /\b(only|dine[-\s]?in|eat[-\s]?in|cash|carry[-\s]?out|to[-\s]?go|21\+|per\s+(?:person|table)|no\s+sharing|while\s+supplies)\b/i;
+
+/** Punctuation tidy-up after a mid-string removal: collapse doubled spaces,
+ *  orphaned commas before other punctuation, dangling separators, and a
+ *  trailing sentence period (the lip is a label, not a sentence). */
+function tidyClause(s: string): string {
+  return s
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,;:)])/g, "$1")
+    .replace(/,\s*([;.,])/g, "$1")
+    .replace(/:\s*([;.])/g, "$1")
+    .replace(/[\s,;:–-]+$/g, "")
+    .replace(/^[\s,;:]+/, "")
+    .replace(/\.$/, "")
+    .trim();
+}
+
+/** The last natural cut point (comma / "and" / "with" / "plus") whose prefix
+ *  still fits the lip — a distillation, never a mid-word ellipsis. */
+function bestCut(s: string): string | null {
+  let best: string | null = null;
+  const re = /,|\s(?:and|with|plus)\s/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    const prefix = s.slice(0, m.index);
+    if (prefix.length >= 10 && prefix.length <= 48) best = prefix;
+    if (m.index > 48) break;
+  }
+  return best;
+}
+
+export type DistilledOffer = {
+  /** Short essence headline for the card lip ("Nightly AYCE Crabs special"). */
+  headline: string;
+  /** Terms qualifier lifted from a parenthetical ("Eat-in only"), for the lip
+   *  fact next to the hours. Undefined when the offer states none. */
+  terms?: string;
+};
+
+/** Distill a cleaned offer (post trimDay/stripHours) into a lip headline plus
+ *  an optional terms fact. Pure; exported for the spec. */
+export function distillOffer(offer: string): DistilledOffer {
+  let terms: string | undefined;
+  // Lift parentheticals out of the headline; a short terms-y one ("eat-in
+  // only") becomes the lip fact instead of vanishing.
+  let t = offer.replace(/\s*\(([^()]*)\)/g, (_, inner: string) => {
+    const s = inner.trim();
+    if (!terms && s.length <= 24 && TERMS_RE.test(s)) {
+      terms = s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    return " ";
+  });
+  // The deck header already states the day: embedded day-lists and "every
+  // Thursday" scheduling come out of the headline (the full offer keeps them).
+  t = tidyClause(t.replace(DAY_LIST_RE, " ").replace(EVERY_DAY_RE, " "));
+  // Essence = the first clause; a colon that introduces elaboration cuts there.
+  let head = t.split(/;|\.\s+/)[0] ?? "";
+  const colon = head.indexOf(":");
+  if (colon >= 8) head = head.slice(0, colon);
+  if (head.length > 48) head = bestCut(head) ?? head;
+  head = tidyClause(head);
+  // Stripping gutted it (a day-only offer text) — fall back to the raw clause.
+  if (head.length < 4) head = tidyClause(offer.split(/;|\.\s+/)[0] ?? offer);
+  return { headline: head, terms };
+}
+
 const OK: Record<string, number> = { high: 2, medium: 1 };
 
 /**
@@ -233,15 +335,19 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       if (!readsAsOffer(today)) continue;
       const hours = extractHours(today);
       const fn = fieldNotesFor(slug);
+      // The offer leads with the WHAT; the day prefix + the hours are pulled
+      // out (header states the day, a chip states the time) so the headline
+      // isn't a redundant restatement.
+      const offer = stripHours(trimDay(today));
+      const distilled = distillOffer(offer);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
         downtown: place.municipality === "frederick",
         category: place.category,
         photo: place.google_photo_url,
-        // The offer leads with the WHAT; the day prefix + the hours are pulled
-        // out (header states the day, a chip states the time) so the headline
-        // isn't a redundant restatement.
-        offer: stripHours(trimDay(today)),
+        offer,
+        headline: distilled.headline,
+        terms: distilled.terms,
         hours,
         park: fn?.parking?.text,
         tip: fn?.insider?.[0]?.text,

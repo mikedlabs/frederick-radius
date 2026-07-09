@@ -57,7 +57,16 @@ function DealCard({
   const router = useRouter();
   const category = d.category ?? "";
   const hue = DEAL_GROUND[category] ?? CATEGORY_BY_SLUG[category]?.color ?? "#8A2433";
-  const lip = d.hours ?? "Today";
+  // The mono lip fact: WHEN, plus any terms qualifier the boundary lifted out
+  // of the headline ("4–10 PM · Eat-in only").
+  const lip = [d.hours ?? "Today", d.terms].filter(Boolean).join(" · ");
+  // "Downtown Frederick" is a neighborhood label; TOWN is Frederick — the
+  // shorter true name also stops the stub cell clipping at 390px.
+  const town = d.town?.replace(/^Downtown\s+/i, "");
+  // Raised body: skip the offer lines when the distilled headline already says
+  // the whole offer — the body would just restate the title word for word.
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9$%]+/g, " ").trim();
+  const bodyRepeatsHeadline = norm(d.offer) === norm(d.headline);
 
   function toggle() {
     if (open) {
@@ -104,7 +113,7 @@ function DealCard({
         <div className="sw-top">
           <span className="sw-brand">
             <CategoryIcon slug={category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
-            <span className="sw-name">{d.offer}</span>
+            <span className="sw-name">{d.headline}</span>
           </span>
           <span className="sw-lipfact">{lip}</span>
           <span className="sw-tier">{(CATEGORY_BY_SLUG[category]?.name ?? "Special").toUpperCase()}</span>
@@ -117,12 +126,14 @@ function DealCard({
           style={{ color: "rgba(243,236,220,0.82)" }}
         >
           {d.name}
-          {d.town ? <span style={{ color: "rgba(243,236,220,0.6)" }}>{"  ·  "}{d.town}</span> : null}
+          {town ? <span style={{ color: "rgba(243,236,220,0.6)" }}>{"  ·  "}{town}</span> : null}
         </p>
 
         {/* Raised-only: the full offer as clause lines + an insider note. */}
         <div className="sw-facebody">
-          <DealLines deal={d.offer} tone="onPhoto" max={3} className="space-y-0.5 text-[13px]" />
+          {!bodyRepeatsHeadline && (
+            <DealLines deal={d.offer} tone="onPhoto" max={3} className="space-y-0.5 text-[13px]" />
+          )}
           {d.tip && (
             <>
               <p className="sw-tip">{d.tip}</p>
@@ -142,7 +153,7 @@ function DealCard({
             </div>
             <div className="sw-cell">
               <dt>Town</dt>
-              <dd>{d.town ?? "Frederick County"}</dd>
+              <dd>{town ?? "Frederick County"}</dd>
             </div>
             {d.park && (
               <div className="sw-cell sw-cell-wide">
@@ -176,7 +187,7 @@ export default function DealsWallet({ deals }: { deals: TodaysDeal[] }) {
   if (deals.length === 0) return null;
   const openValid = deals.some((d) => d.slug === openSlug);
   return (
-    <div className="sw-stack" role="list" aria-label="Today's specials, as a card wallet">
+    <div className="sw-stack sw-deals" role="list" aria-label="Today's specials, as a card wallet">
       {deals.map((d, i) => {
         const open = openValid && d.slug === openSlug;
         return (
