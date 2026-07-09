@@ -11,7 +11,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
@@ -190,37 +190,40 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       />
       <PageBloom variant="single" />
 
-      {/* Curated aerial/seasonal county hero — OUR photography (Photo
-          Policy), never a place's Google photo. Mirrors the /m town hero
-          so the page leads with the county itself; eyebrow + serif title
-          + blurb overlay a dark gradient. */}
-      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
-        <div className="relative h-44 w-full sm:h-56">
-          <SeasonalPhoto
-            season="auto"
-            alt={`${c.name} across Frederick County`}
-            priority
-            kenBurns
-            sizes="(max-width: 720px) 100vw, 720px"
-            className="absolute inset-0"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
-              <span
-                style={{ background: c.color }}
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                aria-hidden
-              />
-              Category · Frederick County
-            </p>
-            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white sm:text-[36px]">
-              {c.name}
-            </h1>
-            <p className="font-serif text-[14px] italic leading-snug text-white/90 sm:text-[15px]">
-              {c.blurb}
-            </p>
-          </div>
+      {/* Typographic category hero. The old hero draped a generic "season=auto"
+          county aerial behind every category, so "Pizza" landed on a random
+          pool shot — irrelevant, and against the field-guide bar (typography
+          carries hierarchy; no misleading decoration). Instead: a calm cream
+          plate tinted by the category's own ink, its engraved glyph as a faint
+          watermark, and the eyebrow / serif title / blurb in ink. On-brand for
+          every category, and honest — no photo pretending to be the subject. */}
+      <header
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          borderColor: `color-mix(in srgb, ${c.color} 30%, var(--app-border))`,
+          background: `linear-gradient(135deg, color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
+          boxShadow: "var(--app-elev-1), var(--app-hi)",
+        }}
+      >
+        <CategoryIcon
+          slug={c.slug}
+          className="pointer-events-none absolute -bottom-7 -right-5 h-40 w-40 sm:h-48 sm:w-48"
+          style={{ color: `color-mix(in srgb, ${c.color} 15%, transparent)` }}
+        />
+        <div className="relative p-5 sm:p-6">
+          <p
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
+            style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}
+          >
+            <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c.color }} />
+            Category · Frederick County
+          </p>
+          <h1 className="mt-2 font-serif text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]" style={{ color: "var(--app-ink)" }}>
+            {c.name}
+          </h1>
+          <p className="mt-1.5 max-w-[46ch] font-serif text-[14px] italic leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+            {c.blurb}
+          </p>
         </div>
       </header>
       {fromLabel ? (
