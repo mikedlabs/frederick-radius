@@ -117,12 +117,17 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
           leading "Browsing" word was dropped so it reads as a scope chip. */}
       <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-3)" }}>
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
-        <span className="tap-44 relative inline-flex items-center">
+        {/* No .tap-44 wrapper here: its pointer-events overlay would sit on top
+            of the native <select> and swallow taps (the select would not open).
+            A native select is tappable across its whole box, so we give the
+            select itself a ≥44px hit box via padding + a matching negative
+            margin, which keeps the row's visual height unchanged. */}
+        <span className="relative inline-flex items-center">
           <select
             aria-label="Choose the town you're browsing"
             value={homeSlug ?? ""}
             onChange={(e) => pickTown(e.target.value)}
-            className="cursor-pointer appearance-none bg-transparent pr-4 font-semibold focus:outline-none focus-visible:underline"
+            className="-my-[11px] min-h-[44px] cursor-pointer appearance-none bg-transparent py-[11px] pr-4 font-semibold focus:outline-none focus-visible:underline"
             style={{ color: "var(--app-brand)" }}
           >
             {!homeMuni && <option value="">all of Frederick County</option>}
