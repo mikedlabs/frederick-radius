@@ -1,14 +1,10 @@
-import Link from "next/link";
-import { Ticket, ChevronRight } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
-import { eventWhenLabel } from "@/lib/eventWhenLabel";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
-import EventCountdown from "./EventCountdown";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -30,17 +26,6 @@ import EventCountdown from "./EventCountdown";
  * IS the hero rather than a card stacked on top of one. Server
  * component; the NWS fetch is shared/cached with the rest of the page.
  */
-
-type TonightEvent = {
-  slug: string;
-  title: string;
-  venue_name?: string | null;
-  /** ISO start — so the line labels by the event's REAL day (Tonight /
-   *  Tomorrow / Friday), never just by the current time-of-day band. */
-  starts_at: string;
-  /** ISO end — powers the live "On now" / "in 40 min" countdown clause. */
-  ends_at?: string | null;
-} | null;
 
 type Band = "morning" | "midday" | "afternoon" | "evening" | "late" | "overnight";
 
@@ -92,13 +77,7 @@ function fmtTime(d: Date | null): string | null {
   }).format(d);
 }
 
-export default async function TodayCard({
-  tonightEvent = null,
-}: {
-  /** The page already picks the featured/soonest event; passed in so
-   *  this card stays a pure composition of existing data. */
-  tonightEvent?: TonightEvent;
-}) {
+export default async function TodayCard() {
   const now = new Date();
   const band = bandFor(easternHour(now));
   const dateStr = new Intl.DateTimeFormat("en-US", {
@@ -196,48 +175,9 @@ export default async function TodayCard({
         </div>
       )}
 
-      {/* Tonight's headline event — a compact, framed "what's on" row instead
-          of a long underlined run-on sentence on the gradient. The when-label
-          is a mono eyebrow; the title sits on ONE truncated line so a
-          firehose feed title (sponsors, double bills) never blows the hero up
-          to three wrapped lines. The whole row is the tap target. */}
-      {tonightEvent && (
-        <Link
-          href={`/events/${tonightEvent.slug}`}
-          className="tactile-interactive group mt-3 flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-2.5 py-2"
-          style={{
-            background: "color-mix(in srgb, currentColor 9%, transparent)",
-            // Pressed-glass inlay: a top highlight above the edge ring makes the
-            // one tappable object read as set INTO the day's light. Tone-adaptive
-            // via currentColor, so it holds over light and dark skies alike.
-            boxShadow:
-              "inset 0 1px 0 color-mix(in srgb, currentColor 22%, transparent), inset 0 0 0 1px color-mix(in srgb, currentColor 15%, transparent)",
-          }}
-        >
-          <span
-            aria-hidden
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
-            style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
-          >
-            <Ticket className="h-3.5 w-3.5" strokeWidth={2} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-meta font-semibold uppercase tracking-[0.14em] opacity-65">
-              {eventWhenLabel(tonightEvent.starts_at, now)}
-              <EventCountdown startsAt={tonightEvent.starts_at} endsAt={tonightEvent.ends_at} />
-            </span>
-            <span className="block truncate text-body font-semibold leading-snug">
-              {tonightEvent.title}
-            </span>
-          </span>
-          <ChevronRight
-            aria-hidden
-            className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
-            strokeWidth={2}
-          />
-        </Link>
-      )}
-
+      {/* Tonight's headline event moved OUT of this card (owner call,
+          2026-07-10): it now renders as its own solo card directly below the
+          weather hero — see TonightSolo in app/(app)/today/page.tsx. */}
     </section>
   );
 }
