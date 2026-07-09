@@ -2169,6 +2169,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    (--app-ink-inverse) clears AA against them. Vermilion appears ONLY as the
    live dot / live-card ring.
    ========================================================================== */
+/* ── Explore wallet deck ──────────────────────────────────────────────
+ * The field-guide index (Explore / MoreSheet) as a deck of wallet cards
+ * that FANS IN on open and settles into a readable, tappable stack. Each
+ * card tucks under the next showing its title lip; the last shows fully.
+ * Reuses the .sw-m-* motifs. Reduced-motion lands settled with no fan. */
+.ex-deck { position: relative; }
+.ex-slot { margin-top: -60px; }
+.ex-slot:first-child { margin-top: 0; }
+.ex-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  min-height: 116px;
+  padding: 14px 16px;
+  border-radius: var(--app-radius-lg);
+  color: #fff;
+  box-shadow: 0 12px 24px -14px rgba(20, 20, 18, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  animation: ex-fanin 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--ex-i, 0) * 52ms);
+  will-change: transform, opacity;
+}
+.ex-slot:last-child .ex-card { min-height: 132px; }
+.ex-card:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.5; mix-blend-mode: soft-light; pointer-events: none; }
+.ex-card .ex-sheen {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, transparent 34%, rgba(255, 255, 255, 0.16) 50%, transparent 66%);
+}
+.ex-card .ex-seal { position: absolute; right: 14px; bottom: 11px; opacity: 0.82; pointer-events: none; }
+@keyframes ex-fanin {
+  from { opacity: 0; transform: translateY(46px) rotate(var(--ex-rot, 0deg)) scale(0.92); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-card { animation: none; opacity: 1; transform: none; }
+}
+
 /* The wallet is a hand-held object: cap the stack at phone width and center
    it, so desktop doesn't stretch each card to the full content column. */
 .sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
