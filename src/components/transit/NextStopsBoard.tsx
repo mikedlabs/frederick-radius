@@ -2,35 +2,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import TRANSIT from "@/data/transit.json";
+import { useLiveVehicles } from "./useLiveVehicles";
 
 /**
  * NextStopsBoard — a live arrivals board for the county buses.
  *
  * The map answers "where are the buses"; this answers "where is each one
- * headed next, and when" WITHOUT tapping a single icon. It polls the same
- * /api/transit/vehicles feed LiveBuses uses (each vehicle already carries its
- * resolved nextStop + ETA from the server join) and renders a flight-board:
- * every bus as a row — route chip · next stop · live countdown — sorted by
- * soonest arrival, ticking down between polls.
+ * headed next, and when" WITHOUT tapping a single icon. It reads the shared
+ * /api/transit/vehicles poll (useLiveVehicles — each vehicle already carries
+ * its resolved nextStop + ETA from the server join) and renders a
+ * flight-board: every bus as a row — route chip · next stop · live countdown
+ * — sorted by soonest arrival, ticking down between polls.
  *
  * Honest by construction: renders nothing when the feed reports zero buses;
  * a bus with no resolved next stop reads "en route" rather than a guess.
  */
 
-type NextStop = { id: string; name: string; lat: number; lng: number; etaEpoch?: number };
-type LiveVehicle = {
-  vehicleId: string;
-  routeId?: string;
-  lat: number;
-  lng: number;
-  nextStop?: NextStop;
-};
 type TransitRoute = { id: string; short: string; name: string; color: string };
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
   (TRANSIT.routes as TransitRoute[]).map((r) => [r.id, r]),
 );
 
-const POLL_MS = 15_000;
 const MAX_ROWS = 8;
 
 function readableOn(hex: string): string {
@@ -50,34 +42,15 @@ function etaMins(etaEpoch: number | undefined, nowMs: number): number | null {
 }
 
 export default function NextStopsBoard() {
-  const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
+  const { vehicles, loaded } = useLiveVehicles();
   const [nowMs, setNowMs] = useState(0);
-  const [loaded, setLoaded] = useState(false);
 
+  // The countdowns tick every second between the shared poller's refreshes.
+  // nowMs starts 0 and etaMins suppresses ETAs until the first tick lands
+  // (within a second), so there's never a Date.now() in render.
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
-        if (!r.ok) return;
-        const d = (await r.json()) as { vehicles?: LiveVehicle[] };
-        if (alive && Array.isArray(d.vehicles)) {
-          setVehicles(d.vehicles);
-          setNowMs(Date.now());
-          setLoaded(true);
-        }
-      } catch {
-        /* keep last known */
-      }
-    };
-    load();
-    const poll = setInterval(load, POLL_MS);
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => {
-      alive = false;
-      clearInterval(poll);
-      clearInterval(tick);
-    };
+    return () => clearInterval(tick);
   }, []);
 
   // Buses with a resolved next stop, soonest ETA first; the rest ("en route",

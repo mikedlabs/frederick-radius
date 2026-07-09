@@ -1,0 +1,247 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import TRANSIT from "@/data/transit.json";
+import { useLiveVehicles } from "./useLiveVehicles";
+import { fractionAlong, pearlsFor, type Pearl } from "./routeGeometry";
+
+/**
+ * RoutePearls — every ACTIVE route as a string of pearls: the stop sequence
+ * flattened to one horizontal line, with the live bus dot sitting where the
+ * bus actually is along it.
+ *
+ * The map shows WHERE the buses are in space; this shows where each one is
+ * along its RUN — no WebGL, no tiles, just the pulse board's instrument
+ * language (mono labels, cream ground, route-colored dots). It's the
+ * transit answer a rider actually wants at a glance: "the 20 is about
+ * two-thirds through its loop."
+ *
+ * GLIDE: between the feed's ~15 s refreshes each dot eases linearly toward
+ * its new fix instead of teleporting. Interpolation only, never
+ * extrapolation — the tween clamps at the last reported position, so the
+ * dot is always at or behind truth, never guessed ahead of it. A jump
+ * bigger than a third of the line (a loop route crossing its seam, or a
+ * data hiccup) snaps discretely rather than sweeping the whole diagram.
+ * Reduced-motion users get discrete jumps always.
+ *
+ * Honest by construction: rows exist only for routes with a bus on the
+ * road; zero buses reads as a quiet line, not an empty grid; a bus the feed
+ * doesn't tie to a route is counted in a footnote instead of being pinned
+ * somewhere invented.
+ */
+
+type TransitRoute = { id: string; short: string; name: string; color: string };
+const ROUTES = TRANSIT.routes as TransitRoute[];
+const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(ROUTES.map((r) => [r.id, r]));
+
+/** "10 Connector" reads as chip + name; strip the short code only when the
+ *  name actually leads with it (shuttle names like "Brunswick Jefferson
+ *  Shuttle" don't). */
+function nameSansShort(route: TransitRoute): string {
+  return route.name.startsWith(`${route.short} `) ? route.name.slice(route.short.length + 1) : route.name;
+}
+
+const GLIDE_MS = 1200;
+// A fraction jump larger than this in one poll isn't a bus driving — it's a
+// loop route wrapping past its seam or a bad fix. Snap instead of sweeping.
+const SNAP_FRAC = 0.35;
+
+type BusOnLine = { id: string; frac: number };
+type Row = { route: TransitRoute; pearls: Pearl[]; buses: BusOnLine[] };
+
+/** Numeric routes first in numeric order (10, 20, 40…), lettered shuttles
+ *  (BJS, ETS…) after, alphabetically. */
+function routeOrder(a: Row, b: Row): number {
+  const na = parseInt(a.route.short, 10);
+  const nb = parseInt(b.route.short, 10);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  if (Number.isFinite(na)) return -1;
+  if (Number.isFinite(nb)) return 1;
+  return a.route.short.localeCompare(b.route.short);
+}
+
+export default function RoutePearls() {
+  const { vehicles, loaded } = useLiveVehicles();
+  // Computed once on the client; rows only render after the first poll, so
+  // there's no hydration mismatch (same pattern as the map's LiveBuses).
+  const [reduced] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+  );
+
+  // Group live buses onto their route lines. `unplaced` counts buses the
+  // feed reported without a route we can draw — footnoted, never invented.
+  const { rows, unplaced } = useMemo(() => {
+    const byRoute = new Map<string, Row>();
+    let missing = 0;
+    for (const v of vehicles) {
+      const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
+      const frac = v.routeId ? fractionAlong(v.routeId, { lat: v.lat, lng: v.lng }) : null;
+      if (!route || frac == null) {
+        missing++;
+        continue;
+      }
+      let row = byRoute.get(route.id);
+      if (!row) {
+        row = { route, pearls: pearlsFor(route.id), buses: [] };
+        byRoute.set(route.id, row);
+      }
+      row.buses.push({ id: v.vehicleId, frac });
+    }
+    return { rows: [...byRoute.values()].sort(routeOrder), unplaced: missing };
+  }, [vehicles]);
+
+  // GLIDE — displayed fraction per bus, eased toward each poll's new fix.
+  const [disp, setDisp] = useState<Record<string, number>>({});
+  const dispRef = useRef(disp);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    dispRef.current = disp;
+  }, [disp]);
+
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const from = dispRef.current;
+    const tweens = rows.flatMap((row) =>
+      row.buses.map((b) => {
+        let start = from[b.id] ?? b.frac; // new bus appears in place, no sweep-in
+        if (Math.abs(b.frac - start) > SNAP_FRAC) start = b.frac; // seam wrap / bad fix
+        return { id: b.id, from: start, to: b.frac };
+      }),
+    );
+    // Duration 0 under reduced-motion: one frame, straight to the new fix.
+    // Driving even the snap through rAF keeps setState out of the effect body.
+    const dur = reduced ? 0 : GLIDE_MS;
+    const t0 = performance.now();
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const step = (now: number) => {
+      // t clamps at 1: linear interpolation TOWARD the fix, no extrapolation.
+      const t = dur === 0 ? 1 : Math.min(1, (now - t0) / dur);
+      const next: Record<string, number> = {};
+      for (const tw of tweens) next[tw.id] = tw.from + (tw.to - tw.from) * t;
+      setDisp(next);
+      if (t < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [rows, reduced]);
+
+  // Quiet before the first answer; the map below carries the loading beat.
+  if (!loaded) return null;
+
+  return (
+    <div
+      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+    >
+      <div
+        className="flex items-center justify-between border-b px-3 py-2"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span
+          className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.13em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <span
+            aria-hidden
+            className="pulse-dot inline-block h-1.5 w-1.5 rounded-full"
+            style={{ background: "var(--app-positive)" }}
+          />
+          On the road
+        </span>
+        <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          {rows.length} of {ROUTES.length} routes
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="px-3 py-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+          No buses on the road right now.
+        </p>
+      ) : (
+        <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+          {rows.map((row) => (
+            <li key={row.route.id} className="px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: row.route.color, boxShadow: "inset 0 0 0 1px rgba(22,20,14,0.14)" }}
+                  />
+                  <span className="truncate font-mono text-[11.5px] font-bold tabular-nums" style={{ color: "var(--app-ink)" }}>
+                    {row.route.short}
+                    <span className="font-sans font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                      {" "}
+                      {nameSansShort(row.route)}
+                    </span>
+                  </span>
+                </span>
+                {row.buses.length > 1 && (
+                  <span className="shrink-0 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {row.buses.length} buses
+                  </span>
+                )}
+              </div>
+
+              {/* The string of pearls. Decorative to a screen reader — the
+                  row header above already says which route is running. */}
+              <div aria-hidden className="relative mt-2 h-3.5">
+                <span
+                  className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full"
+                  style={{ background: "var(--app-border)" }}
+                />
+                {row.pearls.map((p, i) => {
+                  const terminal = i === 0 || i === row.pearls.length - 1;
+                  return (
+                    <span
+                      key={p.id}
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                      style={{
+                        left: `${p.frac * 100}%`,
+                        width: terminal ? 6 : 3.5,
+                        height: terminal ? 6 : 3.5,
+                        background: terminal ? "var(--app-ink-3)" : "var(--app-bg-elevated-solid)",
+                        border: terminal ? "none" : "1px solid var(--app-ink-3)",
+                      }}
+                    />
+                  );
+                })}
+                {row.buses.map((b) => (
+                  <span
+                    key={b.id}
+                    className="live-dot"
+                    style={{
+                      // Inline position: the .live-dot class declares
+                      // `position: relative` (it's built for inline eyebrow
+                      // dots) and beats a Tailwind `absolute` utility.
+                      position: "absolute",
+                      top: "50%",
+                      left: `${(disp[b.id] ?? b.frac) * 100}%`,
+                      width: 10,
+                      height: 10,
+                      margin: 0,
+                      transform: "translate(-50%,-50%)",
+                      background: row.route.color,
+                      boxShadow: "0 0 0 2px var(--app-bg-elevated-solid), 0 1px 3px rgba(22,20,14,0.25)",
+                    }}
+                  />
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {unplaced > 0 && rows.length > 0 && (
+        <p
+          className="px-3 py-1.5 text-[10.5px]"
+          style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}
+        >
+          +{unplaced} more {unplaced === 1 ? "bus" : "buses"}, route not reported
+        </p>
+      )}
+    </div>
+  );
+}
