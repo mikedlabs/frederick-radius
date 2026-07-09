@@ -1,3 +1,4 @@
+import { meterUsage } from "@/lib/usage-meter";
 import { NextResponse } from "next/server";
 import { askFrederick } from "@/lib/ask/answer";
 import { isSameOriginRequest, isRateLimited } from "@/lib/origin-check";
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     /* empty body */
   }
   const query = typeof body.query === "string" ? body.query.slice(0, 300) : "";
+  meterUsage("anthropic_ask");
   const result = await askFrederick(query);
   return NextResponse.json(result);
 }

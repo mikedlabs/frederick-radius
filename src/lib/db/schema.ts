@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, integer, real, boolean, jsonb,
+  pgTable, uuid, text, integer, real, boolean, jsonb, date,
   smallint, timestamp, index, uniqueIndex, doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -338,6 +338,25 @@ export const beta_emails = pgTable(
  * role owns all reads/writes; the edge middleware never touches the DB (it
  * verifies a signed cookie), so the hot path stays fast.
  */
+/**
+ * usage_counters — daily call counters for the paid upstreams (Google photos,
+ * Ask LLM, Mapbox). One row per (Eastern day, upstream); incremented fail-soft
+ * beside each paid fetch (lib/usage-meter.ts) and read by /admin/costs. RLS
+ * deny-all like every table; server role only.
+ */
+export const usage_counters = pgTable(
+  "usage_counters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    upstream: text("upstream").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => ({
+    dayUpstreamUq: uniqueIndex("usage_counters_day_upstream_uq").on(t.day, t.upstream),
+  }),
+);
+
 export const beta_codes = pgTable(
   "beta_codes",
   {

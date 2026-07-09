@@ -11,6 +11,7 @@
  * The `name` MUST be a Google "places/.../photos/..." resource path — we
  * validate the shape to prevent the route being used as an open proxy.
  */
+import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { list, put } from "@vercel/blob";
 import { photoUrl } from "@/lib/integrations/google-places";
@@ -42,6 +43,7 @@ async function serveFromBlob(name: string, w: number, googleUrl: string): Promis
     const { blobs } = await list({ prefix: key, limit: 1 });
     const existing = blobs.find((b) => b.pathname === key);
     if (existing) return redirect(existing.url); // already mirrored — no Google call
+    meterUsage("google_photo");
     const up = await fetch(googleUrl, { redirect: "follow" });
     if (!up.ok) return null; // let the streaming path handle the failure/placeholder
     const buf = Buffer.from(await up.arrayBuffer());
@@ -190,6 +192,7 @@ export async function GET(req: NextRequest) {
   if (mirrored) return mirrored;
 
   try {
+    meterUsage("google_photo");
     const upstream = await fetch(url, {
       // Google redirects to the actual CDN object; follow it.
       redirect: "follow",

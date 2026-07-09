@@ -11,6 +11,7 @@
  * server-side and streams the PNG back with a long CDN cache, so one
  * Mapbox render serves every visitor of a place for a month.
  */
+import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
 
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
     `?access_token=${MAPBOX_TOKEN}`;
 
   try {
+    meterUsage("mapbox_static");
     const r = await fetch(upstream, {
       headers: MAPBOX_SERVER_HEADERS,
       next: { revalidate: 2592000 },
