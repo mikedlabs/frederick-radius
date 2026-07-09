@@ -49,7 +49,7 @@ export default async function SettingsPage() {
           className="text-[14px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Every pick here changes what surfaces on Today and Radius.
+          Every pick here tunes what leads on Today and the Map.
           Nothing here is required, and nothing here is shared.
         </p>
       </header>

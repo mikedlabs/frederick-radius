@@ -325,7 +325,9 @@ export default function PlaceCard({
             <div className="flex items-start gap-3">
               <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={48} />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                {/* pr-9 clears the absolutely-positioned SaveButton (36px at
+                    right-2.5) so the ml-auto distance never renders under it. */}
+                <div className="flex items-center gap-2 pr-9">
                   <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                     {cat?.name ?? place.category}
                   </span>

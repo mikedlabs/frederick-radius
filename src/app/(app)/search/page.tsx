@@ -90,6 +90,15 @@ export default async function SearchPage({
   // Cap at 50 results to keep the page scannable; if more rows match
   // a power user can refine the query.
   const hits = query ? search(query, 50) : [];
+  // Mark the exception, not the rule: a query like "coffee" returns ~45
+  // places plus a stray event, and stamping every row with an identical
+  // "PLACE" pill is badge noise that steals ~70px of title width (the
+  // colored icon already carries the type). Rows of the DOMINANT type drop
+  // the pill; only rows of a different kind keep their label — so a
+  // homogeneous list shows none at all (typography over badges).
+  const typeCounts = new Map<string, number>();
+  for (const h of hits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
+  const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
   return (
     <div className="space-y-5">
@@ -200,15 +209,17 @@ export default async function SearchPage({
                         </span>
                       )}
                     </span>
-                    <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
-                      style={{
-                        background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
-                        color: d.badge.color,
-                      }}
-                    >
-                      {d.badge.label}
-                    </span>
+                    {hit.type !== dominantType && (
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
+                        style={{
+                          background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
+                          color: d.badge.color,
+                        }}
+                      >
+                        {d.badge.label}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
