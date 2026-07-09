@@ -23,8 +23,7 @@ import CourseInfoStrip from "@/components/place/CourseInfoStrip";
 import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
-import PlaceNoteCard from "@/components/place/PlaceNoteCard";
-import PlaceListsCard from "@/components/place/PlaceListsCard";
+import PlaceMarginTools from "@/components/place/PlaceMarginTools";
 import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import { FOOD_CATS } from "@/lib/place-actions";
@@ -41,8 +40,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
-import { MobileActionBar, MobileBarLink, MobileBarControl } from "@/components/ui/MobileActionBar";
-import SaveButton from "@/components/saved/SaveButton";
+import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
 import SourceBadge from "@/components/place/SourceBadge";
 import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
@@ -263,6 +261,23 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
               {place.address} · {place.municipality_name}
             </p>
+            {/* The visit-decision facts — open/closed, price, provenance —
+                sit directly under the address, first screenful. They lived
+                at the BOTTOM of this card, below the personal note/list
+                tooling, which made a first-time visitor scroll past margin
+                widgets to learn "is it open" (July 2026 audit). */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <OpenClosedDot status={place.open_status} />
+              {place.price_band && (
+                <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
+                  {"$".repeat(place.price_band)}
+                </span>
+              )}
+              <SourceBadge place={place} size="md" />
+              {/* Hours provenance lives in the HoursBlock details (passed as
+                  `provenance`) so the freshness label stays honest without
+                  crowding the open/closed decision zone. */}
+            </div>
           </div>
           {/* Prominent text-style follow CTA — Phase 1's
               "Add to My Radius" / "In My Radius" pattern. Sits below
@@ -317,11 +332,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           ) : (
             <BusinessExtrasCard info={businessInfoFor(place.slug)} />
           )}
-          {/* The user's own margin notes for this place (on-device). */}
-          <PlaceNoteCard slug={place.slug} />
-          {/* Personal lists ("date night", "takeout") — organize Saved without
-              folders; filterable on My Radius (on-device). */}
-          <PlaceListsCard slug={place.slug} />
           {place.review_snippet && (
             <figure
               className="border-l-2 pl-3"
@@ -335,18 +345,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               </figcaption>
             </figure>
           )}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <OpenClosedDot status={place.open_status} />
-            {place.price_band && (
-              <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
-                {"$".repeat(place.price_band)}
-              </span>
-            )}
-            <SourceBadge place={place} size="md" />
-            {/* Hours provenance moved into the HoursBlock details (passed as
-                `provenance`) so the freshness label stays honest without
-                crowding the open/closed decision zone in the header. */}
-          </div>
+          {/* Personal margin tooling comes LAST in the card — a first-time
+              visitor came for the facts above; notes and lists are for the
+              return visit. While both are empty they collapse to one quiet
+              "Add a note or list" line (PlaceMarginTools). */}
+          <PlaceMarginTools slug={place.slug} />
         </div>
       </header>
 
@@ -554,13 +557,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       />
 
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
-          grid above; this reuses the same directions/call links + the
-          follow-backed SaveButton, pinned within thumb reach. Directions
-          is the one vermilion primary. */}
+          grid above; this reuses the same directions/call links, pinned
+          within thumb reach. Directions is the one vermilion primary. Save
+          is NOT here: it lives in exactly one place — the header CTA above
+          the fold — so the page never shows two bookmark affordances at
+          once (the bar's copy duplicated it; July 2026 audit). */}
       <MobileActionBar ariaLabel={`Actions for ${place.name}`}>
-        <MobileBarControl label="Save">
-          <SaveButton refType="place" refId={place.slug} label={place.name} />
-        </MobileBarControl>
         <MobileBarLink
           href={googleUrl}
           icon={Navigation}

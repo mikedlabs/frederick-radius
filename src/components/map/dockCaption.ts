@@ -143,6 +143,13 @@ export function whenCaption(args: {
  * "closing-soon" is exactly the ≤60-minute window). The closing clause
  * is suppressed while scrubbing: closing counts are live truth, and the
  * scrubbed map isn't showing "now".
+ *
+ * The line ellipsizes on one row, so every word must earn its width at
+ * 390px: no "on the map" filler (everything here is on the map), and a
+ * zero event count is silence, not a segment — otherwise "0 events"
+ * spends the pixels that the closing-soon fact (the one actionable
+ * clause) needs to survive. A scrubbed hour keeps its events segment
+ * even at zero, because "0 events at 6:30 PM" IS the finding.
  */
 export function countLine(args: {
   places: number;
@@ -150,14 +157,17 @@ export function countLine(args: {
   closingSoon: number;
   scrubHour: number | null;
 }): string {
-  const places = `${args.places.toLocaleString("en-US")} ${args.places === 1 ? "place" : "places"}`;
-  const events = `${args.events} ${args.events === 1 ? "event" : "events"}`;
-  const at = args.scrubHour != null ? ` at ${formatHourLabel(args.scrubHour)}` : "";
-  let line = `${places} · ${events}${at} on the map`;
-  if (args.scrubHour == null && args.closingSoon > 0) {
-    line += ` · ${args.closingSoon} ${args.closingSoon === 1 ? "closes" : "close"} within the hour`;
+  const bits = [
+    `${args.places.toLocaleString("en-US")} ${args.places === 1 ? "place" : "places"}`,
+  ];
+  if (args.events > 0 || args.scrubHour != null) {
+    const at = args.scrubHour != null ? ` at ${formatHourLabel(args.scrubHour)}` : "";
+    bits.push(`${args.events} ${args.events === 1 ? "event" : "events"}${at}`);
   }
-  return line;
+  if (args.scrubHour == null && args.closingSoon > 0) {
+    bits.push(`${args.closingSoon} ${args.closingSoon === 1 ? "closes" : "close"} within the hour`);
+  }
+  return bits.join(" · ");
 }
 
 /**

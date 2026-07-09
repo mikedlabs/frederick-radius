@@ -181,6 +181,14 @@
      floating bottom nav on viewport-filled surfaces. --app-browse-map-height is
      the exact map canvas height, consumed by both the map page and its skeleton. */
   --app-topbar-h: 56px;
+  /* Where the TopBar's bottom edge actually is RIGHT NOW. The TopBar
+     auto-hides on scroll-down (translateY(-100%)); while hidden it sets
+     this to 0px on <html> so sticky bars pinned beneath it (RightNow's
+     filter bar, the /events .eb-dock) collapse up in sync instead of
+     leaving a see-through seam of raw list above themselves. Pin sticky
+     chrome to THIS var, not --app-topbar-h, and transition `top` with
+     the TopBar's own 240ms ease so the two move as one piece of chrome. */
+  --app-topbar-offset: var(--app-topbar-h);
   --app-bottomnav-reserve: 84px;
   --app-browse-map-height: calc(
     100dvh - var(--app-topbar-h) - 48px - var(--app-bottomnav-reserve) -
@@ -2707,15 +2715,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* Mobile: the browse map is full-bleed and the BottomNav is a floating pill
-   fixed at bottom-0 (z-nav 40, above the dock's z-sticky 30), so the dock's
-   bottom:10px put its caption directly under the nav pill. On phones, lift the
-   dock — and the zoom pair that rides above it — clear of the nav, matching the
-   FeedbackWidget's ~76px lift. Desktop (>=lg) has a SideRail, not a bottom pill,
-   so it keeps the tighter bottom:10px / 96px. */
+   fixed at bottom-0 (z-nav 40, above the dock's z-sticky 30). Lift the zoom
+   pair clear of the nav, matching the FeedbackWidget's ~76px lift. Desktop
+   (>=lg) has a SideRail, not a bottom pill, so it keeps the tighter 96px.
+   NOTE: never give the top-anchored .dock wrapper a `bottom` here — a stale
+   bottom-era override stretched the wrapper the full height of the map, so
+   .dock-pane (top:100%) opened as a detached sheet ~440px below the caption
+   and overflowed the phone viewport. The wrapper must hug .dock-head. */
 @media (max-width: 1023.98px) {
-  .dock {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-  }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
     bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
@@ -3528,8 +3535,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    ========================================================================== */
 .eb-dock {
   position: sticky;
-  top: var(--app-topbar-h);
+  /* Tracks the auto-hiding TopBar (0px while it's slid away) so the dock
+     rides up with it instead of pinning 56px down over a seam of list. */
+  top: var(--app-topbar-offset);
   z-index: var(--z-sticky);
+  transition: top 240ms var(--app-ease-out);
 }
 
 /* The pinned head: nameplate + caption bar + sub bar. Frosted paper so the
