@@ -26,6 +26,7 @@
  * a structured `{ ok: false, reason }` 200 so the client can quietly
  * fall back to a circle. Map should never go blank because of this.
  */
+import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
@@ -94,6 +95,7 @@ export async function GET(req: NextRequest) {
     `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_TOKEN}`;
 
   try {
+    meterUsage("mapbox_isochrone");
     const r = await fetch(upstream, { headers: MAPBOX_SERVER_HEADERS, next: { revalidate: 86400 } });
     if (!r.ok) {
       return Response.json({ ok: false, reason: `upstream-${r.status}` });
