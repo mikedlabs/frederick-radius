@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
+import EventCountdown from "@/components/today/EventCountdown";
+import { Ticket, ChevronRight } from "lucide-react";
 import MastheadTitle from "@/components/today/MastheadTitle";
 import OnNowBand from "@/components/today/OnNowBand";
 import OnNowStrip from "@/components/today/OnNowStrip";
@@ -52,7 +54,7 @@ import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead } from "@/lib/events/lead-rank";
 import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
 import { FREDERICK_CENTER, isValidCoord } from "@/lib/geo";
-import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
+import { isEventToday, isEventEnded, eventWhenLabel } from "@/lib/eventWhenLabel";
 import { pickTonightEvent } from "@/lib/today/tonight";
 import { daypart, sectionOrder, type TodaySection } from "@/lib/daypart";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -209,10 +211,18 @@ export default async function HomePage() {
       </p>
 
       <SkyHero className="shader-rim relative z-10">
-        <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
-          <TonightTeaser eventsPromise={eventsPromise} now={now} />
+        <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
+          <TodayCard />
         </Suspense>
       </SkyHero>
+
+      {/* ── TONIGHT, SOLO — the headline event used to sit as a frosted pill
+          INSIDE the weather card; owner call (2026-07-10): it reads better as
+          its own card directly below the weather, in the standard elevated
+          card language. Self-hides when nothing qualifies. */}
+      <Suspense fallback={null}>
+        <TonightSolo eventsPromise={eventsPromise} now={now} />
+      </Suspense>
 
       {/* ── MASTHEAD CAPTION ─────────────────────────────────────────────
           The identity standfirst, the holiday note, and the salutation /
@@ -567,27 +577,56 @@ export default async function HomePage() {
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
-/** Masthead teaser: tonight's featured event, today-only. */
-async function TonightTeaser({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+/** Tonight's headline event as its OWN card directly below the weather hero
+ *  (owner call: out of the weather card, solo). Today-only AND not-yet-ended:
+ *  the picker enforces the "next 24 hours" contract; renders nothing when no
+ *  event qualifies, so the page never shows an empty shell. */
+async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
   const { publicEvents } = await eventsPromise;
-  // Today-only AND not-yet-ended: the picker itself enforces the masthead's
-  // "next 24 hours" contract, so no post-hoc nulling that could blank the
-  // hero while something is live downtown.
-  const featuredEvent = pickTonightEvent(now, publicEvents);
+  const ev = pickTonightEvent(now, publicEvents);
+  if (!ev) return null;
   return (
-    <TodayCard
-      tonightEvent={
-        featuredEvent
-          ? {
-              slug: featuredEvent.slug,
-              title: featuredEvent.title,
-              venue_name: featuredEvent.venue_name ?? null,
-              starts_at: featuredEvent.starts_at,
-              ends_at: featuredEvent.ends_at ?? featuredEvent.starts_at,
-            }
-          : null
-      }
-    />
+    <Link
+      href={`/events/${ev.slug}`}
+      className="tactile-interactive group relative z-10 mt-2.5 flex items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2.5"
+      style={{
+        backgroundColor: "var(--app-bg-elevated-solid)",
+        backgroundImage: "var(--app-paper-light)",
+        boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
+        style={{
+          background: "color-mix(in srgb, var(--app-brand-2) 14%, var(--app-bg-elevated))",
+          boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi)",
+          color: "color-mix(in srgb, var(--app-brand-2) 80%, var(--app-ink))",
+        }}
+      >
+        <Ticket className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
+          {eventWhenLabel(ev.starts_at, now)}
+          <EventCountdown startsAt={ev.starts_at} endsAt={ev.ends_at ?? ev.starts_at} />
+        </span>
+        <span className="block truncate font-serif text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {ev.title}
+        </span>
+        {ev.venue_name && (
+          <span className="block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            {ev.venue_name}
+          </span>
+        )}
+      </span>
+      <ChevronRight
+        aria-hidden
+        className="h-4 w-4 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5"
+        strokeWidth={2}
+        style={{ color: "var(--app-ink-3)" }}
+      />
+    </Link>
   );
 }
 
