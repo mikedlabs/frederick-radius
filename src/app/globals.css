@@ -788,6 +788,21 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .radius-breathe {
   animation: radius-breathe 2600ms ease-in-out infinite;
 }
+/* Radar sweep — a soft vermilion wedge orbiting the radius mark's center, so
+ * the static target reads as a live radar (the brand IS a radius). Slow and
+ * low-opacity: ambient life, never a loading spinner. */
+@keyframes radar-sweep { to { transform: rotate(360deg); } }
+.radar-sweep {
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--app-brand) 30%, transparent) 0deg,
+    color-mix(in srgb, var(--app-brand) 6%, transparent) 26deg,
+    transparent 58deg 360deg
+  );
+  animation: radar-sweep 5.5s linear infinite;
+  will-change: transform;
+}
 
 /* Ken Burns — a very slow, gentle scale + drift on a hero photograph so
  * the lead image feels alive without ever pulling focus. Long and subtle
@@ -810,6 +825,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .stagger-children > *,
   .radius-ripple,
   .radius-breathe,
+  .radar-sweep,
   .ken-burns { animation: none; opacity: 1; transform: none; }
 }
 
