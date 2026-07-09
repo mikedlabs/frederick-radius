@@ -83,12 +83,8 @@ export type PulseHero = {
   renderedAt: number;
   /** Human refresh clock, formatted server-side ("3:42 PM EDT"). */
   refreshedClock: string;
-  /** Current temperature for the "now" label + the sparkline end. */
+  /** Current temperature for the compact "now" reading. */
   temp: number | null;
-  /** Next ~12 hours of temperatures for the day sparkline. */
-  spark: number[];
-  /** Sparkline stroke tone token. */
-  sparkStroke: string;
   /** Count of active situations, for the board subtitle. */
   situationCount: number;
 };
@@ -115,7 +111,7 @@ export type PulseTile = {
   /** Status tiles: render the value in mono (times, "5:42 PM"). */
   mono?: boolean;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
-  feature?: { temp: number; condition: string; hl?: string; spark: number[] };
+  feature?: { temp: number; condition: string; hl?: string };
   /** The feed's full detail, rendered inside the tapped window. Server-rendered. */
   body: ReactNode;
 };
@@ -177,101 +173,6 @@ function AnimatedNumber({
   );
 }
 
-/** A conic-gradient ring that fills to `pct` on mount. */
-function GaugeRing({
-  pct,
-  color,
-  children,
-}: {
-  pct: number;
-  color: string;
-  children: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (prefersReduced()) {
-      el.style.setProperty("--pct", String(pct));
-      return;
-    }
-    let raf = 0;
-    const start = performance.now();
-    const dur = 1100;
-    const tick = (now: number) => {
-      const k = Math.min(1, (now - start) / dur);
-      const e = 1 - Math.pow(1 - k, 3);
-      el.style.setProperty("--pct", (pct * e).toFixed(1));
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [pct]);
-  return (
-    <div
-      ref={ref}
-      className="pulse-gauge"
-      style={{ "--pct": pct, "--gc": color } as CSSProperties}
-      suppressHydrationWarning
-    >
-      <div className="pulse-gauge-in">{children}</div>
-    </div>
-  );
-}
-
-/** A static SVG temperature sparkline. The line draws in via CSS (pathLength
- *  normalized), parked at full on reduced motion. */
-function Sparkline({
-  points,
-  stroke,
-  fill,
-  width,
-  height,
-  className,
-}: {
-  points: number[];
-  stroke: string;
-  fill?: string;
-  width: number;
-  height: number;
-  className?: string;
-}) {
-  if (points.length < 2) return null;
-  const P = 5;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const rng = max - min || 1;
-  const d = points
-    .map((v, i) => {
-      const x = (i / (points.length - 1)) * width;
-      const y = height - P - ((v - min) / rng) * (height - 2 * P);
-      return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-  const lastY = height - P - ((points[points.length - 1] - min) / rng) * (height - 2 * P);
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      className={className}
-      aria-hidden
-    >
-      {fill && <path d={`${d} L${width} ${height} L0 ${height} Z`} fill={fill} />}
-      <path
-        className="pulse-spark-line"
-        d={d}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={2.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        pathLength={1}
-      />
-      <circle cx={width - 2} cy={lastY} r={2.8} fill={stroke} />
-    </svg>
-  );
-}
-
 /* ─────────────────────────────────────────────────────────────
  * Tiles
  * ───────────────────────────────────────────────────────────── */
@@ -292,56 +193,61 @@ function FeatureTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
       {...tileButtonProps(t, onOpen)}
       className="pulse-tile pulse-tile--wx col-span-2 text-left"
     >
-      <div>
-        <span className="pulse-tlab">Right now · Frederick</span>
-        <div className="mt-1 flex items-baseline gap-3">
-          <AnimatedNumber
-            value={f.temp}
-            suffix="°"
-            className="pulse-wx-deg font-serif tabular-nums"
-          />
-          <div>
-            <div className="text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {f.condition}
-            </div>
-            {f.hl && (
-              <div className="font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-                {f.hl}
-              </div>
-            )}
+      <span className="pulse-tlab">Right now · Frederick</span>
+      <div className="mt-1 flex items-baseline gap-3">
+        <AnimatedNumber
+          value={f.temp}
+          suffix="°"
+          className="pulse-wx-deg font-serif tabular-nums"
+        />
+        <div className="min-w-0">
+          <div className="text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+            {f.condition}
           </div>
+          {f.hl && (
+            <div className="font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+              {f.hl}
+            </div>
+          )}
         </div>
       </div>
-      <Sparkline
-        points={f.spark}
-        stroke="var(--app-cool)"
-        fill="color-mix(in srgb, var(--app-cool) 13%, transparent)"
-        width={300}
-        height={44}
-        className="pulse-wx-spark"
-      />
     </button>
   );
 }
 
+/** A numeric feed as a compact stat tile: icon + label, a big count-up
+ *  value, and a one-line state. No gauge ring — typography carries it. */
 function GaugeTile({ t, onOpen }: { t: PulseTile; onOpen: () => void }) {
   const g = t.gauge!;
+  const Icon = ICONS[t.iconName] ?? AlertTriangle;
   return (
     <button
       {...tileButtonProps(t, onOpen)}
-      className={`pulse-tile pulse-tile--gauge text-left${t.active ? " is-hot" : ""}`}
+      className={`pulse-tile pulse-tile--status text-left${t.active ? " is-hot" : ""}`}
       style={{ "--accent": t.accent } as CSSProperties}
     >
-      <span className="pulse-tlab">{t.label}</span>
-      <GaugeRing pct={g.pct} color={t.accent}>
-        <AnimatedNumber
-          value={g.value}
-          decimals={g.decimals}
-          comma={g.comma}
-          className="pulse-gauge-num font-serif tabular-nums"
+      <span
+        aria-hidden
+        className="pulse-sdot"
+        style={{ background: t.accent, opacity: t.active ? 1 : 0.5 }}
+      />
+      <span className="mb-1 flex items-center gap-1.5">
+        <Icon
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0"
+          strokeWidth={2}
+          style={{ color: t.active ? t.accent : "var(--app-ink-3)" }}
         />
-        <small className="pulse-gauge-unit font-mono">{g.unit}</small>
-      </GaugeRing>
+        <span className="pulse-tlab">{t.label}</span>
+      </span>
+      <AnimatedNumber
+        value={g.value}
+        decimals={g.decimals}
+        comma={g.comma}
+        className="pulse-sval font-serif tabular-nums"
+        style={{ color: "var(--app-ink)" }}
+      />
+      <span className="pulse-ssub">{g.unit}</span>
     </button>
   );
 }
@@ -488,31 +394,19 @@ export default function PulseBoard({
             </div>
           </div>
 
-          {/* Day temperature sparkline */}
-          {hero.spark.length >= 2 && (
-            <div className="mt-1 border-t pt-2.5" style={{ borderColor: "var(--app-border)" }}>
-              <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-                <span>Today&rsquo;s temperature</span>
-                {hero.temp != null && (
-                  <span className="font-bold" style={{ color: "var(--app-ink-2)" }}>
-                    now {hero.temp}°
-                  </span>
-                )}
-              </div>
-              <Sparkline
-                points={hero.spark}
-                stroke={hero.sparkStroke}
-                fill={`color-mix(in srgb, ${hero.sparkStroke} 13%, transparent)`}
-                width={320}
-                height={46}
-                className="pulse-hero-spark mt-1.5"
-              />
-            </div>
-          )}
-
-          <p className="flex items-center gap-1.5 text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-            Refreshed {hero.refreshedClock} · auto-updates every couple of minutes
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2.5 text-[11px] tabular-nums" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+            {hero.temp != null && (
+              <>
+                <span className="font-mono font-bold" style={{ color: "var(--app-ink-2)" }}>
+                  Now {hero.temp}°
+                </span>
+                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+              </>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+              Refreshed {hero.refreshedClock} · auto-updates every couple of minutes
+            </span>
           </p>
         </div>
       </header>
