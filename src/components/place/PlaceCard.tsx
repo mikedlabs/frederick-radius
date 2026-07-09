@@ -5,7 +5,6 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
-import CardCommerceAction from "./CardCommerceAction";
 import { formatDistance } from "@/lib/geo";
 import SaveButton from "@/components/saved/SaveButton";
 import { usePlaceSheet } from "./PlaceSheetProvider";
@@ -505,14 +504,24 @@ export default function PlaceCard({
   // The title leads; a quiet 42px mark anchors the left; chips capped at 2
   // so a long list scans as names, not a wall of pills. Tighter vertical
   // rhythm shortens the page without crowding.
+  // One tight signal line: open status, rating, price, and a compact
+  // field-notes / deal marker inline — no full-width badge row, no per-card
+  // commerce button (both lived their own row and made the card tall; the
+  // commerce action lives on the place page's action bar). The card is now
+  // name → type → one meta line, so a list scans as names, not boxes.
   const rowReasons = reasons.slice(0, 2);
+  const inlineTag = place.deal_hook ? (
+    <DealHookTag label={place.deal_hook} compact />
+  ) : place.field_notes ? (
+    <FieldNoteTag compact />
+  ) : null;
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] px-3 py-2.5"
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 rounded-[var(--app-radius-lg)] px-2.5 py-2"
       style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       <div className="self-center">
-        <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={52} />
+        <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={46} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">
@@ -520,7 +529,7 @@ export default function PlaceCard({
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="line-clamp-2 min-w-0 flex-1 text-left text-[16px] font-semibold leading-[1.18] tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-1 min-w-0 flex-1 text-left text-[15px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -533,7 +542,7 @@ export default function PlaceCard({
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
         </p>
@@ -542,12 +551,14 @@ export default function PlaceCard({
             {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
           </p>
         )}
-        {place.deal_hook ? <DealHookTag label={place.deal_hook} className="mt-1.5" /> : place.field_notes ? <FieldNoteTag className="mt-1.5" /> : null}
         {!compact && (
           rowReasons.length > 0 ? (
-            <StatusChipRow reasons={rowReasons} className="mt-1.5" />
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StatusChipRow reasons={rowReasons} />
+              {inlineTag}
+            </div>
           ) : (
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <PlaceStatus status={place.open_status} />
               <Rave rating={place.google_rating} count={place.google_rating_count} />
               {place.price_band && (
@@ -555,10 +566,10 @@ export default function PlaceCard({
                   {"$".repeat(place.price_band)}
                 </span>
               )}
+              {inlineTag}
             </div>
           )
         )}
-        {!compact && <CardCommerceAction place={place} />}
       </div>
       <div className="relative z-10 self-start">
         <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
