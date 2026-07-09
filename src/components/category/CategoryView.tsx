@@ -11,7 +11,7 @@ import {
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PageBloom from "@/components/ui/PageBloom";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
 import CategorySection from "./CategorySection";
@@ -73,34 +73,38 @@ export default function CategoryView({
     <div className="relative space-y-6">
       <PageBloom variant="single" />
 
-      {/* Curated aerial/seasonal county hero — matches the legacy category
-          page and the /m town hero (Photo Policy: our photography). */}
-      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
-        <div className="relative h-44 w-full sm:h-56">
-          <SeasonalPhoto
-            season="auto"
-            alt={`${category.name} across Frederick County`}
-            priority
-            sizes="(max-width: 720px) 100vw, 720px"
-            className="absolute inset-0"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
-              <span
-                style={{ background: category.color }}
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                aria-hidden
-              />
-              Category · Frederick County
-            </p>
-            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white sm:text-[36px]">
-              {category.name}
-            </h1>
-            <p className="font-serif text-[14px] italic leading-snug text-white/90 sm:text-[15px]">
-              {category.blurb}
-            </p>
-          </div>
+      {/* Typographic category hero — same as the default category page. A
+          calm cream plate tinted by the category's own ink with its engraved
+          glyph as a faint watermark, instead of a generic county aerial that
+          read as irrelevant behind a specific category (e.g. a pool photo
+          behind "Coffee"). */}
+      <header
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          borderColor: `color-mix(in srgb, ${category.color} 30%, var(--app-border))`,
+          background: `linear-gradient(135deg, color-mix(in srgb, ${category.color} 14%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
+          boxShadow: "var(--app-elev-1), var(--app-hi)",
+        }}
+      >
+        <CategoryIcon
+          slug={category.slug}
+          className="pointer-events-none absolute -bottom-7 -right-5 h-40 w-40 sm:h-48 sm:w-48"
+          style={{ color: `color-mix(in srgb, ${category.color} 15%, transparent)` }}
+        />
+        <div className="relative p-5 sm:p-6">
+          <p
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
+            style={{ color: `color-mix(in srgb, ${category.color} 72%, var(--app-ink))` }}
+          >
+            <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: category.color }} />
+            Category · Frederick County
+          </p>
+          <h1 className="mt-2 font-serif text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]" style={{ color: "var(--app-ink)" }}>
+            {category.name}
+          </h1>
+          <p className="mt-1.5 max-w-[46ch] font-serif text-[14px] italic leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+            {category.blurb}
+          </p>
         </div>
       </header>
 
