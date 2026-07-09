@@ -94,3 +94,27 @@ A 7-group audit workflow swept the app at 390px (real renders, findings grounded
 **Fix:** Reuse the Explore deck's fan-in on first scroll-into-view: IntersectionObserver fires once, cards deal from a tucked stack with ~40ms stagger (transform-only, prefers-reduced-motion holds the fanned state), and the mono tally in the dossier masthead counts up 0→6 in the same beat. One system with Saved/Explore, and it lands on the exact band users should linger on — the verified deals.
 
 **Files:** src/components/today/DealsWallet.tsx, src/components/today/TodaysDealsStack.tsx, src/components/nav/ExploreDeck.tsx
+
+## Also banked: transit visualization ideas (owner ask, 2026-07-10)
+
+1. Interpolate bus positions between 15s GTFS updates so buses glide on the live map (client math only).
+2. String-of-pearls route diagrams: each active route as a stop-line with the bus dot sliding along it; fits the pulse instrument-panel language, no WebGL needed.
+3. "Your stop" countdown chips with location (Route 10 · 4 min · toward downtown).
+4. New feeds worth adding: MTA Maryland GTFS-realtime (MARC train positions between stations), county ArcGIS snow-plow AVL (winter), MDOT CHART traffic cameras. Already integrated: TransIT buses, parking occupancy, USGS gauges, AQI, flights.
+
+## Infra audit playbook: Vercel + Supabase (owner ask, 2026-07-10)
+
+Run with the Vercel + Supabase MCP connectors ENABLED for the chat (they exist on the account; toggle them on in the conversation's connector settings).
+
+Supabase (mcp Supabase tools):
+- get_advisors (security + performance): missing RLS, exposed tables, slow queries, missing indexes.
+- Verify RLS deny-all actually holds on every public table (repo assumes migrations 0007/0009; confirm live).
+- Diff live tables vs drizzle/ migration files (hand-applied per drizzle/README.md; drift is likely).
+- APPLY drizzle/0016_beta_codes.sql if still missing (beta codes remain inactive until then).
+- get_logs for recent errors; check connection pooling mode matches lib/db/client.ts assumptions (pgbouncer/6543 vs direct).
+
+Vercel (mcp Vercel tools):
+- get_runtime_errors + runtime logs on production: surface errors nobody sees.
+- Env audit: ADMIN_USER/ADMIN_PASSWORD (admin area fails closed without them), BETA_PASSWORD, DATABASE_URL, and ESPECIALLY KV_REST_API_URL/TOKEN; without KV, isRateLimited() is a silent pass-through and paid upstreams (Google photos, Mapbox, LLM) are unmetered (lib/origin-check.ts warns).
+- Build health: first-load JS per route from build output, build minutes, image-optimization quota, ISR hit rates, function durations, cron status.
+- Confirm Speed Insights/Analytics posture vs the cookieless Plausible stance.
