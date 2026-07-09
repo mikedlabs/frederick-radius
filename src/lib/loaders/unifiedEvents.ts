@@ -38,7 +38,7 @@ import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
-import { collapseRecurringEvents } from "@/lib/events/normalize";
+import { collapseRecurringEvents, dedupeCrossSourceShows } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
@@ -159,11 +159,16 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // photo-join paths gate on a precise geocode — an upgraded geom both
   // moves the /map pin onto the venue and opens that join. Fail-soft and
   // 30-day-cached per address (see mapboxGeocode.ts); a warm pass adds ~0.
+  // dedupeCrossSourceShows LAST among the dedupes: it needs the whole merged,
+  // time-sorted set (the same show arrives from a venue lineup AND a discovery
+  // feed with different titles/slugs, one row a bare noon placeholder).
   const positioned = await upgradeEventGeoms(
-    dedupeKeysHomeGames(
-      dedupeCuratedClusters(
-        [...bySlug.values()].sort(
-          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+    dedupeCrossSourceShows(
+      dedupeKeysHomeGames(
+        dedupeCuratedClusters(
+          [...bySlug.values()].sort(
+            (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+          ),
         ),
       ),
     ),
@@ -225,13 +230,14 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
+  // v19: titles now drop trailing embedded weekday/date/time fragments and
+  // de-shout ALL-CAPS ("REBEKAH FOSTER … Thursday 7/9/26 6:30PM"), and the
+  // new same-day cross-source fuzzy dedupe collapses duplicate rows of one
+  // show — cached titles, slugs, and set membership all change.
   // v18: venue-feed events with clearly non-music titles (yoga/trivia/
   // bingo/paint/run club) no longer get the blanket "music" category —
   // the cached rows' category/category_name change.
-  // v17: centroid-grade geoms with a street address are now Mapbox-geocoded
-  // (upgradeEventGeoms) — the cached rows' geom / placement / geo_confidence
-  // (and, via the thumb join, hero_image) change.
-  ["unified-events-v18", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v19", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

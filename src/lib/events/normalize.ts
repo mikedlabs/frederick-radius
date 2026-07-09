@@ -63,13 +63,87 @@ export function splitPresenter(raw: string): { presenter?: string; title: string
   return { title: s };
 }
 
+// --- trailing when-fragment strip -------------------------------------
+// Some feeds jam the schedule INTO the event name ("REBEKAH FOSTER Acoustic
+// LIVE on Stage! Thursday 7/9/26 6:30PM"). The card already prints the real
+// date and time from starts_at, so a title copy is pure noise — and it makes
+// the same show from two sources read as two different titles. Stripped at
+// the boundary, conservatively: a fragment must sit at the END of the title
+// and contain a slash-date, a weekday+clock, or a clock with a meridiem —
+// so "Taco Tuesday", "Freaky Friday", and "9 to 5" are never touched.
+const WKDAY =
+  "(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues?|weds?|thur?s?|fri|sat|sun)\\.?";
+const MDATE = "\\d{1,2}\\/\\d{1,2}(?:\\/\\d{2,4})?";
+const CLOCK = "\\d{1,2}(?::\\d{2})?\\s*[ap]\\.?m\\.?";
+// A clock range's START may omit its meridiem ("4-6PM"); the END never does.
+const CLOCK_RANGE = `(?:\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?\\s*[-–—]\\s*)?${CLOCK}`;
+const TRAILING_WHEN = new RegExp(
+  "[\\s,]+(?:[-–—|·@]\\s*)?(?:on\\s+|at\\s+)?(?:" +
+    // weekday? + date + optional time: "Thursday 7/9/26 6:30PM", "7/12"
+    `(?:${WKDAY}[\\s,]+)?${MDATE}(?:[\\s,]+(?:at\\s+)?${CLOCK_RANGE})?` +
+    // weekday + time: "Friday 8PM"
+    `|${WKDAY}[\\s,]+(?:at\\s+)?${CLOCK_RANGE}` +
+    // bare clock (meridiem required): "6:30PM", "4-6PM"
+    `|${CLOCK_RANGE}` +
+    ")[\\s.,!]*$",
+  "i",
+);
+
+// --- ALL-CAPS de-shout -------------------------------------------------
+// Real acronyms that read as words (contain vowels) and must stay shouted.
+// Vowel-less clusters (FCPS, DJ, FSK) are already exempt by the vowel test.
+const ACRONYM_KEEP = new Set([
+  "AYCE", "AARP", "BOGO", "IPA", "MARC", "NASA", "TBA", "USA", "USO", "YMCA",
+]);
+const SMALL_WORD =
+  /^(?:a|an|and|as|at|but|by|for|from|in|nor|of|on|or|the|to|vs|via|with)$/i;
+const capRuns = (w: string): string =>
+  w.replace(/[A-Za-z]+/g, (run) => run.charAt(0).toUpperCase() + run.slice(1).toLowerCase());
+
+/**
+ * De-shout an ALL-CAPS title to sensible case at the data boundary, so feed
+ * shouting ("REBEKAH FOSTER Acoustic LIVE on Stage!") never reaches a card.
+ * Two tiers: a title that is WHOLLY shouted gets title-cased (small words
+ * lowered, consonant-cluster acronyms and the allowlist kept); a mixed title
+ * only has its substantial (4+ letter, pronounceable) shouted words calmed,
+ * so acronyms embedded in a normal title survive.
+ */
+export function deshoutTitle(raw: string): string {
+  const letters = raw.replace(/[^A-Za-z]/g, "");
+  if (!letters) return raw;
+  const upperRatio = (letters.match(/[A-Z]/g)?.length ?? 0) / letters.length;
+  const wholeShout = letters.length >= 8 && upperRatio >= 0.9;
+  let firstSeen = false;
+  return raw
+    .split(/(\s+)/)
+    .map((tok) => {
+      if (!tok || /^\s+$/.test(tok)) return tok;
+      const alpha = tok.replace(/[^A-Za-z]/g, "");
+      const isFirst = !firstSeen;
+      firstSeen = true;
+      if (!alpha || alpha !== alpha.toUpperCase()) return tok;
+      if (ACRONYM_KEEP.has(alpha)) return tok;
+      if (wholeShout) {
+        if (!/[AEIOUY]/.test(alpha)) return tok; // consonant cluster = acronym
+        if (!isFirst && SMALL_WORD.test(alpha)) return tok.toLowerCase();
+        return capRuns(tok);
+      }
+      // Mixed-case title: calm only substantial pronounceable shouted words,
+      // so short/vowel-less acronyms (DJ, FSK, NYPD) keep their caps.
+      if (alpha.length >= 4 && /[AEIOU]/.test(alpha)) return capRuns(tok);
+      return tok;
+    })
+    .join("");
+}
+
 /**
  * Clean a single title string: decode and strip via cleanFeedText, put a
  * space where a feed mashed two words with a hyphen ("Council-Workshop"
- * becomes "Council Workshop"), and strip a trailing year the event date
- * already implies. The hyphen rule only fires before an uppercase letter
- * or a digit, so real compounds like "co-op", "pop-up", and "drive-in"
- * keep their hyphen.
+ * becomes "Council Workshop"), strip a trailing embedded weekday/date/time
+ * fragment the card already prints from starts_at, de-shout ALL-CAPS
+ * shouting, and strip a trailing year the event date already implies. The
+ * hyphen rule only fires before an uppercase letter or a digit, so real
+ * compounds like "co-op", "pop-up", and "drive-in" keep their hyphen.
  */
 export function cleanTitle(raw: string, opts: { year?: number } = {}): string {
   let t = cleanFeedText(raw);
@@ -96,6 +170,16 @@ export function cleanTitle(raw: string, opts: { year?: number } = {}): string {
     .replace(/([A-Za-z])-(?=\d)/g, "$1 ")
     .replace(new RegExp(`([A-Za-z])-(?=(?:${ORG_WORD})\\b)`, "gi"), "$1 ")
     .replace(new RegExp(`\\b(${ORG_WORD})-(?=[A-Za-z])`, "gi"), "$1 ");
+  // Strip a trailing embedded schedule fragment ("… Thursday 7/9/26 6:30PM").
+  // Looped: a feed can stack fragments ("… 7/9/26 6:30PM" after a weekday
+  // pass). Refused when it would leave no real title behind — a title that
+  // IS a date is broken upstream data; better odd than blank.
+  for (let prev = ""; prev !== t; ) {
+    prev = t;
+    const stripped = t.replace(TRAILING_WHEN, "");
+    if ((stripped.match(/[A-Za-z]/g)?.length ?? 0) >= 3) t = stripped;
+  }
+  t = deshoutTitle(t);
   // Strip a trailing 4-digit year, but not when a preposition precedes
   // it ("...patients in 2025" keeps the year, "Octoberfest 2026" drops
   // it). When a year is provided, only strip that exact year.
@@ -415,4 +499,80 @@ export function collapseRecurringEvents(events: EventWithMeta[]): EventWithMeta[
     }
   }
   return out;
+}
+
+// A fuzzy title stem must be at least this long (loose-normalized) before
+// two rows may merge, so a short generic stem ("Live Music", "Jazz Night")
+// can never collapse two genuinely different events.
+const CROSS_SOURCE_MIN_STEM = 12;
+
+function etHm(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: ET,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}
+
+/**
+ * How well-documented a row is, for picking the survivor of a cross-source
+ * merge: a stated venue beats none, and a real clock time beats the bare
+ * noon/midnight a feed stamps when it doesn't actually know the time (the
+ * audit's "Rebekah Foster Acoustic LIVE · 12:00 PM" row).
+ */
+function documentation(e: EventWithMeta): number {
+  const venue = normLoose(e.venue_name ?? "") ? 2 : 0;
+  const hm = etHm(e.starts_at);
+  const realTime = !e.is_all_day && hm !== "12:00" && hm !== "00:00" ? 1 : 0;
+  return venue + realTime;
+}
+
+/**
+ * Collapse same-day cross-source duplicates of one show. Two feeds title
+ * the same gig differently ("REBEKAH FOSTER Acoustic LIVE on Stage!
+ * Thursday 7/9/26 6:30PM" vs "Rebekah Foster Acoustic LIVE"), so the slug
+ * dedupe misses them and the rail shows the show twice — once with a venue
+ * and a real time, once as a bare noon row. Two rows merge only when ALL of:
+ *   - same Eastern calendar day;
+ *   - one loose title stem is a prefix of the other, and the shorter stem
+ *     is substantial (>= 12 chars) — "Rebekah Foster Acoustic Live" matches
+ *     "Rebekah Foster Acoustic Live on Stage", "Live Music" matches nothing;
+ *   - venues don't disagree (equal, or at least one row has none) — two
+ *     venues' same-named trivia nights never merge;
+ *   - neither row is a collapsed recurring series card.
+ * The better-documented row survives (stated venue, then non-default time);
+ * on a tie the earlier row (the input arrives time-sorted) is kept.
+ */
+export function dedupeCrossSourceShows(events: EventWithMeta[]): EventWithMeta[] {
+  const kept: EventWithMeta[] = [];
+  const byDay = new Map<string, number[]>();
+  for (const e of events) {
+    const stem = normLoose(seriesStem(e.title));
+    const day = etYmd(e.starts_at);
+    const idxs = byDay.get(day) ?? [];
+    let merged = false;
+    if (stem.length >= CROSS_SOURCE_MIN_STEM && !e.is_recurring) {
+      for (const i of idxs) {
+        const other = kept[i];
+        if (other.is_recurring) continue;
+        const otherStem = normLoose(seriesStem(other.title));
+        if (otherStem.length < CROSS_SOURCE_MIN_STEM) continue;
+        if (!(stem.startsWith(otherStem) || otherStem.startsWith(stem))) continue;
+        const va = normLoose(e.venue_name ?? "");
+        const vb = normLoose(other.venue_name ?? "");
+        if (va && vb && va !== vb) continue;
+        if (documentation(e) > documentation(other)) kept[i] = e;
+        merged = true;
+        break;
+      }
+    }
+    if (!merged) {
+      idxs.push(kept.length);
+      byDay.set(day, idxs);
+      kept.push(e);
+    }
+  }
+  // A merge can swap in a later-starting survivor; restore time order.
+  return kept.sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
 }
