@@ -3,6 +3,7 @@ import {
   cleanDescription,
   cleanVenueName,
   cleanTitle,
+  deshoutTitle,
   splitPresenter,
   dedupeSentences,
   clampDescription,
@@ -10,6 +11,7 @@ import {
   seriesStem,
   recurrenceKey,
   collapseRecurringEvents,
+  dedupeCrossSourceShows,
 } from "./normalize";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -45,6 +47,66 @@ describe("cleanTitle sponsor strip", () => {
 
   it("does not mistake prose 'by' for a sponsor clause", () => {
     expect(cleanTitle("Painting by Candlelight")).toBe("Painting by Candlelight");
+  });
+});
+
+describe("cleanTitle trailing when-fragment strip", () => {
+  it("strips the audit's full weekday+date+time tail and de-shouts (the Rebekah Foster tile)", () => {
+    expect(cleanTitle("REBEKAH FOSTER Acoustic LIVE on Stage! Thursday 7/9/26 6:30PM")).toBe(
+      "Rebekah Foster Acoustic Live on Stage!",
+    );
+  });
+
+  it("strips a bare trailing slash-date", () => {
+    expect(cleanTitle("Downtown Farmers Market 7/12")).toBe("Downtown Farmers Market");
+  });
+
+  it("strips weekday + clock", () => {
+    expect(cleanTitle("Karaoke Night Friday 8PM")).toBe("Karaoke Night");
+  });
+
+  it("strips a trailing clock and clock range (meridiem required)", () => {
+    expect(cleanTitle("Vinyl Happy Hour 4-6PM")).toBe("Vinyl Happy Hour");
+    expect(cleanTitle("Acoustic Set at 6:30 p.m.")).toBe("Acoustic Set");
+  });
+
+  it("never strips a bare weekday (Taco Tuesday survives)", () => {
+    expect(cleanTitle("Taco Tuesday")).toBe("Taco Tuesday");
+    expect(cleanTitle("Freaky Friday Screening")).toBe("Freaky Friday Screening");
+  });
+
+  it("never strips a meridiem-less number", () => {
+    expect(cleanTitle("9 to 5")).toBe("9 to 5");
+    expect(cleanTitle("Route 66 Cruise Night")).toBe("Route 66 Cruise Night");
+  });
+
+  it("refuses a strip that would leave no title behind", () => {
+    expect(cleanTitle("7/9 6:30PM")).toBe("7/9 6:30PM");
+  });
+});
+
+describe("deshoutTitle", () => {
+  it("title-cases a wholly shouted title, lowering small words", () => {
+    expect(deshoutTitle("NIGHT OF THE STARS")).toBe("Night of the Stars");
+    expect(deshoutTitle("SUMMER CONCERT SERIES")).toBe("Summer Concert Series");
+  });
+
+  it("calms only substantial shouted words in a mixed title", () => {
+    expect(deshoutTitle("REBEKAH FOSTER Acoustic LIVE on Stage!")).toBe(
+      "Rebekah Foster Acoustic Live on Stage!",
+    );
+  });
+
+  it("keeps vowel-less and allowlisted acronyms shouted", () => {
+    expect(deshoutTitle("DJ Night with FCPS Families")).toBe("DJ Night with FCPS Families");
+    expect(deshoutTitle("AYCE Crab Feast")).toBe("AYCE Crab Feast");
+    expect(deshoutTitle("YMCA FAMILY SWIM")).toBe("YMCA Family Swim");
+  });
+
+  it("leaves an ordinary sensible-case title untouched", () => {
+    expect(deshoutTitle("Alive @ Five at Carroll Creek")).toBe(
+      "Alive @ Five at Carroll Creek",
+    );
   });
 });
 
@@ -281,5 +343,77 @@ describe("seriesStem + series collapse", () => {
       mkEvent({ slug: "x2", title: "Trivia Night | Round 1", venue_name: "Olde Mother Brewing" }),
     ]);
     expect(out).toHaveLength(2);
+  });
+});
+
+describe("dedupeCrossSourceShows", () => {
+  // The audit's pair: one source titles the show with the schedule embedded
+  // and knows the venue + real time; the other emits a bare noon row.
+  const venued = mkEvent({
+    slug: "rebekah-foster-acoustic-live-on-stage",
+    title: "Rebekah Foster Acoustic Live on Stage!",
+    venue_name: "Rockwell Brewery",
+    starts_at: "2026-07-09T22:30:00.000Z", // 6:30 PM ET
+  });
+  const bareNoon = mkEvent({
+    slug: "rebekah-foster-acoustic-live",
+    title: "Rebekah Foster Acoustic Live",
+    venue_name: null as unknown as string,
+    starts_at: "2026-07-09T16:00:00.000Z", // the feeds' default 12:00 PM ET
+  });
+
+  it("collapses a same-day cross-source pair, keeping the venued real-time row", () => {
+    // Input arrives time-sorted, so the bare noon row comes FIRST and must
+    // still lose to the later, better-documented row.
+    const out = dedupeCrossSourceShows([bareNoon, venued]);
+    expect(out).toHaveLength(1);
+    expect(out[0].slug).toBe("rebekah-foster-acoustic-live-on-stage");
+    expect(out[0].venue_name).toBe("Rockwell Brewery");
+  });
+
+  it("does not merge the same show title on different days", () => {
+    const nextWeek = { ...bareNoon, slug: "rf-2", starts_at: "2026-07-16T16:00:00.000Z" };
+    expect(dedupeCrossSourceShows([venued, nextWeek])).toHaveLength(2);
+  });
+
+  it("does not merge when both rows state different venues", () => {
+    const elsewhere = {
+      ...bareNoon,
+      slug: "rf-3",
+      venue_name: "Olde Mother Brewing",
+      starts_at: "2026-07-09T20:00:00.000Z",
+    };
+    expect(dedupeCrossSourceShows([venued, elsewhere])).toHaveLength(2);
+  });
+
+  it("never merges on a short generic stem", () => {
+    const a = mkEvent({ slug: "lm-1", title: "Live Music", venue_name: "The Pour House" });
+    const b = mkEvent({
+      slug: "lm-2",
+      title: "Live Music",
+      venue_name: null as unknown as string,
+    });
+    expect(dedupeCrossSourceShows([a, b])).toHaveLength(2);
+  });
+
+  it("skips collapsed recurring series cards", () => {
+    const series = mkEvent({
+      slug: "rf-series",
+      title: "Rebekah Foster Acoustic Live",
+      is_recurring: true,
+      venue_name: null as unknown as string,
+      starts_at: "2026-07-09T16:00:00.000Z",
+    });
+    expect(dedupeCrossSourceShows([series, venued])).toHaveLength(2);
+  });
+
+  it("keeps the first row on a documentation tie", () => {
+    const twinA = { ...bareNoon, slug: "twin-a" };
+    // Midnight ET is the other "we don't actually know" default, so both
+    // rows score 0 and the earlier row must win.
+    const twinB = { ...bareNoon, slug: "twin-b", starts_at: "2026-07-09T04:00:00.000Z" };
+    const out = dedupeCrossSourceShows([twinA, twinB]);
+    expect(out).toHaveLength(1);
+    expect(out[0].slug).toBe("twin-a");
   });
 });

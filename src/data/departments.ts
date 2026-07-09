@@ -37,9 +37,11 @@ export type DepartmentContact = {
   phone?: string;
 };
 
-/** US 10-digit phone → "301-600-1380" for display. */
+/** US phone → display form: "301-600-1380", "1-800-222-1222", "555-1234". */
 export function formatPhone(digits: string): string {
   const d = digits.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1"))
+    return `1-${d.slice(1, 4)}-${d.slice(4, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
   if (d.length === 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
   return digits;

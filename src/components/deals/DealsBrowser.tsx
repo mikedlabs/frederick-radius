@@ -54,9 +54,11 @@ function RowCard({ r, accent, hideTown }: { r: DealRow; accent?: string; hideTow
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            {r.name}
-            {!hideTown && r.town && <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
+          {/* Truncate the NAME, never the town — a long venue name must not
+              crush its town to "New ..." noise. */}
+          <h3 className="flex min-w-0 items-baseline text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span className="min-w-0 truncate">{r.name}</span>
+            {!hideTown && r.town && <span className="shrink-0 whitespace-pre font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
           </h3>
           {r.verified ? (
             <span aria-label="verified" title="verified at the source" className="shrink-0 font-mono text-[11px] font-bold leading-none" style={{ color: "var(--app-positive)" }}>✓</span>

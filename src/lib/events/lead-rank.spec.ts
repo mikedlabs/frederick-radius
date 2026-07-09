@@ -13,6 +13,12 @@ describe("isRoutineProgram", () => {
     expect(isRoutineProgram({ title: "Toddler Time" })).toBe(true);
     expect(isRoutineProgram({ title: "Beginner Yoga" })).toBe(true);
     expect(isRoutineProgram({ title: "Tech Help Drop-in" })).toBe(true);
+    // The standing library/office-hours programs the July /today audit caught
+    // riding the photo rail (and one headlining the live strip).
+    expect(isRoutineProgram({ title: "DCFS Family Support Specialist" })).toBe(true);
+    expect(isRoutineProgram({ title: "Build and Play" })).toBe(true);
+    expect(isRoutineProgram({ title: "School Skills" })).toBe(true);
+    expect(isRoutineProgram({ title: "ESL Conversation Classes" })).toBe(true);
     // Real draws are NOT routine.
     expect(isRoutineProgram({ title: "Thurmont Firemen's Carnival" })).toBe(false);
     expect(isRoutineProgram({ title: "Vigilant Hose Co Friday Bingo" })).toBe(false);

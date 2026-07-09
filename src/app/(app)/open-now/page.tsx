@@ -114,11 +114,28 @@ export default async function OpenNowPage() {
           {verified.length > 24 && (
             <CollapsibleSection
               title="More open now"
-              count={verified.length - 24}
+              // Honesty rule: the disclosure count must match what the
+              // disclosure actually renders (the list is capped at 80 rows
+              // total). The tail line below hands the remainder to the map
+              // so a bigger number is never a dead end.
+              count={Math.min(verified.length, 80) - 24}
               storageKey="open-now-more"
               defaultOpen={false}
             >
               <PlaceList places={verified.slice(24, 80)} initialLayout="list" />
+              {verified.length > 80 && (
+                <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+                  {verified.length - 80} more are open right now.{" "}
+                  <Link
+                    href="/map?mode=browse&open=now"
+                    className="font-semibold underline underline-offset-2"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    See them all on the map
+                  </Link>
+                  .
+                </p>
+              )}
             </CollapsibleSection>
           )}
         </>

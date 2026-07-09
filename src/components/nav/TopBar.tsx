@@ -52,6 +52,28 @@ export default function TopBar() {
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
 
+  // Publish the bar's real bottom edge as --app-topbar-offset on <html> so
+  // sticky bars pinned under it (RightNow's filter bar, the /events dock)
+  // collapse in sync with the auto-hide instead of orphaning a band of raw
+  // list above themselves. Removing the inline value falls back to the
+  // :root default (= --app-topbar-h); consumers transition `top` at the
+  // same 240ms ease this header uses for its transform.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (hidden) root.style.setProperty("--app-topbar-offset", "0px");
+    else root.style.removeProperty("--app-topbar-offset");
+    return () => {
+      root.style.removeProperty("--app-topbar-offset");
+    };
+  }, [hidden]);
+
+  // /map folds its own search into the dock ("the map's ONE search", same
+  // index as this bar's overlay), and the page never scrolls, so the
+  // auto-hide can't resolve the duplication — two stacked search fields
+  // would sit in the top 130px permanently. Suppress the pill there; the
+  // wordmark, pulse, and Browse stay, and ⌘K still opens the overlay.
+  const isMapSurface = pathname === "/map";
+
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
   // tab, so without a back control the user is stranded — the #1 cause
@@ -171,28 +193,34 @@ export default function TopBar() {
               icons competing for attention. Fills the space between
               the logo and the right-side chips, Apple-Maps style.
               Tap anywhere on it opens the typeahead modal. */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Search places, events, towns"
-            className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            {/* Calm, static placeholder. ONE text node (truncates on
-                narrow phones) — the previous two responsive spans both
-                lived in the DOM, so non-CSS readers and audit tools saw
-                them concatenated ("What's open?What's open right now?").
-                The button's aria-label is the accessible name; this text
-                is decorative. */}
-            <span className="truncate text-left">Search places, events, towns…</span>
-            <kbd
-              className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
+          {isMapSurface ? (
+            // Spacer keeps the right cluster (pulse · Browse) on the right
+            // edge while the dock below owns search on this surface.
+            <div aria-hidden className="min-w-0 flex-1" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search places, events, towns"
+              className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              ⌘K
-            </kbd>
-          </button>
+              <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {/* Calm, static placeholder. ONE text node (truncates on
+                  narrow phones) — the previous two responsive spans both
+                  lived in the DOM, so non-CSS readers and audit tools saw
+                  them concatenated ("What's open?What's open right now?").
+                  The button's aria-label is the accessible name; this text
+                  is decorative. */}
+              <span className="truncate text-left">Search places, events, towns…</span>
+              <kbd
+                className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+              >
+                ⌘K
+              </kbd>
+            </button>
+          )}
 
           {/* (Removed the header "My Radius" bookmark — it duplicated the
               My Radius primary nav tab/SideRail item, putting two bookmark

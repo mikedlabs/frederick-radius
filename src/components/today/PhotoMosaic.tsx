@@ -9,8 +9,9 @@ import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
  * "Looks like Frederick" — a six-tile photographic grid of real
  * places. The point is visual presence: a wall of recognizable
  * storefronts, parks, and stages that anchors the page in the
- * actual place. Each tile is a tap target to the place detail; no
- * captions over the photos so the imagery does the talking.
+ * actual place. Each tile is a tap target to the place detail. The
+ * name caption reveals on hover where a pointer exists, and stays on
+ * where hover never fires (touch) so nobody taps a tile blind.
  *
  * Selection is deterministic per day (rotating by date) so a
  * repeat visit feels curated, not random. Only places with a Google
@@ -78,13 +79,17 @@ export default function PhotoMosaic({
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           )}
+          {/* Name scrim: hover-reveal on pointer devices, ALWAYS on where
+              hover never fires (touch) — otherwise phone users tap six
+              anonymous tiles blind, with the name living only in the
+              aria-label. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-2 bottom-2 truncate text-[10px] font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            className="pointer-events-none absolute inset-x-2 bottom-2 truncate text-[10px] font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
           >
             {p.name}

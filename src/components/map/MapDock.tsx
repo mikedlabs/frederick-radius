@@ -362,8 +362,11 @@ export default function MapDock(props: MapDockProps) {
     openNow: browse.openNow,
     timeMode: browse.timeMode,
   });
+  // "County", not "Whole county": the four equal .dock-seg columns clip the
+  // longer default to "Whole cou…" at 390px, so the resting readout shipped
+  // pre-truncated. The pane's chip keeps the full "Whole county" label.
   const whereText =
-    whereSel.kind === "county" ? "Whole county"
+    whereSel.kind === "county" ? "County"
     : whereSel.kind === "nearme" ? "Near me"
     : whereSel.name;
   // Layers = the drapes + the Yours lenses, tallied into the fourth word.

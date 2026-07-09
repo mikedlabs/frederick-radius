@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
 import type { MapPinPlace } from "./types";
@@ -10,9 +11,11 @@ import type { MapPinPlace } from "./types";
  * MapList — the map's list face. The same currently-filtered pins, turned
  * into a scannable roll the user can read top to bottom instead of hunting
  * the canvas. Rows carry the field-guide essentials (category plate, name,
- * open line, distance-from-you when we hold a fix); tapping one flies the
- * map to that pin and opens its peek. Nearest-first when located, else the
- * incoming (feature-score) order.
+ * town, open line, distance-from-you when we hold a fix); tapping one flies
+ * the map to that pin and opens its peek. Nearest-first when located; with
+ * no fix, open-now leads and the pins' feature score breaks ties, so the
+ * first screen is a browsable ranking rather than whatever order arrived
+ * (which fronted a run of golf clubs on the whole-county view).
  *
  * Honest empty state: when a filter matches nothing, say so plainly rather
  * than showing a blank sheet.
@@ -41,7 +44,17 @@ export default function MapList({
   onPick: (place: MapPinPlace) => void;
 }) {
   const rows = useMemo(() => {
-    if (!userLoc) return places.slice(0, 200);
+    if (!userLoc) {
+      const openScore = (p: MapPinPlace) =>
+        p.open_status.state === "open" || p.open_status.state === "closing-soon" ? 1 : 0;
+      return [...places]
+        .sort(
+          (a, b) =>
+            openScore(b) - openScore(a) ||
+            (b.feature_score ?? 0) - (a.feature_score ?? 0),
+        )
+        .slice(0, 200);
+    }
     return [...places]
       .map((p) => ({ p, d: p.geom ? haversineMeters(userLoc, p.geom) : Infinity }))
       .sort((a, b) => a.d - b.d)
@@ -65,6 +78,10 @@ export default function MapList({
             const cat = CATEGORY_BY_SLUG[p.category];
             const color = cat?.color ?? "var(--app-brand)";
             const open = openLine(p);
+            // The town anchors a whole-county roll ("Golf · Ijamsville") the
+            // way /nearby and /category cards already do — without it a row
+            // like "Whiskey Creek Golf Club · Golf" places nothing.
+            const town = MUNICIPALITY_BY_SLUG[p.municipality]?.name;
             const dist =
               userLoc && p.geom ? formatDistance(haversineMeters(userLoc, p.geom)) : null;
             return (
@@ -86,6 +103,12 @@ export default function MapList({
                     <span className="map-list-name">{p.name}</span>
                     <span className="map-list-sub">
                       <span style={{ color }}>{cat?.name ?? p.category}</span>
+                      {town && (
+                        <>
+                          <span aria-hidden className="map-list-mid">·</span>
+                          <span>{town}</span>
+                        </>
+                      )}
                       {open && (
                         <>
                           <span aria-hidden className="map-list-mid">·</span>

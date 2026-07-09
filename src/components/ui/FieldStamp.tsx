@@ -34,6 +34,14 @@ export default function FieldStamp({
 }) {
   const topId = `${id}-t`;
   const botId = `${id}-b`;
+  // Fit the top arc to its text. At 8px mono (0.6em advance) + 1.2px tracking,
+  // a long string like "VERIFIED AT SOURCE" (~107 units) overflows the r=32
+  // semicircle (~100 units) and clips to "ERIFIED AT SOURC". Long strings get
+  // a wider arc (still inside the r=41.5 ring; cap height ~5.8) and tighter
+  // tracking so the whole mark always renders.
+  const longTop = top.length > 14;
+  const topR = longTop ? 34.5 : 32;
+  const topSpacing = longTop ? "0.8px" : "1.2px";
   return (
     <svg
       aria-hidden
@@ -46,7 +54,7 @@ export default function FieldStamp({
       stroke="currentColor"
     >
       <defs>
-        <path id={topId} d="M 18 50 A 32 32 0 0 1 82 50" />
+        <path id={topId} d={`M ${50 - topR} 50 A ${topR} ${topR} 0 0 1 ${50 + topR} 50`} />
         <path id={botId} d="M 18 51 A 32 32 0 0 0 82 51" />
       </defs>
       <circle cx="50" cy="50" r="47" strokeWidth="2" />
@@ -60,7 +68,7 @@ export default function FieldStamp({
       <text
         fill="currentColor"
         stroke="none"
-        style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "8px", fontWeight: 600, letterSpacing: "1.2px" }}
+        style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "8px", fontWeight: 600, letterSpacing: topSpacing }}
       >
         <textPath href={`#${topId}`} startOffset="50%" textAnchor="middle">
           {top}

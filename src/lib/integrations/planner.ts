@@ -345,7 +345,7 @@ export function buildPlan(input: PlanInputs): Plan {
   };
 
   return {
-    title: titleFor(input, now),
+    title: titleFor(input, now, stops),
     summary: summaryFor(input, stops),
     stops,
     share: encodeSpec(spec),
@@ -383,7 +383,7 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
   if (ordered.length === 0) return null;
   const stops = schedule(ordered, now);
   return {
-    title: titleFor(spec.i, now),
+    title: titleFor(spec.i, now, stops),
     summary: summaryFor(spec.i, stops),
     stops,
     share: encodeSpec(spec),
@@ -635,13 +635,35 @@ export function reshuffleSpec(spec: PlanSpec, pinnedSlugs: string[], seed: numbe
   return { ...spec, i: inputs, s };
 }
 
-function titleFor(input: PlanInputs, now: Date): string {
+/** The scheduled stop-minutes total — the SAME number the hero's mono
+ *  "N min total" chip sums (PlanBuilder.totalMinutes), so the title and
+ *  the chip can never disagree about how long the plan really runs. */
+function plannedMinutes(stops: PlanStop[]): number {
+  return stops.reduce((sum, s) => sum + (s.duration_min ?? 0), 0);
+}
+
+/** 280 → "about 4½ hours"; 60 → "about an hour"; 90 → "about 1½ hours". */
+function hoursPhrase(totalMin: number): string {
+  const half = Math.round((totalMin / 60) * 2) / 2;
+  if (half <= 0.5) return "about half an hour";
+  if (half === 1) return "about an hour";
+  const whole = Math.floor(half);
+  return half === whole ? `about ${whole} hours` : `about ${whole}½ hours`;
+}
+
+function titleFor(input: PlanInputs, now: Date, stops: PlanStop[]): string {
   const seg = slotFor(now);
   const vibeWord: Record<PlanInputs["vibe"], string> = {
     easy: "An easy", active: "An active", cultural: "A cultural",
     outdoors: "An outdoor", food: "A food-first",
   };
-  return `${vibeWord[input.vibe]} ${input.duration_hours}-hour ${seg}`;
+  // Name the ACTUAL scheduled length, not the requested budget: the
+  // per-category durations routinely add past duration_hours, and a hero
+  // that says "3-hour" beside a chip that sums to 280 min reads as a
+  // broken promise on the surface whose pitch is respecting your time.
+  const total = plannedMinutes(stops);
+  if (total === 0) return `${vibeWord[input.vibe]} ${seg}`;
+  return `${vibeWord[input.vibe]} ${seg}, ${hoursPhrase(total)}`;
 }
 
 function summaryFor(input: PlanInputs, stops: PlanStop[]): string {

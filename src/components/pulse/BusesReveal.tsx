@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bus, ChevronDown } from "lucide-react";
 import TransitMap from "@/components/transit/TransitMapClient";
 import NextStopsBoard from "@/components/transit/NextStopsBoard";
+import RoutePearls from "@/components/transit/RoutePearls";
 import type { LineFC } from "@/lib/integrations/transitFrederick";
 
 /**
@@ -60,6 +61,11 @@ export default function BusesReveal({ shapes }: { shapes: LineFC }) {
 
   return (
     <div className="space-y-2.5">
+      {/* String-of-pearls board FIRST: each active route as a stop-line with
+          the live bus dot gliding along it. It reads without WebGL (and
+          before the tiles paint), so the buses are legible the instant the
+          reveal opens. Shares one vehicle poll with NextStopsBoard. */}
+      <RoutePearls />
       <TransitMap
         shapes={shapes}
         height={300}

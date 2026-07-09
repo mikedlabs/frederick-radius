@@ -166,7 +166,8 @@ export function emphasizeFigures(clause: string): Array<{ text: string; figure: 
  *
  * Splits on list/sentence separators, and on " and "/" plus " ONLY when the next
  * clause starts a new figure (so "draft and wine", "fish and chips" stay whole).
- * Pure + deterministic.
+ * Separators INSIDE parentheses never split — "(platters, sandwiches, hotcakes)"
+ * is one clause's own aside, not three broken lines. Pure + deterministic.
  */
 export function dealClauses(deal: string | null | undefined): string[] {
   const t = (deal ?? "").replace(/\s+/g, " ").trim();
@@ -174,10 +175,26 @@ export function dealClauses(deal: string | null | undefined): string[] {
   const FIG_AHEAD = String.raw`(?=\$\s*\d|\d{1,3}\s*%|half[-\s]?(?:off|price))`;
   const SEP = new RegExp(
     String.raw`\s*[;,]\s*|\.\s+(?=[A-Z$0-9])|\s+(?:and|plus|&)\s+${FIG_AHEAD}`,
-    "i",
+    "gi",
   );
+  // Split only at paren depth 0 so a parenthetical list stays with its clause.
+  const pieces: string[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SEP.exec(t)) !== null) {
+    let depth = 0;
+    for (let i = 0; i < m.index; i++) {
+      if (t[i] === "(") depth++;
+      else if (t[i] === ")") depth = Math.max(0, depth - 1);
+    }
+    if (depth === 0) {
+      pieces.push(t.slice(last, m.index));
+      last = m.index + m[0].length;
+    }
+  }
+  pieces.push(t.slice(last));
   const out: string[] = [];
-  for (let p of t.split(SEP)) {
+  for (let p of pieces) {
     p = p
       .replace(/^[\s:,;.–—-]+/, "")
       .replace(/[\s.,;]+$/, "")

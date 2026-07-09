@@ -417,7 +417,11 @@ export default function RightNow({
       <div
         className="sticky z-30 space-y-1.5 border-b py-2 backdrop-blur-sm"
         style={{
-          top: "calc(var(--app-topbar-h) + env(safe-area-inset-top))",
+          // --app-topbar-offset tracks the auto-hiding TopBar (0px while it's
+          // slid away), so this bar rides up with the chrome instead of
+          // pinning 56px down and letting cards scroll visibly above it.
+          top: "calc(var(--app-topbar-offset) + env(safe-area-inset-top))",
+          transition: "top 240ms var(--app-ease-out)",
           borderColor: "var(--app-border)",
           background: "color-mix(in srgb, var(--app-bg) 92%, transparent)",
         }}

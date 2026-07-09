@@ -214,7 +214,7 @@ export default function PreferencesPanel() {
           </div>
         )}
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          Seeds the Radius preset and the Today header.
+          Sets where Today and the Map start from.
         </p>
       </SectionShell>
 
@@ -267,7 +267,7 @@ export default function PreferencesPanel() {
         </ul>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {interests.size === 0
-            ? "Nothing picked yet. Pre-expands matching sections on Radius."
+            ? "Nothing picked yet. Your picks tune what leads on Today."
             : `${interests.size} picked: ${[...interests]
                 .map((s) => INTEREST_LABEL[s])
                 .filter(Boolean)

@@ -106,30 +106,36 @@ describe("whenCaption", () => {
 });
 
 describe("countLine (the living caption)", () => {
-  it("counts what's drawn", () => {
+  it("counts what's drawn, with no filler words", () => {
     expect(countLine({ places: 16, events: 14, closingSoon: 0, scrubHour: null })).toBe(
-      "16 places · 14 events on the map",
+      "16 places · 14 events",
     );
   });
   it("formats big counts and singulars", () => {
     expect(countLine({ places: 1712, events: 1, closingSoon: 0, scrubHour: null })).toBe(
-      "1,712 places · 1 event on the map",
+      "1,712 places · 1 event",
     );
-    expect(countLine({ places: 1, events: 0, closingSoon: 0, scrubHour: null })).toBe(
-      "1 place · 0 events on the map",
+  });
+  it("stays silent about zero events (the pixels belong to the live facts)", () => {
+    expect(countLine({ places: 1, events: 0, closingSoon: 0, scrubHour: null })).toBe("1 place");
+    expect(countLine({ places: 1594, events: 0, closingSoon: 190, scrubHour: null })).toBe(
+      "1,594 places · 190 close within the hour",
     );
   });
   it("adds the closing-soon clause when it's true right now", () => {
     expect(countLine({ places: 16, events: 14, closingSoon: 3, scrubHour: null })).toBe(
-      "16 places · 14 events on the map · 3 close within the hour",
+      "16 places · 14 events · 3 close within the hour",
     );
     expect(countLine({ places: 16, events: 14, closingSoon: 1, scrubHour: null })).toBe(
-      "16 places · 14 events on the map · 1 closes within the hour",
+      "16 places · 14 events · 1 closes within the hour",
     );
   });
-  it("carries the scrubbed time and drops the live closing clause", () => {
+  it("carries the scrubbed time (even at zero events) and drops the live closing clause", () => {
     expect(countLine({ places: 16, events: 5, closingSoon: 3, scrubHour: 18.5 })).toBe(
-      "16 places · 5 events at 6:30 PM on the map",
+      "16 places · 5 events at 6:30 PM",
+    );
+    expect(countLine({ places: 16, events: 0, closingSoon: 3, scrubHour: 18.5 })).toBe(
+      "16 places · 0 events at 6:30 PM",
     );
   });
 });

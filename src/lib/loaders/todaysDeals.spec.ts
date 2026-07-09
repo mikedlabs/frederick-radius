@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stripProvenance } from "./todaysDeals";
+import { distillOffer, stripProvenance } from "./todaysDeals";
 
 describe("stripProvenance", () => {
   it("removes a trailing balanced source note", () => {
@@ -42,5 +42,64 @@ describe("stripProvenance", () => {
 
   it("leaves clean copy untouched", () => {
     expect(stripProvenance("$4 pints all day")).toBe("$4 pints all day");
+  });
+});
+
+// Inputs mirror what the wallet actually hands distillOffer: the offer AFTER
+// trimDay + stripHours, i.e. the exact strings the Jul-9 audit caught
+// truncating mid-thought at the card lip.
+describe("distillOffer", () => {
+  it("strips an embedded day-list and keeps the essence before the colon (Rube's AYCE)", () => {
+    expect(
+      distillOffer(
+        "Nightly AYCE Crabs special Tuesday, Wednesday, and Thursday: all-you-can-eat soup & salad bar, french fries, and fresh hot steamed crabs",
+      ),
+    ).toEqual({ headline: "Nightly AYCE Crabs special", terms: undefined });
+  });
+
+  it("lifts a terms parenthetical into the lip fact (Belles wings)", () => {
+    expect(distillOffer("Buffalo wing special, (eat-in only); $4 flavored vodkas")).toEqual({
+      headline: "Buffalo wing special",
+      terms: "Eat-in only",
+    });
+  });
+
+  it("drops an 'every <day>' schedule and the trailing elaboration (trivia night)", () => {
+    expect(
+      distillOffer(
+        "Trivia Night every Thursday, (Geeks Who Drink). Winner gets free beer and bragging rights, plus an occasional special prize.",
+      ).headline,
+    ).toBe("Trivia Night");
+  });
+
+  it("removes a non-terms parenthetical from the headline (burger and a beer)", () => {
+    expect(distillOffer("Burger and a beer (or tots) special.").headline).toBe(
+      "Burger and a beer special",
+    );
+  });
+
+  it("keeps a single mid-phrase brand day ('Crabby Wednesday') and cuts at the colon", () => {
+    expect(
+      distillOffer("Crabby Wednesday: discount on hardshell crabs by the dozen, with an all-you-can-eat option.")
+        .headline,
+    ).toBe("Crabby Wednesday");
+  });
+
+  it("cuts an over-long clause at a natural boundary, never mid-word", () => {
+    expect(
+      distillOffer("Team Trivia with 1/2 price appetizers and extended happy hour until close; prizes for the top 3 teams.")
+        .headline,
+    ).toBe("Team Trivia with 1/2 price appetizers");
+    expect(
+      distillOffer("Oysters $1.25 each raw and steamed, $1.50 each fried.").headline,
+    ).toBe("Oysters $1.25 each raw and steamed");
+  });
+
+  it("leaves a short clean offer untouched", () => {
+    expect(distillOffer("$4 pints")).toEqual({ headline: "$4 pints", terms: undefined });
+  });
+
+  it("falls back to the raw clause when stripping would gut the text", () => {
+    expect(distillOffer("Every Thursday").headline).toBe("Every Thursday");
   });
 });
