@@ -1,4 +1,5 @@
 import { isEventLiveNow } from "@/lib/eventWhenLabel";
+import { compareForLead, eventLeadTier } from "@/lib/events/lead-rank";
 
 /**
  * "On now, near you" — the pure chip selector for the compact live strip that
@@ -6,8 +7,12 @@ import { isEventLiveNow } from "@/lib/eventWhenLabel";
  *
  * It replaces a copy-heavy seasonal band with at most three TAPPABLE chips, each
  * drawn from a signal the page already computes:
- *   1. an EVENT that is genuinely live this minute (the shared isEventLiveNow
- *      gate — never a future or ended event),
+ *   1. an EVENT worth heading out for: a DRAW that is genuinely live this
+ *      minute (the shared isEventLiveNow gate plus the same draw/utility/
+ *      routine tiers WhatsOn ranks by — a civic meeting or a standing library
+ *      program never headlines the strip), or, when no draw is live, the next
+ *      draw starting within the hour-and-a-half with an honest "Starts in
+ *      N min" kicker,
  *   2. a PLACE open now with something on (a verified happy hour pouring right
  *      now, the same live-window signal HappyHourWallet / OnNowBand ride),
  *   3. a MARKET actually open today (markets-today, a real market, not a
@@ -24,15 +29,20 @@ export type OnNowKind = "event" | "place" | "market";
 export type OnNowChip = {
   kind: OnNowKind;
   href: string;
-  /** Small mono kicker, e.g. "Live now" / "Open now" / "Market today". */
+  /** Small mono kicker, e.g. "Live now" / "Starts in 20 min" / "Open now". */
   kicker: string;
   /** The name (venue / place / market), the chip's headline. */
   title: string;
   /** Quiet supporting detail (venue, "till 7 PM", hours). Optional. */
   meta?: string;
+  /** True only when the thing is happening THIS MINUTE — the renderer keys
+   *  the pulsing live dot on this, so a "Starts in N min" chip never pulses. */
+  live?: boolean;
 };
 
-/** Minimal event shape — matches EventWithMeta without coupling to it. */
+/** Minimal event shape — matches EventWithMeta without coupling to it.
+ *  category + hero_image feed the shared lead tiers (draw vs routine vs
+ *  utility), so the strip and the What's-On rail agree on what headlines. */
 export type OnNowEvent = {
   slug: string;
   title: string;
@@ -40,6 +50,8 @@ export type OnNowEvent = {
   starts_at: string;
   ends_at?: string;
   is_all_day?: boolean;
+  category?: string;
+  hero_image?: string | null;
 };
 
 /** A happy hour pouring RIGHT NOW, already resolved to its place + window by the
@@ -67,13 +79,44 @@ function fmtEasternMinutes(m: number): string {
   return mm === 0 ? `${h12} ${mer}` : `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
-/** The one live event to feature: the soonest-starting event that is live this
- *  minute (isEventLiveNow rejects future, ended, and all-day rows). */
+/** The one live event to feature: the best DRAW that is live this minute.
+ *  isEventLiveNow rejects future, ended, and all-day rows; the lead tier
+ *  rejects civic/utility business and routine standing programs (the 11 AM
+ *  audit render headlined a DCFS office-hours row as "LIVE NOW"), and
+ *  compareForLead ranks what's left exactly the way the What's-On rail does. */
 export function pickLiveEvent(events: OnNowEvent[], now: Date): OnNowEvent | null {
   const live = events
-    .filter((e) => isEventLiveNow(e, now))
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+    .filter((e) => isEventLiveNow(e, now) && eventLeadTier(e) === 0)
+    .sort(compareForLead);
   return live[0] ?? null;
+}
+
+/** How far ahead the "Starts in N min" fallback may look. Past ~an hour and a
+ *  half a countdown kicker stops being a "head out now" signal. */
+export const NEXT_DRAW_WINDOW_MIN = 90;
+
+/** When no draw is live: the next DRAW starting within the window, with the
+ *  real minutes until it starts (never 0 — a start this instant reads as 1).
+ *  All-day rows have no clock to count down to, so they never qualify. */
+export function pickNextDraw(
+  events: OnNowEvent[],
+  now: Date,
+  windowMin: number = NEXT_DRAW_WINDOW_MIN,
+): { event: OnNowEvent; startsInMin: number } | null {
+  const t = now.getTime();
+  const next = events
+    .filter((e) => {
+      if (e.is_all_day) return false;
+      if (eventLeadTier(e) !== 0) return false;
+      const start = Date.parse(e.starts_at);
+      return Number.isFinite(start) && start > t && start - t <= windowMin * 60_000;
+    })
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0];
+  if (!next) return null;
+  return {
+    event: next,
+    startsInMin: Math.max(1, Math.ceil((Date.parse(next.starts_at) - t) / 60_000)),
+  };
 }
 
 /** The one open-now place to feature: last call first (most urgent), else the
@@ -107,7 +150,22 @@ export function selectOnNowChips(input: {
       kicker: "Live now",
       title: event.title,
       meta: event.venue_name ?? undefined,
+      live: true,
     });
+  } else {
+    // No draw is live — fall back honestly to the next one starting soon,
+    // with a countdown kicker instead of a "live" claim (and never a utility
+    // or routine-program filler).
+    const next = pickNextDraw(events, now);
+    if (next) {
+      chips.push({
+        kind: "event",
+        href: `/events/${next.event.slug}`,
+        kicker: `Starts in ${next.startsInMin} min`,
+        title: next.event.title,
+        meta: next.event.venue_name ?? undefined,
+      });
+    }
   }
 
   const pour = pickLivePour(pours);

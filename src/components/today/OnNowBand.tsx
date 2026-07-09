@@ -52,11 +52,23 @@ function liveHappyCount(now: Date): number {
  * the re-reads are ~free) to decide the header wording, then renders the blocks
  * in daypart order. Streams in its own Suspense boundary on /today.
  */
-export default async function OnNowBand({ now, eventsPromise }: { now: Date; eventsPromise: EventsPromise }) {
+export default async function OnNowBand({
+  now,
+  eventsPromise,
+  marketTeaserAbove = false,
+}: {
+  now: Date;
+  eventsPromise: EventsPromise;
+  /** True when the page already teases today's market above the band (the
+   *  /today OnNowStrip chip). The band then skips its MarketsTodayBeat line —
+   *  and drops markets from its live tally — so one open market is one fact
+   *  on the page, not three. */
+  marketTeaserAbove?: boolean;
+}) {
   const { publicEvents } = await eventsPromise;
 
   // Presence, from the EXACT loaders each block uses, so the header never lies.
-  const markets = await marketsOpenToday(now);
+  const markets = marketTeaserAbove ? [] : await marketsOpenToday(now);
   const dealsCount = todaysDeals(now).length;
   const happyCount = liveHappyCount(now);
   const parking = parkingPlanForToday(
@@ -75,7 +87,7 @@ export default async function OnNowBand({ now, eventsPromise }: { now: Date; eve
   const blocks: Record<string, ReactNode> = {
     happy: <HappyHourWallet now={now} />,
     deals: <TodaysDeals now={now} />,
-    markets: <MarketsTodayBeat now={now} />,
+    markets: marketTeaserAbove ? null : <MarketsTodayBeat now={now} />,
     parking: parking ? (
       <TonightParkingPlan
         eventTitle={parking.event.title}

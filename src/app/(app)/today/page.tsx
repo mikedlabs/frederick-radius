@@ -51,7 +51,7 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { compareForLead } from "@/lib/events/lead-rank";
+import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
 import { FREDERICK_CENTER, isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded, eventWhenLabel } from "@/lib/eventWhenLabel";
@@ -377,7 +377,14 @@ export default async function HomePage() {
 
       <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
-          <OnNowBand now={now} eventsPromise={eventsPromise} />
+          {/* marketTeaserAbove: the OnNowStrip up top is the canonical market
+              teaser — it chips today's market whenever marketsOpenToday finds
+              one, which is exactly when the band's MarketsTodayBeat line would
+              render. Telling the band the strip has it means the market fact
+              lives ONCE on /today (the July audit caught it rendering three
+              times) while /today keeps the richer /category/market door via
+              the chip itself. */}
+          <OnNowBand now={now} eventsPromise={eventsPromise} marketTeaserAbove />
         </Suspense>
       </div>
 
@@ -681,8 +688,15 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // isEventEnded's real end time.
   const ended = todayAll.filter((e) => isEventEnded(e, now));
   const ahead = todayAll.filter((e) => !isEventEnded(e, now));
-  const todaysEvents = ahead.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
-  const todaysCivic = ahead.filter((e) => isUtilityEvent(e));
+  // The photo-card rail is for DRAWS only. Routine recurring programming
+  // (storytime, ESL class, tech help — the standing library calendar) used to
+  // ride the same rail in the same card language as tonight's headline acts,
+  // flattening the hierarchy; it now joins civic business in the quiet
+  // "Also today" line list, ordered by start time.
+  const todaysEvents = ahead
+    .filter((e) => !isUtilityEvent(e) && !isRoutineProgram(e))
+    .sort(compareForLead);
+  const alsoToday = ahead.filter((e) => isUtilityEvent(e) || isRoutineProgram(e));
   const earlierToday = ended.filter((e) => !isUtilityEvent(e));
   // (The overnight "First thing tomorrow" strip that used to live here grew into
   // its own composed TomorrowPreview beat above — top draw + weather look, gated
@@ -699,6 +713,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     : todaysEvents;
   const feature = featuredEvent ? withoutTeaser[0] : undefined;
   const upcomingRest = feature ? withoutTeaser.slice(1) : withoutTeaser;
+  // Cap the rail: ~5,600px of sideways scroll (the July audit measured ~20
+  // tiles) buries the "See all" door. Eight draws is a real shelf; the
+  // overflow closes the rail as an honest "+N more today" stub into /events.
+  const RAIL_MAX = 8;
+  const railEvents = upcomingRest.slice(0, RAIL_MAX);
+  const railOverflow = upcomingRest.length - railEvents.length;
 
   return (
     <section className="mt-6 space-y-3" aria-label="What's on">
@@ -710,17 +730,17 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         eyebrow="What's on"
         plateNo="Pl. I"
       >
-        {feature || upcomingRest.length > 0 || todaysCivic.length > 0 || earlierToday.length > 0 ? (
+        {feature || upcomingRest.length > 0 || alsoToday.length > 0 || earlierToday.length > 0 ? (
           <div className="space-y-3">
             {feature && (
               isKeysEvent(feature)
                 ? <KeysCard event={feature} variant="feature" />
                 : <EventCard event={feature} variant="feature" />
             )}
-            {upcomingRest.length > 0 && (
+            {railEvents.length > 0 && (
               <div className="-mx-4 px-4">
                 <div className="reveal-up shelf-rail gap-3 pb-1">
-                  {upcomingRest.map((e) => (
+                  {railEvents.map((e) => (
                     <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
                       <div className="tactile-ring rounded-[var(--app-radius-lg)]">
                         {isKeysEvent(e)
@@ -735,18 +755,45 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                       {hasPreciseGeo(e) && <EventWalkTime dest={e.geom} />}
                     </div>
                   ))}
+                  {/* End-cap stub: the honest close of a capped shelf — the mono
+                      count says how much of today didn't fit, and the whole
+                      tile is the door to /events. Quiet by design (dashed
+                      hairline, no photo) so it reads as an edge, not a peer. */}
+                  {railOverflow > 0 && (
+                    <div className="flex w-[150px] shrink-0 self-stretch">
+                      <Link
+                        href="/events"
+                        className="tactile-interactive flex min-h-[160px] w-full flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] border border-dashed px-3"
+                        style={{
+                          borderColor: "color-mix(in srgb, var(--app-ink) 22%, transparent)",
+                          background: "color-mix(in srgb, var(--app-ink) 3%, transparent)",
+                        }}
+                      >
+                        <span className="font-mono text-[17px] font-bold tabular-nums leading-none" style={{ color: "var(--app-ink)" }}>
+                          +{railOverflow}
+                        </span>
+                        <span className="text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          more today
+                        </span>
+                        <span aria-hidden className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+                          →
+                        </span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            {/* Civic / municipal business happening today — present but quiet,
-                as muted one-line rows so it never competes with the draws. */}
-            {todaysCivic.length > 0 && (
+            {/* Civic / municipal business + routine recurring programs
+                happening today — present but quiet, as muted one-line rows so
+                they never compete with the draws. */}
+            {alsoToday.length > 0 && (
               <div className="space-y-1">
                 <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
                   Also today
                 </p>
                 <ul>
-                  {todaysCivic.map((e) => (
+                  {alsoToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" />
                     </li>

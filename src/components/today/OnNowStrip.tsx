@@ -104,7 +104,9 @@ const KIND: Record<OnNowChip["kind"], { Icon: LucideIcon; ink: string }> = {
 
 function OnNowChipCard({ chip }: { chip: OnNowChip }) {
   const { Icon, ink } = KIND[chip.kind];
-  const live = chip.kind === "event";
+  // The pulse + vermilion ring are a LIVE claim, so they key on the selector's
+  // live flag — the "Starts in N min" fallback chip stays calm, no false pulse.
+  const live = chip.live === true;
   return (
     <Link
       href={chip.href}
