@@ -74,7 +74,7 @@ export default function BetaIntroCard() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss welcome"
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90"
+        className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />

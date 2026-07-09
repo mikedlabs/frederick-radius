@@ -147,7 +147,7 @@ export default function MyRadiusButton({
       disabled={busy}
       aria-pressed={false}
       aria-label={`Save ${name}`}
-      className="tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
+      className="tap-44-y tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
       style={{ background: "var(--app-brand)" }}
     >
       {busy ? (
