@@ -23,6 +23,7 @@ import {
   History,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import ExploreDeck from "@/components/nav/ExploreDeck";
 
 /**
  * MoreSheet v7 — Discover-first + app-drawer icon grids.
@@ -123,7 +124,15 @@ export default function MoreSheet({
           (Renamed from "More" — it's a directory of the whole app, not an
           overflow afterthought.) */}
       <div className="space-y-5 px-4 pt-3 pb-6">
-        <IconCluster heading="Around the county" items={DISCOVER} onClose={close} columns={3} />
+        {/* Around the county — the field-guide index, as a fan-in wallet deck
+            (the destination people came for). Contribute + App stay compact
+            icon launchers below. */}
+        <section className="space-y-2">
+          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+            Around the county
+          </h3>
+          <ExploreDeck items={DISCOVER} onNavigate={close} />
+        </section>
         <IconCluster heading="Contribute" items={CONTRIBUTE} onClose={close} columns={3} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>
