@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { ArrowLeft, Compass } from "lucide-react";
+import { Compass } from "lucide-react";
+import SearchInput from "@/components/search/SearchInput";
+
+/** A few popular doorways back into the app, for a lost visitor. */
+const DOORWAYS: Array<{ label: string; href: string }> = [
+  { label: "Map", href: "/map" },
+  { label: "Eat & drink", href: "/category/food" },
+  { label: "Coffee", href: "/category/coffee" },
+  { label: "Saved", href: "/my-radius" },
+];
 
 /**
  * Global 404. Composed editorial state — soft sky gradient backdrop,
@@ -51,6 +60,12 @@ export default function NotFound() {
             rest of Frederick is one tap away.
           </p>
         </div>
+        {/* Search is the fastest way forward for someone who landed on a
+            dead link — one field, straight into the ranked results. */}
+        <div className="w-full max-w-sm">
+          <SearchInput />
+        </div>
+
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button href="/today" size="md">
             Back home
@@ -59,14 +74,24 @@ export default function NotFound() {
             See events
           </Button>
         </div>
-        <Link
-          href="/map?mode=radius"
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Or open the radius
-        </Link>
+
+        {/* Contextual doorways — a few popular ways back in. */}
+        <nav aria-label="Popular pages" className="flex flex-wrap items-center justify-center gap-2">
+          {DOORWAYS.map((d) => (
+            <Link
+              key={d.href}
+              href={d.href}
+              className="tap-44 rounded-full border px-3.5 py-2 text-[13px] font-semibold"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              {d.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </main>
   );
