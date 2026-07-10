@@ -31,24 +31,33 @@ function uint8FromBase64(base64: string): Uint8Array {
   return out;
 }
 
-export async function subscribeDevicePush(topics: string[] = []): Promise<PushSubscribeResult> {
+/**
+ * Ensure this browser has push permission and a live PushSubscription,
+ * WITHOUT writing anything to the server. Callers decide where the
+ * subscription is registered: subscribeDevicePush posts it to the public
+ * /api/push/subscribe; the admin owner-alerts card posts it to the
+ * Basic-Auth-gated /admin/api/owner-alerts instead.
+ */
+export async function ensureDevicePushSubscription(): Promise<
+  { status: "ok"; sub: PushSubscription } | { status: Exclude<PushSubscribeResult, "subscribed"> }
+> {
   if (
     typeof window === "undefined" ||
     !("serviceWorker" in navigator) ||
     !("PushManager" in window) ||
     !("Notification" in window)
   ) {
-    return "unsupported";
+    return { status: "unsupported" };
   }
   try {
     const keyRes = await fetch("/api/push/public-key");
     const json = (await keyRes.json().catch(() => ({}))) as { key?: string; enabled?: boolean };
-    if (!keyRes.ok || !json.enabled || !json.key) return "unsupported"; // server not configured
+    if (!keyRes.ok || !json.enabled || !json.key) return { status: "unsupported" }; // server not configured
     const pubKey = json.key;
 
     const permission = await Notification.requestPermission();
-    if (permission === "denied") return "denied";
-    if (permission !== "granted") return "dismissed";
+    if (permission === "denied") return { status: "denied" };
+    if (permission !== "granted") return { status: "dismissed" };
 
     const reg = await navigator.serviceWorker.ready;
     const sub =
@@ -57,12 +66,21 @@ export async function subscribeDevicePush(topics: string[] = []): Promise<PushSu
         userVisibleOnly: true,
         applicationServerKey: uint8FromBase64(pubKey) as BufferSource,
       }));
+    return { status: "ok", sub };
+  } catch {
+    return { status: "error" };
+  }
+}
 
+export async function subscribeDevicePush(topics: string[] = []): Promise<PushSubscribeResult> {
+  const ensured = await ensureDevicePushSubscription();
+  if (ensured.status !== "ok") return ensured.status;
+  try {
     const res = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        subscription: sub.toJSON(),
+        subscription: ensured.sub.toJSON(),
         topics,
         device_id:
           typeof localStorage !== "undefined"

@@ -14,6 +14,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { beta_emails } from "@/lib/db/schema";
 import { isRateLimited } from "@/lib/origin-check";
+import { fanoutToTopic } from "@/lib/push-fanout";
+import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +43,28 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   if (!db) return NextResponse.json({ ok: false, db: false }, { headers: noStore });
   try {
-    await db.insert(beta_emails).values({ email }).onConflictDoNothing();
+    const inserted = await db
+      .insert(beta_emails)
+      .values({ email })
+      .onConflictDoNothing()
+      .returning({ id: beta_emails.id });
+    // Owner alert on genuinely NEW signups only (a duplicate signup inserts
+    // nothing and stays silent). Push failure never fails the signup.
+    const id = inserted[0]?.id;
+    if (id) {
+      try {
+        await fanoutToTopic(OWNER_ALERTS_TOPIC, `signup:${id}`, {
+          title: "New beta signup",
+          body: email,
+          url: "/admin/beta",
+        });
+      } catch (err) {
+        console.error(
+          "[beta/email] owner alert failed:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
     return NextResponse.json({ ok: true }, { headers: noStore });
   } catch {
     // Table not migrated yet, or transient DB failure — benign degrade.

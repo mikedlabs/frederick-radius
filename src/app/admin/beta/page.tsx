@@ -13,6 +13,7 @@ import {
   submissions,
 } from "@/lib/db/schema";
 import { easternDayKey } from "@/lib/tz";
+import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
 import { resolveFeedback } from "./actions";
 
 export const metadata: Metadata = {
@@ -159,7 +160,11 @@ function Dashboard({ data }: { data: Data }) {
 
   return (
     <>
-      <section className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <section className="mt-6">
+        <OwnerAlertsCard />
+      </section>
+
+      <section className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat
           label="Signups"
           value={data.signups.length}
