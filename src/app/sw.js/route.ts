@@ -134,6 +134,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // never touch cross-origin
 
+  // /admin is Basic-Auth gated in middleware. When a SW mediates the fetch,
+  // several engines (Safari, installed PWAs, some Chromium contexts) suppress
+  // the browser's credential prompt: the user gets the bare 401 body instead
+  // of a login dialog and the page "never loads". Let the browser own every
+  // /admin request natively; the admin surface needs no offline support.
+  if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return;
+
   // 1. Navigations: NETWORK-FIRST. Live content always wins.
   if (request.mode === "navigate") {
     event.respondWith(
