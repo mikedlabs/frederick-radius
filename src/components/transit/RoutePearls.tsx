@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import TRANSIT from "@/data/transit.json";
 import { useLiveVehicles } from "./useLiveVehicles";
-import { fractionAlong, pearlsFor, type Pearl } from "./routeGeometry";
+import { fractionAlong, pearlsFor, stopSequenceFor, type Pearl } from "./routeGeometry";
 
 /**
  * RoutePearls — every ACTIVE route as a string of pearls: the stop sequence
@@ -49,6 +49,54 @@ const SNAP_FRAC = 0.35;
 type BusOnLine = { id: string; frac: number };
 type Row = { route: TransitRoute; pearls: Pearl[]; buses: BusOnLine[] };
 
+/** A finger this close to a bus (as a fraction of the line) reads as "the
+ *  bus is here" rather than N stops away — matches the bead-merge gap. */
+const AT_BUS_FRAC = 0.012;
+
+type Scrub = { routeId: string; frac: number };
+
+/**
+ * The scrub readout for one route line: nearest real stop (from the FULL
+ * sequence, not the thinned beads), its position in the run, and how far
+ * the closest live bus is in stops. Loop routes have no single "toward"
+ * direction in this feed, so distance is "~N stops", never a promise of
+ * approach.
+ */
+function scrubReadout(
+  routeId: string,
+  frac: number,
+  buses: BusOnLine[],
+): { name: string; index: number; count: number; busLine: string | null } | null {
+  const seq = stopSequenceFor(routeId);
+  if (seq.length === 0) return null;
+  let index = 0;
+  for (let i = 1; i < seq.length; i++) {
+    if (Math.abs(seq[i].frac - frac) < Math.abs(seq[index].frac - frac)) index = i;
+  }
+  let busLine: string | null = null;
+  if (buses.length > 0) {
+    const stopFrac = seq[index].frac;
+    let best = Infinity;
+    let between = 0;
+    for (const b of buses) {
+      const d = Math.abs(b.frac - stopFrac);
+      if (d < best) {
+        best = d;
+        const lo = Math.min(b.frac, stopFrac);
+        const hi = Math.max(b.frac, stopFrac);
+        between = seq.filter((p) => p.frac > lo && p.frac < hi).length;
+      }
+    }
+    if (best < AT_BUS_FRAC) {
+      busLine = "bus here now";
+    } else {
+      const n = between + 1;
+      busLine = `bus ~${n} ${n === 1 ? "stop" : "stops"} away`;
+    }
+  }
+  return { name: seq[index].name, index, count: seq.length, busLine };
+}
+
 /** Numeric routes first in numeric order (10, 20, 40…), lettered shuttles
  *  (BJS, ETS…) after, alphabetically. */
 function routeOrder(a: Row, b: Row): number {
@@ -67,6 +115,9 @@ export default function RoutePearls() {
   const [reduced] = useState(
     () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
   );
+  // Scrub — finger or mouse riding a route line names the stop under it.
+  // One route scrubs at a time; touch-action pan-y keeps the page scrollable.
+  const [scrub, setScrub] = useState<Scrub | null>(null);
 
   // Group live buses onto their route lines. `unplaced` counts buses the
   // feed reported without a route we can draw — footnoted, never invented.
@@ -186,8 +237,28 @@ export default function RoutePearls() {
               </div>
 
               {/* The string of pearls. Decorative to a screen reader — the
-                  row header above already says which route is running. */}
-              <div aria-hidden className="relative mt-2 h-3.5">
+                  row header above already says which route is running.
+                  SCRUB: riding the line with a finger or the mouse names the
+                  stop underneath (full sequence, not just the drawn beads)
+                  plus how far the live bus is. touch-action pan-y keeps
+                  vertical page scroll working mid-gesture. */}
+              <div
+                aria-hidden
+                className="relative mt-2 h-5"
+                style={{ touchAction: "pan-y" }}
+                onPointerDown={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setScrub({ routeId: row.route.id, frac: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) });
+                }}
+                onPointerMove={(e) => {
+                  if (e.pointerType !== "mouse" && e.buttons === 0) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setScrub({ routeId: row.route.id, frac: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) });
+                }}
+                onPointerUp={() => setScrub(null)}
+                onPointerCancel={() => setScrub(null)}
+                onPointerLeave={() => setScrub(null)}
+              >
                 <span
                   className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full"
                   style={{ background: "var(--app-border)" }}
@@ -228,6 +299,40 @@ export default function RoutePearls() {
                     }}
                   />
                 ))}
+                {scrub?.routeId === row.route.id && (() => {
+                  const r = scrubReadout(row.route.id, scrub.frac, row.buses);
+                  if (!r) return null;
+                  return (
+                    <>
+                      {/* Hairline cursor under the finger. */}
+                      <span
+                        className="absolute top-1/2 h-3 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                        style={{ left: `${scrub.frac * 100}%`, background: "var(--app-ink-2)" }}
+                      />
+                      {/* Floating readout above the line, clamped to the row.
+                          Covers the row header while the finger is down —
+                          the reader already knows which route they grabbed. */}
+                      <div
+                        className="pointer-events-none absolute z-10 max-w-[85%] -translate-x-1/2 rounded-[var(--app-radius-sm)] border px-2 py-1"
+                        style={{
+                          left: `clamp(18%, ${scrub.frac * 100}%, 82%)`,
+                          bottom: "calc(100% + 2px)",
+                          borderColor: "var(--app-border)",
+                          background: "var(--app-bg-elevated-solid)",
+                          boxShadow: "0 4px 12px -4px rgba(22,20,14,0.28)",
+                        }}
+                      >
+                        <p className="truncate text-[11px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                          {r.name}
+                        </p>
+                        <p className="font-mono text-[9.5px] tabular-nums leading-tight" style={{ color: "var(--app-ink-3)" }}>
+                          stop {r.index + 1} of {r.count}
+                          {r.busLine ? ` · ${r.busLine}` : ""}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </li>
           ))}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import TRANSIT from "@/data/transit.json";
-import { buildShape, projectToShape, pearlsFor, fractionAlong } from "./routeGeometry";
+import { buildShape, projectToShape, pearlsFor, stopSequenceFor, fractionAlong } from "./routeGeometry";
 
 // A simple L-shaped test polyline: east 0.01°, then north 0.01°.
 const L_SHAPE = buildShape([
@@ -57,5 +57,19 @@ describe("pearlsFor", () => {
   it("returns the cached array on repeat calls", () => {
     const routeId = (TRANSIT.routes as { id: string }[])[0].id;
     expect(pearlsFor(routeId)).toBe(pearlsFor(routeId));
+  });
+});
+
+describe("stopSequenceFor", () => {
+  it("is the un-thinned superset the beads are drawn from, with names", () => {
+    for (const r of TRANSIT.routes as { id: string }[]) {
+      const seq = stopSequenceFor(r.id);
+      const pearls = pearlsFor(r.id);
+      expect(seq.length).toBeGreaterThanOrEqual(pearls.length);
+      for (let i = 1; i < seq.length; i++) {
+        expect(seq[i].frac).toBeGreaterThanOrEqual(seq[i - 1].frac);
+      }
+      for (const p of seq) expect(p.name.length).toBeGreaterThan(0);
+    }
   });
 });
