@@ -104,6 +104,16 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
     keywords: ["events", "what's on", "calendar", "happening", "concerts", "shows"],
   },
   {
+    // Safety door (beta-tester request, Jul 2026): "hospital" in a vet
+    // practice's name misleads panicked owners - a vet-shaped query leads
+    // with the verified emergency tiers, not a name-match lottery.
+    id: "action:emergency-vet",
+    title: "Pet emergency care",
+    subtitle: "The two 24/7 animal ERs, urgent care hours, poison lines.",
+    href: "/emergency-vet",
+    keywords: ["vet", "vets", "veterinarian", "veterinary", "emergency vet", "animal hospital", "pet emergency", "dog emergency", "cat emergency", "pet poison", "urgent care pets"],
+  },
+  {
     id: "action:map",
     title: "Open the map",
     subtitle: "Everything visible at a glance.",
