@@ -9,6 +9,7 @@ import {
   Plane,
   DoorOpen,
   CalendarDays,
+  CalendarSearch,
   Music,
   Layers,
   ScrollText,
@@ -73,6 +74,9 @@ const DISCOVER: Item[] = [
   // the weekend-filtered board, not the unfiltered list.
   { href: "/events?lens=weekend", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
   { href: "/live-music", label: "Live music", description: "Who's playing tonight and this week across the county", icon: Music, color: "var(--app-accent)" },
+  // The organizer's door (beta feedback, Jul 2026): planners need to see a
+  // date's existing commitments BEFORE setting their own.
+  { href: "/check-a-date", label: "Check a date", description: "See what's already scheduled before you set yours", icon: CalendarSearch, color: "var(--app-brand-2)" },
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
   { href: "/collections", label: "Collections", description: "Editor's picks: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
   { href: "/towns", label: "Towns", description: "All 12 municipalities, plus Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
