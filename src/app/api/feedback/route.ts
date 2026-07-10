@@ -18,6 +18,8 @@ import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
 import { isRateLimited } from "@/lib/origin-check";
 import { parseFeedback, buildFeedbackRow } from "@/lib/feedback";
+import { fanoutToTopic } from "@/lib/push-fanout";
+import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +49,28 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   if (db) {
     try {
-      await db.insert(submissions).values(row);
+      const inserted = await db
+        .insert(submissions)
+        .values(row)
+        .returning({ id: submissions.id });
+      // Owner alert: the note is on your phone the moment a tester sends it.
+      // Fire-and-forget shape — a push failure must never fail the intake.
+      const id = inserted[0]?.id;
+      if (id) {
+        try {
+          const where = parsed.value.pathname ? ` · ${parsed.value.pathname}` : "";
+          await fanoutToTopic(OWNER_ALERTS_TOPIC, `feedback:${id}`, {
+            title: "Beta feedback",
+            body: parsed.value.message.slice(0, 140) + where,
+            url: "/admin/beta",
+          });
+        } catch (err) {
+          console.error(
+            "[feedback] owner alert failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
     } catch (err) {
       // Table not migrated yet, or a transient DB blip — never lose the note.
       // The log line IS the fallback sink; the endpoint still succeeds.

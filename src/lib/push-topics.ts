@@ -41,3 +41,16 @@ export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = 
 export function businessTopic(slug: string): string {
   return `biz:${slug}`;
 }
+
+/**
+ * The owner's ops-alert topic (new beta feedback, new signups). NOT in
+ * TOPIC_LABELS on purpose — it must never render as a user-facing choice,
+ * and the public subscribe route strips it so only the Basic-Auth-gated
+ * /admin/api/owner-alerts endpoint can grant it. The alert payloads carry
+ * feedback text and signup emails, so the gate is load-bearing.
+ */
+export const OWNER_ALERTS_TOPIC = "owner-alerts";
+
+export function isOwnerTopic(topic: string): boolean {
+  return topic === OWNER_ALERTS_TOPIC;
+}
