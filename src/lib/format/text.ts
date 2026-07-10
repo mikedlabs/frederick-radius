@@ -73,6 +73,26 @@ export function cleanFeedText(raw: string): string {
 }
 
 /**
+ * Recursively run `cleanFeedText` over every string in a value — the
+ * boundary pass for hand-authored/agent-written JSON datasets
+ * (field-notes.json, business-info.json) that bypass the feed pipeline
+ * and the ESLint JSXText em-dash guard. Normalizing on read means a
+ * curated note can never leak an em dash to a user. cleanFeedText is a
+ * no-op on URLs, enums, and ISO dates (no tags/entities/dash glyphs),
+ * so fields like source_url survive untouched.
+ */
+export function deepCleanStrings<T>(value: T): T {
+  if (typeof value === "string") return cleanFeedText(value) as unknown as T;
+  if (Array.isArray(value)) return value.map(deepCleanStrings) as unknown as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = deepCleanStrings(v);
+    return out as T;
+  }
+  return value;
+}
+
+/**
  * Scrape-fragment repair for one-line place blurbs. The DFP scrape cut some
  * blurbs mid-sentence, leaving fragments that read broken on a card:
  *   "is a family-owned … boutique"   (the place NAME was stripped)

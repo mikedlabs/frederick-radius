@@ -1,5 +1,6 @@
 import RAW from "@/data/business-info.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
+import { deepCleanStrings } from "@/lib/format/text";
 
 /**
  * Business deep-info loader.
@@ -24,7 +25,11 @@ export type BusinessInfo = {
   source: { url: string; fetchedAt: string };
 };
 
-const DATA = RAW as Record<string, BusinessInfo>;
+// Boundary cleaning, never render-time (same pass fieldNotes.ts runs):
+// business-info.json is agent-written, so its strings bypass cleanFeedText
+// and the ESLint JSXText em-dash guard. Normalize on read — the Milkhouse
+// happy-hour string shipped a raw em dash to the page before this pass.
+const DATA = deepCleanStrings(RAW as Record<string, BusinessInfo>);
 
 // Wrong-business quarantine (UX audit P0): the info agent read the WEBSITE
 // the misbound Google listing pointed at, so a quarantined slug's "deep

@@ -143,14 +143,20 @@ async function processSeason(season: (typeof SEASONS)[number]): Promise<Manifest
     }
 
     const optimized = await sharp(buf)
-      .rotate() // honors EXIF orientation, then strips
+      .rotate() // honors EXIF orientation (pixels rotated, so no tag needed)
       .resize({ width: TARGET_WIDTH, withoutEnlargement: true })
       .jpeg({
         quality: JPEG_QUALITY,
         progressive: true,
         mozjpeg: true,
       })
-      .withMetadata({}) // strip EXIF for privacy + size
+      // No withMetadata() here ON PURPOSE: sharp's default output carries no
+      // EXIF/XMP/ICC. The old `.withMetadata({})` call did the OPPOSITE of
+      // its "strip EXIF" comment — sharp treats it as "keep all input
+      // metadata," so every published JPEG shipped with the drone's GPS
+      // position, flight telemetry, and camera serial number. Fixed
+      // 2026-07-10; the already-committed files were re-stripped with
+      // `exiftool -all=` in the same commit.
       .toBuffer();
     await fs.writeFile(outPath, optimized);
     const meta = await sharp(optimized).metadata();

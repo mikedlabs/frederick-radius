@@ -24,6 +24,17 @@
 // Run:  node scripts/build-aerial-manifest.mjs
 //
 // Requires exiftool on PATH (brew install exiftool).
+//
+// PRIVACY NOTE (2026-07-10): the committed public/ copies are now
+// metadata-STRIPPED — the shipped JPEGs no longer carry EXIF GPS, DJI
+// flight telemetry, or the camera serial number (they leaked launch
+// positions and the aircraft identity to anyone who fetched a photo).
+// This committed manifest is therefore the durable georeference record.
+// Re-running this script against the stripped public/ copies finds no
+// GPS, so main() below refuses to overwrite a useful manifest with an
+// empty one. To georeference NEW photos, read EXIF from the originals
+// (Dropbox source folder) before optimize-seasonal-photos.ts strips them,
+// and merge the rows into the existing manifest.
 import { execFile } from "node:child_process";
 import { readdir, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -110,6 +121,17 @@ async function main() {
       kept++;
     }
     console.log(`  ${season}: ${kept} / ${files.length} with GPS`);
+  }
+  // Guard: the shipped JPEGs are metadata-stripped (see header), so a run
+  // against public/ yields zero GPS rows. Never clobber the committed
+  // manifest — it is the only remaining record of where each shot was taken.
+  if (all.length === 0) {
+    console.error(
+      "no GPS found in any photo — the public/ copies are EXIF-stripped.\n" +
+        "Refusing to overwrite the committed manifest. Georeference new\n" +
+        "photos from the Dropbox originals and merge into " + OUT,
+    );
+    process.exit(1);
   }
   // Sort newest-first so a viewer's eye lands on recent imagery before
   // older shots.
