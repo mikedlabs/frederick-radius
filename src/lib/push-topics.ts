@@ -8,7 +8,8 @@ export type PushTopic =
   | "saved-events"
   | "daily-briefing"
   | "specials"
-  | "parking";
+  | "parking"
+  | "golden-hour";
 
 export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = {
   "civic-alerts": {
@@ -31,7 +32,14 @@ export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = 
     label: "Parking alerts",
     desc: "A heads-up before downtown garages fill, so you can pick another",
   },
+  "golden-hour": {
+    label: "Golden hour",
+    desc: "A heads-up half an hour before the day's best light",
+  },
 };
+
+/** The golden-hour cron's topic, named so callers don't scatter the string. */
+export const GOLDEN_HOUR_TOPIC: PushTopic = "golden-hour";
 
 /**
  * The per-business follow topic for a place slug. Subscriptions store
