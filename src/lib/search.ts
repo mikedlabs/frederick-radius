@@ -163,7 +163,16 @@ function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
   return v;
 }
 
-export function search(query: string, limit = 30): SearchHit[] {
+/**
+ * `eventPool` — the events to rank. Defaults to the curated seeds so
+ * client-safe callers stay bundle-light, but the SERVER search route
+ * passes the full unified live set (assembleUnifiedEvents): the seeds
+ * are ~30 rows while the live wire carries hundreds, and searching only
+ * the seeds made "pride" miss an event sitting at the top of /events
+ * (fresh-eyes audit, Jul 2026). EventWithMeta extends Event, so unified
+ * rows pass through unchanged.
+ */
+export function search(query: string, limit = 30, eventPool: readonly Event[] = EVENTS): SearchHit[] {
   const terms = normalize(query);
   if (terms.length === 0) return [];
 
@@ -190,7 +199,7 @@ export function search(query: string, limit = 30): SearchHit[] {
     if (s > 0 || iv > 0) hits.push({ type: "place", place: p, score: s + p.feature_score + iv + ev });
   }
 
-  for (const e of EVENTS) {
+  for (const e of eventPool) {
     const s =
       fieldScore(e.title, terms) * 4 +
       fieldScore(e.description, terms) * 1 +

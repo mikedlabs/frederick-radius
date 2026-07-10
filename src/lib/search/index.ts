@@ -11,6 +11,7 @@
  */
 
 import { search, type SearchHit } from "@/lib/search";
+import type { Event } from "@/data/events";
 import { OVERLAYS } from "@/lib/overlays";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -216,7 +217,11 @@ function hitToResult(h: SearchHit): SearchResult {
   };
 }
 
-export function searchIndex(query: string, limit = 12): SearchResult[] {
+export function searchIndex(
+  query: string,
+  limit = 12,
+  eventPool?: readonly Event[],
+): SearchResult[] {
   // Quick actions lead the list — when a user types "tonight" they
   // probably want the /tonight surface itself, not a place named
   // Tonight Foo. They're cheap to compute (a few keyword checks) and
@@ -226,6 +231,6 @@ export function searchIndex(query: string, limit = 12): SearchResult[] {
   // the overlay alongside the market places themselves.
   const layers = matchLayers(query).slice(0, 1);
   const head = [...actions, ...layers];
-  const hits = search(query, Math.max(1, limit - head.length)).map(hitToResult);
+  const hits = search(query, Math.max(1, limit - head.length), eventPool).map(hitToResult);
   return [...head, ...hits];
 }
