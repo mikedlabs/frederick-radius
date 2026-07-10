@@ -13,6 +13,7 @@ const ALL_TOPICS: PushTopic[] = [
   "daily-briefing",
   "specials",
   "parking",
+  "golden-hour",
 ];
 
 type SupportState =
