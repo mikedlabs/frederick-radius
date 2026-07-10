@@ -10,6 +10,8 @@
  * fetches under /admin automatically, so no extra auth plumbing is needed.
  */
 import { useEffect, useState } from "react";
+import { BellRing } from "lucide-react";
+import IconStamp from "@/components/ui/IconStamp";
 import { ensureDevicePushSubscription } from "@/lib/pushSubscribe";
 
 type State =
@@ -90,6 +92,9 @@ export default function OwnerAlertsCard() {
       className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
     >
+      <IconStamp size="sm" accent={on ? "var(--app-positive)" : "var(--app-ink-2)"}>
+        <BellRing />
+      </IconStamp>
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
           Alert this device
