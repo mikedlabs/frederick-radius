@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchIndex } from "@/lib/search/index";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
 /**
  * GET /api/search?q=<query>&limit=<n>
@@ -39,7 +40,16 @@ export async function GET(request: Request) {
     );
   }
 
-  const results = searchIndex(q, limit);
+  // Rank against the LIVE unified event set, not just the ~30 curated
+  // seeds: searching "pride" found nothing while "Pride at the Pubs" led
+  // /events (fresh-eyes audit, Jul 2026). The assembly is the same
+  // 5-minute-shared cache /today and /events read, so the usual cost
+  // here is a cache hit; if it ever fails it degrades to the seeds
+  // rather than failing the search.
+  const events = await assembleUnifiedEvents(new Date())
+    .then((u) => u.publicEvents)
+    .catch(() => undefined);
+  const results = searchIndex(q, limit, events);
 
   return NextResponse.json(
     { results },

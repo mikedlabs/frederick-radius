@@ -380,9 +380,17 @@ export function findDepartments(query: string, limit = 2): DepartmentContact[] {
   const direct = DEPARTMENTS.filter(
     (d) => d.name.toLowerCase().includes(lq) || d.about.toLowerCase().includes(lq),
   );
+  // Hint terms match on WORD BOUNDARIES, not raw substrings: "pride"
+  // contains "ride", which made a Pride query answer with TransIT buses
+  // (fresh-eyes audit, Jul 2026). Single-word hints must equal a query
+  // token; multi-word hints still match as phrases.
+  const tokens = lq.split(/[^a-z0-9]+/).filter(Boolean);
   const hinted: DepartmentContact[] = [];
   for (const h of DEPT_HINTS) {
-    if (h.terms.some((t) => lq.includes(t))) {
+    const hit = h.terms.some((t) =>
+      t.includes(" ") ? lq.includes(t) : tokens.includes(t),
+    );
+    if (hit) {
       const d = DEPARTMENTS.find((x) => x.name.toLowerCase().includes(h.match));
       if (d) hinted.push(d);
     }
