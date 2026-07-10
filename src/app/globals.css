@@ -2204,22 +2204,54 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: block;
   overflow: hidden;
   min-height: 116px;
-  padding: 14px 16px;
+  padding: 14px 16px 14px 20px;
   border-radius: var(--app-radius-lg);
   color: #fff;
-  box-shadow: 0 12px 24px -14px rgba(20, 20, 18, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  /* Quiet lamination: tight drop, a hairline edge, a faint top glare. No
+     gloss bands - the premium read is restraint. */
+  box-shadow:
+    0 10px 22px -14px rgba(20, 20, 18, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   animation: ex-fanin 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--ex-i, 0) * 52ms);
   will-change: transform, opacity;
 }
 .ex-slot:last-child .ex-card { min-height: 132px; }
 .ex-card:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.5; mix-blend-mode: soft-light; pointer-events: none; }
-.ex-card .ex-sheen {
-  position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(120deg, transparent 34%, rgba(255, 255, 255, 0.16) 50%, transparent 66%);
+.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.3; mix-blend-mode: soft-light; pointer-events: none; }
+/* The spine: where the plate spends its color. A crisp stripe with a soft
+   bloom into the ground, like a bound edge catching light. */
+.ex-card .ex-spine {
+  position: absolute; inset: 0 auto 0 0; width: 4px; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--exc) 88%, #fff), var(--exc));
 }
-.ex-card .ex-seal { position: absolute; right: 14px; bottom: 11px; opacity: 0.82; pointer-events: none; }
+.ex-card .ex-spine::after {
+  content: ""; position: absolute; inset: 0 -14px 0 4px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--exc) 26%, transparent), transparent);
+}
+/* Engraved icon: pressed into the lower corner in the plate's own tint,
+   not stuck on in white. */
+.ex-card .ex-ghost {
+  position: absolute; right: -4px; bottom: -8px; pointer-events: none;
+  color: color-mix(in srgb, var(--exc) 55%, #fff);
+  opacity: 0.2;
+}
+/* Foil-tint plate number, top-right of the title lip. */
+.ex-card .ex-plate {
+  position: absolute; top: 1px; right: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px; letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--exc) 62%, #fff);
+}
+/* Hairline under the title, in the plate's tint - the engraver's rule. */
+.ex-card .ex-rule {
+  display: block; height: 1px; width: 34px; margin-top: 7px;
+  background: color-mix(in srgb, var(--exc) 55%, #fff);
+  opacity: 0.65;
+}
+.ex-card .ex-desc { color: rgba(255, 255, 255, 0.72); }
 @keyframes ex-fanin {
   from { opacity: 0; transform: translateY(46px) rotate(var(--ex-rot, 0deg)) scale(0.92); }
   to   { opacity: 1; transform: none; }
