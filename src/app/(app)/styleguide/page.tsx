@@ -104,7 +104,7 @@ export default function StyleGuidePage() {
         <Eyebrow>Type</Eyebrow>
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Newsreader · serif display
+            Fraunces · serif display
           </p>
           <p className="font-serif text-[32px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             What&rsquo;s worth your time.
@@ -112,7 +112,7 @@ export default function StyleGuidePage() {
         </div>
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Public Sans · UI
+            Inter · UI
           </p>
           <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             From Downtown to the surrounding towns: food, events, parks, and the

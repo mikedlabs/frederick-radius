@@ -592,13 +592,14 @@ async function ProofStrip() {
   }
   if (p.keys) {
     const k = p.keys;
-    signals.push(
-      k.state === "live"
-        ? `Keys ${k.keys.runs}–${k.opponent.runs}, live`
-        : k.state === "final"
-          ? `Keys final ${k.keys.runs}–${k.opponent.runs}`
-          : "Keys, first pitch tonight",
-    );
+    // Runs are null before first pitch AND for postponed/cancelled games —
+    // never let "null–null" onto the live-proof page. A game without a
+    // score to show only earns a signal in its honest states.
+    const hasScore = typeof k.keys.runs === "number" && typeof k.opponent.runs === "number";
+    if (k.state === "live" && hasScore) signals.push(`Keys ${k.keys.runs}–${k.opponent.runs}, live`);
+    else if (k.state === "final" && hasScore) signals.push(`Keys final ${k.keys.runs}–${k.opponent.runs}`);
+    else if (k.state === "pre") signals.push("Keys, first pitch tonight");
+    else if (k.state === "postponed") signals.push("Keys game postponed");
   }
   if (p.troutThisWeek) signals.push("Trout stocked this week");
   signals.push(`${p.places.toLocaleString()} places mapped`);
@@ -680,11 +681,23 @@ async function PulseGrid() {
   ];
   if (p.eventsToday != null) stats.push({ n: String(p.eventsToday), label: p.eventsToday === 1 ? "event on today" : "events on today", live: true });
   if (p.keys) {
-    stats.push({
-      n: p.keys.state === "pre" ? "Tonight" : `${p.keys.keys.runs}–${p.keys.opponent.runs}`,
-      label: p.keys.state === "live" ? "Keys, live now" : p.keys.state === "final" ? "Keys, final" : "Keys first pitch",
-      live: p.keys.state === "live",
-    });
+    const k = p.keys;
+    // Runs are null before first pitch AND for postponed/cancelled games, so
+    // format a score only when both sides have one — otherwise the tile read
+    // "null–null" on the page whose whole pitch is live proof.
+    const hasScore = typeof k.keys.runs === "number" && typeof k.opponent.runs === "number";
+    if ((k.state === "live" || k.state === "final") && hasScore) {
+      stats.push({
+        n: `${k.keys.runs}–${k.opponent.runs}`,
+        label: k.state === "live" ? "Keys, live now" : "Keys, final",
+        live: k.state === "live",
+      });
+    } else if (k.state === "pre") {
+      stats.push({ n: "Tonight", label: "Keys first pitch" });
+    } else if (k.state === "postponed") {
+      stats.push({ n: "Postponed", label: "Keys game" });
+    }
+    // Cancelled (or a score-less live/final edge) earns no tile.
   }
   return (
     <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">

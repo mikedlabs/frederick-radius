@@ -1,41 +1,212 @@
 [
-  {
-    "title": "Hannah Ponce",
-    "starts_at": "2026-07-04T01:00:00.158Z",
-    "ends_at": "2026-07-04T03:55:00.158Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/event-two-6gh4l",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "music",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-07-03T11:44:20.422Z"
-    }
-  },
-  {
-    "title": "Girls Night",
-    "starts_at": "2026-07-16T22:00:00.557Z",
-    "ends_at": "2026-07-17T01:00:00.557Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/girls-night-1",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "music",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-07-04T11:04:11.386Z"
-    }
-  },
-  {
-    "title": "Emo Night",
-    "starts_at": "2026-08-30T01:00:00.032Z",
-    "ends_at": "2026-08-30T03:59:00.032Z",
-    "ticket_url": "https://www.thebanyanmd.com/livemusic/emo-night",
-    "venue_slug": "banyan",
-    "venue_name": "The Banyan",
-    "category": "music",
-    "source": {
-      "url": "https://www.thebanyanmd.com/livemusic",
-      "fetchedAt": "2026-07-04T11:04:11.386Z"
-    }
+ {
+  "title": "Hannah Ponce",
+  "starts_at": "2026-07-04T01:00:00.158Z",
+  "ends_at": "2026-07-04T03:55:00.158Z",
+  "ticket_url": "https://www.thebanyanmd.com/livemusic/event-two-6gh4l",
+  "venue_slug": "banyan",
+  "venue_name": "The Banyan",
+  "category": "music",
+  "source": {
+   "url": "https://www.thebanyanmd.com/livemusic",
+   "fetchedAt": "2026-07-03T11:44:20.422Z"
   }
+ },
+ {
+  "title": "Girls Night",
+  "starts_at": "2026-07-16T22:00:00.557Z",
+  "ends_at": "2026-07-17T01:00:00.557Z",
+  "ticket_url": "https://www.thebanyanmd.com/livemusic/girls-night-1",
+  "venue_slug": "banyan",
+  "venue_name": "The Banyan",
+  "category": "music",
+  "source": {
+   "url": "https://www.thebanyanmd.com/livemusic",
+   "fetchedAt": "2026-07-04T11:04:11.386Z"
+  }
+ },
+ {
+  "title": "Emo Night",
+  "starts_at": "2026-08-30T01:00:00.032Z",
+  "ends_at": "2026-08-30T03:59:00.032Z",
+  "ticket_url": "https://www.thebanyanmd.com/livemusic/emo-night",
+  "venue_slug": "banyan",
+  "venue_name": "The Banyan",
+  "category": "music",
+  "source": {
+   "url": "https://www.thebanyanmd.com/livemusic",
+   "fetchedAt": "2026-07-04T11:04:11.386Z"
+  }
+ },
+ {
+  "title": "Magic: the Gathering at The Frederick Center",
+  "starts_at": "2026-07-19T15:00:00-04:00",
+  "ends_at": "2026-07-19T18:00:00-04:00",
+  "description": "Commander meetup at The Frederick Center. Find friends, play Magic, and build your deck.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Magic: the Gathering at The Frederick Center",
+  "starts_at": "2026-08-02T15:00:00-04:00",
+  "ends_at": "2026-08-02T18:00:00-04:00",
+  "description": "Commander meetup at The Frederick Center. Find friends, play Magic, and build your deck.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Magic: the Gathering at The Frederick Center",
+  "starts_at": "2026-08-16T15:00:00-04:00",
+  "ends_at": "2026-08-16T18:00:00-04:00",
+  "description": "Commander meetup at The Frederick Center. Find friends, play Magic, and build your deck.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Magic: the Gathering at The Frederick Center",
+  "starts_at": "2026-08-30T15:00:00-04:00",
+  "ends_at": "2026-08-30T18:00:00-04:00",
+  "description": "Commander meetup at The Frederick Center. Find friends, play Magic, and build your deck.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Queer Craft Night",
+  "starts_at": "2026-07-17T18:00:00-04:00",
+  "ends_at": "2026-07-17T21:00:00-04:00",
+  "description": "Bring your own craft, socialize with friends, and enjoy community in an affirming space.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Queer Craft Night",
+  "starts_at": "2026-07-31T18:00:00-04:00",
+  "ends_at": "2026-07-31T21:00:00-04:00",
+  "description": "Bring your own craft, socialize with friends, and enjoy community in an affirming space.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Queer Craft Night",
+  "starts_at": "2026-08-14T18:00:00-04:00",
+  "ends_at": "2026-08-14T21:00:00-04:00",
+  "description": "Bring your own craft, socialize with friends, and enjoy community in an affirming space.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Queer Craft Night",
+  "starts_at": "2026-08-28T18:00:00-04:00",
+  "ends_at": "2026-08-28T21:00:00-04:00",
+  "description": "Bring your own craft, socialize with friends, and enjoy community in an affirming space.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Sapphic Summer Dance",
+  "starts_at": "2026-08-15T17:00:00-04:00",
+  "ends_at": "2026-08-15T21:00:00-04:00",
+  "description": "Dance in a safe and affirming space with fellow women-loving-women. This edition is 18+ and alcohol-free.",
+  "price": "Donate what you can",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "PFLAG Ice Cream Social",
+  "starts_at": "2026-08-08T10:30:00-04:00",
+  "ends_at": "2026-08-08T12:30:00-04:00",
+  "description": "Ice cream and community with the PFLAG board and The Frederick Center's case manager.",
+  "price": "Free",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Queeraoke with Black-Eyed Suzy",
+  "starts_at": "2026-08-01T18:00:00-04:00",
+  "description": "Sing along to your favorite songs, hosted by Black-Eyed Suzy. Ages 21 and up; donations benefit The Frederick Center.",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Movie Night: Muppet Treasure Island",
+  "starts_at": "2026-07-26T17:00:00-04:00",
+  "description": "A free movie night open to all ages, with snacks and popcorn.",
+  "price": "Free",
+  "venue_slug": "the-frederick-center",
+  "venue_name": "The Frederick Center",
+  "category": "community",
+  "source": {
+   "url": "https://www.thefrederickcenter.org/events",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ },
+ {
+  "title": "Beach, Please! Drag Bingo",
+  "starts_at": "2026-07-19T13:30:00-04:00",
+  "ends_at": "2026-07-19T17:00:00-04:00",
+  "description": "Beach-themed drag bingo benefiting The Frederick Center, with performances by Chasity Vain, Maranda Rights, and Jalah Nicole plus a costume contest and cash prizes.",
+  "ticket_url": "https://www.eventbrite.com/e/beach-please-drag-bingo-tickets-1986532749931",
+  "venue_slug": "steinhardt-brewing-company-frederick",
+  "venue_name": "Steinhardt Brewing Company",
+  "category": "community",
+  "source": {
+   "url": "https://www.eventbrite.com/e/beach-please-drag-bingo-tickets-1986532749931",
+   "fetchedAt": "2026-07-10T01:17:32.000Z"
+  }
+ }
 ]

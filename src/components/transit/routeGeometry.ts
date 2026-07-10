@@ -92,11 +92,16 @@ const MAX_PEARLS = 24;
 const MIN_PEARL_GAP = 0.012;
 
 const pearlCache = new Map<string, Pearl[]>();
+const seqCache = new Map<string, Pearl[]>();
 
-/** The route's stop sequence as evenly thinned beads, ordered by arc length.
- *  Empty array when the route has no usable shape. Cached per route. */
-export function pearlsFor(routeId: string): Pearl[] {
-  const hit = pearlCache.get(routeId);
+/**
+ * The route's FULL stop sequence (paired curb stops collapsed), ordered by
+ * arc length — the un-thinned truth behind the beads. The scrub readout
+ * reads names from this, so a finger between two drawn beads still names
+ * the real stop there. Cached per route.
+ */
+export function stopSequenceFor(routeId: string): Pearl[] {
+  const hit = seqCache.get(routeId);
   if (hit) return hit;
   const shape = SHAPE_BY_ROUTE[routeId];
   let out: Pearl[] = [];
@@ -115,15 +120,24 @@ export function pearlsFor(routeId: string): Pearl[] {
       const prev = spaced[spaced.length - 1];
       if (!prev || p.frac - prev.frac >= MIN_PEARL_GAP) spaced.push(p);
     }
-    const seqSpaced = spaced;
-    if (seqSpaced.length > MAX_PEARLS) {
-      const step = (seqSpaced.length - 1) / (MAX_PEARLS - 1);
-      const thinned: Pearl[] = [];
-      for (let i = 0; i < MAX_PEARLS; i++) thinned.push(seqSpaced[Math.round(i * step)]);
-      out = thinned;
-    } else {
-      out = seqSpaced;
-    }
+    out = spaced;
+  }
+  seqCache.set(routeId, out);
+  return out;
+}
+
+/** The route's stop sequence as evenly thinned beads, ordered by arc length.
+ *  Empty array when the route has no usable shape. Cached per route. */
+export function pearlsFor(routeId: string): Pearl[] {
+  const hit = pearlCache.get(routeId);
+  if (hit) return hit;
+  const seqSpaced = stopSequenceFor(routeId);
+  let out: Pearl[] = seqSpaced;
+  if (seqSpaced.length > MAX_PEARLS) {
+    const step = (seqSpaced.length - 1) / (MAX_PEARLS - 1);
+    const thinned: Pearl[] = [];
+    for (let i = 0; i < MAX_PEARLS; i++) thinned.push(seqSpaced[Math.round(i * step)]);
+    out = thinned;
   }
   pearlCache.set(routeId, out);
   return out;

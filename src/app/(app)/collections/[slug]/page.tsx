@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { COLLECTION_BY_SLUG, COLLECTIONS } from "@/data/collections";
 import { getPlaceBySlug } from "@/lib/loaders/places";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import PlaceCard from "@/components/place/PlaceCard";
+import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 
 /**
@@ -78,6 +81,24 @@ export default async function CollectionPage({
   const places = collection.places
     .map((s) => getPlaceBySlug(s))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  // LGBTQ+ Frederick is places AND a calendar: The Frederick Center's
+  // programming plus title-classified community events flow through the
+  // one unified event set, so this section can never drift from /events.
+  // Only this collection pays the assembly cost; the rest stay place-only.
+  let communityEvents: Awaited<ReturnType<typeof assembleUnifiedEvents>>["publicEvents"] = [];
+  if (slug === "lgbtq-frederick") {
+    // eslint-disable-next-line react-hooks/purity -- request-time clock in an ISR server render, same posture as /live-music
+    const now = Date.now();
+    const { publicEvents } = await assembleUnifiedEvents(new Date(now));
+    communityEvents = publicEvents
+      .filter((e) => {
+        const ms = Date.parse(e.starts_at);
+        return Number.isFinite(ms) && ms >= now - 3_600_000 && isLgbtqEvent(e);
+      })
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+      .slice(0, 8);
+  }
 
   return (
     <div className="relative space-y-6">
@@ -155,6 +176,44 @@ export default async function CollectionPage({
             </li>
           ))}
         </ul>
+      )}
+
+      {slug === "lgbtq-frederick" && (
+        <section className="space-y-3" aria-label="LGBTQ+ community events">
+          <div className="flex items-baseline justify-between">
+            <h2
+              className="font-serif text-[20px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              On the calendar
+            </h2>
+            <Link
+              href="/events?lgbtq=true"
+              className="text-[13px] font-semibold hover:underline"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              See the board →
+            </Link>
+          </div>
+          {communityEvents.length > 0 ? (
+            <ul className="space-y-2.5">
+              {communityEvents.map((e) => (
+                <li key={`${e.slug}-${e.starts_at}`}>
+                  <EventCard event={e} variant="glance" />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p
+              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            >
+              Nothing on the wire right now. The Frederick Center posts its
+              programming at thefrederickcenter.org, and new events land here
+              as they publish.
+            </p>
+          )}
+        </section>
       )}
 
       <footer

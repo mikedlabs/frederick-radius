@@ -14,6 +14,7 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -176,6 +177,10 @@ export default function EventsExplorer({
   );
   // Kid-friendly (?kids=1) — audience includes kids-0-5 / kids-6-12.
   const [kidsOnly, setKidsOnly] = useQueryState("kids", parseAsBoolean.withDefault(false));
+  // LGBTQ+ community (?lgbtq=1) — isLgbtqEvent: conservative title match
+  // (Pride/queer/drag-performance contexts) or a verified community venue
+  // (The Frederick Center). Same composable-facet contract as the rest.
+  const [lgbtqOnly, setLgbtqOnly] = useQueryState("lgbtq", parseAsBoolean.withDefault(false));
   // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
   const [recurringOnly, setRecurringOnly] = useQueryState(
     "recurring",
@@ -230,6 +235,7 @@ export default function EventsExplorer({
       if (freeOnly && !e.is_free) return false;
       if (tod && eventDaypart(e) !== tod) return false;
       if (kidsOnly && !isForKids(e)) return false;
+      if (lgbtqOnly && !isLgbtqEvent(e)) return false;
       if (recurringOnly && !isRecurringEvent(e)) return false;
       if (happyOnly) {
         // Match against title + venue + description so we catch both
@@ -247,7 +253,7 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [events, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [events, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Rail badges — per-intent counts over the base set (post time/town/free,
   // pre intent/sub) so picking an intent doesn't zero out the other badges.
@@ -356,7 +362,7 @@ export default function EventsExplorer({
   const anyFilter =
     cat !== null || intent !== null || sub !== null || town !== null ||
     time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
-    tod !== null || kidsOnly || recurringOnly || day !== null;
+    tod !== null || kidsOnly || lgbtqOnly || recurringOnly || day !== null;
   const clear = () => {
     setCat(null);
     setIntent(null);
@@ -369,6 +375,7 @@ export default function EventsExplorer({
     setHappyOnly(false);
     setTod(null);
     setKidsOnly(false);
+    setLgbtqOnly(false);
     setRecurringOnly(false);
   };
 
@@ -383,6 +390,7 @@ export default function EventsExplorer({
   if (cat) relaxations.push({ key: "cat", label: categories.find((c) => c.slug === cat)?.name ?? cat, drop: () => setCat(null) });
   if (tod) relaxations.push({ key: "tod", label: DAYPARTS.find((d) => d.key === tod)?.label ?? tod, drop: () => setTod(null) });
   if (kidsOnly) relaxations.push({ key: "kids", label: "Kid-friendly", drop: () => setKidsOnly(false) });
+  if (lgbtqOnly) relaxations.push({ key: "lgbtq", label: "LGBTQ+", drop: () => setLgbtqOnly(false) });
   if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
   if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
   if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
@@ -433,6 +441,8 @@ export default function EventsExplorer({
         setHappyOnly={setHappyOnly}
         kidsOnly={kidsOnly}
         setKidsOnly={setKidsOnly}
+        lgbtqOnly={lgbtqOnly}
+        setLgbtqOnly={setLgbtqOnly}
         recurringOnly={recurringOnly}
         setRecurringOnly={setRecurringOnly}
         anyFilter={anyFilter}

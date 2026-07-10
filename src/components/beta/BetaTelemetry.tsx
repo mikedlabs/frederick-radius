@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { track } from "@/lib/track";
-import { BETA_ID_COOKIE } from "@/lib/beta-gate";
+import { BETA_ID_COOKIE } from "@/lib/beta-constants";
 
 /**
  * BetaTelemetry — attributes beta usage to the individual tester whose access

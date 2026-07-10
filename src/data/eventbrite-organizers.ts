@@ -25,6 +25,10 @@ export type EventbriteOrganizer = {
 };
 
 export const EVENTBRITE_ORGANIZERS: EventbriteOrganizer[] = [
-  // Example shape (commented, not polled):
-  // { id: "1234567890", label: "Some Frederick Brewery" },
+  // The Frederick Center — the county's LGBTQ+ community hub. Their ticketed
+  // fundraisers (drag bingo at partner breweries, Pride events) publish on
+  // Eventbrite; the id is from eventbrite.com/o/7792694675 (verified via the
+  // "Beach, Please! Drag Bingo" listing, Jul 2026). Their non-ticketed
+  // programming comes in via config/venue-sources.json instead.
+  { id: "7792694675", label: "The Frederick Center" },
 ];
