@@ -3,6 +3,8 @@ import type { Place } from "@/data/places";
 // at build) so this shared search core never drags the ~12MB
 // places-enrichment.json into the SearchOverlay client bundle.
 import { clientPlaces } from "@/lib/loaders/places-client";
+import type { PlaceCardData } from "@/lib/loaders/places";
+import { fuzzyNameScore, FUZZY_THRESHOLD } from "@/lib/search/fuzzy";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
@@ -220,6 +222,33 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
   for (const c of CATEGORIES) {
     const s = fieldScore(c.name, terms) * 3 + fieldScore(c.blurb, terms) * 1;
     if (s > 0) hits.push({ type: "category", category: c, score: s });
+  }
+
+  // The typo net — fallback only. When exact/substring ranking strands the
+  // query with zero place hits ("brewrey", "carrol creek"), the closest
+  // trigram matches step in with modest scores so quick actions and real
+  // keyword hits still lead. Same math as pg_trgm, run over the in-memory
+  // sets (a DB round-trip would be strictly slower at ~1.5k names). Gated
+  // at 4+ chars: shorter typos are indistinguishable from prefixes the
+  // substring pass already handles.
+  if (query.trim().length >= 4) {
+    if (!hits.some((h) => h.type === "place")) {
+      const close: { p: PlaceCardData; f: number }[] = [];
+      for (const p of clientPlaces()) {
+        const f = fuzzyNameScore(query, p.name);
+        if (f >= FUZZY_THRESHOLD) close.push({ p, f });
+      }
+      close.sort((a, b) => b.f - a.f);
+      for (const { p, f } of close.slice(0, 3)) {
+        hits.push({ type: "place", place: p, score: f * 10 + p.feature_score });
+      }
+    }
+    if (!hits.some((h) => h.type === "municipality")) {
+      for (const m of MUNICIPALITIES) {
+        const f = fuzzyNameScore(query, m.name);
+        if (f >= FUZZY_THRESHOLD) hits.push({ type: "municipality", municipality: m, score: f * 12 });
+      }
+    }
   }
 
   hits.sort((a, b) => b.score - a.score);
