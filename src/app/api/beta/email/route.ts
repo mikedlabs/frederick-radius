@@ -16,6 +16,7 @@ import { beta_emails } from "@/lib/db/schema";
 import { isRateLimited } from "@/lib/origin-check";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
+import { inviteEmail } from "@/lib/beta-invite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,10 +53,14 @@ export async function POST(req: NextRequest) {
     // nothing and stays silent). Push failure never fails the signup.
     const id = inserted[0]?.id;
     if (id) {
+      // Auto-invite: mint the personal access code and email it. Fail-soft
+      // twice over — without RESEND_API_KEY the code still mints and the
+      // owner alert says so, so nothing is silently lost.
+      const invite = await inviteEmail(email);
       try {
         await fanoutToTopic(OWNER_ALERTS_TOPIC, `signup:${id}`, {
           title: "New beta signup",
-          body: email,
+          body: `${email} · ${invite.sent ? "code emailed" : invite.code ? "code minted, email not configured" : "code mint failed"}`,
           url: "/admin/beta",
         });
       } catch (err) {
