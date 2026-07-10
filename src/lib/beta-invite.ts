@@ -89,7 +89,12 @@ export async function sendBetaCodeEmail(email: string, code: string): Promise<bo
       }),
     });
     if (!res.ok) {
-      console.error(`[beta-invite] Resend ${res.status} for ${email.slice(0, 3)}…`);
+      // The body names the actual problem (unverified domain, bad key,
+      // rate limit) — a bare status code sent us log-diving once already.
+      const body = await res.text().catch(() => "");
+      console.error(
+        `[beta-invite] Resend ${res.status} for ${email.slice(0, 3)}…: ${body.slice(0, 200)}`,
+      );
       return false;
     }
     return true;

@@ -24,16 +24,59 @@ export const maxDuration = 300;
 
 const noStore = { "Cache-Control": "no-store" };
 
+/**
+ * GET — diagnosis: what does Resend think of this key and its domains?
+ * Returns each domain's verification status so a 403 on send is explainable
+ * without log-diving. Read-only against Resend; no DB.
+ */
+export async function GET() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return NextResponse.json({ keyPresent: false, domains: [] }, { headers: noStore });
+  try {
+    const res = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: { name?: string; status?: string; region?: string }[];
+    };
+    return NextResponse.json(
+      {
+        keyPresent: true,
+        keyAccepted: res.ok,
+        status: res.status,
+        domains: (json.data ?? []).map((d) => ({ name: d.name, status: d.status, region: d.region })),
+      },
+      { headers: noStore },
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { keyPresent: true, keyAccepted: false, error: err instanceof Error ? err.message : "fetch-failed" },
+      { status: 502, headers: noStore },
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: "no-db" }, { status: 503, headers: noStore });
 
+  // The batch must be asked for BY NAME. An earlier deploy-probe with a
+  // malformed body fell through to "empty body = full batch" and started
+  // inviting the real list against a broken Resend config — never again.
   let probe: string | null = null;
+  let batch = false;
   try {
-    const body = (await req.json()) as { probe?: string };
+    const body = (await req.json()) as { probe?: string; batch?: boolean };
     if (typeof body.probe === "string" && body.probe.includes("@")) probe = body.probe.trim().toLowerCase();
+    batch = body.batch === true;
   } catch {
-    /* empty body = full batch */
+    /* fall through to the 400 below */
+  }
+  if (!probe && !batch) {
+    return NextResponse.json(
+      { error: "pass { probe: \"email@…\" } or { batch: true }" },
+      { status: 400, headers: noStore },
+    );
   }
 
   const resendConfigured = Boolean(process.env.RESEND_API_KEY);
