@@ -9,7 +9,7 @@ import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import { resolveCommerceLinks } from "@/lib/commerce/links";
-import OpenClosedDot from "@/components/place/OpenClosedDot";
+import LiveOpenStatus from "@/components/place/LiveOpenStatus";
 import HoursBlock from "@/components/place/HoursBlock";
 import GoogleHours from "@/components/place/GoogleHours";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -267,7 +267,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 tooling, which made a first-time visitor scroll past margin
                 widgets to learn "is it open" (July 2026 audit). */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <OpenClosedDot status={place.open_status} />
+              {/* Recomputed against the visitor's clock (LiveOpenStatus):
+                  the ISR-baked value said "Closing soon" while HoursBlock said
+                  "Closed" around closing time (fresh-eyes audit, Jul 2026). */}
+              <LiveOpenStatus
+                hours={place.hours}
+                verified={place.hours_verified ?? false}
+                initial={place.open_status}
+              />
               {place.price_band && (
                 <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
                   {"$".repeat(place.price_band)}

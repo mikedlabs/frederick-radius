@@ -153,6 +153,14 @@ export function cleanTitle(raw: string, opts: { year?: number } = {}): string {
   // to you by" up to the next pipe or the end — funder metadata, never the
   // event's name. Conservative: it fires only on that explicit phrasing.
   t = t.replace(/\s*(?:sponsored|presented|brought\s+to\s+you)\s+by\s+[^|]*/i, " ");
+  // Strip a trailing "| <genre tag>" a feed appended to the name ("Fridays
+  // at the Fountain | Live Music"): the surfaces already print the category
+  // as a kicker, so the suffix reads twice. Allowlisted tags only, so a
+  // real "Series | Act" double bill never loses its second act.
+  t = t.replace(
+    /\s*\|\s*(?:live\s+music|live\s+entertainment|music|karaoke|trivia(?:\s+night)?|comedy(?:\s+night)?|open\s+mic|bingo)\s*$/i,
+    "",
+  );
   // Tidy a pipe the strip (or the feed) left dangling at an edge or doubled,
   // so a remaining "Series | Act" double bill reads as one clean line.
   t = t.replace(/\s*\|\s*\|\s*/g, " | ").replace(/^\s*\|\s*|\s*\|\s*$/g, "");

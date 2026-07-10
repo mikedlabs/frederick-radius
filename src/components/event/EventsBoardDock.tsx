@@ -285,11 +285,17 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   // ── Caption composition ──
   const intentDef = intent ? INTENT_BY_ID[intent] : null;
   const civicOn = intent === "civic";
+  // The legacy exact-category filter (Type drawer / ?cats deep links) rides
+  // the same caption slot as the intent sub: picking "Live music" under
+  // CATEGORY filtered the list but left the bar reading "WHAT Everything"
+  // (fresh-eyes audit, Jul 2026).
   const subLabel = sub
     ? categories.find((c) => c.slug === sub)?.name ??
       intentDef?.subs?.find((s) => s.slug === sub)?.label ??
       sub
-    : null;
+    : cat
+      ? categories.find((c) => c.slug === cat)?.name ?? cat
+      : null;
   const goods: string[] = [];
   if (freeOnly) goods.push("Free");
   if (kidsOnly) goods.push("Kid-friendly");

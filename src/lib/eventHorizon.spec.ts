@@ -87,3 +87,43 @@ describe("horizonOf — date-range listings (isRangeListing)", () => {
     expect(isRangeListing({ ...ev("x", NOW, NOW + 2 * DAY), is_all_day: true })).toBe(false);
   });
 });
+
+describe("horizonOf — started but past the live cap", () => {
+  const NOW = Date.parse("2026-07-09T21:47:00-04:00"); // 9:47 PM ET
+  const bounds = {
+    now: NOW,
+    next24: NOW + 24 * 3_600_000,
+    weekendStart: NOW + 24 * 3_600_000,
+    weekendEnd: NOW + 72 * 3_600_000,
+    live: new Set<string>(),
+  };
+
+  it("drops a noon event with an end-of-day stamp at night (not live, not upcoming)", () => {
+    // Started 12:00 PM, feed stamped the end at 11:59 PM: at 9:47 PM the
+    // live-session cap has long expired, and "Coming up" must not lead
+    // with it.
+    expect(
+      horizonOf(
+        {
+          slug: "anniversary",
+          starts_at: "2026-07-09T12:00:00-04:00",
+          ends_at: "2026-07-09T23:59:00-04:00",
+        },
+        bounds,
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps a genuinely live evening event", () => {
+    expect(
+      horizonOf(
+        {
+          slug: "show",
+          starts_at: "2026-07-09T21:00:00-04:00",
+          ends_at: "2026-07-09T23:00:00-04:00",
+        },
+        bounds,
+      ),
+    ).toBe("live");
+  });
+});

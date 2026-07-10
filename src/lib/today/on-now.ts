@@ -69,6 +69,42 @@ export type OnNowMarket = {
   hours?: string;
 };
 
+/**
+ * The end of a market's published hours ("3pm - 6pm", "9:30am-1pm") as
+ * Eastern minutes, or null when the string doesn't state a parseable end.
+ * The weekday filter alone let a 3-6pm market sit under a pulsing ON NOW
+ * header at 9:47 PM (fresh-eyes audit, Jul 2026); this is the missing
+ * clock half of that gate. Parses the LAST am/pm time in the string.
+ */
+export function marketEndMinutes(hours?: string): number | null {
+  if (!hours) return null;
+  const matches = [...hours.matchAll(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi)];
+  const last = matches[matches.length - 1];
+  if (!last) return null;
+  const h = Number(last[1]);
+  const mm = last[2] ? Number(last[2]) : 0;
+  if (!Number.isFinite(h) || h < 1 || h > 12 || mm < 0 || mm > 59) return null;
+  const mer = last[3].toLowerCase();
+  const h24 = mer === "pm" ? (h % 12) + 12 : h % 12;
+  return h24 * 60 + mm;
+}
+
+/** The current Eastern wall-clock time as minutes since midnight.
+ *  (easternParts in lib/tz deliberately omits minutes - don't reach for it.) */
+function easternMinutesOfDay(d: Date): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  ) as Record<string, string>;
+  return Number(p.hour) * 60 + Number(p.minute);
+}
+
 /** Eastern-minutes → "7 PM" / "7:30 PM"; 1440 reads as "close". */
 function fmtEasternMinutes(m: number): string {
   if (m >= 1440) return "close";
@@ -179,7 +215,15 @@ export function selectOnNowChips(input: {
     });
   }
 
-  const market = markets[0];
+  // The weekday filter said "today"; the clock says whether it's still
+  // going. A market whose stated hours have ended never sits under the
+  // ON NOW header - an unparseable hours string keeps the chip (the
+  // conservative default: a missing claim beats a wrong hide).
+  const nowMin = easternMinutesOfDay(now);
+  const market = markets.find((m) => {
+    const end = marketEndMinutes(m.hours);
+    return end == null || nowMin < end;
+  });
   if (market) {
     chips.push({
       kind: "market",
