@@ -42,10 +42,14 @@ export const metadata: Metadata = {
 export default async function BetaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; code?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, code } = await searchParams;
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/today";
+  // Invite emails link here with ?code=frederick-xxxx so the field arrives
+  // filled in and the tester only taps "Come in". Strict shape check: this
+  // lands in a controlled input, never render arbitrary query strings.
+  const prefillCode = code && /^[a-z0-9-]{1,40}$/.test(code) ? code : undefined;
   const rings = [70, 130, 195, 265, 340, 420, 505];
 
   return (
@@ -122,6 +126,7 @@ export default async function BetaPage({
               type="text"
               name="password"
               required
+              defaultValue={prefillCode}
               autoComplete="off"
               autoCapitalize="none"
               autoCorrect="off"

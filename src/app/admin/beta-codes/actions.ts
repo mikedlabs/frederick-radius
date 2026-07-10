@@ -4,26 +4,16 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { beta_codes } from "@/lib/db/schema";
+import { newBetaCode } from "@/lib/beta-invite";
 
 /**
  * Server actions for the per-tester beta access codes.
  *
  * Gated by /admin/*'s Basic Auth (middleware, fail-closed) — no second check
- * here. All writes go through the BYPASSRLS server DB role.
+ * here. All writes go through the BYPASSRLS server DB role. Code minting
+ * shares lib/beta-invite's generator (the invite pipeline mints the same
+ * shape of code automatically for every signup email).
  */
-
-// Readable, unambiguous suffix alphabet: no 0/O/1/l/I so a texted code is never
-// mistyped. Four chars over 30 symbols ≈ 810k combinations per prefix.
-const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
-const PREFIX = "frederick-";
-
-function randomSuffix(len = 4): string {
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (let i = 0; i < len; i++) out += ALPHABET[bytes[i] % ALPHABET.length];
-  return out;
-}
 
 /**
  * Mint one or more new codes. Reads `label` (who/what it's for, optional) and
@@ -40,7 +30,7 @@ export async function generateCodes(formData: FormData): Promise<void> {
   if (!db) throw new Error("Database not configured.");
 
   const rows = Array.from({ length: count }, () => ({
-    code: `${PREFIX}${randomSuffix()}`,
+    code: newBetaCode(),
     label,
   }));
   await db.insert(beta_codes).values(rows).onConflictDoNothing();
