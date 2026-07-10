@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Shared beta-access gate. When BETA_PASSWORD is set, the middleware walls the
  * whole site behind a single shared password (a soft beta wall, not real auth):
@@ -5,9 +7,13 @@
  * 30 days. When BETA_PASSWORD is UNSET the gate is disabled and the site is fully
  * public, so it can never accidentally lock production.
  *
- * Edge-safe (Web Crypto only, no Node APIs) so it runs in middleware.
+ * Edge-safe (Web Crypto only, no Node APIs) so it runs in middleware. Marked
+ * `server-only` because it reads BETA_PASSWORD / BETA_CODE_SECRET: a client
+ * import must fail the build, not ship the gate's internals to browsers.
+ * Cookie NAMES live in beta-constants.ts (re-exported here) so client
+ * components can use them without touching this module.
  */
-export const BETA_COOKIE = "fr_beta";
+export { BETA_COOKIE, BETA_ID_COOKIE } from "./beta-constants";
 
 /**
  * The unlock-cookie value: a SHA-256 token derived from the shared password
@@ -22,14 +28,6 @@ export async function betaToken(password: string): Promise<string> {
     .join("")
     .slice(0, 32);
 }
-
-/**
- * A SECOND, non-httpOnly cookie carrying the tester's code as a plain label, so
- * client analytics can attribute events to a cohort. It is deliberately NOT the
- * credential — the httpOnly `fr_beta` cookie is — this one is just an
- * identifier the browser is allowed to read. Never trust it for access.
- */
-export const BETA_ID_COOKIE = "fr_who";
 
 /**
  * Per-user access codes.

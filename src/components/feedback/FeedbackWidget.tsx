@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
-import { BETA_ID_COOKIE } from "@/lib/beta-gate";
+import { BETA_ID_COOKIE } from "@/lib/beta-constants";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
 
 /**
