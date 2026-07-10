@@ -652,6 +652,32 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 <CalendarRange className="h-[15px] w-[15px]" strokeWidth={2.1} aria-hidden />
                 Jump to next weekend
               </button>
+
+              {/* Any date, any distance — the week ribbon only reaches seven
+                  days, and "get me to December" took a scroll marathon (beta
+                  feedback, Jul 2026). A native date input rides the existing
+                  ?d= day filter; the OS supplies the picker. */}
+              <label className="eb-jumpwk tap-44" style={{ cursor: "pointer" }}>
+                <CalendarDays className="h-[15px] w-[15px]" strokeWidth={2.1} aria-hidden />
+                Jump to a date
+                <input
+                  type="date"
+                  aria-label="Jump to a date"
+                  value={day ?? ""}
+                  min={new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(nowISO))}
+                  onChange={(e) => pickDay(e.target.value || null)}
+                  className="ml-auto h-8 rounded-[var(--app-radius-sm)] border px-2 font-mono text-[12px]"
+                  style={{ borderColor: "var(--app-border)", background: "var(--app-bg)", color: "var(--app-ink)" }}
+                />
+              </label>
+
+              <p className="dock-hint">
+                Planning an event of your own?{" "}
+                <a href="/check-a-date" style={{ color: "var(--app-brand-press)", fontWeight: 600 }}>
+                  Check a date
+                </a>{" "}
+                to see what&rsquo;s already scheduled.
+              </p>
             </div>
           )}
 
