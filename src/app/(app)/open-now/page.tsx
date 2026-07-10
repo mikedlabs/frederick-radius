@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { MapIcon, ArrowRight } from "lucide-react";
-import { rankPlaces, likelyOpenPlaces } from "@/lib/loaders/places";
-import { isOpenNow } from "@/lib/hours";
+import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
+import { isOpenNow, formatTime } from "@/lib/hours";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
-import PlaceList from "@/components/place/PlaceList";
+import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
 import PageBloom from "@/components/ui/PageBloom";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * /open-now — the fast list answer to the app's most urgent question.
@@ -81,64 +82,145 @@ export default async function OpenNowPage() {
     hour: "numeric",
     minute: "2-digit",
   }).format(now);
+  const dateline = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  })
+    .format(now)
+    .toUpperCase();
   const fromLabel =
     homeMuni && MUNICIPALITY_BY_SLUG[homeMuni]
       ? ` · ranked from ${MUNICIPALITY_BY_SLUG[homeMuni].name}`
       : "";
+
+  // ── Index rows (the judged card system: serif name, one support line,
+  //    one mono data line). Every field here earns its slot by decision
+  //    value; what a cell can't say honestly, it doesn't say.
+  const toRow = (p: PlaceCardData, withStatus: boolean): IndexRow => {
+    const cat = CATEGORY_BY_SLUG[p.category];
+    // Support line takes CURATED intel only (known_for); scraped blurbs leak
+    // first-person marketing copy ("We are a new family owned…") and schedule
+    // fragments. A hook that restates the place name or runs long says
+    // nothing at cell size — category alone is honest support.
+    const rawHook = p.known_for?.[0] ?? "";
+    const hook =
+      rawHook &&
+      rawHook.length <= 52 &&
+      !rawHook.toLowerCase().startsWith(p.name.toLowerCase().slice(0, 10))
+        ? rawHook
+        : "";
+    const s = p.open_status;
+    let status: IndexRow["status"] = null;
+    let closesMin: number | null = null;
+    if (withStatus && (s.state === "open" || s.state === "closing-soon")) {
+      const closes = s.closesAt;
+      const [hh, mm] = closes.split(":").map(Number);
+      closesMin = Number.isFinite(hh) && Number.isFinite(mm) ? hh * 60 + mm : null;
+      // A close in the small hours (midnight, 1am, 2am) is TOMORROW's clock:
+      // without the day rollover, "Until 12am" sorts as the soonest close on
+      // the closing-soonest sort when it is in fact the latest.
+      if (closesMin != null && closesMin < 300) closesMin += 1440;
+      if (s.state === "open" && s.allDay) {
+        status = { kind: "open", label: "Open 24 hours" };
+        closesMin = 2879;
+      } else if (s.state === "closing-soon" || (s.state === "open" && s.closingSoon)) {
+        status = { kind: "soon", label: `Closes ${formatTime(closes)}` };
+      } else {
+        status = { kind: "open", label: `Until ${formatTime(closes)}` };
+      }
+    }
+    const fn = fieldNotesFor(p.slug);
+    const mark = fn?.happy_hour
+      ? "happy hour"
+      : fn?.deals?.length
+        ? "deal"
+        : fn?.insider?.length || fn?.parking
+          ? "field notes"
+          : null;
+    return {
+      slug: p.slug,
+      name: p.name,
+      meta: `${cat?.name ?? p.category}${hook ? ` · ${hook}` : ""}`,
+      photo: p.google_photo_url ?? null,
+      category: p.category,
+      accent: cat?.color ?? "var(--app-ink-2)",
+      status,
+      closesMin,
+      rating:
+        p.google_rating != null && (p.google_rating_count ?? 0) >= 20 ? p.google_rating : null,
+      mark,
+      // No printed distance on /open-now: ranking uses the town centroid,
+      // and a centroid-to-place figure would read as YOUR distance.
+      distance: null,
+    };
+  };
+
+  // Three honest sections: what you'd cross town for, split eat-and-drink
+  // first (the most common "open now" intent), everything everyday last.
+  const EAT = new Set([
+    "restaurant",
+    "pizza",
+    "food-truck",
+    "bakery",
+    "coffee",
+    "ice-cream",
+    "brewery",
+    "winery",
+    "distillery",
+    "bar",
+  ]);
+  const eat: IndexRow[] = [];
+  const todo: IndexRow[] = [];
+  const everyday: IndexRow[] = [];
+  for (const p of verified) {
+    const row = toRow(p, true);
+    if (EAT.has(p.category)) eat.push(row);
+    else if (isDestinationCategory(p.category)) todo.push(row);
+    else everyday.push(row);
+  }
+  const sections: IndexSection[] = [
+    { key: "eat", label: "Eat & drink", rows: eat },
+    { key: "todo", label: "Things to do", rows: todo },
+    { key: "everyday", label: "Everyday & services", rows: everyday },
+  ];
+  const likelySections: IndexSection[] = [
+    {
+      key: "likely",
+      label: "Likely open · hours unverified",
+      rows: likely.slice(0, 12).map((p) => toRow(p, false)),
+    },
+  ];
 
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
-      <header className="space-y-2">
+      {/* Masthead — the almanac dateline over the serif headline; the count
+          rides the mono support line, never the h1. */}
+      <header>
+        <div aria-hidden className="fg-rule mb-2" />
+        <p
+          className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Frederick County · {dateline} · {asOf}
+        </p>
         <h1
-          className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
+          className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           Open right now
         </h1>
-        <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {verified.length} places verified open against live hours · as of {asOf}
-          {fromLabel}.
+        <p className="mt-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          {verified.length} verified against live hours{fromLabel}
         </p>
       </header>
 
       {verified.length > 0 ? (
-        <>
-          {/* Refinement pass F3: the full 60-card dump made this page
-              ~4,900px tall at 390px. The first 24 ARE the answer (already
-              quality+proximity ranked, destinations first); the long tail
-              is progressive disclosure, not a wall. */}
-          <PlaceList places={verified.slice(0, 24)} initialLayout="grid" />
-          {verified.length > 24 && (
-            <CollapsibleSection
-              title="More open now"
-              // Honesty rule: the disclosure count must match what the
-              // disclosure actually renders (the list is capped at 80 rows
-              // total). The tail line below hands the remainder to the map
-              // so a bigger number is never a dead end.
-              count={Math.min(verified.length, 80) - 24}
-              storageKey="open-now-more"
-              defaultOpen={false}
-            >
-              <PlaceList places={verified.slice(24, 80)} initialLayout="list" />
-              {verified.length > 80 && (
-                <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                  {verified.length - 80} more are open right now.{" "}
-                  <Link
-                    href="/map?mode=browse&open=now"
-                    className="font-semibold underline underline-offset-2"
-                    style={{ color: "var(--app-ink-2)" }}
-                  >
-                    See them all on the map
-                  </Link>
-                  .
-                </p>
-              )}
-            </CollapsibleSection>
-          )}
-        </>
+        <PlaceIndex sections={sections} />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           Nothing is verified open at this hour. The likely-open list below is
@@ -146,21 +228,7 @@ export default async function OpenNowPage() {
         </p>
       )}
 
-      {likely.length > 0 && (
-        <section className="space-y-2.5">
-          <h2
-            className="text-xs font-medium uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Likely open · hours unverified
-          </h2>
-          <PlaceList
-            places={likely.slice(0, 12)}
-            initialLayout="list"
-            emptyMessage=""
-          />
-        </section>
-      )}
+      {likely.length > 0 && <PlaceIndex sections={likelySections} showSort={false} />}
 
       {/* Optional map fallback — the review's rule: list answer first,
           map second. This is the ONE door into the heavy surface. */}
