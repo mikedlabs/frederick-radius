@@ -1,0 +1,13 @@
+# Files not needed by Vercel builds or runtime.
+# Keeps CLI deployments small and avoids sending bulky non-app artifacts.
+
+.github/
+.mockups/
+audit/
+design-log/
+docs/
+e2e/
+tests/
+
+*.log
+.DS_Store
