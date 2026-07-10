@@ -94,6 +94,8 @@ export type EventsBoardDockProps = {
   setHappyOnly: (v: boolean) => void;
   kidsOnly: boolean;
   setKidsOnly: (v: boolean) => void;
+  lgbtqOnly: boolean;
+  setLgbtqOnly: (v: boolean) => void;
   recurringOnly: boolean;
   setRecurringOnly: (v: boolean) => void;
 
@@ -183,6 +185,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setHappyOnly,
     kidsOnly,
     setKidsOnly,
+    lgbtqOnly,
+    setLgbtqOnly,
     recurringOnly,
     setRecurringOnly,
     anyFilter,
@@ -289,6 +293,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   const goods: string[] = [];
   if (freeOnly) goods.push("Free");
   if (kidsOnly) goods.push("Kid-friendly");
+  if (lgbtqOnly) goods.push("LGBTQ+");
   if (recurringOnly) goods.push("Recurring");
   if (happyOnly) goods.push("Happy hour");
 
@@ -569,6 +574,14 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 </EbChip>
                 <EbChip on={freeOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setFreeOnly(!freeOnly); }}>
                   Free
+                </EbChip>
+                <EbChip
+                  on={lgbtqOnly}
+                  color="var(--app-accent)"
+                  ariaLabel="LGBTQ+ community events"
+                  onClick={() => { haptic("light"); setLgbtqOnly(!lgbtqOnly); }}
+                >
+                  LGBTQ+
                 </EbChip>
                 <EbChip on={recurringOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setRecurringOnly(!recurringOnly); }}>
                   Recurring

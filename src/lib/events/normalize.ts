@@ -93,7 +93,7 @@ const TRAILING_WHEN = new RegExp(
 // Real acronyms that read as words (contain vowels) and must stay shouted.
 // Vowel-less clusters (FCPS, DJ, FSK) are already exempt by the vowel test.
 const ACRONYM_KEEP = new Set([
-  "AYCE", "AARP", "BOGO", "IPA", "MARC", "NASA", "TBA", "USA", "USO", "YMCA",
+  "AYCE", "AARP", "BOGO", "IPA", "MARC", "NASA", "PFLAG", "TBA", "USA", "USO", "YMCA",
 ]);
 const SMALL_WORD =
   /^(?:a|an|and|as|at|but|by|for|from|in|nor|of|on|or|the|to|vs|via|with)$/i;
