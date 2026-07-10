@@ -164,7 +164,7 @@ function Dashboard({ data }: { data: Data }) {
         <OwnerAlertsCard />
       </section>
 
-      <section className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <section className="stagger-children mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat
           label="Signups"
           value={data.signups.length}
@@ -192,13 +192,8 @@ function Dashboard({ data }: { data: Data }) {
         now={data.now}
       />
 
-      <section className="mt-8 space-y-2">
-        <h2
-          className="text-xs font-medium uppercase tracking-[0.08em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Related tools
-        </h2>
+      <section className="mt-8 space-y-2.5">
+        <SectionHeading>Related tools</SectionHeading>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <ToolLink href="/admin/beta-emails" title="Beta emails" desc="Full signup list + CSV export" />
           <ToolLink href="/admin/beta-codes" title="Beta codes" desc="Per-tester access: generate, track, revoke" />
@@ -220,13 +215,8 @@ function Dashboard({ data }: { data: Data }) {
 
 function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved: FeedbackRow[] }) {
   return (
-    <section className="mt-8 space-y-2">
-      <h2
-        className="text-xs font-medium uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Feedback inbox
-      </h2>
+    <section className="mt-8 space-y-2.5">
+      <SectionHeading>Feedback inbox</SectionHeading>
 
       {pending.length === 0 ? (
         <p
@@ -291,7 +281,12 @@ function FeedbackCard({ row }: { row: FeedbackRow }) {
   return (
     <article
       className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)" }}
+      style={{
+        borderColor: "var(--app-border)",
+        // The unread-letter mark: a vermilion spine on every note still
+        // waiting, so a scroll through the inbox reads state at a glance.
+        borderLeft: "3px solid var(--app-brand)",
+      }}
     >
       <p
         className="whitespace-pre-wrap font-serif text-[16px] leading-relaxed"
@@ -389,20 +384,21 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
   const max = Math.max(1, ...days.map((d) => d.n));
   const windowTotal = days.reduce((sum, d) => sum + d.n, 0);
 
+  const todayKey = days[days.length - 1].key;
+
   return (
-    <section className="mt-8 space-y-2">
-      <h2
-        className="text-xs font-medium uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Signups
-      </h2>
+    <section className="mt-8 space-y-2.5">
+      <SectionHeading>Signups</SectionHeading>
 
       <div
         className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div className="flex h-14 items-end gap-1" aria-hidden>
+        <div
+          className="flex h-14 items-end gap-1 border-b pb-px"
+          style={{ borderColor: "var(--app-border)" }}
+          aria-hidden
+        >
           {days.map((d) => (
             <div
               key={d.key}
@@ -410,7 +406,14 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
               className="flex-1 rounded-t-[2px]"
               style={{
                 height: d.n === 0 ? "2px" : `${Math.max(6, Math.round((d.n / max) * 56))}px`,
-                background: d.n === 0 ? "var(--app-border)" : "var(--app-brand)",
+                // Today reads in the brand; history recedes into ink so the
+                // strip answers "anything today?" before anything else.
+                background:
+                  d.n === 0
+                    ? "var(--app-border)"
+                    : d.key === todayKey
+                      ? "var(--app-brand)"
+                      : "color-mix(in srgb, var(--app-ink) 32%, transparent)",
               }}
             />
           ))}
@@ -420,10 +423,10 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
           style={{ color: "var(--app-ink-3)" }}
         >
           <span>{fmtDay(days[0].key)}</span>
-          <span>
+          <span className="tabular-nums">
             {windowTotal} in the last {SIGNUP_WINDOW_DAYS} days
           </span>
-          <span>{fmtDay(days[days.length - 1].key)}</span>
+          <span style={{ color: "var(--app-brand)" }}>today</span>
         </div>
       </div>
 
@@ -432,10 +435,10 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
           {signups.slice(0, 8).map((s) => (
             <li
               key={s.email}
-              className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
+              className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
               style={{ borderColor: "var(--app-border)" }}
             >
-              <span className="truncate" style={{ color: "var(--app-ink)" }}>
+              <span className="truncate font-mono text-[12px]" style={{ color: "var(--app-ink)" }}>
                 {s.email}
               </span>
               <span className="shrink-0 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -474,13 +477,8 @@ function Activity({
   );
 
   return (
-    <section className="mt-8 space-y-2">
-      <h2
-        className="text-xs font-medium uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Tester activity
-      </h2>
+    <section className="mt-8 space-y-2.5">
+      <SectionHeading>Tester activity</SectionHeading>
 
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Codes active, 7d" value={activeCodes.length} />
@@ -524,6 +522,12 @@ function Activity({
 
 /* ----------------------------------------------------------------- shared */
 
+/**
+ * Instrument tile in the /pulse board language: mono tabular readout, tiny
+ * uppercase label, and — only when the tile carries something waiting — a
+ * hair-thin accent rule plus a quiet breathing dot so the eye lands there
+ * first. Calm tiles stay quiet; motion is reduced-motion safe via globals.
+ */
 function Stat({
   label,
   value,
@@ -535,24 +539,52 @@ function Stat({
   sub?: string;
   tone?: "brand" | "warning";
 }) {
-  const color =
-    tone === "brand" ? "var(--app-brand)" : tone === "warning" ? "var(--app-warning)" : "var(--app-ink)";
+  const accent =
+    tone === "brand" ? "var(--app-brand)" : tone === "warning" ? "var(--app-warning)" : null;
   return (
     <div
-      className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center"
+      className="relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-3 text-center"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <p className="font-serif text-2xl font-semibold tabular-nums leading-none" style={{ color }}>
+      {accent ? (
+        <>
+          <span aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: accent }} />
+          {/* Wrapper owns the corner position; .live-dot manages its own
+              layout for the pulse ring and would fight a position utility. */}
+          <span aria-hidden className="absolute right-2.5 top-2.5" style={{ color: accent }}>
+            <span className="live-dot" />
+          </span>
+        </>
+      ) : null}
+      <p
+        className="font-mono text-[17px] font-semibold tabular-nums leading-none"
+        style={{ color: accent ?? "var(--app-ink)" }}
+      >
         {value}
       </p>
-      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
         {label}
       </p>
       {sub ? (
-        <p className="mt-0.5 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
+        <p className="mt-0.5 font-mono text-[10px] font-medium tabular-nums" style={{ color: "var(--app-positive)" }}>
           {sub}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** Eyebrow + hairline rule: the field-guide section divider. */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <h2
+        className="shrink-0 text-xs font-medium uppercase tracking-[0.08em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {children}
+      </h2>
+      <span aria-hidden className="h-px min-w-0 flex-1" style={{ background: "var(--app-border)" }} />
     </div>
   );
 }
@@ -561,15 +593,24 @@ function ToolLink({ href, title, desc }: { href: string; title: string; desc: st
   return (
     <Link
       href={href}
-      className="block rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition hover:bg-[var(--app-bg-sunken)]"
+      className="group flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition hover:bg-[var(--app-bg-sunken)]"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <p className="font-semibold" style={{ color: "var(--app-ink)" }}>
-        {title}
-      </p>
-      <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-        {desc}
-      </p>
+      <span className="min-w-0">
+        <span className="block font-semibold" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </span>
+        <span className="mt-0.5 block text-xs" style={{ color: "var(--app-ink-3)" }}>
+          {desc}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className="shrink-0 font-mono text-[13px] transition-transform group-hover:translate-x-0.5"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        →
+      </span>
     </Link>
   );
 }
