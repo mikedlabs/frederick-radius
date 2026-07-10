@@ -25,6 +25,7 @@ import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { cleanFeedText, cleanBlurbFragment } from "@/lib/format/text";
+import { isJunkBlurb } from "@/lib/format/blurbSanity";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
@@ -505,6 +506,21 @@ function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source">
   return { ...rest, source: source as Place["source"] };
 }
 
+/**
+ * THE blurb boundary pass. Normalize the text (entities, tags, em dashes,
+ * scrape-fragment repair), then judge the result: a blurb that is still
+ * scrape debris after repair (address dump, "More info about…", Facebook
+ * counters, the name restated — see @/lib/format/blurbSanity) is dropped
+ * to "" rather than rendered. A card with no blurb beats a card with junk.
+ * Runs in both decoratePlace branches so every surface (client bundle,
+ * detail page, popups) inherits one verdict.
+ */
+function boundaryBlurb(raw: string | undefined, name: string): string {
+  if (!raw?.trim()) return "";
+  const cleaned = cleanBlurbFragment(cleanFeedText(raw));
+  return cleaned && !isJunkBlurb(cleaned, name) ? cleaned : "";
+}
+
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = enrichmentFor(p.slug);
   if (!e)
@@ -521,8 +537,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
       // unenriched (or quarantined) gem is still a gem.
       hidden_gem: HIDDEN_GEM_SLUGS.has(p.slug),
       // Same boundary clean the enriched branch gets: scrape fragments
-      // ("is a family-owned…") read broken regardless of enrichment.
-      short_blurb: p.short_blurb ? cleanBlurbFragment(cleanFeedText(p.short_blurb)) : p.short_blurb,
+      // ("is a family-owned…") read broken regardless of enrichment, and
+      // irreparable scrape debris is dropped outright.
+      short_blurb: boundaryBlurb(p.short_blurb, p.name),
     };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
@@ -571,7 +588,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
       ? e.editorial_summary.trim()
       : p.short_blurb;
-  const short_blurb = rawBlurb ? cleanBlurbFragment(cleanFeedText(rawBlurb)) : rawBlurb;
+  const short_blurb = boundaryBlurb(rawBlurb, p.name);
   // Hours: a hand-curated structured schedule (seed/manual, e.g. the
   // parks) always wins; otherwise parse Google's weekday strings into the
   // structured shape getOpenStatus needs. THIS is the line that lifts
@@ -1172,6 +1189,66 @@ export function countOpenNow(now: Date = new Date()): number {
   return openNowHighlights(0, now).count;
 }
 
+/** Leading honorific on a personal-practice listing ("Dr Atul Purohit"). */
+const PERSON_HONORIFIC = /^(?:dr|mr|mrs|ms)\.?$/i;
+/** Trailing practitioner credential ("Gaffar Syed MD", "Adam J Frieder DDS"). */
+const PERSON_CREDENTIAL =
+  /^(?:md|dds|dmd|do|od|pa|phd|psyd|lcsw-?c?|lpc|lcpc|crnp|cpa|esq|jr|sr)$/i;
+/** Google primaryTypes that mean an individual practice, not a storefront. */
+const PRACTICE_TYPE =
+  /doctor|dentist|physio|psycholog|psychiatr|counsel|therap|medical|clinic|massage|acupunct|chiroprac|lawyer|attorney|insurance|real_estate/i;
+/** Business nouns that rescue a two-word name from looking like a person
+ *  ("Appalachian Bodywork", "Kindred Nutrition", "Gale House"). */
+const BUSINESS_NOUN = new Set([
+  "bodywork", "massage", "nutrition", "counseling", "psychotherapy",
+  "therapy", "reflexology", "wellness", "acupuncture", "chiropractic",
+  "dental", "dentistry", "aesthetics", "beauty", "salon", "spa", "studio",
+  "yoga", "pilates", "fitness", "crossfit", "health", "house", "center",
+  "clinic", "group", "associates", "partners", "care", "medicine",
+  "pediatrics", "dermatology",
+]);
+
+/**
+ * A discovered row whose NAME reads as a bare person ("Noah Stevens",
+ * "Nicole K Albertson") — a solo-practitioner listing, not a recognizable
+ * business. Used ONLY to keep the /beta open-now highlight SAMPLE honest;
+ * such rows still count, map, and search normally. Requires BOTH a
+ * person-shaped name (2-3 capitalized name words, optional initial,
+ * optional Dr/MD-style credential) AND practice-flavored typing, so
+ * two-word real businesses ("Smoke Signals", "Rare Morsel", "Odin
+ * Crossfit") are never excluded.
+ */
+function looksLikeBarePersonName(
+  name: string,
+  primaryType?: string,
+  category?: string,
+): boolean {
+  let toks = name.trim().split(/\s+/).map((t) => t.replace(/[.,]+$/, ""));
+  let credentialed = false;
+  while (toks.length > 0 && PERSON_HONORIFIC.test(toks[0])) {
+    toks = toks.slice(1);
+    credentialed = true;
+  }
+  while (toks.length > 0 && PERSON_CREDENTIAL.test(toks[toks.length - 1])) {
+    toks = toks.slice(0, -1);
+    credentialed = true;
+  }
+  if (toks.length < 1 || toks.length > 3) return false;
+  if (toks.some((t) => BUSINESS_NOUN.has(t.toLowerCase()))) return false;
+  const nameWord = /^[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?$/;
+  const initial = /^[A-Z]$/;
+  const words = toks.filter((t) => nameWord.test(t)).length;
+  const initials = toks.filter((t) => initial.test(t)).length;
+  if (words + initials !== toks.length) return false;
+  // "Dr Elise" is person-shaped on the honorific alone; without a
+  // credential it takes two name words AND a practice type to call it.
+  if (credentialed) return words >= 1;
+  if (words < 2 || initials === toks.length) return false;
+  return primaryType
+    ? PRACTICE_TYPE.test(primaryType)
+    : category === "wellness" || category === "health";
+}
+
 /**
  * The county-wide open-now count PLUS a few real names to prove it —
  * for surfaces (the /beta cover) that want "N open right now: A, B, C"
@@ -1179,6 +1256,9 @@ export function countOpenNow(now: Date = new Date()): number {
  * predicate (countOpenNow delegates here), so the headline count and
  * the named sample can never disagree. Names are the highest
  * feature_score open places — recognizable anchors, not a random draw.
+ * The COUNT is untouched, but the named sample prefers real businesses:
+ * quarantined-enrichment rows and discovered solo-practitioner listings
+ * ("Noah Stevens", a person) never headline the cover (2026-07 audit).
  */
 export function openNowHighlights(
   limit: number,
@@ -1193,7 +1273,14 @@ export function openNowHighlights(
     .filter((p) => isOpenNow(p.open_status));
   const names =
     limit > 0
-      ? [...open]
+      ? open
+          .filter((p) => !ENRICHMENT_QUARANTINE.has(p.slug))
+          .filter(
+            (p) =>
+              p.source === "seed" ||
+              p.source === "manual" ||
+              !looksLikeBarePersonName(p.name, p.primary_type, p.category),
+          )
           .sort((a, b) => b.feature_score - a.feature_score)
           .slice(0, limit)
           .map((p) => p.name)

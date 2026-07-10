@@ -51,7 +51,16 @@ export default async function BetaPage({
   return (
     <main className="relative overflow-hidden" style={{ background: "var(--app-bg)", backgroundImage: "var(--app-paper-light)" }}>
       {/* ── HERO — the access cover ────────────────────────────────────── */}
-      <section className="relative grid overflow-hidden px-6" style={{ minHeight: "100dvh", placeItems: "center" }}>
+      {/* gridTemplateColumns minmax(0,1fr): the single auto column otherwise
+          sizes to the hero's max-content (the 27rem block beats a 390px
+          phone) and the whole cover renders wider than the viewport, clipping
+          the pitch, the code field, and the Come in button on the right
+          (fresh-eyes audit, Jul 2026). minmax(0,1fr) pins the track to the
+          available width so content wraps instead of overflowing. */}
+      <section
+        className="relative grid overflow-hidden px-6"
+        style={{ minHeight: "100dvh", placeItems: "center", gridTemplateColumns: "minmax(0, 1fr)" }}
+      >
         <svg
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2"

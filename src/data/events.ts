@@ -269,9 +269,11 @@ export const EVENTS: Event[] = [
     slug: "great-frederick-fair-2026",
     title: "The Great Frederick Fair",
     description:
-      "152nd annual county fair. Ten days of livestock shows, agricultural exhibits, midway rides, concerts on the grandstand, and the demolition derby on closing Saturday.",
-    starts_at: iso(at(125, 10, 0)),
-    ends_at: iso(at(134, 23, 0)),
+      "164th annual county fair. Nine days of livestock shows, agricultural exhibits, midway rides, concerts on the grandstand, and the demolition derby on closing Saturday.",
+    // Fri Sep 18 through Sat Sep 26, 2026 per thegreatfrederickfair.com/past-future/
+    // (164th edition; 2025 was the 163rd).
+    starts_at: iso(at(127, 10, 0)),
+    ends_at: iso(at(135, 23, 0)),
     timezone: "America/New_York",
     venue_name: "Frederick Fairgrounds",
     address: "797 E Patrick St, Frederick, MD 21701",
@@ -288,9 +290,11 @@ export const EVENTS: Event[] = [
     slug: "in-the-streets-frederick-2026",
     title: "In the Streets",
     description:
-      "Downtown's signature one-day street festival: live music on six stages, food trucks, an art village, a kids' zone on Baker Park, and a 5K to start the day.",
-    starts_at: iso(at(110, 11, 0)),
-    ends_at: iso(at(110, 21, 0)),
+      "Downtown's signature one-day street festival: live music, food trucks, an art village, a kids' zone, and the Market Street Mile to start the day. The Up The Creek Party carries the evening to 9pm.",
+    // Sat Sep 12, 2026 per celebratefrederick.com/events/in-the-street/
+    // (festival 11am-5pm; Market Street Mile 9am; Up The Creek Party 5-9pm).
+    starts_at: iso(at(121, 11, 0)),
+    ends_at: iso(at(121, 21, 0)),
     timezone: "America/New_York",
     venue_name: "Downtown Frederick (Market St)",
     address: "N Market St, Frederick, MD 21701",
@@ -307,9 +311,11 @@ export const EVENTS: Event[] = [
     slug: "brunswick-railroad-days-2026",
     title: "Brunswick Railroad Days",
     description:
-      "The town's signature heritage festival. Locomotives on display, working steam, a parade, the C&O Canal stretch lit up after dark, and the model railroad museum open late.",
-    starts_at: iso(at(140, 10, 0)),
-    ends_at: iso(at(141, 21, 0)),
+      "The town's signature heritage festival, 43rd annual. Locomotives on display, working steam, a parade down Potomac Street, C&O Canal walks, and the model railroad museum open both days.",
+    // Sat-Sun Oct 3-4, 2026, 10am-5pm both days, per brunswickmd.gov and
+    // brunswickrailroaddays.org ("Celebrating 43 years! October 3 & 4, 2026").
+    starts_at: iso(at(142, 10, 0)),
+    ends_at: iso(at(143, 17, 0)),
     timezone: "America/New_York",
     venue_name: "Downtown Brunswick",
     address: "W Potomac St, Brunswick, MD 21716",
@@ -530,34 +536,20 @@ export const EVENTS: Event[] = [
     source: "celebrate",
     is_verified: true,
   },
-  {
-    slug: "maryland-wine-festival-linganore-2026",
-    title: "Maryland Wine Festival",
-    description:
-      "Maryland's largest wine festival, 40+ wineries pouring over a weekend in Mount Airy. Live music, food vendors, artisan market. 21+; tasting cup with admission.",
-    starts_at: iso(at(110, 11, 0)),
-    ends_at: iso(at(111, 18, 0)),
-    timezone: "America/New_York",
-    venue_place_slug: "linganore-winecellars-mount-airy",
-    venue_name: "Linganore Winecellars",
-    address: "13601 Glissans Mill Rd, Mount Airy, MD 21771",
-    geom: { lng: -77.1697, lat: 39.4061 },
-    municipality: "mount-airy",
-    category: "food",
-    audience: ["adults", "groups"],
-    is_free: false,
-    price_text: "$45 advance / $55 at the gate",
-    organizer: "Maryland Wineries Association",
-    source: "manual",
-    is_verified: true,
-  },
+  // The Maryland Wine Festival seed was removed 2026-07-10: the festival is
+  // held at the Carroll County Farm Museum in Westminster (Carroll County),
+  // not at Linganore, and its 2026 edition ran June 6 (marylandwine.com,
+  // carrollcountyfarmmuseum.org). Outside Frederick Radius coverage.
   {
     slug: "catoctin-colorfest-thurmont-2026",
     title: "Catoctin Colorfest",
     description:
       "Massive juried craft and art show in Thurmont, drawing 100,000+ visitors over the second weekend in October. 350+ vendors at Community Park, plus the Town Crafts Show, food and live music.",
-    starts_at: iso(at(146, 9, 0)),
-    ends_at: iso(at(147, 17, 0)),
+    // Sat-Sun Oct 10-11, 2026 per thurmont.com/2236/Colorfest ("Colorfest
+    // will be held October 10th & 11th, 2026"). colorfest.org's Oct 11-12
+    // is a stale year-bump of the 2025 dates (Sun-Mon is implausible).
+    starts_at: iso(at(149, 9, 0)),
+    ends_at: iso(at(150, 17, 0)),
     timezone: "America/New_York",
     venue_name: "Thurmont Community Park",
     address: "615 E Main St, Thurmont, MD 21788",
@@ -570,25 +562,10 @@ export const EVENTS: Event[] = [
     source: "manual",
     is_verified: true,
   },
-  {
-    slug: "brunswick-railroad-days-fall-2026",
-    title: "Brunswick Heritage Days",
-    description:
-      "Annual heritage festival celebrating Brunswick's railroad and canal history. Live music, model trains, C&O Canal walks, kids' rides, food vendors.",
-    starts_at: iso(at(106, 10, 0)),
-    ends_at: iso(at(107, 18, 0)),
-    timezone: "America/New_York",
-    venue_name: "Brunswick Square Park",
-    address: "100 W Potomac St, Brunswick, MD 21716",
-    geom: { lng: -77.6253, lat: 39.3148 },
-    municipality: "brunswick",
-    category: "family",
-    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
-    is_free: true,
-    organizer: "Brunswick Main Street",
-    source: "manual",
-    is_verified: true,
-  },
+  // "Brunswick Heritage Days" was removed 2026-07-10: no such festival
+  // exists. It duplicated Brunswick Railroad Days (the slug even said so)
+  // under an invented name with contradictory August dates. Brunswick's one
+  // heritage festival is Railroad Days, Oct 3-4, 2026 (seeded above).
   {
     slug: "fireworks-baker-park-2026-07-04",
     title: "Independence Day Fireworks at Baker Park",

@@ -1054,8 +1054,10 @@ export const PLACES: Place[] = [
     geom: { lng: -77.4105, lat: 39.4378 },
     website: "https://dublinroasterscoffee.com",
     price_band: 1,
-    is_verified: false, hours_verified: false, is_operational: "needs_verification",
-    feature_score: 7.6, source: "manual", updated_at: "2026-05-14",
+    // Operating status confirmed 2026-07-10 via dublinroasterscoffee.com
+    // (current hours posted) and an active Yelp listing.
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.6, source: "manual", updated_at: "2026-07-10",
   },
   {
     slug: "frederick-coffee-company-frederick",
@@ -1194,8 +1196,10 @@ export const PLACES: Place[] = [
     geom: { lng: -77.4087, lat: 39.4139 },
     website: "https://lebherzoilandvinegar.com",
     price_band: 2,
-    is_verified: false, hours_verified: false, is_operational: "needs_verification",
-    feature_score: 7.4, source: "manual", updated_at: "2026-05-14",
+    // Operating status confirmed 2026-07-10 via loveoliveoilvinegar.com/hours
+    // (current hours posted) and an active Yelp listing.
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.4, source: "manual", updated_at: "2026-07-10",
   },
   {
     slug: "the-wine-kitchen-frederick",
@@ -1347,8 +1351,10 @@ export const PLACES: Place[] = [
     geom: { lng: -77.6261, lat: 39.3145 },
     website: "https://smoketownbrewing.com",
     price_band: 2,
-    is_verified: false, hours_verified: false, is_operational: "needs_verification",
-    feature_score: 7.5, source: "manual", updated_at: "2026-05-14",
+    // Operating status confirmed 2026-07-10 via smoketownbrewing.com
+    // (current hours posted) and 2026 Tripadvisor reviews.
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.5, source: "manual", updated_at: "2026-07-10",
   },
   {
     slug: "main-cup-middletown",
@@ -1365,19 +1371,23 @@ export const PLACES: Place[] = [
     feature_score: 7.2, source: "manual", updated_at: "2026-05-14",
   },
   {
+    // Closure verified 2026-07-10: the Cozy Restaurant closed in June 2014
+    // and the Cozy Inn the following year (Thurmont Historical Society;
+    // Baltimore Sun, 2014-06-10). The complex was demolished and the site
+    // at 103 Frederick Rd is now Criswell Chrysler Dodge Jeep RAM. No
+    // creamery replaced it. Dead website (cozyvillage.com) removed.
     slug: "the-cozy-creamery-thurmont",
-    name: "Cozy Family Restaurant",
+    name: "Cozy Restaurant",
     category: "restaurant",
     tags: ["family"],
-    short_blurb: "Thurmont fixture since 1929. Camp David-adjacent, and every president since FDR has eaten here.",
+    short_blurb: "A Thurmont fixture from 1929 until it closed in 2014. The Camp David-adjacent restaurant and inn were demolished; a car dealership stands on the site now.",
     address: "103 Frederick Rd",
     city: "Thurmont", state: "MD", postal_code: "21788",
     municipality: "thurmont",
     geom: { lng: -77.4090, lat: 39.6261 },
-    website: "https://cozyvillage.com",
     price_band: 2,
-    is_verified: false, hours_verified: false, is_operational: "needs_verification",
-    feature_score: 7.6, source: "manual", updated_at: "2026-05-14",
+    is_verified: true, hours_verified: false, is_operational: "closed_permanently",
+    feature_score: 7.6, source: "manual", updated_at: "2026-07-10",
   },
 
   // ── Grocery stores (agent-researched + source-verified, 2026-06-18). The
