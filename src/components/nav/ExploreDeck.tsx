@@ -45,9 +45,13 @@ export default function ExploreDeck({
       {items.map((it, i) => {
         const Icon = it.icon;
         const style: CSSProperties = {
-          // One whisper of hue over a shared ink ground: the deck reads as a
-          // matched series, and the spine stripe carries the identity.
-          background: `linear-gradient(168deg, color-mix(in srgb, ${it.color} 26%, #191510), color-mix(in srgb, ${it.color} 10%, #14110C))`,
+          // Pressed paper, not ink (owner call 2026-07-10, round two: the
+          // deep-ink plates read "too dark" inside a cream app). Each plate is
+          // the app's elevated paper with its hue pressed in at letterpress
+          // strength — the deck still reads as a matched series, the spine
+          // stripe still carries the identity, and the material now matches
+          // the light tiles beside it in the sheet.
+          background: `linear-gradient(168deg, color-mix(in srgb, ${it.color} 20%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${it.color} 6%, var(--app-bg-elevated-solid)))`,
           // Custom props drive the staggered fan-in and the accent pieces
           // (spine, plate number, hairline) — see .ex-* in globals.css.
           "--exc": it.color,

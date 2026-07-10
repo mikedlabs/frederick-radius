@@ -2206,20 +2206,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   min-height: 116px;
   padding: 14px 16px 14px 20px;
   border-radius: var(--app-radius-lg);
-  color: #fff;
-  /* Quiet lamination: tight drop, a hairline edge, a faint top glare. No
-     gloss bands - the premium read is restraint. */
+  color: var(--app-ink);
+  /* Pressed paper (owner call: the deep-ink plates read too dark in a cream
+     app). The stack's seam logic is the wallet's - later cards paint on top,
+     so the visible depth cue at each lip is cast UPWARD by the covering
+     card; a warm hairline ring keeps cream-on-cream edges legible. */
   box-shadow:
-    0 10px 22px -14px rgba(20, 20, 18, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 -12px 20px -12px rgba(22, 20, 14, 0.22),
+    0 14px 24px -12px rgba(22, 20, 14, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--app-ink) 13%, transparent);
   animation: ex-fanin 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--ex-i, 0) * 52ms);
   will-change: transform, opacity;
 }
 .ex-slot:last-child .ex-card { min-height: 132px; }
-.ex-card:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.3; mix-blend-mode: soft-light; pointer-events: none; }
+.ex-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
+/* The shared sw-m-* motifs are white engraving lines tuned for dark wallet
+   cards; invert() flips them to faint INK lines (alpha preserved) so the
+   same patterns read as letterpress texture on paper. */
+.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.36; mix-blend-mode: multiply; filter: invert(1); pointer-events: none; }
 /* The spine: where the plate spends its color. A crisp stripe with a soft
    bloom into the ground, like a bound edge catching light. */
 .ex-card .ex-spine {
@@ -2231,27 +2237,27 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: linear-gradient(90deg, color-mix(in srgb, var(--exc) 26%, transparent), transparent);
 }
 /* Engraved icon: pressed into the lower corner in the plate's own tint,
-   not stuck on in white. */
+   deepened toward ink so it engraves into paper instead of glowing. */
 .ex-card .ex-ghost {
   position: absolute; right: -4px; bottom: -8px; pointer-events: none;
-  color: color-mix(in srgb, var(--exc) 55%, #fff);
-  opacity: 0.2;
+  color: color-mix(in srgb, var(--exc) 62%, var(--app-ink));
+  opacity: 0.18;
 }
-/* Foil-tint plate number, top-right of the title lip. */
+/* Plate number, top-right of the title lip - accent ink, not foil. */
 .ex-card .ex-plate {
   position: absolute; top: 1px; right: 0;
   font-family: var(--font-mono, monospace);
   font-size: 10px; letter-spacing: 0.14em;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--exc) 62%, #fff);
+  color: color-mix(in srgb, var(--exc) 72%, var(--app-ink));
 }
 /* Hairline under the title, in the plate's tint - the engraver's rule. */
 .ex-card .ex-rule {
   display: block; height: 1px; width: 34px; margin-top: 7px;
-  background: color-mix(in srgb, var(--exc) 55%, #fff);
-  opacity: 0.65;
+  background: color-mix(in srgb, var(--exc) 62%, var(--app-ink));
+  opacity: 0.55;
 }
-.ex-card .ex-desc { color: rgba(255, 255, 255, 0.72); }
+.ex-card .ex-desc { color: var(--app-ink-2); }
 @keyframes ex-fanin {
   from { opacity: 0; transform: translateY(46px) rotate(var(--ex-rot, 0deg)) scale(0.92); }
   to   { opacity: 1; transform: none; }
