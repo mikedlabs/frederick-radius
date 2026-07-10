@@ -82,6 +82,18 @@ const EMERGENCY: DepartmentContact[] = [
     about: "The county hospital, on West 7th Street.",
     website: "https://www.frederickhealth.org/",
   },
+  {
+    // Pets have ERs too, and "animal hospital" names mislead in a crisis
+    // (beta-tester safety request, Jul 2026). The in-app guide carries the
+    // verified 24/7 ERs, urgent-care hours, and poison lines; no single
+    // phone belongs on this row because the right number depends on the
+    // tier, which is the guide's whole point.
+    slug: "pet-emergency",
+    jurisdiction: "emergency",
+    name: "Pet emergency",
+    about: "The two 24/7 animal ERs, urgent care, and pet poison lines. Verified.",
+    website: "/emergency-vet",
+  },
 ];
 
 // ─── City of Frederick ──────────────────────────────────────────────────

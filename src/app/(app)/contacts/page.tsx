@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import {
   AlertCircle,
@@ -426,19 +427,34 @@ function Row({
             {formatPhone(contact.phone ?? "")}
           </a>
         )}
-        <a
-          href={contact.website}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.97]"
-          style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Website
-        </a>
+        {contact.website.startsWith("/") ? (
+          // An in-app guide (e.g. the pet-emergency tiers): same pill, no
+          // new tab, no external-arrow claim.
+          <Link
+            href={contact.website}
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.97]"
+            style={{
+              borderColor: "var(--app-border)",
+              color: "var(--app-ink-2)",
+            }}
+          >
+            Open the guide
+          </Link>
+        ) : (
+          <a
+            href={contact.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.97]"
+            style={{
+              borderColor: "var(--app-border)",
+              color: "var(--app-ink-2)",
+            }}
+          >
+            <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            Website
+          </a>
+        )}
       </div>
     </article>
   );
