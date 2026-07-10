@@ -571,7 +571,11 @@ export default function SearchOverlay({
           className="flex items-center justify-between border-t px-4 py-2 text-[10px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          <div className="flex items-center gap-3">
+          {/* Keyboard affordances exist only where a keyboard does: on a
+              touch phone none of these keys exist, so the row hides on
+              coarse-pointer devices and the match count stands alone
+              (fresh-eyes audit, Jul 2026). */}
+          <div className="hidden items-center gap-3 [@media(hover:hover)_and_(pointer:fine)]:flex">
             <KbdHint label="↑↓" desc="navigate" />
             <KbdHint label="↵" desc="open" />
             <KbdHint label="esc" desc="close" />

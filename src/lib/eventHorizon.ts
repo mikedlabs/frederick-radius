@@ -113,6 +113,13 @@ export function horizonOf<E extends EventLike>(
     const liveUntil = Math.min(end, start + MAX_LIVE_SESSION_MS);
     if (start <= b.now && (liveUntil >= b.now || b.live.has(e.slug))) return "live";
     if (end < b.now) return null; // over, and not live → not upcoming
+    // STARTED but no longer live (the session cap expired even though the
+    // feed's stated end runs to midnight): neither "happening now" nor
+    // "coming up" is true, so it belongs in neither. Letting it fall
+    // through put five earlier-today events at the TOP of "Coming up" at
+    // 9:47 PM (fresh-eyes audit, Jul 2026) — noon anniversaries and
+    // afternoon programs presented as still ahead of you.
+    if (start <= b.now) return null;
   }
 
   if (start >= b.now && start < b.next24) return "today";

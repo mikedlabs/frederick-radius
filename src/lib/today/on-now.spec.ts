@@ -4,6 +4,7 @@ import {
   pickNextDraw,
   pickLivePour,
   selectOnNowChips,
+  marketEndMinutes,
   NEXT_DRAW_WINDOW_MIN,
   type OnNowEvent,
 } from "./on-now";
@@ -146,7 +147,9 @@ describe("selectOnNowChips — event slot", () => {
       now: NOW,
       events: [ev({ slug: "show", title: "Bluegrass on the Creek" })],
       pours: [{ slug: "bentztown", name: "Bentztown", endsAt: 19 * 60, lastCall: false }],
-      markets: [{ name: "Everedy Square & Shab Row", hours: "3 to 6 PM" }],
+      // Ends after the 6 PM fixture clock: the market end-gate (below) now
+      // drops ended markets, and this test's contract is reading order.
+      markets: [{ name: "Everedy Square & Shab Row", hours: "3 to 8 PM" }],
     });
     expect(chips.map((c) => c.kind)).toEqual(["event", "place", "market"]);
     expect(chips[1].kicker).toBe("Open now");
@@ -161,5 +164,38 @@ describe("pickLivePour", () => {
       { slug: "b", name: "B", endsAt: 23 * 60, lastCall: true },
     ];
     expect(pickLivePour(pours)?.slug).toBe("b");
+  });
+});
+
+describe("marketEndMinutes + the on-now market gate", () => {
+  it("parses the end of common hours strings", () => {
+    expect(marketEndMinutes("3pm - 6pm")).toBe(18 * 60);
+    expect(marketEndMinutes("9:30am-1pm")).toBe(13 * 60);
+    expect(marketEndMinutes("10am to 2:15pm")).toBe(14 * 60 + 15);
+    expect(marketEndMinutes("weekends")).toBeNull();
+    expect(marketEndMinutes(undefined)).toBeNull();
+  });
+
+  it("drops a market whose stated hours have ended", () => {
+    // 9:47 PM ET on a Thursday (the audit's exact render): a 3-6pm market
+    // must not chip under ON NOW.
+    const night = new Date("2026-07-09T21:47:00-04:00");
+    const chips = selectOnNowChips({
+      now: night,
+      events: [],
+      pours: [],
+      markets: [{ name: "Everedy Square & Shab Row Farmers Market", hours: "3pm - 6pm" }],
+    });
+    expect(chips.find((c) => c.kind === "market")).toBeUndefined();
+    // At 4 PM the same market is genuinely on.
+    const afternoon = new Date("2026-07-09T16:00:00-04:00");
+    const on = selectOnNowChips({ now: afternoon, events: [], pours: [], markets: [{ name: "Everedy", hours: "3pm - 6pm" }] });
+    expect(on.find((c) => c.kind === "market")?.title).toBe("Everedy");
+  });
+
+  it("keeps a market with unparseable hours (conservative default)", () => {
+    const night = new Date("2026-07-09T21:47:00-04:00");
+    const chips = selectOnNowChips({ now: night, events: [], pours: [], markets: [{ name: "Mystery Market" }] });
+    expect(chips.find((c) => c.kind === "market")?.title).toBe("Mystery Market");
   });
 });

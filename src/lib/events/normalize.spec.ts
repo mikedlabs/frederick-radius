@@ -417,3 +417,13 @@ describe("dedupeCrossSourceShows", () => {
     expect(out[0].slug).toBe("twin-a");
   });
 });
+
+describe("cleanTitle — trailing genre-tag pipe suffix", () => {
+  it("strips an appended category tag but never a real double bill", () => {
+    expect(cleanTitle("Fridays at the Fountain | Live Music")).toBe("Fridays at the Fountain");
+    expect(cleanTitle("Thursday Nights | Trivia")).toBe("Thursday Nights");
+    expect(cleanTitle("Open Stage | Karaoke")).toBe("Open Stage");
+    // A named second act is content, not a tag.
+    expect(cleanTitle("Summerfest | Rainbow Rock Band")).toBe("Summerfest | Rainbow Rock Band");
+  });
+});

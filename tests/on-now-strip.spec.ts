@@ -71,12 +71,12 @@ describe("selectOnNowChips", () => {
       now: NOW,
       events: [endedEvent, liveEvent],
       pours: [{ slug: "brewers", name: "Brewer's Alley", endsAt: 21 * 60, lastCall: false }],
-      markets: [{ name: "Downtown Frederick Market", hours: "3-7 PM" }],
+      markets: [{ name: "Downtown Frederick Market", hours: "3-9 PM" }],
     });
     expect(chips.map((c) => c.kind)).toEqual(["event", "place", "market"]);
     expect(chips[0]).toMatchObject({ href: "/events/olde-mother-live", kicker: "Live now", meta: "Olde Mother Brewing" });
     expect(chips[1]).toMatchObject({ href: "/places/brewers", kicker: "Open now", meta: "till 9 PM" });
-    expect(chips[2]).toMatchObject({ href: "/category/market", kicker: "Market today", meta: "3-7 PM" });
+    expect(chips[2]).toMatchObject({ href: "/category/market", kicker: "Market today", meta: "3-9 PM" });
   });
 
   it("drops any slot that has nothing (a market-only day shows one chip)", () => {
@@ -84,7 +84,7 @@ describe("selectOnNowChips", () => {
       now: NOW,
       events: [endedEvent, futureEvent],
       pours: [],
-      markets: [{ name: "Emmitsburg Market", hours: "9 AM-1 PM" }],
+      markets: [{ name: "Emmitsburg Market", hours: "4-9 PM" }],
     });
     expect(chips).toHaveLength(1);
     expect(chips[0].kind).toBe("market");
