@@ -79,6 +79,7 @@ export default function AdminHome() {
           Quick actions
         </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ActionTile href="/admin/beta" title="Beta dashboard" desc="Signups, tester feedback, and activity in one place" />
           <ActionTile href="/admin/claims" title="Review submissions" desc="Approve place, event, and business claim submissions" />
           <ActionTile href="/admin/beta-codes" title="Beta codes" desc="Per-tester access codes: generate, track, revoke" />
           <ActionTile href="/admin/costs" title="Usage costs" desc="Paid-upstream call meter + cost-control checklist" />
