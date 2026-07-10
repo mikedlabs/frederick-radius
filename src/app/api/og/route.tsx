@@ -5,6 +5,15 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { COLLECTION_BY_SLUG } from "@/data/collections";
 import { momentBySlug } from "@/data/civic-moments";
+import {
+  FREDERICK_LAT,
+  FREDERICK_LNG,
+  daylightDelta,
+  moonPhase,
+  sunTimes,
+} from "@/lib/almanac";
+import { easternDayKey } from "@/lib/tz";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
 // Token → hex mapping for the OG image runtime, which has no DOM
 // and so can't resolve CSS variables. Keep in sync with globals.css.
@@ -48,6 +57,11 @@ export async function GET(request: Request) {
   // to read true a day from now.
   let blurb: string | null = null;
   let accent = "#E14328";
+  // Almanac stat row (type=almanac only) — replaces the italic blurb with
+  // label/value pairs. The DAY is baked into the URL by the sharer, so each
+  // calendar day is a distinct URL and social caches can never serve a stale
+  // "today" (the same rule the other cards solve by not being time-bound).
+  let stats: { label: string; value: string }[] | null = null;
 
   if (type === "place") {
     const p = PLACE_BY_SLUG[slug];
@@ -103,6 +117,75 @@ export async function GET(request: Request) {
     kicker = "Private beta · Frederick Radius";
     blurb = "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time.";
     accent = "#E14328";
+  } else if (type === "almanac") {
+    // The daily almanac card — the one share card that IS time-bound, made
+    // cache-safe by requiring the Eastern day in the URL. /today's metadata
+    // regenerates the URL each ISR pass, so sharing /today always previews
+    // the current day's card.
+    const rawDay = url.searchParams.get("day") ?? "";
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? rawDay : easternDayKey(new Date());
+    // Noon ET of that calendar day: same UTC calendar day year-round, so the
+    // USNO sun math and the ET date label agree on which day this is.
+    const anchor = new Date(`${day}T16:00:00Z`);
+
+    title = anchor.toLocaleDateString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+    kicker = "The daily almanac · Frederick County";
+
+    const fmtTime = (d: Date) =>
+      d
+        .toLocaleTimeString("en-US", {
+          timeZone: "America/New_York",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+        .toLowerCase()
+        .replace(" ", "");
+
+    const sun = sunTimes(anchor, FREDERICK_LAT, FREDERICK_LNG);
+    const delta = daylightDelta(anchor, FREDERICK_LAT, FREDERICK_LNG);
+    const moon = moonPhase(anchor);
+
+    // Today's public event count, timeout-raced: the loader is warm-cron'd
+    // every 5 minutes so this almost always resolves instantly, but a cold
+    // cache must never make a crawler wait — the card just omits the stat.
+    let eventsToday: number | null = null;
+    if (day === easternDayKey(new Date())) {
+      eventsToday = await Promise.race<number | null>([
+        assembleUnifiedEvents(new Date())
+          .then(
+            (u) =>
+              u.publicEvents.filter((e) => easternDayKey(new Date(e.starts_at)) === day)
+                .length,
+          )
+          .catch(() => null),
+        new Promise<number | null>((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]);
+    }
+
+    // Four stats maximum — five clips the 1200px canvas and a wrapped row
+    // orphans whichever stat lands alone. The sun pair and the moon always
+    // sit; the fourth seat goes to the event count (the social hook) when
+    // the day has one, else to the daylight delta (the season's pulse).
+    stats = [];
+    if (sun) {
+      stats.push({ label: "Sunrise", value: fmtTime(sun.sunrise) });
+      stats.push({ label: "Sunset", value: fmtTime(sun.sunset) });
+    }
+    if (eventsToday !== null && eventsToday > 0) {
+      stats.push({ label: "On today", value: `${eventsToday} events` });
+    } else if (delta) {
+      const d = delta.deltaMinutes;
+      stats.push({
+        label: "Daylight",
+        value: d === 0 ? "steady" : `${d > 0 ? "+" : "-"}${Math.abs(d)} min`,
+      });
+    }
+    stats.push({ label: "Moon", value: moon.name.toLowerCase() });
   } else if (type === "moment") {
     // Civic-moment hubs (/moments/[slug]) — the most-shared, timely content.
     // Not time-baked to a specific clock (social caches at share time); the
@@ -238,6 +321,56 @@ export async function GET(request: Request) {
               {blurb.length > 110 ? blurb.slice(0, 107) + "…" : blurb}
             </div>
           )}
+          {/* Almanac stat row — label/value plates separated by hairlines,
+              the engraved-masthead language at share-card scale. */}
+          {stats && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                flexWrap: "wrap",
+                gap: story ? 32 : 34,
+                rowGap: 24,
+                marginTop: story ? 16 : 8,
+              }}
+            >
+              {stats.map((s, i) => (
+                <div
+                  key={s.label}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    paddingLeft: i === 0 ? 0 : story ? 32 : 34,
+                    borderLeft: i === 0 ? "none" : `1px solid ${HAIRLINE}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: story ? 22 : 18,
+                      color: INK_3,
+                      letterSpacing: 2.5,
+                      textTransform: "uppercase",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {s.label}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: SERIF,
+                      fontSize: story ? 44 : 36,
+                      fontWeight: 600,
+                      color: INK_2,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {s.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {/* Footer — hairline rule + domain + type chip */}
         <div
@@ -260,7 +393,7 @@ export async function GET(request: Request) {
             <div>frederickradius.app</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: INK_3 }}>
               <span style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : type === "collection" ? "Collection" : "Field guide"}
+              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : type === "collection" ? "Collection" : type === "almanac" ? "Almanac" : "Field guide"}
             </div>
           </div>
         </div>

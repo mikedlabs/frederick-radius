@@ -5,6 +5,8 @@ import TodayCard from "@/components/today/TodayCard";
 import EventCountdown from "@/components/today/EventCountdown";
 import { Ticket, ChevronRight } from "lucide-react";
 import MastheadTitle from "@/components/today/MastheadTitle";
+import ShareTodayButton from "@/components/today/ShareTodayButton";
+import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import OnNowStrip from "@/components/today/OnNowStrip";
 import KeysScore from "@/components/today/KeysScore";
@@ -109,15 +111,33 @@ import EventWalkTime from "@/components/today/EventWalkTime";
  *   • MunicipalityStrip                    — towns reachable via /m
  *   • DecorativeDivider variants           — visual filler
  */
-export const metadata: Metadata = {
-  alternates: { canonical: "/today" },
-  title: "Today in Frederick County",
-  description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
-  openGraph: {
+// generateMetadata (not a static object) so the share card is the DAILY
+// almanac card: the Eastern day is baked into the image URL, which makes
+// each day a distinct URL — social caches can never serve yesterday's
+// "today". Regenerates on the page's own ISR cadence (300s), so the URL
+// rolls over within minutes of midnight Eastern.
+export async function generateMetadata(): Promise<Metadata> {
+  const day = easternDayKey(new Date());
+  const description =
+    "What's open, what's happening, and what's worth your time in Frederick County right now.";
+  return {
+    alternates: { canonical: "/today" },
     title: "Today in Frederick County",
-    description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
-  },
-};
+    description,
+    openGraph: {
+      title: "Today in Frederick County",
+      description,
+      images: [
+        {
+          url: `/api/og?type=almanac&day=${day}`,
+          width: 1200,
+          height: 630,
+          alt: `The Frederick County almanac for ${day}`,
+        },
+      ],
+    },
+  };
+}
 
 
 // pickTonightEvent + its NON_PUBLIC_EVENT filter moved to src/lib/today/tonight
@@ -263,7 +283,14 @@ export default async function HomePage() {
             </Suspense>
           }
         />
-        <div className="fg-rule mt-3" aria-hidden />
+        {/* The cap rule now carries the day's one share affordance: the link
+            previews as the daily almanac card (generateMetadata above), so
+            "Share today" drops an engraved sun/moon/events plate into the
+            group chat. Quiet by design — it caps the plate, it doesn't sell. */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="fg-rule min-w-0 flex-1" aria-hidden />
+          <ShareTodayButton />
+        </div>
       </header>
 
       {/* ── ON NOW, NEAR YOU — a compact live strip in the gap the copy-heavy
