@@ -474,7 +474,33 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         nearbyParking={nearbyParking}
       />
 
-      {(() => {
+      {eventStatus !== "scheduled" ? (
+        (() => {
+          // A cancelled/postponed event must not keep selling the plan
+          // (July 2026 review): Tickets, Add-to-calendar, and Directions
+          // all invite a trip that won't happen. The two honest actions
+          // are the organizer's own word and a way back to tonight.
+          const announceUrl = notice?.source_url ?? event.source_url ?? null;
+          const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
+          const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
+          const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
+          const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
+          return (
+            <div className={`grid ${announceUrl ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
+              {announceUrl && (
+                <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
+                  <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+                  Organizer&rsquo;s announcement
+                </a>
+              )}
+              <Link href="/events?lens=today" className={primaryCls} style={primaryStyle}>
+                <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-on-brand)" }} aria-hidden />
+                Find something else
+              </Link>
+            </div>
+          );
+        })()
+      ) : (() => {
         // One clear primary in the action row (the old layout had three
         // equal-weight tiles = no primary). Priority for the accent fill:
         // Tickets -> RSVP -> Venue -> Official; if the event has none of those,
@@ -802,39 +828,65 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* Mobile-only thumb-reachable dock. Desktop keeps the inline action
           grid above; this reuses the same .ics calendar button, ticket +
           directions links, and the SaveButton. The vermilion primary is
-          Tickets when they exist, otherwise Add to calendar. */}
+          Tickets when they exist, otherwise Add to calendar. A cancelled/
+          postponed event gets the same replacement as the grid: the
+          organizer's word + a way back to tonight (Save stays so a
+          postponed event can be tracked for its new date). */}
       <MobileActionBar ariaLabel={`Actions for ${event.title}`}>
-        <EventCalendarButton
-          event={{
-            slug: event.slug,
-            title: event.title,
-            starts_at: event.starts_at,
-            ends_at: event.ends_at,
-            description: event.description,
-            venue_name: event.venue_name,
-            address: event.address,
-            is_all_day: event.is_all_day,
-          }}
-          barVariant={event.ticket_url ? "quiet" : "primary"}
-          label="Calendar"
-        />
-        {event.ticket_url && (
-          <MobileBarLink
-            href={event.ticket_url}
-            icon={Ticket}
-            label="Tickets"
-            ariaLabel={`Tickets for ${event.title}`}
-            external
-            primary
-          />
+        {eventStatus !== "scheduled" ? (
+          <>
+            {(notice?.source_url ?? event.source_url) && (
+              <MobileBarLink
+                href={notice?.source_url ?? event.source_url ?? ""}
+                icon={ExternalLink}
+                label="Announcement"
+                ariaLabel={`Organizer's announcement for ${event.title}`}
+                external
+              />
+            )}
+            <MobileBarLink
+              href="/events?lens=today"
+              icon={Calendar}
+              label="What's on"
+              ariaLabel="Find something else on today"
+              primary
+            />
+          </>
+        ) : (
+          <>
+            <EventCalendarButton
+              event={{
+                slug: event.slug,
+                title: event.title,
+                starts_at: event.starts_at,
+                ends_at: event.ends_at,
+                description: event.description,
+                venue_name: event.venue_name,
+                address: event.address,
+                is_all_day: event.is_all_day,
+              }}
+              barVariant={event.ticket_url ? "quiet" : "primary"}
+              label="Calendar"
+            />
+            {event.ticket_url && (
+              <MobileBarLink
+                href={event.ticket_url}
+                icon={Ticket}
+                label="Tickets"
+                ariaLabel={`Tickets for ${event.title}`}
+                external
+                primary
+              />
+            )}
+            <MobileBarLink
+              href={directionsUrl}
+              icon={Navigation}
+              label="Directions"
+              ariaLabel={`Directions to ${event.venue_name || event.title}`}
+              external
+            />
+          </>
         )}
-        <MobileBarLink
-          href={directionsUrl}
-          icon={Navigation}
-          label="Directions"
-          ariaLabel={`Directions to ${event.venue_name || event.title}`}
-          external
-        />
         <MobileBarControl label="Save">
           <SaveButton refType="event" refId={event.slug} label={event.title} />
         </MobileBarControl>
