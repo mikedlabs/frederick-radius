@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useToggleFollow, useIsFollowed } from "@/hooks/useFollows";
+import { ensureFollowed } from "@/hooks/useFollows";
 import { toast } from "sonner";
 
 /**
@@ -36,8 +36,6 @@ export default function PendingFollowApplier({
 }) {
   const router = useRouter();
   const sp = useSearchParams();
-  const isFollowed = useIsFollowed(slug);
-  const toggle = useToggleFollow(slug, "post_signin");
   const appliedRef = useRef(false);
 
   useEffect(() => {
@@ -46,23 +44,18 @@ export default function PendingFollowApplier({
     if (pending !== slug) return;
     appliedRef.current = true;
     void (async () => {
-      // Only fire the toggle if not already followed (covers a quick
-      // double-tap or a refresh after the apply already ran).
-      if (!isFollowed) {
-        const nowFollowed = await toggle();
-        if (nowFollowed) {
-          toast.success(`Added ${name} to My Radius`);
-        }
+      // Old outstanding sign-in links can still carry this parameter. Apply
+      // it as an idempotent ensure, never a toggle: a slow remote hydration
+      // must not remove a place already kept with the account.
+      const nowFollowed = await ensureFollowed(slug, "post_signin");
+      if (nowFollowed) {
+        toast.success(`${name} is in My Radius`);
       }
       // Clean the URL so a back-button + refresh doesn't re-apply.
       const url = new URL(window.location.href);
       url.searchParams.delete("follow");
       router.replace(url.pathname + (url.search || ""), { scroll: false });
     })();
-    // We intentionally do NOT include `toggle` / `isFollowed` in the
-    // dep array: those change identity on every render and would
-    // re-run this effect. The applied-ref guards correctness.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp, slug, name, router]);
 
   return null;

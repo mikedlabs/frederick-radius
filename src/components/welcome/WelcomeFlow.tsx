@@ -136,7 +136,7 @@ export default function WelcomeFlow() {
         >
           {step === 1
             ? "Pick one. We'll tilt your home page toward it. You can change it later."
-            : "Just tells us how to phrase things. No accounts, no tracking."}
+            : "Just tells us how to phrase things. No account needed. This choice stays on this device."}
         </p>
       </header>
 

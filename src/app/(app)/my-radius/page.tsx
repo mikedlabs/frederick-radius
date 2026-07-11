@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Settings, ChevronRight, Mail } from "lucide-react";
+import { Settings, ChevronRight } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
 import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
@@ -10,28 +10,29 @@ export const metadata: Metadata = {
   title: "My Radius",
   description:
     "Your personal Frederick Radius — the places, events, and routes you're keeping an eye on.",
+  robots: { index: false, follow: false },
 };
 
 /**
  * /my-radius — the user's personal corner of the field guide.
  *
- * Renamed from /saved (Phase 0). Phase 1d adds the cross-device-sync
- * framing: a "Signed in as you@…" indicator + sign-out button when
- * authenticated, a "Sign in to sync across devices" CTA strip when
- * anonymous. The underlying SavedList still renders localStorage when
- * signed out and DB (via useFollows) when signed in — same UI, same
- * shapes, just hydrated from different sources.
+ * Saving remains useful without an account. When signed in, place saves are
+ * merged with the account-backed set; saved events, routes, preferences, and
+ * recents stay device-local and keep the same UI.
  */
-export default async function MyRadiusPage() {
+export default async function MyRadiusPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ signed_out?: string }>;
+}) {
+  const params = await searchParams;
   const user = await getServerUser();
   return (
     <div className="space-y-5">
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {user
-              ? `My Radius · signed in as ${user.email ?? "you"}`
-              : "My Radius · on this device"}
+            {user ? "My Radius · places synced" : "My Radius · on this device"}
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
             Your Frederick
@@ -40,7 +41,7 @@ export default async function MyRadiusPage() {
         <Link
           href="/settings"
           aria-label="Settings"
-          className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+          className="tactile tactile-interactive inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-3 text-[12px] font-semibold"
           style={{
             borderColor: "var(--app-border)",
             background: "var(--app-bg-elevated)",
@@ -53,50 +54,22 @@ export default async function MyRadiusPage() {
         </Link>
       </header>
 
-      {/* Anonymous-only sign-in CTA. Quiet, NOT a popup — the user
-          can keep using /my-radius without an account; this is an
-          invitation, not a wall. Disappears once signed in. */}
-      {!user && (
-        <Link
-          href="/auth/login?next=/my-radius"
-          className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
+      {params.signed_out === "1" && (
+        <div
+          role="status"
+          className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12.5px]"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated)",
+            color: "var(--app-ink-2)",
+          }}
         >
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Mail className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span
-              className="block text-[13px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Sign in to sync My Radius across devices
-            </span>
-            <span
-              className="block text-[11.5px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Magic link — no password. Your current list comes with you.
-            </span>
-          </span>
-          <span
-            aria-hidden
-            className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            →
-          </span>
-        </Link>
+          Sync stopped on this device. Your saved events, routes, settings, and
+          recent views are still here.
+        </div>
       )}
 
-      <SavedList />
+      <SavedList isSignedIn={Boolean(user)} />
 
       {/* Recently viewed — device-local trail of the last 6 places
           the user opened (via PlaceSheet OR direct /places/[slug]).

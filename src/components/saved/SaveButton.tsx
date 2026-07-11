@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
-import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { useFollowedSlugs, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -21,13 +21,15 @@ export default function SaveButton({
   // hit the DB when signed in, fall back to localStorage when signed
   // out. Events + radii stay on the legacy useSaved hook by design
   // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
-  const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
+  const followState = useFollowedSlugs();
+  const placeFollowed = followState.slugs.has(refType === "place" ? refId : "");
   const togglePlace = useToggleFollow(refId, "icon");
   const legacyIsSaved = useIsSaved(refType, refId);
   const legacyToggle = useToggleSave(refType, refId);
   const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
-  const toggle =
-    refType === "place" ? () => void togglePlace() : legacyToggle;
+  async function toggle(): Promise<boolean> {
+    return refType === "place" ? togglePlace() : legacyToggle();
+  }
   // Pre-toggle total. Used to detect the user's first save ever —
   // when totalBefore is 0 AND the user is about to save, the next
   // tap is the moment that promotes a stranger into someone who has
@@ -39,6 +41,7 @@ export default function SaveButton({
   // source of truth. We use the "set state during render based on
   // prop change" pattern so we never cascade setState from an effect.
   const [celebrate, setCelebrate] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [prev, setPrev] = useState(isSaved);
   if (isSaved !== prev) {
     setPrev(isSaved);
@@ -56,7 +59,7 @@ export default function SaveButton({
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="grid h-9 w-9 place-items-center rounded-full"
+        className="grid h-11 w-11 place-items-center rounded-full"
         style={{ color: "var(--app-ink-3)" }}
       >
         <Bookmark className="h-4 w-4" strokeWidth={1.75} />
@@ -67,38 +70,58 @@ export default function SaveButton({
   return (
     <button
       type="button"
-      onClick={(e) => {
+      onClick={async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (busy) return;
+        setBusy(true);
         haptic(isSaved ? "light" : "medium");
-        toggle();
-        // Sonner toast — quiet, brand-aligned acknowledgement so the
-        // user sees something happen even if the bookmark animation
-        // is missed at a glance. Undo action mirrors the toggle so
-        // a mistaken save is one tap to reverse.
-        if (isSaved) {
-          toast(`Removed from My Radius`, {
-            action: { label: "Undo", onClick: () => toggle() },
+        try {
+          const nowSaved = await toggle();
+          if (nowSaved === isSaved) {
+            toast.error("Could not update My Radius just now", {
+              description: "Your existing saves are still safe.",
+            });
+            return;
+          }
+          // Sonner toast — quiet, brand-aligned acknowledgement so the
+          // user sees something happen even if the bookmark animation
+          // is missed at a glance. Undo action mirrors the toggle so
+          // a mistaken save is one tap to reverse.
+          if (!nowSaved) {
+            toast(`Removed from My Radius`, {
+              action: { label: "Undo", onClick: () => void toggle() },
+            });
+          } else if (totalBefore === 0) {
+            // First add ever — moment worth marking. Editorial copy
+            // instead of the routine acknowledgement, plus a longer
+            // dwell so the user has time to read what just happened.
+            toast.success("Your Radius starts here", {
+              description: followState.authed
+                ? "Kept with your account."
+                : "Saved on this device. Keep building from here.",
+              duration: 5000,
+              action: { label: "Undo", onClick: () => void toggle() },
+            });
+          } else {
+            toast.success(`Saved to My Radius · ${label.replace(/^Save\s+/, "")}`, {
+              description: followState.authed ? "Kept with your account." : "On this device.",
+              action: { label: "Undo", onClick: () => void toggle() },
+            });
+          }
+        } catch {
+          toast.error("Could not update My Radius just now", {
+            description: "Your existing saves are still safe.",
           });
-        } else if (totalBefore === 0) {
-          // First add ever — moment worth marking. Editorial copy
-          // instead of the routine acknowledgement, plus a longer
-          // dwell so the user has time to read what just happened.
-          toast.success("Your Radius starts here", {
-            description: "Follow places you care about — they'll live in My Radius.",
-            duration: 5000,
-            action: { label: "Undo", onClick: () => toggle() },
-          });
-        } else {
-          toast.success(`Added to My Radius · ${label.replace(/^Save\s+/, "")}`, {
-            action: { label: "Undo", onClick: () => toggle() },
-          });
+        } finally {
+          setBusy(false);
         }
       }}
+      disabled={busy}
       aria-pressed={isSaved}
       aria-label={isSaved ? `Remove ${label} from My Radius` : `Add ${label} to My Radius`}
       title={isSaved ? "In My Radius" : "Add to My Radius"}
-      className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
+      className="relative grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92] disabled:opacity-60"
       style={{
         color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",

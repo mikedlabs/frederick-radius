@@ -61,7 +61,6 @@ export default function SideRail() {
 
   return (
     <div
-      aria-hidden
       // Hidden below lg; BottomNav owns small viewports. Fixed to
       // the left edge so it stays put as the content scrolls.
       className="pointer-events-none fixed bottom-0 left-0 top-0 z-40 hidden py-4 pl-3 lg:flex lg:items-center"

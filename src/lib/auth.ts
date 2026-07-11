@@ -12,6 +12,8 @@
  * write user-specific data (e.g. /api/follows).
  */
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { PROTECTED_SYNC_PATH, sanitizeRedirectPath } from "@/lib/auth-routing";
 
 export type ServerUser = {
   id: string;
@@ -29,14 +31,21 @@ export type ServerUser = {
  * The former is the safe default for any server-side authz check.
  */
 export async function getServerUser(): Promise<ServerUser | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) return null;
-  return {
-    id: data.user.id,
-    email: data.user.email ?? null,
-    last_sign_in_at: data.user.last_sign_in_at ?? null,
-  };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) return null;
+    return {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      last_sign_in_at: data.user.last_sign_in_at ?? null,
+    };
+  } catch {
+    // Auth is optional everywhere except explicitly protected routes. Missing
+    // preview env vars or a transient Supabase outage must not take down public
+    // My Radius/Settings pages; their device-local experience still works.
+    return null;
+  }
 }
 
 /**
@@ -46,4 +55,15 @@ export async function getServerUser(): Promise<ServerUser | null> {
 export async function getServerUserId(): Promise<string | null> {
   const u = await getServerUser();
   return u?.id ?? null;
+}
+
+/** Defense-in-depth gate for protected Server Components. */
+export async function requireServerUser(
+  nextPath: string = PROTECTED_SYNC_PATH,
+): Promise<ServerUser> {
+  const user = await getServerUser();
+  if (user) return user;
+
+  const next = sanitizeRedirectPath(nextPath, PROTECTED_SYNC_PATH);
+  redirect(`/auth/login?next=${encodeURIComponent(next)}&reason=sign_in_required`);
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Mail } from "lucide-react";
+import { ArrowLeft, ChevronRight, Cloud, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   title: "Settings",
   description:
     "How Frederick Radius is tuned for you. Persona, where you're anchored, what you're into, and what you hear from us.",
+  robots: { index: false, follow: false },
 };
 
 export default async function SettingsPage() {
@@ -49,7 +50,8 @@ export default async function SettingsPage() {
           style={{ color: "var(--app-ink-2)" }}
         >
           Every pick here changes what surfaces on Today and Radius.
-          Nothing here is required, and nothing here is shared.
+          Nothing here is required. Place sync is optional; the rest stays on
+          this device.
         </p>
       </header>
 
@@ -64,46 +66,47 @@ export default async function SettingsPage() {
         style={{ borderColor: "var(--app-border)" }}
       >
         {user ? (
-          <div className="flex items-center justify-between gap-3">
+          <Link href="/settings/sync" className="group flex min-h-11 items-center gap-3">
+            <span
+              aria-hidden
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-positive) 13%, transparent)",
+                color: "var(--app-positive)",
+              }}
+            >
+              <Cloud className="h-4 w-4" strokeWidth={2} />
+            </span>
             <div className="min-w-0 flex-1">
               <p
                 className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
+                style={{ color: "var(--app-positive)" }}
               >
-                Account
+                Place sync is on
               </p>
               <p
                 className="mt-1 truncate font-serif text-[16px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                {user.email ?? "Signed in"}
+                Sync & privacy
               </p>
               <p
                 className="mt-1 text-[11.5px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                My Radius syncs across your devices.
+                {user.email ?? "Signed in"} · See what travels between devices.
               </p>
             </div>
-            <form action="/auth/signout" method="post">
-              <button
-                type="submit"
-                className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-sunken)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                <LogOut className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                Sign out
-              </button>
-            </form>
-          </div>
+            <ChevronRight
+              className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+          </Link>
         ) : (
           <Link
-            href="/auth/login?next=/settings"
-            className="group flex items-center gap-3"
+            href="/auth/login?next=/settings/sync"
+            className="group flex min-h-11 items-center gap-3"
           >
             <span
               aria-hidden
@@ -120,22 +123,20 @@ export default async function SettingsPage() {
                 className="block text-[13px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                Sign in to sync across devices
+                Keep your places across devices
               </span>
               <span
                 className="block text-[11.5px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Magic link — no password. My Radius comes with you.
+                One sign-in email. Only places in My Radius are synced.
               </span>
             </span>
-            <span
-              aria-hidden
-              className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
+            <ChevronRight
+              className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
               style={{ color: "var(--app-ink-3)" }}
-            >
-              →
-            </span>
+              aria-hidden
+            />
           </Link>
         )}
       </section>

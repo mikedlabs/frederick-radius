@@ -1,5 +1,3 @@
-import type { NextRequest } from "next/server";
-
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
  * embedded inside it bumps on every deploy.
@@ -91,6 +89,16 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "CLEAR_CACHES") {
     caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
   }
+  if (event.data && event.data.type === "CLEAR_PRIVATE_NAVIGATIONS") {
+    caches.open(STATIC_CACHE).then(async (cache) => {
+      const requests = await cache.keys();
+      await Promise.all(
+        requests
+          .filter((request) => isPrivateNavigation(new URL(request.url)))
+          .map((request) => cache.delete(request)),
+      );
+    });
+  }
 });
 
 function isImage(req, url) {
@@ -99,6 +107,29 @@ function isImage(req, url) {
     url.pathname.startsWith("/_next/image") ||
     /\\.(?:png|jpg|jpeg|webp|avif|gif|svg)$/.test(url.pathname)
   );
+}
+
+const PRIVATE_NAVIGATION_PREFIXES = [
+  "/auth",
+  "/my-radius",
+  "/settings",
+  "/admin",
+  "/business/manage",
+];
+
+function isPrivateNavigation(url) {
+  return (
+    url.search.length > 0 ||
+    PRIVATE_NAVIGATION_PREFIXES.some(
+      (prefix) => url.pathname === prefix || url.pathname.startsWith(prefix + "/"),
+    )
+  );
+}
+
+function responseCanBeCached(response) {
+  if (!response || !response.ok) return false;
+  const cacheControl = (response.headers.get("cache-control") || "").toLowerCase();
+  return !cacheControl.includes("private") && !cacheControl.includes("no-store");
 }
 
 self.addEventListener("fetch", (event) => {
@@ -110,11 +141,24 @@ self.addEventListener("fetch", (event) => {
 
   // 1. Navigations: NETWORK-FIRST. Live content always wins.
   if (request.mode === "navigate") {
+    // Auth, personalized pages, and any URL carrying query state are strictly
+    // network-only. Cache Storage survives sign-out, so storing their HTML
+    // could expose an email, a one-time auth code, or a private list later on a
+    // shared device. They fall back only to the generic offline screen.
+    if (isPrivateNavigation(url)) {
+      event.respondWith(
+        fetch(request).catch(async () => await caches.match(OFFLINE_URL)),
+      );
+      return;
+    }
+
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+          if (responseCanBeCached(res)) {
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(async () => (await caches.match(request)) || (await caches.match(OFFLINE_URL))),
@@ -200,7 +244,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 `;
 
-export function GET(_req: NextRequest) {
+export function GET() {
   const body = SW_SOURCE(buildVersion());
   return new Response(body, {
     headers: {

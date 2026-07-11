@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSavedList, useMounted } from "@/hooks/useSaved";
+import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
+import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 // A2.8: SavedList no longer static-imports clientPlaceBySlug, so
 // /saved's client bundle no longer ships places-client.json (~2MB).
@@ -13,7 +14,7 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
+import { Bookmark, Cloud, LogIn, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { haversineMeters } from "@/lib/geo";
@@ -53,9 +54,29 @@ const EMPTY_SEEDS: Array<{ slug: string; reason: string }> = [
   { slug: "sky-stage", reason: "Outdoor stage built inside a ruin." },
 ];
 
-export default function SavedList() {
+export default function SavedList({ isSignedIn }: { isSignedIn: boolean }) {
   const mounted = useMounted();
-  const items = useSavedList();
+  const localItems = useSavedList();
+  const followed = useFollowedSlugs();
+  const confirmedPlaceCount = [...followed.accountSlugs].filter((slug) =>
+    followed.slugs.has(slug),
+  ).length;
+  const waitingPlaceCount = Math.max(0, followed.slugs.size - confirmedPlaceCount);
+  const items = useMemo<SavedRef[]>(() => {
+    const localPlaceIds = new Set(
+      localItems.filter((item) => item.type === "place").map((item) => item.id),
+    );
+    const accountOnlyPlaces: SavedRef[] = [...followed.slugs]
+      .filter((slug) => !localPlaceIds.has(slug))
+      .map((slug) => ({
+        type: "place",
+        id: slug,
+        // The account API does not expose a created timestamp. Keep remote-only
+        // items stable at the end of "Recent" rather than inventing recency.
+        saved_at: "1970-01-01T00:00:00.000Z",
+      }));
+    return [...localItems, ...accountOnlyPlaces];
+  }, [followed.slugs, localItems]);
   // Soft signal — slugs the user has opened (PlaceSheet) but maybe
   // never bookmarked. Filtered to slugs still in the client place
   // index and to ones not already in the explicit Saved set so the
@@ -85,10 +106,6 @@ export default function SavedList() {
 
   useEffect(() => {
     if (!mounted) return;
-    if (slugsToFetch.length === 0) {
-      setPlacesBySlug(new Map());
-      return;
-    }
     const ctrl = new AbortController();
     fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(slugsKey)}`, {
       signal: ctrl.signal,
@@ -113,17 +130,18 @@ export default function SavedList() {
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
   // consistent (mounted gate above already prevents server/client mismatch).
-  const [sort, setSort] = useState<SavedSortKey>("category");
-  useEffect(() => {
+  const [sort, setSort] = useState<SavedSortKey>(() => {
+    if (typeof window === "undefined") return "category";
     try {
       const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
       if (saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
-        setSort(saved);
+        return saved;
       }
     } catch {
       /* localStorage unavailable; keep default */
     }
-  }, []);
+    return "category";
+  });
   function setSortAndStore(next: SavedSortKey) {
     setSort(next);
     try {
@@ -137,18 +155,19 @@ export default function SavedList() {
   // from localStorage (the same key PreferencesPanel writes); fall
   // back to no-origin (places-without-geom safely sort last via the
   // Infinity sentinel below).
-  const [homeOrigin, setHomeOrigin] = useState<{ lat: number; lng: number } | null>(null);
-  useEffect(() => {
+  const [homeOrigin] = useState<{ lat: number; lng: number } | null>(() => {
+    if (typeof window === "undefined") return null;
     try {
       const slug = window.localStorage.getItem("fr_home_muni");
       if (slug) {
         const m = MUNICIPALITY_BY_SLUG[slug];
-        if (m) setHomeOrigin(m.centroid);
+        if (m) return m.centroid;
       }
     } catch {
       /* ignore */
     }
-  }, []);
+    return null;
+  });
 
   const { places, events, byCategory, townTally } = useMemo(() => {
     if (!placesBySlug) {
@@ -257,7 +276,9 @@ export default function SavedList() {
     );
   }
 
-  if (items.length === 0) return <EmptyState placesBySlug={placesBySlug} />;
+  if (items.length === 0) {
+    return <EmptyState placesBySlug={placesBySlug} isSignedIn={isSignedIn} />;
+  }
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -312,10 +333,50 @@ export default function SavedList() {
             {summarySentence(places.length, events.length, townTally.size)}
           </p>
           <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            On this device · sign-in to sync across devices coming soon
+            {isSignedIn
+              ? followed.status === "checking"
+                ? "Checking place sync…"
+                : followed.status === "offline"
+                  ? "Sync paused · on-device places are still safe"
+                  : waitingPlaceCount > 0
+                    ? `${waitingPlaceCount} ${waitingPlaceCount === 1 ? "place" : "places"} waiting to join your account`
+                    : "Places kept with your account · events and routes stay here"
+              : "Saved on this device"}
           </p>
         </div>
       </section>
+
+      {!isSignedIn && places.length > 0 && (
+        <Link
+          href="/auth/login?next=/my-radius"
+          className="tactile tactile-interactive group flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <span
+            aria-hidden
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+              color: "var(--app-brand)",
+            }}
+          >
+            <Cloud className="h-4 w-4" strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              {places.length === 1
+                ? "Keep this place with you"
+                : `Keep these ${places.length} places with you`}
+            </span>
+            <span className="mt-0.5 block text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              Use one sign-in email to see {places.length === 1 ? "it" : "them"} on another device. We add without replacing.
+            </span>
+          </span>
+          <span aria-hidden className="text-[14px] transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-ink-3)" }}>
+            →
+          </span>
+        </Link>
+      )}
 
       {/* Smart suggestion strip — only when there's a real cluster. */}
       {dominantMuni && (
@@ -546,7 +607,13 @@ function summarySentence(placeN: number, eventN: number, townN: number): string 
  * tap to learn about. Each seed has a one-sentence "why" so the
  * empty page reads as editorial, not as a debug placeholder.
  */
-function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData> }) {
+function EmptyState({
+  placesBySlug,
+  isSignedIn,
+}: {
+  placesBySlug: Map<string, PlaceCardData>;
+  isSignedIn: boolean;
+}) {
   const seeds = EMPTY_SEEDS
     .map((s) => ({ ...s, place: placesBySlug.get(s.slug) }))
     .filter((s): s is typeof s & { place: PlaceCardData } => Boolean(s.place));
@@ -584,7 +651,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
             Start building your Radius.
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Follow the places you care about, and this page becomes your
+            Save the places you care about, and this page becomes your
             personal view of Frederick County. Tap the bookmark on anything in
             the field guide and it lands here — things you&apos;ve been meaning
             to try, dates worth a return visit, or a short list to send a
@@ -621,6 +688,16 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               Food and drink
             </Link>
           </div>
+          {!isSignedIn && (
+            <Link
+              href="/auth/login?next=/my-radius"
+              className="mt-3 inline-flex min-h-11 items-center gap-2 text-[12px] font-semibold underline-offset-4 hover:underline"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <LogIn className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+              Already keep places on another device? Sign in
+            </Link>
+          )}
         </div>
       </section>
 

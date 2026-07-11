@@ -21,7 +21,7 @@ export function createClient() {
     throw new Error(
       "Supabase env vars missing: set NEXT_PUBLIC_SUPABASE_URL and " +
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) " +
-        "in your .env.local. See PR #345 description for setup steps.",
+        "in your Vercel project or .env.local.",
     );
   }
   return createBrowserClient(url, key);

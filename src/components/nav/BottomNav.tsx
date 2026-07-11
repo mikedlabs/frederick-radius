@@ -56,7 +56,6 @@ export default function BottomNav() {
 
   return (
     <div
-      aria-hidden
       // Hide the floating bottom pill at lg+ where the SideRail
       // takes over as the primary nav.
       className="pointer-events-none fixed inset-x-0 bottom-0 px-3 lg:hidden"

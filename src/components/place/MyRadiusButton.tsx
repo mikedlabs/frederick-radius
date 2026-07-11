@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
+import { useFollowedSlugs, useToggleFollow } from "@/hooks/useFollows";
 import { useMounted } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -26,10 +25,8 @@ import { toast } from "sonner";
  *
  * Auth flow:
  *   - Signed in: tap → optimistic DB write via useToggleFollow.
- *   - Signed out: tap → router push to /auth/login?next=<current> so
- *     the user lands back where they started after signing in. The
- *     pending follow gets applied on return via a small ?follow=<slug>
- *     param the place page handles.
+ *   - Signed out: tap saves immediately on this device. My Radius later
+ *     offers optional place sync; auth is continuity, never admission.
  *
  * Visual register:
  *   - Default: brand-filled pill (the call to action stands out).
@@ -44,9 +41,9 @@ export default function MyRadiusButton({
   slug: string;
   name: string;
 }) {
-  const router = useRouter();
   const mounted = useMounted();
-  const isFollowed = useIsFollowed(slug);
+  const followState = useFollowedSlugs();
+  const isFollowed = followState.slugs.has(slug);
   const toggle = useToggleFollow(slug, "place_detail");
   const [busy, setBusy] = useState(false);
   const [hover, setHover] = useState(false);
@@ -58,7 +55,7 @@ export default function MyRadiusButton({
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -75,28 +72,21 @@ export default function MyRadiusButton({
     if (busy) return;
     setBusy(true);
     try {
-      // Detect authed-ness by trying the optimistic toggle. If the
-      // hook returns "anonymous", we redirect to sign-in instead of
-      // committing the follow to localStorage (the localStorage path
-      // is fine, but on the prominent place-detail CTA we want to
-      // promote sign-in for cross-device persistence). The icon-only
-      // SaveButton still uses the localStorage path silently.
-      const r = await fetch("/api/auth/me", { cache: "no-store" });
-      const auth: { user: { id: string } | null } = await r.json();
-      if (!auth.user) {
-        const next = `${window.location.pathname}${window.location.search}?follow=${encodeURIComponent(slug)}`;
-        // If the path already had a query string, "?follow=" above is
-        // wrong — fix it by using window.location.search properly.
-        const url = new URL(window.location.href);
-        url.searchParams.set("follow", slug);
-        const safeNext = `${url.pathname}${url.search}`;
-        router.push(`/auth/login?next=${encodeURIComponent(safeNext)}`);
+      // Saving is local-first. Signed-in users update the shared remote cache;
+      // signed-out users update the same device-local list as the icon button.
+      // That consistency is deliberate: a useful action should never become an
+      // auth tollbooth.
+      const nowFollowed = await toggle();
+      if (nowFollowed === isFollowed) {
+        toast.error("Could not update My Radius just now", {
+          description: "Your existing saves are still safe.",
+        });
         return;
       }
-      const nowFollowed = await toggle();
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
-        toast.success(`Added to My Radius · ${name}`, {
+        toast.success(`Saved to My Radius · ${name}`, {
+          description: followState.authed ? "Kept with your account." : "On this device.",
           action: { label: "Undo", onClick: () => void toggle() },
         });
       } else {
@@ -121,7 +111,7 @@ export default function MyRadiusButton({
         disabled={busy}
         aria-pressed={true}
         aria-label={`In My Radius — tap to remove ${name}`}
-        className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
+        className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -155,7 +145,7 @@ export default function MyRadiusButton({
       disabled={busy}
       aria-pressed={false}
       aria-label={`Add ${name} to My Radius`}
-      className="tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
+      className="tactile tactile-interactive tactile-glow-brand inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
       style={{ background: "var(--app-brand)" }}
     >
       {busy ? (
