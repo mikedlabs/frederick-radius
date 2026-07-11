@@ -67,4 +67,15 @@ describe("compareForLead + pickLeadEvent", () => {
   it("pickLeadEvent returns null on empty", () => {
     expect(pickLeadEvent([])).toBeNull();
   });
+
+  it("an owner-featured slug beats the heuristic (UX-05)", () => {
+    const storytime = ev({ title: "Family Storytime", starts_at: "2026-06-20T14:00:00Z", slug: "storytime" });
+    const photo = ev({ title: "Sky Stage Show", hero_image: "p.jpg", starts_at: "2026-06-20T23:00:00Z", slug: "sky-stage" });
+    // The heuristic would pick the photo draw; the editorial set overrides.
+    expect(pickLeadEvent([storytime, photo], new Set(["storytime"]))).toBe(storytime);
+    // A featured slug that isn't in this pool changes nothing.
+    expect(pickLeadEvent([storytime, photo], new Set(["elsewhere"]))).toBe(photo);
+    // An empty set is the everyday no-editorial case.
+    expect(pickLeadEvent([storytime, photo], new Set())).toBe(photo);
+  });
 });

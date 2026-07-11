@@ -1,0 +1,9 @@
+{
+  "_how_to": [
+    "Owner-editorial FEATURED events. A slug listed here (and not yet expired) wins the lead card in its horizon window on /events — ahead of the draw/imagery/soonest heuristic. The heuristic stays the fallback, so an empty list changes nothing.",
+    "slug: the event's URL path after /events/ (open the event in the app and copy it from the address bar).",
+    "expires: the last Eastern day (YYYY-MM-DD) the feature holds; the day after, the entry retires itself. Usually the event's own date.",
+    "From a phone: github.com > this file > pencil icon > edit > commit to main. The deploy (~3 min) does the rest."
+  ],
+  "featured": []
+}

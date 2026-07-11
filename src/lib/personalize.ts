@@ -26,6 +26,7 @@
 const HOME_MUNI_KEY = "fr:home-muni:v1";
 const INTERESTS_KEY = "fr:interests:v1";
 const COMMUNITY_NOTES_KEY = "fr:community-notes:v1";
+const EVENTS_TOWN_KEY = "fr:events-town:v1";
 
 function safeStorage(): Storage | null {
   try {
@@ -68,6 +69,36 @@ export function setHomeMuni(slug: string | null): void {
     }
   } catch {
     // document.cookie can throw on locked-down setups. Fail silent.
+  }
+}
+
+/**
+ * Last town filter used on the /events board — restored as the board's
+ * default scope on the next visit (a URL ?m= still wins). Distinct from
+ * HOME municipality on purpose: this is browsing scope ("I keep checking
+ * Brunswick's calendar"), not identity, so changing it never re-anchors
+ * the map or the near-you ranking. Device-local, no cookie mirror —
+ * /events parses its view client-side.
+ */
+export function getEventsTown(): string | null {
+  const ls = safeStorage();
+  if (!ls) return null;
+  try {
+    const v = ls.getItem(EVENTS_TOWN_KEY);
+    return v && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setEventsTown(slug: string | null): void {
+  const ls = safeStorage();
+  if (!ls) return;
+  try {
+    if (slug === null || slug === "") ls.removeItem(EVENTS_TOWN_KEY);
+    else ls.setItem(EVENTS_TOWN_KEY, slug);
+  } catch {
+    // localStorage may be full or disabled. Fail silent.
   }
 }
 
