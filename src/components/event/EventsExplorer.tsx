@@ -19,6 +19,8 @@ import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
+import { featuredEventSlugs } from "@/lib/events/featured";
+import { getEventsTown, setEventsTown } from "@/lib/personalize";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -132,7 +134,20 @@ export default function EventsExplorer({
     parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
       .withDefault(whenToTime(initial.view.when)),
   );
-  const [town, setTown] = useState<string | null>(initial.view.municipality ?? null);
+  // Town scope is REMEMBERED across visits (July 2026 review: scope reset
+  // every arrival). URL ?m= wins; otherwise the last-used town restores,
+  // validated against the live municipality set so a stale slug degrades
+  // to whole-county. Reading localStorage in the initializer is the same
+  // client-only-mount trick the URL parse above relies on (this component
+  // never prerenders — useSearchParams bails it to client render).
+  const [town, setTown] = useState<string | null>(() => {
+    if (initial.view.municipality) return initial.view.municipality;
+    const remembered = getEventsTown();
+    return remembered && MUNICIPALITY_BY_SLUG[remembered] ? remembered : null;
+  });
+  useEffect(() => {
+    setEventsTown(town);
+  }, [town]);
   // Intent + sub — the new category front door (EventsIntentRail). The
   // seven human intents roll up the ~25 place-categories; `sub` is a real
   // category slug shown as a second row when an intent has curated subs.
@@ -148,6 +163,9 @@ export default function EventsExplorer({
   // time-window filter (Tonight / Weekend / This week); the day wins
   // when both are set.
   const [day, setDay] = useState<string | null>(initial.day);
+  // Owner-featured slugs (featured-events.json), resolved once against the
+  // page clock; pickLeadEvent consults the set before its heuristic.
+  const featured = useMemo(() => featuredEventSlugs(new Date(nowISO)), [nowISO]);
   const [q, setQ] = useState("");
   const [view, setView] = useState<ViewKey>("list");
   // Free-only toggle — URL-synced via ?free=1 so a filtered view is
@@ -354,10 +372,20 @@ export default function EventsExplorer({
     for (const [k, v] of structural) sp.set(k, v);
     if (day) sp.set("d", day);
     else sp.delete("d");
+    // lens + tod are nuqs-owned, but pickDay clears them in the same tick
+    // this effect fires. Rebuilding from window.location.search alone can
+    // resurrect the values nuqs is about to remove — nuqs re-syncs state
+    // from our replaceState, so the cleared preset springs back (the
+    // Tonight-and-Tomorrow-both-pressed bug, UX-05). Write them from
+    // React state so both URL writers always agree.
+    if (time === "all") sp.delete("lens");
+    else sp.set("lens", time);
+    if (tod) sp.set("tod", tod);
+    else sp.delete("tod");
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState, day]);
+  }, [viewState, day, time, tod]);
 
   const anyFilter =
     cat !== null || intent !== null || sub !== null || town !== null ||
@@ -605,8 +633,9 @@ export default function EventsExplorer({
             // could headline over the Keys game or a festival five rows down
             // (the "feed dump vs a friend's shortlist" gap). pickLeadEvent
             // floats a real draw (then imagery, then soonest); the rest of
-            // the window keeps its chronological order below.
-            const lead = pickLeadEvent(g.events) ?? g.events[0];
+            // the window keeps its chronological order below. An owner-
+            // featured slug (featured-events.json) beats the heuristic.
+            const lead = pickLeadEvent(g.events, featured) ?? g.events[0];
             // Feature (photo) treatment for a group's lead ONLY when a real
             // venue photo exists — one photograph per horizon window down
             // the browse spine (image audit: the page read as a wall of text

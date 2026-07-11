@@ -3632,6 +3632,36 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
+/* The when-ribbon — the date questions (Today / Tonight / Tomorrow / This
+   weekend / Later this week) one tap from the default view. Rides with the
+   masthead: collapses away on scroll so the pinned caption bar keeps its
+   compact footprint. One nowrap scrolling row of .eb-chip pills. */
+.eb-whenribbon {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 14px 10px;
+  max-height: 56px;
+  opacity: 1;
+  transition: max-height 0.3s ease, opacity 0.22s ease, padding 0.3s ease;
+}
+.eb-whenribbon::-webkit-scrollbar {
+  display: none;
+}
+.eb-whenribbon .eb-chip {
+  flex: 0 0 auto;
+}
+.eb-dock.eb-collapsed .eb-whenribbon {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow-y: hidden;
+  pointer-events: none;
+}
+
 /* The caption bar — always pinned. Three labeled cells (each a tab) + the
    clear ×. The active tab carries a brand rule along its BOTTOM (the pane
    drops down from here). */

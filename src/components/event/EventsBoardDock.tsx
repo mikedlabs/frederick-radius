@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { easternDayKey } from "@/lib/tz";
 import {
   List as ListIcon,
   Rows3,
@@ -333,6 +334,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
   const everythingCount = Object.values(intentCounts).reduce((a, b) => a + b, 0);
   const activePreset = activeWhenPreset({ lens, tod });
+  // "Tomorrow" is a day pick, not a lens — the ?d= plumbing already
+  // exists, so the ribbon chip just targets tomorrow's Eastern day key.
+  const tomorrowKey = easternDayKey(new Date(Date.parse(nowISO) + 86_400_000));
 
   // ── Pane control handlers ──
   const pickIntent = (id: IntentId) => {
@@ -389,6 +393,37 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           <h2 className="eb-title font-serif">
             What&rsquo;s <span className="eb-title-on">on</span>
           </h2>
+        </div>
+
+        {/* The when-ribbon — the date questions one tap from the default
+            view (July 2026 review: the presets lived a tap deep in the
+            When pane). Same lens/tod/day state the pane edits; Tomorrow
+            is a day pick riding the existing ?d= plumbing. Rides with
+            the masthead so the collapsed dock keeps its footprint. */}
+        <div className="eb-whenribbon" role="group" aria-label="When" aria-hidden={collapsed}>
+          {WHEN_PRESETS.map((p, i) => (
+            <Fragment key={p.key}>
+              <EbChip
+                on={activePreset === p.key}
+                color="var(--app-brand-2)"
+                onClick={() => pickPreset(p)}
+              >
+                {p.label}
+              </EbChip>
+              {i === 1 && (
+                <EbChip
+                  on={day === tomorrowKey}
+                  color="var(--app-brand-2)"
+                  onClick={() => {
+                    haptic("light");
+                    pickDay(day === tomorrowKey ? null : tomorrowKey);
+                  }}
+                >
+                  Tomorrow
+                </EbChip>
+              )}
+            </Fragment>
+          ))}
         </div>
 
         {/* The caption bar — pinned. Each word is a tab into its pane. */}

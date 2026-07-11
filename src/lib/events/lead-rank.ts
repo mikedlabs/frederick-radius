@@ -54,8 +54,20 @@ export function compareForLead(a: LeadRankable, b: LeadRankable): number {
   return Date.parse(a.starts_at) - Date.parse(b.starts_at);
 }
 
-/** Best single lead from a pool (e.g. the /today hero). Returns null if empty. */
-export function pickLeadEvent<T extends LeadRankable>(pool: T[]): T | null {
+/** Best single lead from a pool (e.g. the /today hero). Returns null if empty.
+ *  An owner-featured slug (src/data/featured-events.json, resolved by the
+ *  caller via featuredEventSlugs so this module stays clock-free) beats the
+ *  heuristic; ties among featured events fall back to the same comparator. */
+export function pickLeadEvent<T extends LeadRankable & { slug?: string }>(
+  pool: T[],
+  featured?: ReadonlySet<string>,
+): T | null {
   if (pool.length === 0) return null;
+  if (featured && featured.size > 0) {
+    const editorial = pool
+      .filter((e) => e.slug && featured.has(e.slug))
+      .sort(compareForLead)[0];
+    if (editorial) return editorial;
+  }
   return [...pool].sort(compareForLead)[0];
 }
