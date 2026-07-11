@@ -8,17 +8,20 @@
  * what the map is showing, in the fewest words. Counts stay in the mono
  * support line, never the headline (VOICE.md).
  */
+import { LENS_WORDS } from "@/lib/timeLens";
 
 export type TimeMode = "now" | "tonight" | "weekend" | "all";
 
 /** The When pane's event-window presets. Labels are honest about the
  *  actual window each param draws: ?t=all is a 7-day horizon, so it
- *  reads "This week", not "today". */
+ *  reads "This week", not "today". Words come from the ONE shared
+ *  dictionary (lib/timeLens.ts) so the map and the events board can
+ *  never drift (UX-03). */
 export const TIME_WINDOWS: ReadonlyArray<{ key: TimeMode; label: string }> = [
-  { key: "now", label: "Happening now" },
-  { key: "tonight", label: "Tonight" },
-  { key: "weekend", label: "This weekend" },
-  { key: "all", label: "This week" },
+  { key: "now", label: LENS_WORDS.now },
+  { key: "tonight", label: LENS_WORDS.tonight },
+  { key: "weekend", label: LENS_WORDS.weekend },
+  { key: "all", label: LENS_WORDS.week },
 ];
 
 export const TIME_WINDOW_LABEL: Record<TimeMode, string> = Object.fromEntries(

@@ -13,6 +13,7 @@
  */
 import type { Daypart } from "@/lib/daypart";
 import type { IntentId } from "@/lib/events/intents";
+import { LENS_WORDS } from "@/lib/timeLens";
 
 /** The board's time lens (?lens=), matching EventsExplorer's TimeKey. */
 export type TimeKey = "all" | "today" | "weekend" | "week";
@@ -37,11 +38,13 @@ export const EVENT_INTENT_COLOR: Record<IntentId, string> = {
   civic: "#5C5A50",
 };
 
-/** Human label for each time lens. "all" has no label (it's "Anytime"). */
+/** Human label for each time lens. "all" has no label (it's "Anytime").
+ *  Words come from the ONE shared dictionary (lib/timeLens.ts) so the
+ *  board and the map dock can never drift (UX-03). */
 export const LENS_LABEL: Record<Exclude<TimeKey, "all">, string> = {
-  today: "Today",
-  weekend: "This weekend",
-  week: "Later this week",
+  today: LENS_WORDS.today,
+  weekend: LENS_WORDS.weekend,
+  week: LENS_WORDS.laterWeek,
 };
 
 /** Human label for each Eastern daypart. */
@@ -67,10 +70,10 @@ export const WHEN_PRESETS: ReadonlyArray<{
   lens: TimeKey;
   tod: Daypart | null;
 }> = [
-  { key: "today", label: "Today", lens: "today", tod: null },
-  { key: "tonight", label: "Tonight", lens: "today", tod: "evening" },
-  { key: "weekend", label: "This weekend", lens: "weekend", tod: null },
-  { key: "week", label: "Later this week", lens: "week", tod: null },
+  { key: "today", label: LENS_WORDS.today, lens: "today", tod: null },
+  { key: "tonight", label: LENS_WORDS.tonight, lens: "today", tod: "evening" },
+  { key: "weekend", label: LENS_WORDS.weekend, lens: "weekend", tod: null },
+  { key: "week", label: LENS_WORDS.laterWeek, lens: "week", tod: null },
 ];
 
 /**
@@ -160,7 +163,7 @@ export function whenCaption(args: {
   const bits: string[] = [];
   if (args.lens !== "all") bits.push(LENS_LABEL[args.lens]);
   if (args.tod) bits.push(DAYPART_LABEL[args.tod]);
-  return { text: bits.length ? bits.join(" · ") : "Anytime", mono: false };
+  return { text: bits.length ? bits.join(" · ") : LENS_WORDS.anytime, mono: false };
 }
 
 /**

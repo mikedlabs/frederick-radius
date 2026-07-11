@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { easternDayKey } from "@/lib/tz";
+import { LENS_WORDS } from "@/lib/timeLens";
 import {
   List as ListIcon,
   Rows3,
@@ -419,7 +420,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                     pickDay(day === tomorrowKey ? null : tomorrowKey);
                   }}
                 >
-                  Tomorrow
+                  {LENS_WORDS.tomorrow}
                 </EbChip>
               )}
             </Fragment>
