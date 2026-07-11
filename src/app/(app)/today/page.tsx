@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
+import TodayAsk from "@/components/today/TodayAsk";
 import EventCountdown from "@/components/today/EventCountdown";
 import { Ticket, ChevronRight } from "lucide-react";
 import MastheadTitle from "@/components/today/MastheadTitle";
@@ -235,6 +236,13 @@ export default async function HomePage() {
           <TodayCard />
         </Suspense>
       </SkyHero>
+
+      {/* ── ASK — the core promise, finally on the front door (UX-01 p1).
+          AskFrederick → /api/ask was fully built but had zero importers;
+          the July 2026 review called it the killer finding. Under the sky
+          hero so "what's my day look like" still leads, then the open
+          question, then tonight's answer. */}
+      <TodayAsk />
 
       {/* ── TONIGHT, SOLO — the headline event used to sit as a frosted pill
           INSIDE the weather card; owner call (2026-07-10): it reads better as
