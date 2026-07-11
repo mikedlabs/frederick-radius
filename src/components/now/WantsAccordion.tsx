@@ -54,6 +54,49 @@ import { GLYPHS } from "@/components/glyphs";
 import { getHomeMuni } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
 import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
+import WantAnswerPanel from "./WantAnswerPanel";
+
+/**
+ * A /nearby?c= link answers INLINE (the WantAnswerPanel below the chips)
+ * instead of navigating; every other href (curated pages like /brunch,
+ * /parks, /category/…) keeps its normal navigation. Returns the parsed
+ * want when the href is interceptable, null otherwise. Kept as a plain
+ * function so middle-click / new-tab / no-JS still navigate to /nearby —
+ * the interception is an enhancement, never the only path.
+ */
+function inlineWantFor(href: string): { c: string; facet: string | null } | null {
+  if (!href.startsWith("/nearby?")) return null;
+  const params = new URLSearchParams(href.slice(href.indexOf("?") + 1));
+  const c = params.get("c");
+  if (!c) return null;
+  return { c, facet: params.get("facet") };
+}
+
+/** The chip label for a want key, for URL-restored panels ("coffee" → "Coffee"). */
+function labelForWant(c: string): string {
+  for (const cat of WANTS) {
+    for (const sub of cat.subs) {
+      const w = inlineWantFor(sub.href);
+      if (w?.c === c) return sub.label;
+    }
+  }
+  return c.charAt(0).toUpperCase() + c.slice(1);
+}
+
+/** Reflect the open answer in the URL (?want=&facet=) without a history
+ *  entry or an RSC round-trip — refresh restores it, share carries it. */
+function reflectWantInUrl(want: { c: string; facet: string | null } | null) {
+  const url = new URL(window.location.href);
+  if (want) {
+    url.searchParams.set("want", want.c);
+    if (want.facet) url.searchParams.set("facet", want.facet);
+    else url.searchParams.delete("facet");
+  } else {
+    url.searchParams.delete("want");
+    url.searchParams.delete("facet");
+  }
+  window.history.replaceState(window.history.state, "", url);
+}
 
 const ICONS: Record<string, LucideIcon> = {
   Utensils, UtensilsCrossed, Coffee, IceCream, Cookie, ShoppingCart, Croissant,
@@ -112,6 +155,19 @@ export default function WantsAccordion({
   defaultOpen?: string;
 }) {
   const [openKey, setOpenKey] = useState<string>(defaultOpen);
+  // The inline answer: which /nearby-style want is expanded below the chips.
+  // Label rides along so the panel header paints before the fetch lands.
+  const [answer, setAnswer] = useState<{ c: string; facet: string | null; label: string } | null>(
+    null,
+  );
+  // Restore a shared/refreshed ?want= from the URL, once, post-mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("want");
+    if (!c) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-mount URL restore; SSR can't read the query for this client island
+    setAnswer({ c, facet: params.get("facet"), label: labelForWant(c) });
+  }, []);
   // Saved-taste default: once the user's saves show a dominant craving, promote
   // THAT main to the hero instead of the time-of-day guess. Additive; resolves
   // post-mount, never overrides a tile the user has already tapped (touchedRef).
@@ -153,10 +209,36 @@ export default function WantsAccordion({
 
   const rest = WANTS.filter((c) => c.key !== openCat.key);
 
+  const openAnswer = (want: { c: string; facet: string | null }, label: string) => {
+    haptic("light");
+    touchedRef.current = true;
+    setAnswer({ ...want, label });
+    reflectWantInUrl(want);
+  };
+  const closeAnswer = () => {
+    setAnswer(null);
+    reflectWantInUrl(null);
+  };
+
+  /** Intercept a /nearby-style link into the inline panel; modified clicks
+   *  (new tab, middle click) keep their native navigation. */
+  const interceptWant = (href: string, label: string) => (e: React.MouseEvent) => {
+    const w = inlineWantFor(href);
+    if (!w || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      haptic("light");
+      return;
+    }
+    e.preventDefault();
+    // Tapping the already-open chip folds the panel — the toggle read.
+    if (answer && answer.c === w.c && answer.facet === w.facet) closeAnswer();
+    else openAnswer(w, label);
+  };
+
   const promote = (key: string) => {
     haptic("light");
     touchedRef.current = true;
     setOpenKey(key);
+    closeAnswer();
   };
 
   return (
@@ -164,7 +246,7 @@ export default function WantsAccordion({
       {/* Hero — one primary action for the open category. */}
       <Link
         href={hrefFor(hero.href)}
-        onClick={() => haptic("light")}
+        onClick={interceptWant(hero.href, isEat ? meal.label : openCat.label)}
         className="tactile-interactive relative flex items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] p-4"
         style={{
           background: `linear-gradient(150deg, color-mix(in srgb, ${accent} 20%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
@@ -208,28 +290,50 @@ export default function WantsAccordion({
         />
       </Link>
 
-      {/* The open category's subcategories, as a scannable chip row. */}
+      {/* The open category's subcategories, as a scannable chip row. A
+          /nearby-style chip answers INLINE below; the active one reads as
+          pressed. Curated-page chips (/brunch, /parks) navigate as ever. */}
       <div className="flex flex-wrap gap-2" role="group" aria-label={`Narrow ${openCat.label}`}>
-        {openCat.subs.map((sub: WantSub) => (
-          <Link
-            key={sub.href + sub.label}
-            href={hrefFor(sub.href)}
-            onClick={() => haptic("light")}
-            className="tap-44-y tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"
-            style={{
-              border: "1px solid var(--app-border)",
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink)",
-              boxShadow: "var(--app-elev-1), var(--app-hi)",
-            }}
-          >
-            <span aria-hidden style={{ color: `color-mix(in srgb, ${accent} 78%, var(--app-ink))` }}>
-              {renderIcon(sub.icon, "h-4 w-4")}
-            </span>
-            {sub.label}
-          </Link>
-        ))}
+        {openCat.subs.map((sub: WantSub) => {
+          const w = inlineWantFor(sub.href);
+          const active = Boolean(
+            answer && w && answer.c === w.c && answer.facet === w.facet,
+          );
+          return (
+            <Link
+              key={sub.href + sub.label}
+              href={hrefFor(sub.href)}
+              onClick={interceptWant(sub.href, sub.label)}
+              aria-expanded={w ? active : undefined}
+              className="tap-44-y tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"
+              style={{
+                border: `1px solid ${active ? `color-mix(in srgb, ${accent} 55%, var(--app-border))` : "var(--app-border)"}`,
+                background: active
+                  ? `color-mix(in srgb, ${accent} 16%, var(--app-bg-elevated-solid))`
+                  : "var(--app-bg-elevated)",
+                color: "var(--app-ink)",
+                boxShadow: active ? "var(--app-hi)" : "var(--app-elev-1), var(--app-hi)",
+              }}
+            >
+              <span aria-hidden style={{ color: `color-mix(in srgb, ${accent} 78%, var(--app-ink))` }}>
+                {renderIcon(sub.icon, "h-4 w-4")}
+              </span>
+              {sub.label}
+            </Link>
+          );
+        })}
       </div>
+
+      {/* The inline answer — places for the tapped chip, no navigation. */}
+      {answer && (
+        <WantAnswerPanel
+          cKey={answer.c}
+          facet={answer.facet}
+          label={answer.label}
+          accent={accent}
+          onClose={closeAnswer}
+        />
+      )}
 
       {/* The rest — quiet two-column list; tap to promote to the hero. */}
       <div className="grid grid-cols-2 gap-2 pt-0.5">
