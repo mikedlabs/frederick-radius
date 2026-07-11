@@ -18,6 +18,7 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { deriveEventStatus } from "@/lib/event-status";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
 
@@ -32,6 +33,9 @@ type BitEvent = {
   id?: string;
   url?: string;
   datetime?: string;
+  /** Feed-side event title (often empty) — the one place a publisher
+   *  writes "CANCELLED"; our display title is the curated artist name. */
+  title?: string;
   venue?: { name?: string; latitude?: number | string; longitude?: number | string; city?: string };
 };
 
@@ -71,7 +75,7 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
       source_label: "Bandsintown",
       url: ev.url ?? "",
       is_free: false,
-      status: "scheduled" as const,
+      status: deriveEventStatus(ev.title ?? ""),
       last_verified_at: new Date().toISOString(),
     });
   }

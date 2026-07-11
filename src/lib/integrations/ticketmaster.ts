@@ -17,6 +17,7 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -41,10 +42,27 @@ type TmEvent = {
   id?: string;
   name?: string;
   url?: string;
-  dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
+  dates?: {
+    start?: { dateTime?: string; localDate?: string; localTime?: string };
+    status?: { code?: string };
+  };
   priceRanges?: Array<{ min?: number }>;
   _embedded?: { venues?: TmVenue[] };
 };
+
+/**
+ * Lifecycle status for a Ticketmaster row. The structured
+ * dates.status.code is authoritative when it says cancelled/postponed;
+ * "rescheduled" means a NEW date is set and dates.start already carries
+ * it, so the event is still on. Title sniff fills the gap for venues
+ * that only edit the name (same fallback the iCal lane uses).
+ */
+function tmStatus(ev: TmEvent): EventStatus {
+  const code = (ev.dates?.status?.code ?? "").trim().toLowerCase();
+  if (code === "cancelled" || code === "canceled") return "cancelled";
+  if (code === "postponed") return "postponed";
+  return deriveEventStatus(ev.name ?? "");
+}
 
 function inCounty(lat: number, lng: number): boolean {
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
@@ -91,9 +109,10 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
     const geom: LngLat = { lng, lat };
     const municipality = municipalityFor(v?.city?.name, geom);
     const minPrice = ev.priceRanges?.[0]?.min;
+    const status = tmStatus(ev);
     out.push({
       id: `tm-${ev.id}`,
-      title: ev.name,
+      title: status === "scheduled" ? ev.name : stripStatusMarker(ev.name),
       description: "",
       starts_at: start,
       ends_at: start,
@@ -107,7 +126,7 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
       source_label: "Ticketmaster",
       url: ev.url ?? "",
       is_free: typeof minPrice === "number" && minPrice === 0,
-      status: "scheduled" as const,
+      status,
       last_verified_at: new Date().toISOString(),
     });
   }
