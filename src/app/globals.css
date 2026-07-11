@@ -4180,3 +4180,48 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .pulse-sdot.is-live { animation: none; }
   .pulse-meter-fill { animation: none; transform: none; }
 }
+
+/* ── The Rhythm dial — the week scrubber on /rhythm. A thick, grabbable
+   track (44px effective via padding) with a vermilion thumb; styled per
+   engine because range inputs ignore shorthand. ─────────────────────── */
+.rhythm-dial {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  background: transparent;
+  cursor: ew-resize;
+}
+.rhythm-dial::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--app-ink) 14%, transparent), color-mix(in srgb, var(--app-ink) 14%, transparent));
+}
+.rhythm-dial::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -8px;
+  height: 22px;
+  width: 22px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  border: 3px solid var(--app-bg-elevated-solid);
+  box-shadow: 0 2px 8px -2px rgba(20, 20, 18, 0.4);
+}
+.rhythm-dial::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink) 14%, transparent);
+}
+.rhythm-dial::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  border: 3px solid var(--app-bg-elevated-solid);
+  box-shadow: 0 2px 8px -2px rgba(20, 20, 18, 0.4);
+}
+.rhythm-dial:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
