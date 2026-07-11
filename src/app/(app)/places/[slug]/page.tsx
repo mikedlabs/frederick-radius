@@ -93,15 +93,6 @@ const HOURS_SOURCE_LABEL: Record<string, string> = {
   manual_override: "the Frederick Radius team",
 };
 
-// Pipeline source ids -> reader-facing provenance labels.
-const SOURCE_LABEL: Record<string, string> = {
-  seed: "Radius editorial",
-  manual: "Radius editorial",
-  dfp: "Downtown Frederick Partnership",
-  google: "Google Places",
-  osm: "OpenStreetMap",
-};
-
 export const revalidate = 300;
 
 export async function generateStaticParams() {
@@ -258,8 +249,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <h1 className="display-2 breathe-in" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h1>
+            {/* Identity line: what it is + where, at a glance. The street
+                address lives in ONE place — the Location plate beside the
+                map + directions — instead of being printed here too
+                (July 2026 review: same fact twice above the fold). */}
             <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
-              {place.address} · {place.municipality_name}
+              {cat?.name ?? place.category} · {place.municipality_name}
             </p>
             {/* The visit-decision facts — open/closed, price, provenance —
                 sit directly under the address, first screenful. They lived
@@ -514,10 +509,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <footer className="space-y-2 pt-4">
         <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {/* User-facing provenance, not pipeline jargon — "Source: seed"
-              means nothing to a reader (June-9 deep audit P2). */}
-          Updated {place.updated_at} · Source:{" "}
-          {SOURCE_LABEL[place.source] ?? place.source}
+          {/* Freshness only. The source already speaks once, as the
+              SourceBadge in the header decision zone — restating it here
+              was the "source twice" duplicate (July 2026 review). */}
+          Updated {place.updated_at}
         </p>
         <div className="flex flex-wrap gap-3 text-xs">
           {cat && (
@@ -584,6 +579,17 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             icon={Phone}
             label="Call"
             ariaLabel={`Call ${place.name}`}
+          />
+        )}
+        {/* Same rule as the inline grid: on a food place the website IS
+            the menu answer, so the thumb bar says "Menu". */}
+        {place.website && (
+          <MobileBarLink
+            href={place.website}
+            icon={Globe}
+            label={FOOD_CATS.has(place.category) ? "Menu" : "Website"}
+            ariaLabel={`${place.name} website`}
+            external
           />
         )}
       </MobileActionBar>
