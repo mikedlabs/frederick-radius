@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import type { Hours } from "@/data/places";
-import { formatFullHours, formatWindows, getOpenStatus, formatHoursLine } from "@/lib/hours";
+import { formatFullHours, formatWindows, getOpenStatus } from "@/lib/hours";
+import { easternParts } from "@/lib/tz";
 import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
+
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 export default function HoursBlock({
   hours,
@@ -32,8 +35,11 @@ export default function HoursBlock({
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2.5 list-none">
         <span className="flex min-w-0 items-center gap-2">
+          {/* The SCHEDULE fact, not open/closed: the header's LiveOpenStatus
+              is the page's one status voice, and this summary used to
+              restate it (the duplicate the July 2026 review flagged). */}
           <span className="truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-            {formatHoursLine(status)}
+            Hours today · {formatWindows(hours[DAY_KEYS[easternParts(new Date()).weekday]] ?? [])}
           </span>
           <TrustChip signal={placeHoursTrust(status)} className="shrink-0" />
         </span>
