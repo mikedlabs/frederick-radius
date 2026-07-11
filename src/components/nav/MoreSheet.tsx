@@ -10,6 +10,7 @@ import {
   DoorOpen,
   CalendarDays,
   CalendarSearch,
+  AudioWaveform,
   Music,
   Layers,
   ScrollText,
@@ -77,6 +78,7 @@ const DISCOVER: Item[] = [
   // The organizer's door (beta feedback, Jul 2026): planners need to see a
   // date's existing commitments BEFORE setting their own.
   { href: "/check-a-date", label: "Check a date", description: "See what's already scheduled before you set yours", icon: CalendarSearch, color: "var(--app-brand-2)" },
+  { href: "/rhythm", label: "The Rhythm", description: "Watch 1,200 places wake and sleep, hour by hour", icon: AudioWaveform, color: "var(--app-brand)" },
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
   { href: "/collections", label: "Collections", description: "Editor's picks: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
   { href: "/towns", label: "Towns", description: "All 12 municipalities, plus Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
