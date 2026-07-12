@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowRight, Check, X, RotateCcw } from "lucide-react";
 import {
   getDrift,
@@ -28,11 +27,9 @@ const FIELD_LABEL: Record<DriftField, string> = {
 };
 
 export default async function DriftReviewPage() {
-  if (process.env.NODE_ENV !== "development") notFound();
-
   const drift = getDrift();
-  const decisions = getDecisions();
-  const stats = getDriftStats();
+  const decisions = await getDecisions();
+  const stats = getDriftStats(drift, decisions);
 
   const handle = async (formData: FormData) => {
     "use server";

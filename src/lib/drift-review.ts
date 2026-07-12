@@ -1,15 +1,17 @@
 /**
- * Drift-review data layer — reads the vet-places artifact and tracks
- * editor accept/reject decisions on each field change.
+ * Drift-review data layer — reads the vet-places artifact (committed JSON) and
+ * tracks editor accept/reject decisions on each drifted field.
  *
- * Same persistence pattern as discovered-review.ts: a local JSON file
- * under `data/drift-decisions.json`. Dev-mode only.
+ * Decisions persist to the `curation_decisions` Supabase table (tool = 'drift',
+ * target_id = slug, field = the drifted field) — NOT a local file — so the
+ * owner can accept/reject drift from prod or a phone. Fail-soft: no
+ * DATABASE_URL degrades to zero decisions.
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { getSql } from "@/lib/db/client";
 
 const DRIFT_PATH = path.join(process.cwd(), "data/place-drift.json");
-const DECISIONS_PATH = path.join(process.cwd(), "data/drift-decisions.json");
 
 export type DriftField =
   | "business_status"
@@ -50,56 +52,53 @@ export function getDrift(): DriftFile {
     _cache = JSON.parse(readFileSync(DRIFT_PATH, "utf8")) as DriftFile;
     return _cache;
   } catch {
-    _cache = {
-      generated_at: "",
-      total_checked: 0,
-      drift_count: 0,
-      rows: [],
-    };
+    _cache = { generated_at: "", total_checked: 0, drift_count: 0, rows: [] };
     return _cache;
   }
 }
 
-/** Decisions are keyed by `${slug}::${field}` so each field change
- *  can be accepted or rejected independently. */
+/** Decisions are keyed by `${slug}::${field}` so each field change can be
+ *  accepted or rejected independently. */
 function decisionKey(slug: string, field: DriftField): string {
   return `${slug}::${field}`;
 }
 
-type DecisionsFile = {
-  decisions: Record<string, DriftDecision>;
-  updated_at: string;
-};
-
-function loadDecisions(): DecisionsFile {
+/** All recorded drift decisions, keyed by `${slug}::${field}`. DB-backed. */
+export async function getDecisions(): Promise<Record<string, DriftDecision>> {
+  const sql = getSql();
+  if (!sql) return {};
   try {
-    return JSON.parse(readFileSync(DECISIONS_PATH, "utf8")) as DecisionsFile;
+    const rows = (await sql`
+      select target_id, field, decision from curation_decisions where tool = 'drift'
+    `) as { target_id: string; field: string; decision: string }[];
+    const out: Record<string, DriftDecision> = {};
+    for (const r of rows) {
+      if (r.decision === "accepted" || r.decision === "rejected") {
+        out[`${r.target_id}::${r.field}`] = r.decision;
+      }
+    }
+    return out;
   } catch {
-    return { decisions: {}, updated_at: new Date().toISOString() };
+    return {};
   }
 }
 
-function saveDecisions(d: DecisionsFile): void {
-  const dir = path.dirname(DECISIONS_PATH);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  d.updated_at = new Date().toISOString();
-  writeFileSync(DECISIONS_PATH, JSON.stringify(d, null, 2));
-}
-
-export function getDecisions(): Record<string, DriftDecision> {
-  return loadDecisions().decisions;
-}
-
-export function recordDecision(
+export async function recordDecision(
   slug: string,
   field: DriftField,
   decision: DriftDecision | "clear",
-): void {
-  const file = loadDecisions();
-  const key = decisionKey(slug, field);
-  if (decision === "clear") delete file.decisions[key];
-  else file.decisions[key] = decision;
-  saveDecisions(file);
+): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  if (decision === "clear") {
+    await sql`delete from curation_decisions where tool='drift' and target_id=${slug} and field=${field}`;
+    return;
+  }
+  await sql`
+    insert into curation_decisions (tool, target_id, field, decision, decided_at)
+    values ('drift', ${slug}, ${field}, ${decision}, now())
+    on conflict (tool, target_id, field) do update set decision = excluded.decision, decided_at = now()
+  `;
 }
 
 export type DriftStats = {
@@ -111,9 +110,11 @@ export type DriftStats = {
   last_sweep_at: string;
 };
 
-export function getDriftStats(): DriftStats {
-  const file = getDrift();
-  const decisions = getDecisions();
+/** Pure — pass the already-loaded decisions so the page queries the DB once. */
+export function getDriftStats(
+  file: DriftFile,
+  decisions: Record<string, DriftDecision>,
+): DriftStats {
   let total = 0;
   let accepted = 0;
   let rejected = 0;

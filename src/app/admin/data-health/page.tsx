@@ -14,7 +14,7 @@ import {
   getSnapshots,
   hydrateSnapshots,
 } from "@/lib/integrations/feed-snapshot";
-import { getDriftStats } from "@/lib/drift-review";
+import { getDriftStats, getDrift, getDecisions as getDriftDecisions } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
 
@@ -43,7 +43,7 @@ export default async function DataHealth() {
   const feedMetrics = consumeFeedMetrics();
   const anomalies = getAnomalies();
   const snapshots = getSnapshots();
-  const drift = getDriftStats();
+  const drift = getDriftStats(getDrift(), await getDriftDecisions());
   // Placement validation — coordinates flagged needs_review because
   // they are missing or fall outside the county bbox. The public
   // surfaces never render these, so this view is the only place an
