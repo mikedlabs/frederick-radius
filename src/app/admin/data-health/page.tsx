@@ -187,7 +187,7 @@ export default async function DataHealth() {
         </details>
       </section>
 
-      <table className="mt-6 w-full text-sm">
+      <div className="overflow-x-auto"><table className="mt-6 w-full text-sm">
         <tbody>
           {rows.map(([k, v, note]) => (
             <tr key={k} className="border-b" style={{ borderColor: "var(--app-border)" }}>
@@ -197,7 +197,7 @@ export default async function DataHealth() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <section className="mt-8">
         <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -468,7 +468,7 @@ export default async function DataHealth() {
             No snapshot recorded in this process yet.
           </p>
         ) : (
-          <table className="mt-3 w-full text-sm">
+          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
             <thead>
               <tr style={{ color: "var(--app-ink-3)" }}>
                 <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
@@ -507,7 +507,7 @@ export default async function DataHealth() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -525,7 +525,7 @@ export default async function DataHealth() {
             No feed fetched in this process yet.
           </p>
         ) : (
-          <table className="mt-3 w-full text-sm">
+          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
             <thead>
               <tr style={{ color: "var(--app-ink-3)" }}>
                 <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
@@ -569,7 +569,7 @@ export default async function DataHealth() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -593,7 +593,7 @@ export default async function DataHealth() {
             No ingest runs recorded (or no database in this environment).
           </p>
         ) : (
-          <table className="mt-3 w-full text-sm">
+          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
             <thead>
               <tr style={{ color: "var(--app-ink-3)" }}>
                 <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
@@ -625,7 +625,7 @@ export default async function DataHealth() {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -657,7 +657,7 @@ export default async function DataHealth() {
               </span>{" "}
               across {unparseable.length} source{unparseable.length === 1 ? "" : "s"}.
             </p>
-            <table className="mt-3 w-full text-sm">
+            <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
               <thead>
                 <tr style={{ color: "var(--app-ink-3)" }}>
                   <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
@@ -678,7 +678,7 @@ export default async function DataHealth() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </>
         )}
       </section>

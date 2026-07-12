@@ -50,6 +50,14 @@ export default function DedupReview() {
         </p>
       </header>
 
+      {rows.length === 0 ? (
+        <p
+          className="mt-6 rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          No duplicate clusters to review. Every place stands on its own.
+        </p>
+      ) : (
       <ul className="mt-6 space-y-3">
         {rows.map((c) => (
           <li
@@ -79,6 +87,7 @@ export default function DedupReview() {
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }
