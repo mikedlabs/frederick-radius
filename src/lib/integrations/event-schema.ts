@@ -96,6 +96,8 @@ export const liveEventSchema = z
       "monocacy",
       "msd",
       "mount-st-marys",
+      "isf",
+      "elc",
     ]),
     source_label: z.string().min(1).max(120),
     url: z.string().url(),
