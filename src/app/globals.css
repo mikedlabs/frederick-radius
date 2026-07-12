@@ -57,6 +57,12 @@
   --app-border: #C9BD9F;          /* warm hairline, strengthened so card edges are visible
                                      against the deeper paper (was #DBD2BF) */
   --app-border-strong: rgba(22, 20, 14, 0.13);
+  /* Control boundary — a darker warm hairline for INPUTS + buttons, whose
+     edges must read as an interactive boundary, not a decorative card seam
+     (2026-07 shell-hardening P4). Clearly darker than --app-border so form
+     controls have a visible outline on the paper ground; --app-border stays
+     the decorative card edge so the card language is unchanged. */
+  --app-control-border: #A5966F;
 
   /* Body ink: warm near-black (brand-deck default). Spruce (#16352B) is
      available as --app-brand-2 for headings/brand surfaces; flipping body

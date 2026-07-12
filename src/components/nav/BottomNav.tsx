@@ -145,7 +145,10 @@ export default function BottomNav() {
             const tabClass =
               "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
             const tabStyle = {
-              color: active ? "var(--app-brand)" : "var(--app-ink-3)",
+              // brand-press, not brand: the 11px active label sits on a faint
+              // brand tint over cream where #E14328 is only ~3.3:1 (fails AA);
+              // #B5300F clears it (2026-07 shell-hardening P4).
+              color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
               transitionTimingFunction: "var(--app-ease-spring)",
               transitionDuration: "var(--app-dur-fast)",
             } as const;
