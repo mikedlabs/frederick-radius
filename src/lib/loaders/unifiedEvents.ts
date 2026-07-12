@@ -237,7 +237,7 @@ const cachedAssemble = unstable_cache(
   // v18: venue-feed events with clearly non-music titles (yoga/trivia/
   // bingo/paint/run club) no longer get the blanket "music" category —
   // the cached rows' category/category_name change.
-  ["unified-events-v21", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v22", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

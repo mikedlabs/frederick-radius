@@ -59,7 +59,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -85,7 +85,7 @@ type Feed = {
   default_category: string;
 };
 
-type FeedFormat = "ical" | "rss" | "tribe";
+type FeedFormat = "ical" | "rss" | "tribe" | "moderncampus" | "presence";
 
 type FeedSpec = Feed & {
   format: FeedFormat;
@@ -382,6 +382,36 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Catoctin Land Trust",
     default_geom: { lng: -77.4105, lat: 39.4143 },
     default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Frederick Community College — Modern Campus (Localist) public calendar
+    // (fetch-verified 2026-07-12). The classic calendar.frederick.edu host is
+    // dead (302 -> not-found); this pubcalendar API is the live replacement.
+    // startDatetime is zone-less ET; the fetcher appends the ?start&end window.
+    source: "fcc",
+    source_label: "Frederick Community College",
+    url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
+    format: "moderncampus",
+    default_venue: "Frederick Community College",
+    default_geom: { lng: -77.4392, lat: 39.4568 }, // 7932 Opossumtown Pike
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Mount St. Mary's University — Presence student-engagement API
+    // (fetch-verified 2026-07-12: 68 events). The Mount's own
+    // calendar.msmary.edu is static HTML with no export; this is the live
+    // machine-readable source. startDateTimeUtc is absolute UTC. A few org
+    // bus trips depart campus for off-county destinations; the Emmitsburg
+    // default_geom is the honest "where you set out from."
+    source: "mount-st-marys",
+    source_label: "Mount St. Mary's University",
+    url: "https://api.presence.io/msmary/v1/events",
+    format: "presence",
+    default_venue: "Mount St. Mary's University",
+    default_geom: { lng: -77.3236, lat: 39.6473 }, // 16300 Old Emmitsburg Rd
+    default_municipality: "emmitsburg",
     default_category: "community",
   },
   // NOTE on live-music venues (Tenth Ward, Monocacy, Bentztown, …):
@@ -986,11 +1016,15 @@ type TribeEvent = {
   venue?: { venue?: string; address?: string; city?: string; state?: string } | unknown[];
 };
 
-/** Parse a tribe date: prefer the plugin's UTC field, else read the local
- *  wall time as Eastern. Returns an ISO string or null. */
-function tribeDateToISO(utc?: string, local?: string): string | null {
+/** Parse a JSON-feed date. Prefer an absolute UTC/offset field (append Z only
+ *  if the string carries no zone), else read a zone-less local wall time as
+ *  Eastern. Shared by every JSON feed format (tribe / moderncampus / presence).
+ *  Returns an ISO string or null. */
+function jsonEventDateToISO(utc?: string, local?: string): string | null {
   if (utc && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(utc)) {
-    const d = new Date(utc.replace(" ", "T") + "Z");
+    const s = utc.replace(" ", "T");
+    const zoned = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(s);
+    const d = new Date(zoned ? s : s + "Z");
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
   const m = local?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
@@ -1045,12 +1079,12 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveE
           : undefined;
       // Drop satellite events (e.g. the Civil War Medicine museum's DC location).
       if (feed.only_state && v?.state && v.state.trim().toUpperCase() !== feed.only_state) continue;
-      const startsAtISO = tribeDateToISO(item.utc_start_date, item.start_date);
+      const startsAtISO = jsonEventDateToISO(item.utc_start_date, item.start_date);
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
       if (effectiveStart < now || effectiveStart > horizon) continue;
       const endsAtISO =
-        tribeDateToISO(item.utc_end_date, item.end_date) ??
+        jsonEventDateToISO(item.utc_end_date, item.end_date) ??
         new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
       const status = deriveEventStatus(rawTitle, undefined);
       const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
@@ -1097,8 +1131,126 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveE
   }
 }
 
+/**
+ * Fetch a JSON events feed that returns a flat array (no VCALENDAR/XML) and
+ * map it with a per-format field adapter. Covers the college calendars:
+ *   - "moderncampus" — Frederick Community College's Modern Campus / Localist
+ *     pubcalendar API (startDatetime is zone-less ET; needs ?start&end).
+ *   - "presence" — Mount St. Mary's Presence student-engagement API
+ *     (startDateTimeUtc is absolute UTC).
+ * Same window + fail-soft + validate contract as the iCal/tribe paths.
+ */
+async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  try {
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + windowDays);
+    // Modern Campus requires an explicit date window; Presence takes none.
+    let url = feed.url;
+    if (feed.format === "moderncampus") {
+      const end = new Date(now);
+      end.setDate(end.getDate() + windowDays);
+      const sep = feed.url.includes("?") ? "&" : "?";
+      url = `${feed.url}${sep}start=${now.toISOString().slice(0, 10)}&end=${end.toISOString().slice(0, 10)}`;
+    }
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "application/json",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      if (res.status === 410 || res.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
+      } else {
+        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
+      }
+      return [];
+    }
+    const data = (await res.json()) as unknown;
+    const items = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+    const events: LiveEvent[] = [];
+    for (const raw of items) {
+      const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
+      const isPresence = feed.format === "presence";
+      const rawTitle = (isPresence ? str("eventName") : str("title")).trim();
+      if (!rawTitle) continue;
+      const startsAtISO = isPresence
+        ? jsonEventDateToISO(str("startDateTimeUtc"), undefined)
+        : jsonEventDateToISO(undefined, str("startDatetime"));
+      if (!startsAtISO) continue;
+      const effectiveStart = new Date(startsAtISO);
+      if (effectiveStart < now || effectiveStart > horizon) continue;
+      const endsAtISO = isPresence
+        ? jsonEventDateToISO(str("endDateTimeUtc"), undefined)
+        : jsonEventDateToISO(undefined, str("endDatetime"));
+      const status = deriveEventStatus(rawTitle, undefined);
+      const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
+      const description = str("description").replace(/<[^>]+>/g, " ").trim();
+      const cleanedDesc = clampDescription(cleanDescription(description), 300);
+      const room = str("locationRoom");
+      const venue = str("location").trim() || feed.default_venue;
+      const address = isPresence ? "" : room ? `${venue}, ${room}` : "";
+      // Resolve a real event URL: Presence gives a bare slug ("senior-formal-4")
+      // → build <subdomain>.presence.io/event/<slug>; Modern Campus gives a
+      // ticketUrl that may be blank/relative. Anything not http(s) → the feed
+      // URL, so the schema's url() check never rejects a real event.
+      const uri = str("uri");
+      const sub = str("subdomain");
+      const eventUrl = isPresence
+        ? uri && sub
+          ? `https://${sub}.presence.io/event/${uri}`
+          : feed.url
+        : /^https?:\/\//i.test(str("ticketUrl"))
+          ? str("ticketUrl")
+          : feed.url;
+      const candidate = {
+        id: `${feed.source}:${dedupeKey(title, effectiveStart, venue)}`,
+        title,
+        status,
+        description: cleanedDesc,
+        starts_at: startsAtISO,
+        ends_at: endsAtISO ?? new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        is_all_day: false,
+        venue_name: venue,
+        address,
+        geom: feed.default_geom,
+        municipality: feed.default_municipality,
+        category: feedCategory(feed, title, description),
+        organizer: feed.source_label,
+        source: feed.source,
+        source_label: feed.source_label,
+        url: eventUrl,
+        is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        last_verified_at: fetchedAt,
+      };
+      const validated = validateLiveEvent(candidate, feed.source);
+      if (validated) events.push(validated);
+    }
+    console.log(`[ical-live] ${feed.source}: parsed ${events.length} ${feed.format} events in window`);
+    recordSnapshot(feed.source, events);
+    return events;
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.warn(
+      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
   if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
+  if (feed.format === "moderncampus" || feed.format === "presence") return fetchJsonArrayFeed(feed, windowDays);
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
   return fetchIcalFeed(feed, windowDays);
 }
@@ -1200,7 +1352,7 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
   return unstable_cache(
     () => getLiveEvents(windowDays),
-    ["live-events-v4", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+    ["live-events-v6", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
     { revalidate: 300, tags: ["events"] },
   )();
 }
