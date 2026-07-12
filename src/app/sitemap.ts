@@ -25,6 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/brunch`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/deals`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/collections`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/nonprofits`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     // Public content surfaces with self-canonicals: the directory index and
