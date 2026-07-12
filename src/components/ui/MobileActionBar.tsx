@@ -75,7 +75,9 @@ export function barCellClass(primary?: boolean): string {
 }
 export function barCellStyle(primary?: boolean): React.CSSProperties {
   return primary
-    ? { background: "var(--app-brand)", color: "var(--app-on-brand)" }
+    ? // brand-press, not brand: white on plain --app-brand is ~4.1:1 on the
+      // 11px semibold cell label (fails AA); brand-press is ~6:1 (2026-07 P4).
+      { background: "var(--app-brand-press)", color: "var(--app-on-brand)" }
     : { color: "var(--app-ink-2)" };
 }
 export function barIconStyle(primary?: boolean): React.CSSProperties {

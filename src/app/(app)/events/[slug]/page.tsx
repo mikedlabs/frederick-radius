@@ -712,7 +712,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                     style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
                     aria-hidden
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand)" }}>{db.month}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand-press)" }}>{db.month}</span>
                     <span className="font-serif text-base font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{db.day}</span>
                     <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
                   </div>

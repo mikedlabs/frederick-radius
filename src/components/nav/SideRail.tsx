@@ -130,7 +130,9 @@ export default function SideRail() {
             const tabClass =
               "group relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
             const tabStyle = {
-              color: active ? "var(--app-brand)" : "var(--app-ink-3)",
+              // brand-press for the active label — same AA fix as BottomNav
+              // (2026-07 shell-hardening P4).
+              color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
               transitionTimingFunction: "var(--app-ease-spring)",
               transitionDuration: "var(--app-dur-fast)",
             } as const;
