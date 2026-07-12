@@ -15,7 +15,7 @@ import AskFrederick from "@/components/ask/AskFrederick";
  */
 export default function TodayAsk() {
   return (
-    <section aria-labelledby="today-ask-head" className="space-y-2.5">
+    <section aria-labelledby="today-ask-head" className="mt-4 space-y-2.5">
       <h2
         id="today-ask-head"
         className="font-serif text-[18px] font-semibold leading-none tracking-tight"
