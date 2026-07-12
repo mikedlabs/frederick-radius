@@ -132,7 +132,7 @@ export async function fetchFrederickKeys(now: Date = new Date()): Promise<LiveEv
     }
     return normalizeStatsApiSchedule(await res.json());
   } catch (err) {
-    console.error("[frederick-keys] fetch failed:", err);
+    console.warn("[frederick-keys] fetch failed:", err);
     return [];
   } finally {
     clearTimeout(timer);

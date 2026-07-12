@@ -119,7 +119,7 @@ export async function fetchEventbrite(): Promise<LiveEvent[]> {
       }
       all.push(...normalizeEventbrite(await res.json()));
     } catch (err) {
-      console.error(`[eventbrite] fetch failed for organizer ${org.id}:`, err);
+      console.warn(`[eventbrite] fetch failed for organizer ${org.id}:`, err);
     } finally {
       clearTimeout(timer);
     }

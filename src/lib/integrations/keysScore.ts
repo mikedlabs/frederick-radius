@@ -139,7 +139,7 @@ export async function getKeysScoreToday(now: Date = new Date()): Promise<KeysSco
     }
     return normalizeKeysScore(await res.json());
   } catch (err) {
-    console.error("[keys-score] fetch failed:", err);
+    console.warn("[keys-score] fetch failed:", err);
     return null;
   } finally {
     clearTimeout(timer);
