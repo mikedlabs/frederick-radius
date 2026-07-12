@@ -28,6 +28,17 @@ export const dynamic = "force-dynamic";
 const photoUrl = (name: string, w = 800) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}`;
 
+// Google enrichment websites are not guaranteed to be valid absolute URLs; a
+// protocol-less or malformed value threw `new URL()` and broke that candidate's
+// whole render. Fail soft to a bare host string.
+const safeHost = (url: string): string => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url.replace(/^https?:\/\//i, "").split("/")[0] || url;
+  }
+};
+
 export default async function DiscoveredReviewPage({
   searchParams,
 }: {
@@ -297,7 +308,7 @@ export default async function DiscoveredReviewPage({
                 style={{ color: "var(--app-cool)" }}
               >
                 <Globe className="h-3 w-3" strokeWidth={2} aria-hidden />
-                {new URL(c.website).hostname}
+                {safeHost(c.website)}
               </a>
             )}
             <span>· {c.municipality}</span>
