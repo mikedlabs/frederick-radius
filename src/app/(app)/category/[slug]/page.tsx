@@ -15,7 +15,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
-import CategoryLocationBar from "@/components/category/CategoryLocationBar";
+import ScopeBar from "@/components/nav/ScopeBar";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { effectiveOriginSlug } from "@/lib/scope";
@@ -228,7 +228,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           and left read-only "Ranked from X" with no way to change it). It
           writes the shared browsing scope, so it stays in sync with the nav
           chip and re-ranks everywhere. */}
-      <CategoryLocationBar
+      <ScopeBar
         current={homeMuni}
         municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
       />
