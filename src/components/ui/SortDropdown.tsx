@@ -137,7 +137,7 @@ export default function SortDropdown<K extends string = string>({
                   onChange(opt.key);
                   setOpen(false);
                 }}
-                className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
                   color: active ? "var(--app-brand)" : "var(--app-ink)",
                   background: active

@@ -151,7 +151,7 @@ export default function LocationChip() {
             }}
             role="menuitemradio"
             aria-checked={scope === "nearme"}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+            className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
             <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-cool)" }} />
@@ -165,7 +165,7 @@ export default function LocationChip() {
             onClick={() => applyScope("county")}
             role="menuitemradio"
             aria-checked={scope === "county"}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+            className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ color: scope === "county" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
             <Globe className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
@@ -188,7 +188,7 @@ export default function LocationChip() {
                     onClick={() => applyScope(`town:${m.slug}`)}
                     role="menuitemradio"
                     aria-checked={isActive}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] transition hover:bg-[var(--app-bg-sunken)]"
+                    className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] transition hover:bg-[var(--app-bg-sunken)]"
                     style={{ color: isActive ? "var(--app-brand)" : "var(--app-ink-2)" }}
                   >
                     {isActive ? (
@@ -218,7 +218,7 @@ export default function LocationChip() {
                 href={`/m/${scopeTown}`}
                 onClick={() => setOpen(false)}
                 role="menuitem"
-                className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+                className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
                 style={{ color: "var(--app-brand-press)" }}
               >
                 <ArrowUpRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
