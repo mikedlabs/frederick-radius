@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getHomeMuni } from "@/lib/personalize";
+import { getScope, scopeTownSlug } from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
@@ -19,13 +20,16 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
  * h1 is sr-only, so this <p> carries no page-heading semantics.
  */
 export default function MastheadTitle() {
-  const [homeSlug, setHomeSlug] = useState<string | null>(null);
+  const [townSlug, setTownSlug] = useState<string | null>(null);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage read; SSR can't see the home town
-    setHomeSlug(getHomeMuni());
+    // Post-mount only (SSR can't see localStorage). The browsing SCOPE town
+    // (UX-02) orients the line first — "browsing Brunswick" should say so —
+    // and the long-term home muni is the fallback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount storage read
+    setTownSlug(scopeTownSlug(getScope()) ?? getHomeMuni());
   }, []);
 
-  const muni = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
+  const muni = townSlug ? MUNICIPALITY_BY_SLUG[townSlug] : null;
   if (!muni) return null;
 
   return (

@@ -8,6 +8,7 @@ import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { effectiveOriginSlug } from "@/lib/scope";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import PlaceIndex, { type IndexRow, type IndexSection } from "@/components/place/PlaceIndex";
 import PageBloom from "@/components/ui/PageBloom";
@@ -46,7 +47,13 @@ export const metadata: Metadata = {
 
 export default async function OpenNowPage() {
   const store = await cookies();
-  const homeMuni = store.get("fr_home_muni")?.value ?? null;
+  // Rank from the browsing SCOPE first (UX-02), the long-term home town
+  // second, downtown last. A "Whole county" scope resolves to no town, so
+  // the list ranks county-wide from center — even when a home town is set.
+  const homeMuni = effectiveOriginSlug(
+    store.get("fr_scope")?.value ?? null,
+    store.get("fr_home_muni")?.value ?? null,
+  );
   const homeCentroid: LngLat | null = homeMuni
     ? (MUNICIPALITY_BY_SLUG[homeMuni]?.centroid ?? null)
     : null;
