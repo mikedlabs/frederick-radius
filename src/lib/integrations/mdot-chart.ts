@@ -1,12 +1,18 @@
 /**
- * Maryland CHART (Coordinated Highways Action Response Team) — live traffic data.
- * Free, no key required. JSON endpoint refreshes ~every 90 seconds.
+ * Maryland CHART (Coordinated Highways Action Response Team) — live traffic
+ * events. Free, no key required. Refreshes continuously.
  *
- * Endpoint: https://chart.maryland.gov/Incidents/GetIncidents
- * Filtered to Frederick County (us-1, us-15, us-40, us-340, i-70, i-270).
+ * Endpoint: the CHART Export map-data feed. The old
+ * chart.maryland.gov/Incidents/GetIncidents endpoint started returning an HTML
+ * page (not JSON) in 2026 — the parse silently fail-softed to [], so the
+ * /pulse + /map traffic tiles showed nothing. Repointed 2026-07-12 to the
+ * live CHARTExportClientService JSON feed (fetch-verified: county-tagged,
+ * lat/lon per event). Output shape (ChartIncident) is unchanged so every
+ * consumer keeps working.
  */
 
-const ENDPOINT = "https://chart.maryland.gov/Incidents/GetIncidents";
+const ENDPOINT =
+  "https://chartexp1.sha.maryland.gov/CHARTExportClientService/getEventMapDataJSON.do";
 
 export type ChartIncident = {
   id: string;
@@ -24,27 +30,27 @@ export type ChartIncident = {
   lanes_affected?: string;
 };
 
-// CHART returns geo coordinates as lat/lng pairs in their feed structure.
-// Schema observed in the live API as of 2026. We're defensive — extract what we can.
-type RawIncident = {
-  Id?: string | number;
-  EventType?: string;
-  Description?: string;
-  County?: string;
-  Road?: string;
-  Direction?: string;
-  Location?: string;
-  Lat?: string | number;
-  Lng?: string | number;
-  Long?: string | number;
-  Started?: string;
-  EstimatedClearance?: string;
-  Severity?: string;
-  LanesAffected?: string;
+/** One event in the CHARTExportClientService map-data payload. Defensive —
+ *  only the fields we read are typed. */
+type RawEvent = {
+  id?: string;
+  county?: string;
+  name?: string;
+  description?: string;
+  direction?: string;
+  incidentType?: string;
+  lat?: number | string;
+  lon?: number | string;
+  lanes?: unknown[];
+  lanesStatus?: string;
+  startDateTime?: number | string;
+  closed?: boolean;
+  trafficAlert?: boolean;
+  additionalData?: { actionTypes?: { actionType?: string }[] };
 };
 
 function num(v: unknown): number | null {
-  if (typeof v === "number") return v;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
     const n = parseFloat(v);
     return Number.isFinite(n) ? n : null;
@@ -52,53 +58,90 @@ function num(v: unknown): number | null {
   return null;
 }
 
-function severity(s: string | undefined): ChartIncident["severity"] {
-  const lower = (s ?? "").toLowerCase();
-  if (lower.includes("severe") || lower.includes("major") || lower.includes("high")) return "High";
-  if (lower.includes("moderate") || lower.includes("medium")) return "Medium";
+/** Signal-bulb-outs, camera outages, and test rows are SHA maintenance logs,
+ *  not driver-relevant traffic. Drop them so the tile shows real incidents. */
+function isMaintenanceNoise(text: string): boolean {
+  return /\bbulb out\b|\bcamera\b|\btest event\b|sign (out|malfunction)/i.test(text);
+}
+
+function severity(e: RawEvent, text: string): ChartIncident["severity"] {
+  if (e.trafficAlert === true) return "High";
+  if (/crash|collision|overturned|closed|blocked|all lanes|fatal/i.test(text)) return "High";
+  if (/construction|roadwork|work zone|disabled|shoulder|right lane|left lane/i.test(text)) return "Medium";
   return "Low";
 }
 
-function eventType(s: string | undefined): ChartIncident["type"] {
-  const t = (s ?? "").toLowerCase();
-  if (t.includes("construction") || t.includes("roadwork")) return "Construction";
+function eventType(e: RawEvent, text: string): ChartIncident["type"] {
+  const t = `${e.incidentType ?? ""} ${text}`.toLowerCase();
+  if (t.includes("construction") || t.includes("roadwork") || t.includes("work zone")) return "Construction";
   if (t.includes("disabled")) return "Disabled";
-  if (t.includes("weather")) return "Weather";
+  if (t.includes("weather") || t.includes("flooding") || t.includes("snow") || t.includes("ice")) return "Weather";
   if (t.includes("special") || t.includes("event")) return "Special";
-  if (t.includes("incident") || t.includes("accident") || t.includes("crash")) return "Incident";
+  if (t.includes("incident") || t.includes("accident") || t.includes("crash") || t.includes("collision")) return "Incident";
   return "Other";
+}
+
+/** Pull a route token (I-70, US 15, MD 26) out of the CHART description. */
+function extractRoad(text: string): string {
+  const m = text.match(/\b(I-?\d+|US ?\d+|MD ?\d+)\b/i);
+  return m ? m[1].toUpperCase().replace(/^I(\d)/, "I-$1").replace(/^(US|MD)(\d)/, "$1 $2") : "";
+}
+
+/** Strip CHART's "Action Event @ " / "Incident @ " logging prefix. */
+function cleanDescription(text: string): string {
+  return text.replace(/^(action event|incident|event|road ?work)\s*@\s*/i, "").trim() || text;
 }
 
 export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
   try {
     const res = await fetch(ENDPOINT, {
-      headers: { Accept: "application/json" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "application/json",
+      },
       next: { revalidate: 120 },
     });
     if (!res.ok) return [];
     const data = await res.json().catch(() => null);
-    if (!data || !Array.isArray(data)) return [];
+    if (!data) return [];
+    // The CHARTExport feed wraps events under `data`: { data: [...],
+    // success, totalCount }. Accept that, an `events` key, or a bare array.
+    const asObj = data as { data?: RawEvent[]; events?: RawEvent[] };
+    const events: RawEvent[] = Array.isArray(data)
+      ? (data as RawEvent[])
+      : Array.isArray(asObj.data)
+        ? asObj.data
+        : Array.isArray(asObj.events)
+          ? asObj.events
+          : [];
 
     const incidents: ChartIncident[] = [];
-    for (const raw of data as RawIncident[]) {
-      const county = String(raw.County ?? "").trim();
+    for (const raw of events) {
+      const county = String(raw.county ?? "").trim();
       if (!/frederick/i.test(county)) continue;
-      const lat = num(raw.Lat);
-      const lng = num(raw.Lng ?? raw.Long);
+      if (raw.closed === true) continue; // only active events
+      const lat = num(raw.lat);
+      const lng = num(raw.lon);
       if (lat === null || lng === null) continue;
+      const name = String(raw.name ?? raw.description ?? "").trim();
+      const action = raw.additionalData?.actionTypes?.[0]?.actionType ?? "";
+      const text = `${name} ${action} ${raw.incidentType ?? ""}`;
+      if (isMaintenanceNoise(text)) continue;
+      const clean = cleanDescription(name) || action || "Active traffic event";
+      const startMs = num(raw.startDateTime);
       incidents.push({
-        id: String(raw.Id ?? `${raw.Road}-${raw.Started}-${lat}-${lng}`),
-        type: eventType(raw.EventType),
-        description: String(raw.Description ?? "Active traffic incident").trim(),
+        id: String(raw.id ?? `${clean}-${lat}-${lng}`),
+        type: eventType(raw, text),
+        description: clean,
         county,
-        road: String(raw.Road ?? "").trim(),
-        direction: raw.Direction ? String(raw.Direction).trim() : undefined,
-        location: String(raw.Location ?? raw.Road ?? "").trim(),
-        lat, lng,
-        started_at: raw.Started ? new Date(raw.Started).toISOString() : new Date().toISOString(),
-        expected_end: raw.EstimatedClearance ? new Date(raw.EstimatedClearance).toISOString() : undefined,
-        severity: severity(raw.Severity),
-        lanes_affected: raw.LanesAffected ? String(raw.LanesAffected) : undefined,
+        road: extractRoad(name),
+        direction: raw.direction ? String(raw.direction).trim() : undefined,
+        location: clean,
+        lat,
+        lng,
+        started_at: startMs ? new Date(startMs).toISOString() : new Date().toISOString(),
+        severity: severity(raw, text),
+        lanes_affected: raw.lanesStatus ? String(raw.lanesStatus).trim() || undefined : undefined,
       });
     }
     incidents.sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at));
