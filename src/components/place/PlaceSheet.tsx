@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { haptic } from "@/lib/haptics";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -49,6 +50,11 @@ export default function PlaceSheet({ place, onClose }: Props) {
   // focus, leaving keyboard/SR users stranded behind it).
   const lastFocused = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
+
+  // Keep Tab within the sheet while it's open — it already focuses itself on
+  // open and restores focus on close, but Tab could still walk out to the
+  // obscured page (2026-07 shell-hardening P7).
+  useFocusTrap(sheetRef, open && Boolean(place));
 
   useEffect(() => {
     if (place) {
