@@ -40,6 +40,13 @@ export default function FeedbackWidget() {
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
+  // Yield to any open bottom sheet / modal (the radius sheet, place sheet,
+  // search overlay, our own feedback sheet). The beta reviewer (Jul 2026)
+  // caught the trigger fighting the radius sheet for the same corner; a modal
+  // is a full-attention surface, so the tab hides while one is up and returns
+  // when it closes. Detected structurally (any visible aria-modal dialog) so
+  // no cross-component wiring is needed.
+  const [modalUp, setModalUp] = useState(false);
 
   // Only reveal for unlocked beta visitors. Reads document.cookie (an external
   // system unavailable during SSR) once after mount; both the server and first
@@ -47,6 +54,17 @@ export default function FeedbackWidget() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from document.cookie, which only exists client-side
     setShow(hasBetaCookie());
+  }, []);
+
+  // Watch the DOM for any open modal dialog and hide the tab while one is up.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const check = () =>
+      setModalUp(document.querySelector('[role="dialog"][aria-modal="true"]') != null);
+    check();
+    const mo = new MutationObserver(check);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["role", "aria-modal"] });
+    return () => mo.disconnect();
   }, []);
 
   function close() {
@@ -115,25 +133,31 @@ export default function FeedbackWidget() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        className="fixed inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors"
-        style={{
-          zIndex: "var(--z-fab)",
-          left: "max(0.75rem, env(safe-area-inset-left, 0px))",
-          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${triggerBottom}px)`,
-          background: "var(--app-bg-elevated-solid)",
-          borderColor: "var(--app-border)",
-          color: "var(--app-ink-2)",
-          boxShadow:
-            "0 8px 22px -10px rgba(20,20,18,0.30), 0 2px 6px rgba(20,20,18,0.08), var(--app-edge)",
-        }}
-      >
-        <MessageSquare className="h-4 w-4" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
-        Feedback
-      </button>
+      {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
+          the pill overlapped content and fought the bottom controls). 44px so
+          the tap target stays comfortable; hides entirely while any modal /
+          bottom sheet is open so it never competes for the same corner. */}
+      {!modalUp && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Send feedback"
+          className="tap-44 fixed inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors"
+          style={{
+            zIndex: "var(--z-fab)",
+            left: "max(0.75rem, env(safe-area-inset-left, 0px))",
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + ${triggerBottom}px)`,
+            background: "var(--app-bg-elevated-solid)",
+            borderColor: "var(--app-border)",
+            color: "var(--app-ink-2)",
+            boxShadow:
+              "0 8px 22px -10px rgba(20,20,18,0.30), 0 2px 6px rgba(20,20,18,0.08), var(--app-edge)",
+          }}
+        >
+          <MessageSquare className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+        </button>
+      )}
 
       <Sheet
         open={open}
