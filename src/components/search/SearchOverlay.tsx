@@ -136,6 +136,10 @@ export default function SearchOverlay({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
+  // Frederick matches" (2026-07-12 audit): "loading" while a request is in
+  // flight, "error" when it failed, "done" when it genuinely returned.
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [activeIdx, setActiveIdx] = useState(0);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,23 +162,28 @@ export default function SearchOverlay({
     if (!q) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous fetch's results when the user empties the input, so the overlay never shows stale answers
       setResults([]);
+      setStatus("idle");
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(() => {
+      setStatus("loading");
       fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`, {
         signal: ctrl.signal,
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((data: { results: SearchResult[] }) => {
           setResults(data.results ?? []);
+          setStatus("done");
         })
         .catch((err) => {
-          // AbortError is expected when the user keeps typing — never
-          // surface it. Other errors collapse to "no results" so the
-          // overlay still feels responsive even if the API is down.
+          // AbortError is expected when the user keeps typing — never surface
+          // it. A REAL failure becomes an explicit "error" state so the empty
+          // area reads "search unavailable", not "nothing matches" — a data
+          // failure must never look like local absence.
           if (err && err.name !== "AbortError") {
             setResults([]);
+            setStatus("error");
           }
         });
     }, 150);
@@ -455,8 +464,18 @@ export default function SearchOverlay({
           ) : results.length === 0 ? (
             // No live role on this block — regions mounted WITH content aren't
             // announced by several SRs; the persistent footer count region
-            // carries the "No matches" announcement instead.
-            hasAnswer ? null : (
+            // carries the announcement instead. Three distinct empty states so
+            // a data failure never reads as local absence (2026-07-12 audit).
+            status === "error" ? (
+              <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
+                <p style={{ color: "var(--app-ink-2)" }}>Search is unavailable right now.</p>
+                <p className="mt-1 text-xs">Check your connection and try again in a moment.</p>
+              </div>
+            ) : status === "loading" ? (
+              <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
+                <p>Searching&hellip;</p>
+              </div>
+            ) : hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
               <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
@@ -588,9 +607,13 @@ export default function SearchOverlay({
           <p role="status" aria-live="polite">
             {results.length > 0
               ? `${results.length} match${results.length === 1 ? "" : "es"}`
-              : query.trim()
-                ? "No matches"
-                : ""}
+              : !query.trim()
+                ? ""
+                : status === "error"
+                  ? "Search unavailable"
+                  : status === "loading"
+                    ? "Searching"
+                    : "No matches"}
           </p>
         </div>
       </div>
