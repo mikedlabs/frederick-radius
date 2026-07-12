@@ -425,18 +425,9 @@ export default async function AdminDesk() {
           <ActionTile href="/admin/reports" title="Reports" desc="User-flagged issues and map corrections" />
           <ActionTile href="/admin/copy-review" title="Copy review" desc="Scraped descriptions flagged to rewrite" />
           <ActionTile href="/admin/dedup-review" title="Dedup review" desc="Clusters of possible duplicate places" />
+          <ActionTile href="/admin/drift-review" title="Drift review" desc="Accept or reject changed place fields" />
+          <ActionTile href="/admin/discovered-review" title="Discovered review" desc="Triage discovered candidate places" />
         </div>
-        {process.env.NODE_ENV === "development" ? (
-          <div className="mt-3 space-y-2">
-            <h3 className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-              Dev only (local checkout)
-            </h3>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <ActionTile href="/admin/drift-review" title="Drift review" desc="Accept or reject changed place fields" />
-              <ActionTile href="/admin/discovered-review" title="Discovered review" desc="Triage discovered candidate places" />
-            </div>
-          </div>
-        ) : null}
       </section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

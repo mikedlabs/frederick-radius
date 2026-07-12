@@ -12,9 +12,6 @@ export async function decideDrift(
   field: DriftField,
   decision: DriftDecision | "clear",
 ): Promise<void> {
-  if (process.env.NODE_ENV !== "development") {
-    throw new Error("Drift review is dev-mode only.");
-  }
-  recordDecision(slug, field, decision);
+  await recordDecision(slug, field, decision);
   revalidatePath("/admin/drift-review");
 }

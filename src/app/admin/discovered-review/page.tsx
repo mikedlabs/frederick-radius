@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
   Check,
   X,
@@ -18,6 +17,7 @@ import {
   nextUndecidedIndex,
 } from "@/lib/discovered-review";
 import { decide } from "./actions";
+import DiscoveredKeys from "./DiscoveredKeys";
 
 export const metadata: Metadata = {
   title: "Discovered review · Admin",
@@ -44,24 +44,20 @@ export default async function DiscoveredReviewPage({
 }: {
   searchParams: Promise<{ i?: string }>;
 }) {
-  // Dev-mode only. In production the server actions throw, but we
-  // also lock the page to avoid showing the UI in a broken state.
-  if (process.env.NODE_ENV !== "development") notFound();
-
   const candidates = getCandidates();
-  const decisions = getDecisions();
-  const stats = getStats();
+  const decisions = await getDecisions();
+  const stats = getStats(candidates, decisions);
   const { i: iParam } = await searchParams;
   // Default cursor: first undecided. Explicit ?i= lets you jump.
   const rawIndex =
-    iParam !== undefined ? parseInt(iParam, 10) : nextUndecidedIndex(-1);
+    iParam !== undefined ? parseInt(iParam, 10) : nextUndecidedIndex(-1, candidates, decisions);
   const index =
     Number.isFinite(rawIndex) && rawIndex >= 0 && rawIndex < candidates.length
       ? rawIndex
-      : nextUndecidedIndex(-1);
+      : nextUndecidedIndex(-1, candidates, decisions);
   const candidate = index >= 0 ? candidates[index] : null;
   const decision = candidate ? decisions[candidate.google_place_id] : undefined;
-  const nextIdx = nextUndecidedIndex(index);
+  const nextIdx = nextUndecidedIndex(index, candidates, decisions);
 
   const onDecide = async (formData: FormData) => {
     "use server";
@@ -364,6 +360,13 @@ export default async function DiscoveredReviewPage({
           </button>
         )}
       </form>
+
+      <DiscoveredKeys
+        placeId={candidate.google_place_id}
+        index={index}
+        nextIndex={nextIdx}
+        total={candidates.length}
+      />
 
       <nav className="mt-4 flex items-center justify-between text-[11px]" style={{ color: "var(--app-ink-3)" }}>
         <Link

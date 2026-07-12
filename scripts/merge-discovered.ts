@@ -19,11 +19,10 @@
  *
  *   npm run merge:discovered
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-
-type Decision = "approved" | "rejected";
-type DecisionsFile = { decisions: Record<string, Decision>; updated_at: string };
+import { getApprovedIds } from "@/lib/discovered-review";
+import { closeDb } from "@/lib/db/client";
 
 type Enriched = {
   google_place_id: string;
@@ -49,7 +48,6 @@ type Enriched = {
 };
 
 const ENRICHED = path.join(process.cwd(), "src/data/discovered-enriched.json");
-const DECISIONS = path.join(process.cwd(), "data/discovered-decisions.json");
 const OUT_PLACES = path.join(process.cwd(), "src/data/places-discovered.json");
 const OUT_ENRICHMENT = path.join(process.cwd(), "src/data/places-discovered-enrichment.json");
 
@@ -148,20 +146,15 @@ function blurbFromEditorial(e: Enriched): string {
   return `A ${cat.replace("-", " ")} in ${e.municipality}. Description not yet written.`;
 }
 
-function main() {
+async function main() {
   const enriched = JSON.parse(readFileSync(ENRICHED, "utf8")) as Enriched[];
-  let decisions: DecisionsFile["decisions"] = {};
-  if (existsSync(DECISIONS)) {
-    decisions = (JSON.parse(readFileSync(DECISIONS, "utf8")) as DecisionsFile).decisions;
-  }
-
-  const approvedIds = Object.entries(decisions)
-    .filter(([, d]) => d === "approved")
-    .map(([id]) => id);
+  // Decisions now live in the curation_decisions table (DB-backed so the owner
+  // can triage from prod/phone), not a local JSON file.
+  const approvedIds = await getApprovedIds();
 
   if (approvedIds.length === 0) {
-    console.log("\n  No approved candidates found in data/discovered-decisions.json.");
-    console.log("  Open /admin/discovered-review (dev) to triage first.\n");
+    console.log("\n  No approved candidates in the curation_decisions table.");
+    console.log("  Open /admin/discovered-review to triage first.\n");
     return;
   }
 
@@ -233,4 +226,9 @@ function main() {
   console.log("  Nothing in src/data/places.ts was changed.\n");
 }
 
-main();
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(() => closeDb());
