@@ -146,7 +146,7 @@ export default async function BetaEmailsAdmin({
           No signups yet. They will appear here the moment someone leaves an email on the beta page.
         </p>
       ) : (
-        <table className="mt-6 w-full text-sm">
+        <div className="overflow-x-auto"><table className="mt-6 w-full text-sm">
           <thead>
             <tr style={{ color: "var(--app-ink-3)" }}>
               <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Email</th>
@@ -170,7 +170,7 @@ export default async function BetaEmailsAdmin({
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

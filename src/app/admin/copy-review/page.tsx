@@ -42,6 +42,14 @@ export default function CopyReview() {
         </p>
       </header>
 
+      {scraped.length === 0 ? (
+        <p
+          className="mt-6 rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          No scraped descriptions to rewrite. Every listing reads as prose.
+        </p>
+      ) : (
       <ul className="mt-6 space-y-2">
         {scraped.map((p) => (
           <li
@@ -59,6 +67,7 @@ export default function CopyReview() {
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }
