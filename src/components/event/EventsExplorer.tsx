@@ -21,6 +21,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { pickLeadEvent } from "@/lib/events/lead-rank";
 import { featuredEventSlugs } from "@/lib/events/featured";
 import { getEventsTown, setEventsTown } from "@/lib/personalize";
+import { getScope, scopeTownSlug } from "@/lib/scope";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -134,14 +135,20 @@ export default function EventsExplorer({
     parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
       .withDefault(whenToTime(initial.view.when)),
   );
-  // Town scope is REMEMBERED across visits (July 2026 review: scope reset
-  // every arrival). URL ?m= wins; otherwise the last-used town restores,
-  // validated against the live municipality set so a stale slug degrades
-  // to whole-county. Reading localStorage in the initializer is the same
-  // client-only-mount trick the URL parse above relies on (this component
-  // never prerenders — useSearchParams bails it to client render).
+  // Town default precedence (UX-02): a shared URL ?m= wins; then the global
+  // browsing SCOPE lens set from the nav chip (a town scope seeds that town,
+  // an explicit "whole county" scope clears to no town even over a stale
+  // memory); then the board's own last-used town; else whole county. Every
+  // slug is validated against the live municipality set so a stale value
+  // degrades to whole-county. Reading localStorage in the initializer is the
+  // same client-only-mount trick the URL parse above relies on (this
+  // component never prerenders — useSearchParams bails it to client render).
   const [town, setTown] = useState<string | null>(() => {
     if (initial.view.municipality) return initial.view.municipality;
+    const scope = getScope();
+    const scopeTown = scopeTownSlug(scope);
+    if (scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]) return scopeTown;
+    if (scope === "county") return null;
     const remembered = getEventsTown();
     return remembered && MUNICIPALITY_BY_SLUG[remembered] ? remembered : null;
   });
