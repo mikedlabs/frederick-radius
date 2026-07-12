@@ -521,6 +521,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         role="tabpanel"
         aria-label={paneTitle}
         aria-hidden={pane === null}
+        // Collapsed via max-height:0 (not display:none), so without `inert` a
+        // keyboard user still Tabs onto the hidden "Done" button (2026-07
+        // shell-hardening P3). inert removes the whole pane from tab order +
+        // the a11y tree while closed.
+        inert={pane === null}
         ref={paneRef}
         onKeyDown={onPaneKeyDown}
       >

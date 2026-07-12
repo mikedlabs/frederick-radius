@@ -503,6 +503,9 @@ export default function MapDock(props: MapDockProps) {
           role="tabpanel"
           aria-label={paneTitle}
           aria-hidden={pane === null}
+          // See EventsBoardDock: inert keeps the collapsed pane's "Done"
+          // button out of tab order + the a11y tree (2026-07 P3).
+          inert={pane === null}
           ref={paneRef}
           onKeyDown={onPaneKeyDown}
         >
