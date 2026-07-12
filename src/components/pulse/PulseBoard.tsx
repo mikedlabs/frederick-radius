@@ -323,13 +323,23 @@ export default function PulseBoard({
   const current = tiles.find((t) => t.key === open) ?? null;
   const attentionCount = tiles.filter((t) => t.attention).length;
 
-  // Group by presentation family so the bento reads as bands of size: the
-  // weather feature, then the gauge rings, then the status tiles.
+  // Order: the weather feature anchors the top; then anything that NEEDS
+  // ATTENTION floats up (an airport ground stop, a flood watch) so the board
+  // answers "what should I know?" at a glance instead of burying the one amber
+  // tile below a row of calm zeros — the board's whole job, and what the
+  // "Needs attention" filter already means. The calm remainder keeps its
+  // size-band rhythm: gauge rings, then status tiles. When all-clear there are
+  // no attention tiles, so the calm view is unchanged.
   const visible = filterTiles(tiles, filter);
+  const feature = visible.filter((t) => t.kind === "feature");
+  const rest = visible.filter((t) => t.kind !== "feature");
+  const attention = rest.filter((t) => t.attention);
+  const calm = rest.filter((t) => !t.attention);
   const ordered = [
-    ...visible.filter((t) => t.kind === "feature"),
-    ...visible.filter((t) => t.kind === "gauge"),
-    ...visible.filter((t) => t.kind === "status"),
+    ...feature,
+    ...attention,
+    ...calm.filter((t) => t.kind === "gauge"),
+    ...calm.filter((t) => t.kind === "status"),
   ];
 
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -400,15 +410,11 @@ export default function PulseBoard({
             </div>
           </div>
 
+          {/* No "Now 75°" here — the temperature (and its condition + H/L) is
+              the weather FEATURE tile immediately below, both derived from the
+              same reading, so stating it in the hero too was the same fact
+              twice (2026-07). The hero footer is just freshness now. */}
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2.5 text-[11px] tabular-nums" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            {hero.temp != null && (
-              <>
-                <span className="font-mono font-bold" style={{ color: "var(--app-ink-2)" }}>
-                  Now {hero.temp}°
-                </span>
-                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-              </>
-            )}
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
               Refreshed {hero.refreshedClock} · auto-updates every couple of minutes
