@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Mail } from "lucide-react";
+import { LogOut, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
@@ -31,14 +31,10 @@ export default async function SettingsPage() {
     <div className="relative space-y-5">
       <PageBloom variant="cool" />
       <header className="space-y-2">
-        <Link
-          href="/today"
-          className="inline-flex items-center gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Back
-        </Link>
+        {/* No page-level Back — the TopBar already renders a ChevronLeft
+            back control for every deep (non-tab) page like Settings, and it
+            prefers real history over a hardcoded /today (2026-07 shell-
+            hardening P6: two stacked Back affordances). */}
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Settings
         </p>
