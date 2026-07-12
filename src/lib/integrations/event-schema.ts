@@ -101,6 +101,7 @@ export const liveEventSchema = z
       "civil-war-med",
       "maryland-ensemble",
       "catoctin",
+      "fcc",
     ]),
     source_label: z.string().min(1).max(120),
     url: z.string().url(),

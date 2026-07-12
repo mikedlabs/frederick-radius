@@ -171,6 +171,7 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   "civil-war-med":  { license: "National Museum of Civil War Medicine calendar", confidence: "partner" },
   "maryland-ensemble": { license: "Maryland Ensemble Theatre calendar",          confidence: "partner" },
   catoctin:         { license: "Catoctin Land Trust calendar",                   confidence: "partner" },
+  fcc:              { license: "Frederick Community College calendar",           confidence: "verified" },
   ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
   seatgeek:         { license: "SeatGeek Platform API terms",                     confidence: "verified" },

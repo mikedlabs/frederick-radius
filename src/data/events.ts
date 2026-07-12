@@ -75,7 +75,7 @@ export type Event = {
     // which let a Ticketmaster row claim first party curated trust.
     | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
     | "fcpl" | "fcvfra" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick"
-    | "monocacy" | "msd" | "mount-st-marys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin"
+    | "monocacy" | "msd" | "mount-st-marys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin" | "fcc"
     | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract" | "frederick-keys";
   is_verified: boolean;
   /**
