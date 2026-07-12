@@ -5,7 +5,8 @@ import { MapIcon, ArrowRight } from "lucide-react";
 import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow, formatTime } from "@/lib/hours";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITY_BY_SLUG, MUNICIPALITIES } from "@/data/municipalities";
+import ScopeBar from "@/components/nav/ScopeBar";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { effectiveOriginSlug } from "@/lib/scope";
@@ -97,10 +98,6 @@ export default async function OpenNowPage() {
   })
     .format(now)
     .toUpperCase();
-  const fromLabel =
-    homeMuni && MUNICIPALITY_BY_SLUG[homeMuni]
-      ? ` · ranked from ${MUNICIPALITY_BY_SLUG[homeMuni].name}`
-      : "";
 
   // ── Index rows (the judged card system: serif name, one support line,
   //    one mono data line). Every field here earns its slot by decision
@@ -222,9 +219,18 @@ export default async function OpenNowPage() {
           Open right now
         </h1>
         <p className="mt-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {verified.length} verified against live hours{fromLabel}
+          {verified.length} verified against live hours
         </p>
       </header>
+
+      {/* Where the list ranks from — always shown, always changeable, writes
+          the shared scope (beta feedback 2026-07-12: no way to change location
+          once set). Carries the "ranked from X" that used to ride the count
+          line, now interactive. */}
+      <ScopeBar
+        current={homeMuni}
+        municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
+      />
 
       {verified.length > 0 ? (
         <PlaceIndex sections={sections} />

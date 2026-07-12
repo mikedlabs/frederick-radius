@@ -7,14 +7,17 @@ import { setScope } from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
- * CategoryLocationBar — the always-present "where am I looking" control on a
- * category page.
+ * ScopeBar — the always-present "where am I looking" control for a
+ * scope-ranked LIST surface (category pages, /open-now — the pages that print
+ * "Ranked from X" and re-order by proximity to a town).
  *
- * The old affordance (SetTownInline) only appeared when NO town was set; the
- * moment you picked one, it was replaced by read-only "Ranked from X" text, so
- * there was no way to CHANGE the town on the page — you had to leave and find
- * the nav chip (which is desktop-only). Beta feedback (2026-07-12): "I picked
- * Mt. Airy but couldn't find where to change it."
+ * The old category affordance (SetTownInline) only appeared when NO town was
+ * set; the moment you picked one, it was replaced by read-only "Ranked from X"
+ * text, so there was no way to CHANGE the town on the page — you had to leave
+ * and find the nav chip, which is hidden on mobile. Beta feedback (2026-07-12):
+ * "I picked Mt. Airy but couldn't find where to change it." This is the fix, on
+ * every ranked list surface: a contextual control right where location changes
+ * the results, working the same on mobile and desktop.
  *
  * So this bar is ALWAYS shown, states the current choice, and carries the
  * change control inline. It writes the shared browsing SCOPE (lib/scope.ts) —
@@ -22,7 +25,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
  * here shows up in the chip and re-ranks everywhere, and the two controls can
  * never disagree.
  */
-export default function CategoryLocationBar({
+export default function ScopeBar({
   current,
   municipalities,
 }: {
