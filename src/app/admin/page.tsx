@@ -421,6 +421,7 @@ export default async function AdminDesk() {
           <ActionTile href="/admin/claims" title="Review submissions" desc="Places, events, business claims" />
           <ActionTile href="/admin/costs" title="Usage costs" desc="Meter, rates, cost-control checklist" />
           <ActionTile href="/admin/data-health" title="Data health" desc="Feeds, trust ladder, review queues, ingest runs" />
+          <ActionTile href="/admin/coverage" title="Coverage & freshness" desc="Town equity, verification integrity, attribute gaps" />
           <ActionTile href="/admin/beta-emails" title="Beta emails" desc="Launch list + CSV export" />
           <ActionTile href="/admin/reports" title="Reports" desc="User-flagged issues and map corrections" />
           <ActionTile href="/admin/copy-review" title="Copy review" desc="Scraped descriptions flagged to rewrite" />
