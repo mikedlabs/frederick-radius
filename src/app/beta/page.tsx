@@ -53,7 +53,7 @@ export default async function BetaPage({
   const rings = [70, 130, 195, 265, 340, 420, 505];
 
   return (
-    <main className="relative overflow-hidden" style={{ background: "var(--app-bg)", backgroundImage: "var(--app-paper-light)" }}>
+    <main id="top" className="relative overflow-hidden" style={{ background: "var(--app-bg)", backgroundImage: "var(--app-paper-light)" }}>
       {/* ── HERO — the access cover ────────────────────────────────────── */}
       {/* gridTemplateColumns minmax(0,1fr): the single auto column otherwise
           sizes to the hero's max-content (the 27rem block beats a 390px
@@ -231,7 +231,7 @@ export default async function BetaPage({
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <SpecimenCard hue="var(--app-accent)" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
             <SpecimenCard hue="var(--app-brand-2)" kicker="Music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
-            <SpecimenCard hue="var(--app-cool)" kicker="Town · Pl. I" name="Downtown Frederick" line="Clustered spires · pop. 80,435" />
+            <SpecimenCard hue="var(--app-cool)" kicker="City · Pl. I" name="Downtown Frederick" line="Clustered spires · Carroll Creek" />
           </div>
           <p className="mx-auto mt-5 max-w-[30rem] text-center text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Save the ones you love. They land in your pocket, each with a plate
@@ -257,7 +257,7 @@ export default async function BetaPage({
       <RevealOnScroll>
         <section className="py-14 sm:py-16" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
           <p className="mb-6 text-center font-mono text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--app-brand-2)" }}>
-            {MUNICIPALITIES.length} towns, one radius
+            {MUNICIPALITIES.length} communities, one radius
           </p>
           <TownMarquee />
         </section>
@@ -302,7 +302,7 @@ export default async function BetaPage({
             className="mx-auto mt-8 flex max-w-[24rem] items-center justify-center gap-2.5 border-t pt-3 font-mono text-[10.5px] uppercase tracking-[0.12em]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            <span>{MUNICIPALITIES.length} towns</span>
+            <span>{MUNICIPALITIES.length} communities</span>
             <span aria-hidden style={{ color: "var(--app-brand)" }}>·</span>
             <span>663 sq mi</span>
             <span aria-hidden style={{ color: "var(--app-brand)" }}>·</span>
@@ -617,7 +617,7 @@ async function ProofStrip() {
   }
   if (p.troutThisWeek) signals.push("Trout stocked this week");
   signals.push(`${p.places.toLocaleString()} places mapped`);
-  signals.push(`${p.towns} towns, one radius`);
+  signals.push(`${p.towns} communities, one radius`);
   const ticker = [...signals, ...signals];
 
   return (
@@ -691,7 +691,7 @@ async function PulseGrid() {
   const p = await getBetaPulse(new Date());
   const stats: Array<{ n: string; label: string; live?: boolean }> = [
     { n: p.places.toLocaleString(), label: "places mapped" },
-    { n: String(p.towns), label: "towns, one radius" },
+    { n: String(p.towns), label: "communities, one radius" },
   ];
   if (p.eventsToday != null) stats.push({ n: String(p.eventsToday), label: p.eventsToday === 1 ? "event on today" : "events on today", live: true });
   if (p.keys) {
