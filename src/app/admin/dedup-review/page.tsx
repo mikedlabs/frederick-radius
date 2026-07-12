@@ -59,7 +59,7 @@ export default function DedupReview() {
           >
             <ul className="space-y-1">
               {c.members
-                .sort((a) => (a === c.canonical ? -1 : 1))
+                .sort((a, b) => (a === c.canonical ? -1 : b === c.canonical ? 1 : 0))
                 .map((s) => {
                   const p = BY_SLUG[s];
                   const isCanon = s === c.canonical;

@@ -117,18 +117,41 @@ function Queue({ rows }: { rows: Row[] }) {
             Recently decided
           </h2>
           <ul className="mt-2 space-y-1">
-            {decided.slice(0, 25).map((s) => (
-              <li
-                key={s.id}
-                className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <span className="truncate" style={{ color: "var(--app-ink-2)" }}>
-                  {kindLabel(s.kind)} · {submissionTitle(s)}
-                </span>
-                <StatusPill status={s.status} />
-              </li>
-            ))}
+            {decided.slice(0, 25).map((s) => {
+              // Approving a business claim mints the owner's manage_token — the
+              // only credential to /business/manage. Surface it here so it's
+              // copyable (delivery by email is a separate, owner-gated step).
+              const manageUrl =
+                s.status === "approved" && s.kind === "business_claim" && s.manage_token
+                  ? `/business/manage/${s.manage_token}`
+                  : null;
+              return (
+                <li
+                  key={s.id}
+                  className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate" style={{ color: "var(--app-ink-2)" }}>
+                      {kindLabel(s.kind)} · {submissionTitle(s)}
+                    </span>
+                    <StatusPill status={s.status} />
+                  </div>
+                  {manageUrl ? (
+                    <a
+                      href={manageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tap-44 mt-1 block truncate font-mono text-[11px]"
+                      style={{ color: "var(--app-cool)" }}
+                      title="Owner management link for this claim: send it to the claimant"
+                    >
+                      {manageUrl}
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

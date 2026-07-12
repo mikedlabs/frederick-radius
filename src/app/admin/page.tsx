@@ -103,7 +103,10 @@ async function loadDesk(): Promise<{
 
     const byKind = Object.fromEntries(subRows.map((r) => [r.kind, r.n]));
     const feedbackPending = byKind["feedback"] ?? 0;
-    const claimsPending = byKind["claim"] ?? 0;
+    // Claims are inserted with kind "business_claim" (submit/actions.ts), NOT
+    // "claim" — the old key read 0 always, so the owner was blind to waiting
+    // claims and they were silently folded into the submissions count.
+    const claimsPending = byKind["business_claim"] ?? 0;
     const submissionsPending = subRows.reduce((a, r) => a + r.n, 0) - feedbackPending - claimsPending;
 
     // Cost sentinel: today vs the median of the prior seven days, per
