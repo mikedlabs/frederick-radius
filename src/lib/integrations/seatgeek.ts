@@ -152,7 +152,7 @@ export async function fetchSeatGeek(): Promise<LiveEvent[]> {
     }
     return normalizeSeatGeek(await res.json());
   } catch (err) {
-    console.error("[seatgeek] fetch failed:", err);
+    console.warn("[seatgeek] fetch failed:", err);
     return [];
   } finally {
     clearTimeout(timer);

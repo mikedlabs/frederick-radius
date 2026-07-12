@@ -387,7 +387,7 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
     }
     base = normalizeVisitFrederickRss(await res.text());
   } catch (err) {
-    console.error("[visit-frederick] fetch failed:", err);
+    console.warn("[visit-frederick] fetch failed:", err);
     return [];
   } finally {
     clearTimeout(timer);
@@ -419,7 +419,7 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
     });
     return await Promise.race([enrich, budget]);
   } catch (err) {
-    console.error("[visit-frederick] enrichment failed, using un-enriched feed:", err);
+    console.warn("[visit-frederick] enrichment failed, using un-enriched feed:", err);
     return base;
   } finally {
     clearTimeout(budgetTimer);

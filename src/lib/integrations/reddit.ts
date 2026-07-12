@@ -170,7 +170,7 @@ export async function getFrederickRedditPulse(opts: {
     return posts;
   } catch (err) {
      
-    console.error("[reddit/rss] fetch failed:", err);
+    console.warn("[reddit/rss] fetch failed:", err);
     return [];
   }
 }

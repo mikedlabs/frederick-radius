@@ -103,7 +103,8 @@ async function fetchVenue(
       if (res.status === 404 || res.status === 410) {
         console.info(`[squarespace-live] ${venue.slug}: page retired (HTTP ${res.status})`);
       } else {
-        console.error(`[squarespace-live] ${venue.slug}: HTTP ${res.status}`);
+        console.warn(
+`[squarespace-live] ${venue.slug}: HTTP ${res.status}`);
       }
       return [];
     }
@@ -154,7 +155,11 @@ async function fetchVenue(
     return out;
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
-    console.error(
+    // Expected fail-soft: an unreliable upstream feed timed out / refused, we
+    // return [] and degrade gracefully — a WARNING, not an error, so recurring
+    // feed flakiness doesn't drown real errors in the dashboard (mirrors the
+    // ical-live precedent; 2026-07-12 audit P2.15).
+    console.warn(
       `[squarespace-live] ${venue.slug} ${aborted ? `timed out (>${FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
       err instanceof Error ? err.message : err,
     );
