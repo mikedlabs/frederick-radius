@@ -140,7 +140,7 @@ function formatHours(raw: string): string {
  * "all day", and a single anchored time ("at 6:00 PM"). Returns undefined when
  * no time is stated, so the surface shows no time chip rather than a fake one.
  */
-function extractHours(text: string): string | undefined {
+export function extractHours(text: string): string | undefined {
   const range = text.match(
     /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–—]\s*(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|close)\b/i,
   );
