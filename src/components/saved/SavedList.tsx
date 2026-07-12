@@ -236,9 +236,13 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
-      if (saved === "town" || saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
+      // Validate against the live SORT_OPTIONS, not a hand-kept list — the old
+      // hardcoded check omitted "open", so choosing "Open now" silently failed
+      // to persist (2026-07-12 audit). Deriving it means a new sort can never
+      // desync again.
+      if (saved && SORT_OPTIONS.some((o) => o.key === saved)) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
-        setSort(saved);
+        setSort(saved as SavedSortKey);
       }
     } catch {
       /* localStorage unavailable; keep default */
