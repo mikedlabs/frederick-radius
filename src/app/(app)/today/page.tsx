@@ -582,26 +582,22 @@ export default async function HomePage() {
           the link wants this too, so it's a standing card, not mode-gated. */}
       <VisitorStayPrompt />
 
-      {/* ── MORE FOR TODAY — everything secondary, COLLAPSED by default.
-          This is the de-clutter: partner apps, the surprise-me pick,
-          local headlines, and the photography exit beat all live behind
-          one tap instead of four scroll-screens. */}
-      <CollapsibleSection
-        title="More for today"
-        storageKey="fr.today.more"
-        defaultOpen={false}
-      >
-        <div className="space-y-4 pt-1">
-          <FoodTruckToday />
-          <PartnerAppsRow />
-          <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-            <WorthALook />
-          </Suspense>
-          {/* Local news moved to /pulse (the civic dashboard that owns it) and
-              the From Above drone-book doorway moved off the front door — both
-              are "check when curious," not "find something to do today." */}
-        </div>
-      </CollapsibleSection>
+      {/* Secondary beats — partner apps, the surprise-me pick, the photography
+          exit — render DIRECTLY here, no longer wrapped in their own "More for
+          today" collapsible. They were a disclosure INSIDE the collapsed "full
+          briefing", so reaching them took two separate expands (2026-07-12
+          audit: disclosure-inside-disclosure). Now "The full briefing" is the
+          single secondary disclosure the whole page hands off to. */}
+      <div className="space-y-4">
+        <FoodTruckToday />
+        <PartnerAppsRow />
+        <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+          <WorthALook />
+        </Suspense>
+        {/* Local news moved to /pulse (the civic dashboard that owns it) and
+            the From Above drone-book doorway moved off the front door — both
+            are "check when curious," not "find something to do today." */}
+      </div>
 
         </div>{/* /RIGHT column */}
       </div>{/* /responsive split */}
