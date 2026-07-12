@@ -271,7 +271,11 @@ export default function EventCard({
     const capColor = onPhoto ? "rgba(255,255,255,0.82)" : "var(--app-ink-2)";
     return (
       <article
-        className="tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+        // 3:2 on mobile; a shorter 21:9 at lg so the feature card doesn't eat
+        // ~590px of the desktop reading column and hide the results below it
+        // (2026-07 shell-hardening P6). The overlaid title/eyebrow still clear
+        // the shorter face, and the photo object-covers.
+        className="tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)] lg:aspect-[21/9]"
         style={{ backgroundColor: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
         {/* The face — the venue photo, or a designed engraved-glyph plate. */}
