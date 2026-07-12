@@ -52,6 +52,19 @@ export default function TopBar() {
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
 
+  // Has the user navigated WITHIN the app since arriving? The TopBar lives in
+  // the (app) layout, which persists across navigations, so counting pathname
+  // changes here reliably tells an in-app Back (safe) from a cold arrival
+  // (deep link / new tab / shared URL) where router.back() would bounce the
+  // user OFF-SITE — to Google, the referrer — instead of into Frederick Radius
+  // (2026-07-12 audit: window.history.length is not app-aware).
+  const inAppNavs = useRef(0);
+  const seenFirstPath = useRef(false);
+  useEffect(() => {
+    if (seenFirstPath.current) inAppNavs.current += 1;
+    else seenFirstPath.current = true;
+  }, [pathname]);
+
   // Publish the bar's real bottom edge as --app-topbar-offset on <html> so
   // sticky bars pinned under it (RightNow's filter bar, the /events dock)
   // collapse in sync with the auto-hide instead of orphaning a band of raw
@@ -81,10 +94,11 @@ export default function TopBar() {
   // The left slot becomes a Back button here instead of the wordmark.
   const isDeepPage = pathname !== "/" && tabIndexForPath(pathname) === -1;
   const goBack = () => {
-    // Prefer real history; fall back to /today (the front door) when the
-    // user landed here cold (deep link / new tab) so Back is never a dead
-    // button. Was /guide before that page lost its primary-nav tab.
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    // Only trust history.back() when the previous entry is KNOWN to be ours —
+    // i.e. the user has navigated within the app. On a cold arrival, go to the
+    // front door instead of bouncing them off-site (the old test,
+    // window.history.length > 1, is true even when the prior entry is Google).
+    if (inAppNavs.current > 0) {
       router.back();
     } else {
       router.push("/today");
