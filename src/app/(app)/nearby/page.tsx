@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { isCravingPlace } from "@/data/cravings";
 import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
+import { parseScope, scopeTownSlug, SCOPE_COOKIE } from "@/lib/scope";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/nearby" },
@@ -44,6 +46,12 @@ export default async function NowPage({
   searchParams: Promise<{ c?: string; facet?: string; town?: string }>;
 }) {
   const { c, facet, town } = await searchParams;
+  // Town seed precedence (UX-02): a shared URL ?town= wins; then the global
+  // browsing SCOPE lens (fr_scope) set from the nav chip; else null, which
+  // lets IP-geo below choose. A "whole county" / "near me" scope carries no
+  // town, so it falls through to the geo seed — exactly right.
+  const store = await cookies();
+  const scopeTown = scopeTownSlug(parseScope(store.get(SCOPE_COOKIE)?.value ?? null));
   // Edge IP geo: a coarse "which town" seed so a visitor outside Downtown ranks
   // from where they actually are BEFORE granting precise location. Ranking only,
   // never a printed distance. Null (out of area / no header) keeps the Downtown
@@ -65,7 +73,7 @@ export default async function NowPage({
       places={places}
       initialCraving={c ?? null}
       initialFacet={facet ?? null}
-      initialTown={town ?? null}
+      initialTown={town ?? scopeTown ?? null}
       approxOrigin={approx.origin}
       approxCity={approx.city}
     />
