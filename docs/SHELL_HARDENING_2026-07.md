@@ -6,6 +6,45 @@ is a **consistency + shell-hardening** pass, not a redesign. Principle:
 against live code by a 7-agent audit (verify-before-asserting). Status is what
 the CODE actually does, not the brief's assumption.
 
+## SHIPPED (2026-07-11)
+- **#1061 contrast (P4)** — brand-press on nav active labels / MobileActionBar
+  primary / event date-badge; new --app-control-border (#A5966F) on SearchInput.
+- **#1062 one transition (P5)** — deleted the .route-fade template wrapper +
+  CSS; View Transitions is now the single system (template.tsx kept as a
+  fragment for its load-bearing remount-on-nav).
+- **#1063 a11y (P3 partial)** — inert on collapsed .eb-pane/.dock-pane; 44px
+  dropdown menu rows. (view-toggle left: already AA per WCAG 2.2 2.5.8.)
+- **#1064 hierarchy polish (P6 partial)** — settings duplicate Back removed;
+  weather↔Ask mt-4 gap; onboarding copy → "It stays on your device."
+- **#1065 pwa prompts (P1/P5)** — update toast gains a "Later" dismiss;
+  InstallPrompt gains the missing safe-area inset.
+
+## REMAINING (ranked, all grounded below)
+1. **P7 modal focus traps** (M/med) — extract useFocusTrap from Sheet.tsx:112-133
+   → PlaceSheet + PhotoLightbox (no Tab-cycle today). Verifiable (open PlaceSheet,
+   Tab should cycle). Med-risk on the flagship sheet — do it fresh, not rushed.
+2. **P3 skip-link** — move id=main off the root shell div (layout.tsx:269, sits
+   ABOVE TopBar) onto each route group's real <main> (AppMain + pitch + beta +
+   not-found), removing it from root. Cross-route: enumerate EVERY route's
+   content <main> (auth pages?) so none lose the target — that care is why it's
+   deferred, not a one-liner.
+3. **P1 floating-band contract** (M) — the bottom offsets 76/80/84/10 are
+   hand-tuned per file (MobileActionBar/FeedbackWidget/FloatingPlanFab/Toaster).
+   Tokenize into --app-floating-band vars so they can't drift; add slot ordering
+   so bottom-center InstallPrompt vs toast don't share a slot.
+4. **P2 map viewport** — DEFERRED, see below (skeleton/loaded position mismatch).
+5. **P8 map glyphs** (M) — sports + community fall to the generic pin; add
+   BUCKET entries in categoryMarkers.ts:32-69.
+6. **P6 layout** — desktop Events hero cap (EventCard.tsx:274), mobile eb-dock
+   resting-height trim, reading-column centering (AppMain lg:pl-24 shifts the
+   mx-auto box ~48px right — med-risk vs SideRail).
+7. **CSS architecture (Ls)** — extract ~2000 route-scoped lines from the
+   4257-line globals.css into co-located modules; semantic type scale + codemod
+   the ~1891 text-[Npx] (priority: ~292 sub-11px); one continuous animation per
+   surface.
+8. **P3 menu keyboard** — role=menu without arrow-key roving tabindex on
+   LocationChip/SortDropdown; decide APG-menu vs downgrade-role (owner call).
+
 ## Preserve (do not "simplify")
 Today weather briefing + Ask Radius · Browse drawer · Place Field Notes ·
 Event photography · Saved's "Blank for now" empty state · two-step onboarding ·
