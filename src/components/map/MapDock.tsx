@@ -12,6 +12,7 @@ import type { LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
+import { setScope } from "@/lib/scope";
 import { track } from "@/lib/track";
 import {
   TIME_WINDOWS,
@@ -308,15 +309,30 @@ export default function MapDock(props: MapDockProps) {
     });
   };
 
+  // Where picks WRITE BACK to the global browsing lens (UX-02): choosing a
+  // town or the whole county on the map propagates to the nav chip and the
+  // list surfaces, so the map is a first-class scope contributor. (Seeding
+  // the map's camera FROM scope on entry is the remaining half — it needs a
+  // coherent initial center + zoom, its own change.) The camera move is
+  // unchanged; only the extra setScope line is new.
   const goTown = (slug: string, name: string, center: [number, number]) => {
     haptic("light");
     setWhereSel({ kind: "town", slug, name });
+    setScope(`town:${slug}`);
     props.flyTo(center, TOWN_ZOOM);
   };
   const goCounty = () => {
     haptic("light");
     setWhereSel({ kind: "county" });
+    setScope("county");
     props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
+  };
+  // Explicit near-me tap (not the automatic fix-landed relabel, which must
+  // not clobber a chosen town scope on every map mount): set the lens, then
+  // run the map's own locate.
+  const pickNearMe = () => {
+    setScope("nearme");
+    props.goNearMe();
   };
 
   // ── Derived caption state ──
@@ -587,7 +603,7 @@ export default function MapDock(props: MapDockProps) {
                   type="button"
                   className="dock-findme"
                   data-on={whereSel.kind === "nearme" || undefined}
-                  onClick={props.goNearMe}
+                  onClick={pickNearMe}
                   aria-busy={props.locating || undefined}
                 >
                   <LocateFixed className="h-4 w-4" strokeWidth={2.2} aria-hidden />
