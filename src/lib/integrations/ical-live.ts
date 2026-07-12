@@ -59,7 +59,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -152,10 +152,11 @@ const FEEDS: FeedSpec[] = [
     // a blog. URL overridable so a calendar move needs no deploy.
     source: "hood",
     source_label: "Hood College",
-    // Hood's Trumba calendar now returns HTTP 410 Gone, so the hardcoded
-    // default is dead — gated OFF (empty url → skipped) until a working
-    // URL is supplied via HOOD_CALENDAR_URL. No more dead fetch per request.
-    url: process.env.HOOD_CALENDAR_URL ?? "",
+    // Hood's old Trumba calendar 410'd; the live calendar moved to Brightly
+    // "Active Calendar" (fetch-verified 2026-07-12: go.activecalendar.com/hood
+    // /page/ical/ returns real Coffman Chapel events). Sparse in summer, fills
+    // in the fall term. HOOD_CALENDAR_URL still overrides if it moves again.
+    url: process.env.HOOD_CALENDAR_URL ?? "https://go.activecalendar.com/hood/page/ical/",
     format: "ical",
     default_venue: "Hood College",
     default_geom: { lng: -77.3997, lat: 39.4246 },
@@ -303,6 +304,36 @@ const FEEDS: FeedSpec[] = [
     default_geom: { lng: -77.4118, lat: 39.4146 },
     default_municipality: "frederick",
     default_category: "gallery",
+  },
+  {
+    // Islamic Society of Frederick — public Google Calendar (fetch-verified
+    // 2026-07-12: 147 VEVENTs incl. Juma, Eid festival, youth groups, full
+    // LOCATION+DESCRIPTION). The county has 168 worship places and had ~zero
+    // worship events; this is the first faith-community event feed.
+    source: "isf",
+    source_label: "Islamic Society of Frederick",
+    url: "https://calendar.google.com/calendar/ical/c_c6114ad8fc9e85edfd02c33a366bc2b049ef9b8c41d8ddad0274956761a4a59f%40group.calendar.google.com/public/basic.ics",
+    format: "ical",
+    default_venue: "Islamic Society of Frederick",
+    default_geom: { lng: -77.4432, lat: 39.4293 }, // 1250 Key Parkway
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Evangelical Lutheran Church (the downtown twin-spire landmark, 35 E
+    // Church St) — FaithConnector iCal (fetch-verified 2026-07-12). Broad feed
+    // (2011->2027); the in-window filter keeps only upcoming, and the parser
+    // drops the RRULE-recurring internal meetings, leaving the dated public
+    // events (book sale, VBS, concerts). Thin fields, so default_geom carries
+    // the venue.
+    source: "elc",
+    source_label: "Evangelical Lutheran Church",
+    url: "https://www.twinspires.org/gencal.cfm?event_category=All",
+    format: "ical",
+    default_venue: "Evangelical Lutheran Church",
+    default_geom: { lng: -77.4099, lat: 39.4145 },
+    default_municipality: "frederick",
+    default_category: "community",
   },
   // NOTE on live-music venues (Tenth Ward, Monocacy, Bentztown, …):
   // their public Tribe iCal exports were evaluated here and rejected —
@@ -995,7 +1026,7 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
   return unstable_cache(
     () => getLiveEvents(windowDays),
-    ["live-events-v2", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+    ["live-events-v3", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
     { revalidate: 300, tags: ["events"] },
   )();
 }

@@ -166,6 +166,8 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   monocacy:         { license: "Venue feed, Monocacy Brewing",                   confidence: "partner" },
   msd:              { license: "Maryland School for the Deaf calendar",          confidence: "verified" },
   "mount-st-marys": { license: "Mount St. Mary's University calendar",           confidence: "verified" },
+  isf:              { license: "Islamic Society of Frederick public calendar",   confidence: "verified" },
+  elc:              { license: "Evangelical Lutheran Church calendar",           confidence: "partner" },
   ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
   seatgeek:         { license: "SeatGeek Platform API terms",                     confidence: "verified" },
