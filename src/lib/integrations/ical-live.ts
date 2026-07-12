@@ -59,7 +59,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys" | "isf" | "elc" | "civil-war-med" | "maryland-ensemble" | "catoctin";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -85,9 +85,16 @@ type Feed = {
   default_category: string;
 };
 
-type FeedFormat = "ical" | "rss";
+type FeedFormat = "ical" | "rss" | "tribe";
 
-type FeedSpec = Feed & { format: FeedFormat };
+type FeedSpec = Feed & {
+  format: FeedFormat;
+  /** tribe only: drop events whose venue.state isn't this (e.g. "MD" to keep
+   *  a museum's DC-satellite events out of the county set). */
+  only_state?: string;
+  /** tribe only: drop title~=online rows (venue-less livestreams). */
+  skip_online?: boolean;
+};
 
 const FEEDS: FeedSpec[] = [
   {
@@ -332,6 +339,48 @@ const FEEDS: FeedSpec[] = [
     format: "ical",
     default_venue: "Evangelical Lutheran Church",
     default_geom: { lng: -77.4099, lat: 39.4145 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // National Museum of Civil War Medicine (The Events Calendar REST,
+    // fetch-verified 2026-07-12: 65 events, walking tours + living history).
+    // The org runs a DC satellite (Clara Barton Missing Soldiers Office) whose
+    // events share the feed, so only_state:"MD" keeps the county set clean.
+    source: "civil-war-med",
+    source_label: "National Museum of Civil War Medicine",
+    url: "https://www.civilwarmed.org/wp-json/tribe/events/v1/events",
+    format: "tribe",
+    only_state: "MD",
+    default_venue: "National Museum of Civil War Medicine",
+    default_geom: { lng: -77.4088, lat: 39.4141 }, // 48 E Patrick St
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Maryland Ensemble Theatre (The Events Calendar REST, fetch-verified).
+    // The feed leaves venue empty, so default_venue/geom carry the MET address;
+    // skip_online drops its recurring venue-less Twitch comedy streams.
+    source: "maryland-ensemble",
+    source_label: "Maryland Ensemble Theatre",
+    url: "https://marylandensemble.org/wp-json/tribe/events/v1/events",
+    format: "tribe",
+    skip_online: true,
+    default_venue: "Maryland Ensemble Theatre",
+    default_geom: { lng: -77.411, lat: 39.4146 }, // 31 W Patrick St
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Catoctin Land Trust (The Events Calendar REST, fetch-verified). Low
+    // volume; events are the org's regardless of venue town, so no state
+    // filter (an outing may meet at a partner site just over the county line).
+    source: "catoctin",
+    source_label: "Catoctin Land Trust",
+    url: "https://catoctinlandtrust.org/wp-json/tribe/events/v1/events",
+    format: "tribe",
+    default_venue: "Catoctin Land Trust",
+    default_geom: { lng: -77.4105, lat: 39.4143 },
     default_municipality: "frederick",
     default_category: "community",
   },
@@ -924,7 +973,132 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
   }
 }
 
+/** One event in a WordPress "The Events Calendar" REST v1 payload. Only the
+ *  fields we read are typed; the payload carries far more. */
+type TribeEvent = {
+  title?: string;
+  description?: string;
+  start_date?: string; // "2026-07-11 10:30:00" (venue-local ET)
+  end_date?: string;
+  utc_start_date?: string; // "2026-07-11 14:30:00" (UTC)
+  utc_end_date?: string;
+  url?: string;
+  venue?: { venue?: string; address?: string; city?: string; state?: string } | unknown[];
+};
+
+/** Parse a tribe date: prefer the plugin's UTC field, else read the local
+ *  wall time as Eastern. Returns an ISO string or null. */
+function tribeDateToISO(utc?: string, local?: string): string | null {
+  if (utc && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(utc)) {
+    const d = new Date(utc.replace(" ", "T") + "Z");
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const m = local?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (m) return easternWallToUtcISO(+m[1], +m[2], +m[3], +m[4], +m[5]);
+  return null;
+}
+
+/**
+ * Fetch a WordPress "The Events Calendar" REST v1 feed
+ * (wp-json/tribe/events/v1/events) and map it to the shared LiveEvent shape —
+ * same window + fail-soft + validate contract as the iCal path. Used by
+ * museum / theater / land-trust nonprofits whose sites run the plugin
+ * (civilwarmed.org, marylandensemble.org, catoctinlandtrust.org).
+ */
+async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  try {
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + windowDays);
+    const sep = feed.url.includes("?") ? "&" : "?";
+    const url = `${feed.url}${sep}per_page=50&start_date=${now.toISOString().slice(0, 10)}`;
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "application/json",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      if (res.status === 410 || res.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
+      } else {
+        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
+      }
+      return [];
+    }
+    const data = (await res.json()) as { events?: TribeEvent[] };
+    const items = Array.isArray(data.events) ? data.events : [];
+    const events: LiveEvent[] = [];
+    for (const item of items) {
+      const rawTitle = (item.title ?? "").trim();
+      if (!rawTitle) continue;
+      if (feed.skip_online && /\bonline\b/i.test(rawTitle)) continue;
+      const v =
+        item.venue && !Array.isArray(item.venue)
+          ? (item.venue as { venue?: string; address?: string; state?: string })
+          : undefined;
+      // Drop satellite events (e.g. the Civil War Medicine museum's DC location).
+      if (feed.only_state && v?.state && v.state.trim().toUpperCase() !== feed.only_state) continue;
+      const startsAtISO = tribeDateToISO(item.utc_start_date, item.start_date);
+      if (!startsAtISO) continue;
+      const effectiveStart = new Date(startsAtISO);
+      if (effectiveStart < now || effectiveStart > horizon) continue;
+      const endsAtISO =
+        tribeDateToISO(item.utc_end_date, item.end_date) ??
+        new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
+      const status = deriveEventStatus(rawTitle, undefined);
+      const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
+      // Tribe descriptions are HTML; strip tags before the shared cleaner.
+      const description = (item.description ?? "").replace(/<[^>]+>/g, " ").trim();
+      const cleanedDesc = clampDescription(cleanDescription(description), 300);
+      const venue = (v?.venue ?? "").trim() || feed.default_venue;
+      const address = (v?.address ?? "").trim();
+      const candidate = {
+        id: `${feed.source}:${dedupeKey(title, effectiveStart, venue)}`,
+        title,
+        status,
+        description: cleanedDesc,
+        starts_at: startsAtISO,
+        ends_at: endsAtISO,
+        is_all_day: false,
+        venue_name: venue,
+        address,
+        geom: feed.default_geom,
+        municipality: inferMunicipality(address, feed.default_municipality),
+        category: feedCategory(feed, title, description),
+        organizer: feed.source_label,
+        source: feed.source,
+        source_label: feed.source_label,
+        url: item.url ?? feed.url,
+        is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        last_verified_at: fetchedAt,
+      };
+      const validated = validateLiveEvent(candidate, feed.source);
+      if (validated) events.push(validated);
+    }
+    console.log(`[ical-live] ${feed.source}: parsed ${events.length} tribe events in window`);
+    recordSnapshot(feed.source, events);
+    return events;
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.warn(
+      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
   return fetchIcalFeed(feed, windowDays);
 }
@@ -1026,7 +1200,7 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
   return unstable_cache(
     () => getLiveEvents(windowDays),
-    ["live-events-v3", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+    ["live-events-v4", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
     { revalidate: 300, tags: ["events"] },
   )();
 }
