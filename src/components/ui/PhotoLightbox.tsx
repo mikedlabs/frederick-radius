@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { haptic } from "@/lib/haptics";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 /**
  * PhotoLightbox — full-screen tap-to-enlarge photo viewer.
@@ -52,13 +53,18 @@ export default function PhotoLightbox({
     };
   }, [go, onClose]);
 
-  // Restore focus to whatever opened the lightbox when it closes, so keyboard
-  // and screen-reader users aren't dropped at the top of the page. Mount-only
-  // so a parent re-render (changing onClose identity) can't restore early.
+  // Focus management (2026-07 shell-hardening P7): move focus INTO the viewer
+  // on open — before, focus stayed on the page behind it and Tab walked through
+  // the obscured DOM — and restore it to the opener on close. Mount-only so a
+  // parent re-render (changing onClose identity) can't restore early.
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
     return () => opener?.focus?.();
   }, []);
+  // Keep Tab within the viewer while it's up.
+  useFocusTrap(dialogRef, true);
 
   // Portal to <body> so the overlay escapes the draggable sheet's
   // transform (a transformed ancestor would otherwise re-anchor `fixed`).
@@ -73,7 +79,9 @@ export default function PhotoLightbox({
   return createPortal(
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center outline-none"
         style={{ background: "rgba(8,6,4,0.93)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
