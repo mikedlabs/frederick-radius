@@ -18,6 +18,7 @@ import CategoryView from "@/components/category/CategoryView";
 import SetTownInline from "@/components/category/SetTownInline";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { effectiveOriginSlug } from "@/lib/scope";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
@@ -69,12 +70,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // roster at /food-trucks; send the category, intent, and craving links there.
   if (slug === "food-truck") redirect("/food-trucks");
 
-  // C2: origin = home muni centroid > FREDERICK_CENTER.
-  // The cookie is written by PreferencesPanel via setHomeMuni in
-  // src/lib/personalize.ts so settings + this server-rendered page
-  // share a single source of truth.
+  // C2: origin = browsing scope > home muni centroid > FREDERICK_CENTER.
+  // The browsing scope (fr_scope, UX-02) is the session lens set from the
+  // nav chip; fr_home_muni is the long-term home written by PreferencesPanel
+  // via setHomeMuni. effectiveOriginSlug resolves the precedence, so a
+  // "Whole county" scope ranks county-wide even with a home town set.
   const store = await cookies();
-  const homeMuni = store.get("fr_home_muni")?.value ?? null;
+  const homeMuni = effectiveOriginSlug(
+    store.get("fr_scope")?.value ?? null,
+    store.get("fr_home_muni")?.value ?? null,
+  );
 
   // Coffee is the context-aware category PATTERN (Pass 3). It proves a
   // category page can rank from the user's town for real, be honest when
