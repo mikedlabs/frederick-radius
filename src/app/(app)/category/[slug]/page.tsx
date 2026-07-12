@@ -15,7 +15,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
-import SetTownInline from "@/components/category/SetTownInline";
+import CategoryLocationBar from "@/components/category/CategoryLocationBar";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { effectiveOriginSlug } from "@/lib/scope";
@@ -165,14 +165,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     })
     .slice(0, 3);
 
-  // A quiet "you are here" line so a user in Thurmont understands
-  // why the picks are not downtown-Frederick-first. Only renders
-  // when there is a home muni and it has a centroid.
-  const fromLabel =
-    homeMuni && MUNICIPALITY_BY_SLUG[homeMuni]
-      ? `Ranked from ${MUNICIPALITY_BY_SLUG[homeMuni].name}`
-      : null;
-
   // Structured data (June-9 audit P2): the category as a CollectionPage
   // with an ItemList of its top places, so category pages stop being
   // schema-invisible next to the place details they link.
@@ -231,27 +223,15 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </p>
         </div>
       </header>
-      {fromLabel ? (
-        <p className="-mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {fromLabel}
-        </p>
-      ) : (
-        /* Downtown-default fix (audit P0): when no home town is set, this page
-           silently ranks from Downtown Frederick. Say so honestly and give a
-           one-tap way to re-rank from the user's own town, instead of leaving
-           an out-of-town reader to assume the app is broken. */
-        <div
-          className="-mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--app-radius-md)] border px-3 py-2"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-        >
-          <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            Showing all of Frederick County.
-          </span>
-          <SetTownInline
-            municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
-          />
-        </div>
-      )}
+      {/* The location control is ALWAYS shown and always changeable (beta
+          feedback 2026-07-12: once a town was set, the old control vanished
+          and left read-only "Ranked from X" with no way to change it). It
+          writes the shared browsing scope, so it stays in sync with the nav
+          chip and re-ranks everywhere. */}
+      <CategoryLocationBar
+        current={homeMuni}
+        municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
+      />
 
       {/* C3: editorial top picks lead the page instead of a stat block.
           Each card is a PlaceCard at default density. On mobile this
