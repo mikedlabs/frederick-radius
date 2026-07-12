@@ -6,7 +6,7 @@ is a **consistency + shell-hardening** pass, not a redesign. Principle:
 against live code by a 7-agent audit (verify-before-asserting). Status is what
 the CODE actually does, not the brief's assumption.
 
-## SHIPPED (2026-07-11)
+## SHIPPED (2026-07-11 / 12)
 - **#1061 contrast (P4)** — brand-press on nav active labels / MobileActionBar
   primary / event date-badge; new --app-control-border (#A5966F) on SearchInput.
 - **#1062 one transition (P5)** — deleted the .route-fade template wrapper +
@@ -18,6 +18,25 @@ the CODE actually does, not the brief's assumption.
   weather↔Ask mt-4 gap; onboarding copy → "It stays on your device."
 - **#1065 pwa prompts (P1/P5)** — update toast gains a "Later" dismiss;
   InstallPrompt gains the missing safe-area inset.
+- **#1068 events hero cap (P6)** — feature card lg:aspect-[21/9] (≈389px on
+  desktop, was ~590px 3:2) so a result peeks below it; mobile keeps 3:2.
+- **#1069 modal focus traps (P7)** — new useFocusTrap hook (extracted from
+  Sheet.tsx, which stays untouched) applied to PlaceSheet + PhotoLightbox;
+  verified Tab/Shift+Tab cycle within the sheet, no escape.
+
+Also examined + LEFT ALONE (not defects): /pulse calm tiles already dim their
+dot + reserve tint/glow for active/attention, so no zero-tile de-emphasis
+needed (would wash the paper); the "8-day police strip" already degrades
+Breaking→Latest + dates honestly.
+
+Skip-link (P3) SCOPE CLARIFIED: the defect is (app)-routes ONLY — TopBar
+renders inside the root #main div (layout.tsx:269) so skip lands above it. But
+non-(app) routes (admin/collect/offline/report/welcome + beta/pitch/not-found)
+render directly in that div with no nav above, so #main works there. Fixing it
+means giving EACH route group's real <main> the id (AppMain for all app routes;
++ ~5 non-(app) routes that currently have no <main>) and removing it from root —
+~10 files, must enumerate all so none regress to a dead skip link. Real, but a
+careful dedicated pass, not a quick win.
 
 ## REMAINING (ranked, all grounded below)
 1. **P7 modal focus traps** (M/med) — extract useFocusTrap from Sheet.tsx:112-133
