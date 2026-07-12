@@ -18,6 +18,7 @@ import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
+import { getScope, parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
@@ -142,6 +143,17 @@ export default function BrowseMapClient({
   // One clock per mount (see the doc comment above).
   const [now] = useState(() => new Date());
 
+  // The browsing lens (UX-02) this map should open under. A ?in= param on a
+  // shared link wins; otherwise the session's stored scope. Captured once per
+  // mount — the app template remounts on navigation, so a fresh scope arrives
+  // as a new mount, while a mid-session chip change (which router.refresh()es)
+  // won't yank the camera out from under a pan already in progress.
+  const [scope] = useState<Scope | null>(
+    () => parseScope(sp.get(SCOPE_PARAM)) ?? getScope(),
+  );
+  // A town scope resolves to a fixed centroid; nearme/county don't.
+  const scopeCenter = scopeCentroid(scope);
+
   // Deep-link a specific amenity layer on (/map?amenity=restroom,water).
   // Validate against the real tray group keys so a junk param can't
   // activate a nonexistent layer; undefined → clean map as before.
@@ -150,17 +162,26 @@ export default function BrowseMapClient({
     ? amenityParam.split(",").map((s) => s.trim()).filter((k) => validAmenityGroups.has(k))
     : undefined;
 
-  // Deep-link camera: /map?at=lat,lng. Parse + sanity-bound to Frederick
-  // County (a bad coord falls through to the county default). Returns
-  // [lng, lat] for Mapbox; the row emits lat,lng.
+  // Where the map opens. Priority:
+  //   1. an explicit deep-link camera — /map?at=lat,lng (sanity-bound to the
+  //      county; a bad coord falls through),
+  //   2. a TOWN scope — open on that town's centroid (this is the static
+  //      initial view, so there's no jarring flyTo),
+  //   3. otherwise undefined → the whole-county default. A "near me" scope
+  //      carries no fixed point, so it falls here and is handled by
+  //      recenterToKnownLocation below (fly to the device fix after mount).
+  // Returns [lng, lat] for Mapbox; the ?at= row emits lat,lng.
   const initialCenter = ((): [number, number] | undefined => {
-    if (!atParam) return undefined;
-    const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(atParam.trim());
-    if (!m) return undefined;
-    const lat = +m[1];
-    const lng = +m[2];
-    if (lat < 38.8 || lat > 39.9 || lng < -77.9 || lng > -76.9) return undefined;
-    return [lng, lat];
+    if (atParam) {
+      const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(atParam.trim());
+      if (m) {
+        const lat = +m[1];
+        const lng = +m[2];
+        if (lat >= 38.8 && lat <= 39.9 && lng >= -77.9 && lng <= -76.9) return [lng, lat];
+      }
+    }
+    if (scopeCenter) return [scopeCenter.lng, scopeCenter.lat];
+    return undefined;
   })();
 
   const intent =
@@ -251,9 +272,14 @@ export default function BrowseMapClient({
       parking={parking}
       events={events}
       fullBleed
-      // Arriving via a category tile (?intent=…): center on the user's
-      // known location and measure from there.
-      recenterToKnownLocation={Boolean(intent)}
+      // Center on the user's known location and measure from there when
+      // arriving via a category tile (?intent=…) OR under a "near me" scope
+      // (which carries no fixed centroid — the device fix IS its center).
+      // A TOWN scope wins over the intent-recenter, though: the user picked
+      // that lens deliberately, so its centroid (initialCenter) holds.
+      recenterToKnownLocation={
+        (Boolean(intent) || scope === "nearme") && !scopeCenter
+      }
       // Show the county by default — never an empty map. The curated
       // places ride a CLUSTERED source, so "all ~1,700" reads as tidy
       // numbered bubbles; the dock REFINES rather than gates.
