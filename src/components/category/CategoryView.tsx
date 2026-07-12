@@ -14,6 +14,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
+import ScopeBar from "@/components/nav/ScopeBar";
 import CategorySection from "./CategorySection";
 
 /**
@@ -108,13 +109,16 @@ export default function CategoryView({
         </div>
       </header>
 
+      {/* Where the page ranks from — always shown, always changeable, writes
+          the shared scope (same control as the legacy category page + /open-now;
+          2026-07-12 beta feedback). Replaces CategoryBriefing's old inline
+          set-town, which vanished once a town was set. */}
+      <ScopeBar current={homeMuni} municipalities={municipalities} />
+
       <CategoryBriefing
         categoryName={category.name}
         total={total}
         openNowCount={openCount}
-        town={town ? { slug: town.slug, name: town.name } : null}
-        color={category.color}
-        municipalities={municipalities}
       />
 
       {/* Compact row cards (the default) so "Worth your time" matches the
