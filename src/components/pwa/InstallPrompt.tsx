@@ -26,8 +26,13 @@ export default function InstallPrompt() {
     <div
       role="complementary"
       aria-labelledby="install-title"
-      className="pop-in fixed inset-x-3 bottom-20 z-[var(--z-prompt)] mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
+      className="pop-in fixed inset-x-3 z-[var(--z-prompt)] mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
+        // 5rem (was Tailwind bottom-20) PLUS the home-indicator inset — every
+        // sibling floating element adds env(safe-area-inset-bottom) but this
+        // one didn't, so on a notched phone it sat under the home bar
+        // (2026-07 shell-hardening P1).
+        bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
         borderColor: "var(--app-border)",
         // Soft brand wash fading to elevated paper — warm and on-brand
         // rather than a stark white takeover.

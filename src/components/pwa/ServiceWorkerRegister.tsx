@@ -59,6 +59,13 @@ export default function ServiceWorkerRegister() {
             waiting.postMessage({ type: "SKIP_WAITING" });
           },
         },
+        // A labeled way to defer — before, the only non-refresh escape was an
+        // undiscoverable swipe on a duration:Infinity banner (2026-07 shell-
+        // hardening P5). "Later" dismisses; the next real update re-offers it.
+        cancel: {
+          label: "Later",
+          onClick: () => {},
+        },
         duration: Infinity,
       });
     };
