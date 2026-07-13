@@ -14,14 +14,15 @@ import {
   PawPrint,
   Armchair,
   Mailbox,
-  PackageOpen,
+  Package,
   MapPin,
   Footprints,
   ArrowLeft,
-  Sparkles,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { amenitiesByKind, type AmenityKind } from "@/lib/loaders/amenities";
+import { shippingByKind, SHIP_COUNT } from "@/lib/loaders/shipping";
 import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
 import { AMENITY_KIND_TO_CAT, AMENITY_GROUPS } from "@/components/map/constants";
 import PageBloom from "@/components/ui/PageBloom";
@@ -104,30 +105,15 @@ const LIVE_ICONS = {
   river_gauge: Waves,
 } as const;
 
-// What's NOT yet on the map but people ask the app for. These are the
-// kinds the owner has called out by name. Each gets a "why this
-// matters" blurb so the page doesn't read like a wishlist with no
-// signal — it reads like a roadmap with intent.
-const COMING_SOON: {
-  icon: typeof Trash2;
-  label: string;
-  why: string;
-}[] = [
-  {
-    icon: Mailbox,
-    label: "USPS mailboxes",
-    why: "Last-pickup-of-the-day with the address, not a Google search rabbit hole.",
-  },
-  {
-    icon: PackageOpen,
-    label: "UPS & FedEx drop-offs",
-    why: "Including the ones tucked inside pharmacies and the print shop.",
-  },
-];
-
 export default async function AmenitiesPage() {
   const live = amenitiesByKind();
   const totalLive = live.reduce((n, g) => n + g.list.length, 0);
+
+  // Post & shipping — now a live layer of its own (/shipping). Counts drive
+  // the cross-link so the promo is honest about how much is actually there.
+  const shipGroups = shippingByKind();
+  const shipOffices = shipGroups.find((g) => g.kind === "usps")?.list.length ?? 0;
+  const shipStores = shipGroups.find((g) => g.kind === "ship_store")?.list.length ?? 0;
 
   // Field-collected amenities (the /collect walkabout tool) — counted by kind
   // so the catalog reflects what's actually been marked on foot. Fail-soft to
@@ -312,60 +298,38 @@ export default async function AmenitiesPage() {
         </section>
       )}
 
-      {/* COMING SOON — owner-specified roadmap. Plain list with intent
-          per item; no fake percentages, no fake ETAs. The honesty is
-          the feature. */}
-      <section className="space-y-3">
-        <SectionHeading
-          title="Coming next"
-          trailing={
+      {/* POST & SHIPPING — was the "coming next" roadmap (USPS mailboxes,
+          UPS/FedEx drop-offs); now a live layer of its own. A single
+          promoted cross-link, honest about the count behind it. */}
+      {SHIP_COUNT > 0 && (
+        <section className="space-y-3">
+          <SectionHeading title="Post & shipping" count={SHIP_COUNT} href="/shipping" cta="Open guide" />
+          <Link
+            href="/shipping"
+            className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border p-3.5 transition active:scale-[0.99]"
+            style={{ background: "var(--app-paper)", borderColor: "var(--app-border)" }}
+          >
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
-              style={{ color: "var(--app-cool)" }}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style={{ background: "var(--app-brand-tint-6)", color: "var(--app-brand)" }}
+              aria-hidden
             >
-              <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              Roadmap
+              <Package className="h-5 w-5" strokeWidth={2} />
             </span>
-          }
-        />
-        <ul
-          className="space-y-2"
-          aria-label="Amenity kinds coming soon to the map"
-        >
-          {COMING_SOON.map(({ icon: Icon, label, why }) => (
-            <li
-              key={label}
-              className="flex items-start gap-3 rounded-[var(--app-radius-md)] border border-dashed p-3"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <span
-                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                style={{
-                  background: "var(--app-surface-2, rgba(64,86,76,0.08))",
-                  color: "var(--app-cool, #40564C)",
-                }}
-                aria-hidden
-              >
-                <Icon className="h-4 w-4" strokeWidth={2} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                Mail it, ship it, or grab it
               </span>
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p
-                  className="text-[14px] font-semibold leading-tight"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {label}
-                </p>
-                <p
-                  className="text-[13px] leading-snug"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  {why}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+              <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                {shipOffices} post offices, {shipStores} UPS &amp; FedEx counters, plus{" "}
+                <Mailbox className="mb-0.5 inline h-3 w-3" strokeWidth={2} aria-hidden /> blue mailboxes,
+                searchable by town.
+              </span>
+            </span>
+            <ChevronRight aria-hidden className="h-4 w-4 shrink-0 opacity-40" style={{ color: "var(--app-ink-3)" }} />
+          </Link>
+        </section>
+      )}
 
       {/* SUBMIT — quiet door for anyone who knows a useful amenity.
           Submission goes into the standard /submit flow; the team
