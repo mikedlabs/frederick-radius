@@ -55,8 +55,7 @@ import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
-import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
-import { FREDERICK_CENTER, isValidCoord } from "@/lib/geo";
+import { isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded, eventWhenLabel } from "@/lib/eventWhenLabel";
 import { pickTonightEvent } from "@/lib/today/tonight";
 import { daypart, sectionOrder, type TodaySection } from "@/lib/daypart";
@@ -287,7 +286,7 @@ export default async function HomePage() {
           now={now}
           contextSlot={
             <Suspense fallback={null}>
-              <TodayContextSlot eventsPromise={eventsPromise} now={now} />
+              <TodayContext />
             </Suspense>
           }
         />
@@ -666,14 +665,6 @@ async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromis
       />
     </Link>
   );
-}
-
-/** Salutation + golden-hour cue (an outdoor draw still catchable in today's
- *  remaining daylight, paired with the live light window). Self-hides. */
-async function TodayContextSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const goldenEvent = pickGoldenHourOutdoorEvent(publicEvents, now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-  return <TodayContext goldenEvent={goldenEvent} />;
 }
 
 /** The contextual "right now" band: who's on stage tonight, as a quiet
