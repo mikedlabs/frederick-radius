@@ -99,6 +99,18 @@ export type ProvenanceInput = {
  *        date for curated rows). Falls back through the row's own
  *        timestamps to the backfill epoch.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * True only for a real Google Places ID (ChIJ…, GhIJ…, Ei…), never a partner
+ * UUID. Google IDs are opaque base64url tokens and are never UUID-shaped, so a
+ * UUID in this field is a mis-stored partner identifier (DQ-020) that must not
+ * be turned into a maps/place?q=place_id:<uuid> link.
+ */
+export function isGooglePlaceId(id: string | null | undefined): id is string {
+  return typeof id === "string" && id.length > 0 && !UUID_RE.test(id);
+}
+
 export function stampPlaceProvenance(
   p: ProvenanceInput,
   verifiedAt?: string,
@@ -106,9 +118,12 @@ export function stampPlaceProvenance(
   const source = p.source ?? "discovered";
   const meta = SOURCE_REGISTRY[source] ?? FALLBACK_META;
   const source_id = p.google_place_id ?? `slug:${p.slug}`;
-  // Google rows have a stable public record URL through the place id.
-  // Other sources in the current dataset do not retain one.
-  const source_url = p.google_place_id
+  // Google rows have a stable public record URL through the place id, but ONLY
+  // when the id is actually a Google Places ID. 123 rows carry a partner
+  // UUID in google_place_id (DQ-020), and maps/place?q=place_id:<uuid> resolves
+  // to nothing — a broken "source" link that misrepresents provenance. Emit the
+  // URL only for a conforming Google id; a UUID gets no fabricated link.
+  const source_url = isGooglePlaceId(p.google_place_id)
     ? `https://www.google.com/maps/place/?q=place_id:${p.google_place_id}`
     : null;
   return {
