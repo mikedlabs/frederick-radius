@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { desc } from "drizzle-orm";
+import { Database, Inbox } from "lucide-react";
 import { getDb } from "@/lib/db/client";
 import { beta_codes, beta_emails } from "@/lib/db/schema";
+import {
+  AdminShell,
+  SectionLabel,
+  StatStrip,
+  Notice,
+  EmptyState,
+  Table,
+  THead,
+  Th,
+  TBody,
+  Tr,
+  Td,
+  AdminButton,
+} from "@/components/admin/kit";
 import { sendAllCodes } from "./actions";
 
 /**
@@ -49,72 +63,81 @@ export default async function BetaEmailsAdmin({
     }
   }
   const uninvited = rows.filter((r) => !codeByEmail.has(r.email)).length;
+  const invitedCount = rows.length - uninvited;
+  const redeemedCount = rows.filter((r) => codeByEmail.get(r.email)?.redeemed).length;
   const resendWired = Boolean(process.env.RESEND_API_KEY);
 
   const fmt = (d: Date | null) =>
     d ? new Date(d).toLocaleString("en-US", { timeZone: "America/New_York" }) : "·";
 
+  // Tone-aware flash: green on a clean run, amber when something failed or the
+  // codes minted but no email went out. Copy stays exactly as before.
+  const flashTone =
+    Number(failed) > 0 || (Number(invited) > 0 && Number(emailed) === 0) ? "warning" : "positive";
+
+  // A plain anchor to the CSV route handler (NOT a client fetch, NOT a new tab):
+  // it must stay under /admin/* so the middleware Basic-Auth gate covers it.
+  const csvDownload =
+    rows.length > 0 ? (
+      <a
+        href="/admin/beta-emails/export"
+        className="tap-44 inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}
+      >
+        Download CSV
+      </a>
+    ) : null;
+
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>← Admin</Link>
-
-      <header className="mt-4 flex items-end justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Launch announcement list
-          </p>
-          <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Beta emails
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="font-serif text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-ink)" }}>
-            {rows.length.toLocaleString()}
-          </span>
-          {rows.length > 0 && (
-            <a
-              href="/admin/beta-emails/export"
-              className="rounded-[var(--app-radius-md)] px-3 py-2 text-[13px] font-semibold text-white"
-              style={{ background: "var(--app-ink)" }}
-            >
-              Download CSV
-            </a>
-          )}
-        </div>
-      </header>
-
-      <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Everyone who left an email on <code>/beta</code> (the signup writes to the
-        <code> beta_emails</code> table; duplicates are de-duped by a unique index).
-        New signups are invited automatically; the button below covers everyone
-        who signed up before invites existed.
-      </p>
-
+    <AdminShell
+      eyebrow="Launch announcement list"
+      title="Beta emails"
+      intro={
+        <>
+          Everyone who left an email on <code>/beta</code> (the signup writes to the{" "}
+          <code>beta_emails</code> table; duplicates are de-duped by a unique index). New signups
+          are invited automatically; the button below covers everyone who signed up before invites
+          existed.
+        </>
+      }
+    >
       {invited !== undefined ? (
-        <p
-          className="mt-4 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
-          style={{
-            background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          Minted {invited} {Number(invited) === 1 ? "code" : "codes"}, emailed {emailed}
-          {Number(failed) > 0 ? `, ${failed} failed (see logs)` : ""}.
-          {Number(invited) > 0 && Number(emailed) === 0
-            ? " Emails were not sent because RESEND_API_KEY is not set."
-            : ""}
-        </p>
+        <div className="mt-5">
+          <Notice tone={flashTone}>
+            Minted {invited} {Number(invited) === 1 ? "code" : "codes"}, emailed {emailed}
+            {Number(failed) > 0 ? `, ${failed} failed (see logs)` : ""}.
+            {Number(invited) > 0 && Number(emailed) === 0
+              ? " Emails were not sent because RESEND_API_KEY is not set."
+              : ""}
+          </Notice>
+        </div>
+      ) : null}
+
+      {rows.length > 0 ? (
+        <div className="mt-6">
+          <StatStrip
+            items={[
+              { value: rows.length.toLocaleString(), label: "signups" },
+              { value: invitedCount.toLocaleString(), label: "invited" },
+              {
+                value: redeemedCount.toLocaleString(),
+                label: "redeemed",
+                tone: redeemedCount > 0 ? "positive" : "neutral",
+              },
+            ]}
+          />
+          {/* CSV export lives here, gated on rows only: it must stay reachable
+              even if the codes read throws (dbError) after the emails read
+              succeeded. The export route re-reads beta_emails independently. */}
+          <div className="mt-3 flex justify-end">{csvDownload}</div>
+        </div>
       ) : null}
 
       {rows.length > 0 && uninvited > 0 ? (
-        <form action={sendAllCodes} className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            className="rounded-[var(--app-radius-md)] px-4 py-2.5 text-[13.5px] font-semibold"
-            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}
-          >
+        <form action={sendAllCodes} className="mt-6 flex flex-wrap items-center gap-3">
+          <AdminButton variant="primary" type="submit">
             Mint + email codes to {uninvited} {uninvited === 1 ? "person" : "people"}
-          </button>
+          </AdminButton>
           <span className="text-[12px]" style={{ color: resendWired ? "var(--app-ink-3)" : "var(--app-warning)" }}>
             {resendWired
               ? "Sends each person their personal access code via Resend."
@@ -123,55 +146,54 @@ export default async function BetaEmailsAdmin({
         </form>
       ) : null}
 
-      {dbError ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
-          style={{ background: "color-mix(in srgb, var(--app-warning) 12%, var(--app-bg-elevated))", color: "var(--app-warning)" }}
-        >
-          Could not read the <code>beta_emails</code> table. It may not be migrated in this environment
-          (see <code>drizzle/0015_beta_emails.sql</code>).
-        </p>
-      ) : !db ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
-          style={{ background: "color-mix(in srgb, var(--app-ink) 5%, var(--app-bg-elevated))", color: "var(--app-ink-3)" }}
-        >
-          No database configured in this environment.
-        </p>
-      ) : rows.length === 0 ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
-          style={{ background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))", color: "var(--app-ink-2)" }}
-        >
-          No signups yet. They will appear here the moment someone leaves an email on the beta page.
-        </p>
-      ) : (
-        <div className="overflow-x-auto"><table className="mt-6 w-full text-sm">
-          <thead>
-            <tr style={{ color: "var(--app-ink-3)" }}>
-              <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Email</th>
-              <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Code</th>
-              <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
-              <th className="py-1 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Signed up (ET)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const c = codeByEmail.get(r.email);
-              return (
-                <tr key={r.email} className="border-b" style={{ borderColor: "var(--app-border)" }}>
-                  <td className="py-2 pr-3 font-medium" style={{ color: "var(--app-ink)" }}>{r.email}</td>
-                  <td className="py-2 pr-3 font-mono text-[11px]" style={{ color: c ? (c.redeemed ? "var(--app-positive)" : "var(--app-ink-2)") : "var(--app-ink-3)" }}>
-                    {c ? `${c.code}${c.redeemed ? " · in" : ""}` : "·"}
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>{r.source ?? "·"}</td>
-                  <td className="py-2 text-right tabular-nums text-[12px]" style={{ color: "var(--app-ink-3)" }}>{fmt(r.created_at)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table></div>
-      )}
-    </div>
+      <div className="mt-6">
+        {dbError ? (
+          <Notice tone="warning">
+            Could not read the <code>beta_emails</code> table. It may not be migrated in this
+            environment (see <code>drizzle/0015_beta_emails.sql</code>).
+          </Notice>
+        ) : !db ? (
+          <EmptyState tone="muted" icon={Database}>
+            No database configured in this environment.
+          </EmptyState>
+        ) : rows.length === 0 ? (
+          <EmptyState icon={Inbox}>
+            No signups yet. They will appear here the moment someone leaves an email on the beta page.
+          </EmptyState>
+        ) : (
+          <>
+            <SectionLabel>The list</SectionLabel>
+            <Table>
+              <THead>
+                <Th>Email</Th>
+                <Th>Code</Th>
+                <Th>Source</Th>
+                <Th align="right">Signed up (ET)</Th>
+              </THead>
+              <TBody>
+                {rows.map((r) => {
+                  const c = codeByEmail.get(r.email);
+                  const codeTone = c ? (c.redeemed ? "positive" : "neutral") : "muted";
+                  return (
+                    <Tr key={r.email}>
+                      <Td semibold>{r.email}</Td>
+                      <Td mono tone={codeTone}>
+                        {c ? `${c.code}${c.redeemed ? " · in" : ""}` : "·"}
+                      </Td>
+                      <Td mono tone="muted">
+                        {r.source ?? "·"}
+                      </Td>
+                      <Td align="right" tone="muted" nums>
+                        {fmt(r.created_at)}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </>
+        )}
+      </div>
+    </AdminShell>
   );
 }

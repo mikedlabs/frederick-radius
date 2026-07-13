@@ -16,6 +16,14 @@ import {
   getStats,
   nextUndecidedIndex,
 } from "@/lib/discovered-review";
+import {
+  AdminShell,
+  AdminButton,
+  ProgressBar,
+  Tag,
+  StatusPill,
+  AllClear,
+} from "@/components/admin/kit";
 import { decide } from "./actions";
 import DiscoveredKeys from "./DiscoveredKeys";
 
@@ -58,6 +66,7 @@ export default async function DiscoveredReviewPage({
   const candidate = index >= 0 ? candidates[index] : null;
   const decision = candidate ? decisions[candidate.google_place_id] : undefined;
   const nextIdx = nextUndecidedIndex(index, candidates, decisions);
+  const decided = stats.approved + stats.rejected;
 
   const onDecide = async (formData: FormData) => {
     "use server";
@@ -71,118 +80,43 @@ export default async function DiscoveredReviewPage({
 
   if (!candidate) {
     return (
-      <div
-        className="mx-auto max-w-screen-md px-4 py-10"
-        style={{ background: "var(--app-bg)" }}
-      >
-        <Link
-          href="/admin"
-          className="text-xs"
-          style={{ color: "var(--app-cool)" }}
-        >
-          ← Admin
-        </Link>
-        <header className="mt-4 space-y-1">
-          <p
-            className="text-[11px] font-medium uppercase tracking-[0.1em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Phase 3 · merge candidates
-          </p>
-          <h1
-            className="font-serif text-[24px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Discovered review
-          </h1>
-        </header>
-        <div
-          className="mt-6 rounded-[var(--app-radius-lg)] border p-6 text-center"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p
-            className="font-serif text-[20px] font-semibold"
-            style={{ color: "var(--app-ink)" }}
-          >
-            All caught up.
-          </p>
-          <p
-            className="mx-auto mt-1 max-w-sm text-[13px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {stats.approved} approved · {stats.rejected} rejected · 0 left.
-            Run <code>npm run merge:discovered</code> to build the
-            Place records from approved candidates.
+      <AdminShell title="Discovered review" eyebrow="Phase 3 · merge candidates">
+        <div className="mt-6">
+          <AllClear>All caught up.</AllClear>
+          <p className="mt-3 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            {stats.approved} approved · {stats.rejected} rejected · 0 left. Run{" "}
+            <code>npm run merge:discovered</code> to build the Place records from approved
+            candidates.
           </p>
         </div>
-      </div>
+      </AdminShell>
     );
   }
 
   const c = candidate;
   const photo =
     c.photo_names && c.photo_names.length > 0 ? photoUrl(c.photo_names[0]) : null;
-  const decided = stats.approved + stats.rejected;
-  const progressPct = stats.total > 0 ? (decided / stats.total) * 100 : 0;
-  const catLabel = c.detail_primary_type ?? c.primary_type ?? "place";
+  const category = c.discovered_for?.category ?? c.detail_primary_type ?? c.primary_type ?? "place";
 
   return (
-    <div
-      className="mx-auto max-w-screen-md px-4 py-8"
-      style={{ background: "var(--app-bg)" }}
+    <AdminShell
+      title="Discovered review"
+      eyebrow={`Candidate ${index + 1} of ${candidates.length}`}
+      aside={`${decided} / ${stats.total} reviewed · ${stats.approved} approved · ${stats.rejected} rejected`}
     >
-      <div className="flex items-center justify-between">
-        <Link
-          href="/admin"
-          className="text-xs"
-          style={{ color: "var(--app-cool)" }}
-        >
-          ← Admin
-        </Link>
-        <p
-          className="text-[11px] font-medium uppercase tracking-[0.08em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {decided} / {stats.total} reviewed · {stats.approved} approved · {stats.rejected} rejected
-        </p>
+      <div className="mt-4">
+        <ProgressBar value={decided} max={stats.total} tone="brand" />
       </div>
 
-      <header className="mt-3 space-y-1">
-        <p
-          className="text-[11px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Candidate {index + 1} of {candidates.length}
-        </p>
-        <h1
-          className="font-serif text-[24px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Discovered review
-        </h1>
-      </header>
-
-      {/* Progress bar */}
-      <div
-        className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
-        style={{ background: "var(--app-bg-sunken)" }}
-      >
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${progressPct}%`,
-            background:
-              "linear-gradient(90deg, var(--app-brand), var(--app-cool))",
-          }}
-        />
-      </div>
-
-      {/* Candidate card */}
+      {/* Candidate detail — a bespoke media card, reskinned to the kit surface
+          (hairline border + elevated ground). Status lives in kit chips in the
+          body, so the photo carries no raw-hex overlay. */}
       <article
-        className="tactile mt-6 overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+        className="mt-6 overflow-hidden rounded-[var(--app-radius-md)] border"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
       >
         {photo && (
-          <div className="relative aspect-[16/10] w-full bg-[var(--app-bg-sunken)]">
+          <div className="aspect-[16/10] w-full" style={{ background: "var(--app-bg-sunken)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photo}
@@ -190,29 +124,18 @@ export default async function DiscoveredReviewPage({
               className="h-full w-full object-cover"
               loading="lazy"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-            <span
-              className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-              style={{ color: "var(--app-brand)" }}
-            >
-              {c.discovered_for?.category ?? catLabel}
-            </span>
-            {decision && (
-              <span
-                className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"
-                style={{
-                  background:
-                    decision === "approved"
-                      ? "var(--app-positive)"
-                      : "var(--app-danger)",
-                }}
-              >
-                {decision}
-              </span>
-            )}
           </div>
         )}
         <div className="space-y-3 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <Tag tone="brand">{category}</Tag>
+            {decision && (
+              <StatusPill tone={decision === "approved" ? "positive" : "danger"}>
+                {decision}
+              </StatusPill>
+            )}
+          </div>
+
           <div>
             <h2
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
@@ -248,15 +171,9 @@ export default async function DiscoveredReviewPage({
                 </span>
               )}
               {c.business_status && c.business_status !== "OPERATIONAL" && (
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{
-                    background: "color-mix(in srgb, var(--app-warning) 18%, transparent)",
-                    color: "var(--app-warning)",
-                  }}
-                >
+                <StatusPill tone="warning">
                   {c.business_status.replace("_", " ").toLowerCase()}
-                </span>
+                </StatusPill>
               )}
             </div>
           </div>
@@ -313,11 +230,15 @@ export default async function DiscoveredReviewPage({
         </div>
       </article>
 
-      {/* Decision controls. Three big buttons, one row. */}
+      {/* Decision bar — three co-equal triage controls (an intentional
+          exception to one-primary-action). Reject + Approve are kit AdminButtons
+          in the server-action form; Skip stays a nav Link. */}
       <form action={onDecide} className="mt-4">
         <input type="hidden" name="id" value={c.google_place_id} />
         <div className="grid grid-cols-3 gap-2">
-          <button
+          <AdminButton
+            variant="danger"
+            icon={X}
             type="submit"
             name="action"
             value="rejected"
@@ -325,39 +246,39 @@ export default async function DiscoveredReviewPage({
               "use server";
               await onDecide(fd);
             }}
-            className="tactile tactile-interactive flex items-center justify-center gap-2 rounded-[var(--app-radius-md)] py-3 text-[14px] font-semibold text-white active:scale-[0.97]"
-            style={{ backgroundColor: "var(--app-danger)" }}
+            className="w-full justify-center"
           >
-            <X className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Reject
-          </button>
+            Reject
+          </AdminButton>
           <Link
             href={`?i=${nextIdx >= 0 ? nextIdx : index}`}
-            className="tactile tactile-interactive flex items-center justify-center gap-2 rounded-[var(--app-radius-md)] py-3 text-[14px] font-semibold active:scale-[0.97]"
-            style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+            className="tap-44 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
           >
-            <SkipForward className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Skip
+            <SkipForward className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Skip
           </Link>
-          <button
+          <AdminButton
+            variant="positive"
+            icon={Check}
             type="submit"
             name="action"
             value="approved"
-            className="tactile tactile-interactive flex items-center justify-center gap-2 rounded-[var(--app-radius-md)] py-3 text-[14px] font-semibold text-white active:scale-[0.97]"
-            style={{ backgroundColor: "var(--app-positive)" }}
+            className="w-full justify-center"
           >
-            <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Approve
-          </button>
+            Approve
+          </AdminButton>
         </div>
         {decision && (
-          <button
+          <AdminButton
+            variant="ghost"
+            icon={RotateCcw}
             type="submit"
             name="action"
             value="clear"
-            className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold"
-            style={{ color: "var(--app-ink-3)" }}
+            className="mt-2"
           >
-            <RotateCcw className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             Clear this decision
-          </button>
+          </AdminButton>
         )}
       </form>
 
@@ -371,6 +292,7 @@ export default async function DiscoveredReviewPage({
       <nav className="mt-4 flex items-center justify-between text-[11px]" style={{ color: "var(--app-ink-3)" }}>
         <Link
           href={`?i=${Math.max(0, index - 1)}`}
+          className="tap-44 inline-flex items-center"
           style={{ color: "var(--app-cool)" }}
         >
           ← Previous
@@ -378,11 +300,12 @@ export default async function DiscoveredReviewPage({
         <span>{stats.undecided} undecided</span>
         <Link
           href={`?i=${nextIdx >= 0 ? nextIdx : index}`}
+          className="tap-44 inline-flex items-center"
           style={{ color: "var(--app-cool)" }}
         >
           Next undecided →
         </Link>
       </nav>
-    </div>
+    </AdminShell>
   );
 }
