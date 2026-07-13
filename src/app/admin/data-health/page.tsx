@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Copy, PenLine } from "lucide-react";
 import { PLACES } from "@/data/places";
 import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
@@ -17,6 +17,27 @@ import {
 import { getDriftStats, getDrift, getDecisions as getDriftDecisions } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
+import {
+  AdminShell,
+  Section,
+  SectionLabel,
+  StatCards,
+  HairlineList,
+  HairlineRow,
+  StatusPill,
+  StatusDot,
+  Tag,
+  EmptyState,
+  Callout,
+  Disclosure,
+  Table,
+  THead,
+  Th,
+  TBody,
+  Tr,
+  Td,
+  toneTint,
+} from "@/components/admin/kit";
 
 export const metadata: Metadata = {
   title: "Data health · Admin",
@@ -100,555 +121,384 @@ export default async function DataHealth() {
   ];
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>← Admin</Link>
-      <header className="mt-4 space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Phase 1 data quality
-        </p>
-        <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Data health
-        </h1>
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+    <AdminShell
+      eyebrow="Phase 1 data quality"
+      title="Data health"
+      intro={
+        <>
           Copy scores computed {new Date(SCORES.computed_at).toLocaleString()}. The nightly
           cron at /api/cron/data-health recomputes and reports these numbers.
-        </p>
-      </header>
-
+        </>
+      }
+    >
       {/* ── Live feed connectivity — the "is it collecting data?" board.
           Keyed feeds go green when their env var is set in the
           deployment, amber ("needs key") until then; keyless feeds are
           live wherever outbound network is allowed. ──────────────────── */}
-      <section className="mt-6">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Live feed connectivity
-          </h2>
-          <span
-            className="rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums"
-            style={{
-              background: dark === 0
-                ? "color-mix(in srgb, var(--app-positive) 14%, var(--app-bg-elevated))"
-                : "color-mix(in srgb, var(--app-warning) 16%, var(--app-bg-elevated))",
-              color: dark === 0 ? "var(--app-positive)" : "var(--app-warning)",
-            }}
-          >
+      <Section
+        title="Live feed connectivity"
+        aside={
+          <StatusPill tone={dark === 0 ? "positive" : "warning"}>
             {dark === 0 ? "All keyed feeds live" : `${dark} keyed feed${dark === 1 ? "" : "s"} dark`}
-          </span>
-        </div>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          {dark === 0
+          </StatusPill>
+        }
+        description={
+          dark === 0
             ? "Every keyed feed has its API key configured."
-            : "Dark feeds fail soft to empty, nothing breaks, but those layers stay blank until the key is set in the Vercel project env."}
-        </p>
-
-        <div className="mt-3 space-y-2">
-          {feeds.keyed.map((f) => (
-            <div
-              key={f.name}
-              className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-            >
-              <span
-                aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: f.configured ? "var(--app-positive)" : "var(--app-warning)" }}
+            : "Dark feeds fail soft to empty, nothing breaks, but those layers stay blank until the key is set in the Vercel project env."
+        }
+      >
+        <div className="mt-3">
+          <HairlineList>
+            {feeds.keyed.map((f, i) => (
+              <HairlineRow
+                key={f.name}
+                index={i}
+                dot={f.configured ? "positive" : "warning"}
+                title={f.name}
+                subtitle={f.powers}
+                badge={
+                  f.configured ? (
+                    <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Live</span>
+                  ) : (
+                    <code
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={{ background: toneTint("warning", 14), color: "var(--app-warning)" }}
+                    >
+                      set {f.env}
+                    </code>
+                  )
+                }
               />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.name}</span>
-                  <span className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{f.powers}</span>
-                </div>
-              </div>
-              {f.configured ? (
-                <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Live</span>
-              ) : (
-                <code className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "color-mix(in srgb, var(--app-warning) 14%, transparent)", color: "var(--app-warning)" }}>
-                  set {f.env}
-                </code>
-              )}
-            </div>
-          ))}
+            ))}
+          </HairlineList>
         </div>
 
-        <details className="mt-2">
-          <summary className="cursor-pointer text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
-            {feeds.keyless.length} keyless feeds (live without a key)
-          </summary>
-          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <Disclosure summary={`${feeds.keyless.length} keyless feeds (live without a key)`}>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {feeds.keyless.map((f) => (
               <div key={f.name} className="flex items-center gap-2 text-[12px]">
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--app-positive)" }} />
+                <StatusDot tone="positive" />
                 <span className="font-medium" style={{ color: "var(--app-ink-2)" }}>{f.name}</span>
                 <span className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>· {f.powers}</span>
               </div>
             ))}
           </div>
-        </details>
+        </Disclosure>
+      </Section>
+
+      {/* ── Catalog integrity + pipeline switches — the ledger of counts
+          the nightly cron computes, notes and all. ──────────────────── */}
+      <section className="mt-8">
+        <SectionLabel>Catalog &amp; pipeline</SectionLabel>
+        <Table>
+          <TBody>
+            {rows.map(([k, v, note]) => (
+              <Tr key={k}>
+                <Td>{k}</Td>
+                <Td mono semibold>{v}</Td>
+                <Td tone="muted">{note}</Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
       </section>
 
-      <div className="overflow-x-auto"><table className="mt-6 w-full text-sm">
-        <tbody>
-          {rows.map(([k, v, note]) => (
-            <tr key={k} className="border-b" style={{ borderColor: "var(--app-border)" }}>
-              <td className="py-2 pr-3" style={{ color: "var(--app-ink-2)" }}>{k}</td>
-              <td className="py-2 pr-3 font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>{v}</td>
-              <td className="py-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>{note}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table></div>
-
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Placement (needs review)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Coordinates that fall outside the Frederick County bbox
-          (lat&nbsp;{FREDERICK_COUNTY_BBOX.south}–{FREDERICK_COUNTY_BBOX.north},
-          lng&nbsp;{FREDERICK_COUNTY_BBOX.west}–{FREDERICK_COUNTY_BBOX.east})
-          or are missing entirely. These are dropped from every public
-          surface so a mispositioned marker can never reach a user.
-          Fix the source row in <code>src/data/places.ts</code> or{" "}
-          <code>src/data/events.ts</code> and the row clears next build.
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div
-            className="tactile rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] p-3 text-center"
-          >
-            <div
-              className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
-              style={{ color: reviewPlaces.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
-            >
-              {reviewPlaces.length.toLocaleString()}
-            </div>
-            <div
-              className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Places flagged
-            </div>
-          </div>
-          <div
-            className="tactile rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] p-3 text-center"
-          >
-            <div
-              className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
-              style={{ color: reviewEvents.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
-            >
-              {reviewEvents.length.toLocaleString()}
-            </div>
-            <div
-              className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Events flagged
-            </div>
-          </div>
+      <Section
+        title="Placement (needs review)"
+        description={
+          <>
+            Coordinates that fall outside the Frederick County bbox
+            (lat&nbsp;{FREDERICK_COUNTY_BBOX.south}–{FREDERICK_COUNTY_BBOX.north},
+            lng&nbsp;{FREDERICK_COUNTY_BBOX.west}–{FREDERICK_COUNTY_BBOX.east})
+            or are missing entirely. These are dropped from every public
+            surface so a mispositioned marker can never reach a user.
+            Fix the source row in <code>src/data/places.ts</code> or{" "}
+            <code>src/data/events.ts</code> and the row clears next build.
+          </>
+        }
+      >
+        <div className="mt-3">
+          <StatCards
+            cols={2}
+            items={[
+              { value: reviewPlaces.length.toLocaleString(), label: "Places flagged", tone: reviewPlaces.length > 0 ? "warning" : "positive" },
+              { value: reviewEvents.length.toLocaleString(), label: "Events flagged", tone: reviewEvents.length > 0 ? "warning" : "positive" },
+            ]}
+          />
         </div>
         {(reviewPlaces.length > 0 || reviewEvents.length > 0) && (
-          <details className="mt-3">
-            <summary
-              className="cursor-pointer text-[12px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
-            >
-              Show the first {Math.min(20, reviewPlaces.length + reviewEvents.length)} rows
-            </summary>
-            <ul className="mt-2 space-y-1 text-[11px]" style={{ color: "var(--app-ink-2)" }}>
-              {reviewPlaces.slice(0, 20).map((p) => (
-                <li
+          <Disclosure summary={`Show the first ${Math.min(20, reviewPlaces.length + reviewEvents.length)} rows`}>
+            <HairlineList>
+              {reviewPlaces.slice(0, 20).map((p, i) => (
+                <HairlineRow
                   key={`p:${p.slug}`}
-                  className="flex justify-between border-b py-1"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span>
-                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                      place
-                    </span>{" "}
-                    {p.slug}
-                  </span>
-                  <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {p.geom
-                      ? `${p.geom.lng.toFixed(4)}, ${p.geom.lat.toFixed(4)}`
-                      : "no geom"}
-                  </span>
-                </li>
+                  index={i}
+                  title={
+                    <span className="inline-flex items-center gap-1.5">
+                      <Tag tone="muted">place</Tag>
+                      <span className="font-mono text-[12px]">{p.slug}</span>
+                    </span>
+                  }
+                  meta={p.geom ? `${p.geom.lng.toFixed(4)}, ${p.geom.lat.toFixed(4)}` : "no geom"}
+                />
               ))}
-              {reviewEvents.slice(0, 20).map((e) => (
-                <li
+              {reviewEvents.slice(0, 20).map((e, i) => (
+                <HairlineRow
                   key={`e:${e.slug}`}
-                  className="flex justify-between border-b py-1"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span>
-                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                      event
-                    </span>{" "}
-                    {e.slug}
-                  </span>
-                  <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {e.geom
-                      ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}`
-                      : "no geom"}
-                  </span>
-                </li>
+                  index={reviewPlaces.slice(0, 20).length + i}
+                  title={
+                    <span className="inline-flex items-center gap-1.5">
+                      <Tag tone="cool">event</Tag>
+                      <span className="font-mono text-[12px]">{e.slug}</span>
+                    </span>
+                  }
+                  meta={e.geom ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}` : "no geom"}
+                />
               ))}
-            </ul>
-          </details>
+            </HairlineList>
+          </Disclosure>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Hidden from discovery
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-          Places that clear relevance, coordinates, and season but never reach a
-          user because Google reports them closed ({hiddenClosed.length}), or
-          because they carry no Google rating, photo, or summary ({hiddenThin.length}).
-          The intentional B2B long-tail is not counted here. Rescue a false
-          positive with a places-overrides patch: <span className="font-mono">clearGoogle</span> for
-          a wrong closure, or a <span className="font-mono">hero_image</span> / <span className="font-mono">short_blurb</span> to
-          clear the thin-data gate.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-4 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-          <span>
-            Total hidden:{" "}
-            <span className="font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
-              {hidden.length.toLocaleString()}
-            </span>
-          </span>
-          <span>
-            Notable (field-guide categories):{" "}
-            <span
-              className="font-mono tabular-nums"
-              style={{ color: hiddenNotable.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
-            >
-              {hiddenNotable.length.toLocaleString()}
-            </span>
-          </span>
+      <Section
+        title="Hidden from discovery"
+        description={
+          <>
+            Places that clear relevance, coordinates, and season but never reach a
+            user because Google reports them closed ({hiddenClosed.length}), or
+            because they carry no Google rating, photo, or summary ({hiddenThin.length}).
+            The intentional B2B long-tail is not counted here. Rescue a false
+            positive with a places-overrides patch: <span className="font-mono">clearGoogle</span> for
+            a wrong closure, or a <span className="font-mono">hero_image</span> / <span className="font-mono">short_blurb</span> to
+            clear the thin-data gate.
+          </>
+        }
+      >
+        <div className="mt-3">
+          <StatCards
+            cols={2}
+            items={[
+              { value: hidden.length.toLocaleString(), label: "Total hidden" },
+              { value: hiddenNotable.length.toLocaleString(), label: "Notable · field guide", tone: hiddenNotable.length > 0 ? "warning" : "positive" },
+            ]}
+          />
         </div>
         {hiddenNotable.length > 0 && (
-          <details className="mt-3" open>
-            <summary className="cursor-pointer text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
-              Review the {Math.min(40, hiddenNotable.length)} notable places most likely to be false positives
-            </summary>
-            <ul className="mt-2 space-y-1 text-[11px]" style={{ color: "var(--app-ink-2)" }}>
-              {hiddenNotable.slice(0, 40).map((h) => (
-                <li
+          <Disclosure open summary={`Review the ${Math.min(40, hiddenNotable.length)} notable places most likely to be false positives`}>
+            <HairlineList>
+              {hiddenNotable.slice(0, 40).map((h, i) => (
+                <HairlineRow
                   key={h.slug}
-                  className="flex items-center justify-between gap-3 border-b py-1"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span className="min-w-0 truncate">
-                    <span
-                      className="font-mono text-[10px]"
-                      style={{ color: h.reason === "closed" ? "var(--app-warning)" : "var(--app-ink-3)" }}
-                    >
-                      {h.reason}
-                    </span>{" "}
-                    <span style={{ color: "var(--app-ink)" }}>{h.name}</span>{" "}
-                    {/* slug for the overrides patch (hidden places have no live page) */}
-                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                      {h.slug}
+                  index={i}
+                  title={
+                    <span className="inline-flex items-center gap-1.5">
+                      <Tag tone={h.reason === "closed" ? "warning" : "muted"}>{h.reason}</Tag>
+                      <span style={{ color: "var(--app-ink)" }}>{h.name}</span>
+                      {/* slug for the overrides patch (hidden places have no live page) */}
+                      <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>{h.slug}</span>
                     </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {h.category} · {h.municipality} · {h.source}
-                  </span>
-                </li>
+                  }
+                  meta={`${h.category} · ${h.municipality} · ${h.source}`}
+                />
               ))}
-            </ul>
-          </details>
+            </HairlineList>
+          </Disclosure>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Place drift (last vetting sweep)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Periodic Google re-pull diffs business_status / hours / website /
-          phone / rating / address against the stored enrichment so the
-          editor can keep the catalog honest. Run <code>npm run vet</code>
-          to refresh; review changes at <code>/admin/drift-review</code>.
-        </p>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {[
-            { label: "Drift rows", value: drift.drift_rows, color: "var(--app-warning)" },
-            { label: "Changes", value: drift.total_changes, color: "var(--app-ink-2)" },
-            { label: "Accepted", value: drift.accepted, color: "var(--app-positive)" },
-            { label: "Pending", value: drift.undecided, color: "var(--app-cool)" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="tactile rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] p-3 text-center"
-            >
-              <div
-                className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
-                style={{ color: s.color }}
-              >
-                {s.value.toLocaleString()}
-              </div>
-              <div
-                className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {s.label}
-              </div>
-            </div>
-          ))}
+      <Section
+        title="Place drift (last vetting sweep)"
+        description={
+          <>
+            Periodic Google re-pull diffs business_status / hours / website /
+            phone / rating / address against the stored enrichment so the
+            editor can keep the catalog honest. Run <code>npm run vet</code>
+            to refresh; review changes at <code>/admin/drift-review</code>.
+          </>
+        }
+      >
+        <div className="mt-3">
+          <StatCards
+            cols={4}
+            items={[
+              { value: drift.drift_rows.toLocaleString(), label: "Drift rows", tone: "warning" },
+              { value: drift.total_changes.toLocaleString(), label: "Changes", tone: "neutral" },
+              { value: drift.accepted.toLocaleString(), label: "Accepted", tone: "positive" },
+              { value: drift.undecided.toLocaleString(), label: "Pending", tone: "cool" },
+            ]}
+          />
         </div>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {drift.last_sweep_at
             ? `Last swept ${new Date(drift.last_sweep_at).toLocaleString()}.`
             : "No sweep recorded yet."}
         </p>
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Anomaly flags (current vs prior fetch)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Rolling per-source comparison. Flags fire when the distribution
-          shifts in a way that usually means an upstream regression: row
-          counts crash, the Free share swings wildly, a single venue
-          claims the whole batch, or descriptions go missing.
-        </p>
+      <Section
+        title="Anomaly flags (current vs prior fetch)"
+        description="Rolling per-source comparison. Flags fire when the distribution shifts in a way that usually means an upstream regression: row counts crash, the Free share swings wildly, a single venue claims the whole batch, or descriptions go missing."
+      >
         {anomalies.length === 0 ? (
-          <p
-            className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px]"
-            style={{
-              background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
-              color: "var(--app-positive)",
-            }}
-          >
-            No anomalies on the last fetch.
-          </p>
+          <EmptyState tone="positive">No anomalies on the last fetch.</EmptyState>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2">
             {anomalies.map((a, i) => (
-              <li
+              <Callout
                 key={`${a.source}-${a.kind}-${i}`}
-                className="rounded-[var(--app-radius-md)] border-l-4 px-3 py-2 text-[12px]"
-                style={{
-                  borderColor: "var(--app-warning)",
-                  background: "color-mix(in srgb, var(--app-warning) 8%, var(--app-bg-elevated))",
-                  color: "var(--app-ink-2)",
-                }}
+                tone="warning"
+                title={
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span>{a.source}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                      {a.kind.replace(/_/g, " ")}
+                    </span>
+                  </span>
+                }
               >
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-semibold" style={{ color: "var(--app-warning)" }}>
-                    {a.source}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                    {a.kind.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <p className="mt-0.5" style={{ color: "var(--app-ink-2)" }}>
-                  {a.detail}
-                </p>
-              </li>
+                {a.detail}
+              </Callout>
             ))}
-          </ul>
+          </div>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Distribution snapshot
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          The shape of each feed&apos;s most recent batch. What
-          anomalies are computed against.
-        </p>
+      <Section
+        title="Distribution snapshot"
+        description="The shape of each feed's most recent batch. What anomalies are computed against."
+      >
         {snapshots.length === 0 ? (
-          <p className="mt-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            No snapshot recorded in this process yet.
-          </p>
+          <EmptyState>No snapshot recorded in this process yet.</EmptyState>
         ) : (
-          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
-            <thead>
-              <tr style={{ color: "var(--app-ink-3)" }}>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Count</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Free</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Empty desc</th>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Top venue</th>
-                <th className="py-1 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Top category</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <Th>Source</Th>
+              <Th align="right">Count</Th>
+              <Th align="right">Free</Th>
+              <Th align="right">Empty desc</Th>
+              <Th>Top venue</Th>
+              <Th>Top category</Th>
+            </THead>
+            <TBody>
               {snapshots.map(({ source, current }) => (
-                <tr key={source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
-                  <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>
-                    {source}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                    {current.count}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                    {(current.free_ratio * 100).toFixed(0)}%
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                    {(current.empty_desc_ratio * 100).toFixed(0)}%
-                  </td>
-                  <td className="py-2 pr-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                <Tr key={source}>
+                  <Td semibold>{source}</Td>
+                  <Td align="right" mono>{current.count}</Td>
+                  <Td align="right" mono>{(current.free_ratio * 100).toFixed(0)}%</Td>
+                  <Td align="right" mono>{(current.empty_desc_ratio * 100).toFixed(0)}%</Td>
+                  <Td tone="muted">
                     {current.top_venue
                       ? `${current.top_venue.name} · ${(current.top_venue.share * 100).toFixed(0)}%`
                       : "–"}
-                  </td>
-                  <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                  </Td>
+                  <Td tone="muted">
                     {current.top_category
                       ? `${current.top_category.name} · ${(current.top_category.share * 100).toFixed(0)}%`
                       : "–"}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table></div>
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Feed validation (last fetch)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Schema-checked at the integration boundary. Rows that fail the
-          contract are dropped and the reason is recorded here, so an
-          upstream feed change is visible before it lands on a card.
-        </p>
+      <Section
+        title="Feed validation (last fetch)"
+        description="Schema-checked at the integration boundary. Rows that fail the contract are dropped and the reason is recorded here, so an upstream feed change is visible before it lands on a card."
+      >
         {feedMetrics.length === 0 ? (
-          <p className="mt-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            No feed fetched in this process yet.
-          </p>
+          <EmptyState>No feed fetched in this process yet.</EmptyState>
         ) : (
-          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
-            <thead>
-              <tr style={{ color: "var(--app-ink-3)" }}>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Passed</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Dropped</th>
-                <th className="py-1 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Top reasons</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <Th>Source</Th>
+              <Th align="right">Passed</Th>
+              <Th align="right">Dropped</Th>
+              <Th>Top reasons</Th>
+            </THead>
+            <TBody>
               {feedMetrics.map((m) => (
-                <tr key={m.source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
-                  <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>{m.source}</td>
-                  <td
-                    className="py-2 pr-3 text-right tabular-nums"
-                    style={{ color: m.passed > 0 ? "var(--app-positive)" : "var(--app-ink-3)" }}
-                  >
-                    {m.passed}
-                  </td>
-                  <td
-                    className="py-2 pr-3 text-right tabular-nums font-semibold"
-                    style={{ color: m.dropped > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}
-                  >
-                    {m.dropped}
-                  </td>
-                  <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                <Tr key={m.source}>
+                  <Td semibold>{m.source}</Td>
+                  <Td align="right" mono tone={m.passed > 0 ? "positive" : "muted"}>{m.passed}</Td>
+                  <Td align="right" mono semibold tone={m.dropped > 0 ? "warning" : "muted"}>{m.dropped}</Td>
+                  <Td tone="muted">
                     {m.reasons.length === 0 ? (
                       <span style={{ color: "var(--app-positive)" }}>–</span>
                     ) : (
-                      <ul className="space-y-0.5">
+                      <ul className="space-y-0.5 text-[12px]">
                         {m.reasons.map((r) => (
                           <li key={r.key}>
-                            <span className="tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                              {r.count}×
-                            </span>{" "}
+                            <span className="tabular-nums" style={{ color: "var(--app-ink-2)" }}>{r.count}×</span>{" "}
                             {r.key}
                           </li>
                         ))}
                       </ul>
                     )}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table></div>
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Ingest runs (last per source)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          The most recent run of each cron-driven ingest (<code>ingest_runs</code>).
-          A red status or a stale timestamp means the source&apos;s cron has
-          failed or stopped firing, so its events go quietly stale.
-        </p>
+      <Section
+        title="Ingest runs (last per source)"
+        description={
+          <>
+            The most recent run of each cron-driven ingest (<code>ingest_runs</code>).
+            A red status or a stale timestamp means the source&apos;s cron has
+            failed or stopped firing, so its events go quietly stale.
+          </>
+        }
+      >
         {ingestRuns.length === 0 ? (
-          <p
-            className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px]"
-            style={{
-              background: "color-mix(in srgb, var(--app-ink) 5%, var(--app-bg-elevated))",
-              color: "var(--app-ink-3)",
-            }}
-          >
-            No ingest runs recorded (or no database in this environment).
-          </p>
+          <EmptyState>No ingest runs recorded (or no database in this environment).</EmptyState>
         ) : (
-          <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
-            <thead>
-              <tr style={{ color: "var(--app-ink-3)" }}>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Status</th>
-                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Last run</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">In</th>
-                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Upserted</th>
-                <th className="py-1 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Failed</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <Th>Source</Th>
+              <Th>Status</Th>
+              <Th>Last run</Th>
+              <Th align="right">In</Th>
+              <Th align="right">Upserted</Th>
+              <Th align="right">Failed</Th>
+            </THead>
+            <TBody>
               {ingestRuns.map((r) => {
                 const bad = r.status === "error" || r.recordsFailed > 0 || r.stale;
                 return (
-                  <tr key={r.source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
-                    <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>{r.source}</td>
-                    <td className="py-2 pr-3 text-[11px] font-semibold" style={{ color: bad ? "var(--app-warning)" : "var(--app-positive)" }}>
-                      {r.status ?? "–"}
-                    </td>
-                    <td className="py-2 pr-3 text-[11px]" style={{ color: r.stale ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-                      {r.startedAt ? new Date(r.startedAt).toLocaleString() : "–"}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>{r.recordsIn}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>{r.recordsUpserted}</td>
-                    <td className="py-2 text-right tabular-nums font-semibold" style={{ color: r.recordsFailed > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
-                      {r.recordsFailed}
-                    </td>
-                  </tr>
+                  <Tr key={r.source}>
+                    <Td semibold>{r.source}</Td>
+                    <Td semibold tone={bad ? "warning" : "positive"}>{r.status ?? "–"}</Td>
+                    <Td tone={r.stale ? "warning" : "muted"}>{r.startedAt ? new Date(r.startedAt).toLocaleString() : "–"}</Td>
+                    <Td align="right" mono>{r.recordsIn}</Td>
+                    <Td align="right" mono>{r.recordsUpserted}</Td>
+                    <Td align="right" mono semibold tone={r.recordsFailed > 0 ? "warning" : "muted"}>{r.recordsFailed}</Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table></div>
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Unparseable locations (geocode queue)
-        </h2>
-        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Locations the ingest pipeline could not parse or geocode, logged to{" "}
-          <code>unparseable_locations</code> per source. The event still ships
-          (never dropped), but it lands on a feed-default centroid until the
-          address is fixed upstream or a parser rule is added.
-        </p>
+      <Section
+        title="Unparseable locations (geocode queue)"
+        description={
+          <>
+            Locations the ingest pipeline could not parse or geocode, logged to{" "}
+            <code>unparseable_locations</code> per source. The event still ships
+            (never dropped), but it lands on a feed-default centroid until the
+            address is fixed upstream or a parser rule is added.
+          </>
+        }
+      >
         {unparseable.length === 0 ? (
-          <p
-            className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px]"
-            style={{
-              background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
-              color: "var(--app-positive)",
-            }}
-          >
-            None queued (or no database in this environment).
-          </p>
+          <EmptyState tone="positive">None queued (or no database in this environment).</EmptyState>
         ) : (
           <>
             <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
@@ -657,36 +507,33 @@ export default async function DataHealth() {
               </span>{" "}
               across {unparseable.length} source{unparseable.length === 1 ? "" : "s"}.
             </p>
-            <div className="overflow-x-auto"><table className="mt-3 w-full text-sm">
-              <thead>
-                <tr style={{ color: "var(--app-ink-3)" }}>
-                  <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
-                  <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Count</th>
-                  <th className="py-1 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Most recent sample</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <Th>Source</Th>
+                <Th align="right">Count</Th>
+                <Th>Most recent sample</Th>
+              </THead>
+              <TBody>
                 {unparseable.map((r) => (
-                  <tr key={r.source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
-                    <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>{r.source}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums font-semibold" style={{ color: "var(--app-warning)" }}>
-                      {r.count.toLocaleString()}
-                    </td>
-                    <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                      {r.sample ?? "–"}
-                    </td>
-                  </tr>
+                  <Tr key={r.source}>
+                    <Td semibold>{r.source}</Td>
+                    <Td align="right" mono semibold tone="warning">{r.count.toLocaleString()}</Td>
+                    <Td tone="muted">{r.sample ?? "–"}</Td>
+                  </Tr>
                 ))}
-              </tbody>
-            </table></div>
+              </TBody>
+            </Table>
           </>
         )}
-      </section>
+      </Section>
 
-      <nav className="mt-6 flex gap-4 text-xs">
-        <Link href="/admin/dedup-review" style={{ color: "var(--app-cool)" }}>Dedup review →</Link>
-        <Link href="/admin/copy-review" style={{ color: "var(--app-cool)" }}>Copy review →</Link>
-      </nav>
-    </div>
+      <section className="mt-8">
+        <SectionLabel>More review tools</SectionLabel>
+        <HairlineList>
+          <HairlineRow index={0} href="/admin/dedup-review" icon={Copy} title="Dedup review" />
+          <HairlineRow index={1} href="/admin/copy-review" icon={PenLine} title="Copy review" />
+        </HairlineList>
+      </section>
+    </AdminShell>
   );
 }

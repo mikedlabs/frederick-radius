@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
-import { Check, X } from "lucide-react";
+import { Check, X, Mail, KeyRound, Inbox, Flag } from "lucide-react";
 import { getDb } from "@/lib/db/client";
 import {
   beta_codes,
@@ -14,6 +14,20 @@ import {
 } from "@/lib/db/schema";
 import { easternDayKey } from "@/lib/tz";
 import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
+import {
+  AdminShell,
+  Section,
+  SectionLabel,
+  StatCards,
+  HairlineList,
+  HairlineRow,
+  StatusPill,
+  EmptyState,
+  AllClear,
+  Notice,
+  AdminButton,
+  toneInk,
+} from "@/components/admin/kit";
 import { resolveFeedback } from "./actions";
 
 export const metadata: Metadata = {
@@ -111,41 +125,19 @@ export default async function BetaDashboard() {
   const result = await load();
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>
-        ← Admin
-      </Link>
-
-      <header className="mt-4 space-y-1">
-        <p
-          className="text-[11px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Beta program
-        </p>
-        <h1
-          className="font-serif text-[28px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Beta dashboard
-        </h1>
-        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Signups, tester feedback, and activity in one place. Notes from the
-          in-app widget land here the moment a tester sends them.
-        </p>
-      </header>
-
+    <AdminShell
+      eyebrow="Beta program"
+      title="Beta dashboard"
+      intro="Signups, tester feedback, and activity in one place. Notes from the in-app widget land here the moment a tester sends them."
+    >
       {!result.ok ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-lg)] border p-5 text-[13px] leading-relaxed"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          {result.reason}
-        </p>
+        <div className="mt-6">
+          <Notice tone="warning">{result.reason}</Notice>
+        </div>
       ) : (
         <Dashboard data={result.data} />
       )}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -164,23 +156,26 @@ function Dashboard({ data }: { data: Data }) {
         <OwnerAlertsCard />
       </section>
 
-      <section className="stagger-children mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat
-          label="Signups"
-          value={data.signups.length}
-          sub={signupsToday > 0 ? `+${signupsToday} today` : undefined}
-        />
-        <Stat
-          label="Feedback waiting"
-          value={pending.length}
-          tone={pending.length > 0 ? "brand" : undefined}
-        />
-        <Stat
-          label="Reports pending"
-          value={data.reportsPending}
-          tone={data.reportsPending > 0 ? "warning" : undefined}
-        />
-        <Stat label="Push devices" value={data.pushDevices} />
+      <section className="mt-6">
+        <SectionLabel>The vitals</SectionLabel>
+        <div className="stagger-children grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Stat
+            label="Signups"
+            value={data.signups.length}
+            sub={signupsToday > 0 ? `+${signupsToday} today` : undefined}
+          />
+          <Stat
+            label="Feedback waiting"
+            value={pending.length}
+            tone={pending.length > 0 ? "brand" : undefined}
+          />
+          <Stat
+            label="Reports pending"
+            value={data.reportsPending}
+            tone={data.reportsPending > 0 ? "warning" : undefined}
+          />
+          <Stat label="Push devices" value={data.pushDevices} />
+        </div>
       </section>
 
       <FeedbackInbox pending={pending} resolved={resolved} />
@@ -192,15 +187,40 @@ function Dashboard({ data }: { data: Data }) {
         now={data.now}
       />
 
-      <section className="mt-8 space-y-2.5">
-        <SectionHeading>Related tools</SectionHeading>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <ToolLink href="/admin/beta-emails" title="Beta emails" desc="Full signup list + CSV export" />
-          <ToolLink href="/admin/beta-codes" title="Beta codes" desc="Per-tester access: generate, track, revoke" />
-          <ToolLink href="/admin/claims" title="Submission queue" desc="Places, events, and business claims" />
-          <ToolLink href="/admin/reports" title="Community reports" desc="Map-layer moderation queue" />
+      <Section title="Related tools">
+        <div className="mt-3">
+          <HairlineList>
+            <HairlineRow
+              index={0}
+              href="/admin/beta-emails"
+              icon={Mail}
+              title="Beta emails"
+              subtitle="Full signup list + CSV export"
+            />
+            <HairlineRow
+              index={1}
+              href="/admin/beta-codes"
+              icon={KeyRound}
+              title="Beta codes"
+              subtitle="Per-tester access: generate, track, revoke"
+            />
+            <HairlineRow
+              index={2}
+              href="/admin/claims"
+              icon={Inbox}
+              title="Submission queue"
+              subtitle="Places, events, and business claims"
+            />
+            <HairlineRow
+              index={3}
+              href="/admin/reports"
+              icon={Flag}
+              title="Community reports"
+              subtitle="Map-layer moderation queue"
+            />
+          </HairlineList>
         </div>
-      </section>
+      </Section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Feedback arrives via the beta widget through POST /api/feedback and is
@@ -215,18 +235,11 @@ function Dashboard({ data }: { data: Data }) {
 
 function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved: FeedbackRow[] }) {
   return (
-    <section className="mt-8 space-y-2.5">
-      <SectionHeading>Feedback inbox</SectionHeading>
-
+    <Section title="Feedback inbox">
       {pending.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-lg)] border p-6 text-center font-serif text-[17px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        >
-          No unread feedback. All caught up.
-        </p>
+        <AllClear>No unread feedback. All caught up.</AllClear>
       ) : (
-        <ul className="space-y-3">
+        <ul className="mt-3 space-y-3">
           {pending.map((f) => (
             <li key={f.id}>
               <FeedbackCard row={f} />
@@ -236,43 +249,28 @@ function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved
       )}
 
       {resolved.length > 0 ? (
-        <div className="pt-2">
-          <h3
-            className="text-[11px] font-medium uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Recently resolved
-          </h3>
-          <ul className="mt-2 space-y-1">
-            {resolved.slice(0, 15).map((f) => {
+        <div className="mt-5">
+          <SectionLabel>Recently resolved</SectionLabel>
+          <HairlineList>
+            {resolved.slice(0, 15).map((f, i) => {
               const p = feedbackPayload(f);
               return (
-                <li
+                <HairlineRow
                   key={f.id}
-                  className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span className="truncate" style={{ color: "var(--app-ink-2)" }}>
-                    {p.message}
-                  </span>
-                  <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                    style={{
-                      background: `color-mix(in srgb, ${
-                        f.status === "approved" ? "var(--app-positive)" : "var(--app-ink-3)"
-                      } 16%, transparent)`,
-                      color: f.status === "approved" ? "var(--app-positive)" : "var(--app-ink-3)",
-                    }}
-                  >
-                    {f.status === "approved" ? "done" : "dismissed"}
-                  </span>
-                </li>
+                  index={i}
+                  title={p.message}
+                  badge={
+                    <StatusPill tone={f.status === "approved" ? "positive" : "neutral"}>
+                      {f.status === "approved" ? "done" : "dismissed"}
+                    </StatusPill>
+                  }
+                />
               );
             })}
-          </ul>
+          </HairlineList>
         </div>
       ) : null}
-    </section>
+    </Section>
   );
 }
 
@@ -328,26 +326,14 @@ function FeedbackCard({ row }: { row: FeedbackRow }) {
         ) : null}
       </div>
 
-      <form action={resolveFeedback} className="mt-4 grid grid-cols-2 gap-2">
+      <form action={resolveFeedback} className="mt-4 flex items-center justify-end gap-2">
         <input type="hidden" name="id" value={row.id} />
-        <button
-          type="submit"
-          name="decision"
-          value="rejected"
-          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-2.5 text-[13px] font-semibold active:scale-[0.97]"
-          style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink-2)" }}
-        >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Dismiss
-        </button>
-        <button
-          type="submit"
-          name="decision"
-          value="approved"
-          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-2.5 text-[13px] font-semibold text-white active:scale-[0.97]"
-          style={{ background: "var(--app-positive)" }}
-        >
-          <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Mark done
-        </button>
+        <AdminButton type="submit" name="decision" value="rejected" variant="ghost" icon={X}>
+          Dismiss
+        </AdminButton>
+        <AdminButton type="submit" name="decision" value="approved" variant="positive" icon={Check}>
+          Mark done
+        </AdminButton>
       </form>
     </article>
   );
@@ -387,11 +373,12 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
   const todayKey = days[days.length - 1].key;
 
   return (
-    <section className="mt-8 space-y-2.5">
-      <SectionHeading>Signups</SectionHeading>
-
+    <Section title="Signups">
+      {/* SignupSparkbars: a bespoke 14-day bar strip — nothing in the kit draws
+          a per-day chart. Today reads in the brand; history recedes into ink so
+          the strip answers "anything today?" before anything else. */}
       <div
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+        className="mt-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
         style={{ borderColor: "var(--app-border)" }}
       >
         <div
@@ -406,8 +393,6 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
               className="flex-1 rounded-t-[2px]"
               style={{
                 height: d.n === 0 ? "2px" : `${Math.max(6, Math.round((d.n / max) * 56))}px`,
-                // Today reads in the brand; history recedes into ink so the
-                // strip answers "anything today?" before anything else.
                 background:
                   d.n === 0
                     ? "var(--app-border)"
@@ -431,28 +416,22 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
       </div>
 
       {signups.length > 0 ? (
-        <ul className="space-y-1">
-          {signups.slice(0, 8).map((s) => (
-            <li
-              key={s.email}
-              className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <span className="truncate font-mono text-[12px]" style={{ color: "var(--app-ink)" }}>
-                {s.email}
-              </span>
-              <span className="shrink-0 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                {fmt(s.created_at)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-3">
+          <HairlineList>
+            {signups.slice(0, 8).map((s, i) => (
+              <HairlineRow
+                key={s.email}
+                index={i}
+                title={<span className="font-mono text-[12.5px]">{s.email}</span>}
+                meta={<span className="font-mono">{fmt(s.created_at)}</span>}
+              />
+            ))}
+          </HairlineList>
+        </div>
       ) : (
-        <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          No signups yet. The form on /beta feeds this list.
-        </p>
+        <EmptyState>No signups yet. The form on /beta feeds this list.</EmptyState>
       )}
-    </section>
+    </Section>
   );
 }
 
@@ -477,56 +456,66 @@ function Activity({
   );
 
   return (
-    <section className="mt-8 space-y-2.5">
-      <SectionHeading>Tester activity</SectionHeading>
-
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Codes active, 7d" value={activeCodes.length} />
-        <Stat label="Follows" value={followCount} />
-        <Stat label="Event saves" value={saveCount} />
+    <Section title="Tester activity">
+      <div className="mt-3">
+        <StatCards
+          cols={3}
+          items={[
+            { value: activeCodes.length, label: "Codes active, 7d" },
+            { value: followCount, label: "Follows" },
+            { value: saveCount, label: "Event saves" },
+          ]}
+        />
       </div>
 
       {codes.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[12.5px] leading-relaxed"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          Everyone currently comes in through the shared password, so activity
-          is not attributable to individual testers.{" "}
+        <EmptyState>
+          Everyone currently comes in through the shared password, so activity is
+          not attributable to individual testers.{" "}
           <Link href="/admin/beta-codes" className="underline underline-offset-2" style={{ color: "var(--app-cool)" }}>
             Hand out per-tester codes
           </Link>{" "}
           to see who is actually using the app.
-        </p>
+        </EmptyState>
       ) : (
-        <ul className="space-y-1">
-          {codes.slice(0, 10).map((c) => (
+        // Matches the kit HairlineList look, but kept local so revoked rows can
+        // dim to 0.55 — a per-row opacity the shared HairlineRow doesn't carry.
+        <ul
+          className="mt-3 overflow-hidden rounded-[var(--app-radius-md)] border"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          {codes.slice(0, 10).map((c, i) => (
             <li
               key={c.code}
-              className="flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
-              style={{ borderColor: "var(--app-border)", opacity: c.revoked ? 0.55 : 1 }}
+              className="flex items-center justify-between gap-2 bg-[var(--app-bg-elevated)] px-3 py-2.5"
+              style={{
+                borderTop: i > 0 ? "1px solid var(--app-border)" : undefined,
+                opacity: c.revoked ? 0.55 : 1,
+              }}
             >
-              <span className="truncate" style={{ color: "var(--app-ink)" }}>
+              <span className="truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
                 {c.label || c.code}
               </span>
-              <span className="shrink-0 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                 {c.last_seen_at ? `last seen ${fmt(c.last_seen_at)}` : "never used"}
               </span>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }
 
 /* ----------------------------------------------------------------- shared */
 
 /**
- * Instrument tile in the /pulse board language: mono tabular readout, tiny
- * uppercase label, and — only when the tile carries something waiting — a
- * hair-thin accent rule plus a quiet breathing dot so the eye lands there
- * first. Calm tiles stay quiet; motion is reduced-motion safe via globals.
+ * Beta vital tile. Reads in the kit's stat-card language (serif number, tiny
+ * uppercase label, hairline card) so it sits flush with the StatCards used on
+ * Tester activity — but keeps two beta-only tells the kit doesn't provide: a
+ * "+N today" sub-line and, when something is waiting, a hair-thin accent rule
+ * plus a quiet breathing .live-dot so the eye lands there first. Calm tiles
+ * stay quiet; the pulse is reduced-motion safe via globals.
  */
 function Stat({
   label,
@@ -539,11 +528,10 @@ function Stat({
   sub?: string;
   tone?: "brand" | "warning";
 }) {
-  const accent =
-    tone === "brand" ? "var(--app-brand)" : tone === "warning" ? "var(--app-warning)" : null;
+  const accent = tone ? toneInk(tone) : null;
   return (
     <div
-      className="relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-3 text-center"
+      className="relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center"
       style={{ borderColor: "var(--app-border)" }}
     >
       {accent ? (
@@ -556,62 +544,21 @@ function Stat({
           </span>
         </>
       ) : null}
-      <p
-        className="font-mono text-[17px] font-semibold tabular-nums leading-none"
+      <div
+        className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
         style={{ color: accent ?? "var(--app-ink)" }}
       >
         {value}
-      </p>
-      <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+      </div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
         {label}
-      </p>
+      </div>
       {sub ? (
-        <p className="mt-0.5 font-mono text-[10px] font-medium tabular-nums" style={{ color: "var(--app-positive)" }}>
+        <div className="mt-0.5 font-mono text-[10px] font-medium tabular-nums" style={{ color: "var(--app-positive)" }}>
           {sub}
-        </p>
+        </div>
       ) : null}
     </div>
-  );
-}
-
-/** Eyebrow + hairline rule: the field-guide section divider. */
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <h2
-        className="shrink-0 text-xs font-medium uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {children}
-      </h2>
-      <span aria-hidden className="h-px min-w-0 flex-1" style={{ background: "var(--app-border)" }} />
-    </div>
-  );
-}
-
-function ToolLink({ href, title, desc }: { href: string; title: string; desc: string }) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition hover:bg-[var(--app-bg-sunken)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <span className="min-w-0">
-        <span className="block font-semibold" style={{ color: "var(--app-ink)" }}>
-          {title}
-        </span>
-        <span className="mt-0.5 block text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {desc}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className="shrink-0 font-mono text-[13px] transition-transform group-hover:translate-x-0.5"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        →
-      </span>
-    </Link>
   );
 }
 

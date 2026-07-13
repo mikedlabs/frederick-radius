@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { gte } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
+import {
+  AdminShell,
+  SectionLabel,
+  HairlineList,
+  StatusPill,
+  Notice,
+  ExternalLink,
+} from "@/components/admin/kit";
 
 export const metadata: Metadata = {
   title: "Usage costs",
@@ -20,6 +27,11 @@ export const dynamic = "force-dynamic";
  * cost-controls checklist showing which protections are actually configured.
  * The estimates are deliberately conservative labels, never a bill: the
  * provider consoles (linked) are the source of truth.
+ *
+ * Composed from the shared admin kit (@/components/admin/kit) so the whole
+ * /admin surface reads as one calm field guide. The metered rows and cost
+ * estimate figure stay local: they carry a threshold-colored money figure,
+ * a mono stat line, and an untruncated note that no kit row slot covers.
  */
 
 /** Unit-price ESTIMATES per 1,000 calls, in dollars. Update from the provider
@@ -45,6 +57,23 @@ const BILLING_LINKS: Array<{ label: string; href: string }> = [
 
 function dayKeyEastern(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(d);
+}
+
+/** The threshold-colored 30-day estimate figure (brand-press when it clears $1). */
+function EstimateFigure({ est }: { est: number }) {
+  return (
+    <div className="shrink-0 text-right">
+      <p
+        className="font-mono text-[14px] font-semibold leading-none tabular-nums"
+        style={{ color: est >= 1 ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+      >
+        ~${est.toFixed(2)}
+      </p>
+      <p className="mt-1 text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+        est / 30d
+      </p>
+    </div>
+  );
 }
 
 export default async function CostsAdmin() {
@@ -81,100 +110,91 @@ export default async function CostsAdmin() {
   ];
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>
-        ← Back to Admin
-      </Link>
-
-      <header className="mt-4 space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Operations
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Usage costs
-        </h1>
-        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+    <AdminShell
+      eyebrow="Operations"
+      title="Usage costs"
+      intro={
+        <>
           The app&rsquo;s own tally of calls to the paid upstreams, priced with rough
           unit estimates. The provider consoles are the source of truth for real
           bills; this tells you where the money is going before the invoice does.
-        </p>
-      </header>
-
+        </>
+      }
+    >
       {dbError && (
-        <p className="mt-4 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--app-warning)", color: "var(--app-warning)" }}>
-          The usage_counters table isn&rsquo;t migrated yet. Run
-          <code className="mx-1">drizzle/0017_usage_counters.sql</code> in the Supabase
-          SQL editor, then reload. Counters start filling as soon as it exists.
-        </p>
+        <div className="mt-6">
+          <Notice tone="warning">
+            The usage_counters table isn&rsquo;t migrated yet. Run
+            <code className="mx-1">drizzle/0017_usage_counters.sql</code> in the Supabase
+            SQL editor, then reload. Counters start filling as soon as it exists.
+          </Notice>
+        </div>
       )}
 
-      {/* Per-upstream meter */}
-      <section className="mt-6 space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Metered calls
-        </h2>
-        <ul className="space-y-2">
-          {UPSTREAMS.map((u) => {
+      {/* Per-upstream meter — the answer (estimated spend) leads each row, counts support. */}
+      <section className="mt-6">
+        <SectionLabel>Metered calls</SectionLabel>
+        <HairlineList>
+          {UPSTREAMS.map((u, i) => {
             const d1 = sum(u.key, today);
             const d7 = sum(u.key, sevenAgo);
             const d30 = sum(u.key, null);
             const est30 = (d30 / 1000) * u.per1000;
             return (
-              <li key={u.key} className="rounded-[var(--app-radius-md)] border px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>{u.label}</p>
-                  <p className="font-mono text-[13px] font-semibold tabular-nums" style={{ color: est30 >= 1 ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>
-                    ~${est30.toFixed(2)}<span className="text-[10px] font-medium" style={{ color: "var(--app-ink-3)" }}> est / 30d</span>
-                  </p>
+              <li key={u.key} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+                <div className="flex items-start justify-between gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
+                      {u.label}
+                    </p>
+                    <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                      today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
+                      <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                    </p>
+                    <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                      {u.note}
+                    </p>
+                  </div>
+                  <EstimateFigure est={est30} />
                 </div>
-                <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                  today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
-                  <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
-                </p>
-                <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{u.note}</p>
               </li>
             );
           })}
-        </ul>
+        </HairlineList>
       </section>
 
       {/* Cost-control posture */}
-      <section className="mt-7 space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Cost controls
-        </h2>
-        <ul className="space-y-1.5">
-          {controls.map((c) => (
-            <li key={c.label} className="flex items-start justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-sm" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium" style={{ color: "var(--app-ink)" }}>{c.label}</p>
-                <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{c.why}</p>
+      <section className="mt-7">
+        <SectionLabel>Cost controls</SectionLabel>
+        <HairlineList>
+          {controls.map((c, i) => (
+            <li key={c.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+              <div className="flex items-start gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
+                    {c.label}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                    {c.why}
+                  </p>
+                </div>
+                <StatusPill tone={c.ok ? "positive" : "brand"}>{c.ok ? "Active" : "Missing"}</StatusPill>
               </div>
-              <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{
-                background: c.ok ? "color-mix(in srgb, var(--app-positive) 12%, transparent)" : "color-mix(in srgb, var(--app-brand) 12%, transparent)",
-                color: c.ok ? "var(--app-positive)" : "var(--app-brand-press)",
-              }}>
-                {c.ok ? "Active" : "Missing"}
-              </span>
             </li>
           ))}
-        </ul>
+        </HairlineList>
       </section>
 
       {/* Source-of-truth links */}
-      <section className="mt-7 space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Real bills live here
-        </h2>
-        <ul className="flex flex-wrap gap-2">
+      <section className="mt-7">
+        <SectionLabel>Real bills live here</SectionLabel>
+        <div className="flex flex-wrap gap-2">
           {BILLING_LINKS.map((l) => (
-            <li key={l.href}>
-              <a href={l.href} target="_blank" rel="noopener noreferrer" className="inline-block rounded-full border px-3 py-1.5 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}>
-                {l.label} ↗
-              </a>
-            </li>
+            <ExternalLink key={l.href} href={l.href}>
+              {l.label}
+            </ExternalLink>
           ))}
-        </ul>
+        </div>
       </section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
@@ -183,6 +203,6 @@ export default async function CostsAdmin() {
         pinned in code (src/app/admin/costs/page.tsx); update them when provider
         pricing changes.
       </p>
-    </div>
+    </AdminShell>
   );
 }

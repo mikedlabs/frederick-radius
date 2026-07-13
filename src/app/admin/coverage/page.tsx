@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import {
+  AdminShell,
+  Section,
+  SectionLabel,
+  StatStrip,
+  StatCards,
+  HairlineList,
+  HairlineRow,
+  StatusPill,
+  StatusDot,
+  Callout,
+} from "@/components/admin/kit";
 
 /**
  * /admin/coverage — the state of the data itself.
@@ -20,6 +31,9 @@ import { MUNICIPALITIES } from "@/data/municipalities";
  *     thin and unconsumed.
  *
  * Pure computation over the shipped client dataset — no DB, no network.
+ * The visual language is the shared admin kit (@/components/admin/kit): the
+ * freshness alert is a tone-flipping Callout, the town list a HairlineList,
+ * the attribute grid StatCards, so the page reads as one calm field guide.
  */
 
 export const metadata: Metadata = {
@@ -83,108 +97,115 @@ export default function CoverageAdmin() {
     label: probe.label,
     n: places.filter((p) => (p.tags ?? []).some((t) => probe.match((t ?? "").toLowerCase()))).length,
   }));
+  const attrsThin = attrCounts.filter((a) => a.n < 30).length;
+
+  const freshTone = freshnessBroken ? "danger" : "positive";
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>← Admin</Link>
+    <AdminShell
+      eyebrow="The state of the data"
+      title="Coverage & freshness"
+      intro={`${total} places in the live dataset. The foundation problems a polished front end can hide.`}
+    >
+      {/* ── The vitals: one glance across the three foundation problems. ── */}
+      <div className="mt-6">
+        <SectionLabel>The vitals</SectionLabel>
+        <StatStrip
+          items={[
+            { value: total, label: "places" },
+            { value: thinCount, label: "thin towns", tone: thinCount > 0 ? "warning" : "positive" },
+            { value: distinctDays, label: "verify dates", tone: freshTone },
+            { value: attrsThin, label: "thin attrs", tone: attrsThin > 0 ? "warning" : "positive" },
+          ]}
+        />
+      </div>
 
-      <header className="mt-4 space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          The state of the data
-        </p>
-        <h1 className="font-serif text-[26px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Coverage &amp; freshness
-        </h1>
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {total} places in the live dataset. The foundation problems a polished
-          front end can hide.
-        </p>
-      </header>
-
-      {/* ── Freshness integrity alert ── */}
-      <section
-        className="mt-6 rounded-[var(--app-radius-md)] border p-4"
-        style={{
-          borderColor: freshnessBroken ? "color-mix(in srgb, var(--app-danger) 45%, var(--app-border))" : "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: freshnessBroken ? "var(--app-danger)" : "var(--app-positive)" }} />
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink)" }}>
-            Freshness integrity
-          </h2>
-        </div>
-        {freshnessBroken ? (
-          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            All {total} places share <strong>{distinctDays === 1 ? "one" : distinctDays} verification date{distinctDays === 1 ? "" : "s"}</strong>
-            {topDay ? ` (${topDay[0]}, ${topDay[1]} places)` : ""}. <code>last_verified_at</code> is a
-            batch stamp, not per-place verification, so the &ldquo;verified
-            recently&rdquo; signal users see is uniform and therefore not a real
-            trust signal. A field guide&rsquo;s value is being right; this needs a
-            per-place verification loop (re-check oldest first, stamp
-            individually) before public launch.
-          </p>
-        ) : (
-          <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-            {distinctDays} distinct verification dates. Per-place freshness is
-            being tracked.
-          </p>
-        )}
-      </section>
+      {/* ── Freshness integrity — a tone-flipping alert (danger vs positive). ── */}
+      <div className="mt-8">
+        <Callout
+          tone={freshTone}
+          title={
+            <span className="inline-flex items-center gap-2">
+              <StatusDot tone={freshTone} />
+              Freshness integrity
+            </span>
+          }
+        >
+          {freshnessBroken ? (
+            <>
+              All {total} places share{" "}
+              <strong>
+                {distinctDays === 1 ? "one" : distinctDays} verification date{distinctDays === 1 ? "" : "s"}
+              </strong>
+              {topDay ? ` (${topDay[0]}, ${topDay[1]} places)` : ""}. <code>last_verified_at</code> is a
+              batch stamp, not per-place verification, so the &ldquo;verified recently&rdquo; signal users
+              see is uniform and therefore not a real trust signal. A field guide&rsquo;s value is being
+              right; this needs a per-place verification loop (re-check oldest first, stamp individually)
+              before public launch.
+            </>
+          ) : (
+            <>
+              {distinctDays} distinct verification dates. Per-place freshness is being tracked.
+            </>
+          )}
+        </Callout>
+      </div>
 
       {/* ── Coverage equity ── */}
-      <section className="mt-7 space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Coverage by town
-          </h2>
-          <span className="font-mono text-[11px]" style={{ color: thinCount > 0 ? "var(--app-warning)" : "var(--app-positive)" }}>
-            {thinCount} thin
-          </span>
+      <Section
+        title="Coverage by town"
+        aside={
+          <StatusPill tone={thinCount > 0 ? "warning" : "positive"}>{thinCount} thin</StatusPill>
+        }
+        description={
+          <>
+            Thin = under {THIN_COUNT} places or under {THIN_HOURS_PCT}% with posted hours. These are
+            where &ldquo;city and county connected&rdquo; rings hollow for a local.
+          </>
+        }
+      >
+        <div className="mt-3">
+          <HairlineList>
+            {coverage.map((c, i) => (
+              <HairlineRow
+                key={c.slug}
+                index={i}
+                dot={c.thin ? "warning" : "positive"}
+                title={c.name}
+                meta={
+                  <span className="font-mono tabular-nums">
+                    {c.n} places · {c.hoursPct}% hours
+                  </span>
+                }
+                badge={c.thin ? <StatusPill tone="warning">Thin</StatusPill> : undefined}
+              />
+            ))}
+          </HairlineList>
         </div>
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Thin = under {THIN_COUNT} places or under {THIN_HOURS_PCT}% with posted
-          hours. These are where &ldquo;city and county connected&rdquo; rings
-          hollow for a local.
-        </p>
-        <ul className="space-y-1">
-          {coverage.map((c) => (
-            <li
-              key={c.slug}
-              className="flex items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
-              style={{ borderColor: c.thin ? "color-mix(in srgb, var(--app-warning) 40%, var(--app-border))" : "var(--app-border)" }}
-            >
-              <span className="font-medium" style={{ color: "var(--app-ink)" }}>{c.name}</span>
-              <span className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                {c.n} places · {c.hoursPct}% hours
-                {c.thin && <span className="ml-2 font-sans font-semibold" style={{ color: "var(--app-warning)" }}>THIN</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      </Section>
 
       {/* ── Attribute substrate ── */}
-      <section className="mt-7 space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Attribute substrate
-        </h2>
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          The data that makes Ask (&ldquo;eat outside near downtown&rdquo;),
-          filters, and &ldquo;why this&rdquo; real. It partly exists but is thin,
-          and nothing consumes it yet. The Ask failure was a wiring gap, not
-          only a data gap.
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {attrCounts.map((a) => (
-            <div key={a.label} className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 text-center" style={{ borderColor: "var(--app-border)" }}>
-              <p className="font-serif text-xl font-semibold tabular-nums" style={{ color: a.n === 0 ? "var(--app-danger)" : a.n < 30 ? "var(--app-warning)" : "var(--app-ink)" }}>{a.n}</p>
-              <p className="mt-0.5 text-[10px] leading-tight" style={{ color: "var(--app-ink-3)" }}>{a.label}</p>
-            </div>
-          ))}
+      <Section
+        title="Attribute substrate"
+        description={
+          <>
+            The data that makes Ask (&ldquo;eat outside near downtown&rdquo;), filters, and &ldquo;why
+            this&rdquo; real. It partly exists but is thin, and nothing consumes it yet. The Ask failure
+            was a wiring gap, not only a data gap.
+          </>
+        }
+      >
+        <div className="mt-3">
+          <StatCards
+            cols={4}
+            items={attrCounts.map((a) => ({
+              value: a.n,
+              label: a.label,
+              tone: a.n === 0 ? "danger" : a.n < 30 ? "warning" : "neutral",
+            }))}
+          />
         </div>
-      </section>
+      </Section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Computed live from places-client.json on each request. The fixes:
@@ -193,6 +214,6 @@ export default function CoverageAdmin() {
         route pointed at these tags); (3) an Ask eligibility layer that consumes
         the tags. Foundation before features.
       </p>
-    </div>
+    </AdminShell>
   );
 }

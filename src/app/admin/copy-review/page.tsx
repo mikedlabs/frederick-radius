@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PLACES } from "@/data/places";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
+import { AdminShell, StatStrip, SectionLabel, HairlineList, Callout, AllClear } from "@/components/admin/kit";
 
 export const metadata: Metadata = {
   title: "Copy review · Admin",
@@ -22,52 +22,70 @@ export default function CopyReview() {
     .slice(0, 200);
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>← Admin</Link>
-      <header className="mt-4 space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Phase 1 data quality
-        </p>
-        <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Copy review
-        </h1>
-        <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
-          {SCORES.counts.scraped} of {total} descriptions are scraped by the STYLE.md detector.
-          {SCORES.counts.auto_clean} read as prose. Showing the first 200 scraped, worst surface first.
-        </p>
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          Rewrite against STYLE.md. Put approved copy in src/data/copy-overrides.json keyed by slug,
-          then commit. Scores recompute on <code>npm run copy:scores</code>. Computed{' '}
-          {new Date(SCORES.computed_at).toLocaleString()}.
-        </p>
-      </header>
+    <AdminShell
+      eyebrow="Phase 1 data quality"
+      title="Copy review"
+      intro="Listings whose descriptions read like scraped data, not prose. Showing the first 200 flagged, worst surface first."
+    >
+      {/* ── The answer up front: how many listings read as scraped vs prose. ── */}
+      <div className="mt-6">
+        <StatStrip
+          items={[
+            { value: SCORES.counts.scraped, label: "flagged scraped", tone: SCORES.counts.scraped > 0 ? "warning" : "positive" },
+            { value: SCORES.counts.auto_clean, label: "read as prose", tone: "positive" },
+            { value: total, label: "listings total", tone: "neutral" },
+          ]}
+        />
+      </div>
 
-      {scraped.length === 0 ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-        >
-          No scraped descriptions to rewrite. Every listing reads as prose.
-        </p>
-      ) : (
-      <ul className="mt-6 space-y-2">
-        {scraped.map((p) => (
-          <li
-            key={p.slug}
-            className="rounded-[var(--app-radius-md)] border p-3"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm font-semibold" style={{ color: "var(--app-ink)" }}>{p.name}</span>
-              <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{p.source} · {p.slug}</span>
-            </div>
-            <p className="mt-1 text-xs" style={{ color: "var(--app-ink-3)" }}>
-              {(p.description ?? p.short_blurb ?? "").slice(0, 240) || "(no description)"}
-            </p>
-          </li>
-        ))}
-      </ul>
-      )}
-    </div>
+      {/* ── How to clear them (the rewrite loop). ── */}
+      <div className="mt-4">
+        <Callout tone="cool" title="How to clear these">
+          Rewrite against STYLE.md, then put approved copy in <code>src/data/copy-overrides.json</code> keyed by
+          slug and commit. Scores recompute on <code>npm run copy:scores</code>. Computed{" "}
+          {new Date(SCORES.computed_at).toLocaleString()}.
+        </Callout>
+      </div>
+
+      {/* ── The worklist: hairlines, not cards, so the copy can breathe. ── */}
+      <section className="mt-7">
+        {scraped.length === 0 ? (
+          <AllClear>No scraped descriptions to rewrite. Every listing reads as prose.</AllClear>
+        ) : (
+          <>
+            <SectionLabel
+              aside={
+                <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                  {scraped.length} shown
+                </span>
+              }
+            >
+              Flagged listings
+            </SectionLabel>
+            <HairlineList>
+              {scraped.map((p, i) => (
+                <li
+                  key={p.slug}
+                  className="bg-[var(--app-bg-elevated)] px-3 py-2.5"
+                  style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                      {p.name}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                      {p.source} · {p.slug}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                    {(p.description ?? p.short_blurb ?? "").slice(0, 240) || "(no description)"}
+                  </p>
+                </li>
+              ))}
+            </HairlineList>
+          </>
+        )}
+      </section>
+    </AdminShell>
   );
 }

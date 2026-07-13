@@ -1,9 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { Check, X } from "lucide-react";
 import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
+import {
+  AdminShell,
+  StatStrip,
+  SectionLabel,
+  HairlineList,
+  AdminButton,
+  Tag,
+  StatusPill,
+  FieldList,
+  Notice,
+  AllClear,
+  type Tone,
+} from "@/components/admin/kit";
 import { reviewSubmission } from "./actions";
 
 export const metadata: Metadata = {
@@ -45,39 +57,15 @@ export default async function ClaimsReviewPage() {
   const result = await loadRows();
 
   return (
-    <div
-      className="mx-auto max-w-screen-md px-4 py-8"
-      style={{ background: "var(--app-bg)" }}
-    >
-      <Link href="/admin" className="text-xs" style={{ color: "var(--app-cool)" }}>
-        ← Admin
-      </Link>
-      <header className="mt-4 space-y-1">
-        <p
-          className="text-[11px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Moderation queue
-        </p>
-        <h1
-          className="font-serif text-[28px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Submission review
-        </h1>
-      </header>
-
+    <AdminShell eyebrow="Moderation queue" title="Submission review">
       {!result.ok ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-lg)] border p-5 text-[13px] leading-relaxed"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          {result.reason}
-        </p>
+        <div className="mt-5">
+          <Notice tone="warning">{result.reason}</Notice>
+        </div>
       ) : (
         <Queue rows={result.rows} />
       )}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -87,37 +75,39 @@ function Queue({ rows }: { rows: Row[] }) {
 
   return (
     <>
-      <p className="mt-4 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-        {pending.length} pending · {decided.length} decided
-      </p>
+      {/* Lead with the answer: how many are waiting, how many are settled. */}
+      <div className="mt-5">
+        <StatStrip
+          items={[
+            {
+              value: pending.length,
+              label: "pending",
+              tone: pending.length > 0 ? "brand" : "neutral",
+            },
+            { value: decided.length, label: "decided" },
+          ]}
+        />
+      </div>
 
-      {pending.length === 0 ? (
-        <p
-          className="mt-6 rounded-[var(--app-radius-lg)] border p-6 text-center font-serif text-[18px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        >
-          Nothing waiting. All caught up.
-        </p>
-      ) : (
-        <ul className="mt-5 space-y-3">
-          {pending.map((s) => (
-            <li key={s.id}>
-              <SubmissionCard row={s} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="mt-6">
+        {pending.length === 0 ? (
+          <AllClear>Nothing waiting. All caught up.</AllClear>
+        ) : (
+          <ul className="space-y-3">
+            {pending.map((s) => (
+              <li key={s.id}>
+                <SubmissionCard row={s} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {decided.length > 0 ? (
         <section className="mt-8">
-          <h2
-            className="text-xs font-medium uppercase tracking-[0.08em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Recently decided
-          </h2>
-          <ul className="mt-2 space-y-1">
-            {decided.slice(0, 25).map((s) => {
+          <SectionLabel>Recently decided</SectionLabel>
+          <HairlineList>
+            {decided.slice(0, 25).map((s, i) => {
               // Approving a business claim mints the owner's manage_token — the
               // only credential to /business/manage. Surface it here so it's
               // copyable (delivery by email is a separate, owner-gated step).
@@ -128,14 +118,17 @@ function Queue({ rows }: { rows: Row[] }) {
               return (
                 <li
                   key={s.id}
-                  className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2 text-[13px]"
-                  style={{ borderColor: "var(--app-border)" }}
+                  className="bg-[var(--app-bg-elevated)] px-3 py-2.5"
+                  style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate" style={{ color: "var(--app-ink-2)" }}>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="min-w-0 flex-1 truncate text-[13px]"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
                       {kindLabel(s.kind)} · {submissionTitle(s)}
                     </span>
-                    <StatusPill status={s.status} />
+                    <StatusPill tone={statusTone(s.status)}>{s.status}</StatusPill>
                   </div>
                   {manageUrl ? (
                     <a
@@ -152,7 +145,7 @@ function Queue({ rows }: { rows: Row[] }) {
                 </li>
               );
             })}
-          </ul>
+          </HairlineList>
         </section>
       ) : null}
     </>
@@ -167,16 +160,8 @@ function SubmissionCard({ row }: { row: Row }) {
       style={{ borderColor: "var(--app-border)" }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-          style={{
-            background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-            color: "var(--app-brand)",
-          }}
-        >
-          {kindLabel(row.kind)}
-        </span>
-        <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+        <Tag tone="brand">{kindLabel(row.kind)}</Tag>
+        <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
         </span>
       </div>
@@ -188,73 +173,48 @@ function SubmissionCard({ row }: { row: Row }) {
         {submissionTitle(row)}
       </h3>
       {row.place_slug ? (
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           binds to place: <code>{row.place_slug}</code>
         </p>
       ) : null}
 
-      <dl className="mt-3 space-y-1 text-[13px]">
-        {entries.map(([k, v]) => (
-          <div key={k} className="flex gap-2">
-            <dt
-              className="w-32 shrink-0 font-medium"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {k}
-            </dt>
-            <dd
-              className="min-w-0 break-words"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              {v}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {entries.length > 0 ? (
+        <div className="mt-3">
+          <FieldList items={entries.map(([k, v]) => ({ label: k, value: v }))} />
+        </div>
+      ) : null}
 
       <form action={reviewSubmission} className="mt-4 grid grid-cols-2 gap-2">
         <input type="hidden" name="id" value={row.id} />
-        <button
+        <AdminButton
           type="submit"
           name="decision"
           value="rejected"
-          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-2.5 text-[13px] font-semibold text-white active:scale-[0.97]"
-          style={{ background: "var(--app-danger)" }}
+          variant="danger"
+          icon={X}
+          className="w-full justify-center"
         >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Reject
-        </button>
-        <button
+          Reject
+        </AdminButton>
+        <AdminButton
           type="submit"
           name="decision"
           value="approved"
-          className="inline-flex items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-2.5 text-[13px] font-semibold text-white active:scale-[0.97]"
-          style={{ background: "var(--app-positive)" }}
+          variant="positive"
+          icon={Check}
+          className="w-full justify-center"
         >
-          <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Approve
-        </button>
+          Approve
+        </AdminButton>
       </form>
     </article>
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const color =
-    status === "approved"
-      ? "var(--app-positive)"
-      : status === "rejected"
-        ? "var(--app-danger)"
-        : "var(--app-ink-3)";
-  return (
-    <span
-      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-      style={{
-        background: `color-mix(in srgb, ${color} 16%, transparent)`,
-        color,
-      }}
-    >
-      {status}
-    </span>
-  );
+function statusTone(status: string): Tone {
+  if (status === "approved") return "positive";
+  if (status === "rejected") return "danger";
+  return "neutral";
 }
 
 function fieldEntries(payload: unknown): [string, string][] {
