@@ -184,6 +184,39 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   );
 }
 
+/**
+ * Like withTimeout, but reports whether the feed FAILED or TIMED OUT (as
+ * opposed to genuinely returning nothing) through `onFail`. The hero uses this
+ * to tell "all clear" apart from "we could not reach the alert feeds", so a
+ * provider outage never reads as a reassuring all-clear (audit FR-002).
+ */
+function withTimeoutTracked<T>(p: Promise<T>, ms: number, fallback: T, onFail: () => void): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      onFail();
+      resolve(fallback);
+    }, ms);
+    Promise.resolve(p).then(
+      (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        onFail();
+        resolve(fallback);
+      },
+    );
+  });
+}
+
 export default async function PulsePage({
   searchParams,
 }: {
@@ -197,15 +230,22 @@ export default async function PulsePage({
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
   const marcNow = new Date();
+  // The five feeds that decide "all clear" (traffic, power, schools, fire &
+  // rescue, weather alerts) are tracked: if any fails or times out, we can't
+  // honestly say all clear (audit FR-002). The rest keep the plain fallback.
+  let urgentDegraded = false;
+  const markDegraded = () => {
+    urgentDegraded = true;
+  };
   const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
-    withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
-    withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
-    withTimeout(getFcpsAlerts(), FEED_MS, []),
+    withTimeoutTracked(getChartIncidentsFrederick(), FEED_MS, [], markDegraded),
+    withTimeoutTracked(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }, markDegraded),
+    withTimeoutTracked(getFcpsAlerts(), FEED_MS, [], markDegraded),
     withTimeout(getFixItIssues(15), FEED_MS, []),
-    withTimeout(getPulsePointIncidents(), FEED_MS, []),
+    withTimeoutTracked(getPulsePointIncidents(), FEED_MS, [], markDegraded),
     // NWS active alerts for Frederick County, MD. When something's up (severe
     // storm, flood, heat advisory) this rides at the top of the board.
-    withTimeout(getNwsAlerts(), FEED_MS, []),
+    withTimeoutTracked(getNwsAlerts(), FEED_MS, [], markDegraded),
     // Local headlines from Google News RSS — always-on city signal.
     withTimeout(getLocalHeadlines(), FEED_MS, []),
     // Official City + County press releases (CivicPlus News Flash RSS). The
@@ -310,17 +350,25 @@ export default async function PulsePage({
     totals.traffic +
     totals.power +
     totals.schools;
-  const allClear = totalActive === 0;
+  // "All clear" requires BOTH nothing active AND every urgent feed answered.
+  // If a feed failed and we found nothing, the truthful read is "unknown", not
+  // a reassuring all-clear (audit FR-002).
+  const heroDegraded = totalActive === 0 && urgentDegraded;
+  const allClear = totalActive === 0 && !urgentDegraded;
 
   // Hero copy varies with state. The verb is the read.
   const heroLine = allClear
     ? "All clear across the county"
-    : totalActive === 1
-      ? "1 situation across the county"
-      : `${totalActive} situations across the county`;
+    : heroDegraded
+      ? "Some alert feeds are unreachable"
+      : totalActive === 1
+        ? "1 situation across the county"
+        : `${totalActive} situations across the county`;
   const heroSub = allClear
     ? "No weather alerts, traffic, outages, or school alerts right now."
-    : "Weather alerts, traffic, power, schools, fire & rescue, combined from six county and state feeds.";
+    : heroDegraded
+      ? "We could not reach every alert feed just now, so this is not an all-clear. It refreshes automatically."
+      : "Weather alerts, traffic, power, schools, fire & rescue, combined from six county and state feeds.";
 
   const pct =
     outages.total_served > 0
@@ -1064,6 +1112,7 @@ export default async function PulsePage({
   // ── Hero + ticker for the board ──────────────────────────────────
   const hero: PulseHero = {
     allClear,
+    degraded: heroDegraded,
     line: heroLine,
     sub: heroSub,
     renderedAt: nowMs,
