@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Truck, IceCream, MapPin, Globe, Instagram, Facebook, ExternalLink, ArrowUpRight } from "lucide-react";
 import { FOOD_TRUCKS, trucksByKind, truckFeedUrl, type FoodTruck } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { resolveHomeBase } from "@/lib/food-trucks/live";
+import TruckHomeStatus from "@/components/food-trucks/TruckHomeStatus";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
@@ -51,6 +53,7 @@ function LinkChip({ href, label, Icon }: { href: string; label: string; Icon: ty
 function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
   const feed = truckFeedUrl(truck);
   const Icon = truck.kind === "treats" ? IceCream : Truck;
+  const homeBase = resolveHomeBase(truck.homeBase);
   return (
     <li
       className="tactile flex h-full flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5"
@@ -80,11 +83,24 @@ function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
         </p>
       )}
 
-      {truck.homeBase && (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-          <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: accent }} />
-          Usually at {truck.homeBase}
-        </p>
+      {/* A truck that parks permanently at a brewery gets a LIVE reading
+          off that venue's verified hours ("Out now at Monocacy, open till
+          10"); an unresolved home base keeps the static line. */}
+      {homeBase ? (
+        <TruckHomeStatus
+          venueName={homeBase.name}
+          venueSlug={homeBase.slug}
+          hours={homeBase.hours}
+          verified={homeBase.verified}
+          accent={accent}
+        />
+      ) : (
+        truck.homeBase && (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: accent }} />
+            Usually at {truck.homeBase}
+          </p>
+        )
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
