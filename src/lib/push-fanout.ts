@@ -4,6 +4,7 @@ import { eq, lt, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { sendPush, configurePush } from "@/lib/push";
+import { shouldDeliver } from "./push-delivery";
 import type { PushPayload } from "./push";
 
 /**
@@ -26,10 +27,11 @@ export async function fanoutToTopic(
   topic: string,
   dedupeKey: string,
   payload: PushPayload,
-): Promise<{ claimed: boolean; attempted: number; sent: number; gone: number }> {
+  opts: { urgent?: boolean } = {},
+): Promise<{ claimed: boolean; attempted: number; sent: number; gone: number; held: number }> {
   const db = getDb();
-  if (!db) return { claimed: false, attempted: 0, sent: 0, gone: 0 };
-  if (!configurePush()) return { claimed: false, attempted: 0, sent: 0, gone: 0 };
+  if (!db) return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
+  if (!configurePush()) return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
 
   // Step 1 — claim the dedupe key. The unique index on (topic,
   // dedupe_key) plus ON CONFLICT DO NOTHING means at most one row
@@ -47,24 +49,33 @@ export async function fanoutToTopic(
     .returning({ id: push_log.id });
 
   if (claim.length === 0) {
-    return { claimed: false, attempted: 0, sent: 0, gone: 0 };
+    return { claimed: false, attempted: 0, sent: 0, gone: 0, held: 0 };
   }
 
-  // Step 2 — subscribers in this topic.
+  // Step 2 — subscribers in this topic, with their quiet-hours prefs.
   const rows = await db
     .select({
       endpoint: push_subscriptions.endpoint,
       p256dh: push_subscriptions.p256dh,
       auth: push_subscriptions.auth,
+      quiet_start: push_subscriptions.quiet_start,
+      quiet_end: push_subscriptions.quiet_end,
     })
     .from(push_subscriptions)
     .where(sql`${push_subscriptions.topics} ? ${topic}`);
 
-  // Step 3 — send each. Gone subs get pruned.
+  // Step 3 — send each, holding non-urgent pushes for devices inside their
+  // quiet hours (urgent civic alerts bypass). Gone subs get pruned.
+  const now = new Date();
   let sent = 0;
   let gone = 0;
+  let held = 0;
   const sentEndpoints: string[] = [];
   for (const row of rows) {
+    if (!shouldDeliver(row, { urgent: opts.urgent }, now)) {
+      held += 1;
+      continue;
+    }
     try {
       await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
@@ -109,7 +120,7 @@ export async function fanoutToTopic(
     } catch {}
   }
 
-  return { claimed: true, attempted: rows.length, sent, gone };
+  return { claimed: true, attempted: rows.length, sent, gone, held };
 }
 
 /**

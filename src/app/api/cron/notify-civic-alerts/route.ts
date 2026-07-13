@@ -56,12 +56,19 @@ export async function GET(request: Request) {
       a.urgency === "Immediate";
     if (!actionable) continue;
 
-    const r = await fanoutToTopic("civic-alerts", a.id, {
-      title: a.event,
-      body: a.headline,
-      url: "/pulse",
-      tag: `nws:${a.id}`,
-    });
+    const r = await fanoutToTopic(
+      "civic-alerts",
+      a.id,
+      {
+        title: a.event,
+        body: a.headline,
+        url: "/pulse",
+        tag: `nws:${a.id}`,
+      },
+      // Urgent: NWS/NPS warnings bypass a user's quiet hours. A 2 AM
+      // flash-flood warning is exactly the push a quiet window must not hold.
+      { urgent: true },
+    );
 
     results.push({
       id: a.id,

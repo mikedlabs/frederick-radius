@@ -287,10 +287,18 @@ export const push_subscriptions = pgTable(
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
     last_seen_at: timestamp("last_seen_at", { withTimezone: true }).defaultNow(),
+    // Per-device notification preferences + town targeting (0020). All
+    // nullable: null home_town = untargeted; null quiet_* = no quiet hours.
+    home_town: text("home_town"),
+    // Eastern-time quiet window, inclusive start .. exclusive end hour (0-23).
+    // Non-urgent pushes are held during the window; civic alerts bypass.
+    quiet_start: smallint("quiet_start"),
+    quiet_end: smallint("quiet_end"),
   },
   (t) => ({
     endpointIdx: uniqueIndex("push_subscriptions_endpoint_idx").on(t.endpoint),
     deviceIdx: index("push_subscriptions_device_idx").on(t.device_id),
+    homeTownIdx: index("push_subscriptions_home_town_idx").on(t.home_town),
   }),
 );
 
