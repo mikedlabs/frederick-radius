@@ -216,7 +216,7 @@ self.addEventListener("push", (event) => {
     icon: payload.icon || "/icons/icon-192.png",
     badge: payload.badge || "/icons/badge-72.png",
     tag: payload.tag,
-    data: { url },
+    data: { url, n: payload.n },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
@@ -224,6 +224,9 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || "/today";
+  // Fire-and-forget open ping so the composer can count opens per send.
+  const n = event.notification.data && event.notification.data.n;
+  if (n) fetch("/api/push/opened?n=" + encodeURIComponent(n), { keepalive: true }).catch(() => {});
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

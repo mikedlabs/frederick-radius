@@ -67,6 +67,8 @@ export async function fanoutToTopic(
   // Step 3 — send each, holding non-urgent pushes for devices inside their
   // quiet hours (urgent civic alerts bypass). Gone subs get pruned.
   const now = new Date();
+  // Tag every send with this send's log id so the SW can attribute opens.
+  const tagged = { ...payload, n: claim[0].id };
   let sent = 0;
   let gone = 0;
   let held = 0;
@@ -79,7 +81,7 @@ export async function fanoutToTopic(
     try {
       await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        payload,
+        tagged,
       );
       sent += 1;
       sentEndpoints.push(row.endpoint);

@@ -124,14 +124,14 @@ export async function audienceOptions(): Promise<AudienceOption[]> {
   return opts;
 }
 
-export type BroadcastRow = { title: string | null; body: string | null; url: string | null; sent_count: number; sent_at: string };
+export type BroadcastRow = { title: string | null; body: string | null; url: string | null; sent_count: number; open_count: number; sent_at: string };
 
-/** Recent owner broadcasts, newest first — the history panel + reach per send. */
+/** Recent owner broadcasts, newest first — the history panel: reach + opens. */
 export async function recentBroadcasts(limit = 12): Promise<BroadcastRow[]> {
   const raw = getSql();
   if (!raw) return [];
   return (await raw`
-    SELECT title, body, url, sent_count, sent_at
+    SELECT title, body, url, sent_count, open_count, sent_at
     FROM push_log WHERE topic = 'broadcast' ORDER BY sent_at DESC LIMIT ${limit}
   `) as BroadcastRow[];
 }
@@ -171,6 +171,7 @@ export async function broadcast(
     .where(whereFor(seg));
 
   const now = new Date();
+  const tagged = { ...payload, n: claim[0].id }; // open attribution
   let sent = 0;
   let gone = 0;
   let held = 0;
@@ -180,7 +181,7 @@ export async function broadcast(
       continue;
     }
     try {
-      await sendPush({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload);
+      await sendPush({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, tagged);
       sent += 1;
     } catch (err) {
       if (err instanceof Error && err.message === "subscription_gone") {
