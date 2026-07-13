@@ -205,6 +205,24 @@ export default async function HomePage() {
         </div>
       )}
 
+      {/* ── TITLE — the field-guide statement as a real page title, on its own
+          plate above the weather (owner call, 2026-07-13 pm: off the sky, and
+          make it look like a title). The tagline eyebrow + serif line + a
+          short brand rule is the app's standard page-header lockup (see
+          /happy-hour, /nonprofits), so Today finally reads with the same
+          masthead as its peers. Sits below an active civic alert (alerts still
+          lead) and above the weather. The sr-only h1 stays the semantic
+          heading; this is the display title. */}
+      <header className="mb-4 px-0.5">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--app-ink-3)" }}>
+          Around here
+        </p>
+        <p className="mt-1 font-serif text-[26px] font-semibold leading-[1.06] tracking-tight sm:text-[30px]" style={{ color: "var(--app-ink)" }}>
+          Your field guide to Frederick County.
+        </p>
+        <span aria-hidden className="mt-2.5 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
+      </header>
+
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
           tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -217,17 +235,7 @@ export default async function HomePage() {
           the crafted-product-hero move the primitive reserves for a single
           element. It freezes under prefers-reduced-motion. (The old className
           shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
-      {/* ── WELCOME — the "what is this?" answer is now the TITLE built into the
-          weather header (owner ask, 2026-07-13). It used to be a separate line
-          above the sky with a second "Know what's happening around here" clause;
-          the owner wanted the field-guide statement to title the sky plate and
-          the second line dropped. It inherits the sky section's tone-contrast
-          color (light text on a dark night sky, dark on a bright day) so it
-          stays legible over the live gradient. Zero client JS. */}
       <SkyHero className="shader-rim relative z-10">
-        <p className="mb-3 px-0.5 font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.18)" }}>
-          Your field guide to Frederick County.
-        </p>
         <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
           <TodayCard />
         </Suspense>
