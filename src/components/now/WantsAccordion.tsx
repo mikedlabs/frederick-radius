@@ -57,19 +57,25 @@ import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
 import WantAnswerPanel from "./WantAnswerPanel";
 
 /**
- * A /nearby?c= link answers INLINE (the WantAnswerPanel below the chips)
- * instead of navigating; every other href (curated pages like /brunch,
- * /parks, /category/…) keeps its normal navigation. Returns the parsed
- * want when the href is interceptable, null otherwise. Kept as a plain
- * function so middle-click / new-tab / no-JS still navigate to /nearby —
- * the interception is an enhancement, never the only path.
+ * A /nearby?c= craving OR a /category/<slug> chip answers INLINE (the
+ * WantAnswerPanel below the chips) instead of navigating; the bespoke
+ * curated pages (/brunch, /parks, /rivers, /happy-hour…) keep their normal
+ * navigation. Returns the parsed want when the href is interceptable, null
+ * otherwise. Kept as a plain function so middle-click / new-tab / no-JS
+ * still navigate to the real page — interception is an enhancement, never
+ * the only path. Category slugs ride as a "cat:" key so the answer engine
+ * can't confuse them with a craving.
  */
 function inlineWantFor(href: string): { c: string; facet: string | null } | null {
-  if (!href.startsWith("/nearby?")) return null;
-  const params = new URLSearchParams(href.slice(href.indexOf("?") + 1));
-  const c = params.get("c");
-  if (!c) return null;
-  return { c, facet: params.get("facet") };
+  if (href.startsWith("/nearby?")) {
+    const params = new URLSearchParams(href.slice(href.indexOf("?") + 1));
+    const c = params.get("c");
+    if (!c) return null;
+    return { c, facet: params.get("facet") };
+  }
+  const cat = href.match(/^\/category\/([a-z0-9-]+)\/?$/i);
+  if (cat) return { c: `cat:${cat[1]}`, facet: null };
+  return null;
 }
 
 /** The chip label for a want key, for URL-restored panels ("coffee" → "Coffee"). */

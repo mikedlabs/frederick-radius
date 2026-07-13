@@ -1,7 +1,10 @@
 import "server-only";
 import { CRAVINGS } from "@/data/cravings";
+import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { MEALS, isMealKey } from "@/lib/meal";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
+import { knownFor } from "@/lib/cuisine";
 import { formatHoursLine, type OpenStatus } from "@/lib/hours";
 import { formatDistance } from "@/lib/geo";
 
@@ -24,6 +27,16 @@ export type WantRow = {
   /** "6 min walk" under ~20 minutes on foot, else "3.4 mi"; null without a fix. */
   distance: string | null;
   photo: string | null;
+  /** Town/municipality it sits in ("Brunswick", "Middletown"), so a glance
+   *  answers "which one, and where" without opening the sheet. */
+  where: string | null;
+  /** One short signature line: the curated known-for, else a clamped blurb
+   *  ("Wood-fired pies", "Third-wave roaster"). The field-guide detail. */
+  detail: string | null;
+  /** The single best VERIFIED insider tip (the moat's voice), when present. */
+  tip: string | null;
+  /** A standing deal hook ("Happy hour", "$1 oysters"), when present. */
+  deal: string | null;
 };
 
 export type WantAnswer = {
@@ -34,13 +47,20 @@ export type WantAnswer = {
   later: WantRow[];
   /** How many more open-later places fold behind the "later" preview. */
   laterMore: number;
+  /** The fallback list shown when nothing is open now (and nothing opens
+   *  later today) but the category still has places, e.g. farmers markets or
+   *  playgrounds that aren't hours-bound. Keeps the panel flowing down with
+   *  real places instead of a bare "nothing's open" line. Empty otherwise. */
+  notable: WantRow[];
   total: number;
   /** The deep-browse door — the same URL the sub-chip used to navigate to. */
   browseHref: string;
 };
 
 /** The slice of a decorated place the partition logic reads — kept minimal
- *  and exported so the ranking rules are unit-testable with plain objects. */
+ *  and exported so the ranking rules are unit-testable with plain objects.
+ *  The presentation fields (municipality, known_for, tips…) are optional so
+ *  the pure ranking tests stay tiny; buildWantAnswer feeds full places. */
 export type WantCandidate = {
   slug: string;
   name: string;
@@ -48,6 +68,12 @@ export type WantCandidate = {
   distance_m?: number;
   feature_score: number;
   google_photo_url?: string;
+  municipality?: string;
+  city?: string;
+  short_blurb?: string;
+  known_for?: string[];
+  field_note_tip?: string;
+  deal_hook?: string;
 };
 
 const WALK_METERS_PER_MIN = 75; // ~2.8 mph, the app's walking assumption
@@ -68,6 +94,33 @@ function opensLaterToday(s: OpenStatus): boolean {
   return s.state === "closed" && Boolean(s.opensToday && s.opensAt);
 }
 
+/** The town it sits in, display-cased. Municipality is a slug in the data;
+ *  fall back to the free-text city, then nothing. */
+function townLabel(c: WantCandidate): string | null {
+  const m = c.municipality ? MUNICIPALITY_BY_SLUG[c.municipality]?.name : null;
+  return m ?? (c.city?.trim() || null);
+}
+
+/** Clamp a signature to one tidy phrase: strip any stray em dash (voice
+ *  rule), cut at a word boundary, add an ellipsis when trimmed. */
+function clampPhrase(raw: string, max = 52): string {
+  const s = raw.replace(/\s*—\s*/g, ", ").trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return `${(sp > 20 ? cut.slice(0, sp) : cut).replace(/[,;:·\-\s]+$/, "")}…`;
+}
+
+/** The one short field-guide signature for a place: the curated known-for
+ *  first, else a cleaned blurb sentence (knownFor), clamped. Null when we
+ *  have nothing honest to say. */
+function signatureOf(c: WantCandidate): string | null {
+  const curated = c.known_for?.[0]?.trim();
+  if (curated) return clampPhrase(curated);
+  const kf = knownFor({ name: c.name, short_blurb: c.short_blurb });
+  return kf ? clampPhrase(kf) : null;
+}
+
 function toRow(c: WantCandidate, laneLater: boolean): WantRow {
   const line = formatHoursLine(c.open_status);
   return {
@@ -78,6 +131,10 @@ function toRow(c: WantCandidate, laneLater: boolean): WantRow {
     fact: laneLater ? line.replace(/^Closed · /, "") : line,
     distance: distanceLabel(c.distance_m),
     photo: c.google_photo_url ?? null,
+    where: townLabel(c),
+    detail: signatureOf(c),
+    tip: c.field_note_tip?.trim() || null,
+    deal: c.deal_hook?.trim() || null,
   };
 }
 
@@ -90,28 +147,37 @@ function toRow(c: WantCandidate, laneLater: boolean): WantRow {
 export function partitionWant(candidates: WantCandidate[]): {
   open: WantCandidate[];
   later: WantCandidate[];
+  /** Neither open now nor opening later today (closed another day, or no
+   *  posted hours). The notable-fallback pool, ranked like the open lane. */
+  other: WantCandidate[];
   total: number;
 } {
   const open = candidates.filter((c) => isOpenNow(c.open_status));
   const later = candidates.filter((c) => opensLaterToday(c.open_status));
+  const other = candidates.filter(
+    (c) => !isOpenNow(c.open_status) && !opensLaterToday(c.open_status),
+  );
 
-  open.sort((a, b) => {
+  const byProximityThenScore = (a: WantCandidate, b: WantCandidate) => {
     const da = a.distance_m ?? Infinity;
     const db = b.distance_m ?? Infinity;
     if (da !== db) return da - db;
     return b.feature_score - a.feature_score;
-  });
+  };
+  open.sort(byProximityThenScore);
+  other.sort(byProximityThenScore);
   later.sort((a, b) => {
     const oa = a.open_status.state === "closed" ? a.open_status.opensAt ?? "99" : "99";
     const ob = b.open_status.state === "closed" ? b.open_status.opensAt ?? "99" : "99";
     return oa.localeCompare(ob);
   });
 
-  return { open, later, total: candidates.length };
+  return { open, later, other, total: candidates.length };
 }
 
 const ALSO_MAX = 4;
 const LATER_PREVIEW = 3;
+const NOTABLE_MAX = 6;
 
 /**
  * Resolve a want key (craving or meal) to matcher + label + browse URL.
@@ -121,6 +187,23 @@ function resolveWant(
   cKey: string,
   facetKey: string | null,
 ): { label: string; browseHref: string; match: (p: { category: string; name: string; subcategories?: string[] }) => boolean } | null {
+  // Category chips (/category/<slug>) answer inline too, not just the
+  // /nearby?c= cravings — so tapping "Bakeries" or "Pharmacies" flows the
+  // same list down in place. The key is prefixed "cat:" so it can't collide
+  // with a craving key. Matching mirrors the /category page exactly: the slug
+  // plus its child categories, by category or subcategory.
+  if (cKey.startsWith("cat:")) {
+    const slug = cKey.slice(4);
+    const cat = CATEGORY_BY_SLUG[slug];
+    if (!cat) return null;
+    const children = CATEGORIES.filter((x) => x.parent === slug).map((x) => x.slug);
+    const match = new Set<string>([slug, ...children]);
+    return {
+      label: cat.name,
+      browseHref: `/category/${slug}`,
+      match: (p) => match.has(p.category) || (p.subcategories ?? []).some((s) => match.has(s)),
+    };
+  }
   if (isMealKey(cKey)) {
     const meal = MEALS[cKey];
     const cats = new Set<string>(meal.cats);
@@ -154,7 +237,15 @@ export function buildWantAnswer(
     .filter((p) => want.match(p))
     .map((p) => decoratePlace(p, origin ?? undefined, now));
 
-  const { open, later, total } = partitionWant(candidates);
+  const { open, later, other, total } = partitionWant(candidates);
+
+  // When nothing is open now AND nothing opens later today, but the category
+  // still has places (markets, playgrounds, or anything without posted
+  // hours), fall back to the notable set so the panel still flows down with
+  // real places instead of a dead "nothing's open" line.
+  const notable = open.length === 0 && later.length === 0
+    ? other.slice(0, NOTABLE_MAX).map((c) => toRow(c, false))
+    : [];
 
   return {
     key: cKey,
@@ -163,6 +254,7 @@ export function buildWantAnswer(
     also: open.slice(1, 1 + ALSO_MAX).map((c) => toRow(c, false)),
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
+    notable,
     total,
     browseHref: want.browseHref,
   };

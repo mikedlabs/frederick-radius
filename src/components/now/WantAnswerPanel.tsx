@@ -17,7 +17,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, NotebookPen, X } from "lucide-react";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { readCachedPosition } from "@/hooks/useGeolocation";
@@ -30,6 +31,10 @@ type WantRow = {
   fact: string;
   distance: string | null;
   photo: string | null;
+  where: string | null;
+  detail: string | null;
+  tip: string | null;
+  deal: string | null;
 };
 
 type WantAnswer = {
@@ -39,6 +44,7 @@ type WantAnswer = {
   also: WantRow[];
   later: WantRow[];
   laterMore: number;
+  notable: WantRow[];
   total: number;
   browseHref: string;
 };
@@ -62,6 +68,7 @@ export default function WantAnswerPanel({
   const [showLater, setShowLater] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { openSheet } = usePlaceSheet();
+  const router = useRouter();
 
   // Fetch the answer; the cached fix rides along when one exists (a chip
   // tap must never trigger a permission prompt).
@@ -116,7 +123,7 @@ export default function WantAnswerPanel({
     } catch {
       /* fall through to navigation */
     }
-    window.location.href = `/places/${slug}`;
+    router.push(`/places/${slug}`);
   }
 
   return (
@@ -189,18 +196,76 @@ export default function WantAnswerPanel({
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  {answer.hero.name}
+                <span className="flex items-center gap-2">
+                  <span className="min-w-0 truncate font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    {answer.hero.name}
+                  </span>
+                  {answer.hero.deal && (
+                    <span
+                      className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em]"
+                      style={{ background: "var(--app-brand-tint-14)", color: "var(--app-brand-press)" }}
+                    >
+                      {answer.hero.deal}
+                    </span>
+                  )}
                 </span>
+                {(answer.hero.detail || answer.hero.where) && (
+                  <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+                    {answer.hero.detail}
+                    {answer.hero.detail && answer.hero.where ? " · " : ""}
+                    {answer.hero.where && (
+                      <span style={{ color: "var(--app-ink-3)" }}>{answer.hero.where}</span>
+                    )}
+                  </span>
+                )}
                 <span className="mt-1 block truncate font-mono text-[11.5px]" style={{ color: "var(--app-positive)" }}>
                   {answer.hero.fact}
                   {answer.hero.distance ? (
                     <span style={{ color: "var(--app-ink-3)" }}> · {answer.hero.distance}</span>
                   ) : null}
                 </span>
+                {answer.hero.tip && (
+                  <span className="mt-1.5 flex gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                    <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                    <span className="line-clamp-2">{answer.hero.tip}</span>
+                  </span>
+                )}
               </span>
-              <ArrowRight aria-hidden className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} />
+              <ArrowRight aria-hidden className="h-4 w-4 shrink-0 self-start mt-1" style={{ color: "var(--app-ink-3)" }} />
             </button>
+          ) : answer.notable.length > 0 ? (
+            <div className="px-4 pb-1">
+              <p className="pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Nothing&rsquo;s open right now. Here&rsquo;s what&rsquo;s around the county.
+              </p>
+              <ul className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+                {answer.notable.map((r) => (
+                  <li key={r.slug}>
+                    <button
+                      type="button"
+                      onClick={() => openPlace(r.slug)}
+                      className="tap-44-y flex w-full items-start justify-between gap-3 py-2 text-left"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
+                          {r.name}
+                        </span>
+                        {metaLine(r) && (
+                          <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                            {metaLine(r)}
+                          </span>
+                        )}
+                      </span>
+                      {r.distance && (
+                        <span className="mt-0.5 shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                          {r.distance}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : (
             <p className="px-4 pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Nothing&rsquo;s open for this right now.
@@ -219,12 +284,29 @@ export default function WantAnswerPanel({
                     <button
                       type="button"
                       onClick={() => openPlace(r.slug)}
-                      className="tap-44-y flex w-full items-baseline justify-between gap-3 py-2 text-left"
+                      className="tap-44-y flex w-full items-start justify-between gap-3 py-2 text-left"
                     >
-                      <span className="min-w-0 truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
-                        {r.name}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="min-w-0 truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
+                            {r.name}
+                          </span>
+                          {r.deal && (
+                            <span
+                              className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em]"
+                              style={{ background: "var(--app-brand-tint-14)", color: "var(--app-brand-press)" }}
+                            >
+                              {r.deal}
+                            </span>
+                          )}
+                        </span>
+                        {metaLine(r) && (
+                          <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                            {metaLine(r)}
+                          </span>
+                        )}
                       </span>
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                      <span className="mt-0.5 shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                         {r.fact.replace(/^Open until /, "until ")}
                         {r.distance ? ` · ${r.distance}` : ""}
                       </span>
@@ -288,6 +370,13 @@ export default function WantAnswerPanel({
       )}
     </section>
   );
+}
+
+/** The one field-guide subline for a compact row: the signature and the
+ *  town, joined ("Wood-fired pies · Brunswick"). Null when we have neither. */
+function metaLine(r: WantRow): string | null {
+  const parts = [r.detail, r.where].filter(Boolean) as string[];
+  return parts.length ? parts.join(" · ") : null;
 }
 
 function SkeletonRows() {

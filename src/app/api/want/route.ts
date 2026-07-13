@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
     if (answer.hero) strip(answer.hero);
     answer.also.forEach(strip);
     answer.later.forEach(strip);
+    answer.notable.forEach(strip);
   }
   return NextResponse.json(answer, { headers: noStore });
 }

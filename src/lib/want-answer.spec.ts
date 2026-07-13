@@ -61,4 +61,25 @@ describe("partitionWant", () => {
     expect(later).toHaveLength(0);
     expect(total).toBe(2);
   });
+
+  it("neither-open-nor-opening-today lands in `other`, ranked by proximity", () => {
+    const { open, later, other } = partitionWant([
+      cand({ slug: "open-now" }),
+      cand({
+        slug: "closed-far",
+        distance_m: 8000,
+        open_status: { state: "closed", opensAt: "09:00", opensDay: "tue", opensToday: false },
+      }),
+      cand({
+        slug: "closed-near",
+        distance_m: 300,
+        open_status: { state: "unverified" },
+      }),
+    ]);
+    expect(open.map((c) => c.slug)).toEqual(["open-now"]);
+    expect(later).toHaveLength(0);
+    // The notable fallback pool: nearest first, so a no-hours category
+    // (markets, playgrounds) still flows down with the closest places.
+    expect(other.map((c) => c.slug)).toEqual(["closed-near", "closed-far"]);
+  });
 });
