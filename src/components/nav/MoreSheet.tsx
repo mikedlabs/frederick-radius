@@ -27,6 +27,7 @@ import {
   BusFront,
   ChevronRight,
   HeartHandshake,
+  Package,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import ExploreDeck from "@/components/nav/ExploreDeck";
@@ -108,6 +109,7 @@ const PLAN_HELP: Item[] = [
   { href: "/contacts", label: "County services", description: "Who to call and how to do it: 311, permits, trash, taxes, voting, and every county + city department", icon: Landmark, color: "var(--app-cool)" },
   { href: "/parking", label: "Parking", description: "Downtown garages, lots, and where locals actually park", icon: ParkingCircle, color: "var(--app-cool)" },
   { href: "/transit", label: "Getting around", description: "TransIT routes, live buses, and the MARC schedule", icon: BusFront, color: "var(--app-cool)" },
+  { href: "/shipping", label: "Post & shipping", description: "Every post office, UPS Store, FedEx, and mailbox in the county", icon: Package, color: "var(--app-brand)" },
 ];
 
 // More local tools — experimental/curiosity surfaces, quiet ruled rows.
