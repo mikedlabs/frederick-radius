@@ -53,6 +53,13 @@ export function register() {
  * any error is swallowed and the 5-minute cron remains the backstop.
  */
 function kickWarmOnBoot(): void {
+  // Metrics showed /api/cron/warm-events was running far more often than the
+  // intended 5-minute cron (1,196 function invocations in 24h, p95 ~11.5s).
+  // The boot self-call is the amplifier: instrumentation runs on every Node
+  // function cold start, not just once per deployment. Keep the escape hatch for
+  // an emergency launch window, but default to the scheduled cron only.
+  if (process.env.WARM_EVENTS_BOOT_KICK !== "1") return;
+
   // nodejs runtime only (register also runs in the edge runtime), production
   // only (no point warming previews; locally VERCEL_ENV is unset), and never
   // during `next build` (build workers run register too, and a kick from the
