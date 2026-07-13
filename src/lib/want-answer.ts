@@ -94,11 +94,16 @@ function opensLaterToday(s: OpenStatus): boolean {
   return s.state === "closed" && Boolean(s.opensToday && s.opensAt);
 }
 
-/** The town it sits in, display-cased. Municipality is a slug in the data;
- *  fall back to the free-text city, then nothing. */
+/** The town a place sits in, for the row's "where". Use the normalized
+ *  POSTAL city ("Frederick"), NOT the municipality's editorial name
+ *  ("Downtown Frederick") — the editorial label overclaims for the many
+ *  City-of-Frederick places that aren't downtown (see placeName.ts, which
+ *  folds "downtown frederick" -> "Frederick" for exactly this reason). Fall
+ *  back to the municipality name only when a place has no clean city. */
 function townLabel(c: WantCandidate): string | null {
-  const m = c.municipality ? MUNICIPALITY_BY_SLUG[c.municipality]?.name : null;
-  return m ?? (c.city?.trim() || null);
+  const city = c.city?.trim();
+  if (city) return city;
+  return c.municipality ? MUNICIPALITY_BY_SLUG[c.municipality]?.name ?? null : null;
 }
 
 /** Clamp a signature to one tidy phrase: strip any stray em dash (voice

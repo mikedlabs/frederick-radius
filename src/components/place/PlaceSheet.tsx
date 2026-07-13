@@ -350,8 +350,12 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
            *  (cuisine, specialty), instead of leaving the eye to skim
            *  the short_blurb cold. */}
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            {/* The precise postal city ("Frederick"), not the municipality's
+                editorial name ("Downtown Frederick") which overclaims for the
+                many City-of-Frederick addresses that aren't downtown. Falls
+                back to the municipality only when a place has no clean city. */}
             <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              {place.address}{muni ? ` · ${muni.name}` : ""}
+              {place.address}{place.city ? ` · ${place.city}` : muni ? ` · ${muni.name}` : ""}
             </p>
             <SourceBadge place={place} size="sm" />
           </div>
