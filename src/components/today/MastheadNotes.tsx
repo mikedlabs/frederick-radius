@@ -37,7 +37,10 @@ export default function MastheadNotes({
   /** Optional since 2026-07-02: the "Weather to duck." nudge was retired
    *  (Plan the moment carries the Rainy-day action now). */
   weatherSlot?: ReactNode;
-  contextSlot: ReactNode;
+  /** Optional since 2026-07-13: the town picker moved UP into MastheadTitle
+   *  (the "{town}, today." line IS the picker now), so the masthead no longer
+   *  needs a separate location slot at the foot of the notes stack. */
+  contextSlot?: ReactNode;
 }) {
   const hasHoliday = Boolean(holidayOn(now));
   const seasonal = pickSeasonalNote(now);

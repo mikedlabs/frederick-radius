@@ -12,7 +12,6 @@ import OnNowBand from "@/components/today/OnNowBand";
 import OnNowStrip from "@/components/today/OnNowStrip";
 import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
-import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
@@ -274,22 +273,19 @@ export default async function HomePage() {
         {/* The masthead almanac notes, capped + prioritized by MastheadNotes so
             the stack never piles up: at most one dated note (holiday / First
             Saturday / Pride / season) plus the streamed weather "duck inside"
-            beat plus the always-on town picker. WeatherNudge and TodayContext are
-            passed in PRE-SUSPENDED so MastheadNotes never awaits the forecast or
-            the events feed (the plate paints first). */}
+            beat. The town picker is no longer here — it lives in the
+            "{town}, today." line above (MastheadTitle). */}
         {/* WeatherNudge ("Weather to duck." + a Rainy-day link) retired
             (owner call, 2026-07-02): the lead read as cryptic, and Plan the
             moment already carries the Rainy day Frederick collection — the
             masthead was double-selling one link. NowIntel still DESCRIBES
             adverse weather; the collection rail carries the action. */}
-        <MastheadNotes
-          now={now}
-          contextSlot={
-            <Suspense fallback={null}>
-              <TodayContext />
-            </Suspense>
-          }
-        />
+        {/* Town picker moved UP into MastheadTitle (2026-07-13): the
+            "{town}, today." line IS the picker now, so the separate pin +
+            select that used to sit at the foot of the notes stack is gone —
+            it duplicated the location statement and, worse, didn't update the
+            line above it when you changed towns. */}
+        <MastheadNotes now={now} />
         {/* The cap rule now carries the day's one share affordance: the link
             previews as the daily almanac card (generateMetadata above), so
             "Share today" drops an engraved sun/moon/events plate into the
