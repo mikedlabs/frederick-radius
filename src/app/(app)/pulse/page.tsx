@@ -65,7 +65,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
-import PulseBoard, { type PulseTile, type PulseHero, type PulseTicketItem } from "@/components/pulse/PulseBoard";
+import PulseBoard, { type PulseTile, type PulseHero, type PulseHeroChip } from "@/components/pulse/PulseBoard";
 import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
@@ -1072,35 +1072,45 @@ export default async function PulsePage({
     situationCount: totalActive,
   };
 
-  // The incident ticker runs ONLY when a situation is active, and carries just
-  // the hero's situations, one honest line each (no em dashes).
-  const ticker: PulseTicketItem[] = [];
+  // The hero briefing chips. On an ACTIVE day they ARE the situations, each
+  // tapping straight to its feed's window (the tile key). On a CALM day they
+  // flip to proofs: the quiet confirmations that make "all clear" scannable
+  // instead of a bare reassurance. Capped so the header stays a glance.
+  const heroChips: PulseHeroChip[] = [];
   if (!allClear) {
-    for (const a of activeAlerts.slice(0, 3)) {
-      const ends = a.ends_at
-        ? ` until ${new Date(a.ends_at).toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })}`
-        : "";
-      ticker.push({ tone: "danger", text: `${a.event}${ends} · NWS` });
+    for (const a of activeAlerts.slice(0, 2)) {
+      heroChips.push({ tone: "danger", label: a.event, key: "alerts" });
     }
     if (outagesActive) {
-      ticker.push({
-        tone: "danger",
-        text: `${outages.total_out.toLocaleString()} without power · Potomac Edison`,
-      });
+      heroChips.push({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power" });
     }
     for (const i of traffic.slice(0, 3)) {
-      ticker.push({
+      heroChips.push({ tone: "warning", label: `${i.road}${i.direction ? ` ${i.direction}` : ""}`, key: "traffic" });
+    }
+    for (const s of safety.slice(0, 1)) {
+      heroChips.push({ tone: "danger", label: s.type, key: "safety" });
+    }
+    if (schoolAlerts.length > 0) {
+      const s0 = schoolAlerts[0];
+      heroChips.push({
         tone: "warning",
-        text: `${i.road}${i.direction ? ` ${i.direction}` : ""} ${i.type} · MDOT`,
+        label: s0.status === "closed" ? "Schools closed" : s0.status === "delayed" ? "Schools delayed" : "School alert",
+        key: "schools",
       });
     }
-    for (const s of safety.slice(0, 2)) {
-      ticker.push({ tone: "danger", text: `${s.type} · ${s.address || "Frederick County"}` });
+  } else {
+    // Calm proofs, in the order people worry about them.
+    heroChips.push({ tone: "positive", label: "Roads clear", key: "traffic" });
+    heroChips.push({ tone: "positive", label: "Power on", key: "power" });
+    heroChips.push({ tone: "positive", label: "Schools normal", key: "schools" });
+    if (wxCur) {
+      heroChips.push({ tone: "cool", label: `${wxCur.temperature}°${wxCondition ? ` ${wxCondition}` : ""}`, key: "weather" });
     }
-    for (const sa of schoolAlerts.slice(0, 2)) {
-      ticker.push({ tone: "warning", text: `${sa.title} · FCPS` });
+    if (aqiWorst && aqiWorst.category.id <= 2) {
+      heroChips.push({ tone: "cool", label: `Air ${aqiWorst.category.name.toLowerCase()}`, key: "air" });
     }
   }
+  const heroChipsCapped = heroChips.slice(0, 6);
 
   return (
     <div className="relative space-y-6 pb-4">
@@ -1115,7 +1125,7 @@ export default async function PulsePage({
           police strip rides between the ticker and the filter. */}
       <PulseBoard
         hero={hero}
-        ticker={ticker}
+        chips={heroChipsCapped}
         tiles={pulseTiles}
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
         initialOpen={openParam}

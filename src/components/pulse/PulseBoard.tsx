@@ -75,6 +75,22 @@ const ICONS: Record<string, LucideIcon> = {
 
 export type PulseTicketItem = { tone: "danger" | "warning" | "cool"; text: string };
 
+/** A single briefing chip in the hero: the actual live situation (active
+ *  day) or a calm proof (all-clear day). `key` names the tile it opens on
+ *  tap; without one the chip is a static read. */
+export type PulseHeroChip = {
+  tone: "danger" | "warning" | "cool" | "positive";
+  label: string;
+  key?: string;
+};
+
+const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
+  danger: "var(--app-danger)",
+  warning: "var(--app-warning)",
+  cool: "var(--app-cool)",
+  positive: "var(--app-positive)",
+};
+
 export type PulseHero = {
   allClear: boolean;
   line: string;
@@ -291,6 +307,54 @@ function StatusTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen:
   );
 }
 
+/** The hero briefing row: the live situations (or calm proofs) as chips.
+ *  A chip with a tile key taps through to that feed's window; the rest are
+ *  static reads. This is what makes the header answer "what should I know?"
+ *  in place, instead of a count plus a scroll. */
+function HeroChips({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
+  if (chips.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map((c, i) => {
+        const tone = CHIP_TONE[c.tone];
+        const inner = (
+          <>
+            <span
+              aria-hidden
+              className={`inline-block h-1.5 w-1.5 rounded-full${c.tone === "danger" || c.tone === "warning" ? " pulse-dot" : ""}`}
+              style={{ background: tone }}
+            />
+            {c.label}
+          </>
+        );
+        const style: CSSProperties = {
+          border: `1px solid color-mix(in srgb, ${tone} 30%, var(--app-border))`,
+          background: `color-mix(in srgb, ${tone} 9%, var(--app-bg-elevated))`,
+          color: "var(--app-ink)",
+        };
+        const className =
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none";
+        return c.key ? (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onOpen(c.key!)}
+            aria-haspopup="dialog"
+            className={`tap-44-y ${className}`}
+            style={style}
+          >
+            {inner}
+          </button>
+        ) : (
+          <span key={i} className={className} style={style}>
+            {inner}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────
  * Board
  * ───────────────────────────────────────────────────────────── */
@@ -303,13 +367,13 @@ const FILTERS: { id: PulseFilter; label: string }[] = [
 
 export default function PulseBoard({
   hero,
-  ticker,
+  chips,
   tiles,
   breaking,
   initialOpen,
 }: {
   hero: PulseHero;
-  ticker: PulseTicketItem[];
+  chips: PulseHeroChip[];
   tiles: PulseTile[];
   breaking?: ReactNode;
   initialOpen?: string;
@@ -404,11 +468,20 @@ export default function PulseBoard({
               <h1 className="font-serif text-[24px] font-semibold leading-[1.1] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {hero.line}
               </h1>
-              <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {hero.sub}
-              </p>
+              {chips.length === 0 && (
+                <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                  {hero.sub}
+                </p>
+              )}
             </div>
           </div>
+
+          {/* The briefing: the actual situations (active) or the calm proofs
+              (all-clear) as tappable chips, so the header answers "what should
+              I know?" right here instead of a count plus a scroll. Each chip
+              opens its feed's window. This replaced the scrolling marquee and
+              the generic feed-list sentence (2026-07). */}
+          <HeroChips chips={chips} onOpen={setOpen} />
 
           {/* No "Now 75°" here — the temperature (and its condition + H/L) is
               the weather FEATURE tile immediately below, both derived from the
@@ -422,35 +495,6 @@ export default function PulseBoard({
           </p>
         </div>
       </header>
-
-      {/* ── Incident ticker — only when something is active ──── */}
-      {ticker.length > 0 && (
-        <div
-          className="pulse-ticker"
-          role="status"
-          aria-label="Active situations right now"
-        >
-          <div className="pulse-ticker-track font-mono">
-            {[...ticker, ...ticker].map((it, i) => (
-              <span key={i} className="pulse-ticker-item">
-                <span
-                  aria-hidden
-                  className="pulse-ticker-dot"
-                  style={{
-                    background:
-                      it.tone === "danger"
-                        ? "var(--app-danger)"
-                        : it.tone === "warning"
-                          ? "var(--app-warning)"
-                          : "var(--app-cool)",
-                  }}
-                />
-                {it.text}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Breaking police strip (server-rendered) ──────────── */}
       {breaking}
@@ -466,10 +510,12 @@ export default function PulseBoard({
           <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
             County status
           </span>
+          {/* The hero owns the situation count now (its big line + the
+              briefing chips), so this rail stays a quiet "what am I looking
+              at" label. On a calm day it reassures; on an active one it just
+              names the grid rather than restating the tally. */}
           <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.05em]" style={{ color: "var(--app-ink-3)" }}>
-            {hero.allClear
-              ? "all calm"
-              : `${hero.situationCount} ${hero.situationCount === 1 ? "situation" : "situations"}`}
+            {hero.allClear ? "all calm" : "tap any tile"}
           </span>
         </div>
 
