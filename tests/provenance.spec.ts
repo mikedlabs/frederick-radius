@@ -73,6 +73,14 @@ describe("place provenance (data brief 4.1)", () => {
     expect(withoutId.source_url).toBeNull();
   });
 
+  it("never builds a Google Maps link from a partner UUID (DQ-020)", () => {
+    const uuid = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+    const row = stampPlaceProvenance({ slug: "u", source: "google", google_place_id: uuid });
+    // The id is still recorded, but the fabricated place_id: link is suppressed.
+    expect(row.source_id).toBe(uuid);
+    expect(row.source_url).toBeNull();
+  });
+
   it("falls back through timestamps to the documented backfill epoch", () => {
     const dated = stampPlaceProvenance({ slug: "a", source: "seed", updated_at: "2026-01-02T00:00:00Z" });
     expect(dated.first_seen_at).toBe("2026-01-02T00:00:00Z");
