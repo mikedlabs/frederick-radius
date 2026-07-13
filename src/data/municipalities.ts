@@ -1,11 +1,14 @@
 import type { LngLat } from "@/lib/geo";
 
-// Classifications follow the county's own municipal list (2026-07 fact
-// check): two cities, nine towns, and ONE village — Rosemont, whose
-// incorporated name is "Village of Rosemont" (1953). Maryland municipal
-// law doesn't distinguish the classes, but residents do, and the
-// county's list is the styling we mirror. Burkittsville is styled a
-// town (its charter name), even though everyone calls it a village.
+// Classifications follow the county's own municipal list
+// (frederickcountymd.gov/1211, re-checked 2026-07-13): ONE city (Frederick,
+// the county seat), ten towns, and ONE village, Rosemont, whose incorporated
+// name is "Village of Rosemont" (1953). Note the wrinkle on Brunswick: the
+// Maryland State Archives and Wikipedia style it a "city" (it incorporated in
+// 1890), but Maryland law doesn't legally distinguish the classes, and both
+// the county's list AND local usage treat Frederick as the only city, so we
+// mirror that (its own blurb already reads "railroad town"). Burkittsville is
+// styled a town (its charter name), even though everyone calls it a village.
 export type MunicipalityType = "city" | "town" | "village" | "unincorporated";
 
 export type Municipality = {
@@ -43,7 +46,7 @@ export const MUNICIPALITIES: Municipality[] = [
   {
     slug: "brunswick",
     name: "Brunswick",
-    type: "city",
+    type: "town",
     population: 7_281,
     centroid: { lng: -77.6280, lat: 39.3134 },
     bbox: [-77.660, 39.295, -77.595, 39.335],
