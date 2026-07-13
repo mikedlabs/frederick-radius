@@ -20,6 +20,8 @@ import { isRateLimited } from "@/lib/origin-check";
 import { parseFeedback, buildFeedbackRow } from "@/lib/feedback";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
+import { isRuntimeFlagEnabled } from "@/lib/runtime-flags";
+import { checkBotId } from "botid/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +29,13 @@ export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "no-store" };
 
 export async function POST(req: NextRequest) {
+  if (await isRuntimeFlagEnabled("disableFeedback")) {
+    return NextResponse.json({ error: "disabled" }, { status: 503, headers: noStore });
+  }
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403, headers: noStore });
+  }
   // 12 notes/hour/IP is generous for a real tester, cheap insurance otherwise.
   if (await isRateLimited(req, "feedback", 12, 3600)) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore });

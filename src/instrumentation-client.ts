@@ -7,6 +7,15 @@
  * no-op.
  */
 import * as Sentry from "@sentry/nextjs";
+import { initBotId } from "botid/client/core";
+
+initBotId({
+  protect: [
+    { path: "/api/ask", method: "POST" },
+    { path: "/api/beta/email", method: "POST" },
+    { path: "/api/feedback", method: "POST" },
+  ],
+});
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 if (dsn) {

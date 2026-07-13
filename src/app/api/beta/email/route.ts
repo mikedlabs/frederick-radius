@@ -17,6 +17,8 @@ import { isRateLimited } from "@/lib/origin-check";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 import { inviteEmail } from "@/lib/beta-invite";
+import { isRuntimeFlagEnabled } from "@/lib/runtime-flags";
+import { checkBotId } from "botid/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +30,13 @@ const noStore = { "Cache-Control": "no-store" };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(req: NextRequest) {
+  if (await isRuntimeFlagEnabled("disableBetaEmail")) {
+    return NextResponse.json({ error: "disabled" }, { status: 503, headers: noStore });
+  }
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403, headers: noStore });
+  }
   if (await isRateLimited(req, "beta-email", 5, 3600)) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore });
   }

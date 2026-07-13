@@ -2,6 +2,8 @@ import { meterUsage } from "@/lib/usage-meter";
 import { NextResponse } from "next/server";
 import { askFrederick } from "@/lib/ask/answer";
 import { isSameOriginRequest, isRateLimited } from "@/lib/origin-check";
+import { isRuntimeFlagEnabled } from "@/lib/runtime-flags";
+import { checkBotId } from "botid/server";
 
 /**
  * POST /api/ask  → { configured, answer, sources }
@@ -22,6 +24,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  if (await isRuntimeFlagEnabled("disableAsk")) {
+    return NextResponse.json(
+      { configured: false, answer: null, sources: [], disabled: true },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+  const verification = await checkBotId();
+  if (verification.isBot) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   if (!isSameOriginRequest(req)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
