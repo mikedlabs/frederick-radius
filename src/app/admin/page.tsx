@@ -75,27 +75,30 @@ async function loadDesk(): Promise<{
   if (!db) return { queue: null, pulse: null, costs: null, dbReason: "no database configured" };
   try {
     const n = sql<number>`count(*)::int`;
-    const [subRows, codeRows, emailRows, pushRows] = await Promise.all([
-      db
-        .select({ kind: submissions.kind, n })
-        .from(submissions)
-        .where(sql`${submissions.status} = 'pending'`)
-        .groupBy(submissions.kind),
-      db
-        .select({
-          total: n,
-          active: sql<number>`count(*) filter (where not ${beta_codes.revoked})::int`,
-          seen7d: sql<number>`count(*) filter (where ${beta_codes.last_seen_at} > now() - interval '7 days')::int`,
-        })
-        .from(beta_codes),
-      db
-        .select({
-          total: n,
-          recent: sql<number>`count(*) filter (where ${beta_emails.created_at} > now() - interval '7 days')::int`,
-        })
-        .from(beta_emails),
-      db.select({ n }).from(push_subscriptions),
-    ]);
+    // Await SEQUENTIALLY, never Promise.all: the prod pool is Supavisor
+    // transaction mode (max:1 per instance), so concurrent queries over the one
+    // connection deadlock and the page hangs forever (the lesson of #1024 — the
+    // /admin/beta desk was fixed then, but this hub kept the Promise.all and
+    // hung the moment someone actually authenticated in).
+    const subRows = await db
+      .select({ kind: submissions.kind, n })
+      .from(submissions)
+      .where(sql`${submissions.status} = 'pending'`)
+      .groupBy(submissions.kind);
+    const codeRows = await db
+      .select({
+        total: n,
+        active: sql<number>`count(*) filter (where not ${beta_codes.revoked})::int`,
+        seen7d: sql<number>`count(*) filter (where ${beta_codes.last_seen_at} > now() - interval '7 days')::int`,
+      })
+      .from(beta_codes);
+    const emailRows = await db
+      .select({
+        total: n,
+        recent: sql<number>`count(*) filter (where ${beta_emails.created_at} > now() - interval '7 days')::int`,
+      })
+      .from(beta_emails);
+    const pushRows = await db.select({ n }).from(push_subscriptions);
     const reportRows = await db
       .select({ n })
       .from(community_reports)
