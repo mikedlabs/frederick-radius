@@ -208,7 +208,11 @@ export const MUNICIPALITIES: Municipality[] = [
     name: "Urbana",
     type: "unincorporated",
     population: 13_304,
-    centroid: { lng: -77.3514, lat: 39.3259 },
+    // Anchored on Urbana's commercial/civic heart (between the Villages of
+    // Urbana market district and the regional library) rather than the CDP's
+    // residential-south internal point, so the map dot lands where the town
+    // actually gathers (coordinate audit, 2026-07-13).
+    centroid: { lng: -77.3500, lat: 39.3300 },
     bbox: [-77.385, 39.300, -77.315, 39.360],
     description:
       "A fast-growing planned community in the county's south, along I-270 and MD-355. Urbana District Park, the regional library, and Sugarloaf Mountain rising just to the southwest.",
