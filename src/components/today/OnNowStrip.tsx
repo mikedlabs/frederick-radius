@@ -4,6 +4,7 @@ import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
+import { isClosedNow } from "@/lib/hours";
 import { marketsOpenToday } from "@/lib/markets-today";
 import { selectOnNowChips, type OnNowChip, type OnNowPour } from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -49,6 +50,9 @@ function livePoursNow(now: Date): OnNowPour[] {
     if (!live) continue;
     const p = clientPlaceBySlug(v.slug);
     if (!p) continue;
+    // Don't pour a happy hour at a venue we can prove is closed now (DQ-019):
+    // a "till close" chip must never send someone to a locked door.
+    if (isClosedNow(p.hours, p.hours_verified ?? false, now)) continue;
     out.push({
       slug: v.slug,
       name: p.name,

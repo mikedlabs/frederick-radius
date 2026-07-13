@@ -63,6 +63,10 @@ export default function HappyHourPage() {
       verified: verifiedLabel(v.happy_hour.last_verified),
       schedule: v.happy_hour.schedule,
       windows: parseHappyHour(v.happy_hour.schedule),
+      // Ship the venue's structured hours so the client guide can suppress a
+      // live "on now" pour at a provably-closed venue (DQ-019).
+      hours: p.hours,
+      hoursVerified: p.hours_verified ?? false,
     });
   }
   // VERIFIED ONLY — the legacy unverified business-info happy hours were
