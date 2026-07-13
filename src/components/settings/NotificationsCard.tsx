@@ -35,11 +35,22 @@ function uint8FromBase64(base64: string): Uint8Array {
   return arr;
 }
 
+/** "9 PM" / "12 AM" for the quiet-hours selects. */
+function hourLabel(h: number): string {
+  const period = h < 12 ? "AM" : "PM";
+  const hr = h % 12 === 0 ? 12 : h % 12;
+  return `${hr} ${period}`;
+}
+
 export default function NotificationsCard() {
   const [support, setSupport] = useState<SupportState>("unknown");
   const [pubKey, setPubKey] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [topics, setTopics] = useState<Set<PushTopic>>(new Set());
+  // Eastern-time quiet window; null/null = off. Non-urgent pushes are held
+  // during it (civic alerts always come through). Hydrated from the server.
+  const [quietStart, setQuietStart] = useState<number | null>(null);
+  const [quietEnd, setQuietEnd] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -87,6 +98,15 @@ export default function NotificationsCard() {
               }
             }
           } catch { /* leave toggles as-seeded */ }
+          // Hydrate quiet hours so a returning subscriber sees their window.
+          try {
+            const pRes = await fetch(`/api/push/prefs?endpoint=${encodeURIComponent(existing.endpoint)}`);
+            if (pRes.ok) {
+              const pj = (await pRes.json()) as { quiet_start?: number | null; quiet_end?: number | null };
+              setQuietStart(typeof pj.quiet_start === "number" ? pj.quiet_start : null);
+              setQuietEnd(typeof pj.quiet_end === "number" ? pj.quiet_end : null);
+            }
+          } catch { /* leave quiet hours off */ }
         } else {
           setSupport("ready");
         }
@@ -196,6 +216,21 @@ export default function NotificationsCard() {
       });
     },
     [saveTopics],
+  );
+
+  // Persist quiet hours (both null = off). Best-effort, like topic saves.
+  const applyQuiet = useCallback(
+    (start: number | null, end: number | null) => {
+      setQuietStart(start);
+      setQuietEnd(end);
+      if (!subscription) return;
+      void fetch("/api/push/prefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subscription.endpoint, quiet_start: start, quiet_end: end }),
+      }).catch(() => {});
+    },
+    [subscription],
   );
 
   const sendTest = useCallback(async () => {
@@ -381,6 +416,62 @@ export default function NotificationsCard() {
           );
         })}
       </ul>
+
+      {enabled && (
+        <div className="mt-4 rounded-[var(--app-radius-md)] border px-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                Quiet hours
+              </span>
+              <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                Hold notifications overnight. Urgent civic alerts still come through.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => (quietStart !== null && quietEnd !== null ? applyQuiet(null, null) : applyQuiet(21, 7))}
+              aria-pressed={quietStart !== null && quietEnd !== null}
+              className="tactile tactile-interactive shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold"
+              style={{
+                background: quietStart !== null && quietEnd !== null ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                color: quietStart !== null && quietEnd !== null ? "white" : "var(--app-ink-2)",
+                border: "1px solid var(--app-border)",
+              }}
+            >
+              {quietStart !== null && quietEnd !== null ? "On" : "Off"}
+            </button>
+          </div>
+          {quietStart !== null && quietEnd !== null && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+              <span>From</span>
+              <select
+                aria-label="Quiet hours start"
+                value={quietStart}
+                onChange={(e) => applyQuiet(Number(e.target.value), quietEnd)}
+                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px]"
+                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{hourLabel(h)}</option>
+                ))}
+              </select>
+              <span>to</span>
+              <select
+                aria-label="Quiet hours end"
+                value={quietEnd}
+                onChange={(e) => applyQuiet(quietStart, Number(e.target.value))}
+                className="rounded-[var(--app-radius-sm)] border px-2 py-1 text-[16px]"
+                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{hourLabel(h)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {enabled && (
         <button
