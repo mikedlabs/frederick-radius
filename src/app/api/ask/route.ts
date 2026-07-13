@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (await isRuntimeFlagEnabled("disableAsk")) {
     return NextResponse.json(
       { configured: false, answer: null, sources: [], disabled: true },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }
   const verification = await checkBotId();
