@@ -130,21 +130,29 @@ export default async function NotifyPage({
             <THead>
               <Th>Message</Th>
               <Th align="right">Reached</Th>
+              <Th align="right">Opened</Th>
               <Th align="right">When (ET)</Th>
             </THead>
             <TBody>
-              {history.map((h, i) => (
-                <Tr key={i}>
-                  <Td>
-                    <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{h.title}</span>
-                    {h.body ? <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>{h.body}</span> : null}
-                  </Td>
-                  <Td align="right">
-                    <StatusPill tone={h.sent_count > 0 ? "positive" : "muted"}>{h.sent_count}</StatusPill>
-                  </Td>
-                  <Td align="right" tone="muted" nums>{fmt(h.sent_at)}</Td>
-                </Tr>
-              ))}
+              {history.map((h, i) => {
+                const rate = h.sent_count > 0 ? Math.round((h.open_count / h.sent_count) * 100) : 0;
+                return (
+                  <Tr key={i}>
+                    <Td>
+                      <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{h.title}</span>
+                      {h.body ? <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>{h.body}</span> : null}
+                    </Td>
+                    <Td align="right">
+                      <StatusPill tone={h.sent_count > 0 ? "positive" : "muted"}>{h.sent_count}</StatusPill>
+                    </Td>
+                    <Td align="right" tone="muted" nums>
+                      {h.open_count}
+                      {h.sent_count > 0 ? <span style={{ color: "var(--app-ink-3)" }}> · {rate}%</span> : null}
+                    </Td>
+                    <Td align="right" tone="muted" nums>{fmt(h.sent_at)}</Td>
+                  </Tr>
+                );
+              })}
             </TBody>
           </Table>
         )}

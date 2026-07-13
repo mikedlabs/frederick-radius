@@ -36,6 +36,9 @@ export type PushPayload = {
   badge?: string;
   /** Optional icon URL — the primary notification image. */
   icon?: string;
+  /** Open-attribution id (a push_log row id). The service worker pings
+   *  /api/push/opened?n=<id> on click so we can count opens per send. */
+  n?: string;
 };
 
 let _configured = false;

@@ -445,6 +445,8 @@ export const push_log = pgTable(
     url: text("url"),
     sent_at: timestamp("sent_at", { withTimezone: true }).defaultNow(),
     sent_count: integer("sent_count").notNull().default(0),
+    // Notification clicks reported by the service worker (aggregate per send).
+    open_count: integer("open_count").notNull().default(0),
   },
   (t) => ({
     topicKeyIdx: uniqueIndex("push_log_topic_key_idx").on(t.topic, t.dedupe_key),
