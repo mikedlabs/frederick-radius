@@ -52,6 +52,7 @@ import {
 import { WANTS, type WantSub } from "@/data/wants";
 import { GLYPHS } from "@/components/glyphs";
 import { getHomeMuni } from "@/lib/personalize";
+import { prefetchWant } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
 import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
 import WantAnswerPanel from "./WantAnswerPanel";
@@ -226,6 +227,14 @@ export default function WantsAccordion({
     reflectWantInUrl(null);
   };
 
+  /** Warm the answer the instant a finger lands on an inline chip, before the
+   *  click resolves and the panel mounts, so the network round trip overlaps
+   *  the tap gesture instead of following it. No-op for non-inline links. */
+  const prefetchOnPress = (href: string) => () => {
+    const w = inlineWantFor(href);
+    if (w) prefetchWant(w.c, w.facet);
+  };
+
   /** Intercept a /nearby-style link into the inline panel; modified clicks
    *  (new tab, middle click) keep their native navigation. */
   const interceptWant = (href: string, label: string) => (e: React.MouseEvent) => {
@@ -252,6 +261,7 @@ export default function WantsAccordion({
       {/* Hero — one primary action for the open category. */}
       <Link
         href={hrefFor(hero.href)}
+        onPointerDown={prefetchOnPress(hero.href)}
         onClick={interceptWant(hero.href, isEat ? meal.label : openCat.label)}
         className="tactile-interactive relative flex items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] p-4"
         style={{
@@ -309,6 +319,7 @@ export default function WantsAccordion({
             <Link
               key={sub.href + sub.label}
               href={hrefFor(sub.href)}
+              onPointerDown={prefetchOnPress(sub.href)}
               onClick={interceptWant(sub.href, sub.label)}
               aria-expanded={w ? active : undefined}
               className="tap-44-y tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"

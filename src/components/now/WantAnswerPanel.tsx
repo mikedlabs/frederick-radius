@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, NotebookPen, X } from "lucide-react";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { readCachedPosition } from "@/hooks/useGeolocation";
+import { getWantAnswer } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 
@@ -70,28 +70,29 @@ export default function WantAnswerPanel({
   const { openSheet } = usePlaceSheet();
   const router = useRouter();
 
-  // Fetch the answer; the cached fix rides along when one exists (a chip
-  // tap must never trigger a permission prompt).
+  // Fetch the answer through the shared want cache, which reuses the request
+  // the chip already kicked off on pointerdown (and any cached fix rides
+  // along, so a tap never triggers a permission prompt). A `live` flag
+  // stands in for AbortController since the cached promise is shared.
   useEffect(() => {
-    const ctrl = new AbortController();
+    let live = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset panel state for the newly tapped craving before its fetch resolves
     setAnswer(null);
     setFailed(false);
     setShowLater(false);
-    const fix = readCachedPosition();
-    const geo = fix ? `&lat=${fix.lat}&lng=${fix.lng}` : "";
-    fetch(`/api/want?c=${encodeURIComponent(cKey)}${facet ? `&facet=${encodeURIComponent(facet)}` : ""}${geo}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((a: WantAnswer) => {
-        setAnswer(a);
-        track("want_answer", { c: cKey, open: a.hero ? 1 : 0 });
+    getWantAnswer(cKey, facet)
+      .then((a) => {
+        if (!live) return;
+        const ans = a as WantAnswer;
+        setAnswer(ans);
+        track("want_answer", { c: cKey, open: ans.hero ? 1 : 0 });
       })
-      .catch((err) => {
-        if (err && err.name !== "AbortError") setFailed(true);
+      .catch(() => {
+        if (live) setFailed(true);
       });
-    return () => ctrl.abort();
+    return () => {
+      live = false;
+    };
   }, [cKey, facet]);
 
   // Focus lands on the panel heading when it opens (WCAG 2.4.3); Escape

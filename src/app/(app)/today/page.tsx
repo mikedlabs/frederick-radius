@@ -227,7 +227,7 @@ export default async function HomePage() {
         <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </span>{" "}
-        What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time.
+        Know what&rsquo;s happening around here, right now.
       </p>
 
       <SkyHero className="shader-rim relative z-10">
@@ -614,6 +614,15 @@ export default async function HomePage() {
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
+/** Town label for an event, avoiding the editorial "Downtown Frederick"
+ *  overclaim (the many City-of-Frederick venues that aren't downtown) — the
+ *  same call the place labels make. Null when the town is unknown. */
+function eventTown(ev: { municipality_name?: string }): string | null {
+  const t = ev.municipality_name?.trim();
+  if (!t) return null;
+  return t === "Downtown Frederick" ? "Frederick" : t;
+}
+
 /** Tonight's headline event as its OWN card directly below the weather hero
  *  (owner call: out of the weather card, solo). Today-only AND not-yet-ended:
  *  the picker enforces the "next 24 hours" contract; renders nothing when no
@@ -644,16 +653,23 @@ async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromis
         <Ticket className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
+        {/* When: the relative day plus the actual clock time ("Tonight ·
+            7:00 PM"), so the card answers "when" concretely, not just
+            "tonight". The countdown rides after for live/soon events. */}
         <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
           {eventWhenLabel(ev.starts_at, now)}
+          {!ev.is_all_day && ` · ${eventDateBlock(ev).time}`}
           <EventCountdown startsAt={ev.starts_at} endsAt={ev.ends_at ?? ev.starts_at} />
         </span>
         <span className="block truncate font-serif text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {ev.title}
         </span>
-        {ev.venue_name && (
+        {/* Where: the venue and the town, so "Sky Stage · Frederick" tells
+            you the place and which corner of the county it's in. Either
+            part can be missing; show what we have. */}
+        {(ev.venue_name || eventTown(ev)) && (
           <span className="block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {ev.venue_name}
+            {[ev.venue_name, eventTown(ev)].filter(Boolean).join(" · ")}
           </span>
         )}
       </span>
