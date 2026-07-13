@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
 import CountUp from "@/components/beta/CountUp";
+import CountyPlate from "@/components/beta/CountyPlate";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { getBetaPulse } from "@/lib/loaders/betaPulse";
@@ -15,15 +16,17 @@ import { getBetaPulse } from "@/lib/loaders/betaPulse";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Frederick Radius: private beta",
-  // Positioning rev. 2 (docs/social/facebook-page-copy.md): center the
-  // city-and-county connection; "a living field guide" is retired copy.
+  // Positioning rev. 3 (owner call, Jul 2026): lead with the field-guide
+  // statement, the app's own "what is this?" line from /today. The plain noun
+  // "field guide" is on-voice; only the adjective "living field guide" stays
+  // retired (docs/VOICE.md).
   description:
-    "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time, right now. Now in private beta.",
-  // The share card that Facebook renders for the tease post — a dedicated
-  // branded "You're early" cover (api/og?type=beta), not the generic site card.
+    "Your field guide to Frederick County. What's open, what's on, and what's worth your time, right now. Now in private beta.",
+  // The share card Facebook renders for the tease post (api/og?type=beta),
+  // not the generic site card.
   openGraph: {
-    title: "You're early. · Frederick Radius",
-    description: "Downtown Frederick and the county, connected. Private beta.",
+    title: "Your field guide to Frederick County",
+    description: "Frederick County, live: what's open, what's on, and what's worth your time. Private beta.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
@@ -111,13 +114,14 @@ export default async function BetaPage({
             Private beta
           </p>
 
-          <h1 className="mt-3 font-serif font-semibold leading-[0.95] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(46px, 13vw, 66px)" }}>
-            You&rsquo;re early.
+          <h1 className="mt-3 font-serif font-semibold leading-[1.03] tracking-tight" style={{ color: "var(--app-ink)", fontSize: "clamp(34px, 8.5vw, 52px)" }}>
+            Your field guide to Frederick County.
           </h1>
 
-          <p className="mx-auto mt-4 max-w-[23rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Downtown Frederick and the county, connected: what&rsquo;s open, what&rsquo;s on,
-            and what&rsquo;s worth your time. Enter the access code you were given to come in.
+          <p className="mx-auto mt-4 max-w-[24rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Know what&rsquo;s happening around here, right now: what&rsquo;s open, what&rsquo;s on,
+            and what&rsquo;s worth your time. You&rsquo;re early, so enter the access code you were
+            given to come in.
           </p>
 
           {/* Live proof, directly under the headline block — real county data
@@ -233,13 +237,13 @@ export default async function BetaPage({
         </section>
       </RevealOnScroll>
 
-      {/* ── THE TOWNS — engraved marquee ───────────────────────────────── */}
+      {/* ── THE TOWNS — a static engraved county plate ─────────────────── */}
       <RevealOnScroll>
-        <section className="py-14 sm:py-16" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
+        <section className="px-6 py-14 sm:py-16" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
           <p className="mb-6 text-center font-mono text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--app-brand-2)" }}>
             {MUNICIPALITIES.length} communities, one radius
           </p>
-          <TownMarquee />
+          <CountyPlate />
         </section>
       </RevealOnScroll>
 
@@ -480,26 +484,6 @@ function CompassRose() {
   );
 }
 
-/* ── The towns marquee (duplicated track for a seamless loop) ─────────── */
-function TownMarquee() {
-  const names = MUNICIPALITIES.map((m) => m.name);
-  const run = [...names, ...names];
-  return (
-    <div className="bt-marquee">
-      <div className="bt-marquee-track">
-        {run.map((n, i) => (
-          <span key={i} className="inline-flex items-center">
-            <span className="px-5 font-serif text-[22px] font-medium tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {n}
-            </span>
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ── Live proof: the strip under the headline ────────────────────────────
    One quiet card, real data: the county-wide open-now count with two or
    three actual names, plus today's event count. Every field is fail-soft
@@ -510,81 +494,44 @@ async function ProofStrip() {
   const openCount = p.openNow && p.openNow.count > 0 ? p.openNow.count : null;
   const names = p.openNow?.names ?? [];
 
-  // Live signal ticker — a scrolling wire of genuinely-on-now facts drawn from
-  // the same pulse, so the cover reads as a feed, not a stat. Every item is
-  // real or omitted (honest by construction).
-  const signals: string[] = [];
-  for (const nm of names) signals.push(`${nm} · open now`);
-  if (p.eventsToday != null && p.eventsToday > 0) {
-    signals.push(`${p.eventsToday} ${p.eventsToday === 1 ? "event" : "events"} on today`);
-  }
-  if (p.keys) {
-    const k = p.keys;
-    // Runs are null before first pitch AND for postponed/cancelled games —
-    // never let "null–null" onto the live-proof page. A game without a
-    // score to show only earns a signal in its honest states.
-    const hasScore = typeof k.keys.runs === "number" && typeof k.opponent.runs === "number";
-    if (k.state === "live" && hasScore) signals.push(`Keys ${k.keys.runs}–${k.opponent.runs}, live`);
-    else if (k.state === "final" && hasScore) signals.push(`Keys final ${k.keys.runs}–${k.opponent.runs}`);
-    else if (k.state === "pre") signals.push("Keys, first pitch tonight");
-    else if (k.state === "postponed") signals.push("Keys game postponed");
-  }
-  if (p.troutThisWeek) signals.push("Trout stocked this week");
-  signals.push(`${p.places.toLocaleString()} places mapped`);
-  signals.push(`${p.towns} communities, one radius`);
-  const ticker = [...signals, ...signals];
-
+  // One quiet, STATIC card (the scrolling live ticker was retired, owner call
+  // Jul 2026: no scrolling text on the cover). Real data, fail-soft: the
+  // always-true places total carries the line when the open count is out. The
+  // full breadth of live signals lives in the PulseGrid section below.
   return (
-    <>
-      <div
-        className="mx-auto mt-6 max-w-[24rem] rounded-[var(--app-radius-md)] border px-4 py-3 text-left"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-hi)" }}
-      >
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
-          <span aria-hidden className="pulse-dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
-          Right now
-        </p>
-        <p className="mt-1.5 text-[13.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
-          {openCount != null ? (
-            <>
-              <CountUp value={openCount} className="font-mono font-semibold tabular-nums" />{" "}
-              places open across the county
-            </>
-          ) : (
-            <>
-              <CountUp value={p.places} className="font-mono font-semibold tabular-nums" />{" "}
-              places mapped across the county
-            </>
-          )}
-          {p.eventsToday != null && p.eventsToday > 0 && (
-            <>
-              {" · "}
-              <CountUp value={p.eventsToday} className="font-mono font-semibold tabular-nums" /> on today
-            </>
-          )}
-        </p>
-        {openCount != null && names.length >= 2 && (
-          <p className="mt-1 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Open at this hour: {names.join(", ")}.
-          </p>
+    <div
+      className="mx-auto mt-6 max-w-[24rem] rounded-[var(--app-radius-md)] border px-4 py-3 text-left"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-hi)" }}
+    >
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
+        <span aria-hidden className="pulse-dot mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--app-brand)" }} />
+        Right now
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
+        {openCount != null ? (
+          <>
+            <CountUp value={openCount} className="font-mono font-semibold tabular-nums" />{" "}
+            places open across the county
+          </>
+        ) : (
+          <>
+            <CountUp value={p.places} className="font-mono font-semibold tabular-nums" />{" "}
+            places mapped across the county
+          </>
         )}
-      </div>
-
-      {signals.length >= 3 && (
-        <div className="bt-marquee mx-auto mt-2.5 max-w-[27rem]" aria-label="Live around the county">
-          <div className="bt-marquee-track" style={{ animationDuration: "32s" }}>
-            {ticker.map((s, i) => (
-              <span key={i} className="inline-flex items-center">
-                <span className="px-3 font-mono text-[11px] font-medium tracking-tight" style={{ color: "var(--app-ink-2)" }}>
-                  {s}
-                </span>
-                <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: "var(--app-brand)" }} />
-              </span>
-            ))}
-          </div>
-        </div>
+        {p.eventsToday != null && p.eventsToday > 0 && (
+          <>
+            {" · "}
+            <CountUp value={p.eventsToday} className="font-mono font-semibold tabular-nums" /> on today
+          </>
+        )}
+      </p>
+      {openCount != null && names.length >= 2 && (
+        <p className="mt-1 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Open at this hour: {names.join(", ")}.
+        </p>
       )}
-    </>
+    </div>
   );
 }
 
