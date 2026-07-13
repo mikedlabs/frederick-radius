@@ -75,7 +75,14 @@ const QUERY = (bbox: [number, number, number, number]) => `
   way["leisure"~"^(park|playground|sports_centre|swimming_pool|garden|nature_reserve|stadium|dog_park)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 );
 out center tags;
-`.replace(/\n\s*/g, " ");
+`
+  // Strip QL line comments BEFORE collapsing newlines. Overpass QL treats
+  // "//" as a comment to end-of-line, so flattening first turns the very
+  // first "// ..." into a comment that swallows the entire single-lined
+  // query and Overpass answers HTTP 400 (reproduced; audit FR-003). Removing
+  // each comment on its own line first keeps the query intact.
+  .replace(/\/\/[^\n]*/g, "")
+  .replace(/\n\s*/g, " ");
 
 function mapTagToCategory(tags: Record<string, string>): { category_slug: string; osm_tag: string } | null {
   const a = tags.amenity, s = tags.shop, t = tags.tourism, l = tags.leisure, o = tags.office;
