@@ -217,20 +217,17 @@ export default async function HomePage() {
           the crafted-product-hero move the primitive reserves for a single
           element. It freezes under prefers-reduced-motion. (The old className
           shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
-      {/* ── WELCOME — the one-line answer to "what is this?" BEFORE anything
-          else (owner ask, 2026-07-02). The July-1 call removed a brochure
-          headline UNDER the hero because it pushed the answers down; this is
-          the small version in the right place: one quiet line above the sky,
-          serif claim + plain-sans promise, zero client JS. The top bar carries
-          the name, so this states what the thing IS, not who it is. */}
-      <p className="mb-2 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-        <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Your field guide to Frederick County.
-        </span>{" "}
-        Know what&rsquo;s happening around here, right now.
-      </p>
-
+      {/* ── WELCOME — the "what is this?" answer is now the TITLE built into the
+          weather header (owner ask, 2026-07-13). It used to be a separate line
+          above the sky with a second "Know what's happening around here" clause;
+          the owner wanted the field-guide statement to title the sky plate and
+          the second line dropped. It inherits the sky section's tone-contrast
+          color (light text on a dark night sky, dark on a bright day) so it
+          stays legible over the live gradient. Zero client JS. */}
       <SkyHero className="shader-rim relative z-10">
+        <p className="mb-3 px-0.5 font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.18)" }}>
+          Your field guide to Frederick County.
+        </p>
         <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
           <TodayCard />
         </Suspense>
