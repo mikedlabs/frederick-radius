@@ -1,0 +1,37 @@
+# Keep Vercel build uploads focused on runtime inputs.
+# These files are useful in the repo but not needed to build or serve Frederick Radius.
+
+# Local / generated artifacts
+.vercel
+.next
+node_modules
+coverage
+playwright-report
+test-results
+*.log
+
+# Product notes, audits, and design artifacts
+docs
+archive
+audit
+.mockups
+design-log
+AUDIT.md
+MAP_AUDIT.md
+PREMIUM-AUDIT.md
+PLAN.md
+ROADMAP.md
+UX_REDO.md
+VISION.md
+DECISIONS.md
+
+# Tests and local-only validation fixtures
+tests
+e2e
+*.spec.ts
+*.test.ts
+e2.html
+e2-slugs.txt
+t2-slugs.txt
+playwright.config.ts
+vitest.config.ts
