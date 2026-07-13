@@ -41,8 +41,19 @@ function formatYear(e: HistoryEntry): string | null {
  * file, no CMS, no live feed. Every entry has a real source where
  * authoritative reference exists; nothing is fabricated.
  */
-export default async function HistoryPage() {
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ topic?: string }>;
+}) {
   const topics = historyTopics();
+  const { topic: topicParam } = await searchParams;
+  // The topic filter is a real, shareable server filter now (was a dead row
+  // of chips). Only an actual tag activates it; anything else falls back to
+  // the unfiltered page.
+  const topic = topicParam && topics.some((t) => t.tag === topicParam) ? topicParam : null;
+  const inTopic = (h: HistoryEntry) => !topic || h.tags.includes(topic);
+
   const momentCount = HISTORY.filter((h) => h.kind === "moment").length;
   const personCount = HISTORY.filter((h) => h.kind === "person").length;
   const factCount = HISTORY.filter((h) => h.kind === "fact").length;
@@ -56,14 +67,16 @@ export default async function HistoryPage() {
   const heroFact = facts[((dayIdx % facts.length) + facts.length) % facts.length];
 
   // Sort moments newest-first (most recent on top) so the page reads
-  // from "this happened here recently" back to founding.
-  const moments = HISTORY.filter((h) => h.kind === "moment").sort(
+  // from "this happened here recently" back to founding. When a topic is
+  // active, every section narrows to entries carrying that tag.
+  const moments = HISTORY.filter((h) => h.kind === "moment" && inTopic(h)).sort(
     (a, b) => (b.year ?? 0) - (a.year ?? 0),
   );
-  const people = HISTORY.filter((h) => h.kind === "person").sort(
+  const people = HISTORY.filter((h) => h.kind === "person" && inTopic(h)).sort(
     (a, b) => (a.year ?? 0) - (b.year ?? 0),
   );
-  const rest = HISTORY.filter((h) => h.kind === "fact" && h.slug !== heroFact.slug);
+  // When filtering, the hero fact isn't special, so keep every matching fact.
+  const rest = HISTORY.filter((h) => h.kind === "fact" && inTopic(h) && (topic ? true : h.slug !== heroFact.slug));
 
   return (
     <div className="relative space-y-6">
@@ -106,23 +119,15 @@ export default async function HistoryPage() {
           </p>
         </div>
       </header>
-      <p
-        className="text-[14px] leading-relaxed text-pretty"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        The county is older than the country. Cannonballs from a foundry
-        here armed the Continental Army; a 95-year-old flag-waver in town
-        ended up in a Whittier poem; a battle south of the city saved
-        Washington. These are the moments and the small details. The
-        stuff a docent might tell you walking past the marker.
-      </p>
 
       {/* The timeline ribbon — instant visual identity. Tells the
           visitor "this is a museum, not an essay" before they read a
           word, and gives every tick a deep-link to the entry below. */}
       <HistoryTimeline />
 
-      {/* Hero: today's "did you know" fact. */}
+      {/* Hero: today's "did you know" fact. Hidden while a topic filter is
+          active so the filtered results lead instead of an unrelated fact. */}
+      {!topic && (
       <section
         aria-label="Today's fact"
         className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-5"
@@ -158,32 +163,60 @@ export default async function HistoryPage() {
           </p>
         )}
       </section>
+      )}
 
-      {/* Topic filter. Non-interactive on first ship; informational chips
-          so users see the topic shape of the page. A real filter is the
-          next step once a search/topic state exists. */}
-      <section aria-label="Topics" className="-mx-1 flex flex-wrap gap-1.5 px-1">
-        {topics.slice(0, 12).map((t) => (
-          <span
-            key={t.tag}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-            style={{
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink-2)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            #{t.tag}
-            <span
-              className="rounded-full px-1 text-[10px] tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
+      {/* Topic filter — a real, shareable filter (chips are links to
+          /history?topic=…). "All" resets; the active topic is pressed. */}
+      <section aria-label="Filter by topic" className="-mx-4 px-4">
+        <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <li className="shrink-0">
+            <Link
+              href="/history"
+              aria-current={topic ? undefined : "true"}
+              className="tap-44-y inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+              style={
+                topic
+                  ? { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                  : { borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }
+              }
             >
-              {t.count}
-            </span>
-          </span>
-        ))}
+              All
+            </Link>
+          </li>
+          {topics.slice(0, 14).map((t) => {
+            const on = topic === t.tag;
+            return (
+              <li key={t.tag} className="shrink-0">
+                <Link
+                  href={`/history?topic=${t.tag}`}
+                  aria-current={on ? "true" : undefined}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                  style={
+                    on
+                      ? { borderColor: "var(--app-accent-press)", background: "var(--app-accent-press)", color: "var(--app-on-brand, #fff)" }
+                      : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                  }
+                >
+                  #{t.tag}
+                  <span className="rounded-full px-0.5 text-[10px] tabular-nums" style={{ color: on ? "rgba(255,255,255,0.75)" : "var(--app-ink-3)" }}>
+                    {t.count}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
+      {topic && moments.length + people.length + rest.length === 0 && (
+        <p className="rounded-[var(--app-radius-md)] border px-3.5 py-4 text-center text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
+          Nothing tagged <span className="font-semibold">#{topic}</span> yet.{" "}
+          <Link href="/history" className="underline" style={{ color: "var(--app-cool)" }}>Show all</Link>.
+        </p>
+      )}
+
+      {moments.length > 0 && (
+      <>
       <DecorativeDivider variant="asterism" />
 
       {/* Big moments. Dated events, newest first — now a horizontal
@@ -221,7 +254,11 @@ export default async function HistoryPage() {
           </ol>
         </div>
       </section>
+      </>
+      )}
 
+      {people.length > 0 && (
+      <>
       <DecorativeDivider variant="wave" />
 
       {/* People */}
@@ -245,7 +282,11 @@ export default async function HistoryPage() {
           ))}
         </ul>
       </section>
+      </>
+      )}
 
+      {rest.length > 0 && (
+      <>
       <DecorativeDivider variant="sun" />
 
       {/* The rest of the facts (excluding today's hero) */}
@@ -269,6 +310,8 @@ export default async function HistoryPage() {
           ))}
         </ul>
       </section>
+      </>
+      )}
 
       {/* History on the ground — reciprocal cross-link to /markers (which
           links back here for the stories). Gives the orphaned markers page a
@@ -483,6 +526,23 @@ function HistoryArticle({
           }}
         />
         <div className="relative">
+          {/* Photo leads the card when the entry has one (public-domain /
+              licensed only) — turns the People + Facts grids from text
+              blocks into a picture wall. Era-gradient cards (no image) keep
+              their accent bloom, so the grid still feels like one family. */}
+          {entry.image && (
+            <div className="relative mb-3 h-28 w-full overflow-hidden rounded-[var(--app-radius-md)]">
+              <Image
+                src={entry.image.src}
+                alt={entry.image.alt ?? ""}
+                fill
+                sizes="(max-width: 768px) 100vw, 320px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
+                style={{ objectFit: "cover" }}
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
