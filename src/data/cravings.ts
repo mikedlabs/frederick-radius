@@ -375,6 +375,15 @@ export const CRAVINGS: Craving[] = [
     icon: "Sparkles",
     color: "var(--app-brand-2)",
     match: (p) => WELLNESS.test(p.name) && !WELLNESS_CLINICAL.test(p.name),
+    // Narrow the broad wellness answer to what people actually search for.
+    // Name-based (studios live under both the `yoga` and `wellness`
+    // categories, so a category filter would miss half); `\bbarre\b` can't
+    // catch "barrel" (a distillery), which the boundary guards.
+    facets: [
+      { key: "yoga", label: "Yoga & Pilates", match: (p) => /\b(yoga|pilates|barre|reformer)\b/i.test(p.name) },
+      { key: "spa", label: "Spa & massage", match: (p) => /\b(spa|massage|bodywork|facial|skincare|skin care|sauna|float|cryo|reiki|sound bath|medspa|med ?spa|day ?spa|aesthetic|esthetic)\b/i.test(p.name) },
+      { key: "gym", label: "Gym & fitness", match: (p) => /\b(gym|fitness|crossfit|cross ?fit|cyclebar|cycle bar|spin studio|kettlebell|hotworx|f45|orangetheory|martial arts|kickbox|jiu.?jitsu|karate|taekwondo)\b/i.test(p.name) },
+    ],
   },
   {
     // Lodging — the county's hotels, inns, and B&Bs (37 places). For a
