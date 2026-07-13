@@ -6,6 +6,7 @@ import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
+import { isClosedNow } from "@/lib/hours";
 import { dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 
@@ -113,6 +114,8 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     if (!live) continue;
     const p = clientPlaceBySlug(v.slug);
     if (!p) continue;
+    // Suppress the live pour when the venue is provably closed now (DQ-019).
+    if (isClosedNow(p.hours, p.hours_verified ?? false, now)) continue;
     pours.push({
       slug: v.slug,
       name: p.name,

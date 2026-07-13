@@ -9,6 +9,9 @@ import { marketsOpenToday } from "@/lib/markets-today";
 import { todaysDeals } from "@/lib/loaders/todaysDeals";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { parseHappyHour } from "@/lib/happyHour";
+import { isClosedNow } from "@/lib/hours";
+// eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { clusterOrder, daypart } from "@/lib/daypart";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
@@ -28,7 +31,12 @@ function liveHappyCount(now: Date): number {
   const min = (Number(get("hour")) % 24) * 60 + Number(get("minute"));
   let n = 0;
   for (const v of placesWithFieldHappyHour()) {
-    if (parseHappyHour(v.happy_hour.schedule).some((w) => w.days.includes(day) && min >= w.start && min < w.end)) n++;
+    if (!parseHappyHour(v.happy_hour.schedule).some((w) => w.days.includes(day) && min >= w.start && min < w.end)) continue;
+    // Don't count a pour whose venue is provably closed now (DQ-019), so the
+    // band's "On now" total matches the live cards, which now suppress those.
+    const p = clientPlaceBySlug(v.slug);
+    if (p && isClosedNow(p.hours, p.hours_verified ?? false, now)) continue;
+    n++;
   }
   return n;
 }

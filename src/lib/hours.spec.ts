@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTime, formatWindows, isAllDayWindow, getOpenStatus, formatHoursLine } from "./hours";
+import { formatTime, formatWindows, isAllDayWindow, getOpenStatus, formatHoursLine, isClosedNow } from "./hours";
 import type { Hours } from "@/data/places";
 
 describe("formatTime", () => {
@@ -45,6 +45,21 @@ describe("all-day windows", () => {
     const hours: Hours = { wed: [{ open: "09:00", close: "17:00" }] };
     const status = getOpenStatus(hours, { verified: true }, now);
     expect(formatHoursLine(status)).toBe("Closed · Opens Wed 9am");
+  });
+
+  it("isClosedNow only suppresses on VERIFIED-closed hours (DQ-019)", () => {
+    // The White Rabbit case: verified hours 11am-10pm, checked at 3:41 AM ET.
+    const earlyAm = new Date("2026-07-07T07:41:00.000Z"); // Tue 3:41 AM EDT
+    const hours: Hours = { tue: [{ open: "11:00", close: "22:00" }] };
+    // Verified + outside every window → provably closed → suppress the pour.
+    expect(isClosedNow(hours, true, earlyAm)).toBe(true);
+    // Same hours but UNVERIFIED → we can't prove closed → never suppress.
+    expect(isClosedNow(hours, false, earlyAm)).toBe(false);
+    // No hours at all → unknown → never suppress.
+    expect(isClosedNow(undefined, true, earlyAm)).toBe(false);
+    // Verified and inside the window → open → not closed.
+    const midday = new Date("2026-07-07T16:00:00.000Z"); // Tue 12:00 PM EDT
+    expect(isClosedNow(hours, true, midday)).toBe(false);
   });
 
   it("reports an open-24h place as 'Open 24 hours' in the status line", () => {

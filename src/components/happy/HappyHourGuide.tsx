@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Martini, Search, X } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
 import { dealHook, splitDeal, figureCount, dealQuality } from "@/lib/happyHourDeal";
+import { isClosedNow } from "@/lib/hours";
 import DealLines from "@/components/happy/DealLines";
 
 /**
@@ -82,7 +83,11 @@ function classify(rows: HHRow[], day: number, nowMin: number) {
     const hook = dealHook(r.deal);
     const todays = r.windows.filter((w) => w.days.includes(day)).sort((a, b) => a.start - b.start);
     const liveWin = todays.find((w) => nowMin >= w.start && nowMin < w.end);
-    if (liveWin) {
+    // A live window only reads "on now" when the venue isn't provably closed
+    // (DQ-019): the White Rabbit case, an all-day pour on a day the kitchen is
+    // dark. Closed → fall through to the upcoming/other buckets, so the row
+    // still shows honestly as "opens later" rather than a "till close" lie.
+    if (liveWin && !isClosedNow(r.hours, r.hoursVerified ?? false)) {
       live.push({ r, hook, kind: "live", endsAt: liveWin.end, lastCall: liveWin.end < 1440 && liveWin.end - nowMin <= 30 });
       continue;
     }

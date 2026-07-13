@@ -5,6 +5,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { happyHourStatus } from "@/lib/happyHour";
+import { isClosedNow } from "@/lib/hours";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { easternParts } from "@/lib/tz";
@@ -46,9 +47,12 @@ export default async function NowIntel({ now, eventsPromise }: { now: Date; even
 
   // Happy hours live right now — the count, and the venue name when there's only
   // one (so a single one reads "happy hour at Brewer's Alley", not a bare "1").
-  const onNow = placesWithFieldHappyHour().filter(
-    (v) => happyHourStatus(v.happy_hour.schedule, now).state === "now",
-  );
+  const onNow = placesWithFieldHappyHour().filter((v) => {
+    if (happyHourStatus(v.happy_hour.schedule, now).state !== "now") return false;
+    // Not "on now" when the venue is provably closed (DQ-019).
+    const p = clientPlaceBySlug(v.slug);
+    return !(p && isClosedNow(p.hours, p.hours_verified ?? false, now));
+  });
   const happy =
     onNow.length > 0
       ? { count: onNow.length, venue: onNow.length === 1 ? clientPlaceBySlug(onNow[0].slug)?.name ?? null : null }

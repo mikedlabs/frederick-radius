@@ -66,6 +66,25 @@ export function isOpenNow(status: OpenStatus): boolean {
   return status.state === "open" || status.state === "closing-soon";
 }
 
+/**
+ * "Definitively closed right now" — true ONLY when the venue has verified
+ * hours that place `now` outside every window. Unknown or unverified hours
+ * return false: we never claim a venue is closed on evidence we don't have.
+ *
+ * The guard behind cross-table honesty (audit DQ-019 / FR-001): a happy hour
+ * or deal must not read "on now" when its venue is provably closed and would
+ * send someone to a locked door. Callers keep the promotion live when the
+ * venue state is merely unknown, so a real pour at a hours-less venue still
+ * shows.
+ */
+export function isClosedNow(
+  hours: Hours | undefined,
+  verified: boolean,
+  now: Date = new Date(),
+): boolean {
+  return getOpenStatus(hours, { verified }, now).state === "closed";
+}
+
 export function getOpenStatus(
   hours: Hours | undefined,
   options: { verified?: boolean } = {},

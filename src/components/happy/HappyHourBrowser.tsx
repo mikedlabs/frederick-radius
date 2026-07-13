@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Martini } from "lucide-react";
 import DealLines from "@/components/happy/DealLines";
 import { figureCount } from "@/lib/happyHourDeal";
+import type { Hours } from "@/data/places";
 
 /**
  * HappyHourBrowser — the interactive, day-aware reveal for /happy-hour.
@@ -35,6 +36,11 @@ export type HHRow = {
   verified: string | null;
   schedule: string;
   windows: HHWindowLite[];
+  /** Venue structured hours + verified flag, so the guide can suppress a live
+   *  "on now" pour when the venue is provably closed (DQ-019). Optional: a row
+   *  with no hours (or unverified hours) is never suppressed. */
+  hours?: Hours;
+  hoursVerified?: boolean;
 };
 
 const DAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"];
