@@ -49,7 +49,11 @@ export async function mintCodeForEmail(email: string): Promise<string | null> {
   return code;
 }
 
-const FROM = process.env.RESEND_FROM ?? "Frederick Radius <hello@frederickradius.app>";
+// `||`, not `??`: RESEND_FROM was set to an EMPTY string in prod (the Vercel
+// CLI stdin-empty trap), and `??` keeps "" — so every invite tried to send
+// from:"" and Resend 422'd the lot. `||` falls back to the verified-domain
+// default on an empty (or unset) value, which is what we always want here.
+const FROM = process.env.RESEND_FROM || "Frederick Radius <hello@frederickradius.app>";
 const BASE = "https://frederickradius.app";
 
 /**
