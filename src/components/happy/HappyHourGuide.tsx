@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Martini } from "lucide-react";
+import { Martini, Search, X } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
 import { dealHook, splitDeal, figureCount, dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
@@ -248,8 +248,25 @@ export default function HappyHourGuide({
   const [mode, setMode] = useState<"now" | "week">("now");
   const [day, setDay] = useState(today);
   const [nowMin, setNowMin] = useState(seedMin);
+  const [query, setQuery] = useState("");
   const prevCover = useRef<string | null>(null);
   const [coverBloom, setCoverBloom] = useState(false);
+
+  // Search over venue, town, deal text, and schedule, so "drafts", "oysters",
+  // "half off", "wine", or a town/venue narrows the whole guide. Filters the
+  // rows BEFORE they're classified, so every section (and the week planner)
+  // reflects it. The quick chips just seed common searches.
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+  const shownRows = useMemo(
+    () =>
+      searching
+        ? rows.filter((r) =>
+            `${r.name} ${r.town ?? ""} ${r.deal ?? ""} ${r.schedule}`.toLowerCase().includes(q),
+          )
+        : rows,
+    [rows, q, searching],
+  );
 
   useEffect(() => {
     const sync = () => {
@@ -262,7 +279,7 @@ export default function HappyHourGuide({
     return () => clearInterval(id);
   }, []);
 
-  const { live, later, other, varies } = useMemo(() => classify(rows, day, nowMin), [rows, day, nowMin]);
+  const { live, later, other, varies } = useMemo(() => classify(shownRows, day, nowMin), [shownRows, day, nowMin]);
 
   // Cover = the best on-now pour to feature, DEAL QUALITY FIRST: prefer a live
   // pour with a real figure (Roasthouse "50% OFF"), ranked by coverScore then
@@ -277,7 +294,9 @@ export default function HappyHourGuide({
     }
     return later[0] ?? other[0] ?? null;
   }, [live, later, other]);
-  const coverSlug = cover?.r.slug;
+  // While searching the cover is hidden, so don't also strip its spot from the
+  // sections — every match should show.
+  const coverSlug = searching ? null : cover?.r.slug;
   const liveRest = live.filter((x) => x.r.slug !== coverSlug);
   const laterRest = later.filter((x) => x.r.slug !== coverSlug);
   const otherRest = other.filter((x) => x.r.slug !== coverSlug);
@@ -337,13 +356,73 @@ export default function HappyHourGuide({
         </div>
       </div>
 
+      {/* Find what you want — a search over venue/town/deal, plus quick taps
+          for the common asks. Narrows every section below and the week
+          planner, so 26 spots become the handful you're actually after. */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+          <input
+            type="search"
+            inputMode="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search happy hours by deal, venue, or town"
+            placeholder="Search: drafts, wine, oysters, a spot…"
+            className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
+            style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="tap-44 absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full" style={{ color: "var(--app-ink-3)" }}>
+              <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+            </button>
+          )}
+        </div>
+        <div className="-mx-4 px-4">
+          <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {["Drafts", "Wine", "Cocktails", "Oysters", "Half off", "Wings"].map((label) => {
+              const key = label.toLowerCase();
+              const on = q === key;
+              return (
+                <li key={label} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setQuery(on ? "" : key)}
+                    aria-pressed={on}
+                    className="tap-44-y rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+                    style={
+                      on
+                        ? { borderColor: "var(--app-accent)", background: "var(--app-accent)", color: "var(--app-on-brand, #fff)" }
+                        : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                    }
+                  >
+                    {label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        {searching && (
+          <p className="px-0.5 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            {shownRows.length === 0 ? "No matches" : `${shownRows.length} ${shownRows.length === 1 ? "spot" : "spots"} for “${query.trim()}”`}
+          </p>
+        )}
+        {searching && shownRows.length === 0 && (
+          <p className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
+            Nothing matched “{query.trim()}”. Try a plainer word (like “beer” or “wine”), or clear the search.
+          </p>
+        )}
+      </div>
+
       {mode === "week" ? (
-        <HappyHourBrowser rows={rows} today={day} nowMin={nowMin} />
+        <HappyHourBrowser rows={shownRows} today={day} nowMin={nowMin} />
       ) : (
         <div className="space-y-5">
           {/* The "now" lead — framed by what's actually pouring this minute, so
-              the headline is the answer ("pouring now"), not just a photo. */}
-          {cover && (
+              the headline is the answer ("pouring now"), not just a photo.
+              Hidden while searching: a filtered set wants results, not a pick. */}
+          {!searching && cover && (
             <div className="space-y-2">
               <p className="fg-eyebrow flex items-center gap-1.5">
                 {cover.kind === "live" ? (
