@@ -2702,13 +2702,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* ============================================================================
    /beta launch cover — the "living almanac" landing (beta/page.tsx). Namespaced
    bt-*. Motion is cheap + reduced-motion-gated (no heavy backdrop-blur, per the
-   perf pass): an engraved towns marquee, a guilloché specimen texture, and a
-   slow drift on the hero glow.
+   perf pass): a guilloché specimen texture and a slow drift on the hero glow.
+   (The towns marquee was retired for a static county plate, Jul 2026.)
    ========================================================================== */
-.bt-marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.bt-marquee-track { display: inline-flex; gap: 0; white-space: nowrap; will-change: transform; animation: bt-marquee 42s linear infinite; }
-@keyframes bt-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* Engraved guilloché fill for the specimen preview cards — reuses the wallet's
    security-print motif so the landing and the app read as one brand. */
@@ -2724,7 +2720,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes bt-drift { from { transform: translate(-50%, -50%) scale(1); opacity: .85; } to { transform: translate(-50%, -54%) scale(1.08); opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .bt-marquee-track { animation: none; }
   .bt-drift { animation: none; }
 }
 
