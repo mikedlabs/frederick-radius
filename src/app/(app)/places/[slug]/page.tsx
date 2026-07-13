@@ -480,9 +480,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
             Upcoming at {place.name}
           </h2>
-          <ul className="grid gap-2 lg:grid-cols-2">
+          {/* grid-cols-1 base: without an explicit column below lg the single
+              implicit track sizes to max-content and pushed the detail page
+              past the viewport at 320/375/768px (audit FR-004). min-w-0 lets
+              each card shrink instead of forcing overflow. */}
+          <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
             {eventsAtThisVenue.map((e) => (
-              <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
+              <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} /></li>
             ))}
           </ul>
         </section>
@@ -492,9 +496,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
           Near here
         </h2>
-        <ul className="grid gap-2 lg:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {place.nearby_places.slice(0, 5).map((p) => (
-            <li key={p.slug}><PlaceCard place={p} /></li>
+            <li key={p.slug} className="min-w-0"><PlaceCard place={p} /></li>
           ))}
         </ul>
       </section>
