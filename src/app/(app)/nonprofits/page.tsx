@@ -6,7 +6,6 @@ import {
   nonprofitsByCategory,
   nonprofitCategoryCounts,
   subsectionLabel,
-  type Nonprofit,
 } from "@/lib/loaders/nonprofits";
 import {
   NONPROFIT_CATEGORY_BY_SLUG,
@@ -14,6 +13,7 @@ import {
 } from "@/data/ntee-categories";
 import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
+import NonprofitList from "@/components/nonprofits/NonprofitList";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/nonprofits" },
@@ -33,41 +33,6 @@ const fmtMoney = (n: number): string => {
 
 function isCategory(v: string | undefined): v is NonprofitCategory {
   return !!v && v in NONPROFIT_CATEGORY_BY_SLUG;
-}
-
-function OrgRow({ n }: { n: Nonprofit }) {
-  const rev = fmtMoney(n.revenue);
-  return (
-    <li>
-      <Link
-        href={`/nonprofits/${n.ein}`}
-        className="tap-44 group flex items-baseline justify-between gap-3 border-b py-2.5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <span className="min-w-0">
-          <span
-            className="block truncate text-[14px] font-medium leading-tight group-hover:underline"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {n.name}
-          </span>
-          <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {subsectionLabel(n.subsection)} · {n.city}
-            {n.ruling ? ` · since ${n.ruling}` : ""}
-          </span>
-        </span>
-        {rev ? (
-          <span
-            className="shrink-0 font-mono text-[11px] tabular-nums"
-            style={{ color: "var(--app-ink-2)" }}
-            title="Most recent reported annual revenue (IRS filing)"
-          >
-            {rev}
-          </span>
-        ) : null}
-      </Link>
-    </li>
-  );
 }
 
 export default async function NonprofitsPage({
@@ -177,11 +142,16 @@ export default async function NonprofitsPage({
             A glance at the county&rsquo;s biggest nonprofits. Pick a cause above to see the rest.
           </p>
         )}
-        <ul>
-          {list.map((n) => (
-            <OrgRow key={n.ein} n={n} />
-          ))}
-        </ul>
+        <NonprofitList
+          orgs={list.map((n) => ({
+            ein: n.ein,
+            name: n.name,
+            sub: subsectionLabel(n.subsection),
+            city: n.city,
+            ruling: n.ruling ?? null,
+            rev: fmtMoney(n.revenue),
+          }))}
+        />
       </section>
 
       <p className="pt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
