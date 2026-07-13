@@ -25,11 +25,20 @@ import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 export const revalidate = 300;
 
 export async function GET() {
+  // Track whether any feed FAILED, distinctly from a feed that succeeded and
+  // returned nothing. A failed feed makes a zero count untrustworthy: we must
+  // not let a provider outage read as "all clear" (audit FR-002). Each catch
+  // flips `degraded` and falls back to an empty result so the others still show.
+  let degraded = false;
+  const fail = <T>(fallback: T) => (): T => {
+    degraded = true;
+    return fallback;
+  };
   const [alerts, fcps, traffic, outages] = await Promise.all([
-    getNwsAlerts().catch(() => []),
-    getFcpsAlerts().catch(() => []),
-    getChartIncidentsFrederick().catch(() => []),
-    getFrederickOutages().catch(() => ({ total_out: 0, munis: [] })),
+    getNwsAlerts().catch(fail([] as Awaited<ReturnType<typeof getNwsAlerts>>)),
+    getFcpsAlerts().catch(fail([] as Awaited<ReturnType<typeof getFcpsAlerts>>)),
+    getChartIncidentsFrederick().catch(fail([] as Awaited<ReturnType<typeof getChartIncidentsFrederick>>)),
+    getFrederickOutages().catch(fail({ total_out: 0, total_served: 0, munis: [] } as Awaited<ReturnType<typeof getFrederickOutages>>)),
   ]);
 
   const now = Date.now();
@@ -54,7 +63,15 @@ export async function GET() {
     (outagesActive ? 1 : 0);
 
   return NextResponse.json(
-    { active: count > 0, count, tone, lastUpdated: new Date().toISOString() },
+    {
+      active: count > 0,
+      count,
+      tone,
+      // `ok:false` means at least one feed failed this fetch, so a zero count
+      // is "unknown", not a promise of "all clear". The header reads this.
+      ok: !degraded,
+      lastUpdated: new Date().toISOString(),
+    },
     { headers: { "Cache-Control": "public, max-age=60, s-maxage=300" } },
   );
 }

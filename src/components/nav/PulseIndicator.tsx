@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Activity } from "lucide-react";
 
@@ -22,6 +22,10 @@ type PulseStatus = {
   active: boolean;
   count: number;
   tone: "alert" | "caution" | "quiet";
+  /** False when a source feed failed on this fetch, so a zero count is
+   *  "unknown", not "all clear" (audit FR-002). Older cached payloads may
+   *  omit it; treated as ok when absent. */
+  ok?: boolean;
 };
 
 const TONE_COLOR: Record<PulseStatus["tone"], string> = {
@@ -32,17 +36,29 @@ const TONE_COLOR: Record<PulseStatus["tone"], string> = {
 
 export default function PulseIndicator() {
   const [status, setStatus] = useState<PulseStatus | null>(null);
+  // True once a fetch has failed with no prior good status: we then render an
+  // explicit "unavailable", never a false "all clear" (audit FR-002). A later
+  // success clears it. A failure AFTER a success keeps the last-known status
+  // (stale beats blank), so this only guards the never-loaded case.
+  const [failed, setFailed] = useState(false);
 
+  const everLoaded = useRef(false);
   useEffect(() => {
     let cancelled = false;
     const fetchStatus = async () => {
       try {
         const res = await fetch("/api/pulse/status", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`status ${res.status}`);
         const json = (await res.json()) as PulseStatus;
-        if (!cancelled) setStatus(json);
+        if (!cancelled) {
+          everLoaded.current = true;
+          setStatus(json);
+          setFailed(false);
+        }
       } catch {
-        // silent — header doesn't render an error for a polling util
+        // A failed poll never asserts "all clear": mark unavailable only when
+        // we've never had a good read (else we keep the last-known status).
+        if (!cancelled && !everLoaded.current) setFailed(true);
       }
     };
     fetchStatus();
@@ -56,6 +72,10 @@ export default function PulseIndicator() {
   const active = status?.active ?? false;
   const tone = status?.tone ?? "quiet";
   const count = status?.count ?? 0;
+  // "Unknown" whenever we cannot honestly claim all-clear: never loaded, a
+  // first-load failure, or the server flagged a degraded fetch that found
+  // nothing. Only a fresh, complete, zero-count read reads as all clear.
+  const unknown = !active && (status === null || failed || status?.ok === false);
 
   return (
     <Link
@@ -63,9 +83,17 @@ export default function PulseIndicator() {
       aria-label={
         active
           ? `County alerts: ${count} active ${count === 1 ? "item" : "items"}`
-          : "County alerts: all clear"
+          : unknown
+            ? "County alerts: status unavailable"
+            : "County alerts: all clear"
       }
-      title={active ? `County alerts: ${count} active` : "County alerts: all clear"}
+      title={
+        active
+          ? `County alerts: ${count} active`
+          : unknown
+            ? "County alerts: status unavailable"
+            : "County alerts: all clear"
+      }
       className="tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
       style={{
         borderColor: "var(--app-border)",
@@ -84,6 +112,15 @@ export default function PulseIndicator() {
                 ? `0 0 0 2px var(--app-bg-elevated), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
                 : `0 0 0 2px var(--app-bg-elevated)`,
           }}
+        />
+      )}
+      {/* Unavailable: a hollow ring, so "we don't know" never looks the same as
+          the calm all-clear state (audit FR-002). */}
+      {!active && unknown && (
+        <span
+          aria-hidden
+          className="absolute right-1 top-1 inline-flex h-2 w-2 rounded-full"
+          style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
         />
       )}
     </Link>
