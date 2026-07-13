@@ -207,17 +207,12 @@ export default async function HomePage() {
 
       {/* ── TITLE — the field-guide statement as a real page title, on its own
           plate above the weather (owner call, 2026-07-13 pm: off the sky, and
-          make it look like a title). The tagline eyebrow + serif line + a
-          short brand rule is the app's standard page-header lockup (see
-          /happy-hour, /nonprofits), so Today finally reads with the same
-          masthead as its peers. Sits below an active civic alert (alerts still
-          lead) and above the weather. The sr-only h1 stays the semantic
-          heading; this is the display title. */}
+          make it look like a title). Serif line + a short brand rule; the
+          "Around here" tagline eyebrow was dropped per owner (2026-07-13). Sits
+          below an active civic alert (alerts still lead) and above the weather.
+          The sr-only h1 stays the semantic heading; this is the display title. */}
       <header className="mb-4 px-0.5">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--app-ink-3)" }}>
-          Around here
-        </p>
-        <p className="mt-1 font-serif text-[26px] font-semibold leading-[1.06] tracking-tight sm:text-[30px]" style={{ color: "var(--app-ink)" }}>
+        <p className="font-serif text-[26px] font-semibold leading-[1.06] tracking-tight sm:text-[30px]" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </p>
         <span aria-hidden className="mt-2.5 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
