@@ -95,6 +95,7 @@ const DISCOVER: Item[] = [
   { href: "/towns", label: "Towns", description: "All 12 municipalities, plus Urbana", icon: MapPinned, color: "var(--app-brand-2)" },
   { href: "/nonprofits", label: "Nonprofits", description: "Every registered nonprofit in the county, by cause", icon: HeartHandshake, color: "var(--app-brand-2)" },
   { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "var(--app-accent-press)" },
+  { href: "/markers", label: "Markers & landmarks", description: "Read the inscription on every roadside marker, plus the historic landmarks and covered bridges", icon: Landmark, color: "var(--app-accent-press)" },
   { href: "/from-above/preview", label: "From Above", description: "The aerial photography book of Frederick County", icon: Camera, color: "var(--app-cool)" },
   { href: "/rhythm", label: "The Rhythm", description: "Watch 1,200 places wake and sleep, hour by hour", icon: AudioWaveform, color: "var(--app-brand)" },
 ];

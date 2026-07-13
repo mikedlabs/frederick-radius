@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Landmark, Calendar, Sparkles, Users, ExternalLink } from "lucide-react";
+import { Landmark, Calendar, Sparkles, Users, ExternalLink, ArrowRight } from "lucide-react";
 import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
@@ -269,6 +269,28 @@ export default async function HistoryPage() {
           ))}
         </ul>
       </section>
+
+      {/* History on the ground — reciprocal cross-link to /markers (which
+          links back here for the stories). Gives the orphaned markers page a
+          real doorway from its most natural neighbor. */}
+      <Link
+        href="/markers"
+        className="tactile-interactive flex items-center gap-3.5 rounded-[var(--app-radius-md)] border p-3.5"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      >
+        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-accent-press) 14%, transparent)", color: "var(--app-accent-press)" }}>
+          <Landmark className="h-5 w-5" strokeWidth={1.9} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            History on the ground
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Read the inscription on every roadside marker and find the landmarks and covered bridges.
+          </span>
+        </span>
+        <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+      </Link>
 
       <footer
         className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
