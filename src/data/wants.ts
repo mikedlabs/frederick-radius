@@ -120,6 +120,9 @@ export const WANTS: WantCategory[] = [
     icon: "Heart",
     color: "var(--app-brand-2)",
     subs: [
+      { label: "Yoga & Pilates", icon: "Activity", href: "/nearby?c=wellness&facet=yoga" },
+      { label: "Spa & massage", icon: "Sparkles", href: "/nearby?c=wellness&facet=spa" },
+      { label: "Gym & fitness", icon: "Activity", href: "/nearby?c=wellness&facet=gym" },
       { label: "Wellness", icon: "Heart", href: "/nearby?c=wellness" },
       { label: "Salons & barbers", icon: "Scissors", href: "/nearby?c=salon" },
       { label: "Hotels & B&Bs", icon: "Hotel", href: "/nearby?c=stay" },
