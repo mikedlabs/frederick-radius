@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
-import { useLiveVehicles } from "./useLiveVehicles";
+import { useLiveVehicles, type LiveNextStop } from "./useLiveVehicles";
 import { fractionAlong, pearlsFor, stopSequenceFor, type Pearl } from "./routeGeometry";
 
 /**
@@ -46,8 +47,34 @@ const GLIDE_MS = 1200;
 // loop route wrapping past its seam or a bad fix. Snap instead of sweeping.
 const SNAP_FRAC = 0.35;
 
-type BusOnLine = { id: string; frac: number };
+type BusOnLine = { id: string; frac: number; nextStop?: LiveNextStop };
 type Row = { route: TransitRoute; pearls: Pearl[]; buses: BusOnLine[] };
+
+/** Minutes-to-arrival from state nowMs (never Date.now() in render); null when
+ *  there's no ETA or it's stale/implausible, so the header shows a name only.
+ *  Matches NextStopsBoard's convention (etaEpoch is epoch SECONDS). */
+function etaMins(etaEpoch: number | undefined, nowMs: number): number | null {
+  if (etaEpoch == null || nowMs === 0) return null;
+  const mins = Math.round((etaEpoch * 1000 - nowMs) / 60000);
+  if (mins < 0 || mins > 90) return null;
+  return mins;
+}
+
+/** The stop to name in a route's header: the next stop of whichever live bus
+ *  on that route is arriving soonest. Buses with an ETA sort ahead of buses
+ *  with only a resolved stop name; a route whose buses have no resolved next
+ *  stop returns null (the header then shows just the route). */
+function leadNextStop(buses: BusOnLine[], nowMs: number): { name: string; mins: number | null } | null {
+  let best: { name: string; mins: number | null } | null = null;
+  for (const b of buses) {
+    if (!b.nextStop) continue;
+    const mins = etaMins(b.nextStop.etaEpoch, nowMs);
+    if (!best || (mins ?? Infinity) < (best.mins ?? Infinity)) {
+      best = { name: b.nextStop.name, mins };
+    }
+  }
+  return best;
+}
 
 /** A finger this close to a bus (as a fraction of the line) reads as "the
  *  bus is here" rather than N stops away — matches the bead-merge gap. */
@@ -136,10 +163,19 @@ export default function RoutePearls() {
         row = { route, pearls: pearlsFor(route.id), buses: [] };
         byRoute.set(route.id, row);
       }
-      row.buses.push({ id: v.vehicleId, frac });
+      row.buses.push({ id: v.vehicleId, frac, nextStop: v.nextStop });
     }
     return { rows: [...byRoute.values()].sort(routeOrder), unplaced: missing };
   }, [vehicles]);
+
+  // Ticks each second between the shared poller's 15 s refreshes so the header
+  // ETA counts down live. Starts 0 so etaMins suppresses ETAs until the first
+  // tick lands (within a second) — no Date.now() in render.
+  const [nowMs, setNowMs] = useState(0);
+  useEffect(() => {
+    const tick = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   // GLIDE — displayed fraction per bus, eased toward each poll's new fix.
   const [disp, setDisp] = useState<Record<string, number>>({});
@@ -214,27 +250,50 @@ export default function RoutePearls() {
         <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
           {rows.map((row) => (
             <li key={row.route.id} className="px-3 py-2.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: row.route.color, boxShadow: "inset 0 0 0 1px rgba(22,20,14,0.14)" }}
-                  />
-                  <span className="truncate font-mono text-[11.5px] font-bold tabular-nums" style={{ color: "var(--app-ink)" }}>
-                    {row.route.short}
-                    <span className="font-sans font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                      {" "}
-                      {nameSansShort(row.route)}
+              {(() => {
+                const lead = leadNextStop(row.buses, nowMs);
+                return (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="inline-block h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: row.route.color, boxShadow: "inset 0 0 0 1px rgba(22,20,14,0.14)" }}
+                        />
+                        <span className="truncate font-mono text-[11.5px] font-bold tabular-nums" style={{ color: "var(--app-ink)" }}>
+                          {row.route.short}
+                          <span className="font-sans font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                            {" "}
+                            {nameSansShort(row.route)}
+                          </span>
+                        </span>
+                      </span>
+                      {/* Next stop — the answer a rider wants without scrubbing:
+                          the soonest-arriving bus's next stop, ETA counting down
+                          live. Self-hides when the feed hasn't resolved a stop. */}
+                      {lead && (
+                        <span className="flex min-w-0 items-center gap-1 pl-4 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                          <ArrowRight className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: row.route.color }} />
+                          <span className="truncate font-sans font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                            {lead.name}
+                          </span>
+                          {lead.mins != null && (
+                            <span className="shrink-0 font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                              · {lead.mins === 0 ? "due" : `${lead.mins} min`}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </span>
-                  </span>
-                </span>
-                {row.buses.length > 1 && (
-                  <span className="shrink-0 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {row.buses.length} buses
-                  </span>
-                )}
-              </div>
+                    {row.buses.length > 1 && (
+                      <span className="shrink-0 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                        {row.buses.length} buses
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* The string of pearls. Decorative to a screen reader — the
                   row header above already says which route is running.
