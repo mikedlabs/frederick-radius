@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   MessageSquare, Inbox, Store, Flag, MapPin, CalendarClock, RadioTower,
   LayoutDashboard, KeyRound, StickyNote, Receipt, Activity, MapPinned, Mail,
-  PenLine, Copy, GitCompare, Sparkles, Database,
+  PenLine, Copy, GitCompare, Sparkles, Database, Megaphone,
   ChevronRight, CircleCheck, TrendingUp, TrendingDown,
 } from "lucide-react";
 import Link from "next/link";
@@ -520,6 +520,7 @@ export default async function AdminDesk() {
           <ActionTile href="/admin/coverage" title="Coverage" icon={MapPinned} />
           <ActionTile href="/admin/beta-emails" title="Emails" icon={Mail} />
           <ActionTile href="/admin/reports" title="Reports" icon={Flag} />
+          <ActionTile href="/admin/notify" title="Broadcast" icon={Megaphone} />
           <ActionTile href="/admin/copy-review" title="Copy" icon={PenLine} />
           <ActionTile href="/admin/dedup-review" title="Dedup" icon={Copy} />
           <ActionTile href="/admin/drift-review" title="Drift" icon={GitCompare} />
