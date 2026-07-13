@@ -286,7 +286,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           backed places to fill the grid. */}
       {placesWithPhotos.length >= 4 && (
         <section className="space-y-3">
-          <SectionHeading title={`Looks like ${c.name}`} accent={c.color} />
+          <SectionHeading title={`${c.name}, in photos`} accent={c.color} />
           <PhotoMosaic places={placesWithPhotos} />
         </section>
       )}

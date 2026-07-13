@@ -11,7 +11,7 @@ import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
 /**
- * OnNowStrip — the compact "On now, near you" live strip.
+ * OnNowStrip — the compact "On now around the county" live strip.
  *
  * Sits in the gap between the weather hero and the "I want…" grid, where a
  * copy-heavy seasonal band used to live (owner call, 2026-07-08). Low on prose:
@@ -73,10 +73,14 @@ export default async function OnNowStrip({ now, eventsPromise }: { now: Date; ev
   if (chips.length === 0) return null;
 
   return (
-    <section className="mt-3" aria-label="On now, near you">
+    <section className="mt-3" aria-label="On now around the county">
+      {/* "around the county", not "near you": this strip uses no location,
+          it's the county-wide live layer (a live show, a happy hour
+          pouring, a market open now). Claiming proximity we don't measure
+          read as confusing (owner note). */}
       <h2 className="flex items-center gap-1.5 px-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
         <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-        On now, near you
+        On now around the county
       </h2>
       {/* Horizontal chip rail: scrolls rather than wraps so the strip stays one
           calm line on a narrow phone. Each chip is a full tap target. */}
