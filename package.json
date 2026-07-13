@@ -63,6 +63,7 @@
     "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts",
     "build:amenities": "tsx --tsconfig tsconfig.json scripts/build-amenities.ts",
     "build:shipping": "tsx --tsconfig tsconfig.json scripts/build-shipping.ts",
+    "gates": "tsx --tsconfig tsconfig.json scripts/data-quality-gates.ts",
     "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
     "build:map-style": "node scripts/build-map-style.mjs",
     "build:transit": "tsx --tsconfig tsconfig.json scripts/build-transit-gtfs.ts",
