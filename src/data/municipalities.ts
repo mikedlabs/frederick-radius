@@ -187,11 +187,13 @@ export const MUNICIPALITIES: Municipality[] = [
     // the county's only chartered village.
     type: "village",
     population: 272,
-    // Village of Rosemont, just NE of Brunswick (39.3214 N, 77.6386 W per
-    // GNIS). The old centroid sat ~1.2 mi too far west, which pushed its map
-    // dot off toward the river; corrected here.
-    centroid: { lng: -77.6386, lat: 39.3214 },
-    bbox: [-77.648, 39.314, -77.630, 39.329],
+    // Village of Rosemont, NNE of Brunswick, up the hill from the river
+    // (39.3317 N, 77.6242 W; Wikipedia's DMS and GNIS agree). Two earlier
+    // centroids were off: the original sat ~2 mi too far west, a first pass
+    // still ~1 mi to the SW (and actually NW of Brunswick despite its "NE"
+    // note). This is the authoritative point, genuinely NE of Brunswick.
+    centroid: { lng: -77.6242, lat: 39.3317 },
+    bbox: [-77.633, 39.324, -77.615, 39.339],
     description:
       "A historic village on the Potomac's edge between Brunswick and the C&O Canal. Tree-lined, mostly residential, and one of the quietest places in the county.",
     hero_blurb: "Above the canal, below the ridge.",
