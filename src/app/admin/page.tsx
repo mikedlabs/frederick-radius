@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import type { LucideIcon } from "lucide-react";
+import {
+  MessageSquare, Inbox, Store, Flag, MapPin, CalendarClock, RadioTower,
+  LayoutDashboard, KeyRound, StickyNote, Receipt, Activity, MapPinned, Mail,
+  PenLine, Copy, GitCompare, Sparkles, Database,
+  ChevronRight, CircleCheck, TrendingUp, TrendingDown,
+} from "lucide-react";
 import Link from "next/link";
 import { sql } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
+import { getDb, getSql } from "@/lib/db/client";
 import { submissions, community_reports, beta_codes, beta_emails, push_subscriptions, usage_counters } from "@/lib/db/schema";
 import { PLACES } from "@/data/places";
 import { EVENTS } from "@/data/events";
@@ -14,7 +21,6 @@ import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import { clientPlaces } from "@/lib/loaders/places-client";
 import { getNeedsReviewPlaces } from "@/lib/loaders/places";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
-import { darkFeedCount } from "@/lib/integrations/feed-registry";
 import { easternDayKey } from "@/lib/tz";
 
 /**
@@ -65,14 +71,26 @@ type BetaPulse = {
 
 type CostRow = { upstream: string; today: number; median7: number; spike: boolean };
 
+type Signals = {
+  signups1w: number;
+  signupsPrev1w: number;
+  new24h: { signups: number; feedback: number; claims: number; subs: number };
+  quietFeeds: number;
+  feedsLive: number;
+};
+
+type PipelineRun = { src: string; ageH: number; status: string };
+
 async function loadDesk(): Promise<{
   queue: Queue | null;
   pulse: BetaPulse | null;
   costs: CostRow[] | null;
+  signals: Signals | null;
+  pipeline: PipelineRun[];
   dbReason?: string;
 }> {
   const db = getDb();
-  if (!db) return { queue: null, pulse: null, costs: null, dbReason: "no database configured" };
+  if (!db) return { queue: null, pulse: null, costs: null, signals: null, pipeline: [], dbReason: "no database configured" };
   try {
     const n = sql<number>`count(*)::int`;
     // Await SEQUENTIALLY, never Promise.all: the prod pool is Supavisor
@@ -140,6 +158,58 @@ async function loadDesk(): Promise<{
       costs = null; // usage_counters not migrated yet - the sentinel says so below
     }
 
+    // Momentum + system-health signals. Raw SQL via getSql (same pooled
+    // connection as db — still SEQUENTIAL, never concurrent). Fail-soft.
+    let signals: Signals | null = null;
+    let pipeline: PipelineRun[] = [];
+    const raw = getSql();
+    if (raw) {
+      try {
+        const sig = (
+          await raw`
+            select
+              (select count(*)::int from beta_emails where created_at > now() - interval '7 days') as signups_1w,
+              (select count(*)::int from beta_emails where created_at > now() - interval '14 days' and created_at <= now() - interval '7 days') as signups_prev_1w,
+              (select count(*)::int from beta_emails where created_at > now() - interval '24 hours') as new_signups_24h,
+              (select count(*)::int from submissions where kind='feedback' and created_at > now() - interval '24 hours') as new_feedback_24h,
+              (select count(*)::int from submissions where kind='business_claim' and created_at > now() - interval '24 hours') as new_claims_24h,
+              (select count(*)::int from submissions where kind in ('place','event') and created_at > now() - interval '24 hours') as new_subs_24h,
+              (with latest as (select distinct on (source) source, count, taken_at from feed_snapshots order by source, taken_at desc),
+                    avg7 as (select source, avg(count) avg_count from feed_snapshots where taken_at > now() - interval '7 days' group by source)
+               select count(*)::int from latest l join avg7 a using (source)
+               where l.count = 0 and a.avg_count >= 1 and l.taken_at > now() - interval '36 hours') as quiet_feeds,
+              (select count(distinct source)::int from feed_snapshots where taken_at > now() - interval '36 hours') as feeds_live
+          `
+        )[0] as Record<string, number>;
+        signals = {
+          signups1w: sig.signups_1w ?? 0,
+          signupsPrev1w: sig.signups_prev_1w ?? 0,
+          new24h: {
+            signups: sig.new_signups_24h ?? 0,
+            feedback: sig.new_feedback_24h ?? 0,
+            claims: sig.new_claims_24h ?? 0,
+            subs: sig.new_subs_24h ?? 0,
+          },
+          quietFeeds: sig.quiet_feeds ?? 0,
+          feedsLive: sig.feeds_live ?? 0,
+        };
+        const runs = (await raw`
+          select source_slug as src,
+                 round(extract(epoch from now() - ended_at) / 3600)::int as age_h,
+                 status
+          from (
+            select distinct on (source_slug) source_slug, ended_at, status
+            from ingest_runs order by source_slug, ended_at desc nulls last
+          ) t
+          order by ended_at desc nulls last
+        `) as { src: string; age_h: number; status: string }[];
+        pipeline = runs.map((r) => ({ src: r.src, ageH: r.age_h, status: r.status }));
+      } catch {
+        signals = null;
+        pipeline = [];
+      }
+    }
+
     return {
       queue: {
         feedbackPending,
@@ -156,9 +226,11 @@ async function loadDesk(): Promise<{
         pushDevices: pushRows[0]?.n ?? 0,
       },
       costs,
+      signals,
+      pipeline,
     };
   } catch (e) {
-    return { queue: null, pulse: null, costs: null, dbReason: e instanceof Error ? e.message.slice(0, 80) : "query failed" };
+    return { queue: null, pulse: null, costs: null, signals: null, pipeline: [], dbReason: e instanceof Error ? e.message.slice(0, 80) : "query failed" };
   }
 }
 
@@ -175,12 +247,6 @@ function ageOf(iso: string | undefined, agingDays: number, staleDays: number): {
   return { label, tone: days >= staleDays ? "stale" : days >= agingDays ? "aging" : "fresh" };
 }
 
-const TONE_COLOR: Record<AgeTone, string> = {
-  fresh: "var(--app-positive)",
-  aging: "var(--app-warning)",
-  stale: "var(--app-danger)",
-  none: "var(--app-ink-3)",
-};
 
 export default async function AdminDesk() {
   // eslint-disable-next-line react-hooks/purity -- force-dynamic operations desk; the render clock is the point
@@ -188,7 +254,6 @@ export default async function AdminDesk() {
   const desk = await loadDesk();
   const reviewPlaces = getNeedsReviewPlaces().length;
   const reviewEvents = getNeedsReviewEvents().length;
-  const dark = darkFeedCount();
 
   const venueRows = VENUE_EVENTS as Array<{ source: { fetchedAt: string } }>;
   const venueLatest = venueRows.map((r) => r.source.fetchedAt).sort().at(-1);
@@ -258,17 +323,46 @@ export default async function AdminDesk() {
     },
   ];
 
-  const queueRows: Array<{ label: string; n: number; href: string }> = desk.queue
+  // Ingests that errored on their most recent run in the last 2 days (a dead
+  // cron silently stops data flowing — surface it as an action item).
+  const ingestErrors = desk.pipeline.filter((r) => r.status !== "ok" && r.ageH <= 48).length;
+
+  const queueRows: Array<{ label: string; n: number; href: string; icon: LucideIcon }> = desk.queue
     ? [
-        { label: "Feedback waiting", n: desk.queue.feedbackPending, href: "/admin/beta" },
-        { label: "Place & event submissions", n: desk.queue.submissionsPending, href: "/admin/claims" },
-        { label: "Business claims", n: desk.queue.claimsPending, href: "/admin/claims" },
-        { label: "Community reports", n: desk.queue.reportsPending, href: "/admin/reports" },
-        { label: "Places needing coordinate review", n: reviewPlaces, href: "/admin/data-health" },
-        { label: "Events needing review", n: reviewEvents, href: "/admin/data-health" },
-        { label: "Feeds dark (key missing)", n: dark, href: "/admin/data-health" },
+        { label: "Feedback waiting", n: desk.queue.feedbackPending, href: "/admin/beta", icon: MessageSquare },
+        { label: "Submissions", n: desk.queue.submissionsPending, href: "/admin/claims", icon: Inbox },
+        { label: "Business claims", n: desk.queue.claimsPending, href: "/admin/claims", icon: Store },
+        { label: "Community reports", n: desk.queue.reportsPending, href: "/admin/reports", icon: Flag },
+        { label: "Places need coordinate review", n: reviewPlaces, href: "/admin/data-health", icon: MapPin },
+        { label: "Events need review", n: reviewEvents, href: "/admin/data-health", icon: CalendarClock },
+        // Real feed health from feed_snapshots: feeds that usually carry events
+        // but parsed 0 today (NOT the key-missing count, which is intentional).
+        { label: "Feeds went quiet today", n: desk.signals?.quietFeeds ?? 0, href: "/admin/data-health", icon: RadioTower },
+        { label: "Ingests erroring", n: ingestErrors, href: "/admin/data-health", icon: Activity },
       ].filter((r) => r.n > 0)
     : [];
+
+  // "New in 24h" momentum line.
+  const n24 = desk.signals?.new24h;
+  const new24hTotal = n24 ? n24.signups + n24.feedback + n24.claims + n24.subs : 0;
+  const new24hParts = n24
+    ? [
+        n24.signups ? `${n24.signups} signup${n24.signups === 1 ? "" : "s"}` : null,
+        n24.feedback ? `${n24.feedback} feedback` : null,
+        n24.claims ? `${n24.claims} claim${n24.claims === 1 ? "" : "s"}` : null,
+        n24.subs ? `${n24.subs} submission${n24.subs === 1 ? "" : "s"}` : null,
+      ].filter((x): x is string => x !== null)
+    : [];
+
+  // Signups week-over-week trend + a quiet spend-status derived from the cost
+  // sentinel (loud only on a spike).
+  const signupsDelta = desk.signals ? desk.signals.signups1w - desk.signals.signupsPrev1w : 0;
+  const spendSpike = (desk.costs ?? []).some((c) => c.spike);
+  // Freshest successful ingest + demoted dataset freshness summary.
+  const okRun = desk.pipeline.filter((r) => r.status === "ok").sort((a, b) => a.ageH - b.ageH)[0];
+  const freshCount = datasets.filter((d) => d.stamp.tone === "fresh").length;
+  const agingCount = datasets.filter((d) => d.stamp.tone === "aging").length;
+  const staleCount = datasets.filter((d) => d.stamp.tone === "stale").length;
 
   return (
     <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
@@ -285,118 +379,116 @@ export default async function AdminDesk() {
 
       <BuildStamp />
 
-      {/* ── The queue — rows exist only when something is waiting. ── */}
-      <section className="mt-6">
+      {/* ── The queue: a light list, hairlines not cards. Rows exist only when
+          something is waiting; otherwise a clean all-clear. ── */}
+      <section className="mt-5">
         {desk.queue === null ? (
-          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-4 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            Queue unavailable: {desk.dbReason}. Static checks below still run.
-          </p>
+          <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>Queue unavailable: {desk.dbReason}.</p>
         ) : queueRows.length === 0 ? (
-          <p className="rounded-[var(--app-radius-md)] border px-4 py-4 text-[14px] font-medium" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-positive)" }}>
-            All clear. Nothing is waiting on you.
-          </p>
+          <div
+            className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] border px-4 py-3.5"
+            style={{
+              borderColor: "color-mix(in srgb, var(--app-positive) 28%, var(--app-border))",
+              background: "color-mix(in srgb, var(--app-positive) 6%, var(--app-bg-elevated))",
+            }}
+          >
+            <CircleCheck className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-positive)" }} aria-hidden />
+            <span className="text-[14px] font-medium" style={{ color: "var(--app-positive)" }}>All clear. Nothing is waiting on you.</span>
+          </div>
         ) : (
-          <ul className="space-y-1.5">
-            {queueRows.map((r) => (
-              <li key={r.label}>
-                <Link
-                  href={r.href}
-                  className="flex items-center justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3 transition hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <span className="text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>{r.label}</span>
-                  <span className="font-mono text-[15px] font-bold tabular-nums" style={{ color: "var(--app-brand-press)" }}>{r.n}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+              {queueRows.reduce((a, r) => a + r.n, 0)} waiting
+            </p>
+            <ul className="overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+              {queueRows.map((r, i) => (
+                <li key={r.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+                  <Link href={r.href} className="flex items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]">
+                    <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)" }}>
+                      <r.icon className="h-[17px] w-[17px]" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} />
+                    </span>
+                    <span className="flex-1 text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>{r.label}</span>
+                    <span className="grid h-6 min-w-[24px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-[12.5px] font-bold tabular-nums" style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}>{r.n}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {new24hTotal > 0 && (
+          <p className="mt-3 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+            <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{new24hTotal} new in 24h</span>
+            {new24hParts.length > 0 && <> · {new24hParts.join(", ")}</>}
+          </p>
         )}
       </section>
 
-      {/* ── Beta pulse ── */}
-      <section className="mt-7 space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Beta pulse</h2>
-          <Link href="/admin/beta" className="text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Full dashboard →</Link>
+      {/* ── The vitals: one glanceable strip, with a week trend on signups. ── */}
+      <section className="mt-6">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>The vitals</h2>
+          <Link href="/admin/beta" className="text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Beta →</Link>
         </div>
         {desk.pulse === null ? (
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>Needs the database ({desk.dbReason}).</p>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Testers active · 7d" value={desk.pulse.codesSeen7d} tone="positive" />
-            <Stat label="Codes live / issued" value={`${desk.pulse.codesActive}/${desk.pulse.codesTotal}`} />
-            <Stat label="Push devices" value={desk.pulse.pushDevices} />
-            <Stat label="Signups · 7d" value={desk.pulse.signups7d} tone={desk.pulse.signups7d > 0 ? "positive" : undefined} />
-            <Stat label="Signups · all" value={desk.pulse.signupsTotal} />
-            <Stat label="Feeds dark" value={dark} tone={dark > 0 ? "warning" : "positive"} />
+          <div className="flex items-stretch justify-between rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3" style={{ borderColor: "var(--app-border)" }}>
+            <Vital value={desk.pulse.codesSeen7d} label="active · 7d" tone="positive" />
+            <VDiv />
+            <Vital value={desk.pulse.signupsTotal} label="signups" delta={signupsDelta} />
+            <VDiv />
+            <Vital value={`${desk.pulse.codesActive}/${desk.pulse.codesTotal}`} label="codes live" />
+            <VDiv />
+            <div className="flex-1 px-1 text-center">
+              {spendSpike ? (
+                <p className="font-serif text-2xl font-semibold leading-none" style={{ color: "var(--app-danger)" }}>!</p>
+              ) : (
+                <CircleCheck className="mx-auto h-[26px] w-[26px]" strokeWidth={2} aria-hidden style={{ color: "var(--app-positive)" }} />
+              )}
+              <p className="mt-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>spend {spendSpike ? "spike" : "ok"}</p>
+            </div>
           </div>
         )}
       </section>
 
-      {/* ── Cost sentinel ── */}
-      <section className="mt-7 space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Cost sentinel · today vs 7-day median</h2>
-          <Link href="/admin/costs" className="text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Costs →</Link>
-        </div>
-        {desk.costs === null ? (
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Waiting on the usage_counters migration (drizzle/0017). Until it runs, paid calls are unmetered here.
-          </p>
-        ) : desk.costs.length === 0 ? (
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>No metered calls in the last 8 days.</p>
-        ) : (
-          <ul className="space-y-1">
-            {desk.costs.map((c) => (
-              <li
-                key={c.upstream}
-                className="flex items-center justify-between rounded-[var(--app-radius-md)] border px-3 py-2 font-mono text-[12px] tabular-nums"
-                style={{
-                  borderColor: c.spike ? "color-mix(in srgb, var(--app-danger) 50%, var(--app-border))" : "var(--app-border)",
-                  background: "var(--app-bg-elevated)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                <span>{c.upstream}</span>
-                <span>
-                  {c.today} today · median {c.median7}
-                  {c.spike && <span className="ml-2 font-sans font-bold" style={{ color: "var(--app-danger)" }}>~{Math.round(c.today / Math.max(1, c.median7))}x SPIKE</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* ── System: demoted reference — pipeline heartbeat, dataset freshness,
+          spend detail. One quiet line each, full detail one tap away. ── */}
+      <section className="mt-7 space-y-3">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>System</h2>
 
-      {/* ── Dataset board — the freshness layer nothing else watched. ── */}
-      <section className="mt-7 space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Datasets on board</h2>
-          <Link href="/admin/data-health" className="text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Deep health →</Link>
-        </div>
-        <ul className="space-y-1.5">
-          {datasets.map((d) => (
-            <li
-              key={d.name}
-              className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{d.name}</span>
-                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>{d.rows}</span>
-              </div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{d.note}</span>
-                <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium" style={{ color: TONE_COLOR[d.stamp.tone] }}>
-                  {d.stamp.tone !== "none" && (
-                    <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: TONE_COLOR[d.stamp.tone] }} />
-                  )}
-                  {d.stamp.label}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <Link href="/admin/data-health" className="flex items-center gap-2.5 no-underline">
+          <Activity className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            {okRun ? `Last ingest ${fmtAge(okRun.ageH)} ago` : "No successful ingest logged"}
+            {ingestErrors > 0 && <span style={{ color: "var(--app-warning)", fontWeight: 600 }}> · {ingestErrors} erroring</span>}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </Link>
+
+        <Link href="/admin/data-health" className="flex items-center gap-2.5 no-underline">
+          <Database className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            {datasets.length} datasets · <span style={{ color: "var(--app-positive)" }}>{freshCount} fresh</span>
+            {agingCount > 0 && <>, <span style={{ color: "var(--app-warning)" }}>{agingCount} aging</span></>}
+            {staleCount > 0 && <>, <span style={{ color: "var(--app-danger)" }}>{staleCount} stale</span></>}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </Link>
+
+        <Link href="/admin/costs" className="flex items-center gap-2.5 no-underline">
+          <Receipt className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            {desk.costs === null
+              ? "Spend not metered yet"
+              : desk.costs.length === 0
+                ? "No paid calls in 8 days"
+                : spendSpike
+                  ? <span style={{ color: "var(--app-danger)", fontWeight: 600 }}>Cost spike today</span>
+                  : "Spend normal today"}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </Link>
       </section>
 
       {/* ── Keys & switches — what's wired in THIS deployment. ── */}
@@ -418,20 +510,20 @@ export default async function AdminDesk() {
       {/* ── Doors ── */}
       <section className="mt-7 space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Doors</h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <ActionTile href="/admin/beta" title="Beta dashboard" desc="Signups, feedback inbox, tester activity" />
-          <ActionTile href="/admin/beta-codes" title="Beta codes" desc="Generate, track, revoke per-tester codes" />
-          <ActionTile href="/admin/claims" title="Review submissions" desc="Places, events, business claims" />
-          <ActionTile href="/admin/field-notes" title="Field notes & deals" desc="Add a deal or tip to a place, from anywhere" />
-          <ActionTile href="/admin/costs" title="Usage costs" desc="Meter, rates, cost-control checklist" />
-          <ActionTile href="/admin/data-health" title="Data health" desc="Feeds, trust ladder, review queues, ingest runs" />
-          <ActionTile href="/admin/coverage" title="Coverage & freshness" desc="Town equity, verification integrity, attribute gaps" />
-          <ActionTile href="/admin/beta-emails" title="Beta emails" desc="Launch list + CSV export" />
-          <ActionTile href="/admin/reports" title="Reports" desc="User-flagged issues and map corrections" />
-          <ActionTile href="/admin/copy-review" title="Copy review" desc="Scraped descriptions flagged to rewrite" />
-          <ActionTile href="/admin/dedup-review" title="Dedup review" desc="Clusters of possible duplicate places" />
-          <ActionTile href="/admin/drift-review" title="Drift review" desc="Accept or reject changed place fields" />
-          <ActionTile href="/admin/discovered-review" title="Discovered review" desc="Triage discovered candidate places" />
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <ActionTile href="/admin/beta" title="Beta" icon={LayoutDashboard} />
+          <ActionTile href="/admin/beta-codes" title="Codes" icon={KeyRound} />
+          <ActionTile href="/admin/claims" title="Submissions" icon={Inbox} />
+          <ActionTile href="/admin/field-notes" title="Field notes" icon={StickyNote} />
+          <ActionTile href="/admin/costs" title="Costs" icon={Receipt} />
+          <ActionTile href="/admin/data-health" title="Data health" icon={Activity} />
+          <ActionTile href="/admin/coverage" title="Coverage" icon={MapPinned} />
+          <ActionTile href="/admin/beta-emails" title="Emails" icon={Mail} />
+          <ActionTile href="/admin/reports" title="Reports" icon={Flag} />
+          <ActionTile href="/admin/copy-review" title="Copy" icon={PenLine} />
+          <ActionTile href="/admin/dedup-review" title="Dedup" icon={Copy} />
+          <ActionTile href="/admin/drift-review" title="Drift" icon={GitCompare} />
+          <ActionTile href="/admin/discovered-review" title="Discovered" icon={Sparkles} />
         </div>
       </section>
 
@@ -443,12 +535,32 @@ export default async function AdminDesk() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: number | string; tone?: "positive" | "warning" }) {
+/** Hours → "17h" / "2d" for the pipeline heartbeat. */
+function fmtAge(hours: number): string {
+  if (hours < 1) return "under 1h";
+  if (hours < 48) return `${Math.round(hours)}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
+/** A hairline divider between vitals. */
+function VDiv() {
+  return <div aria-hidden className="w-px shrink-0 self-stretch" style={{ background: "var(--app-border)" }} />;
+}
+
+/** One vital in the glance strip: a big serif number, a label, and an optional
+ *  week-over-week delta (green when growing). */
+function Vital({ value, label, tone, delta }: { value: number | string; label: string; tone?: "positive" | "warning"; delta?: number }) {
   const color = tone === "positive" ? "var(--app-positive)" : tone === "warning" ? "var(--app-warning)" : "var(--app-ink)";
   return (
-    <div className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center" style={{ borderColor: "var(--app-border)" }}>
+    <div className="flex-1 px-1 text-center">
       <p className="font-serif text-2xl font-semibold tabular-nums leading-none" style={{ color }}>{value}</p>
-      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>{label}</p>
+      <p className="mt-1.5 text-[10px] leading-tight" style={{ color: "var(--app-ink-3)" }}>{label}</p>
+      {typeof delta === "number" && delta !== 0 && (
+        <p className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium" style={{ color: delta > 0 ? "var(--app-positive)" : "var(--app-ink-3)" }}>
+          {delta > 0 ? <TrendingUp className="h-3 w-3" strokeWidth={2.5} aria-hidden /> : <TrendingDown className="h-3 w-3" strokeWidth={2.5} aria-hidden />}
+          {delta > 0 ? "+" : ""}{delta} wk
+        </p>
+      )}
     </div>
   );
 }
@@ -497,15 +609,21 @@ function BuildStamp() {
   );
 }
 
-function ActionTile({ href, title, desc }: { href: string; title: string; desc: string }) {
+function ActionTile({ href, title, icon: Icon }: { href: string; title: string; icon: LucideIcon }) {
   return (
     <Link
       href={href}
-      className="block rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition hover:bg-[var(--app-bg-sunken)]"
+      className="tap-44 flex flex-col items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-2 py-3.5 text-center transition hover:bg-[var(--app-bg-sunken)]"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <p className="font-semibold" style={{ color: "var(--app-ink)" }}>{title}</p>
-      <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>{desc}</p>
+      <span
+        aria-hidden
+        className="grid h-9 w-9 place-items-center rounded-full"
+        style={{ background: "color-mix(in srgb, var(--app-brand-2) 12%, transparent)" }}
+      >
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
+      </span>
+      <span className="text-[12px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</span>
     </Link>
   );
 }
