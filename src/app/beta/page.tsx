@@ -119,9 +119,7 @@ export default async function BetaPage({
           </h1>
 
           <p className="mx-auto mt-4 max-w-[24rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Know what&rsquo;s happening around here, right now: what&rsquo;s open, what&rsquo;s on,
-            and what&rsquo;s worth your time. You&rsquo;re early, so enter the access code you were
-            given to come in.
+            You&rsquo;re early, so enter the access code you were given to come in.
           </p>
 
           {/* Live proof, directly under the headline block — real county data
