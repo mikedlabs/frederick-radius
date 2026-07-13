@@ -93,6 +93,9 @@ const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
 
 export type PulseHero = {
   allClear: boolean;
+  /** A source feed failed/timed out and nothing active was found, so the board
+   *  shows an amber "unavailable" hero instead of a green all-clear (FR-002). */
+  degraded?: boolean;
   line: string;
   sub: string;
   /** When the server rendered (feeds fetched) — powers the live "updated Ns". */
@@ -415,18 +418,26 @@ export default function PulseBoard({
     tabRefs.current[next]?.focus();
   };
 
-  const heroColor = hero.allClear ? "var(--app-positive)" : "var(--app-danger)";
+  // Three states, not two: green all-clear, red active, and an amber
+  // "unavailable" when a feed failed and we can't confirm all-clear (FR-002).
+  const degraded = hero.degraded ?? false;
+  const active = !hero.allClear && !degraded;
+  const heroColor = hero.allClear
+    ? "var(--app-positive)"
+    : degraded
+      ? "var(--app-warning)"
+      : "var(--app-danger)";
 
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <header
-        className={`pulse-hero tactile relative overflow-hidden rounded-[var(--app-radius-lg)]${hero.allClear ? "" : " alert-pulse"}`}
+        className={`pulse-hero tactile relative overflow-hidden rounded-[var(--app-radius-lg)]${active ? " alert-pulse" : ""}`}
         style={{
           backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: hero.allClear
-            ? "var(--app-paper-light)"
-            : "var(--app-paper-light), linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 9%, transparent) 0%, transparent 68%)",
+          backgroundImage: active
+            ? "var(--app-paper-light), linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 9%, transparent) 0%, transparent 68%)"
+            : "var(--app-paper-light)",
           boxShadow: "var(--app-elev-2), var(--app-hi), var(--app-edge)",
         }}
       >
@@ -462,7 +473,7 @@ export default function PulseBoard({
                 color: heroColor,
               }}
             >
-              {hero.allClear ? <ShieldCheck className="h-5 w-5" strokeWidth={2} /> : <Siren className="h-5 w-5" strokeWidth={2} />}
+              {hero.allClear ? <ShieldCheck className="h-5 w-5" strokeWidth={2} /> : degraded ? <AlertTriangle className="h-5 w-5" strokeWidth={2} /> : <Siren className="h-5 w-5" strokeWidth={2} />}
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="font-serif text-[24px] font-semibold leading-[1.1] tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -515,7 +526,7 @@ export default function PulseBoard({
               at" label. On a calm day it reassures; on an active one it just
               names the grid rather than restating the tally. */}
           <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.05em]" style={{ color: "var(--app-ink-3)" }}>
-            {hero.allClear ? "all calm" : "tap any tile"}
+            {hero.allClear ? "all calm" : degraded ? "feeds unavailable" : "tap any tile"}
           </span>
         </div>
 

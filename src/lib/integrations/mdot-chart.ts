@@ -92,6 +92,16 @@ function cleanDescription(text: string): string {
   return text.replace(/^(action event|incident|event|road ?work)\s*@\s*/i, "").trim() || text;
 }
 
+/** CHART sends the literal string "None" (and "N/A", "Unknown") for an unset
+ *  direction, which the old truthy check let through and surfaces rendered as
+ *  "US 15 None" (audit FR-002). Normalize those placeholders to undefined. */
+function cleanDirection(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  if (!s || /^(none|n\/?a|unknown|null|undefined)$/i.test(s)) return undefined;
+  return s;
+}
+
 export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
   try {
     const res = await fetch(ENDPOINT, {
@@ -135,7 +145,7 @@ export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
         description: clean,
         county,
         road: extractRoad(name),
-        direction: raw.direction ? String(raw.direction).trim() : undefined,
+        direction: cleanDirection(raw.direction),
         location: clean,
         lat,
         lng,
