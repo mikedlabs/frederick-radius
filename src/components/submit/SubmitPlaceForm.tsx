@@ -66,10 +66,10 @@ export default function SubmitPlaceForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
-      <FieldText name="name" label="Place name" required placeholder="e.g. Idiom Brewing Co." />
+      <FieldText name="name" label="Place name" required placeholder="e.g. Brewer's Alley" />
       <FieldSelect name="category" label="Category" required options={TOP_CATEGORIES.map((c) => ({ value: c.slug, label: c.name }))} />
       <FieldSelect name="municipality" label="Town" required options={MUNICIPALITIES.map((m) => ({ value: m.slug, label: m.name }))} />
-      <FieldText name="address" label="Full address" placeholder="340 E Patrick St, Frederick, MD 21701" />
+      <FieldText name="address" label="Full address" placeholder="124 N Market St, Frederick, MD 21701" />
       <FieldText name="website" label="Website" placeholder="https://…" />
       <FieldText name="phone" label="Phone" placeholder="(240) 555-0100" />
       <FieldTextarea name="description" label="What makes this place worth a visit?" rows={3} />
