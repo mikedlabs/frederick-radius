@@ -16,14 +16,30 @@ export type SearchHit =
   | { type: "municipality"; municipality: Municipality; score: number }
   | { type: "category"; category: Category; score: number };
 
-const STOP = new Set(["the", "a", "an", "in", "of", "and", "or", "to", "at"]);
+// Stop words: articles/prepositions PLUS the conversational filler that
+// natural-language Ask queries carry ("i need a hotel", "looking for coffee").
+// Two reasons this list grew (owner catch, Jul 2026 — "i need a hotel" surfaced
+// Ibiza Cafe, In Fit, Inbloom, Iglesia...):
+//   1. a lone "i" gave every place starting with "I" a prefix-match boost;
+//   2. many fillers are themselves prefixes of real names ("can"→Canal,
+//      "do"→Dollar, "get"→Gettysburg, "how"→Howard, "some"→Somerset), so
+//      dropping them removes noise rather than adding it.
+// Single-character tokens are dropped outright below (see the length guard).
+const STOP = new Set([
+  "the", "a", "an", "in", "of", "and", "or", "to", "at", "for", "with", "on", "is", "are", "be",
+  "me", "my", "we", "you", "your", "i'm", "im",
+  "need", "want", "wanna", "looking", "look", "find", "show", "get", "give",
+  "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
+]);
 
 function normalize(s: string): string[] {
   return s
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
     .split(/\s+/)
-    .filter((t) => t.length > 0 && !STOP.has(t));
+    // Drop stop words and single-character tokens: a lone "i"/"a" prefix- or
+    // substring-matches almost every place name and drowns the real keyword.
+    .filter((t) => t.length >= 2 && !STOP.has(t));
 }
 
 function fieldScore(haystack: string, terms: string[]): number {
@@ -77,6 +93,18 @@ const INTENTS: Intent[] = [
     boostTags: new Set(["date-night"]),
     downCats: new Set(["civic", "playground", "park"]),
     downTags: new Set(["kids-0-5", "kids-6-12"]),
+  },
+  // Lodging — "i need a hotel" / "cheap motels" / "somewhere overnight" is an
+  // INTENT for the lodging category, not a name keyword. Boost every lodging
+  // place (so all hotels/B&Bs surface, not just the one with "hotel" in its
+  // name), and sink the categories that only caught a stray token, so the Ask
+  // source cards read as lodging instead of a mixed bag.
+  {
+    triggers: ["hotel", "hotels", "motel", "motels", "lodging", "overnight", "accommodation", "accommodations", "where to stay", "place to stay", "somewhere to stay"],
+    boostCats: new Set(["lodging"]),
+    boostTags: new Set(["lodging", "hotel", "bnb", "bed-and-breakfast"]),
+    downCats: new Set(["restaurant", "cafe", "coffee", "bar", "gym", "salon", "retail", "civic", "faith", "jewelry"]),
+    downTags: new Set<string>(),
   },
 ];
 
