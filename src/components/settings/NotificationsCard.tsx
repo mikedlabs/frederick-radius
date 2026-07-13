@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, BellOff, Check, AlertCircle, Send, Share, Plus } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 import { isIos, isStandalone } from "@/lib/pwa-display";
+import { getHomeMuni } from "@/lib/personalize";
 
 const ALL_TOPICS: PushTopic[] = [
   "civic-alerts",
@@ -129,6 +130,7 @@ export default function NotificationsCard() {
           typeof localStorage !== "undefined"
             ? localStorage.getItem("fr-device-id") ?? undefined
             : undefined,
+        home_town: getHomeMuni() ?? undefined,
       };
       const res = await fetch("/api/push/subscribe", {
         method: "POST",
@@ -176,6 +178,7 @@ export default function NotificationsCard() {
         body: JSON.stringify({
           subscription: subscription.toJSON(),
           topics: [...next],
+          home_town: getHomeMuni() ?? undefined,
         }),
       });
     },

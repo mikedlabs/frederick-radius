@@ -20,6 +20,8 @@
  *   "unsupported" — no SW/Push/Notification support in this browser
  *   "error"       — key fetch / subscribe / server write failed
  */
+import { getHomeMuni } from "@/lib/personalize";
+
 export type PushSubscribeResult = "subscribed" | "dismissed" | "denied" | "unsupported" | "error";
 
 function uint8FromBase64(base64: string): Uint8Array {
@@ -86,6 +88,9 @@ export async function subscribeDevicePush(topics: string[] = []): Promise<PushSu
           typeof localStorage !== "undefined"
             ? localStorage.getItem("fr-device-id") ?? undefined
             : undefined,
+        // Capture the home town (if set) so town-scoped sends can reach this
+        // device. Server validates + only stores a real municipality slug.
+        home_town: getHomeMuni() ?? undefined,
       }),
     });
     return res.ok ? "subscribed" : "error";

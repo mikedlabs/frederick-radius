@@ -19,6 +19,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions } from "@/lib/db/schema";
 import { isOwnerTopic, OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,9 @@ type Body = {
   };
   topics?: string[];
   device_id?: string;
+  /** The user's home municipality slug, so town-scoped sends can reach them.
+   *  Validated against the known municipalities; anything else is ignored. */
+  home_town?: string;
 };
 
 export async function POST(request: Request) {
@@ -66,6 +70,11 @@ export async function POST(request: Request) {
     ? body.topics.filter((t) => typeof t === "string" && !isOwnerTopic(t) && !t.startsWith("biz:"))
     : [];
   const ua = request.headers.get("user-agent") ?? null;
+  // Home town for town-scoped sends. Only a real municipality slug is stored;
+  // null when unknown. On update we COALESCE so a topics-only re-subscribe (a
+  // toggle, a Follow) never wipes a previously-captured town.
+  const homeTown =
+    typeof body.home_town === "string" && MUNICIPALITY_BY_SLUG[body.home_town] ? body.home_town : null;
 
   try {
     const topicsJson = JSON.stringify(topics);
@@ -78,6 +87,7 @@ export async function POST(request: Request) {
         user_agent: ua,
         device_id: body.device_id ?? null,
         topics,
+        home_town: homeTown,
       })
       .onConflictDoUpdate({
         target: push_subscriptions.endpoint,
@@ -86,6 +96,7 @@ export async function POST(request: Request) {
           auth: sub.keys.auth,
           user_agent: ua,
           device_id: body.device_id ?? null,
+          home_town: sql`COALESCE(${homeTown}, ${push_subscriptions.home_town})`,
           // New fixed topics from the card, UNION every topic on the existing
           // row that the card doesn't manage (biz:<slug> follows + owner-alerts).
           // The two sets are disjoint (input strips biz:/owner above), so the
