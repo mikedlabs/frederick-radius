@@ -227,7 +227,7 @@ export default async function HomePage() {
         <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </span>{" "}
-        What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time.
+        Know what&rsquo;s happening around here, right now.
       </p>
 
       <SkyHero className="shader-rim relative z-10">
