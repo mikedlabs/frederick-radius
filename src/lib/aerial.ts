@@ -1,4 +1,5 @@
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { staticAsset } from "@/lib/static-asset";
 import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
 
 /**
@@ -26,7 +27,7 @@ export type Aerial = {
   season: Season;
 };
 
-const AERIALS = AERIAL_MANIFEST as Aerial[];
+const AERIALS = (AERIAL_MANIFEST as Aerial[]).map((a) => ({ ...a, src: staticAsset(a.src) }));
 
 /** Current season in Eastern time (matches SeasonalPhoto's ranges). */
 export function currentSeason(now: Date = new Date()): Season {

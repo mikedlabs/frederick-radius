@@ -74,7 +74,8 @@
     "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
     "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts",
     "refresh:hours": "node scripts/pull-hours-refresh.mjs",
-    "pull:overlays": "node scripts/pull-overlays.mjs"
+    "pull:overlays": "node scripts/pull-overlays.mjs",
+    "blob:static-assets": "node scripts/upload-static-assets-to-blob.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",

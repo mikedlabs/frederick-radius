@@ -1,3 +1,5 @@
+import { staticAsset } from "@/lib/static-asset";
+
 /**
  * Frederick County history — curated moments and facts.
  *
@@ -49,7 +51,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "frederick-county-established",
     image: {
-      src: "/history-photos/frederick-county-established.jpg",
+      src: staticAsset("/history-photos/frederick-county-established.jpg"),
       alt: "Frederick City Hall, the 1862 Italianate brick building that served as the Frederick County Courthouse",
       credit: "Acroterion, CC BY-SA 4.0",
     },
@@ -63,7 +65,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "hessian-barracks",
     image: {
-      src: "/history-photos/hessian-barracks.jpg",
+      src: staticAsset("/history-photos/hessian-barracks.jpg"),
       alt: "The Hessian Barracks, a long two-story 1777 fieldstone military barracks with white wooden balconies, in Frederick, MD",
       credit: "Acroterion, CC BY-SA 4.0",
     },
@@ -78,7 +80,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "mount-st-marys-founded",
     image: {
-      src: "/history-photos/mount-st-marys-founded.jpg",
+      src: staticAsset("/history-photos/mount-st-marys-founded.jpg"),
       alt: "The stone Gothic Chapel of the Immaculate Conception on the Mount St. Mary's University campus near Emmitsburg, MD",
       credit: "Steven C. Berger, CC BY-SA 3.0",
     },
@@ -95,7 +97,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "barbara-fritchie-flag",
     image: {
-      src: "/history-photos/barbara-fritchie-flag.jpg",
+      src: staticAsset("/history-photos/barbara-fritchie-flag.jpg"),
       alt: "Exterior of the Barbara Fritchie House, a brick historic house museum with a white picket fence in downtown Frederick, MD",
       credit: "Preservation Maryland, CC BY-SA 2.0",
     },
@@ -124,7 +126,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "ransom-of-frederick",
     image: {
-      src: "/history-photos/ransom-of-frederick.jpg",
+      src: staticAsset("/history-photos/ransom-of-frederick.jpg"),
       alt: "A row of colorful historic storefronts along North Market Street in downtown Frederick, MD",
       credit: "Acroterion, CC BY-SA 4.0",
     },
@@ -139,7 +141,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "camp-david-established",
     image: {
-      src: "/history-photos/camp-david-established.jpg",
+      src: staticAsset("/history-photos/camp-david-established.jpg"),
       alt: "A forest road winding through Catoctin Mountain Park, Thurmont, MD, with autumn foliage",
       credit: "National Park Service, public domain",
     },
@@ -156,7 +158,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "carroll-creek-park",
     image: {
-      src: "/history-photos/carroll-creek-park.jpg",
+      src: staticAsset("/history-photos/carroll-creek-park.jpg"),
       alt: "Carroll Creek Linear Park, with lily pads on the creek, a brick promenade, and a stone arch bridge in the distance",
       credit: "Art Anderson, CC BY-SA 3.0",
     },
@@ -203,7 +205,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "clustered-spires",
     image: {
-      src: "/history-photos/clustered-spires.jpg",
+      src: staticAsset("/history-photos/clustered-spires.jpg"),
       alt: "The clustered church spires and steeples of downtown Frederick, MD, viewed across fall foliage",
       credit: "Acroterion, CC BY-SA 4.0",
     },
@@ -216,7 +218,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "schifferstadt",
     image: {
-      src: "/history-photos/schifferstadt.jpg",
+      src: staticAsset("/history-photos/schifferstadt.jpg"),
       alt: "Schifferstadt, a 1758 German colonial stone farmhouse with one wing painted red, in Frederick, MD",
       credit: "Pete Giove-Fourwinds, CC BY-SA 3.0",
     },
@@ -230,7 +232,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "co-canal",
     image: {
-      src: "/history-photos/co-canal.jpg",
+      src: staticAsset("/history-photos/co-canal.jpg"),
       alt: "The stone walls of Lock 30 on the Chesapeake & Ohio Canal at Brunswick, MD, surrounded by greenery",
       credit: "Deanlaw, CC BY-SA 3.0",
     },
@@ -246,7 +248,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "new-market-antiques",
     image: {
-      src: "/history-photos/new-market-antiques.jpg",
+      src: staticAsset("/history-photos/new-market-antiques.jpg"),
       alt: "The historic Main Street of New Market, MD, with a brick storefront building and picket fences along the road",
       credit: "Acroterion, CC BY-SA 4.0",
     },
@@ -260,7 +262,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "brunswick-railroad",
     image: {
-      src: "/history-photos/brunswick-railroad.jpg",
+      src: staticAsset("/history-photos/brunswick-railroad.jpg"),
       alt: "The Brunswick, MD rail yard with multiple tracks, CSX locomotives, and freight cars",
       credit: "David Wilson, CC BY 2.0",
     },
@@ -274,7 +276,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "national-pike",
     image: {
-      src: "/history-photos/national-pike.jpg",
+      src: staticAsset("/history-photos/national-pike.jpg"),
       alt: "The historic single-arch stone Casselman River Bridge, built for the National Road, in Maryland",
       credit: "Cbaile19, CC0 1.0",
     },
@@ -286,7 +288,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "catoctin-mountain-park",
     image: {
-      src: "/history-photos/catoctin-mountain-park.jpg",
+      src: staticAsset("/history-photos/catoctin-mountain-park.jpg"),
       alt: "The Chimney Rock vista at Catoctin Mountain Park, MD, with boulders overlooking a forested mountain valley",
       credit: "Vegemighty, CC0 1.0",
     },
@@ -302,7 +304,7 @@ export const HISTORY: HistoryEntry[] = [
   {
     slug: "nci-frederick",
     image: {
-      src: "/history-photos/nci-frederick.jpg",
+      src: staticAsset("/history-photos/nci-frederick.jpg"),
       alt: "The U.S. Army Fort Detrick Nallin Farm Gate entrance sign in Frederick, MD",
       credit: "Clem Gaines / U.S. Army, public domain",
     },

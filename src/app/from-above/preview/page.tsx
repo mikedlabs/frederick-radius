@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Metadata } from "next";
 import BookExperience from "./BookExperience";
+import { staticAsset } from "@/lib/static-asset";
 
 // Prototype route for the interactive coffee-table-book experience.
 // We deliberately live outside the (app) route group so the TopBar /
@@ -32,9 +33,28 @@ type Manifest = {
   }>;
 };
 
+function staticSrcSet(srcSet: string): string {
+  return srcSet
+    .split(",")
+    .map((part) => {
+      const [src, descriptor] = part.trim().split(/\s+/, 2);
+      return descriptor ? `${staticAsset(src)} ${descriptor}` : staticAsset(src);
+    })
+    .join(", ");
+}
+
 async function loadManifest(): Promise<Manifest> {
   const buf = await readFile(join(process.cwd(), "public/from-above/manifest.json"), "utf8");
-  return JSON.parse(buf) as Manifest;
+  const manifest = JSON.parse(buf) as Manifest;
+  return {
+    ...manifest,
+    cover: staticAsset(manifest.cover),
+    photos: manifest.photos.map((photo) => ({
+      ...photo,
+      src: staticAsset(photo.src),
+      srcSet: staticSrcSet(photo.srcSet),
+    })),
+  };
 }
 
 export default async function FromAbovePreviewPage() {
