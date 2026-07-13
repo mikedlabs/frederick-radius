@@ -52,14 +52,18 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  // The owner-alerts topic carries feedback text + signup emails, so this
-  // open endpoint can neither grant it (strip from input) nor revoke it
-  // (the update below preserves it when the existing row already has it —
-  // the settings card replaces `topics` wholesale and would otherwise wipe
-  // the owner's opt-in). Only /admin/api/owner-alerts, behind Basic Auth,
-  // toggles it.
+  // The settings card only ever manages the fixed user-facing topics, so it
+  // POSTs just those. Two kinds of topic must NOT be wiped by that wholesale
+  // replace on re-subscribe:
+  //   - biz:<slug> place follows (SaveButton/Follow) — the card never sends
+  //     them, so a naive replace silently unfollowed every business a user
+  //     had followed the moment they touched any toggle (data-loss bug).
+  //   - owner-alerts — carries feedback text + signup emails; this open
+  //     endpoint can neither grant it (stripped from input here) nor revoke
+  //     it. Only /admin/api/owner-alerts, behind Basic Auth, toggles it.
+  // Both are preserved from the EXISTING row in the ON CONFLICT update below.
   const topics = Array.isArray(body.topics)
-    ? body.topics.filter((t) => typeof t === "string" && !isOwnerTopic(t))
+    ? body.topics.filter((t) => typeof t === "string" && !isOwnerTopic(t) && !t.startsWith("biz:"))
     : [];
   const ua = request.headers.get("user-agent") ?? null;
 
@@ -82,9 +86,15 @@ export async function POST(request: Request) {
           auth: sub.keys.auth,
           user_agent: ua,
           device_id: body.device_id ?? null,
-          topics: sql`CASE WHEN ${push_subscriptions.topics} ? ${OWNER_ALERTS_TOPIC}
-            THEN ${topicsJson}::jsonb || ${JSON.stringify([OWNER_ALERTS_TOPIC])}::jsonb
-            ELSE ${topicsJson}::jsonb END`,
+          // New fixed topics from the card, UNION every topic on the existing
+          // row that the card doesn't manage (biz:<slug> follows + owner-alerts).
+          // The two sets are disjoint (input strips biz:/owner above), so the
+          // jsonb `||` concat can't duplicate.
+          topics: sql`${topicsJson}::jsonb || COALESCE(
+            (SELECT jsonb_agg(elem)
+               FROM jsonb_array_elements_text(${push_subscriptions.topics}) AS elem
+              WHERE elem LIKE 'biz:%' OR elem = ${OWNER_ALERTS_TOPIC}),
+            '[]'::jsonb)`,
           updated_at: sql`now()`,
           last_seen_at: sql`now()`,
         },
