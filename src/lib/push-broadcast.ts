@@ -74,6 +74,36 @@ export async function countAudience(seg: Segment): Promise<number | null> {
   return rows[0]?.n ?? 0;
 }
 
+export type AudienceStats = {
+  total: number;
+  withQuietHours: number;
+  withTown: number;
+  opensPct: number | null;
+};
+
+/** Audience health for the composer header: how many devices, how many have
+ *  set quiet hours / a home town, and the 30-day open rate across all sends. */
+export async function audienceStats(): Promise<AudienceStats> {
+  const raw = getSql();
+  if (!raw) return { total: 0, withQuietHours: 0, withTown: 0, opensPct: null };
+  const s = (
+    await raw`
+      SELECT
+        (SELECT count(*)::int FROM push_subscriptions) AS total,
+        (SELECT count(*)::int FROM push_subscriptions WHERE quiet_start IS NOT NULL) AS quiet,
+        (SELECT count(*)::int FROM push_subscriptions WHERE home_town IS NOT NULL) AS town,
+        (SELECT coalesce(sum(sent_count),0)::int FROM push_log WHERE sent_at > now() - interval '30 days') AS sent30,
+        (SELECT coalesce(sum(open_count),0)::int FROM push_log WHERE sent_at > now() - interval '30 days') AS open30
+    `
+  )[0] as { total: number; quiet: number; town: number; sent30: number; open30: number };
+  return {
+    total: s.total ?? 0,
+    withQuietHours: s.quiet ?? 0,
+    withTown: s.town ?? 0,
+    opensPct: s.sent30 > 0 ? Math.round((s.open30 / s.sent30) * 100) : null,
+  };
+}
+
 export type AudienceOption = { value: string; label: string; count: number };
 
 /**

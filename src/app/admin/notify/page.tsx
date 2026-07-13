@@ -6,6 +6,7 @@ import {
   SectionLabel,
   Notice,
   EmptyState,
+  StatStrip,
   Field,
   TextInput,
   Textarea,
@@ -19,7 +20,7 @@ import {
   Td,
   StatusPill,
 } from "@/components/admin/kit";
-import { audienceOptions, recentBroadcasts } from "@/lib/push-broadcast";
+import { audienceOptions, audienceStats, recentBroadcasts } from "@/lib/push-broadcast";
 import { sendBroadcast } from "./actions";
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ export default async function NotifyPage({
 }) {
   const sp = await searchParams;
   const vapid = Boolean(process.env.VAPID_PUBLIC_KEY);
+  const stats = await audienceStats();
   const options = await audienceOptions();
   const history = await recentBroadcasts(12);
   const total = options.find((o) => o.value === "all")?.count ?? 0;
@@ -72,6 +74,17 @@ export default async function NotifyPage({
           <Notice tone="warning">Add a title, a body, and an audience, then send.</Notice>
         </div>
       ) : null}
+
+      <div className="mt-6">
+        <StatStrip
+          items={[
+            { value: stats.total, label: "devices" },
+            { value: stats.withQuietHours, label: "quiet hours" },
+            { value: stats.withTown, label: "home town" },
+            { value: stats.opensPct == null ? "–" : `${stats.opensPct}%`, label: "opens · 30d", tone: stats.opensPct != null ? "positive" : "neutral" },
+          ]}
+        />
+      </div>
 
       {!vapid ? (
         <EmptyState tone="warning" icon={BellRing}>
