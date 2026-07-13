@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import {
+  DoorOpen, CalendarHeart, Activity, Bus, Waves, Truck, Wine,
+  ShoppingBasket, NotebookPen, HeartPulse, Search, Bookmark,
+  type LucideIcon,
+} from "lucide-react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
 import CountUp from "@/components/beta/CountUp";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
@@ -30,14 +35,17 @@ export const metadata: Metadata = {
  * The middleware redirects un-unlocked visitors here with a `next` param; the
  * form posts to /api/beta, which sets the unlock cookie and returns them.
  *
- * The pitch is "the city and the county, connected — right now," so the page
- * proves the "right now": past the fast access gate, real county data streams
- * in (places mapped, what's on today, tonight's Keys score, what's stocked)
- * under a Suspense boundary — the page is literally alive as you read it.
- * Below that: a specimen-card preview, an engraved marquee of all the towns,
- * the manifesto, and a second way in. Access + email-capture logic is
- * unchanged; only the shell grew.
- * All motion reuses reduced-motion-safe keyframes and avoids heavy blur.
+ * The page SHOWS more than it tells (owner call, 2026-07: less text, more
+ * wow). Past the fast access gate, real county data streams in (places
+ * mapped, what's on today, tonight's Keys score) so the page is literally
+ * alive as you read it. The scroll is short and visual: the problem (one
+ * line + the scattered-scraps panels), the breadth (a capability bento of
+ * every live layer the guide carries), the live proof, a specimen card, the
+ * towns marquee, the difference, and a second way in. The wordy concept
+ * sections (signal-filter diagram, comparison table, Q&A grid) were retired
+ * in favour of the bento, which shows the same value with far less prose.
+ * Access + email-capture logic is unchanged. All motion is reduced-motion
+ * safe and avoids heavy blur.
  */
 export default async function BetaPage({
   searchParams,
@@ -174,47 +182,32 @@ export default async function BetaPage({
       {/* ── DIAGNOSTIC — the county is not empty, the info is scattered ─── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. I · diagnostic" title="The county is not empty. The information is just scattered." />
-          <p className="mx-auto mt-5 max-w-[52ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            People move fluidly between downtown, the towns, and the county. But
-            online, they are forced to become researchers, digging through social
-            feeds, stale calendars, and disconnected municipal pages to find what
-            is happening.
+          <PlateHeading eyebrow="Pl. I · the problem" title="The county isn't empty. It's scattered." />
+          <p className="mx-auto mt-5 max-w-[44ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Everything worth doing is out there. Finding it means a dozen tabs:
+            stale calendars, dead links, and a different page for every town.
           </p>
           <DiagnosticPanels />
         </section>
       </RevealOnScroll>
 
-      {/* ── THE SIGNAL — a signal layer, not a directory ───────────────── */}
+      {/* ── WHAT IT DOES — the breadth, as an icon bento (the wow) ──────── */}
       <RevealOnScroll>
         <section className="px-6 py-16 sm:py-20" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
-          <div className="mx-auto max-w-[52rem]">
-            <PlateHeading eyebrow="Pl. II · the signal" title="A local signal layer, not a directory" />
-            <p className="mx-auto mt-5 max-w-[52ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              People do not need more information. They need the right local signal
-              at the right time. A signal is useful, timely information that helps
-              someone act.
+          <div className="mx-auto max-w-[56rem]">
+            <PlateHeading eyebrow="Pl. II · one radius" title="The whole county, live" />
+            <p className="mx-auto mt-5 max-w-[40ch] text-center text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              One link. No app store. Everything below is on right now.
             </p>
-            <SignalFilter />
+            <CapabilityBento />
           </div>
-        </section>
-      </RevealOnScroll>
-
-      {/* ── THE LANDSCAPE — what is useful right now (comparison) ───────── */}
-      <RevealOnScroll>
-        <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. III · the landscape" title="What is useful right now" />
-          <LandscapeTable />
-          <p className="mx-auto mt-6 max-w-[40ch] border-l-[3px] pl-4 font-serif text-[18px] font-semibold leading-snug" style={{ borderColor: "var(--app-brand)", color: "var(--app-ink)" }}>
-            Social media asks what is getting attention. Frederick Radius asks what is useful right now.
-          </p>
         </section>
       </RevealOnScroll>
 
       {/* ── FREDERICK, RIGHT NOW — the living-almanac proof band ────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. IV · proof" title="Frederick, right now" />
+          <PlateHeading eyebrow="Pl. III · proof" title="Frederick, right now" />
           <Suspense fallback={<PulseGridSkeleton />}>
             <PulseGrid />
           </Suspense>
@@ -227,7 +220,7 @@ export default async function BetaPage({
       {/* ── WHAT'S INSIDE — specimen preview ───────────────────────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 pb-16 sm:pb-20">
-          <PlateHeading eyebrow="Pl. V · the guide" title="Every place, on its own card" />
+          <PlateHeading eyebrow="Pl. IV · the guide" title="Every place, on its own card" />
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <SpecimenCard hue="var(--app-accent)" kicker="Brewery · Pl. XII" name="Steinhardt Brewing" line="Open till 10 · 0.4 mi" />
             <SpecimenCard hue="var(--app-brand-2)" kicker="Music · Thu" name="Alive @ Five" line="Carroll Creek · 5 to 8 PM" />
@@ -237,19 +230,6 @@ export default async function BetaPage({
             Save the ones you love. They land in your pocket, each with a plate
             number and its open-now line.
           </p>
-        </section>
-      </RevealOnScroll>
-
-      {/* ── INTENT — the questions it answers ──────────────────────────── */}
-      <RevealOnScroll>
-        <section className="px-6 py-16 sm:py-20" style={{ borderTop: "1px solid var(--app-border)", borderBottom: "1px solid var(--app-border)", background: "color-mix(in srgb, var(--app-brand-2) 5%, transparent)" }}>
-          <div className="mx-auto max-w-[52rem]">
-            <PlateHeading eyebrow="Pl. VI · intent" title="The questions it answers" />
-            <IntentGrid />
-            <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-              Scan a QR code or tap a link and get the answer. No app store, no download.
-            </p>
-          </div>
         </section>
       </RevealOnScroll>
 
@@ -266,7 +246,7 @@ export default async function BetaPage({
       {/* ── MANIFESTO — a field guide, not a directory ─────────────────── */}
       <RevealOnScroll>
         <section className="mx-auto max-w-[52rem] px-6 py-16 sm:py-20">
-          <PlateHeading eyebrow="Pl. VII · the difference" title="Written by someone who lives here" />
+          <PlateHeading eyebrow="Pl. V · the difference" title="Written by someone who lives here" />
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             <Value title="Answers, not listings" body="It knows what's open now, what's on tonight, and what's worth the drive. Ask in plain words." />
             <Value title="Written by someone local" body="Field notes on the taproom patio, the trail with the overlook, the diner that means it. Not scraped." />
@@ -279,7 +259,7 @@ export default async function BetaPage({
       <RevealOnScroll>
         <section className="mx-auto max-w-[30rem] px-6 pb-20 pt-16 text-center">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-3)" }}>
-            Pl. VIII · the standard
+            Pl. VI · the standard
           </p>
           <CompassRose />
           <p className="mt-2 font-serif text-[30px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-brand)" }}>
@@ -432,124 +412,58 @@ function DiagnosticPanels() {
   );
 }
 
-/* ── Signal filter: raw feeds → Context/Location/Time → live signals ──── */
-function SignalFilter() {
-  const inputs = ["Chronological social feeds", "Star ratings", "Static lists", "Stale calendars"];
-  const stages = ["Context", "Location", "Time"];
-  const signals = ["A food truck is nearby", "An event starts in 20 minutes", "A trail is muddy"];
+/* ── Capability bento: what the app actually surfaces, right now ─────────
+   The wow that shows breadth without prose — every tile is a real live
+   layer the guide carries. Icon-led, one line each, no paragraphs. */
+const CAPABILITIES: Array<{ icon: LucideIcon; label: string; line: string; ink: string }> = [
+  { icon: DoorOpen, label: "Open right now", line: "Every place, hours-aware", ink: "var(--app-positive)" },
+  { icon: CalendarHeart, label: "Tonight's events", line: "Concerts, markets, Pride", ink: "var(--app-brand)" },
+  { icon: Activity, label: "County pulse", line: "Traffic, power, schools, live", ink: "var(--app-brand)" },
+  { icon: Bus, label: "Live bus map", line: "TransIT, tracked in real time", ink: "var(--app-cool)" },
+  { icon: Waves, label: "River levels", line: "USGS gauges, flood-aware", ink: "var(--app-cool)" },
+  { icon: Truck, label: "Food trucks", line: "Who's rolling, and where", ink: "var(--app-accent)" },
+  { icon: Wine, label: "Happy hours", line: "Pouring right now", ink: "var(--app-accent)" },
+  { icon: ShoppingBasket, label: "Farmers markets", line: "Open today", ink: "var(--app-brand-2)" },
+  { icon: NotebookPen, label: "Field notes", line: "Insider tips, by a local", ink: "var(--app-brand)" },
+  { icon: HeartPulse, label: "Emergency vet", line: "24/7, when it counts", ink: "var(--app-brand)" },
+  { icon: Search, label: "Ask in plain words", line: "“coffee open now”", ink: "var(--app-ink-2)" },
+  { icon: Bookmark, label: "Save your radius", line: "The county, in your pocket", ink: "var(--app-brand-2)" },
+];
+
+function CapabilityBento() {
   return (
-    <div className="mt-8 flex flex-col items-center">
-      <div className="flex max-w-[34rem] flex-wrap justify-center gap-2">
-        {inputs.map((t) => (
-          <span key={t} className="rounded-full border px-3 py-1.5 text-[12.5px]" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink-3)" }}>
-            {t}
-          </span>
-        ))}
-      </div>
-      <div
-        className="relative my-5 flex w-full max-w-[34rem] items-center justify-around gap-2 rounded-[var(--app-radius-md)] border p-4"
-        style={{ borderColor: "var(--app-brand-2)", background: "color-mix(in srgb, var(--app-brand-2) 7%, var(--app-bg-elevated-solid))" }}
-      >
-        <span className="absolute -top-2.5 left-4 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ background: "var(--app-bg)", color: "var(--app-brand-2)" }}>
-          The Frederick Radius filter
-        </span>
-        {stages.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            <span className="rounded-[8px] border px-3 py-2 font-mono text-[13px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}>
-              {s}
-            </span>
-            {i < stages.length - 1 && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>&rarr;</span>}
-          </span>
-        ))}
-      </div>
-      <div className="flex flex-wrap justify-center gap-2.5">
-        {signals.map((s) => (
-          <span
-            key={s}
-            className="rounded-full px-3.5 py-2 font-mono text-[13px] font-semibold"
-            style={{ background: "var(--app-brand)", color: "var(--app-on-brand)", boxShadow: "0 6px 14px -8px color-mix(in srgb, var(--app-brand) 70%, transparent)" }}
+    <ul className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+      {CAPABILITIES.map((c) => {
+        const Icon = c.icon;
+        return (
+          <li
+            key={c.label}
+            className="flex items-start gap-3 rounded-[var(--app-radius-md)] border p-3.5"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
           >
-            {s}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Landscape: the comparison table, our column pressed in vermilion ─── */
-function LandscapeTable() {
-  const rows: Array<[string, string, string, string, string]> = [
-    ["Primary output", "Noise", "Pins", "Lists", "Signals"],
-    ["Timeliness", "Algorithmic", "Static", "Stale", "Right now"],
-    ["Human filter", "None", "Automated", "Variable", "High"],
-    ["Core metric", "Attention", "Search volume", "Page views", "Utility & action"],
-  ];
-  const ours = { background: "color-mix(in srgb, var(--app-brand) 9%, var(--app-bg-elevated-solid))", color: "var(--app-ink)" };
-  return (
-    <div className="mt-7 overflow-x-auto">
-      <table className="w-full border-collapse text-left text-[13.5px]" style={{ minWidth: 520 }}>
-        <thead>
-          <tr>
-            <th className="p-3" />
-            {["Social media", "Search / maps", "Calendars"].map((h) => (
-              <th key={h} className="p-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)", borderBottom: "1px solid var(--app-border)" }}>
-                {h}
-              </th>
-            ))}
-            <th className="p-3 font-mono text-[11px] font-bold uppercase tracking-[0.06em]" style={{ ...ours, color: "var(--app-brand-press)", borderBottom: "1px solid var(--app-border)", borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
-              Frederick Radius
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, a, b, c, mine], ri) => (
-            <tr key={label}>
-              <th className="p-3 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)", borderBottom: "1px solid var(--app-border)" }}>
-                {label}
-              </th>
-              {[a, b, c].map((v, i) => (
-                <td key={i} className="p-3 font-mono text-[12.5px]" style={{ color: "var(--app-ink-2)", borderBottom: "1px solid var(--app-border)" }}>
-                  {v}
-                </td>
-              ))}
-              <td
-                className="p-3 font-mono text-[12.5px] font-bold"
-                style={{ ...ours, borderBottom: "1px solid var(--app-border)", ...(ri === rows.length - 1 ? { borderBottomLeftRadius: 10, borderBottomRightRadius: 10 } : {}) }}
-              >
-                {mine}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ── Intent: the questions the guide answers, each with its live answer ─ */
-function IntentGrid() {
-  const qs: Array<[string, string]> = [
-    ["What’s open?", "Its open-now line"],
-    ["What’s happening?", "Today’s event list"],
-    ["What’s nearby?", "0.4 mi away"],
-    ["What’s worth my time?", "Field notes by a local"],
-    ["What should I know before I go?", "Weather & road closures"],
-    ["How do I get in?", "A link. No app store."],
-  ];
-  return (
-    <div className="mt-8 grid gap-3 sm:grid-cols-3">
-      {qs.map(([q, a]) => (
-        <div key={q} className="rounded-[var(--app-radius-md)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}>
-          <p className="font-serif text-[16px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-            {q}
-          </p>
-          <span className="mt-2.5 inline-block rounded-[6px] px-2.5 py-1.5 font-mono text-[11.5px]" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}>
-            {a}
-          </span>
-        </div>
-      ))}
-    </div>
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
+              style={{
+                background: `color-mix(in srgb, ${c.ink} 14%, var(--app-bg-elevated))`,
+                color: `color-mix(in srgb, ${c.ink} 82%, var(--app-ink))`,
+                boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi)",
+              }}
+            >
+              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-serif text-[14.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {c.label}
+              </span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                {c.line}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
