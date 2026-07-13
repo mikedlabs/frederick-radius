@@ -677,22 +677,43 @@ function summaryFor(input: PlanInputs, stops: PlanStop[]): string {
   return `${stops.length} stops for ${audienceFor[input.audience]}. Real places, nothing invented.`;
 }
 
-// Optional Claude narrative; only runs when ANTHROPIC_API_KEY is set.
+// Optional narrative. Prefer Vercel AI Gateway/OIDC so production usage shows
+// in one Vercel surface; keep the direct Anthropic key as the proven fallback.
 // Falls back silently to the structured plan.
 export async function narratePlanWithClaude(plan: Plan): Promise<string | null> {
+  if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN && !process.env.ANTHROPIC_API_KEY) {
+    return null;
+  }
+
+  const stopText = plan.stops
+    .map((s, i) => `${i + 1}. ${s.place?.name ?? s.event?.title}: ${s.why}`)
+    .join("\n");
+  const prompt = [
+    "You are a local Frederick County, Maryland concierge.",
+    `Plan: ${plan.title}.`,
+    `Stops:\n${stopText}`,
+    "Write 2 sentences that tie the stops together: flow, timing, what to expect.",
+    "Do not invent details. Do not restate the names. Read like a thoughtful friend.",
+  ].join("\n\n");
+
+  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
+    try {
+      const { generateText } = await import("ai");
+      const { text } = await generateText({
+        model: "anthropic/claude-haiku-4.5",
+        prompt,
+        maxOutputTokens: 200,
+        temperature: 0.3,
+      });
+      if (text) return text.trim();
+    } catch {
+      /* fall through to direct Anthropic */
+    }
+  }
+
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
-    const stopText = plan.stops
-      .map((s, i) => `${i + 1}. ${s.place?.name ?? s.event?.title}: ${s.why}`)
-      .join("\n");
-    const prompt = [
-      "You are a local Frederick County, Maryland concierge.",
-      `Plan: ${plan.title}.`,
-      `Stops:\n${stopText}`,
-      "Write 2 sentences that tie the stops together: flow, timing, what to expect.",
-      "Do not invent details. Do not restate the names. Read like a thoughtful friend.",
-    ].join("\n\n");
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
