@@ -126,7 +126,11 @@ export const MUNICIPALITIES: Municipality[] = [
     name: "Mount Airy",
     type: "town",
     population: 9_852,
-    centroid: { lng: -77.1547, lat: 39.3754 },
+    // The town straddles the Carroll/Frederick line, and its true center
+    // (-77.1547) sits just OUTSIDE the Frederick County polygon (in Carroll),
+    // so a county-shape map dropped its dot off the eastern edge. Anchor the
+    // centroid on the Frederick-county side of town, where this guide lives.
+    centroid: { lng: -77.163, lat: 39.3754 },
     bbox: [-77.180, 39.355, -77.130, 39.400],
     description:
       "Four counties meet under one zip code (Frederick, Carroll, Howard, Montgomery); the town itself straddles the Carroll and Frederick county line. A Main Street revival, two wineries, and the old B&O grade over Parr's Ridge.",
@@ -183,8 +187,11 @@ export const MUNICIPALITIES: Municipality[] = [
     // the county's only chartered village.
     type: "village",
     population: 272,
-    centroid: { lng: -77.6608, lat: 39.3261 },
-    bbox: [-77.670, 39.320, -77.650, 39.335],
+    // Village of Rosemont, just NE of Brunswick (39.3214 N, 77.6386 W per
+    // GNIS). The old centroid sat ~1.2 mi too far west, which pushed its map
+    // dot off toward the river; corrected here.
+    centroid: { lng: -77.6386, lat: 39.3214 },
+    bbox: [-77.648, 39.314, -77.630, 39.329],
     description:
       "A historic village on the Potomac's edge between Brunswick and the C&O Canal. Tree-lined, mostly residential, and one of the quietest places in the county.",
     hero_blurb: "Above the canal, below the ridge.",
