@@ -119,7 +119,8 @@ export default async function BetaPage({
           </h1>
 
           <p className="mx-auto mt-4 max-w-[24rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            You&rsquo;re early, so enter the access code you were given to come in.
+            You&rsquo;re early. Frederick Radius is invite-only while we finish it.
+            Have a code? Come in. No code yet? Join the list.
           </p>
 
           {/* Live proof, directly under the headline block — real county data
@@ -130,7 +131,12 @@ export default async function BetaPage({
             <ProofStrip />
           </Suspense>
 
-          <form action="/api/beta" method="post" className="mx-auto mt-6 max-w-[20rem] space-y-2.5">
+          {/* Path 1 — you already have a code. Labeled so the two ways in read
+              as two clear choices, not one field with a mystery second one. */}
+          <p className="mx-auto mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
+            Have an access code?
+          </p>
+          <form action="/api/beta" method="post" className="mx-auto mt-2.5 max-w-[20rem] space-y-2.5">
             <input type="hidden" name="next" value={safeNext} />
             <input
               type="text"
@@ -168,6 +174,14 @@ export default async function BetaPage({
               Come in &rarr;
             </button>
           </form>
+
+          {/* The fork between the two paths, so "or join the list" can't be
+              mistaken for more of the code form. */}
+          <div className="mx-auto mt-6 flex max-w-[20rem] items-center gap-3" aria-hidden>
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: "var(--app-ink-3)" }}>or</span>
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+          </div>
 
           <BetaEmailField />
         </div>
@@ -272,7 +286,7 @@ export default async function BetaPage({
           </h2>
           <p className="mx-auto mt-3 max-w-[24rem] text-[14.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Have an access code? Scroll back up and come in. No code yet? Leave your
-            email and we&rsquo;ll wave you through at launch.
+            email and we&rsquo;ll send you one when we open the doors.
           </p>
           <div className="mt-5">
             <BetaEmailField />
