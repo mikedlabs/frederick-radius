@@ -117,6 +117,39 @@ export const COLLECTIONS: CollectionDef[] = [
     ],
   },
   {
+    // Beer around Frederick — the county's breweries and taprooms as one
+    // trail. Every stop is a real, currently-open beer brewery (not a winery,
+    // distillery, meadery, or cidery): each was web-verified operational in
+    // July 2026 before shipping, because a guide that sends you to a closed
+    // taproom (see Idiom Brewing, closed Feb 2026) loses trust. Order is
+    // walk-then-drive: downtown Frederick's walkable core first, then the
+    // outlying-town breweries in Brunswick and Mount Airy. Flood Zone
+    // (Union Bridge) was verified open but sits in Carroll County, so it is
+    // out of scope and excluded.
+    slug: "beer-around-frederick",
+    title: "Beer around Frederick",
+    blurb:
+      "Start downtown, where the taprooms are close enough to walk between. When you're ready, drive out to Brunswick and the farm breweries around Mount Airy.",
+    accent: "var(--app-accent)",
+    places: [
+      "brewers-alley-frederick",
+      "olde-mother-brewing-frederick",
+      "steinhardt-brewing-company-frederick",
+      "attaboy-beer-frederick",
+      "rockwell-brewery-frederick",
+      "midnight-run-brewing",
+      "monocacy-brewing-frederick",
+      "sandbox-brewhouse-frederick",
+      "rak-brewing-co-frederick",
+      "prospect-point-brewing-frederick",
+      "brudr-bier-co-frederick",
+      "smoketown-brewing-brunswick",
+      "liquidity-aleworks-mount-airy",
+      "milkhouse-brewery-mt-airy",
+      "red-shedman-farm-brewery-and-hop-yard-mount-airy",
+    ],
+  },
+  {
     // LGBTQ+ Frederick — CURATED, never auto-detected. We hold no
     // "LGBTQ-friendly" data attribute, and guessing which venues are welcoming
     // would be worse than saying nothing. So this is hand-verified only: it

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 const KEY = "fr:saved:v1";
 
-export type SavedRef = { type: "place" | "event" | "radius"; id: string; saved_at: string };
+export type SavedRef = { type: "place" | "event" | "radius" | "beer"; id: string; saved_at: string };
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -80,6 +80,17 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
     }
     return !exists;
   }, [type, id]);
+}
+
+/** Imperative save (no hook), for event handlers like the deck's "love" swipe.
+ *  No-ops if the ref is already saved. */
+export function addSaved(type: SavedRef["type"], id: string) {
+  const items = read();
+  if (items.some((s) => s.type === type && s.id === id)) return;
+  write([...items, { type, id, saved_at: new Date().toISOString() }]);
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
+  }
 }
 
 export function useMounted(): boolean {

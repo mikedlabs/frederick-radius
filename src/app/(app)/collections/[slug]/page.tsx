@@ -159,6 +159,26 @@ export default async function CollectionPage({
         </div>
       </header>
 
+      {slug === "beer-around-frederick" && (
+        <Link
+          href="/beer"
+          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-lg)] border p-4 transition hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <span>
+            <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Not sure what to order?
+            </span>
+            <span className="block text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+              Swipe the beers and we will point you to your breweries.
+            </span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            Find your beer →
+          </span>
+        </Link>
+      )}
+
       {places.length === 0 ? (
         // Defensive — if every slug got renamed at once, render an
         // honest note rather than an empty page.
