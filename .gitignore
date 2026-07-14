@@ -90,3 +90,6 @@ ux-shots/
 /.render-*.mjs
 .city-maps/
 audit-reports/
+# Design-review evidence: the report is tracked; the ~68MB of PNG captures
+# are regenerable and stay out of git history.
+design-review/screenshots/
