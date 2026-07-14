@@ -3,13 +3,13 @@
 import { useState } from "react";
 
 /**
- * Optional launch-news signup under the beta password form.
+ * Self-serve access under the code entry form: the second way in.
  *
- * The wall used to collect only the shared password, leaving every visitor
- * unreachable (experience review, blind spots: launch day had no announcement
- * channel). One field, clearly optional, calm copy — a person locked out
- * without the password can still raise a hand for opening day. Fail-soft: a
- * missing table or DB just apologizes quietly.
+ * A visitor without a code enters their email and /api/beta/email mints a
+ * personal access code and emails it right away (inviteEmail), so they can try
+ * the beta immediately, not "at launch." One field, calm copy. Fail-soft: a
+ * missing table or DB just apologizes quietly; a duplicate email reads as
+ * success (they already have a code in their inbox).
  */
 export default function BetaEmailField() {
   const [email, setEmail] = useState("");
@@ -49,15 +49,15 @@ export default function BetaEmailField() {
         }
         style={state === "done" ? { color: "var(--app-brand-2)" } : undefined}
       >
-        {state === "done" ? "You’re on the list. We’ll write when the doors open." : ""}
+        {state === "done" ? "Sent. Check your email for your access code, then come on in." : ""}
       </p>
       {state !== "done" && (
     <form onSubmit={submit} className="mx-auto mt-6 max-w-[20rem] space-y-2">
       <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-        No access code yet?
+        No access code? Try it now
       </p>
       <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Leave your email and we&rsquo;ll send you a code when we open the doors.
+        Enter your email and we&rsquo;ll send you a code right away.
       </p>
       <div className="flex gap-2">
         <input
@@ -82,7 +82,7 @@ export default function BetaEmailField() {
           className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold text-white disabled:opacity-60"
           style={{ background: "var(--app-ink)" }}
         >
-          {state === "busy" ? "…" : "Join the list"}
+          {state === "busy" ? "…" : "Email me a code"}
         </button>
       </div>
       {state === "error" && (
