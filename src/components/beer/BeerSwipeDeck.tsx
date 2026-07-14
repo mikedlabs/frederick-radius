@@ -6,10 +6,12 @@ import { X, Heart, Star, RotateCcw, ArrowRight } from "lucide-react";
 import {
   breweriesForFamilies,
   tasteTitle,
+  beerKey,
   FAMILY_BY_KEY,
   type BeerWithBrewery,
   type StyleFamily,
 } from "@/data/beers";
+import { addSaved } from "@/hooks/useSaved";
 import BeerCard from "./BeerCard";
 
 type Verdict = "pass" | "like" | "love";
@@ -73,7 +75,10 @@ export default function BeerSwipeDeck({ deck }: { deck: BeerWithBrewery[] }) {
     // Weight: like = 1, love = 2 toward that family; passes teach nothing.
     if (v !== "pass") {
       setScore((s) => ({ ...s, [beer.family]: (s[beer.family] ?? 0) + (v === "love" ? 2 : 1) }));
-      if (v === "love") setLoved((l) => [...l, beer]);
+      if (v === "love") {
+        setLoved((l) => [...l, beer]);
+        addSaved("beer", beerKey(beer)); // love saves it to My taps
+      }
     }
     const advance = () => {
       setExit(null);
@@ -183,7 +188,7 @@ export default function BeerSwipeDeck({ deck }: { deck: BeerWithBrewery[] }) {
         <IconBtn label="Pass" onClick={() => commit("pass")} tint="var(--app-ink-3)">
           <X className="h-6 w-6" strokeWidth={2.5} aria-hidden />
         </IconBtn>
-        <IconBtn label="Love it" onClick={() => commit("love")} tint="var(--app-accent-press)" small>
+        <IconBtn label="Save to My taps" onClick={() => commit("love")} tint="var(--app-accent-press)" small>
           <Star className="h-5 w-5" strokeWidth={2.5} aria-hidden />
         </IconBtn>
         <IconBtn label="Like" onClick={() => commit("like")} tint="var(--app-brand-2)">
@@ -200,7 +205,7 @@ export default function BeerSwipeDeck({ deck }: { deck: BeerWithBrewery[] }) {
         )}
       </div>
       <p className="mt-2 text-center text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        Swipe right to like, left to pass, up to love. Or use the buttons.
+        Swipe right to like, left to pass, up to save (★) to My taps. Or use the buttons.
       </p>
     </div>
   );
@@ -311,7 +316,7 @@ function Reveal({
       </div>
       {loved.length > 0 && (
         <p className="mt-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          You loved: {loved.map((b) => b.name).join(", ")}.
+          Saved to My taps: {loved.map((b) => b.name).join(", ")}.
         </p>
       )}
     </div>

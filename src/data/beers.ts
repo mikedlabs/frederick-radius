@@ -69,6 +69,15 @@ export const BREWERY_BY_SLUG: Record<string, Brewery> = Object.fromEntries(
   BREWERIES.map((b) => [b.slug, b]),
 );
 
+/** Stable id for a beer in the shared saved store ("My taps"). */
+export function beerKey(b: { brewerySlug: string; name: string }): string {
+  return `${b.brewerySlug}::${b.name}`;
+}
+
+export const BEER_BY_KEY: Record<string, BeerWithBrewery> = Object.fromEntries(
+  ALL_BEERS.map((b) => [beerKey(b), b]),
+);
+
 /**
  * Style-family palette. Each beer renders as a card colored by what it is.
  * These are a deliberate data-visualization palette (beer by style), not app

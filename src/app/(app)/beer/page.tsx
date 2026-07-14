@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BREWERIES, BEER_HISTORY, deckBeers, ALL_BEERS, FAMILY_BY_KEY } from "@/data/beers";
+import { BREWERIES, BEER_HISTORY, deckBeers, ALL_BEERS, beerKey } from "@/data/beers";
 import BeerSwipeDeck from "@/components/beer/BeerSwipeDeck";
+import BeerPill from "@/components/beer/BeerPill";
+import MyTaps from "@/components/beer/MyTaps";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const revalidate = 3600;
@@ -43,6 +45,9 @@ export default function BeerPage() {
         <BeerSwipeDeck deck={deck} />
       </section>
 
+      {/* My taps — the user's saved beers (self-hides when empty) */}
+      <MyTaps />
+
       {/* History */}
       <section aria-labelledby="beer-history" className="space-y-4">
         <div>
@@ -75,6 +80,9 @@ export default function BeerPage() {
           <h2 id="beer-directory" className="font-serif text-[22px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             Every brewery, and what they are known for
           </h2>
+          <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            Tap any beer to save it to My taps.
+          </p>
         </div>
         <ul className="space-y-3">
           {BREWERIES.map((b) => (
@@ -89,25 +97,16 @@ export default function BeerPage() {
               </div>
               <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{b.focus}</p>
               <ul className="mt-3 flex flex-wrap gap-1.5">
-                {b.beers.map((be) => {
-                  const fam = FAMILY_BY_KEY[be.family];
-                  const pill = (
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-2)", border: "1px solid var(--app-border)" }}>
-                      <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: fam.base }} />
-                      {be.name}
-                      {be.abv != null && <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{be.abv.toFixed(1)}%</span>}
-                    </span>
-                  );
-                  return (
-                    <li key={be.name}>
-                      {be.untappd ? (
-                        <a href={be.untappd} target="_blank" rel="noopener noreferrer" className="tap-44">{pill}</a>
-                      ) : (
-                        pill
-                      )}
-                    </li>
-                  );
-                })}
+                {b.beers.map((be) => (
+                  <li key={be.name}>
+                    <BeerPill
+                      savedKey={beerKey({ brewerySlug: b.slug, name: be.name })}
+                      name={be.name}
+                      family={be.family}
+                      abv={be.abv}
+                    />
+                  </li>
+                ))}
               </ul>
               {b.untappd && (
                 <a href={b.untappd} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>

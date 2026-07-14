@@ -22,6 +22,18 @@ export default function BeerCard({ beer }: { beer: BeerWithBrewery }) {
       {/* Foam line + faint grain across the top. */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-6" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)" }} />
 
+      {/* Big, faint ABV watermark filling the middle so the card reads as a poster. */}
+      {beer.abv != null && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex items-center justify-center font-serif font-semibold leading-none"
+          style={{ fontSize: "120px", color: "rgba(255,255,255,0.09)" }}
+        >
+          {beer.abv.toFixed(1)}
+          <span style={{ fontSize: "52px" }}>%</span>
+        </span>
+      )}
+
       <div className="relative flex items-start justify-between gap-3">
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-white/85">
           {fam.label}
