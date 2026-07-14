@@ -1,4 +1,5 @@
 import type { QuickIntent } from "./types";
+import { primaryAnswerFor } from "@/lib/search/answer";
 
 /**
  * Quick-answer intents — recognized needs that resolve in ONE tap to
@@ -83,6 +84,27 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
   if (lq.length < 3) return [];
   const out: QuickIntent[] = [];
   const seen = new Set<string>();
+
+  // A craving query ("coffee open now near me", "where's a good beer") leads
+  // with the nearest-open craving surface, the same answer /search shows. It's
+  // synthesized from the ONE query->answer mapping (primaryAnswerFor) so search
+  // and the overlay never drift. Bare "open now" stays owned by the intent
+  // below, which routes to its established map-open view.
+  const answer = primaryAnswerFor(query);
+  if (answer && answer.key !== "open-now") {
+    seen.add(answer.href);
+    out.push({
+      key: `craving:${answer.key}`,
+      terms: [],
+      title: `${answer.label} near you`,
+      sub: answer.kicker,
+      chip: answer.label,
+      href: answer.href,
+      icon: "pin",
+      status: "open-now",
+    });
+  }
+
   for (const intent of QUICK_INTENTS) {
     if (intent.terms.some((t) => lq.includes(t)) && !seen.has(intent.href)) {
       seen.add(intent.href);
