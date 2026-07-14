@@ -119,8 +119,8 @@ export default async function BetaPage({
           </h1>
 
           <p className="mx-auto mt-4 max-w-[24rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            You&rsquo;re early, but you can try it now. Have an access code? Come
-            in. No code? Drop your email and we&rsquo;ll send you one right away.
+            You&rsquo;re early, but you can try it now. Drop your email and
+            we&rsquo;ll send you an access code right away.
           </p>
 
           {/* Live proof, directly under the headline block — real county data
@@ -131,10 +131,23 @@ export default async function BetaPage({
             <ProofStrip />
           </Suspense>
 
-          {/* Path 1 — you already have a code. Labeled so the two ways in read
-              as two clear choices, not one field with a mystery second one. */}
+          {/* Path 1 (the common one) leads: most visitors have no code, so the
+              email that mints one right away is the PRIMARY way in. The code
+              entry sits below as the returning-user path. */}
+          <BetaEmailField />
+
+          {/* The fork between the two paths, so the code entry can't be mistaken
+              for more of the email form. */}
+          <div className="mx-auto mt-6 flex max-w-[20rem] items-center gap-3" aria-hidden>
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: "var(--app-ink-3)" }}>or</span>
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+          </div>
+
+          {/* Path 2 — you already have a code. Secondary, so it's quieter than
+              the primary email CTA above. */}
           <p className="mx-auto mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-            Have an access code?
+            Already have an access code?
           </p>
           <form action="/api/beta" method="post" className="mx-auto mt-2.5 max-w-[20rem] space-y-2.5">
             <input type="hidden" name="next" value={safeNext} />
@@ -162,28 +175,21 @@ export default async function BetaPage({
                 That code did not match. Try again.
               </p>
             )}
+            {/* Secondary (bordered) button: the vermilion primary is the email
+                CTA above, so the returning-user path stays visually quieter. */}
             <button
               type="submit"
-              className="tactile-interactive w-full rounded-[var(--app-radius-md)] px-4 py-3 text-[15px] font-semibold tracking-tight active:scale-[0.99]"
+              className="tactile-interactive w-full rounded-[var(--app-radius-md)] border px-4 py-3 text-[15px] font-semibold tracking-tight active:scale-[0.99]"
               style={{
-                background: "var(--app-brand)",
-                color: "var(--app-on-brand)",
-                boxShadow: "0 10px 24px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-ink)",
+                borderColor: "var(--app-border-strong)",
+                boxShadow: "var(--app-hi)",
               }}
             >
               Come in &rarr;
             </button>
           </form>
-
-          {/* The fork between the two paths, so the email option can't be
-              mistaken for more of the code form. */}
-          <div className="mx-auto mt-6 flex max-w-[20rem] items-center gap-3" aria-hidden>
-            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.18em]" style={{ color: "var(--app-ink-3)" }}>or</span>
-            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-          </div>
-
-          <BetaEmailField />
         </div>
 
         <span

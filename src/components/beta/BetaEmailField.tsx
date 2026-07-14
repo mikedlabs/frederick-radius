@@ -53,11 +53,11 @@ export default function BetaEmailField() {
       </p>
       {state !== "done" && (
     <form onSubmit={submit} className="mx-auto mt-6 max-w-[20rem] space-y-2">
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-        No access code? Try it now
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
+        Try it now, free
       </p>
-      <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Enter your email and we&rsquo;ll send you a code right away.
+      <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        Enter your email and we&rsquo;ll send you an access code right away.
       </p>
       <div className="flex gap-2">
         <input
@@ -79,8 +79,12 @@ export default function BetaEmailField() {
         <button
           type="submit"
           disabled={state === "busy"}
-          className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold text-white disabled:opacity-60"
-          style={{ background: "var(--app-ink)" }}
+          className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60"
+          style={{
+            background: "var(--app-brand)",
+            color: "var(--app-on-brand)",
+            boxShadow: "0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
+          }}
         >
           {state === "busy" ? "…" : "Email me a code"}
         </button>
