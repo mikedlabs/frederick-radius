@@ -1,0 +1,11 @@
+{
+  "beta": {
+    "busyLabel": null,
+    "errorText": "Couldn’t save that right now. Try again in a minute.",
+    "formWidthBusy": 320
+  },
+  "firstVisit": {
+    "text": "◎ New here? What’s open, what’s on, and what’s worth your time around here. How it works",
+    "height": 94.75
+  }
+}

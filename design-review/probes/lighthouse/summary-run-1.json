@@ -1,0 +1,1893 @@
+{
+  "base": "http://127.0.0.1:3108",
+  "results": [
+    {
+      "route": "today",
+      "path": "/today",
+      "requestedUrl": "http://127.0.0.1:3108/today",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/today",
+      "fetchTime": "2026-07-14T16:50:38.552Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 70,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.69,
+          "numericValue": 2438.7397,
+          "numericUnit": "millisecond",
+          "displayValue": "2.4 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0.13,
+          "numericValue": 5973.4794,
+          "numericUnit": "millisecond",
+          "displayValue": "6.0 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 0.56,
+          "numericValue": 5437.430785598819,
+          "numericUnit": "millisecond",
+          "displayValue": "5.4 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 0.99,
+          "numericValue": 67.49999999999955,
+          "numericUnit": "millisecond",
+          "displayValue": "70 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0.008668931544080176,
+          "numericUnit": "unitless",
+          "displayValue": "0.009",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 69.08500000000001,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 70 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.54,
+          "numericValue": 6886.709550000001,
+          "numericUnit": "millisecond",
+          "displayValue": "6.9 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1268492,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,239 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimize main-thread work",
+          "score": 0,
+          "numericValue": 2636.1440000000584,
+          "numericUnit": "millisecond",
+          "displayValue": "2.6 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 482.0880000000027,
+          "numericUnit": "millisecond",
+          "displayValue": "0.5 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 1080,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 137 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-DIV",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,3,MAIN,1,DIV,6,SECTION,0,DIV",
+                  "selector": "main.mx-auto > div.relative > section.sky-hero > div.sky-grain",
+                  "boundingRect": {
+                    "top": 266,
+                    "bottom": 421,
+                    "left": 16,
+                    "right": 359,
+                    "width": 343,
+                    "height": 155
+                  },
+                  "snippet": "<div aria-hidden=\"true\" class=\"sky-grain\">",
+                  "nodeLabel": "main.mx-auto > div.relative > section.sky-hero > div.sky-grain"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 452.86985,
+                "percent": "8%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 2673.40766532321,
+                "percent": "45%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0.24400930561569112,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 2846.9578753711744,
+                "percent": "48%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 86,
+        "numScripts": 31,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 3399,
+        "numTasksOver10ms": 7,
+        "numTasksOver25ms": 3,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.01215,
+        "throughput": 134396544.128592,
+        "maxRtt": 0.01215,
+        "maxServerLatency": 2.86985,
+        "totalByteWeight": 1268492,
+        "totalTaskTime": 659.035999999977,
+        "mainDocumentTransferSize": 50133
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "map",
+      "path": "/map",
+      "requestedUrl": "http://127.0.0.1:3108/map",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/map",
+      "fetchTime": "2026-07-14T16:50:53.922Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 70,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.81,
+          "numericValue": 2104.4296,
+          "numericUnit": "millisecond",
+          "displayValue": "2.1 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0,
+          "numericValue": 9622.147999999997,
+          "numericUnit": "millisecond",
+          "displayValue": "9.6 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 0.68,
+          "numericValue": 4748.161320355061,
+          "numericUnit": "millisecond",
+          "displayValue": "4.7 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 0.99,
+          "numericValue": 79.5,
+          "numericUnit": "millisecond",
+          "displayValue": "80 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0.0016571622703778304,
+          "numericUnit": "unitless",
+          "displayValue": "0.002",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 9.773,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 10 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.09,
+          "numericValue": 14131.814600000002,
+          "numericUnit": "millisecond",
+          "displayValue": "14.1 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1888759,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,844 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 1883.868000000003,
+          "numericUnit": "millisecond",
+          "displayValue": "1.9 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 695.9720000000005,
+          "numericUnit": "millisecond",
+          "displayValue": "0.7 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 900,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 517 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,3,MAIN,1,DIV,1,DIV,0,DIV,0,DIV,0,DIV,1,P",
+                  "selector": "div.relative > div.relative > div.absolute > p.max-w-xs",
+                  "boundingRect": {
+                    "top": 340,
+                    "bottom": 398,
+                    "left": 28,
+                    "right": 348,
+                    "width": 320,
+                    "height": 59
+                  },
+                  "snippet": "<p class=\"max-w-xs text-xs leading-relaxed\" style=\"color: var(--app-ink-3);\">",
+                  "nodeLabel": "The interactive map needs graphics support this browser doesn't have. You can s…"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 452.2148,
+                "percent": "5%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 9169.933199999998,
+                "percent": "95%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 77,
+        "numScripts": 35,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 7701,
+        "numTasksOver10ms": 5,
+        "numTasksOver25ms": 1,
+        "numTasksOver50ms": 1,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.013199999999999998,
+        "throughput": 147121053.12970948,
+        "maxRtt": 124.39999999999999,
+        "maxServerLatency": 6286.874000000001,
+        "totalByteWeight": 1888759,
+        "totalTaskTime": 470.966999999981,
+        "mainDocumentTransferSize": 184271
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "events",
+      "path": "/events",
+      "requestedUrl": "http://127.0.0.1:3108/events",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/events",
+      "fetchTime": "2026-07-14T16:51:49.700Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 62,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.93,
+          "numericValue": 1653.8184,
+          "numericUnit": "millisecond",
+          "displayValue": "1.7 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0,
+          "numericValue": 9920.046600000005,
+          "numericUnit": "millisecond",
+          "displayValue": "9.9 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 1,
+          "numericValue": 1653.8184,
+          "numericUnit": "millisecond",
+          "displayValue": "1.7 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 0.99,
+          "numericValue": 68.00000000000091,
+          "numericUnit": "millisecond",
+          "displayValue": "70 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 0.5,
+          "numericValue": 0.2490202302086114,
+          "numericUnit": "unitless",
+          "displayValue": "0.249",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 10.402,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 10 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.27,
+          "numericValue": 9920.905740000006,
+          "numericUnit": "millisecond",
+          "displayValue": "9.9 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1675815,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,637 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 1356.3520000000124,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 604.9320000000058,
+          "numericUnit": "millisecond",
+          "displayValue": "0.6 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 750,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 126 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 0.5,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 122 KiB",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-IMG",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,3,MAIN,1,DIV,3,DIV,1,DIV,1,SECTION,1,DIV,0,ARTICLE,0,IMG",
+                  "selector": "section.space-y-3 > div.relative > article.tactile > img.ken-burns",
+                  "boundingRect": {
+                    "top": 691,
+                    "bottom": 925,
+                    "left": 12,
+                    "right": 363,
+                    "width": 350,
+                    "height": 234
+                  },
+                  "snippet": "<img alt=\"\" loading=\"lazy\" decoding=\"async\" data-nimg=\"fill\" class=\"ken-burns object-cover\" sizes=\"(max-width: 640px) 100vw, 720px\" srcset=\"/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage…\" src=\"http://127.0.0.1:3108/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.publi…\" style=\"position: absolute; height: 100%; width: 100%; inset: 0px;\">",
+                  "nodeLabel": "section.space-y-3 > div.relative > article.tactile > img.ken-burns"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 451.9092,
+                "percent": "5%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 8528.850229453597,
+                "percent": "86%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 1.0544357634735206,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 938.2327347829341,
+                "percent": "9%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 123,
+        "numScripts": 32,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 2700,
+        "numTasksOver10ms": 5,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.0138,
+        "throughput": 50252352.454703905,
+        "maxRtt": 0.0138,
+        "maxServerLatency": 1.9092,
+        "totalByteWeight": 1675815,
+        "totalTaskTime": 339.0879999999945,
+        "mainDocumentTransferSize": 116611
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "saved",
+      "path": "/my-radius",
+      "requestedUrl": "http://127.0.0.1:3108/my-radius",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/my-radius",
+      "fetchTime": "2026-07-14T16:52:04.890Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 74,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.99,
+          "numericValue": 1204.1007,
+          "numericUnit": "millisecond",
+          "displayValue": "1.2 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0,
+          "numericValue": 9926.65455,
+          "numericUnit": "millisecond",
+          "displayValue": "9.9 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 1,
+          "numericValue": 1204.1007,
+          "numericUnit": "millisecond",
+          "displayValue": "1.2 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 1,
+          "numericValue": 28,
+          "numericUnit": "millisecond",
+          "displayValue": "30 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 0.98,
+          "numericValue": 0.05826216398420248,
+          "numericUnit": "unitless",
+          "displayValue": "0.058",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 19.334,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 20 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.27,
+          "numericValue": 9927.064620000001,
+          "numericUnit": "millisecond",
+          "displayValue": "9.9 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1311318,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,281 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 833.4999999999992,
+          "numericUnit": "millisecond",
+          "displayValue": "0.8 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 377.56800000000067,
+          "numericUnit": "millisecond",
+          "displayValue": "0.4 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 910,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 159 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,5,MAIN,1,DIV,1,DIV,1,DIV,0,DIV,1,P",
+                  "selector": "div.space-y-4 > div.space-y-4 > div.sv-empty-hero > p",
+                  "boundingRect": {
+                    "top": 214,
+                    "bottom": 272,
+                    "left": 18,
+                    "right": 322,
+                    "width": 304,
+                    "height": 59
+                  },
+                  "snippet": "<p>",
+                  "nodeLabel": "Tap the bookmark on any place or event and it lands here as a card you carry, g…"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 452.05035,
+                "percent": "5%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 9474.6042,
+                "percent": "95%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 99,
+        "numScripts": 33,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 1509,
+        "numTasksOver10ms": 2,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.013649999999999999,
+        "throughput": 109779767.33425768,
+        "maxRtt": 0.013649999999999999,
+        "maxServerLatency": 2.05035,
+        "totalByteWeight": 1311318,
+        "totalTaskTime": 208.37500000000094,
+        "mainDocumentTransferSize": 16442
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "search-coffee",
+      "path": "/search?q=coffee",
+      "requestedUrl": "http://127.0.0.1:3108/search?q=coffee",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/search?q=coffee",
+      "fetchTime": "2026-07-14T16:52:16.173Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 84,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.98,
+          "numericValue": 1353.196,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0.37,
+          "numericValue": 4506.392,
+          "numericUnit": "millisecond",
+          "displayValue": "4.5 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 1,
+          "numericValue": 1353.196,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 1,
+          "numericValue": 22,
+          "numericUnit": "millisecond",
+          "displayValue": "20 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "unitless",
+          "displayValue": "0",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 57.177,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 60 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.56,
+          "numericValue": 6738.593999999999,
+          "numericUnit": "millisecond",
+          "displayValue": "6.7 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1531263,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,495 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 1174.1920000000032,
+          "numericUnit": "millisecond",
+          "displayValue": "1.2 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 367.2079999999993,
+          "numericUnit": "millisecond",
+          "displayValue": "0.4 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 150,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 159 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-SPAN",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,5,MAIN,0,DIV,1,A,1,SPAN,1,SPAN",
+                  "selector": "div.space-y-5 > a.tactile > span.min-w-0 > span.mt-0.5",
+                  "boundingRect": {
+                    "top": 231,
+                    "bottom": 250,
+                    "left": 83,
+                    "right": 316,
+                    "width": 233,
+                    "height": 19
+                  },
+                  "snippet": "<span class=\"mt-0.5 block truncate text-[12.5px]\" style=\"color:var(--app-ink-3)\">",
+                  "nodeLabel": "The nearest one open, near you"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 451.598,
+                "percent": "10%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 4054.794,
+                "percent": "90%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 116,
+        "numScripts": 32,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 1849,
+        "numTasksOver10ms": 3,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.109,
+        "throughput": 167100883.73800465,
+        "maxRtt": 0.109,
+        "maxServerLatency": 1.5979999999999999,
+        "totalByteWeight": 1531263,
+        "totalTaskTime": 293.54799999999915,
+        "mainDocumentTransferSize": 52901
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "place-brewers-alley",
+      "path": "/places/brewers-alley-frederick",
+      "requestedUrl": "http://127.0.0.1:3108/places/brewers-alley-frederick",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/places/brewers-alley-frederick",
+      "fetchTime": "2026-07-14T16:52:27.805Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 80,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.98,
+          "numericValue": 1353.1238,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0.2,
+          "numericValue": 5409.3714,
+          "numericUnit": "millisecond",
+          "displayValue": "5.4 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 0.98,
+          "numericValue": 2524.0272845581812,
+          "numericUnit": "millisecond",
+          "displayValue": "2.5 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 1,
+          "numericValue": 10.499999999999545,
+          "numericUnit": "millisecond",
+          "displayValue": "10 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0.0016911354315804793,
+          "numericUnit": "unitless",
+          "displayValue": "0.002",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 23.977,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 20 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.6,
+          "numericValue": 6381.703310000001,
+          "numericUnit": "millisecond",
+          "displayValue": "6.4 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1813432,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,771 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 1116.6160000000064,
+          "numericUnit": "millisecond",
+          "displayValue": "1.1 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 414.3799999999986,
+          "numericUnit": "millisecond",
+          "displayValue": "0.4 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 600,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 158 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 0.5,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 410 KiB",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 0.5,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 338 KiB",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-SPAN",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,2,HEADER,0,DIV,1,BUTTON,1,SPAN",
+                  "selector": "header.sticky > div.mx-auto > button.tap-44 > span.truncate",
+                  "boundingRect": {
+                    "top": 18,
+                    "bottom": 38,
+                    "left": 93,
+                    "right": 254,
+                    "width": 161,
+                    "height": 20
+                  },
+                  "snippet": "<span class=\"truncate text-left\">",
+                  "nodeLabel": "Search places, events, towns…"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 451.5619,
+                "percent": "8%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 4957.8095,
+                "percent": "92%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 116,
+        "numScripts": 33,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 2271,
+        "numTasksOver10ms": 3,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.0141,
+        "throughput": 239990177.03792283,
+        "maxRtt": 0.0141,
+        "maxServerLatency": 1.5619,
+        "totalByteWeight": 1813432,
+        "totalTaskTime": 279.1540000000001,
+        "mainDocumentTransferSize": 46786
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "event-alive-at-five",
+      "path": "/events/alive-at-five-2026-07-16",
+      "requestedUrl": "http://127.0.0.1:3108/events/alive-at-five-2026-07-16",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/events/alive-at-five-2026-07-16",
+      "fetchTime": "2026-07-14T16:52:41.097Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 83,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.98,
+          "numericValue": 1352.8094,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0.33,
+          "numericValue": 4655.6188,
+          "numericUnit": "millisecond",
+          "displayValue": "4.7 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 1,
+          "numericValue": 1352.8094,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 1,
+          "numericValue": 23,
+          "numericUnit": "millisecond",
+          "displayValue": "20 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0.003496323618626999,
+          "numericUnit": "unitless",
+          "displayValue": "0.003",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 18.448999999999998,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 20 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.55,
+          "numericValue": 6807.064100000003,
+          "numericUnit": "millisecond",
+          "displayValue": "6.8 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1556457,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,520 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 1413.0040000000056,
+          "numericUnit": "millisecond",
+          "displayValue": "1.4 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 348.8159999999981,
+          "numericUnit": "millisecond",
+          "displayValue": "0.3 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 150,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 159 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 0.5,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 284 KiB",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 0.5,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 274 KiB",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-0-P",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,3,MAIN,0,DIV,1,HEADER,1,DIV,2,P",
+                  "selector": "div.space-y-6 > header.shader-rim > div.space-y-3 > p.text-[15px]",
+                  "boundingRect": {
+                    "top": 458,
+                    "bottom": 727,
+                    "left": 37,
+                    "right": 338,
+                    "width": 301,
+                    "height": 268
+                  },
+                  "snippet": "<p class=\"text-[15px] leading-relaxed\" style=\"color:var(--app-ink-2)\">",
+                  "nodeLabel": "La Unica headlines Alive @ Five at the Carroll Creek Amphitheater. It is Downto…"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 451.4047,
+                "percent": "10%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 0,
+                "percent": "0%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 4204.2141,
+                "percent": "90%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 79,
+        "numScripts": 32,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 2593,
+        "numTasksOver10ms": 4,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.015299999999999998,
+        "throughput": 249609997.8759187,
+        "maxRtt": 0.015299999999999998,
+        "maxServerLatency": 1.4046999999999998,
+        "totalByteWeight": 1556457,
+        "totalTaskTime": 353.25099999999367,
+        "mainDocumentTransferSize": 44894
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    },
+    {
+      "route": "town-frederick",
+      "path": "/m/frederick",
+      "requestedUrl": "http://127.0.0.1:3108/m/frederick",
+      "finalDisplayedUrl": "http://127.0.0.1:3108/m/frederick",
+      "fetchTime": "2026-07-14T16:52:53.158Z",
+      "lighthouseVersion": "12.8.2",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+      "performanceScore": 75,
+      "metrics": {
+        "first-contentful-paint": {
+          "id": "first-contentful-paint",
+          "title": "First Contentful Paint",
+          "score": 0.99,
+          "numericValue": 1203.3117,
+          "numericUnit": "millisecond",
+          "displayValue": "1.2 s",
+          "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/)."
+        },
+        "largest-contentful-paint": {
+          "id": "largest-contentful-paint",
+          "title": "Largest Contentful Paint",
+          "score": 0,
+          "numericValue": 9473.1819,
+          "numericUnit": "millisecond",
+          "displayValue": "9.5 s",
+          "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)"
+        },
+        "interaction-to-next-paint": null,
+        "speed-index": {
+          "id": "speed-index",
+          "title": "Speed Index",
+          "score": 1,
+          "numericValue": 1203.3117,
+          "numericUnit": "millisecond",
+          "displayValue": "1.2 s",
+          "description": "Speed Index shows how quickly the contents of a page are visibly populated. [Learn more about the Speed Index metric](https://developer.chrome.com/docs/lighthouse/performance/speed-index/)."
+        },
+        "total-blocking-time": {
+          "id": "total-blocking-time",
+          "title": "Total Blocking Time",
+          "score": 1,
+          "numericValue": 46,
+          "numericUnit": "millisecond",
+          "displayValue": "50 ms",
+          "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/)."
+        },
+        "cumulative-layout-shift": {
+          "id": "cumulative-layout-shift",
+          "title": "Cumulative Layout Shift",
+          "score": 1,
+          "numericValue": 0.0016991433910068187,
+          "numericUnit": "unitless",
+          "displayValue": "0.002",
+          "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls)."
+        },
+        "server-response-time": {
+          "id": "server-response-time",
+          "title": "Initial server response time was short",
+          "score": 1,
+          "numericValue": 4.307,
+          "numericUnit": "millisecond",
+          "displayValue": "Root document took 0 ms",
+          "description": "Keep the server response time for the main document short because all other requests depend on it. [Learn more about the Time to First Byte metric](https://developer.chrome.com/docs/lighthouse/performance/time-to-first-byte/)."
+        },
+        "interactive": {
+          "id": "interactive",
+          "title": "Time to Interactive",
+          "score": 0.3,
+          "numericValue": 9503.51307,
+          "numericUnit": "millisecond",
+          "displayValue": "9.5 s",
+          "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/)."
+        },
+        "total-byte-weight": {
+          "id": "total-byte-weight",
+          "title": "Avoids enormous network payloads",
+          "score": 1,
+          "numericValue": 1369780,
+          "numericUnit": "byte",
+          "displayValue": "Total size was 1,338 KiB",
+          "description": "Large network payloads cost users real money and are highly correlated with long load times. [Learn how to reduce payload sizes](https://developer.chrome.com/docs/lighthouse/performance/total-byte-weight/)."
+        },
+        "mainthread-work-breakdown": {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimizes main-thread work",
+          "score": 1,
+          "numericValue": 780.3119999999988,
+          "numericUnit": "millisecond",
+          "displayValue": "0.8 s",
+          "description": "Consider reducing the time spent parsing, compiling and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to minimize main-thread work](https://developer.chrome.com/docs/lighthouse/performance/mainthread-work-breakdown/)"
+        },
+        "bootup-time": {
+          "id": "bootup-time",
+          "title": "JavaScript execution time",
+          "score": 1,
+          "numericValue": 347.52399999999835,
+          "numericUnit": "millisecond",
+          "displayValue": "0.3 s",
+          "description": "Consider reducing the time spent parsing, compiling, and executing JS. You may find delivering smaller JS payloads helps with this. [Learn how to reduce Javascript execution time](https://developer.chrome.com/docs/lighthouse/performance/bootup-time/)."
+        },
+        "unused-javascript": {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "score": 0,
+          "numericValue": 900,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 159 KiB",
+          "description": "Reduce unused JavaScript and defer loading scripts until they are required to decrease bytes consumed by network activity. [Learn how to reduce unused JavaScript](https://developer.chrome.com/docs/lighthouse/performance/unused-javascript/)."
+        },
+        "uses-responsive-images": {
+          "id": "uses-responsive-images",
+          "title": "Properly size images",
+          "score": 0,
+          "numericValue": 250,
+          "numericUnit": "millisecond",
+          "displayValue": "Est savings of 101 KiB",
+          "description": "Serve images that are appropriately-sized to save cellular data and improve load time. [Learn how to size images](https://developer.chrome.com/docs/lighthouse/performance/uses-responsive-images/)."
+        },
+        "uses-optimized-images": {
+          "id": "uses-optimized-images",
+          "title": "Efficiently encode images",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Optimized images load faster and consume less cellular data. [Learn how to efficiently encode images](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)."
+        },
+        "modern-image-formats": {
+          "id": "modern-image-formats",
+          "title": "Serve images in next-gen formats",
+          "score": 1,
+          "numericValue": 0,
+          "numericUnit": "millisecond",
+          "displayValue": "",
+          "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/)."
+        }
+      },
+      "lcpElement": {
+        "type": "list",
+        "items": [
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "node",
+                "valueType": "node",
+                "label": "Element"
+              }
+            ],
+            "items": [
+              {
+                "node": {
+                  "type": "node",
+                  "lhId": "page-1-IMG",
+                  "path": "1,HTML,1,BODY,4,DIV,0,DIV,0,DIV,3,MAIN,0,DIV,3,HEADER,0,DIV,0,IMG",
+                  "selector": "div.relative > header.relative > div.relative > img.absolute",
+                  "boundingRect": {
+                    "top": 81,
+                    "bottom": 289,
+                    "left": 16,
+                    "right": 359,
+                    "width": 343,
+                    "height": 208
+                  },
+                  "snippet": "<img alt=\"Carroll Creek Promenade in downtown Frederick — brick buildings, the water…\" decoding=\"async\" data-nimg=\"fill\" class=\"absolute inset-0 object-cover\" style=\"position: absolute; height: 100%; width: 100%; inset: 0px;\" sizes=\"(max-width: 720px) 100vw, 720px\" srcset=\"/_next/image?url=https%3A%2F%2Fcommons.wikimedia.org%2Fwiki%2FSpecial%3AFi…\" src=\"http://127.0.0.1:3108/_next/image?url=https%3A%2F%2Fcommons.wikimedia.org%…\">",
+                  "nodeLabel": "Carroll Creek Promenade in downtown Frederick — brick buildings, the water feat…"
+                }
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "headings": [
+              {
+                "key": "phase",
+                "valueType": "text",
+                "label": "Phase"
+              },
+              {
+                "key": "percent",
+                "valueType": "text",
+                "label": "% of LCP"
+              },
+              {
+                "key": "timing",
+                "valueType": "ms",
+                "label": "Timing"
+              }
+            ],
+            "items": [
+              {
+                "phase": "TTFB",
+                "timing": 451.65585,
+                "percent": "5%"
+              },
+              {
+                "phase": "Load Delay",
+                "timing": 165.25291026691207,
+                "percent": "2%"
+              },
+              {
+                "phase": "Load Time",
+                "timing": 8613.147018158066,
+                "percent": "91%"
+              },
+              {
+                "phase": "Render Delay",
+                "timing": 243.1261215750219,
+                "percent": "3%"
+              }
+            ]
+          }
+        ]
+      },
+      "diagnostics": {
+        "numRequests": 78,
+        "numScripts": 31,
+        "numStylesheets": 3,
+        "numFonts": 4,
+        "numTasks": 1457,
+        "numTasksOver10ms": 3,
+        "numTasksOver25ms": 0,
+        "numTasksOver50ms": 0,
+        "numTasksOver100ms": 0,
+        "numTasksOver500ms": 0,
+        "rtt": 0.01515,
+        "throughput": 182582583.86008465,
+        "maxRtt": 0.01515,
+        "maxServerLatency": 1.6558499999999998,
+        "totalByteWeight": 1369780,
+        "totalTaskTime": 195.0780000000009,
+        "mainDocumentTransferSize": 30659
+      },
+      "note": "Navigation-mode Lighthouse cannot produce field INP without real-user interactions. TBT is retained as a lab responsiveness proxy."
+    }
+  ]
+}

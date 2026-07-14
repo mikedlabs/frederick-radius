@@ -195,7 +195,7 @@ function Specimen({ p, active, onSelect }: { p: Ac; active: boolean; onSelect: (
           <p
             className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums"
             style={{ color: "var(--app-ink-2)" }}
-            title={`${p.route.from?.name ?? "Unknown origin"} → ${p.route.to?.name ?? "Unknown destination"}`}
+            title={`${p.route.from?.name ?? "Origin unknown"} → ${p.route.to?.name ?? "Arrival unknown"}`}
           >
             <span>{p.route.from?.iata ?? "???"}</span>
             <span aria-hidden style={{ color: "var(--app-ink-3)" }}>→</span>

@@ -41,6 +41,7 @@ export default function PlacePhotoGallery({
               src={url}
               alt=""
               fill
+              unoptimized={url.startsWith("/api/place-photo")}
               loading="lazy"
               sizes="160px"
               placeholder="blur"

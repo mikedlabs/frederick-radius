@@ -1,14 +1,15 @@
 /**
- * /api/beta/email — optional launch-news signup from the beta wall.
+ * /api/beta/email — personal-access-code request from the beta wall.
  *
  *   POST { email }
  *
  * Unauthenticated (it lives OUTSIDE the wall by definition) + fail-soft like
  * /api/commerce/report-link: if the table isn't migrated or the DB is absent
  * it degrades to ok:false so the UI can apologize without a hard error.
- * Rate-limited per IP so the open endpoint can't be used to bulk-insert junk;
- * duplicate emails no-op via the unique index (signing up twice reads as
- * success, which is the honest UX).
+ * Rate-limited per IP so the open endpoint can't be used to bulk-insert junk.
+ * Duplicate emails keep their one signup row, but still retry invite delivery:
+ * inviteEmail reuses the existing active personal code instead of minting a
+ * different one.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
@@ -42,25 +43,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid-email" }, { status: 400, headers: noStore });
   }
   const db = getDb();
-  if (!db) return NextResponse.json({ ok: false, db: false }, { headers: noStore });
+  if (!db) {
+    return NextResponse.json(
+      { ok: false, sent: false, stored: false, db: false },
+      { headers: noStore },
+    );
+  }
   try {
     const inserted = await db
       .insert(beta_emails)
       .values({ email })
       .onConflictDoNothing()
       .returning({ id: beta_emails.id });
+    // Always try delivery, including on a duplicate request. mintCodeForEmail
+    // reuses the existing non-revoked code, which makes a retry useful after a
+    // transient Resend/configuration failure without creating a second signup.
+    const invite = await inviteEmail(email);
     // Owner alert on genuinely NEW signups only (a duplicate signup inserts
     // nothing and stays silent). Push failure never fails the signup.
     const id = inserted[0]?.id;
     if (id) {
-      // Auto-invite: mint the personal access code and email it. Fail-soft
-      // twice over — without RESEND_API_KEY the code still mints and the
-      // owner alert says so, so nothing is silently lost.
-      const invite = await inviteEmail(email);
       try {
         await fanoutToTopic(OWNER_ALERTS_TOPIC, `signup:${id}`, {
           title: "New beta signup",
-          body: `${email} · ${invite.sent ? "code emailed" : invite.code ? "code minted, email not configured" : "code mint failed"}`,
+          body: `${email} · ${invite.sent ? "code emailed" : invite.code ? "code minted, email not delivered" : "code mint failed"}`,
           url: "/admin/beta",
         });
       } catch (err) {
@@ -70,9 +76,18 @@ export async function POST(req: NextRequest) {
         );
       }
     }
-    return NextResponse.json({ ok: true }, { headers: noStore });
+    // `stored` describes the fail-soft signup retention; `sent` (and therefore
+    // `ok`) is true only when Resend accepted the invite. The client must never
+    // turn a stored-but-unsent request into a "Sent" confirmation.
+    return NextResponse.json(
+      { ok: invite.sent, sent: invite.sent, stored: true },
+      { headers: noStore },
+    );
   } catch {
     // Table not migrated yet, or transient DB failure — benign degrade.
-    return NextResponse.json({ ok: false }, { headers: noStore });
+    return NextResponse.json(
+      { ok: false, sent: false, stored: false },
+      { headers: noStore },
+    );
   }
 }

@@ -160,7 +160,7 @@ export default async function BetaCodesAdmin() {
                         </span>
                         <span aria-hidden>·</span>
                         <span className="font-mono tabular-nums">
-                          {r.uses} {r.uses === 1 ? "unlock" : "unlocks"}
+                          {r.uses} {r.uses === 1 ? "use" : "uses"}
                         </span>
                         {r.last_seen_at && (
                           <>

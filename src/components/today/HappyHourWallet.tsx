@@ -229,7 +229,14 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                 {/* Photo thumbnail — text stays on paper beside it (readable). */}
                 <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]" style={{ backgroundColor: "var(--app-brand-2)" }}>
                   {pour.photo ? (
-                    <Image src={pour.photo} alt="" fill sizes="72px" className="object-cover" />
+                    <Image
+                      src={pour.photo}
+                      alt=""
+                      fill
+                      unoptimized={pour.photo.startsWith("/api/place-photo")}
+                      sizes="72px"
+                      className="object-cover"
+                    />
                   ) : (
                     <PhotoFallback />
                   )}

@@ -184,9 +184,13 @@ export default function RightNow({
   // Origin precedence: a precise device fix → the coarse edge-IP seed → Downtown.
   // The IP seed only improves the fallback RANKING; printed distances stay gated
   // on `hasFix` so we never claim a precision we don't have.
-  const origin = hasFix
-    ? { lng: state.position.lng, lat: state.position.lat }
-    : (approxOrigin ?? FREDERICK_CENTER);
+  const origin = useMemo(
+    () =>
+      state.status === "granted"
+        ? { lng: state.position.lng, lat: state.position.lat }
+        : (approxOrigin ?? FREDERICK_CENTER),
+    [state, approxOrigin],
+  );
 
   // The selection is either a noun craving or a time-aware meal occasion
   // (breakfast/lunch/dinner/brunch/late, arrived at via the /today meal tile).
@@ -421,7 +425,7 @@ export default function RightNow({
           // slid away), so this bar rides up with the chrome instead of
           // pinning 56px down and letting cards scroll visibly above it.
           top: "calc(var(--app-topbar-offset) + env(safe-area-inset-top))",
-          transition: "top 240ms var(--app-ease-out)",
+          transition: "top var(--app-dur-med) var(--app-ease-out)",
           borderColor: "var(--app-border)",
           background: "color-mix(in srgb, var(--app-bg) 92%, transparent)",
         }}

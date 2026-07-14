@@ -23,10 +23,10 @@ const TONE_INK: Record<Tone, string> = {
   neutral: "var(--app-ink)",
   muted: "var(--app-ink-3)",
   positive: "var(--app-positive)",
-  warning: "var(--app-warning)",
+  warning: "var(--app-warning-press)",
   danger: "var(--app-danger)",
   cool: "var(--app-cool)",
-  brand: "var(--app-brand)",
+  brand: "var(--app-brand-press)",
 };
 
 export function toneInk(tone: Tone = "neutral"): string {
@@ -63,7 +63,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
+    <main className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
       {(back || aside) && (
         <div className="flex items-center justify-between gap-3">
           {back ? (
@@ -96,7 +96,7 @@ export function AdminShell({
         ) : null}
       </header>
       {children}
-    </div>
+    </main>
   );
 }
 
@@ -296,7 +296,7 @@ export function HairlineRow({
   return (
     <li style={index > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       {href ? (
-        <Link href={href} className="flex items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]">
+        <Link href={href} className="flex min-h-11 items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]">
           {inner}
         </Link>
       ) : (
@@ -414,7 +414,12 @@ const ALIGN: Record<Align, string> = { left: "text-left", right: "text-right", c
 
 export function Table({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-3 overflow-x-auto">
+    <div
+      className="mt-3 overflow-x-auto rounded-[var(--app-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+      role="region"
+      aria-label="Scrollable data table"
+      tabIndex={0}
+    >
       <table className="w-full text-sm">{children}</table>
     </div>
   );
@@ -457,7 +462,7 @@ export function Td({ children, align = "left", tone = "neutral", mono, nums, sem
 type BtnVariant = "primary" | "positive" | "danger" | "ghost";
 
 const BTN_STYLE: Record<BtnVariant, React.CSSProperties> = {
-  primary: { background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" },
+  primary: { background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" },
   positive: { background: "var(--app-positive)", color: "#fff" },
   danger: { background: "var(--app-danger)", color: "#fff" },
   ghost: { color: "var(--app-ink-3)" },

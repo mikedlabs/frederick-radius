@@ -100,7 +100,7 @@ export default function HappyHourPage() {
 
       {rows.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          No happy hours on file yet. They&rsquo;re coming.
+          No current happy hours are on file. Know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
         </p>
       ) : (
         <HappyHourGuide rows={rows} today={today} nowMin={nowMin} />

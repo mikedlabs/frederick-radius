@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  */
 export default function Home() {
   return (
-    <main className="bg-[#030014] min-h-screen text-white overflow-hidden">
+    <main id="main-content" tabIndex={-1} className="bg-[#030014] min-h-screen text-white overflow-hidden">
       <MasterSceneManager />
     </main>
   );

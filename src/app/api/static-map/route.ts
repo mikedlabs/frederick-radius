@@ -25,7 +25,7 @@ const BBOX = { south: 39.265, west: -77.7, north: 39.745, east: -77.15 };
 
 // Fixed size + zoom allowlists keep the cache-key space tiny and stop
 // the route being used as a general-purpose Mapbox renderer.
-const SIZES = new Set(["640x352", "640x280"]);
+const SIZES = new Set(["640x352", "640x280", "320x150"]);
 const ZOOMS = new Set(["14.6"]);
 
 export async function GET(req: NextRequest) {

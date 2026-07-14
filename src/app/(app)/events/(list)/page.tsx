@@ -4,7 +4,13 @@ import { Building2 } from "lucide-react";
 import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
-import { buildHorizonBounds, horizonOf } from "@/lib/eventHorizon";
+import { buildHorizonBounds } from "@/lib/eventHorizon";
+import {
+  initialEventsForBrowse,
+  prepareEventsForBrowse,
+  slimEventForBrowse,
+  summarizeEventsForBrowse,
+} from "@/lib/events/browsePayload";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import EventCard from "@/components/event/EventCard";
@@ -18,87 +24,6 @@ import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
-
-/**
- * Slim an event before it crosses into a client component.
- *
- * The events page serializes every event twice: once as rendered HTML and
- * once as React Flight data in the script payload. A live audit measured
- * /events at 787 KB with 52 percent of that inside script tags. The cards
- * never render a description, and the only client consumer of the field is
- * the explorer search, which matches the opening text of the title, venue,
- * and description. Capping the description to its first 160 characters here
- * removes the largest per row field from the duplicated payload without
- * changing a single rendered card and without breaking search on the
- * opening sentence. The full description still lives on the event detail
- * page, which loads its own record.
- */
-function slimEventForClient<T extends { description?: string }>(e: T): T {
-  // Drop provenance fields no client surface renders (the explorer reads
-  // category_name + the rendered event fields only), then clamp long
-  // descriptions — both shrink the /events RSC payload + hydration.
-  const {
-    source_id: _si, license: _lic, confidence: _cf,
-    first_seen_at: _fs, last_verified_at: _lv, geo_confidence: _gc,
-    ...rest
-  } = e as T & {
-    source_id?: unknown; license?: unknown; confidence?: unknown;
-    first_seen_at?: unknown; last_verified_at?: unknown; geo_confidence?: unknown;
-  };
-  void _si; void _lic; void _cf; void _fs; void _lv; void _gc;
-  const slim = rest as unknown as T;
-  const d = slim.description;
-  if (!d || d.length <= 160) return slim;
-  return { ...slim, description: d.slice(0, 160) };
-}
-
-/**
- * Collapse recurring occurrences in the LATER horizon to one row per series.
- *
- * The serialized payload carried Preschool Storytime x4, Pour House Trivia x4,
- * Bluegrass Jam x4… — weekly series each occupying 3-4 rows of the 434-event
- * "Coming up" bucket, burying one-off events a local would plan around (and
- * padding the 1.1MB flight payload). Inside Today/Weekend/Week windows the
- * specific date matters, so occurrences stay; beyond them, one row per
- * title+venue with an honest "N upcoming dates" cadence line (EventCard
- * already renders recurrence_text). Keyed on normalized title+venue rather
- * than seriesKey because feed rows aren't reliably flagged is_recurring.
- */
-function collapseLaterSeries<E extends { slug: string; title: string; venue_name?: string; starts_at: string; ends_at: string; is_recurring?: boolean; recurrence_text?: string }>(
-  events: E[],
-  bounds: Parameters<typeof horizonOf>[1],
-): E[] {
-  const out: E[] = [];
-  const reps = new Map<string, E>();
-  const counts = new Map<string, number>();
-  const sorted = [...events].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  for (const e of sorted) {
-    if (horizonOf(e, bounds) !== "later") {
-      out.push(e);
-      continue;
-    }
-    const key = `${e.title.trim().toLowerCase()}@@${(e.venue_name ?? "").trim().toLowerCase()}`;
-    const rep = reps.get(key);
-    if (!rep) {
-      reps.set(key, e);
-      counts.set(key, 1);
-      out.push(e);
-    } else {
-      counts.set(key, (counts.get(key) ?? 1) + 1);
-    }
-  }
-  // Stamp the honest cadence on representatives that actually absorbed rows.
-  return out.map((e) => {
-    const key = `${e.title.trim().toLowerCase()}@@${(e.venue_name ?? "").trim().toLowerCase()}`;
-    const n = counts.get(key) ?? 1;
-    if (n <= 1 || reps.get(key) !== e) return e;
-    return {
-      ...e,
-      is_recurring: true,
-      recurrence_text: e.recurrence_text ?? `${n} upcoming dates`,
-    };
-  });
-}
 
 export const metadata: Metadata = {
   alternates: { canonical: "/events" },
@@ -145,17 +70,13 @@ export const revalidate = 300;
  * inside their own <Suspense> boundaries, so a cold ISR miss streams the board
  * in instead of holding the whole page on the slowest third-party feed.
  *
- * STATIC (ISR) RESTRUCTURE (owner-approved 2026-07): this page no longer
- * reads `searchParams` — in Next 16 that single read opted the route out
- * of static rendering, so EVERY request (worst: the first after a deploy)
- * re-rendered server-side against cold feed caches (~8s TTFB). The
- * deep-link view (?cats/?m/?when/?d) is now parsed CLIENT-side inside
- * EventsExplorer/EventWeekRibbon (nuqs already owned the other params);
- * the app-level template remounts per navigation, so mount-time parsing
- * is equivalent to the old server parse. Tradeoff: the board region
- * (ribbon + explorer) client-renders behind the Suspense boundary below —
- * its skeleton is what the prebuilt HTML carries — while the masthead,
- * JSON-LD, civic sections, and footer stay fully prerendered.
+ * STATIC + BOUNDED SSR (owner-approved 2026-07): this page does not read
+ * `searchParams`, keeping the route on five-minute ISR instead of paying a
+ * cold feed render on every request. EventsExplorer uses server-safe defaults,
+ * so the prebuilt HTML now contains real horizon cards instead of a client-only
+ * skeleton. It receives six cards per horizon plus compact count summaries;
+ * filters, expansion, sorting and alternate views fetch the full cached set
+ * from /api/events/browse only after hydration and explicit browsing intent.
  */
 export default async function EventsIndexPage() {
   const now = new Date();
@@ -185,13 +106,15 @@ export default async function EventsIndexPage() {
           boundary below so the route stays a static (ISR) shell. */}
       <Suspense
         fallback={
-          <SlowSuspenseFallback
-            label="Events are taking longer than usual to load."
-            altHref="/map"
-            altLabel="Open the map"
-          >
-            <Skeleton.Block height={420} round="var(--app-radius-lg)" />
-          </SlowSuspenseFallback>
+          <div className="min-h-[calc(100dvh-var(--app-topbar-h))]">
+            <SlowSuspenseFallback
+              label="Events are taking longer than usual to load."
+              altHref="/map"
+              altLabel="Open the map"
+            >
+              <Skeleton.Block height={420} round="var(--app-radius-lg)" />
+            </SlowSuspenseFallback>
+          </div>
         }
       >
         <EventsBoard now={now} eventsPromise={eventsPromise} />
@@ -254,12 +177,8 @@ async function EventsBoard({
       getIngestedSeries().catch(() => []),
       getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
     ]);
-  // Slim every event before it crosses into a client component. Cards never
-  // render a description, and only the explorer search reads it, so capping
-  // it removes the largest per row field from the duplicated RSC payload.
-  const allEvents = publicEvents.map(slimEventForClient);
-  const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForClient);
-  const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForClient);
+  const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForBrowse);
+  const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForBrowse);
   const liveSlugs = seedLive.map((e) => e.slug);
 
   // The ingested "Civic & municipal calendar" series is a SEPARATE data
@@ -295,11 +214,11 @@ async function EventsBoard({
     }));
 
   // Facet lists, only for values actually present.
-  const catSlugs = [...new Set(allEvents.map((e) => e.category).filter(Boolean))];
+  const catSlugs = [...new Set(publicEvents.map((e) => e.category).filter(Boolean))];
   const categories = catSlugs
     .map((s) => ({ slug: s, name: CATEGORY_BY_SLUG[s]?.name ?? s }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const townSlugs = [...new Set(allEvents.map((e) => e.municipality).filter(Boolean))];
+  const townSlugs = [...new Set(publicEvents.map((e) => e.municipality).filter(Boolean))];
   const towns = townSlugs
     .map((s) => ({ slug: s, name: MUNICIPALITY_BY_SLUG[s]?.name ?? s }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -311,10 +230,14 @@ async function EventsBoard({
   // it was already the weekend (so a Saturday showed next weekend). next24
   // is the next Eastern midnight, so "Today" never spills into tomorrow.
   const bounds = buildHorizonBounds(now, new Set(liveSlugs));
-  // Collapse the Coming-up series repeats now that the horizon bounds exist;
-  // everything downstream (explorer, facets already computed above) sees the
-  // deduplicated set.
-  const eventsForExplorer = collapseLaterSeries(allEvents, bounds);
+  // Build one compact complete collection, then serialize only a useful first
+  // window into the page. The complete set stays behind /api/events/browse and
+  // is fetched only after an explicit filter, expansion, sort or view change.
+  // This is the main /events payload fix: the first response no longer embeds
+  // hundreds of event records in both HTML and React Flight data.
+  const browseEvents = prepareEventsForBrowse(publicEvents, bounds);
+  const initialEvents = initialEventsForBrowse(browseEvents, bounds);
+  const browseSummary = summarizeEventsForBrowse(browseEvents, bounds);
   const friday = new Date(bounds.weekendStart);
   const monday = new Date(bounds.weekendEnd);
   const todayEnd = new Date(bounds.next24);
@@ -328,7 +251,7 @@ async function EventsBoard({
   // next public events, mirroring what the page renders.
   const eventsJsonLd = itemListJsonLd(
     "Events in Frederick County",
-    allEvents.slice(0, 25).map((e) => ({ name: e.title, path: `/events/${e.slug}` })),
+    browseEvents.slice(0, 25).map((e) => ({ name: e.title, path: `/events/${e.slug}` })),
   );
 
   return (
@@ -346,26 +269,23 @@ async function EventsBoard({
           the explorer's quick doorways + reflowing horizon spine (feature
           lead + glance cards) + map + search are now the single results
           region, so every event lands in exactly one place. */}
-      {/* The board reads the live URL via useSearchParams, so in this STATIC
-          route it client-renders up to this boundary — the prebuilt HTML
-          carries the skeleton, and the board mounts on hydration with the
-          deep-linked view already applied (no default-view flash: there is
-          no server-rendered board to flash from). Everything outside this
-          boundary stays prerendered. The 7-day week ribbon (?d=) now lives
-          inside the masthead-dock's When pane, so it is no longer rendered
-          standalone here. */}
-      <Suspense fallback={<Skeleton.Block height={480} round="var(--app-radius-lg)" />}>
+      {/* EventsExplorer intentionally avoids router query hooks so this STATIC
+          route can server-render its useful first horizon. URL preferences are
+          applied after hydration; any non-default view then requests the cached
+          continuation endpoint. The week ribbon remains in the When pane. */}
+      <div className="min-h-[calc(100dvh-var(--app-topbar-h))]">
         <EventsExplorer
-          events={eventsForExplorer}
+          events={initialEvents}
           liveSlugs={liveSlugs}
           categories={categories}
           towns={towns}
+          summary={browseSummary}
           nowISO={now.toISOString()}
           next24ISO={todayEnd.toISOString()}
           weekendStartISO={friday.toISOString()}
           weekendEndISO={monday.toISOString()}
         />
-      </Suspense>
+      </div>
 
       {/* ── 6b. GOVERNMENT & NOTICES — civic meetings + town reminders,
           fenced off from social discovery by a clear divider + label so

@@ -186,6 +186,10 @@ const OVERPASS_ENDPOINTS = [
 
 export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
   const body = `data=${encodeURIComponent(QUERY(FREDERICK_COUNTY_BBOX))}`;
+  // Volunteer Overpass endpoints are best-effort enrichment. One total
+  // deadline prevents sequential endpoint retries from lingering for a
+  // minute after the map itself is already useful.
+  const signal = AbortSignal.timeout(10000);
 
   let data: OverpassResponse | null = null;
   for (const endpoint of OVERPASS_ENDPOINTS) {
@@ -194,6 +198,7 @@ export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
         body,
+        signal,
       });
       if (!res.ok) continue;
       data = (await res.json()) as OverpassResponse;

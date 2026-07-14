@@ -98,7 +98,7 @@ export default async function Page() {
     const g = monocacy.gageHeightFt;
     const s = monocacy.floodStages;
     if (g >= s.minor) return { word: "Flooding", color: "var(--app-brand)" };
-    if (g >= s.action) return { word: "Elevated · watch", color: "var(--app-accent)" };
+    if (g >= s.action) return { word: "Above normal · watch", color: "var(--app-accent)" };
     return { word: "Normal", color: "var(--app-brand-2)" };
   })();
   const worstAqi = air ? pickWorstAqi(air) : null;

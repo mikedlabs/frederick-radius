@@ -5,11 +5,12 @@
 -- The beta wall shipped with ONE shared password (lib/beta-gate.ts): everyone
 -- who comes in is anonymous and identical, there is no way to see who is
 -- actually using the app, and a leaked password can only be fixed by rotating
--- it on EVERY tester at once. Per-user codes fix all three: each person gets
--- their own readable code (e.g. "frederick-ada7"), the code rides into the
--- analytics cohort so usage is attributable, and a single tester can be
--- revoked without touching anyone else. The shared BETA_PASSWORD stays as an
--- owner master key alongside these.
+-- it on EVERY tester at once. Per-user codes fix all three internally: each
+-- person gets their own readable code (e.g. "frederick-ada7"), first/recent
+-- use can be recorded on that access row, and a single tester can be revoked
+-- without touching anyone else. Third-party analytics receives only an
+-- aggregate beta-active event, never the code or email label. The shared
+-- BETA_PASSWORD stays as an owner master key alongside these.
 --
 -- Additive + RLS deny-all, matching the rest of the schema: every write goes
 -- through the BYPASSRLS server role via /api/beta + /admin/beta-codes; anon/

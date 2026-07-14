@@ -196,17 +196,15 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
   }, [placeRefsAll, recentSlugs, notes, beenSlugs]);
 
-  // null = not yet fetched (or pre-mount); empty Map = fetched with no
-  // matches. Distinguishing the two lets the render gate show a
-  // skeleton ONLY while the request is in flight, not when the user
-  // genuinely has nothing saved.
-  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData> | null>(null);
+  // Start empty so a truly blank device can render its honest empty state in
+  // the server shell. When saved slugs hydrate, `placesPending` below detects
+  // missing records and swaps in the stable loading region until one request
+  // resolves them.
+  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData>>(() => new Map());
 
   useEffect(() => {
     if (!mounted) return;
     if (slugsToFetch.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: when nothing is saved, render the "empty Map = fetched, no matches" branch so the skeleton stops spinning
-      setPlacesBySlug(new Map());
       return;
     }
     const ctrl = new AbortController();
@@ -574,13 +572,10 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     return m;
   }, [items]);
 
-  // Show the skeleton in two cases: before the device-local items
-  // resolve (mounted=false) AND while the /api/places/by-slugs round
-  // trip is in flight. Both windows are short; the matched layout
-  // avoids any jump when content arrives.
-  if (!mounted || placesBySlug === null) {
+  const placesPending = slugsToFetch.some((slug) => !placesBySlug.has(slug));
+  if (placesPending) {
     return (
-      <div aria-busy="true" className="space-y-4">
+      <div aria-busy="true" className="min-h-[34rem] space-y-4">
         <Masthead stand="Your field guide" />
         <div className="space-y-3">
           <Skeleton.Block height={46} round="var(--app-radius-sm)" />
@@ -598,7 +593,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // (placesBySlug is resolved by here, so both lists are final — no flash.)
   if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="min-h-[34rem] space-y-4">
         <Masthead stand={<>Your field guide · {userEmail ?? "on this device"}</>} />
         <EmptyState />
       </div>
@@ -857,7 +852,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
                       )}
                     </div>
                   </header>
-                  <ul className="grid gap-2 lg:grid-cols-2">
+                  <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                     {group.map((p) => (
                       <li key={p.slug}>
                         <PlaceCard place={p} />
@@ -868,7 +863,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
               ))}
             </div>
           ) : (
-            <ul className="grid gap-2 lg:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {places.map((p) => (
                 <li key={p.slug}>
                   <PlaceCard place={p} />
@@ -1110,7 +1105,7 @@ function EmptyState() {
     { title: "Routes", desc: "String saved stops into one good day out." },
   ];
   const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
-    { href: "/today", label: "Find", Icon: Search },
+    { href: "/search", label: "Search", Icon: Search },
     { href: "/map", label: "Map", Icon: MapPin },
     { href: "/events", label: "Events", Icon: Calendar },
     { href: "/towns", label: "Towns", Icon: Building2 },

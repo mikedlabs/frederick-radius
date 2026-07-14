@@ -54,7 +54,7 @@ export type WaterSite = {
   observedAt?: string;
   /** Time-series history of gage height readings (newest last), when
    *  fetched via getFrederickWaterSitesWithHistory(). Each gauge
-   *  reports every ~15 min, so a 24h window has ~96 readings. */
+   *  reports every ~15 min, so 6h has ~24 and 24h has ~96 readings. */
   gageHistory?: Reading[];
   streamflowHistory?: Reading[];
   /** NWS flood thresholds, present only for NWS forecast-point gauges. */
@@ -193,15 +193,15 @@ export async function getFrederickWaterSites(): Promise<WaterSite[]> {
 /**
  * Same as getFrederickWaterSites() but each WaterSite also carries
  * gageHistory / streamflowHistory arrays for the last `period`
- * window. Period is a USGS ISO-8601 duration: "P1D" = 1 day,
- * "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
+ * window. Period is a USGS ISO-8601 duration: "PT6H" = 6 hours,
+ * "P1D" = 1 day, "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
  * (every 15 min) and is what the /rivers dashboard sparklines render.
  *
  * History readings are sorted oldest-first so a sparkline can draw
  * left-to-right without re-sorting.
  */
 export async function getFrederickWaterSitesWithHistory(
-  period: "P1D" | "P7D" = "P1D",
+  period: "PT6H" | "P1D" | "P7D" = "P1D",
 ): Promise<WaterSite[]> {
   const endpoint = `${ENDPOINT}&period=${period}`;
   const ctrl = new AbortController();

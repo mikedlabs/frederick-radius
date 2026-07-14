@@ -47,7 +47,10 @@ export function getWantAnswer(cKey: string, facet: string | null): Promise<unkno
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.promise;
 
-  const promise = fetch(url)
+  // This request is the direct result of a tap and paints the answer panel;
+  // keep it ahead of below-the-fold images and speculative page work that may
+  // still be settling on /today.
+  const promise = fetch(url, { priority: "high" })
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .catch((err) => {
       cache.delete(key);

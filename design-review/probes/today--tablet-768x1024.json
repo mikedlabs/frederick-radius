@@ -1,0 +1,2326 @@
+{
+  "route": {
+    "name": "today",
+    "path": "/today"
+  },
+  "viewport": {
+    "name": "tablet-768x1024",
+    "width": 768,
+    "height": 1024
+  },
+  "responseStatus": 200,
+  "elapsedMs": 3572,
+  "screenshot": "screenshots/today--tablet-768x1024--baseline.png",
+  "consoleMessages": [],
+  "pageErrors": [],
+  "title": "Today in Frederick County · Frederick Radius",
+  "url": "http://127.0.0.1:3107/today",
+  "document": {
+    "clientWidth": 768,
+    "scrollWidth": 768,
+    "scrollHeight": 3820,
+    "horizontalOverflow": 0
+  },
+  "cls": 0.01328,
+  "fonts": {
+    "status": "loaded",
+    "loadedFamilies": [
+      "Fraunces",
+      "Fraunces Fallback",
+      "Inter",
+      "Inter Fallback",
+      "JetBrains Mono",
+      "JetBrains Mono Fallback",
+      "__nextjs-Geist",
+      "__nextjs-Geist Mono"
+    ]
+  },
+  "landmarks": {
+    "main": 1,
+    "nav": 3,
+    "header": 5,
+    "footer": 1
+  },
+  "headings": [
+    {
+      "level": 1,
+      "text": "What’s worth your time in Frederick County right now",
+      "selector": "div > div > main > div > h1"
+    },
+    {
+      "level": 2,
+      "text": "Midday. Clear out, a good day to be outside.",
+      "selector": "main > div > section:nth-of-type(1) > section > h2"
+    },
+    {
+      "level": 2,
+      "text": "Ask Radius anything.",
+      "selector": "#today-ask-head"
+    },
+    {
+      "level": 2,
+      "text": "On now around the county",
+      "selector": "div > main > div > section:nth-of-type(3) > h2"
+    },
+    {
+      "level": 2,
+      "text": "I want to…",
+      "selector": "#i-want-eyebrow"
+    },
+    {
+      "level": 2,
+      "text": "Plan the moment",
+      "selector": "#curated-picks-heading"
+    },
+    {
+      "level": 3,
+      "text": "Walkable date night",
+      "selector": "ul > li:nth-of-type(1) > a > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 3,
+      "text": "Kid energy burners",
+      "selector": "ul > li:nth-of-type(2) > a > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 3,
+      "text": "Rainy day Frederick",
+      "selector": "ul > li:nth-of-type(3) > a > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 3,
+      "text": "Small finds",
+      "selector": "ul > li:nth-of-type(4) > a > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 2,
+      "text": "Today",
+      "selector": "section > header > div:nth-of-type(1) > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 3,
+      "text": "Making Pasta from Scratch",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 2,
+      "text": "On now",
+      "selector": "div > div:nth-of-type(6) > section > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 2,
+      "text": "Today’s specials",
+      "selector": "section > div:nth-of-type(1) > div:nth-of-type(1) > div > h2"
+    },
+    {
+      "level": 2,
+      "text": "Happy hour",
+      "selector": "#hh-wallet-eyebrow"
+    },
+    {
+      "level": 3,
+      "text": "Shuckin Shack Oyster Bar · Downtown Frederick",
+      "selector": "ul > li > a > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 2,
+      "text": "Pools open now",
+      "selector": "#pools-today-heading"
+    }
+  ],
+  "styles": {
+    "fontSize": [
+      {
+        "value": "16px",
+        "count": 570
+      },
+      {
+        "value": "12px",
+        "count": 53
+      },
+      {
+        "value": "12.5px",
+        "count": 52
+      },
+      {
+        "value": "10px",
+        "count": 43
+      },
+      {
+        "value": "11px",
+        "count": 39
+      },
+      {
+        "value": "14px",
+        "count": 29
+      },
+      {
+        "value": "13px",
+        "count": 25
+      },
+      {
+        "value": "10.5px",
+        "count": 23
+      },
+      {
+        "value": "18px",
+        "count": 19
+      },
+      {
+        "value": "15px",
+        "count": 14
+      },
+      {
+        "value": "9px",
+        "count": 8
+      },
+      {
+        "value": "13.5px",
+        "count": 7
+      },
+      {
+        "value": "9.5px",
+        "count": 6
+      },
+      {
+        "value": "20px",
+        "count": 3
+      },
+      {
+        "value": "11.5px",
+        "count": 3
+      },
+      {
+        "value": "17px",
+        "count": 2
+      },
+      {
+        "value": "19px",
+        "count": 2
+      },
+      {
+        "value": "30px",
+        "count": 1
+      },
+      {
+        "value": "44px",
+        "count": 1
+      },
+      {
+        "value": "15.5px",
+        "count": 1
+      }
+    ],
+    "fontWeight": [
+      {
+        "value": "400",
+        "count": 654
+      },
+      {
+        "value": "600",
+        "count": 177
+      },
+      {
+        "value": "700",
+        "count": 39
+      },
+      {
+        "value": "500",
+        "count": 30
+      },
+      {
+        "value": "300",
+        "count": 1
+      }
+    ],
+    "lineHeight": [
+      {
+        "value": "24px",
+        "count": 560
+      },
+      {
+        "value": "18.75px",
+        "count": 44
+      },
+      {
+        "value": "18px",
+        "count": 42
+      },
+      {
+        "value": "15px",
+        "count": 32
+      },
+      {
+        "value": "16.5px",
+        "count": 30
+      },
+      {
+        "value": "16px",
+        "count": 30
+      },
+      {
+        "value": "15.75px",
+        "count": 23
+      },
+      {
+        "value": "19.5px",
+        "count": 21
+      },
+      {
+        "value": "19.25px",
+        "count": 16
+      },
+      {
+        "value": "10px",
+        "count": 10
+      },
+      {
+        "value": "22.5px",
+        "count": 9
+      },
+      {
+        "value": "17.1875px",
+        "count": 8
+      },
+      {
+        "value": "9px",
+        "count": 8
+      },
+      {
+        "value": "20px",
+        "count": 7
+      },
+      {
+        "value": "20.25px",
+        "count": 7
+      },
+      {
+        "value": "14.25px",
+        "count": 6
+      },
+      {
+        "value": "20.7px",
+        "count": 6
+      },
+      {
+        "value": "13.75px",
+        "count": 5
+      },
+      {
+        "value": "20.625px",
+        "count": 5
+      },
+      {
+        "value": "17.875px",
+        "count": 5
+      },
+      {
+        "value": "15.4px",
+        "count": 4
+      },
+      {
+        "value": "21px",
+        "count": 4
+      },
+      {
+        "value": "15.8125px",
+        "count": 3
+      },
+      {
+        "value": "17.5px",
+        "count": 3
+      },
+      {
+        "value": "12.5px",
+        "count": 2
+      },
+      {
+        "value": "19px",
+        "count": 2
+      },
+      {
+        "value": "14px",
+        "count": 1
+      },
+      {
+        "value": "31.8px",
+        "count": 1
+      },
+      {
+        "value": "27.5px",
+        "count": 1
+      },
+      {
+        "value": "44px",
+        "count": 1
+      },
+      {
+        "value": "19.375px",
+        "count": 1
+      },
+      {
+        "value": "25px",
+        "count": 1
+      },
+      {
+        "value": "23.375px",
+        "count": 1
+      },
+      {
+        "value": "28px",
+        "count": 1
+      },
+      {
+        "value": "17px",
+        "count": 1
+      }
+    ],
+    "fontFamily": [
+      {
+        "value": "Inter, \"Inter Fallback\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "count": 718
+      },
+      {
+        "value": "ui-sans-serif, system-ui, sans-serif",
+        "count": 78
+      },
+      {
+        "value": "\"JetBrains Mono\", \"JetBrains Mono Fallback\", ui-monospace, monospace",
+        "count": 51
+      },
+      {
+        "value": "Fraunces, \"Fraunces Fallback\", ui-serif, Georgia, serif",
+        "count": 37
+      },
+      {
+        "value": "ui-monospace, monospace",
+        "count": 10
+      },
+      {
+        "value": "ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+        "count": 6
+      },
+      {
+        "value": "Inter, \"Inter Fallback\"",
+        "count": 1
+      }
+    ],
+    "color": [
+      {
+        "value": "rgb(22, 20, 14)",
+        "count": 313
+      },
+      {
+        "value": "rgb(92, 90, 80)",
+        "count": 134
+      },
+      {
+        "value": "rgb(238, 230, 212)",
+        "count": 90
+      },
+      {
+        "value": "rgb(66, 62, 52)",
+        "count": 38
+      },
+      {
+        "value": "color(srgb 0.606275 0.430196 0.106902)",
+        "count": 36
+      },
+      {
+        "value": "rgb(26, 26, 26)",
+        "count": 28
+      },
+      {
+        "value": "rgb(122, 121, 117)",
+        "count": 28
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 23
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 20
+      },
+      {
+        "value": "rgb(32, 80, 106)",
+        "count": 20
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 19
+      },
+      {
+        "value": "rgb(192, 135, 31)",
+        "count": 19
+      },
+      {
+        "value": "rgb(30, 107, 58)",
+        "count": 15
+      },
+      {
+        "value": "rgb(139, 111, 78)",
+        "count": 12
+      },
+      {
+        "value": "color(srgb 0.110118 0.337725 0.186039)",
+        "count": 11
+      },
+      {
+        "value": "color(srgb 0.116078 0.257255 0.329098)",
+        "count": 9
+      },
+      {
+        "value": "color(srgb 0.0862745 0.176784 0.141333)",
+        "count": 9
+      },
+      {
+        "value": "color(srgb 0.739059 0.229569 0.13851)",
+        "count": 7
+      },
+      {
+        "value": "color(srgb 0.0862745 0.184549 0.148157)",
+        "count": 7
+      },
+      {
+        "value": "rgb(22, 53, 43)",
+        "count": 7
+      },
+      {
+        "value": "color(srgb 0.592941 0.421176 0.105569)",
+        "count": 6
+      },
+      {
+        "value": "rgba(243, 236, 220, 0.82)",
+        "count": 6
+      },
+      {
+        "value": "rgba(243, 236, 220, 0.6)",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.301961 0.296275 0.277059)",
+        "count": 5
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 4
+      },
+      {
+        "value": "color(srgb 0.659608 0.466275 0.112235)",
+        "count": 4
+      },
+      {
+        "value": "rgb(160, 41, 41)",
+        "count": 4
+      },
+      {
+        "value": "rgb(252, 251, 248)",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.0862745 0.181961 0.145882)",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.632941 0.448235 0.109569)",
+        "count": 3
+      },
+      {
+        "value": "rgb(135, 92, 16)",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.619608 0.439216 0.108235)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.465098 0.334902 0.282353)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.452941 0.326471 0.0915686)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.566275 0.403137 0.102902)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.338627 0.274706 0.192941)",
+        "count": 1
+      },
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 1
+      }
+    ],
+    "backgroundColor": [
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 770
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96)",
+        "count": 37
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 9
+      },
+      {
+        "value": "rgb(30, 107, 58)",
+        "count": 8
+      },
+      {
+        "value": "rgb(248, 242, 230)",
+        "count": 7
+      },
+      {
+        "value": "color(srgb 0.117647 0.419608 0.227451 / 0.18)",
+        "count": 7
+      },
+      {
+        "value": "color(srgb 0.407843 0.403216 0.386118)",
+        "count": 5
+      },
+      {
+        "value": "color(srgb 0.833882 0.792 0.707294)",
+        "count": 5
+      },
+      {
+        "value": "rgb(225, 213, 189)",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.84414 0.841633 0.795711 / 0.966274)",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.14)",
+        "count": 3
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.848685 0.872315 0.804234 / 0.966274)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.849822 0.856974 0.831506 / 0.966274)",
+        "count": 2
+      },
+      {
+        "value": "rgb(22, 53, 43)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.632941 0.448235 0.109569)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.866824 0.798588 0.666824)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.825804 0.784784 0.701647)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.867269 0.870059 0.841522 / 0.96549)",
+        "count": 2
+      },
+      {
+        "value": "oklab(0.914318 0.0013085 0.0296056 / 0.9)",
+        "count": 1
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 1
+      },
+      {
+        "value": "rgb(178, 107, 0)",
+        "count": 1
+      },
+      {
+        "value": "oklab(0.999994 0.0000455678 0.0000200868 / 0.22)",
+        "count": 1
+      },
+      {
+        "value": "oklab(0.999994 0.0000455678 0.0000200868 / 0.16)",
+        "count": 1
+      },
+      {
+        "value": "rgb(235, 226, 205)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.957626 0.835475 0.778684 / 0.967059)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.936215 0.879595 0.772845 / 0.967059)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.825915 0.826392 0.780631 / 0.967059)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.876003 0.87661 0.846536 / 0.965098)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.913745 0.836661 0.692995 / 0.97098)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.940731 0.888224 0.788893 / 0.966274)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.0862745 0.207843 0.168627 / 0.14)",
+        "count": 1
+      },
+      {
+        "value": "rgb(32, 80, 106)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.12549 0.313726 0.415686 / 0.14)",
+        "count": 1
+      },
+      {
+        "value": "rgb(192, 135, 31)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.752941 0.529412 0.121569 / 0.14)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.959481 0.849588 0.794006 / 0.966274)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.46251 0.371059 0.260706)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.841882 0.787294 0.688941)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.0862745 0.0784314 0.054902 / 0.03)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.835137 0.779294 0.680235)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.846667 0.740863 0.659922)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.864235 0.792471 0.654431)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.835024 0.83401 0.788168 / 0.966667)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.12)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.832403 0.84391 0.821507 / 0.967059)",
+        "count": 1
+      },
+      {
+        "value": "rgb(92, 90, 80)",
+        "count": 1
+      }
+    ],
+    "borderRadius": [
+      {
+        "value": "0px",
+        "count": 749
+      },
+      {
+        "value": "3.35544e+07px",
+        "count": 52
+      },
+      {
+        "value": "16px",
+        "count": 32
+      },
+      {
+        "value": "9px",
+        "count": 19
+      },
+      {
+        "value": "24px",
+        "count": 18
+      },
+      {
+        "value": "8px 8px 0px 0px",
+        "count": 8
+      },
+      {
+        "value": "0px 24px 24px",
+        "count": 8
+      },
+      {
+        "value": "50%",
+        "count": 6
+      },
+      {
+        "value": "7px",
+        "count": 5
+      },
+      {
+        "value": "4px",
+        "count": 1
+      },
+      {
+        "value": "10px",
+        "count": 1
+      },
+      {
+        "value": "13px",
+        "count": 1
+      },
+      {
+        "value": "15px",
+        "count": 1
+      }
+    ],
+    "boxShadow": [
+      {
+        "value": "rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 13
+      },
+      {
+        "value": "rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 13
+      },
+      {
+        "value": "color(srgb 0.0862745 0.0784314 0.054902 / 0.08) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 11
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset",
+        "count": 8
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.45) 0px 1px 0px 0px inset",
+        "count": 8
+      },
+      {
+        "value": "color(srgb 0.117647 0.419608 0.227451 / 0.32) 0px 0px 0px 1px inset",
+        "count": 7
+      },
+      {
+        "value": "rgba(255, 255, 255, 0.18) 0px -1px 0px 0px inset, rgba(22, 20, 14, 0.55) 0px -12px 20px -12px, rgba(22, 20, 14, 0.78) 0px 14px 24px -12px, rgba(22, 20, 14, 0.2) 0px 0px 0px 1px",
+        "count": 6
+      },
+      {
+        "value": "rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset",
+        "count": 5
+      },
+      {
+        "value": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(20, 20, 18, 0.07) 0px 1px 2px 0px, rgba(20, 20, 18, 0.09) 0px 2px 6px -1px",
+        "count": 2
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 2
+      },
+      {
+        "value": "rgb(201, 189, 159) 0px 0px 0px 1px inset",
+        "count": 2
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96) 0px 0px 0px 2px, color(srgb 0.705882 0.137255 0.117647 / 0.5) 0px 0px 0px 3px",
+        "count": 1
+      },
+      {
+        "value": "rgba(0, 0, 0, 0.26) 0px -20px 34px -26px inset",
+        "count": 1
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.05) 0px 1px 2px 0px, rgba(40, 30, 20, 0.09) 0px 6px 14px -3px, rgba(40, 30, 20, 0.12) 0px 16px 32px -10px",
+        "count": 1
+      },
+      {
+        "value": "rgba(40, 30, 20, 0.05) 0px 1px 2px 0px, rgba(40, 30, 20, 0.09) 0px 6px 14px -3px, rgba(40, 30, 20, 0.12) 0px 16px 32px -10px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.0862745 0.0784314 0.054902 / 0.1) 0px 0px 0px 1px inset, rgb(248, 242, 230) 0px 0px 0px 3px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px",
+        "count": 1
+      },
+      {
+        "value": "rgb(225, 67, 40) 3px 0px 0px 0px inset, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px",
+        "count": 1
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, color(srgb 0.882353 0.262745 0.156863 / 0.34) 0px 6px 14px -8px",
+        "count": 1
+      },
+      {
+        "value": "rgba(20, 20, 18, 0.22) 0px 10px 28px -8px, rgba(20, 20, 18, 0.1) 0px 2px 6px 0px, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.5) 0px 6px 16px -6px, color(srgb 0.882353 0.262745 0.156863 / 0.28) 0px 0px 0px 1px inset",
+        "count": 1
+      }
+    ],
+    "transitionDuration": [
+      {
+        "value": "0.24s, 0.24s, 0.16s",
+        "count": 14
+      },
+      {
+        "value": "0.15s",
+        "count": 13
+      },
+      {
+        "value": "0.24s",
+        "count": 9
+      },
+      {
+        "value": "0.36s, 0.36s",
+        "count": 9
+      },
+      {
+        "value": "0.2s",
+        "count": 6
+      },
+      {
+        "value": "0.42s",
+        "count": 6
+      },
+      {
+        "value": "0.3s",
+        "count": 6
+      },
+      {
+        "value": "0.16s",
+        "count": 4
+      },
+      {
+        "value": "3s, 3s, 3s",
+        "count": 1
+      },
+      {
+        "value": "0.32s, 0.32s, 0.2s",
+        "count": 1
+      }
+    ],
+    "transitionTimingFunction": [
+      {
+        "value": "ease",
+        "count": 839
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 15
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.34, 1.4, 0.5, 1), cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 14
+      },
+      {
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "count": 13
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 9
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1)",
+        "count": 9
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 1
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1), cubic-bezier(0.34, 1.4, 0.5, 1), ease",
+        "count": 1
+      }
+    ]
+  },
+  "textMeasures": [
+    {
+      "selector": "div > div > main > div > h1",
+      "text": "What’s worth your time in Frederick County right now",
+      "chars": 52,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 52,
+      "width": 1,
+      "fontSize": "16px",
+      "lineHeight": "24px"
+    },
+    {
+      "selector": "main > div > section:nth-of-type(1) > section > h2",
+      "text": "Midday. Clear out, a good day to be outside.",
+      "chars": 44,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 44,
+      "width": 696,
+      "fontSize": "20px",
+      "lineHeight": "27.5px"
+    },
+    {
+      "selector": "main > div > a > span:nth-of-type(2) > span:nth-of-type(3)",
+      "text": "National Museum of Civil War Medicine · Frederick",
+      "chars": 49,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 49,
+      "width": 628,
+      "fontSize": "11.5px",
+      "lineHeight": "15.8125px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(4) > article > a > span:nth-of-type(2)",
+      "text": "· Urbana Regional Library, Small Conference Room",
+      "chars": 48,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 48,
+      "width": 313.9,
+      "fontSize": "13px",
+      "lineHeight": "19.5px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(5) > article > a > span:nth-of-type(2)",
+      "text": "· Thurmont Regional Library, Community Room (TRL)",
+      "chars": 49,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 49,
+      "width": 327.5,
+      "fontSize": "13px",
+      "lineHeight": "19.5px"
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) > span",
+      "text": "Shares Avery's Maryland Grille nightly specials",
+      "chars": 47,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 23.5,
+      "width": 369.7,
+      "fontSize": "18px",
+      "lineHeight": "20.7px"
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) > span",
+      "text": "All-You-Can-Eat hard shell crab specials starting at open",
+      "chars": 57,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 28.5,
+      "width": 376.8,
+      "fontSize": "18px",
+      "lineHeight": "20.7px"
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1) > span",
+      "text": "Derby Burger Tuesday, $12 build-your-own burger",
+      "chars": 47,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 23.5,
+      "width": 369.7,
+      "fontSize": "18px",
+      "lineHeight": "20.7px"
+    },
+    {
+      "selector": "div > main > div > section:nth-of-type(5) > p",
+      "text": "City of Frederick pools show live hours; other county pools are seasonal. Hours vary, call ahead on weather days.",
+      "chars": 113,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 113,
+      "width": 728,
+      "fontSize": "11px",
+      "lineHeight": "16.5px"
+    },
+    {
+      "selector": "div > div > main > footer > p:nth-of-type(1)",
+      "text": "Frederick Radius: one guide for Frederick City and the towns around it.",
+      "chars": 71,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 71,
+      "width": 728,
+      "fontSize": "11px",
+      "lineHeight": "15.4px"
+    },
+    {
+      "selector": "div > div > main > footer > p:nth-of-type(2)",
+      "text": "An independent local guide. Not affiliated with, endorsed by, or operated by the City of Frederick, Frederick County Government, or any municipality. Information may be out of date; never rely on it for emergencies or pu",
+      "chars": 242,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 121,
+      "width": 728,
+      "fontSize": "11px",
+      "lineHeight": "17.875px"
+    }
+  ],
+  "tapTargets": {
+    "total": 81,
+    "under44": [
+      {
+        "selector": "html > body > a",
+        "tag": "a",
+        "role": null,
+        "label": "Skip to content",
+        "width": 1,
+        "height": 1,
+        "effectiveWidth": 1,
+        "effectiveHeight": 1,
+        "hasTapExtender": false,
+        "x": -1,
+        "y": -1
+      },
+      {
+        "selector": "section > header > div:nth-of-type(1) > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "See all",
+        "width": 53.8,
+        "height": 16,
+        "effectiveWidth": 53.8,
+        "effectiveHeight": 16,
+        "hasTapExtender": false,
+        "x": 677.2,
+        "y": 1528.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Free Summer Lunch (Ages 0-18)",
+        "width": 196,
+        "height": 38.5,
+        "effectiveWidth": 196,
+        "effectiveHeight": 38.5,
+        "hasTapExtender": false,
+        "x": 108,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Urbana Volunteer Fire & Rescue Carnival",
+        "width": 196,
+        "height": 38.5,
+        "effectiveWidth": 196,
+        "effectiveHeight": 38.5,
+        "hasTapExtender": false,
+        "x": 400,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Summer Lunch Program (ages 0-18)",
+        "width": 196,
+        "height": 38.5,
+        "effectiveWidth": 196,
+        "effectiveHeight": 38.5,
+        "hasTapExtender": false,
+        "x": 692,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Birthday Celebrations",
+        "width": 196,
+        "height": 19.3,
+        "effectiveWidth": 196,
+        "effectiveHeight": 19.3,
+        "hasTapExtender": false,
+        "x": 984,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Line Dance @ Urbana",
+        "width": 196,
+        "height": 19.3,
+        "effectiveWidth": 196,
+        "effectiveHeight": 19.3,
+        "hasTapExtender": false,
+        "x": 1276,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Fitness for All @ Frederick",
+        "width": 196,
+        "height": 19.3,
+        "effectiveWidth": 196,
+        "effectiveHeight": 19.3,
+        "hasTapExtender": false,
+        "x": 1568,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Game Time @ Brunswick",
+        "width": 196,
+        "height": 19.3,
+        "effectiveWidth": 196,
+        "effectiveHeight": 19.3,
+        "hasTapExtender": false,
+        "x": 1860,
+        "y": 1726.9
+      },
+      {
+        "selector": "div > div > article > div:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Canasta @ Frederick",
+        "width": 196,
+        "height": 19.3,
+        "effectiveWidth": 196,
+        "effectiveHeight": 19.3,
+        "hasTapExtender": false,
+        "x": 2152,
+        "y": 1726.9
+      },
+      {
+        "selector": "div:nth-of-type(2) > ul > li:nth-of-type(1) > article > a",
+        "tag": "a",
+        "role": null,
+        "label": "Chair Yoga (video) @ Emmitsburg · 300 South Seton Avenue",
+        "width": 499.3,
+        "height": 19.5,
+        "effectiveWidth": 499.3,
+        "effectiveHeight": 19.5,
+        "hasTapExtender": false,
+        "x": 77,
+        "y": 1907.2
+      },
+      {
+        "selector": "div:nth-of-type(2) > ul > li:nth-of-type(2) > article > a",
+        "tag": "a",
+        "role": null,
+        "label": "Intro to Watercolor · 121 North Bentz Street",
+        "width": 506,
+        "height": 19.5,
+        "effectiveWidth": 506,
+        "effectiveHeight": 19.5,
+        "hasTapExtender": false,
+        "x": 77,
+        "y": 1948.2
+      },
+      {
+        "selector": "div:nth-of-type(2) > ul > li:nth-of-type(3) > article > a",
+        "tag": "a",
+        "role": null,
+        "label": "Floor Yoga Gentle Tuesday Class @ Frederick & Virtual · 1440 Taney Avenue",
+        "width": 506,
+        "height": 19.5,
+        "effectiveWidth": 506,
+        "effectiveHeight": 19.5,
+        "hasTapExtender": false,
+        "x": 77,
+        "y": 1989.2
+      },
+      {
+        "selector": "div:nth-of-type(2) > ul > li:nth-of-type(4) > article > a",
+        "tag": "a",
+        "role": null,
+        "label": "Club Crochet (ages 9-18) · Urbana Regional Library, Small Conference Room",
+        "width": 506,
+        "height": 19.5,
+        "effectiveWidth": 506,
+        "effectiveHeight": 19.5,
+        "hasTapExtender": false,
+        "x": 77,
+        "y": 2030.2
+      },
+      {
+        "selector": "div:nth-of-type(2) > ul > li:nth-of-type(5) > article > a",
+        "tag": "a",
+        "role": null,
+        "label": "Night Owls Storytime · Thurmont Regional Library, Community Room (TRL)",
+        "width": 506,
+        "height": 19.5,
+        "effectiveWidth": 506,
+        "effectiveHeight": 19.5,
+        "hasTapExtender": false,
+        "x": 77,
+        "y": 2071.2
+      },
+      {
+        "selector": "div > div > p > span > a",
+        "tag": "a",
+        "role": null,
+        "label": "Men's Basketball League",
+        "width": 156.8,
+        "height": 16,
+        "effectiveWidth": 156.8,
+        "effectiveHeight": 16,
+        "hasTapExtender": false,
+        "x": 154.5,
+        "y": 3070.4
+      },
+      {
+        "selector": "div:nth-of-type(3) > div > div > p > a",
+        "tag": "a",
+        "role": null,
+        "label": "Parking guide →",
+        "width": 103.8,
+        "height": 16,
+        "effectiveWidth": 103.8,
+        "effectiveHeight": 16,
+        "hasTapExtender": false,
+        "x": 338.3,
+        "y": 3088.3
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(1) > a",
+        "tag": "a",
+        "role": null,
+        "label": "About",
+        "width": 33.8,
+        "height": 32,
+        "effectiveWidth": 33.8,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 20,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Trust & sources",
+        "width": 88.5,
+        "height": 32,
+        "effectiveWidth": 88.5,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 69.8,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(3) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Towns",
+        "width": 37,
+        "height": 32,
+        "effectiveWidth": 37,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 174.4,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(4) > a",
+        "tag": "a",
+        "role": null,
+        "label": "All places",
+        "width": 54.7,
+        "height": 32,
+        "effectiveWidth": 54.7,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 227.4,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(5) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Events",
+        "width": 38,
+        "height": 32,
+        "effectiveWidth": 38,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 298.1,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(6) > a",
+        "tag": "a",
+        "role": null,
+        "label": "County services",
+        "width": 92.3,
+        "height": 32,
+        "effectiveWidth": 92.3,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 352,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(7) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Privacy",
+        "width": 42,
+        "height": 32,
+        "effectiveWidth": 42,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 460.3,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(8) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Terms",
+        "width": 35.4,
+        "height": 32,
+        "effectiveWidth": 35.4,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 518.3,
+        "y": 3622.4
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(9) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Suggest a correction",
+        "width": 118.3,
+        "height": 32,
+        "effectiveWidth": 118.3,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 569.7,
+        "y": 3622.4
+      }
+    ]
+  },
+  "overflow": [
+    {
+      "selector": "div > section:nth-of-type(3) > div > ul > li:nth-of-type(3)",
+      "label": "Market todayYMCA of Frederick County Farmers Market3:30pm - 6:30pm",
+      "left": 517.2,
+      "right": 773.2,
+      "width": 256
+    },
+    {
+      "selector": "section:nth-of-type(3) > div > ul > li:nth-of-type(3) > a",
+      "label": "Market today: YMCA of Frederick County Farmers Market, 3:30pm - 6:30pm",
+      "left": 517.2,
+      "right": 773.2,
+      "width": 256
+    },
+    {
+      "selector": "section > div > div:nth-of-type(1) > div > div:nth-of-type(3)",
+      "label": "FamilyJUL14TueSummer Lunch Program (ages 0-18)12:15 PM · Brunswick Branch Library, Community Room (BR)Live nowFamily",
+      "left": 621,
+      "right": 901,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div > div:nth-of-type(3) > div",
+      "label": "FamilyJUL14TueSummer Lunch Program (ages 0-18)12:15 PM · Brunswick Branch Library, Community Room (BR)Live nowFamily",
+      "left": 621,
+      "right": 901,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(1) > div > div:nth-of-type(3) > div > div",
+      "label": "FamilyJUL14TueSummer Lunch Program (ages 0-18)12:15 PM · Brunswick Branch Library, Community Room (BR)Live nowFamily",
+      "left": 621,
+      "right": 901,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(3) > div > div > article",
+      "label": "JUL14TueSummer Lunch Program (ages 0-18)12:15 PM · Brunswick Branch Library, Community Room (BR)Live nowFamily",
+      "left": 621,
+      "right": 901,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(3) > div > div > article > span",
+      "label": "",
+      "left": 824,
+      "right": 912,
+      "width": 88
+    },
+    {
+      "selector": "div > div > article > span > svg",
+      "label": "",
+      "left": 818.3,
+      "right": 917.7,
+      "width": 99.4
+    },
+    {
+      "selector": "div > article > span > svg > path:nth-of-type(1)",
+      "label": "",
+      "left": 858.4,
+      "right": 873.2,
+      "width": 14.8
+    },
+    {
+      "selector": "div > article > span > svg > path:nth-of-type(2)",
+      "label": "",
+      "left": 878.9,
+      "right": 878.9,
+      "width": 0
+    },
+    {
+      "selector": "div > article > span > svg > path:nth-of-type(3)",
+      "label": "",
+      "left": 827.4,
+      "right": 908.6,
+      "width": 81.2
+    },
+    {
+      "selector": "div > article > span > svg > path:nth-of-type(4)",
+      "label": "",
+      "left": 857.1,
+      "right": 857.1,
+      "width": 0
+    },
+    {
+      "selector": "div:nth-of-type(3) > div > div > article > div:nth-of-type(2)",
+      "label": "Summer Lunch Program (ages 0-18)12:15 PM · Brunswick Branch Library, Community Room (BR)Live nowFamily",
+      "left": 692,
+      "right": 888,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > a",
+      "label": "Summer Lunch Program (ages 0-18)",
+      "left": 692,
+      "right": 888,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > a > span",
+      "label": "",
+      "left": 622,
+      "right": 900,
+      "width": 278
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > p",
+      "label": "12:15 PM · Brunswick Branch Library, Community Room (BR)",
+      "left": 692,
+      "right": 888,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > div",
+      "label": "Live nowFamily",
+      "left": 692,
+      "right": 888,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > div > span",
+      "label": "Reasons this is shown",
+      "left": 692,
+      "right": 800,
+      "width": 108
+    },
+    {
+      "selector": "article > div:nth-of-type(2) > div > span > span:nth-of-type(2)",
+      "label": "Family",
+      "left": 757.8,
+      "right": 800,
+      "width": 42.1
+    },
+    {
+      "selector": "section > div > div:nth-of-type(1) > div > div:nth-of-type(4)",
+      "label": "EventJUL14TueBirthday Celebrations12:30 PM · 12 East A StreetStarting soon",
+      "left": 913,
+      "right": 1193,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div > div:nth-of-type(4) > div",
+      "label": "EventJUL14TueBirthday Celebrations12:30 PM · 12 East A StreetStarting soon",
+      "left": 913,
+      "right": 1193,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(1) > div > div:nth-of-type(4) > div > div",
+      "label": "EventJUL14TueBirthday Celebrations12:30 PM · 12 East A StreetStarting soon",
+      "left": 913,
+      "right": 1193,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(4) > div > div > span",
+      "label": "Event",
+      "left": 925,
+      "right": 983.9,
+      "width": 58.9
+    },
+    {
+      "selector": "div > div:nth-of-type(4) > div > div > article",
+      "label": "JUL14TueBirthday Celebrations12:30 PM · 12 East A StreetStarting soon",
+      "left": 913,
+      "right": 1193,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(4) > div > div > article > span",
+      "label": "",
+      "left": 1116,
+      "right": 1204,
+      "width": 88
+    },
+    {
+      "selector": "div > div > article > span > svg",
+      "label": "",
+      "left": 1110.3,
+      "right": 1209.7,
+      "width": 99.4
+    },
+    {
+      "selector": "div > article > span > svg > path",
+      "label": "",
+      "left": 1125.8,
+      "right": 1194.2,
+      "width": 68.3
+    },
+    {
+      "selector": "div > article > span > svg > circle",
+      "label": "",
+      "left": 1148.6,
+      "right": 1173.4,
+      "width": 24.8
+    },
+    {
+      "selector": "div:nth-of-type(4) > div > div > article > div:nth-of-type(1)",
+      "label": "JUL14Tue",
+      "left": 926,
+      "right": 972,
+      "width": 46
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(1)",
+      "label": "JUL",
+      "left": 938.1,
+      "right": 959.9,
+      "width": 21.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(2)",
+      "label": "14",
+      "left": 939.1,
+      "right": 958.9,
+      "width": 19.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(3)",
+      "label": "Tue",
+      "left": 940,
+      "right": 958,
+      "width": 18
+    },
+    {
+      "selector": "div:nth-of-type(4) > div > div > article > div:nth-of-type(2)",
+      "label": "Birthday Celebrations12:30 PM · 12 East A StreetStarting soon",
+      "left": 984,
+      "right": 1180,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > a",
+      "label": "Birthday Celebrations",
+      "left": 984,
+      "right": 1180,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > a > span",
+      "label": "",
+      "left": 914,
+      "right": 1192,
+      "width": 278
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > p",
+      "label": "12:30 PM · 12 East A Street",
+      "left": 984,
+      "right": 1180,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > p > span",
+      "label": "12:30 PM",
+      "left": 984,
+      "right": 1041.6,
+      "width": 57.6
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > div",
+      "label": "Starting soon",
+      "left": 984,
+      "right": 1180,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > div > span",
+      "label": "Reasons this is shown",
+      "left": 984,
+      "right": 1066.6,
+      "width": 82.6
+    },
+    {
+      "selector": "article > div:nth-of-type(2) > div > span > span",
+      "label": "Starting soon",
+      "left": 984,
+      "right": 1066.6,
+      "width": 82.6
+    },
+    {
+      "selector": "div:nth-of-type(2) > div > span > span > span",
+      "label": "",
+      "left": 990,
+      "right": 995,
+      "width": 5
+    },
+    {
+      "selector": "section > div > div:nth-of-type(1) > div > div:nth-of-type(5)",
+      "label": "EventJUL14TueLine Dance @ Urbana12:30 PM · 9020 Amelung StreetStarting soon",
+      "left": 1205,
+      "right": 1485,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div > div:nth-of-type(5) > div",
+      "label": "EventJUL14TueLine Dance @ Urbana12:30 PM · 9020 Amelung StreetStarting soon",
+      "left": 1205,
+      "right": 1485,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(1) > div > div:nth-of-type(5) > div > div",
+      "label": "EventJUL14TueLine Dance @ Urbana12:30 PM · 9020 Amelung StreetStarting soon",
+      "left": 1205,
+      "right": 1485,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(5) > div > div > span",
+      "label": "Event",
+      "left": 1217,
+      "right": 1275.9,
+      "width": 58.9
+    },
+    {
+      "selector": "div > div:nth-of-type(5) > div > div > article",
+      "label": "JUL14TueLine Dance @ Urbana12:30 PM · 9020 Amelung StreetStarting soon",
+      "left": 1205,
+      "right": 1485,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(5) > div > div > article > span",
+      "label": "",
+      "left": 1408,
+      "right": 1496,
+      "width": 88
+    },
+    {
+      "selector": "div > div > article > span > svg",
+      "label": "",
+      "left": 1402.3,
+      "right": 1501.7,
+      "width": 99.4
+    },
+    {
+      "selector": "div > article > span > svg > path",
+      "label": "",
+      "left": 1417.8,
+      "right": 1486.2,
+      "width": 68.3
+    },
+    {
+      "selector": "div > article > span > svg > circle",
+      "label": "",
+      "left": 1440.6,
+      "right": 1465.4,
+      "width": 24.8
+    },
+    {
+      "selector": "div:nth-of-type(5) > div > div > article > div:nth-of-type(1)",
+      "label": "JUL14Tue",
+      "left": 1218,
+      "right": 1264,
+      "width": 46
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(1)",
+      "label": "JUL",
+      "left": 1230.1,
+      "right": 1251.9,
+      "width": 21.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(2)",
+      "label": "14",
+      "left": 1231.1,
+      "right": 1250.9,
+      "width": 19.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(3)",
+      "label": "Tue",
+      "left": 1232,
+      "right": 1250,
+      "width": 18
+    },
+    {
+      "selector": "div:nth-of-type(5) > div > div > article > div:nth-of-type(2)",
+      "label": "Line Dance @ Urbana12:30 PM · 9020 Amelung StreetStarting soon",
+      "left": 1276,
+      "right": 1472,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > a",
+      "label": "Line Dance @ Urbana",
+      "left": 1276,
+      "right": 1472,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > a > span",
+      "label": "",
+      "left": 1206,
+      "right": 1484,
+      "width": 278
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > p",
+      "label": "12:30 PM · 9020 Amelung Street",
+      "left": 1276,
+      "right": 1472,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > p > span",
+      "label": "12:30 PM",
+      "left": 1276,
+      "right": 1333.6,
+      "width": 57.6
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > div",
+      "label": "Starting soon",
+      "left": 1276,
+      "right": 1472,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > div > span",
+      "label": "Reasons this is shown",
+      "left": 1276,
+      "right": 1358.6,
+      "width": 82.6
+    },
+    {
+      "selector": "article > div:nth-of-type(2) > div > span > span",
+      "label": "Starting soon",
+      "left": 1276,
+      "right": 1358.6,
+      "width": 82.6
+    },
+    {
+      "selector": "div:nth-of-type(2) > div > span > span > span",
+      "label": "",
+      "left": 1282,
+      "right": 1287,
+      "width": 5
+    },
+    {
+      "selector": "section > div > div:nth-of-type(1) > div > div:nth-of-type(6)",
+      "label": "EventJUL14TueFitness for All @ Frederick12:45 PM · 1440 Taney AvenueStarting soon",
+      "left": 1497,
+      "right": 1777,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div > div:nth-of-type(6) > div",
+      "label": "EventJUL14TueFitness for All @ Frederick12:45 PM · 1440 Taney AvenueStarting soon",
+      "left": 1497,
+      "right": 1777,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(1) > div > div:nth-of-type(6) > div > div",
+      "label": "EventJUL14TueFitness for All @ Frederick12:45 PM · 1440 Taney AvenueStarting soon",
+      "left": 1497,
+      "right": 1777,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(6) > div > div > span",
+      "label": "Event",
+      "left": 1509,
+      "right": 1567.9,
+      "width": 58.9
+    },
+    {
+      "selector": "div > div:nth-of-type(6) > div > div > article",
+      "label": "JUL14TueFitness for All @ Frederick12:45 PM · 1440 Taney AvenueStarting soon",
+      "left": 1497,
+      "right": 1777,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(6) > div > div > article > span",
+      "label": "",
+      "left": 1700,
+      "right": 1788,
+      "width": 88
+    },
+    {
+      "selector": "div > div > article > span > svg",
+      "label": "",
+      "left": 1694.3,
+      "right": 1793.7,
+      "width": 99.4
+    },
+    {
+      "selector": "div > article > span > svg > path",
+      "label": "",
+      "left": 1709.8,
+      "right": 1778.2,
+      "width": 68.3
+    },
+    {
+      "selector": "div > article > span > svg > circle",
+      "label": "",
+      "left": 1732.6,
+      "right": 1757.4,
+      "width": 24.8
+    },
+    {
+      "selector": "div:nth-of-type(6) > div > div > article > div:nth-of-type(1)",
+      "label": "JUL14Tue",
+      "left": 1510,
+      "right": 1556,
+      "width": 46
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(1)",
+      "label": "JUL",
+      "left": 1522.1,
+      "right": 1543.9,
+      "width": 21.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(2)",
+      "label": "14",
+      "left": 1523.1,
+      "right": 1542.9,
+      "width": 19.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(3)",
+      "label": "Tue",
+      "left": 1524,
+      "right": 1542,
+      "width": 18
+    },
+    {
+      "selector": "div:nth-of-type(6) > div > div > article > div:nth-of-type(2)",
+      "label": "Fitness for All @ Frederick12:45 PM · 1440 Taney AvenueStarting soon",
+      "left": 1568,
+      "right": 1764,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > a",
+      "label": "Fitness for All @ Frederick",
+      "left": 1568,
+      "right": 1764,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > a > span",
+      "label": "",
+      "left": 1498,
+      "right": 1776,
+      "width": 278
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > p",
+      "label": "12:45 PM · 1440 Taney Avenue",
+      "left": 1568,
+      "right": 1764,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > p > span",
+      "label": "12:45 PM",
+      "left": 1568,
+      "right": 1625.6,
+      "width": 57.6
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > div",
+      "label": "Starting soon",
+      "left": 1568,
+      "right": 1764,
+      "width": 196
+    },
+    {
+      "selector": "div > article > div:nth-of-type(2) > div > span",
+      "label": "Reasons this is shown",
+      "left": 1568,
+      "right": 1650.6,
+      "width": 82.6
+    },
+    {
+      "selector": "article > div:nth-of-type(2) > div > span > span",
+      "label": "Starting soon",
+      "left": 1568,
+      "right": 1650.6,
+      "width": 82.6
+    },
+    {
+      "selector": "div:nth-of-type(2) > div > span > span > span",
+      "label": "",
+      "left": 1574,
+      "right": 1579,
+      "width": 5
+    },
+    {
+      "selector": "section > div > div:nth-of-type(1) > div > div:nth-of-type(7)",
+      "label": "EventJUL14TueGame Time @ Brunswick1:00 PM · 12 East A StreetStarting soon",
+      "left": 1789,
+      "right": 2069,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div > div:nth-of-type(7) > div",
+      "label": "EventJUL14TueGame Time @ Brunswick1:00 PM · 12 East A StreetStarting soon",
+      "left": 1789,
+      "right": 2069,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(1) > div > div:nth-of-type(7) > div > div",
+      "label": "EventJUL14TueGame Time @ Brunswick1:00 PM · 12 East A StreetStarting soon",
+      "left": 1789,
+      "right": 2069,
+      "width": 280
+    },
+    {
+      "selector": "div > div:nth-of-type(7) > div > div > span",
+      "label": "Event",
+      "left": 1801,
+      "right": 1859.9,
+      "width": 58.9
+    },
+    {
+      "selector": "div > div:nth-of-type(7) > div > div > article",
+      "label": "JUL14TueGame Time @ Brunswick1:00 PM · 12 East A StreetStarting soon",
+      "left": 1789,
+      "right": 2069,
+      "width": 280
+    },
+    {
+      "selector": "div:nth-of-type(7) > div > div > article > span",
+      "label": "",
+      "left": 1992,
+      "right": 2080,
+      "width": 88
+    },
+    {
+      "selector": "div > div > article > span > svg",
+      "label": "",
+      "left": 1986.3,
+      "right": 2085.7,
+      "width": 99.4
+    },
+    {
+      "selector": "div > article > span > svg > path",
+      "label": "",
+      "left": 2001.8,
+      "right": 2070.2,
+      "width": 68.3
+    },
+    {
+      "selector": "div > article > span > svg > circle",
+      "label": "",
+      "left": 2024.6,
+      "right": 2049.4,
+      "width": 24.8
+    },
+    {
+      "selector": "div:nth-of-type(7) > div > div > article > div:nth-of-type(1)",
+      "label": "JUL14Tue",
+      "left": 1802,
+      "right": 1848,
+      "width": 46
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(1)",
+      "label": "JUL",
+      "left": 1814.1,
+      "right": 1835.9,
+      "width": 21.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(2)",
+      "label": "14",
+      "left": 1815.1,
+      "right": 1834.9,
+      "width": 19.8
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(1) > span:nth-of-type(3)",
+      "label": "Tue",
+      "left": 1816,
+      "right": 1834,
+      "width": 18
+    },
+    {
+      "selector": "div:nth-of-type(7) > div > div > article > div:nth-of-type(2)",
+      "label": "Game Time @ Brunswick1:00 PM · 12 East A StreetStarting soon",
+      "left": 1860,
+      "right": 2056,
+      "width": 196
+    },
+    {
+      "selector": "div > div > article > div:nth-of-type(2) > a",
+      "label": "Game Time @ Brunswick",
+      "left": 1860,
+      "right": 2056,
+      "width": 196
+    }
+  ],
+  "images": [
+    {
+      "selector": "ul > li > a > div:nth-of-type(1) > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fshuckin-shack-oyster-bar%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 72,
+      "renderedHeight": 72,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    }
+  ],
+  "axe": {
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+        "nodes": [
+          {
+            "target": [
+              ".gap-2.items-center.flex:nth-child(1) > .flex-1.text-\\[13px\\].min-w-0"
+            ],
+            "html": "<p class=\"min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight\">Heat Advisory</p>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.2 (foreground color: #ffffff, background color: #b26b00, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#ffffff",
+                "bgColor": "#b26b00",
+                "contrastRatio": 4.2,
+                "fontSize": "9.8pt (13px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".bg-white\\/22"
+            ],
+            "html": "<span class=\"shrink-0 rounded-full bg-white/22 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur\">NWS</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.94 (foreground color: #ffffff, background color: #c38c38, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#ffffff",
+                "bgColor": "#c38c38",
+                "contrastRatio": 2.94,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".opacity-90.mt-1.gap-2 > .flex-1.min-w-0.truncate"
+            ],
+            "html": "<span class=\"min-w-0 flex-1 truncate\">Until 8:15 PM</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.71 (foreground color: #f7f0e6, background color: #b26b00, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#f7f0e6",
+                "bgColor": "#b26b00",
+                "contrastRatio": 3.71,
+                "fontSize": "8.3pt (11px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".bg-white\\/16"
+            ],
+            "html": "<span class=\"shrink-0 rounded-full bg-white/16 px-1.5 py-0.5 text-[10px] font-semibold tracking-tight backdrop-blur\">Frederick County + 28 areas</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.95 (foreground color: #f7f0e6, background color: #bd8025, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#f7f0e6",
+                "bgColor": "#bd8025",
+                "contrastRatio": 2.95,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".w-\\[280px\\].shrink-0:nth-child(1) > .tactile-ring.rounded-\\[var\\(--app-radius-lg\\)\\] > .pt-\\[14px\\].relative > .left-3.max-w-\\[75\\%\\].rounded-t-\\[8px\\]"
+            ],
+            "html": "<span class=\"absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white\" style=\"background:color-mix(in srgb, #C0871F 82%, var(--app-ink));box-shadow:var(--app-edge)\">Family</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #ffffff, background color: #a1721c, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#ffffff",
+                "bgColor": "#a1721c",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".w-\\[280px\\].shrink-0:nth-child(2) > .tactile-ring.rounded-\\[var\\(--app-radius-lg\\)\\] > .pt-\\[14px\\].relative > .rounded-tl-none.pt-2\\.5.pb-3 > .self-start.rounded-\\[var\\(--app-radius-sm\\)\\].px-2 > .text-\\[9px\\].font-medium.uppercase"
+            ],
+            "html": "<span class=\"text-[9px] font-medium uppercase\" style=\"color:var(--app-ink-3)\">Tue</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.24 (foreground color: #5c5a50, background color: #d7c9b0, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#5c5a50",
+                "bgColor": "#d7c9b0",
+                "contrastRatio": 4.24,
+                "fontSize": "6.8pt (9px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".w-\\[280px\\].shrink-0:nth-child(3) > .tactile-ring.rounded-\\[var\\(--app-radius-lg\\)\\] > .pt-\\[14px\\].relative > .left-3.max-w-\\[75\\%\\].rounded-t-\\[8px\\]"
+            ],
+            "html": "<span class=\"absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white\" style=\"background:color-mix(in srgb, #C0871F 82%, var(--app-ink));box-shadow:var(--app-edge)\">Family</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #ffffff, background color: #a1721c, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#ffffff",
+                "bgColor": "#a1721c",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "a[href$=\"deals\"]"
+            ],
+            "html": "<a class=\"tap-44 flex items-center justify-between px-0.5 text-[12px] font-semibold\" style=\"color:var(--app-brand)\" href=\"/deals\">All specials, by day<span aria-hidden=\"true\">→</span></a>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.23 (foreground color: #e14328, background color: #ebe2cd, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#e14328",
+                "bgColor": "#ebe2cd",
+                "contrastRatio": 3.23,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".font-semibold:nth-child(1) > a"
+            ],
+            "html": "<a style=\"color:var(--app-brand)\" href=\"/events/men-s-basketball-league-2026-07-14\">Men's Basketball League</a>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.7 (foreground color: #e14328, background color: #f7f1e5, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#e14328",
+                "bgColor": "#f7f1e5",
+                "contrastRatio": 3.7,
+                "fontSize": "9.8pt (13px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "incomplete": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "help": "Elements must only use permitted ARIA attributes",
+        "nodes": 7
+      },
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 151
+      }
+    ]
+  }
+}

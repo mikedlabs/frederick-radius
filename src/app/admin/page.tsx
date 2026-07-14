@@ -365,8 +365,8 @@ export default async function AdminDesk() {
   const staleCount = datasets.filter((d) => d.stamp.tone === "stale").length;
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
-      <Link href="/" className="text-xs" style={{ color: "var(--app-cool)" }}>← Back to Frederick Radius</Link>
+    <main className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
+      <Link href="/" className="tap-44 inline-flex items-center text-xs" style={{ color: "var(--app-cool)" }}>← Back to Frederick Radius</Link>
 
       <header className="mt-4 space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
@@ -403,7 +403,7 @@ export default async function AdminDesk() {
             <ul className="overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
               {queueRows.map((r, i) => (
                 <li key={r.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
-                  <Link href={r.href} className="flex items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]">
+                  <Link href={r.href} className="flex min-h-11 items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]">
                     <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)" }}>
                       <r.icon className="h-[17px] w-[17px]" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} />
                     </span>
@@ -428,7 +428,7 @@ export default async function AdminDesk() {
       <section className="mt-6">
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>The vitals</h2>
-          <Link href="/admin/beta" className="text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Beta →</Link>
+          <Link href="/admin/beta" className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>Beta →</Link>
         </div>
         {desk.pulse === null ? (
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>Needs the database ({desk.dbReason}).</p>
@@ -457,26 +457,26 @@ export default async function AdminDesk() {
       <section className="mt-7 space-y-3">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>System</h2>
 
-        <Link href="/admin/data-health" className="flex items-center gap-2.5 no-underline">
+        <Link href="/admin/data-health" className="flex min-h-11 items-center gap-2.5 no-underline">
           <Activity className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {okRun ? `Last ingest ${fmtAge(okRun.ageH)} ago` : "No successful ingest logged"}
-            {ingestErrors > 0 && <span style={{ color: "var(--app-warning)", fontWeight: 600 }}> · {ingestErrors} erroring</span>}
+            {ingestErrors > 0 && <span style={{ color: "var(--app-warning-press)", fontWeight: 600 }}> · {ingestErrors} erroring</span>}
           </span>
           <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
         </Link>
 
-        <Link href="/admin/data-health" className="flex items-center gap-2.5 no-underline">
+        <Link href="/admin/data-health" className="flex min-h-11 items-center gap-2.5 no-underline">
           <Database className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {datasets.length} datasets · <span style={{ color: "var(--app-positive)" }}>{freshCount} fresh</span>
-            {agingCount > 0 && <>, <span style={{ color: "var(--app-warning)" }}>{agingCount} aging</span></>}
+            {agingCount > 0 && <>, <span style={{ color: "var(--app-warning-press)" }}>{agingCount} aging</span></>}
             {staleCount > 0 && <>, <span style={{ color: "var(--app-danger)" }}>{staleCount} stale</span></>}
           </span>
           <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
         </Link>
 
-        <Link href="/admin/costs" className="flex items-center gap-2.5 no-underline">
+        <Link href="/admin/costs" className="flex min-h-11 items-center gap-2.5 no-underline">
           <Receipt className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <span className="flex-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {desk.costs === null
@@ -532,7 +532,7 @@ export default async function AdminDesk() {
         Rendered fresh on every request ({new Date(now).toISOString()}). Gated by HTTP Basic Auth in
         middleware; unreachable unless ADMIN_USER and ADMIN_PASSWORD are set.
       </p>
-    </div>
+    </main>
   );
 }
 
@@ -551,7 +551,7 @@ function VDiv() {
 /** One vital in the glance strip: a big serif number, a label, and an optional
  *  week-over-week delta (green when growing). */
 function Vital({ value, label, tone, delta }: { value: number | string; label: string; tone?: "positive" | "warning"; delta?: number }) {
-  const color = tone === "positive" ? "var(--app-positive)" : tone === "warning" ? "var(--app-warning)" : "var(--app-ink)";
+  const color = tone === "positive" ? "var(--app-positive)" : tone === "warning" ? "var(--app-warning-press)" : "var(--app-ink)";
   return (
     <div className="flex-1 px-1 text-center">
       <p className="font-serif text-2xl font-semibold tabular-nums leading-none" style={{ color }}>{value}</p>

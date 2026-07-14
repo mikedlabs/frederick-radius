@@ -35,11 +35,38 @@ export default function TermsPage() {
           The short version.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Last updated: 2026-05-28
+          Last updated: 2026-07-14
         </p>
       </header>
 
       <section className="space-y-5 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <div className="space-y-2">
+          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Beta access
+          </h2>
+          <p>
+            When you request beta access, we use the email you provide to send
+            and manage your personal access code, as explained in our{" "}
+            <Link
+              href="/privacy"
+              className="font-semibold underline-offset-2 hover:underline"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Privacy Policy
+            </Link>
+            . Access codes are personal; don&rsquo;t automate, resell, or abuse
+            them. Ask us to remove your beta email and code anytime at{" "}
+            <a
+              href="mailto:hello@frederickradius.app?subject=Beta%20access%20removal"
+              className="font-semibold underline-offset-2 hover:underline"
+              style={{ color: "var(--app-brand)" }}
+            >
+              hello@frederickradius.app
+            </a>
+            .
+          </p>
+        </div>
+
         <div className="space-y-2">
           <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             What you can do

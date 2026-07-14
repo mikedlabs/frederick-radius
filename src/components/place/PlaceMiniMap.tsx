@@ -51,7 +51,7 @@ export default function PlaceMiniMap({
         height={704}
         loading="lazy"
         decoding="async"
-        className="h-44 w-full object-cover"
+        className="field-map-image h-44 w-full object-cover"
       />
     </Link>
   );

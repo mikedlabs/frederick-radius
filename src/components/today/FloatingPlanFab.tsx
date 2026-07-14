@@ -46,13 +46,14 @@ export default function FloatingPlanFab() {
           navigator.vibrate?.(10);
         }
       }}
-      className={`fab-breath fixed right-4 z-[var(--z-fab)] inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[var(--app-shadow-3)] sm:hidden ${
+      className={`fab-breath fixed right-4 z-[var(--z-fab)] inline-flex h-14 w-14 items-center justify-center rounded-full shadow-[var(--app-shadow-3)] sm:hidden ${
         visible ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-3 scale-95"
       }`}
       style={{
-        background: "var(--app-brand)",
+        background: "var(--app-brand-press)",
+        color: "var(--app-on-brand)",
         bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-        transition: "opacity 240ms var(--app-ease-out), transform 240ms var(--app-ease-out)",
+        transition: "opacity var(--app-dur-med) var(--app-ease-out), transform var(--app-dur-med) var(--app-ease-out)",
       }}
     >
       <Sparkles className="h-6 w-6" strokeWidth={2} aria-hidden />

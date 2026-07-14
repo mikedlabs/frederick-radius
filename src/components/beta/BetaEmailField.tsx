@@ -1,16 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import {
+  betaInviteWasSent,
+  type BetaEmailResponse,
+} from "@/lib/beta-email-response";
 
-/**
- * Self-serve access under the code entry form: the second way in.
- *
- * A visitor without a code enters their email and /api/beta/email mints a
- * personal access code and emails it right away (inviteEmail), so they can try
- * the beta immediately, not "at launch." One field, calm copy. Fail-soft: a
- * missing table or DB just apologizes quietly; a duplicate email reads as
- * success (they already have a code in their inbox).
- */
+/** The primary beta-access path: email in, personal code out. */
 export default function BetaEmailField() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
@@ -25,77 +22,94 @@ export default function BetaEmailField() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const d = (await res.json().catch(() => ({}))) as { ok?: boolean };
-      setState(res.ok && d.ok ? "done" : "error");
+      const data = (await res.json().catch(() => ({}))) as BetaEmailResponse;
+      setState(betaInviteWasSent(res.ok, data) ? "done" : "error");
     } catch {
       setState("error");
     }
   }
 
   return (
-    <>
-      {/* Persistent live region for the success confirmation. It exists from
-          first render and only its TEXT changes on submit — live regions
-          announce text changes, not regions mounted with content (the old
-          early-return swapped the whole subtree, which several SRs never
-          announced). When done it doubles as the visible confirmation. */}
+    <div className="mt-5">
       <p
         role="status"
         aria-live="polite"
-        className={
-          state === "done"
-            ? "mx-auto mt-8 max-w-[22rem] text-[13px] font-semibold"
-            : "sr-only"
-        }
+        className={state === "done" ? "text-[13px] font-semibold" : "sr-only"}
         style={state === "done" ? { color: "var(--app-brand-2)" } : undefined}
       >
         {state === "done" ? "Sent. Check your email for your access code, then come on in." : ""}
       </p>
-      {state !== "done" && (
-    <form onSubmit={submit} className="mx-auto mt-6 max-w-[20rem] space-y-2">
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
-        Try it now, free
-      </p>
-      <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        Enter your email and we&rsquo;ll send you an access code right away.
-      </p>
-      <div className="flex gap-2">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-          inputMode="email"
-          aria-label="Email for launch news"
-          placeholder="you@example.com"
-          className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
-          style={{
-            borderColor: "var(--app-border-strong)",
-            background: "var(--app-bg-elevated-solid)",
-            color: "var(--app-ink)",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={state === "busy"}
-          className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60"
-          style={{
-            background: "var(--app-brand)",
-            color: "var(--app-on-brand)",
-            boxShadow: "0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
-          }}
-        >
-          {state === "busy" ? "…" : "Email me a code"}
-        </button>
-      </div>
-      {state === "error" && (
-        <p role="alert" className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-          Couldn&rsquo;t save that right now. Try again in a minute.
-        </p>
-      )}
-    </form>
-      )}
-    </>
+
+      {state !== "done" ? (
+        <form onSubmit={submit} className="space-y-2.5">
+          <label
+            htmlFor="beta-email"
+            className="block text-[12px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Email address
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="beta-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
+              style={{
+                borderColor: "var(--app-border-strong)",
+                background: "var(--app-bg-elevated-solid)",
+                color: "var(--app-ink)",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={state === "busy"}
+              className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60"
+              style={{
+                background: "var(--app-brand-press)",
+                color: "var(--app-on-brand)",
+                boxShadow:
+                  "0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
+              }}
+            >
+              {state === "busy" ? "Sending…" : "Send my code"}
+            </button>
+          </div>
+
+          {state === "error" ? (
+            <p role="alert" className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+              We couldn&rsquo;t send a code right now. Try again in a minute.
+            </p>
+          ) : null}
+
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            We use your email to send and manage your beta access. We don&rsquo;t
+            sell it. Ask us to remove it anytime. By requesting a code, you
+            agree to our{" "}
+            <Link
+              href="/terms"
+              className="font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Terms
+            </Link>{" "}
+            and acknowledge our{" "}
+            <Link
+              href="/privacy"
+              className="font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </form>
+      ) : null}
+    </div>
   );
 }

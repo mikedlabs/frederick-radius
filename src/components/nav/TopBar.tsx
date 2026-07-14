@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { Search, Compass, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
-import MoreSheet from "./MoreSheet";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { tabIndexForPath } from "./tabs";
@@ -47,7 +46,6 @@ function useHideOnScroll(disabled: boolean) {
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
@@ -70,7 +68,7 @@ export default function TopBar() {
   // collapse in sync with the auto-hide instead of orphaning a band of raw
   // list above themselves. Removing the inline value falls back to the
   // :root default (= --app-topbar-h); consumers transition `top` at the
-  // same 240ms ease this header uses for its transform.
+  // same medium-duration ease this header uses for its transform.
   useEffect(() => {
     const root = document.documentElement;
     if (hidden) root.style.setProperty("--app-topbar-offset", "0px");
@@ -105,19 +103,21 @@ export default function TopBar() {
     }
   };
 
-  // Close the More sheet on route change — the drawer would otherwise
-  // cover the new page after the user tapped one of its items.
+  // Backward-compatible bridge for any surface that still emits the old
+  // "open more" event. Compass is now a real page: it has history, a shareable
+  // URL, reliable scrolling, and enough room for a useful hierarchy.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away
-    setMoreOpen(false);
-  }, [pathname]);
-
-  // Let any surface open the More drawer (the /today "I want… More…" tile
-  // fires this) without owning its state — the TopBar stays the single owner.
-  useEffect(() => {
-    const open = () => setMoreOpen(true);
+    const open = () => router.push("/compass");
     window.addEventListener("fr:open-more", open);
     return () => window.removeEventListener("fr:open-more", open);
+  }, [router]);
+
+  // Compass and other in-page launchers can open the one global search
+  // without mounting a second search implementation.
+  useEffect(() => {
+    const open = () => setSearchOpen(true);
+    window.addEventListener("fr:open-search", open);
+    return () => window.removeEventListener("fr:open-search", open);
   }, []);
 
   // Cmd-K / Ctrl-K opens search globally
@@ -148,7 +148,7 @@ export default function TopBar() {
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
           transform: hidden ? "translateY(-100%)" : "translateY(0)",
-          transition: "transform 240ms var(--app-ease-out)",
+          transition: "transform var(--app-dur-med) var(--app-ease-out)",
           willChange: "transform",
         }}
       >
@@ -178,6 +178,9 @@ export default function TopBar() {
           ) : (
             <Link
               href="/"
+              prefetch={false}
+              onMouseEnter={() => router.prefetch("/")}
+              onFocus={() => router.prefetch("/")}
               aria-label="Frederick Radius, home"
               className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
@@ -264,29 +267,31 @@ export default function TopBar() {
               traffic incident, or significant outage; quiet otherwise. */}
           <PulseIndicator />
 
-          {/* "Explore" opens the field-guide index — the complete directory of
-              every surface (Discover, Outdoors, Around the county, Contribute,
-              App…), so nothing is reachable only by typing a URL. A compass +
-              visible label from sm: up makes the whole guide discoverable rather
-              than buried under a bare "⋯". tap-44 keeps the 44px target. */}
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={moreOpen}
-            aria-label="Browse"
-            title="Browse"
+          {/* Compass is the field-guide index. It is a full destination rather
+              than a tall modal, so it can be linked, shared, scrolled, and
+              returned from with normal browser history. */}
+          <Link
+            href="/compass"
+            prefetch={false}
+            onMouseEnter={() => router.prefetch("/compass")}
+            onFocus={() => router.prefetch("/compass")}
+            onPointerDown={() => router.prefetch("/compass")}
+            aria-label="Compass"
+            aria-current={pathname === "/compass" ? "page" : undefined}
+            title="Compass"
             className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            style={{
+              borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
+              color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
+            }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-medium leading-none sm:inline">Browse</span>
-          </button>
+            <span className="hidden text-[14px] font-medium leading-none sm:inline">Compass</span>
+          </Link>
         </div>
       </header>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </>
   );
 }

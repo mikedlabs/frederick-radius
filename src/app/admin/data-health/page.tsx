@@ -163,7 +163,7 @@ export default async function DataHealth() {
                   ) : (
                     <code
                       className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{ background: toneTint("warning", 14), color: "var(--app-warning)" }}
+                      style={{ background: toneTint("warning", 14), color: "var(--app-warning-press)" }}
                     >
                       set {f.env}
                     </code>
@@ -502,7 +502,7 @@ export default async function DataHealth() {
         ) : (
           <>
             <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              <span className="font-semibold tabular-nums" style={{ color: "var(--app-warning)" }}>
+              <span className="font-semibold tabular-nums" style={{ color: "var(--app-warning-press)" }}>
                 {unparseableTotal.toLocaleString()}
               </span>{" "}
               across {unparseable.length} source{unparseable.length === 1 ? "" : "s"}.

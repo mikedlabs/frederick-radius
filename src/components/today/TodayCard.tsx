@@ -140,7 +140,7 @@ export default async function TodayCard() {
       {/* Header row — the page's date / day / time, built into the hero
           itself (no separate band below). Date is server-rendered; the clock
           ticks client-side. */}
-      <div className="flex items-center justify-between gap-3 text-meta font-semibold uppercase tracking-[0.14em] opacity-70">
+      <div className="flex items-center justify-between gap-3 text-meta font-semibold uppercase tracking-[0.14em]">
         <span suppressHydrationWarning>{dateStr}</span>
         <LiveClock className="font-mono tabular-nums" />
       </div>

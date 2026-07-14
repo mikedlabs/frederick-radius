@@ -11,9 +11,9 @@
  *
  * Layout rules it lives by: typography carries hierarchy (hairline
  * separators, no per-row boxes), exactly one count on the whole panel
- * (the browse tie-out), honest empty states, 44px targets, focus moves
- * in on open and back to the chip on close, breathe-in entrance that
- * globals.css already freezes under reduced motion.
+ * (the browse tie-out), honest empty states, 44px targets, and focus moves
+ * in on open and back to the chip on close. The panel paints immediately:
+ * response UI should never wait on the site's decorative entrance motion.
  */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -129,7 +129,7 @@ export default function WantAnswerPanel({
 
   return (
     <section
-      className="breathe-in overflow-hidden rounded-[var(--app-radius-lg)]"
+      className="overflow-hidden rounded-[var(--app-radius-lg)]"
       aria-label={`${label}, right now`}
       style={{
         border: `1px solid color-mix(in srgb, ${accent} 40%, var(--app-border))`,

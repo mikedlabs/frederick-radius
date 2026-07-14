@@ -1,5 +1,11 @@
 import { TrainFront, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react";
-import { getMarcBoard, getMarcAlerts, type MarcDeparture } from "@/lib/integrations/marcTrains";
+import {
+  getMarcBoard,
+  getMarcAlerts,
+  type MarcAlert,
+  type MarcDeparture,
+  type MarcStationBoard,
+} from "@/lib/integrations/marcTrains";
 
 /**
  * NextTrainBoard — live MARC Brunswick Line departures for the four
@@ -68,13 +74,19 @@ function DirectionRow({
   );
 }
 
-export default async function NextTrainBoard() {
-  // Server clock at request time for this dynamic board.
-  const now = new Date();
-  const [{ stations, serviceToday }, alerts] = await Promise.all([
-    getMarcBoard(now),
-    getMarcAlerts(),
-  ]);
+export default async function NextTrainBoard({
+  board: providedBoard,
+  alerts: providedAlerts,
+}: {
+  board?: { stations: MarcStationBoard[]; serviceToday: boolean };
+  alerts?: MarcAlert[];
+} = {}) {
+  // /pulse already fetched both values for its summary, while /transit can
+  // continue to let this panel own its reads.
+  const [board, alerts] = providedBoard !== undefined && providedAlerts !== undefined
+    ? [providedBoard, providedAlerts]
+    : await Promise.all([getMarcBoard(new Date()), getMarcAlerts()]);
+  const { stations, serviceToday } = board;
 
   return (
     <section aria-labelledby="marc-board-heading" className="space-y-3">

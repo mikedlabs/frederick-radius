@@ -7,8 +7,9 @@ import { beta_codes } from "@/lib/db/schema";
  * Beta invites: one personal access code per signup email, delivered by
  * email. The code IS the `beta_codes` row (label = the email address, the
  * pre-existing "who is it for" field, so no migration is needed) — which
- * means every invited tester is individually attributable and revocable
- * from /admin/beta-codes, exactly like hand-minted codes.
+ * means every invited tester's access is internally manageable and revocable
+ * from /admin/beta-codes, exactly like hand-minted codes. The code is never
+ * attached to third-party analytics events.
  *
  * Email delivery is Resend via raw fetch (the submit-notification pattern)
  * and FAIL-SOFT end to end: without RESEND_API_KEY the code still mints and
@@ -73,6 +74,8 @@ export async function sendBetaCodeEmail(email: string, code: string): Promise<bo
     `Come in here: ${link}`,
     "",
     "The code is yours alone. If you ever lose access, reply to this email and we will sort it out.",
+    "",
+    "We use this address to manage your beta access. Reply with 'remove me' if you want the address and code removed.",
     "",
     "See you around the county.",
     "Frederick Radius",

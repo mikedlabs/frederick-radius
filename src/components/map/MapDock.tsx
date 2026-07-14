@@ -500,7 +500,7 @@ export default function MapDock(props: MapDockProps) {
         <div
           className="dock-pane"
           id="dock-pane"
-          role="tabpanel"
+          role="dialog"
           aria-label={paneTitle}
           aria-hidden={pane === null}
           // See EventsBoardDock: inert keeps the collapsed pane's "Done"
@@ -865,12 +865,12 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
-          <div className="dock-readout" role="tablist" aria-label="Map view controls">
+          <div className="dock-readout" role="group" aria-label="Map view controls">
             <button
               type="button"
-              role="tab"
-              aria-selected={pane === "what"}
+              aria-expanded={pane === "what"}
               aria-controls="dock-pane"
+              aria-haspopup="dialog"
               className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
               onClick={() => toggle("what")}
             >
@@ -881,9 +881,9 @@ export default function MapDock(props: MapDockProps) {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={pane === "when"}
+              aria-expanded={pane === "when"}
               aria-controls="dock-pane"
+              aria-haspopup="dialog"
               className={`dock-seg dock-seg-when${pane === "when" ? " active" : ""}`}
               onClick={() => toggle("when")}
             >
@@ -894,9 +894,9 @@ export default function MapDock(props: MapDockProps) {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={pane === "where"}
+              aria-expanded={pane === "where"}
               aria-controls="dock-pane"
+              aria-haspopup="dialog"
               className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
               onClick={() => toggle("where")}
             >
@@ -907,9 +907,9 @@ export default function MapDock(props: MapDockProps) {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={pane === "layers"}
+              aria-expanded={pane === "layers"}
               aria-controls="dock-pane"
+              aria-haspopup="dialog"
               className={`dock-seg dock-seg-layers${pane === "layers" ? " active" : ""}`}
               onClick={() => toggle("layers")}
             >

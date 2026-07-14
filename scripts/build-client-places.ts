@@ -34,18 +34,20 @@ const slim = publicPlaces().map((p) => {
     confidence?: unknown;
     first_seen_at?: unknown;
     hours_source?: unknown;
-    hours_updated_at?: unknown;
     open_status?: unknown;
   };
   // Keep google_photo_url (the single hero); drop the heavy arrays /
   // detail-only text the Search & Saved cards never render.
   //
-  // Also drop the provenance + hours-metadata block. These seven fields
+  // Also drop the provenance + most of the hours-metadata block. These fields
   // are re-DERIVED at render time on the place-detail page (which uses
   // the full @/lib/loaders/places loader, not this slim bundle) by
   // stampPlaceProvenance / applyEnrichment — no client place surface
   // (map, search, ⌘K, Saved, funnel, radius, the by-slugs hydration)
-  // reads them off a slim record. Dropping them here trims ~465 KB raw /
+  // reads them off a slim record. `hours_updated_at` is the one exception:
+  // the lightweight /api/want route needs it to enforce the same open-now
+  // freshness policy without importing the 9 MB enrichment loader. Dropping
+  // the rest trims ~465 KB raw /
   // ~28 KB gzip off the bundle AND off every /api/places/by-slugs payload.
   // (Audited 2026-06-17; grepped every clientPlaces/clientPlaceBySlug
   // consumer + every place-card component.) Note last_verified_at is NOT
@@ -67,13 +69,20 @@ const slim = publicPlaces().map((p) => {
     confidence: _conf,
     first_seen_at: _fsa,
     hours_source: _hs,
-    hours_updated_at: _hua,
     open_status: _os,
     ...rest
   } = d;
   void _gp; void _gh; void _rs; void _ra;
-  void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _hua; void _os;
-  return rest;
+  void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _os;
+  return {
+    ...rest,
+    // /api/want historically matches the canonical RAW category first, then
+    // decorates the matched rows. Preserve that distinction so the slim route
+    // returns the exact same answer set as the full loader even when Google
+    // later corrected a place's display category.
+    want_match_category: p.category,
+    want_match_subcategories: p.subcategories,
+  };
 });
 
 writeFileSync(OUT, JSON.stringify(slim));

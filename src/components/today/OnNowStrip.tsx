@@ -118,6 +118,7 @@ function OnNowChipCard({ chip }: { chip: OnNowChip }) {
   return (
     <Link
       href={chip.href}
+      prefetch={false}
       aria-label={`${chip.kicker}: ${chip.title}${chip.meta ? `, ${chip.meta}` : ""}`}
       className="tactile-interactive flex min-h-[44px] max-w-[16rem] items-center gap-2.5 rounded-[var(--app-radius-md)] px-2.5 py-2"
       style={{

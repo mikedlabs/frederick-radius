@@ -40,7 +40,7 @@ function FactList({ items, accent }: { items: CNFact[]; accent?: boolean }) {
             className="mt-[7px] h-1 w-1 shrink-0 rounded-full"
             style={{ background: accent ? "var(--app-brand)" : "var(--app-ink-3)" }}
           />
-          <span className="min-w-0">
+          <span className="min-w-0 max-w-[68ch]">
             {f.text}
             <SourceLink href={f.source_url} />
           </span>
@@ -69,7 +69,7 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
       style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
     >
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand)" }}>
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
           Cliff notes
         </span>
         <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
@@ -81,7 +81,7 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
       </div>
 
       {cn.one_liner && (
-        <p className="mt-2.5 font-serif text-[18px] leading-snug" style={{ color: "var(--app-ink)" }}>
+        <p className="mt-2.5 max-w-[68ch] font-serif text-[18px] leading-snug" style={{ color: "var(--app-ink)" }}>
           {cn.one_liner}
         </p>
       )}
@@ -118,7 +118,7 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
                           +
                         </span>
                       </summary>
-                      <p className="pb-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                      <p className="max-w-[68ch] pb-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                         {item.a}
                         <SourceLink href={item.source_url} />
                       </p>

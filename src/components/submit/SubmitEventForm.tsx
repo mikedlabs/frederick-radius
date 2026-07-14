@@ -46,13 +46,17 @@ export default function SubmitEventForm() {
       setError("Title, start time, and your email are required.");
       return;
     }
+    if (!/^\S+@\S+\.\S+$/.test(input.submitter_email)) {
+      setError("Enter a valid email so we can follow up about this event.");
+      return;
+    }
     startTransition(async () => {
       try {
         await submitEventAction(input);
         setSubmitted(true);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        setError(err instanceof Error ? err.message : "We couldn’t submit this event. Try again in a minute.");
       }
     });
   };
@@ -72,7 +76,7 @@ export default function SubmitEventForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
       <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
       <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -106,7 +110,7 @@ export default function SubmitEventForm() {
         type="submit"
         disabled={pending}
         className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         {pending ? "Submitting…" : "Submit event"}
       </button>
@@ -118,7 +122,7 @@ function Field({ name, label, required, type = "text", placeholder }: { name: st
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
-        {label}{required && <span style={{ color: "var(--app-brand)" }}>*</span>}
+        {label}{required && <span aria-hidden style={{ color: "var(--app-brand-press)" }}> *</span>}
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}

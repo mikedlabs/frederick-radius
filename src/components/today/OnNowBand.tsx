@@ -6,13 +6,15 @@ import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import { parkingPlanForToday } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 import { marketsOpenToday } from "@/lib/markets-today";
-import { todaysDeals } from "@/lib/loaders/todaysDeals";
+import { EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
+import { getMergedTodaysDeals } from "@/lib/loaders/fieldNotesDb";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { parseHappyHour } from "@/lib/happyHour";
 import { isClosedNow } from "@/lib/hours";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { clusterOrder, daypart } from "@/lib/daypart";
+import { dealsAvailableNow } from "@/lib/today/dealAvailability";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
@@ -77,7 +79,8 @@ export default async function OnNowBand({
 
   // Presence, from the EXACT loaders each block uses, so the header never lies.
   const markets = marketTeaserAbove ? [] : await marketsOpenToday(now);
-  const dealsCount = todaysDeals(now).length;
+  const deals = await getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER);
+  const dealsCount = dealsAvailableNow(deals, EASTERN_WEEKDAY(now), now).length;
   const happyCount = liveHappyCount(now);
   const parking = parkingPlanForToday(
     publicEvents.map((e) => ({ slug: e.slug, title: e.title, starts_at: e.starts_at, geom: e.geom, category: e.category })),

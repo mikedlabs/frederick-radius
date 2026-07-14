@@ -40,13 +40,19 @@ function isAdminPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
-/** Paths that stay reachable even while the beta wall is up: the unlock page +
- *  its action, all API/fetch routes (never redirect a fetch to an HTML page),
- *  and anything that is a real file (sw.js, manifest, icons, og images). */
-function isBetaExempt(pathname: string): boolean {
+/** Paths that stay reachable even while the beta wall is up: the unlock page,
+ *  the legal pages linked from its consent copy, all API/fetch routes (never
+ *  redirect a fetch to an HTML page), and anything that is a real file (sw.js,
+ *  manifest, icons, og images). Exported so the wall's public surface is
+ *  covered by a focused unit test. */
+export function isBetaExempt(pathname: string): boolean {
   return (
     pathname === "/beta" ||
     pathname.startsWith("/beta/") ||
+    pathname === "/privacy" ||
+    pathname.startsWith("/privacy/") ||
+    pathname === "/terms" ||
+    pathname.startsWith("/terms/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/sitemap") ||
     pathname.startsWith("/icons/") ||

@@ -18,6 +18,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
   return (
     <Link
       href={`/places/${place.slug}`}
+      prefetch={false}
       className="shader-rim hover-lift tactile-feature group relative block overflow-hidden rounded-[var(--app-radius-xl)]"
       aria-label={`Featured: ${place.name}`}
     >
@@ -27,6 +28,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
             src={place.google_photo_url}
             alt=""
             fill
+            unoptimized={place.google_photo_url.startsWith("/api/place-photo")}
             priority
             sizes="(max-width: 720px) 100vw, 720px"
             placeholder="blur"

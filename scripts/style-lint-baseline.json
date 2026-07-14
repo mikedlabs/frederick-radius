@@ -1,16 +1,13 @@
 {
   "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-06-03T21:16:59.619Z",
-  "count": 9,
+  "generated": "2026-07-14T23:36:44.207Z",
+  "count": 6,
   "entries": [
-    "src/components/marketing/scenes/IntroScene.tsx|ecosystem|…A unified digital ecosystem connecting 12 communiti…",
     "src/components/marketing/scenes/Scene03_NoiseToSignal.tsx|ecosystem|…One ecosystem for",
     "src/components/marketing/scenes/Scene07_Ecosystem.tsx|ecosystem|…r personas. One unified ecosystem.",
     "src/data/events.ts|craft|Massive juried craft and art show in Thurmon…",
     "src/data/places.ts|craft|Brunswick's craft brewery in a restored f…",
     "src/data/places.ts|craft|Downtown craft brewery in a 1909 fireh…",
-    "src/data/places.ts|craft|Frederick's flagship craft brewery — flagship IPA,…",
-    "src/data/places.ts|craft|…goods, prepared foods, craft beer, ferments.",
-    "src/data/places.ts|hidden gem|…ils and aged balsamics. Hidden gem on East Patrick."
+    "src/data/places.ts|craft|…goods, prepared foods, craft beer, ferments."
   ]
 }

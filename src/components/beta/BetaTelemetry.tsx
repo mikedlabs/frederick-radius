@@ -2,19 +2,22 @@
 
 import { useEffect } from "react";
 import { track } from "@/lib/track";
-import { BETA_ID_COOKIE } from "@/lib/beta-constants";
+import {
+  BETA_ID_COOKIE,
+  BETA_OWNER_MARKER,
+  BETA_TESTER_MARKER,
+} from "@/lib/beta-constants";
 
 /**
- * BetaTelemetry — attributes beta usage to the individual tester whose access
- * code let them in. Renders nothing.
+ * BetaTelemetry — records aggregate beta activity and refreshes the internal
+ * access record's recent-use timestamp. Renders nothing.
  *
- * The code rides in the readable `fr_who` cookie (the httpOnly `fr_beta` cookie
- * stays the actual credential). Once per browser session we (1) fire a single
- * `beta_active` analytics event tagged with the code, so Plausible shows a
- * per-tester activity breakdown, and (2) ping /api/beta/seen so the admin list
- * reflects who is currently active. The session guard keeps it to one of each
- * per visit; the owner master key ("owner") is skipped so our own testing
- * doesn't pollute the tester cohort.
+ * The readable `fr_who` cookie contains only "tester" or "owner" (the httpOnly
+ * `fr_beta` cookie stays the actual credential). Once per browser session we
+ * (1) fire an aggregate `beta_active` event with NO identifier attached, and
+ * (2) ping /api/beta/seen, which verifies the httpOnly signed credential on the
+ * server before refreshing the matching internal row. The owner master key is
+ * skipped so owner testing does not pollute the beta count.
  */
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -22,17 +25,28 @@ function readCookie(name: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+/** Kept as a tiny test seam: analytics receives an event name, never a code. */
+export function recordAggregateBetaActivity(): void {
+  track("beta_active");
+}
+
 export default function BetaTelemetry() {
   useEffect(() => {
-    const code = readCookie(BETA_ID_COOKIE);
-    if (!code || code === "owner") return;
+    const identity = readCookie(BETA_ID_COOKIE);
+    if (!identity || identity === BETA_OWNER_MARKER) return;
+    // Older sessions may still carry the pre-fix personal code in this
+    // browser-readable cookie. Replace it immediately with the coarse marker;
+    // /api/beta/seen derives identity from the separate httpOnly credential.
+    if (identity !== BETA_TESTER_MARKER) {
+      document.cookie = `${BETA_ID_COOKIE}=${BETA_TESTER_MARKER}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax; Secure`;
+    }
     try {
       if (sessionStorage.getItem("fr_beta_active")) return;
       sessionStorage.setItem("fr_beta_active", "1");
     } catch {
       // Private mode / storage disabled — fall through and fire once per mount.
     }
-    track("beta_active", { code });
+    recordAggregateBetaActivity();
     // Best-effort last-seen refresh; never surfaces an error to the user.
     void fetch("/api/beta/seen", { method: "POST", keepalive: true }).catch(() => {});
   }, []);

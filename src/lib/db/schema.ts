@@ -312,11 +312,10 @@ export const push_subscriptions = pgTable(
  * BYPASSRLS server role touches it.
  */
 /**
- * beta_emails — the owned launch-announcement list (experience review, blind
- * spot #5: everyone who ever tried the beta was unreachable; launch day had no
- * channel). One optional field on /beta, nothing else — email + where it came
- * from. RLS deny-all like every table (server role only). Deleting a row is
- * the entire unsubscribe story until a real ESP is chosen.
+ * beta_emails — the beta-access email list. One field on /beta, used to mint,
+ * send, and manage a personal access code. RLS deny-all like every table
+ * (server role only). Deleting the row and its labeled beta code fulfills a
+ * removal request.
  */
 export const beta_emails = pgTable(
   "beta_emails",
@@ -333,10 +332,11 @@ export const beta_emails = pgTable(
 
 /**
  * beta_codes — per-tester access codes. Replaces the single shared password as
- * the way people come in, so each beta user is individually attributable (the
- * code rides into the analytics cohort) and individually revocable (flip
- * `revoked` and only that person is locked out). The shared BETA_PASSWORD stays
- * as an owner master key alongside these, so we can never lock ourselves out.
+ * the way people come in, so each beta user's access can be managed internally
+ * and individually revoked (flip `revoked` and only that person is locked out).
+ * The shared BETA_PASSWORD stays as an owner master key alongside these, so we
+ * can never lock ourselves out. Third-party analytics receives only an
+ * aggregate beta-active event, never this code or its label.
  *
  * `code` is a readable slug (e.g. "frederick-ada7") the owner texts to a tester;
  * `label` is who it's for ("Jane from the co-op"). `redeemed_at` is first unlock,

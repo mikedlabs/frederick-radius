@@ -5,6 +5,7 @@ import { Repeat, ChevronDown, MapPin, ExternalLink, CalendarPlus } from "lucide-
 import { haptic } from "@/lib/haptics";
 import type { IngestedSeries } from "@/lib/loaders/ingested";
 import { formatEventDate, formatEventTime, eventDateParts } from "@/lib/format/eventTime";
+import DatePlate from "@/components/event/DatePlate";
 
 function fmtDate(iso: string, allDay: boolean): string {
   return allDay
@@ -27,26 +28,20 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
   const [open, setOpen] = useState(false);
   const next = series.occurrences[0];
   const more = series.occurrences.slice(1);
+  const nextDate = eventDateParts(next.startsAtUtc);
 
   return (
     <article
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+      style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
     >
       <div className="flex items-start gap-3 p-3">
-        {/* Date block */}
-        <div
-          className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-          aria-hidden
-        >
-          <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--app-brand)" }}>
-            {eventDateParts(next.startsAtUtc).monthShort}
-          </span>
-          <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-            {eventDateParts(next.startsAtUtc).day}
-          </span>
-        </div>
+        <DatePlate
+          month={nextDate.monthShort}
+          day={nextDate.day}
+          weekday={nextDate.weekdayShort}
+          accent="var(--app-brand)"
+        />
 
         <div className="min-w-0 flex-1">
           {series.presenter && (

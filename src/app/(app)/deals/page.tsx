@@ -68,7 +68,7 @@ export default function DealsPage() {
 
       {rows.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          No deals on file yet. They&rsquo;re coming.
+          No current specials are on file. Know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
         </p>
       ) : (
         <DealsBrowser rows={rows} today={today} />

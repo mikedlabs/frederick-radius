@@ -24,9 +24,11 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
 
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className={
         fullBleed
-          ? "px-4 pt-5 sm:px-5 lg:pl-24"
+          ? "px-4 sm:px-5 lg:pl-24"
           : "mx-auto max-w-screen-md px-4 pt-6 sm:px-5 lg:max-w-screen-lg lg:pl-24"
       }
       style={{

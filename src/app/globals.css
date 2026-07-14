@@ -151,6 +151,7 @@
   --app-danger-tint-6:   color-mix(in srgb, var(--app-danger)   6%, transparent);
   --app-danger-tint-14:  color-mix(in srgb, var(--app-danger)  14%, transparent);
   --app-ink-tint-6:      color-mix(in srgb, var(--app-ink)      6%, transparent);
+  --app-ink-tint-8:      color-mix(in srgb, var(--app-ink)      8%, transparent);
   --app-ink-tint-12:     color-mix(in srgb, var(--app-ink)     12%, transparent);
 
   /* ─────────────────────────────────────────────────────
@@ -197,7 +198,7 @@
   --app-topbar-offset: var(--app-topbar-h);
   --app-bottomnav-reserve: 84px;
   --app-browse-map-height: calc(
-    100dvh - var(--app-topbar-h) - 48px - var(--app-bottomnav-reserve) -
+    100dvh - var(--app-topbar-h) - var(--app-bottomnav-reserve) -
       env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
   );
 
@@ -282,6 +283,12 @@
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
+@media (min-width: 64rem) {
+  :root {
+    --app-bottomnav-reserve: 0px;
+  }
+}
+
 /* Dark mode CSS removed during the design-token audit. The paper-
  * cream palette IS the brand and there's no user-facing toggle yet —
  * the ~50 lines of dark overrides were dead CSS shipping on every
@@ -294,6 +301,14 @@
     --app-dur-fast: 0ms;
     --app-dur-med: 0ms;
     --app-dur-slow: 0ms;
+  }
+
+  [data-vaul-drawer],
+  [data-vaul-overlay],
+  .cmdk-root,
+  .cmdk-shell {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -386,12 +401,12 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
 .focus-ring-inset:focus-visible {
   outline-offset: -3px;
 }
-/* The skip-link target: #main takes programmatic focus (tabindex="-1") so
+/* The skip-link target takes programmatic focus (tabindex="-1") so
    the skip link MOVES focus, but the wrapper itself must not draw the ring
    around the entire page. Must live HERE (unlayered) — Tailwind's
    `outline-none` utility sits in @layer utilities and loses to the
    unlayered :focus-visible rule above regardless of specificity. */
-#main:focus-visible {
+#main-content:focus-visible {
   outline: none;
 }
 
@@ -695,8 +710,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
   opacity: 0.09;
   mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
-  background-size: 200px 200px;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.7) 0 0.5px, transparent 0.8px),
+    radial-gradient(circle, rgba(22,20,14,0.45) 0 0.45px, transparent 0.75px);
+  background-position: 0 0, 2px 2px;
+  background-size: 4px 4px, 5px 5px;
 }
 /* Atmospheric depth — a soft inset shadow hugging the bottom edge so
  * the sky has volume and the content below reads as a distinct layer,
@@ -1185,6 +1203,23 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * button doesn't overlap the headline. */
 .mapboxgl-popup-content {
   padding: 14px 56px 14px 14px !important;
+}
+
+/* Mapbox's DOM furniture ships with a Helvetica stack and 29px controls.
+ * Keep it in the field-guide system and make every native map action meet
+ * the same touch-target contract as the rest of the app. */
+.mapboxgl-map,
+.mapboxgl-ctrl,
+.mapboxgl-popup {
+  font-family: var(--font-sans-base), Inter, ui-sans-serif, system-ui, sans-serif !important;
+}
+.mapboxgl-map .mapboxgl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+}
+.mapboxgl-map .mapboxgl-ctrl-attrib-button {
+  min-width: 44px !important;
+  min-height: 44px !important;
 }
 
 /* Radius-map hover preview — a quiet mini-label that follows the dot
@@ -2190,81 +2225,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    (--app-ink-inverse) clears AA against them. Vermilion appears ONLY as the
    live dot / live-card ring.
    ========================================================================== */
-/* ── Explore wallet deck ──────────────────────────────────────────────
- * The field-guide index (Explore / MoreSheet) as a deck of wallet cards
- * that FANS IN on open and settles into a readable, tappable stack. Each
- * card tucks under the next showing its title lip; the last shows fully.
- * Reuses the .sw-m-* motifs. Reduced-motion lands settled with no fan. */
-.ex-deck { position: relative; }
-.ex-slot { margin-top: -60px; }
-.ex-slot:first-child { margin-top: 0; }
-.ex-card {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  min-height: 116px;
-  padding: 14px 16px 14px 20px;
-  border-radius: var(--app-radius-lg);
-  color: var(--app-ink);
-  /* Pressed paper (owner call: the deep-ink plates read too dark in a cream
-     app). The stack's seam logic is the wallet's - later cards paint on top,
-     so the visible depth cue at each lip is cast UPWARD by the covering
-     card; a warm hairline ring keeps cream-on-cream edges legible. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 -12px 20px -12px rgba(22, 20, 14, 0.22),
-    0 14px 24px -12px rgba(22, 20, 14, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--app-ink) 13%, transparent);
-  animation: ex-fanin 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: calc(var(--ex-i, 0) * 52ms);
-  will-change: transform, opacity;
-}
-.ex-slot:last-child .ex-card { min-height: 132px; }
-.ex-card:focus-visible { outline: 3px solid var(--app-brand); outline-offset: 2px; }
-/* The shared sw-m-* motifs are white engraving lines tuned for dark wallet
-   cards; invert() flips them to faint INK lines (alpha preserved) so the
-   same patterns read as letterpress texture on paper. */
-.ex-card .ex-motif { position: absolute; inset: 0; opacity: 0.36; mix-blend-mode: multiply; filter: invert(1); pointer-events: none; }
-/* The spine: where the plate spends its color. A crisp stripe with a soft
-   bloom into the ground, like a bound edge catching light. */
-.ex-card .ex-spine {
-  position: absolute; inset: 0 auto 0 0; width: 4px; pointer-events: none;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--exc) 88%, #fff), var(--exc));
-}
-.ex-card .ex-spine::after {
-  content: ""; position: absolute; inset: 0 -14px 0 4px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--exc) 26%, transparent), transparent);
-}
-/* Engraved icon: pressed into the lower corner in the plate's own tint,
-   deepened toward ink so it engraves into paper instead of glowing. */
-.ex-card .ex-ghost {
-  position: absolute; right: -4px; bottom: -8px; pointer-events: none;
-  color: color-mix(in srgb, var(--exc) 62%, var(--app-ink));
-  opacity: 0.18;
-}
-/* Plate number, top-right of the title lip - accent ink, not foil. */
-.ex-card .ex-plate {
-  position: absolute; top: 1px; right: 0;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px; letter-spacing: 0.14em;
-  font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--exc) 72%, var(--app-ink));
-}
-/* Hairline under the title, in the plate's tint - the engraver's rule. */
-.ex-card .ex-rule {
-  display: block; height: 1px; width: 34px; margin-top: 7px;
-  background: color-mix(in srgb, var(--exc) 62%, var(--app-ink));
-  opacity: 0.55;
-}
-.ex-card .ex-desc { color: var(--app-ink-2); }
-@keyframes ex-fanin {
-  from { opacity: 0; transform: translateY(46px) rotate(var(--ex-rot, 0deg)) scale(0.92); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ex-card { animation: none; opacity: 1; transform: none; }
-}
-
 /* The wallet is a hand-held object: cap the stack at phone width and center
    it, so desktop doesn't stretch each card to the full content column. */
 .sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
@@ -2553,27 +2513,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .sw-card.is-open .sw-holo { animation: none; opacity: .12; background-position: 40% 0; }
 }
 
-/* ── Deals wallet variant (sw-deals, DealsWallet.tsx) — same sw-* card language, but
-   the lip carries a deal SENTENCE ("Nightly AYCE crabs"), not a short venue
-   name. The headline may wrap to a second line instead of amputating the
-   offer mid-thought, so each tuck leaves a taller lip; and the stub's WHEN
-   column hugs its short time so TOWN never clips ("Downtown Frede…"). */
-.sw-deals .sw-name {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-/* 82px lip: two headline lines + the venue line (base deck lip is 62px). The
-   whole is-open ladder is restated because these later rules would otherwise
-   override the base ladder's first-child/is-open exceptions. */
-.sw-deals .sw-slot { margin-top: -104px; }
-.sw-deals .sw-slot:first-child { margin-top: 0; }
-.sw-deals .sw-slot.is-open { margin-top: -56px; }
-.sw-deals .sw-slot:first-child.is-open { margin-top: 0; }
-.sw-deals .sw-slot.is-open + .sw-slot { margin-top: 10px; }
-.sw-deals .sw-ledger { grid-template-columns: auto minmax(0, 1fr); }
-
 /* ============================================================================
    Saved page furniture (SavedList.tsx) — the almanac frame around the wallet:
    masthead, the On-now ruled running line, the plan-a-day rule, compact event
@@ -2810,6 +2749,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-search-input {
   flex: 1 1 auto;
+  align-self: stretch;
+  height: 100%;
   min-width: 0;
   background: transparent;
   border: none;
@@ -2835,6 +2776,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 24px;
   height: 24px;
   color: var(--app-ink-3);
+}
+
+/* Static locator crops come from Mapbox's stock light style until the paper
+ * style is published as a hosted Mapbox style. This restrained treatment
+ * pulls the cool gray tile into the surrounding cream field-guide palette
+ * without obscuring roads, labels, attribution, or the location pin. */
+.field-map-image {
+  filter: sepia(0.14) saturate(0.86) contrast(0.98);
 }
 .dock-search-results {
   position: absolute;
@@ -3571,7 +3520,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
      rides up with it instead of pinning 56px down over a seam of list. */
   top: var(--app-topbar-offset);
   z-index: var(--z-sticky);
-  transition: top 240ms var(--app-ease-out);
+  transition: top var(--app-dur-med) var(--app-ease-out);
 }
 
 /* The pinned head: nameplate + caption bar + sub bar. Frosted paper so the

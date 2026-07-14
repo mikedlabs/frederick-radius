@@ -20,7 +20,7 @@ import {
 import { sendAllCodes } from "./actions";
 
 /**
- * /admin/beta-emails — the launch-announcement list, owner-only.
+ * /admin/beta-emails — the beta-access email list, owner-only.
  *
  * Gated by the same middleware Basic Auth as the rest of /admin/*. Reads the
  * `beta_emails` table the /beta signup writes to, newest first, with a CSV
@@ -90,11 +90,11 @@ export default async function BetaEmailsAdmin({
 
   return (
     <AdminShell
-      eyebrow="Launch announcement list"
+      eyebrow="Beta access list"
       title="Beta emails"
       intro={
         <>
-          Everyone who left an email on <code>/beta</code> (the signup writes to the{" "}
+          Everyone who requested access on <code>/beta</code> (the request writes to the{" "}
           <code>beta_emails</code> table; duplicates are de-duped by a unique index). New signups
           are invited automatically; the button below covers everyone who signed up before invites
           existed.
@@ -138,7 +138,7 @@ export default async function BetaEmailsAdmin({
           <AdminButton variant="primary" type="submit">
             Mint + email codes to {uninvited} {uninvited === 1 ? "person" : "people"}
           </AdminButton>
-          <span className="text-[12px]" style={{ color: resendWired ? "var(--app-ink-3)" : "var(--app-warning)" }}>
+          <span className="text-[12px]" style={{ color: resendWired ? "var(--app-ink-3)" : "var(--app-warning-press)" }}>
             {resendWired
               ? "Sends each person their personal access code via Resend."
               : "RESEND_API_KEY is not set: codes will mint but no email goes out."}

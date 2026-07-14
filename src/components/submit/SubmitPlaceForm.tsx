@@ -28,8 +28,12 @@ export default function SubmitPlaceForm() {
       submitter_name: String(data.get("submitter_name") ?? ""),
       is_owner: data.get("is_owner") === "on",
     };
-    if (!input.name || !input.category || !input.submitter_email) {
-      setError("Name, category, and your email are required.");
+    if (!input.name || !input.category || !input.municipality || !input.submitter_email) {
+      setError("Name, category, town, and your email are required.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(input.submitter_email)) {
+      setError("Enter a valid email so we can follow up about this place.");
       return;
     }
     startTransition(async () => {
@@ -38,7 +42,7 @@ export default function SubmitPlaceForm() {
         setSubmitted(true);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        setError(err instanceof Error ? err.message : "We couldn’t submit this place. Try again in a minute.");
       }
     });
   };
@@ -65,7 +69,7 @@ export default function SubmitPlaceForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
       <FieldText name="name" label="Place name" required placeholder="e.g. Brewer's Alley" />
       <FieldSelect name="category" label="Category" required options={TOP_CATEGORIES.map((c) => ({ value: c.slug, label: c.name }))} />
       <FieldSelect name="municipality" label="Town" required options={MUNICIPALITIES.map((m) => ({ value: m.slug, label: m.name }))} />
@@ -96,7 +100,7 @@ export default function SubmitPlaceForm() {
         type="submit"
         disabled={pending}
         className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         {pending ? "Submitting…" : "Submit for review"}
       </button>
@@ -111,7 +115,7 @@ function FieldText({ name, label, required, type = "text", placeholder }: { name
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
-        {label}{required && <span style={{ color: "var(--app-brand)" }}>*</span>}
+        {label}{required && <span aria-hidden style={{ color: "var(--app-brand-press)" }}> *</span>}
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}
@@ -139,7 +143,7 @@ function FieldSelect({ name, label, required, options }: { name: string; label: 
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
-        {label}{required && <span style={{ color: "var(--app-brand)" }}>*</span>}
+        {label}{required && <span aria-hidden style={{ color: "var(--app-brand-press)" }}> *</span>}
       </span>
       <select
         name={name} required={required}

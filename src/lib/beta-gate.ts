@@ -13,7 +13,12 @@ import "server-only";
  * Cookie NAMES live in beta-constants.ts (re-exported here) so client
  * components can use them without touching this module.
  */
-export { BETA_COOKIE, BETA_ID_COOKIE } from "./beta-constants";
+export {
+  BETA_COOKIE,
+  BETA_ID_COOKIE,
+  BETA_OWNER_MARKER,
+  BETA_TESTER_MARKER,
+} from "./beta-constants";
 
 /**
  * The unlock-cookie value: a SHA-256 token derived from the shared password

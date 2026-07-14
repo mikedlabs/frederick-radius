@@ -41,7 +41,7 @@ export default function VenueMiniMap({
         height={560}
         loading="lazy"
         decoding="async"
-        className="h-[140px] w-full object-cover"
+        className="field-map-image h-[140px] w-full object-cover"
       />
     </Link>
   );

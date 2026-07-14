@@ -2,11 +2,13 @@ import "server-only";
 import { CRAVINGS } from "@/data/cravings";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import { MEALS, isMealKey } from "@/lib/meal";
-import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { knownFor } from "@/lib/cuisine";
-import { formatHoursLine, type OpenStatus } from "@/lib/hours";
-import { formatDistance } from "@/lib/geo";
+import { formatHoursLine, getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { formatDistance, haversineMeters } from "@/lib/geo";
+import { mayAssertOpenState } from "@/lib/hours-freshness";
 
 /**
  * The want answer — "I want coffee" resolved to places, ranked for RIGHT
@@ -18,6 +20,18 @@ import { formatDistance } from "@/lib/geo";
  * the meal keys — so every existing /nearby?c= deep link has an inline
  * twin and the two surfaces can never rank from different taxonomies.
  */
+
+// The generated client snapshot is also the smallest canonical public-place
+// snapshot on the server: already deduped, decorated, and stripped of the
+// detail-only enrichment arrays. Importing the full places loader here made a
+// 2 KB answer route carry roughly 9 MB of enrichment data into every cold
+// function. `npm run build:client-places` keeps this snapshot in sync.
+type WantPlaceSnapshot = PlaceCardData & {
+  want_match_category: string;
+  want_match_subcategories?: string[];
+};
+
+const WANT_PLACES = CLIENT_RAW as unknown as WantPlaceSnapshot[];
 
 export type WantRow = {
   slug: string;
@@ -60,7 +74,8 @@ export type WantAnswer = {
 /** The slice of a decorated place the partition logic reads — kept minimal
  *  and exported so the ranking rules are unit-testable with plain objects.
  *  The presentation fields (municipality, known_for, tips…) are optional so
- *  the pure ranking tests stay tiny; buildWantAnswer feeds full places. */
+ *  the pure ranking tests stay tiny; buildWantAnswer feeds the generated slim
+ *  public-place snapshot. */
 export type WantCandidate = {
   slug: string;
   name: string;
@@ -238,9 +253,23 @@ export function buildWantAnswer(
   const want = resolveWant(cKey, facetKey);
   if (!want) return null;
 
-  const candidates = publicPlaces()
-    .filter((p) => want.match(p))
-    .map((p) => decoratePlace(p, origin ?? undefined, now));
+  const candidates: WantCandidate[] = WANT_PLACES
+    .filter((p) =>
+      want.match({
+        category: p.want_match_category,
+        name: p.name,
+        subcategories: p.want_match_subcategories,
+      }),
+    )
+    .map((p) => ({
+      ...p,
+      open_status: getOpenStatus(
+        p.hours,
+        { verified: mayAssertOpenState(p.hours_verified, p.hours_updated_at, now) },
+        now,
+      ),
+      distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
+    }));
 
   const { open, later, other, total } = partitionWant(candidates);
 

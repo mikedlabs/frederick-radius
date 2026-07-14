@@ -4,7 +4,9 @@ import { MapPin, Calendar, Building2, Tag, ArrowRight, DoorOpen } from "lucide-r
 import { search, type SearchHit } from "@/lib/search";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { CRAVING_BY_KEY } from "@/data/cravings";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SearchInput from "@/components/search/SearchInput";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -42,6 +44,7 @@ type Display = {
   subtitle: string;
   badge: { label: string; color: string };
   Icon: typeof MapPin;
+  categorySlug?: string;
 };
 
 function displayFor(hit: SearchHit): Display {
@@ -51,8 +54,9 @@ function displayFor(hit: SearchHit): Display {
         href: `/places/${hit.place.slug}`,
         title: hit.place.name,
         subtitle: [hit.place.category, hit.place.city].filter(Boolean).join(" · "),
-        badge: { label: "Place", color: "var(--app-brand)" },
+        badge: { label: "Place", color: CATEGORY_BY_SLUG[hit.place.category]?.color ?? "var(--app-brand)" },
         Icon: MapPin,
+        categorySlug: hit.place.category,
       };
     case "event":
       return {
@@ -169,7 +173,7 @@ export default async function SearchPage({
               { label: "A rain plan", href: "/collections/rainy-day-frederick" },
               { label: "Out with the kids", href: "/collections/kid-energy-burners" },
               { label: "Walkable date night", href: "/collections/walkable-date-night" },
-              { label: "Hidden gems", href: "/collections/hidden-gems" },
+              { label: "Local favorites", href: "/collections/hidden-gems" },
               { label: "What's on this weekend", href: "/events?lens=weekend" },
               { label: "Coffee near me", href: "/category/coffee" },
               { label: "What's open right now", href: "/open-now" },
@@ -193,7 +197,7 @@ export default async function SearchPage({
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          No results for &ldquo;{query}.&rdquo; Try a category, town, or shorter phrase.
+          No results for &ldquo;{query}&rdquo;. Try a category, town, or shorter phrase.
         </p>
       )}
 
@@ -205,8 +209,11 @@ export default async function SearchPage({
           >
             {hits.length} {hits.length === 1 ? "match" : "matches"}
           </p>
-          <ul className="reveal-up space-y-1.5">
-            {hits.map((hit) => {
+          <ul
+            className="reveal-up overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {hits.map((hit, index) => {
               const d = displayFor(hit);
               const Icon = d.Icon;
               const key = `${hit.type}:${
@@ -216,22 +223,31 @@ export default async function SearchPage({
                 hit.category.slug
               }`;
               return (
-                <li key={key}>
+                <li key={key} style={index > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
                   <Link
                     href={d.href}
-                    className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5 transition"
-                    style={{ borderColor: "var(--app-border)" }}
+                    prefetch={false}
+                    className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
                   >
                     <span
                       aria-hidden
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
                       style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
                     >
-                      <Icon
-                        className="h-4 w-4"
-                        strokeWidth={2}
-                        style={{ color: d.badge.color }}
-                      />
+                      {d.categorySlug ? (
+                        <CategoryIcon
+                          slug={d.categorySlug}
+                          className="h-4 w-4"
+                          strokeWidth={1.8}
+                          style={{ color: d.badge.color }}
+                        />
+                      ) : (
+                        <Icon
+                          className="h-4 w-4"
+                          strokeWidth={2}
+                          style={{ color: d.badge.color }}
+                        />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span
@@ -254,7 +270,7 @@ export default async function SearchPage({
                         className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
                         style={{
                           background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
-                          color: d.badge.color,
+                          color: "var(--app-ink-2)",
                         }}
                       >
                         {d.badge.label}

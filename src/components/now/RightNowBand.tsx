@@ -47,6 +47,7 @@ export default function RightNowBand({
     <div className="flex flex-wrap gap-2">
       <Link
         href="/live-music"
+        prefetch={false}
         aria-label={
           sub
             ? `Live music tonight, ${count} show${count === 1 ? "" : "s"}. Next: ${sub}`

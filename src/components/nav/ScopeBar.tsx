@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { MapPin, ChevronDown } from "lucide-react";
+import { useTransition } from "react";
+import { MapPin, ChevronDown, Loader2 } from "lucide-react";
 import { setScope } from "@/lib/scope";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -34,7 +34,7 @@ export default function ScopeBar({
   municipalities: { slug: string; name: string }[];
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const currentName = current ? (MUNICIPALITY_BY_SLUG[current]?.name ?? null) : null;
 
   return (
@@ -48,21 +48,27 @@ export default function ScopeBar({
       </span>
       {/* The change control — a native select so it works everywhere and needs
           no popover. Pre-selected to the current choice; picking re-ranks. */}
-      <label className="tap-44-y relative inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-        <span aria-hidden>{currentName ? "Change" : "Set your town"}</span>
-        <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      <label
+        className="relative inline-flex items-center gap-1 text-[12px] font-semibold"
+        style={{ color: "color-mix(in srgb, var(--app-brand-press) 82%, var(--app-ink))" }}
+      >
+        <span>{currentName ? "Change town" : "Set your town"}</span>
+        {isPending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.25} aria-hidden />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        )}
         <select
-          aria-label="Change the town results are ranked from"
-          disabled={busy}
+          aria-describedby="scope-status"
+          disabled={isPending}
           value={current ?? "county"}
           onChange={(e) => {
             const v = e.target.value;
-            setBusy(true);
             setScope(v === "county" ? "county" : (`town:${v}` as const));
             // Server components re-render with the new fr_scope cookie.
-            router.refresh();
+            startTransition(() => router.refresh());
           }}
-          className="absolute inset-0 cursor-pointer opacity-0"
+          className="absolute -inset-y-[13px] inset-x-0 cursor-pointer opacity-0 disabled:cursor-wait"
         >
           <option value="county">Whole county</option>
           {municipalities.map((m) => (
@@ -72,6 +78,9 @@ export default function ScopeBar({
           ))}
         </select>
       </label>
+      <span id="scope-status" className="sr-only" role="status" aria-live="polite">
+        {isPending ? "Updating place rankings" : currentName ? `Ranked from ${currentName}` : "Ranked across Frederick County"}
+      </span>
     </div>
   );
 }

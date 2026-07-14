@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           What we collect, plainly.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Last updated: 2026-06-30
+          Last updated: 2026-07-14
         </p>
       </header>
 
@@ -71,6 +71,17 @@ export default function PrivacyPage() {
           </h2>
           <ul className="ml-5 list-disc space-y-2">
             <li>
+              <strong style={{ color: "var(--app-ink)" }}>Beta access email.</strong>{" "}
+              When you request beta access, we store your email and use it to
+              send and manage your personal access code. We also record when
+              that code is first redeemed, how many times it grants access,
+              and the time of its most recent active session. That information
+              stays linked to your internal access record so we can confirm the
+              beta is being used, help with access problems, and revoke a code
+              when needed. Our database and email-delivery providers process
+              the email for us. We do not sell it.
+            </li>
+            <li>
               <strong style={{ color: "var(--app-ink)" }}>Corrections and feedback.</strong>{" "}
               If you email a correction, we get your message and email address so
               we can fix the entry and reply.
@@ -95,7 +106,9 @@ export default function PrivacyPage() {
               <strong style={{ color: "var(--app-ink)" }}>Analytics.</strong>{" "}
               We use privacy-friendly, cookieless analytics to count page views
               and understand which features get used. It does not track you across
-              other sites or build an advertising profile.
+              other sites or build an advertising profile. Beta activity is
+              counted only in aggregate; we do not send your email or personal
+              access code to the analytics provider.
             </li>
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Error monitoring.</strong>{" "}
@@ -121,7 +134,8 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Clear your saves and preferences anytime by clearing this site&rsquo;s
-            data in your browser. To have a submission you sent us removed, email{" "}
+            data in your browser. To have a beta-access email, access code, or
+            submission you sent us removed, email{" "}
             <a
               href="mailto:hello@frederickradius.app?subject=Privacy%20request"
               className="font-semibold underline underline-offset-2"

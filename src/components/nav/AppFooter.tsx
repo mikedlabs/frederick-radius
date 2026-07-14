@@ -40,7 +40,11 @@ export default function AppFooter() {
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" style={{ color: "var(--app-ink-3)" }}>
           {LINKS.map((l) => (
             <li key={l.href}>
-              <Link href={l.href} className="inline-block py-2 -my-2 hover:underline">
+              <Link
+                href={l.href}
+                prefetch={false}
+                className="inline-flex min-h-11 items-center hover:underline"
+              >
                 {l.label}
               </Link>
             </li>
@@ -48,7 +52,7 @@ export default function AppFooter() {
           <li>
             <a
               href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction"
-              className="inline-block py-2 -my-2 hover:underline"
+              className="inline-flex min-h-11 items-center hover:underline"
             >
               Suggest a correction
             </a>
@@ -61,7 +65,7 @@ export default function AppFooter() {
       {/* Independence + reliance disclaimer (civic-facing app): keeps the
           product honest and prevents anyone mistaking it for an official
           government service or relying on it for emergencies. */}
-      <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+      <p className="mt-1.5 max-w-[68ch] text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         An independent local guide. Not affiliated with, endorsed by, or operated
         by the City of Frederick, Frederick County Government, or any
         municipality. Information may be out of date; never rely on it for

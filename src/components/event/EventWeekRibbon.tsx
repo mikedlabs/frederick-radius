@@ -1,9 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import type { EventWithMeta } from "@/lib/loaders/events";
-
 /**
  * EventWeekRibbon — a slim, whole-week-at-a-glance time axis for the top
  * of /events. The density trick: seven equal cells laid out on a single
@@ -16,20 +12,9 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  * EventsExplorer honors), so the ribbon is a fast temporal filter, not
  * just decoration. Today/active days get a quiet brand wash.
  *
- * Two modes, one look:
- *   - UNCONTROLLED (default): reads the active ?d= from the live URL and
- *     each cell is a <Link> that deep-links the day. Used when the ribbon
- *     stands alone at the top of a page.
- *   - CONTROLLED (`onPickDay` supplied): each cell is a <button> that
- *     drives the caller's `day` state directly, so the ribbon can live
- *     inside the board's When pane as a peer of the other pane controls
- *     (no navigation / remount, no lost scroll or closed pane).
- *
- * Client component: in uncontrolled mode it reads the active ?d= from the
- * live URL itself — /events is a static (ISR) shell, so the server can't
- * know the param. Counts always come from the same server-provided
- * `events` list the explorer renders — no day shows a fabricated number,
- * and an empty day honestly shows a muted dot rather than "0".
+ * Controlled by EventsExplorer so a pick updates in place without a
+ * navigation or remount. Counts are the complete server-computed day summary,
+ * not the bounded event preview shipped for the first paint.
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -71,31 +56,18 @@ function dateForOffset(now: Date, offset: number): Date {
 }
 
 export default function EventWeekRibbon({
-  events,
-  activeDay: activeDayProp,
+  nowISO,
+  countByDate,
+  activeDay,
   onPickDay,
 }: {
-  events: EventWithMeta[];
-  /** Controlled: the picked day key (YYYY-MM-DD), or null/undefined. */
-  activeDay?: string | null;
-  /** Controlled: called with the tapped day key, or null when tapping the
-   *  already-active day (a toggle-off). Presence flips the ribbon from
-   *  <Link> navigation to in-place <button> state. */
-  onPickDay?: (day: string | null) => void;
+  nowISO: string;
+  countByDate: Record<string, number>;
+  activeDay: string | null;
+  onPickDay: (day: string | null) => void;
 }) {
-  const controlled = typeof onPickDay === "function";
-  // The active day: the caller's state when controlled, else the live URL.
-  const urlDay = useSearchParams().get("d") ?? undefined;
-  const activeDay = controlled ? activeDayProp ?? undefined : urlDay;
-  const now = new Date();
+  const now = new Date(nowISO);
   const todayKey = easternDateKey(now);
-
-  // Per-Eastern-day event count, computed once from the public set.
-  const countByDate = new Map<string, number>();
-  for (const e of events) {
-    const k = easternDateKey(new Date(e.starts_at));
-    countByDate.set(k, (countByDate.get(k) ?? 0) + 1);
-  }
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = dateForOffset(now, i);
@@ -113,7 +85,7 @@ export default function EventWeekRibbon({
       ),
       isToday: i === 0,
       isWeekend: dow === 0 || dow === 6,
-      count: countByDate.get(key) ?? 0,
+      count: countByDate[key] ?? 0,
     };
   });
 
@@ -131,8 +103,6 @@ export default function EventWeekRibbon({
     >
       {days.map((d, i) => {
         const isActive = activeDay ? d.key === activeDay : false;
-        // Active toggles off (back to /events); else deep-links the day.
-        const href = isActive ? "/events" : `/events?d=${d.key}`;
         const highlighted = isActive || (!activeDay && d.isToday);
         const cellClass =
           "group flex flex-col items-center gap-1 py-2 transition active:scale-[0.96]";
@@ -199,35 +169,18 @@ export default function EventWeekRibbon({
             )}
           </>
         );
-        // Controlled: an in-place button driving the caller's day state.
-        if (controlled) {
-          return (
-            <button
-              key={d.key}
-              type="button"
-              aria-pressed={isActive}
-              aria-label={ariaLabel}
-              onClick={() => onPickDay?.(isActive ? null : d.key)}
-              className={cellClass}
-              style={cellStyle}
-            >
-              {cellInner}
-            </button>
-          );
-        }
-        // Uncontrolled: the standalone deep-linking ribbon.
         return (
-          <Link
+          <button
             key={d.key}
-            href={href}
-            scroll={false}
-            aria-current={isActive ? "date" : undefined}
+            type="button"
+            aria-pressed={isActive}
             aria-label={ariaLabel}
+            onClick={() => onPickDay(isActive ? null : d.key)}
             className={cellClass}
             style={cellStyle}
           >
             {cellInner}
-          </Link>
+          </button>
         );
       })}
     </nav>

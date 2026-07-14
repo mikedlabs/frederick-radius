@@ -44,7 +44,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
           inputMode="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search routes by number or destination"
+          aria-label="Search routes by number or where they go"
           placeholder="Search routes: a number, or where it goes…"
           className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
           style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}

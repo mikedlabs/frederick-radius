@@ -1,0 +1,727 @@
+{
+  "route": {
+    "name": "beta",
+    "path": "/beta",
+    "supplementary": true
+  },
+  "viewport": {
+    "name": "tablet-768x1024",
+    "width": 768,
+    "height": 1024
+  },
+  "responseStatus": 200,
+  "elapsedMs": 2971,
+  "screenshot": "screenshots/beta--tablet-768x1024--baseline.png",
+  "consoleMessages": [],
+  "pageErrors": [],
+  "title": "Frederick Radius: private beta · Frederick Radius",
+  "url": "http://127.0.0.1:3107/beta",
+  "document": {
+    "clientWidth": 768,
+    "scrollWidth": 768,
+    "scrollHeight": 4797,
+    "horizontalOverflow": 0
+  },
+  "cls": 0.00329,
+  "fonts": {
+    "status": "loaded",
+    "loadedFamilies": [
+      "Fraunces",
+      "Fraunces Fallback",
+      "Inter",
+      "Inter Fallback",
+      "JetBrains Mono",
+      "JetBrains Mono Fallback",
+      "__nextjs-Geist",
+      "__nextjs-Geist Mono"
+    ]
+  },
+  "landmarks": {
+    "main": 1,
+    "nav": 0,
+    "header": 0,
+    "footer": 0
+  },
+  "headings": [
+    {
+      "level": 1,
+      "text": "Your field guide to Frederick County.",
+      "selector": "div:nth-of-type(2) > main > section > div:nth-of-type(2) > h1"
+    },
+    {
+      "level": 2,
+      "text": "The county isn't empty. It's scattered.",
+      "selector": "main > div:nth-of-type(1) > section > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 2,
+      "text": "The whole county, live",
+      "selector": "div:nth-of-type(2) > section > div > div > h2"
+    },
+    {
+      "level": 2,
+      "text": "Frederick, right now",
+      "selector": "main > div:nth-of-type(3) > section > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 2,
+      "text": "Every place, on its own card",
+      "selector": "main > div:nth-of-type(4) > section > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 2,
+      "text": "Written by someone who lives here",
+      "selector": "main > div:nth-of-type(6) > section > div:nth-of-type(1) > h2"
+    },
+    {
+      "level": 3,
+      "text": "Answers, not listings",
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(1) > h3"
+    },
+    {
+      "level": 3,
+      "text": "Written by someone local",
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(2) > h3"
+    },
+    {
+      "level": 3,
+      "text": "Alive to the day",
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(3) > h3"
+    },
+    {
+      "level": 2,
+      "text": "Come see your county.",
+      "selector": "div:nth-of-type(2) > main > div:nth-of-type(7) > section > h2"
+    }
+  ],
+  "styles": {
+    "fontSize": [
+      {
+        "value": "16px",
+        "count": 186
+      },
+      {
+        "value": "11px",
+        "count": 20
+      },
+      {
+        "value": "14.5px",
+        "count": 13
+      },
+      {
+        "value": "14px",
+        "count": 12
+      },
+      {
+        "value": "11.5px",
+        "count": 12
+      },
+      {
+        "value": "29px",
+        "count": 12
+      },
+      {
+        "value": "10.5px",
+        "count": 11
+      },
+      {
+        "value": "12px",
+        "count": 10
+      },
+      {
+        "value": "15px",
+        "count": 6
+      },
+      {
+        "value": "40px",
+        "count": 5
+      },
+      {
+        "value": "13px",
+        "count": 4
+      },
+      {
+        "value": "10px",
+        "count": 3
+      },
+      {
+        "value": "13.5px",
+        "count": 3
+      },
+      {
+        "value": "26px",
+        "count": 3
+      },
+      {
+        "value": "9.5px",
+        "count": 3
+      },
+      {
+        "value": "19px",
+        "count": 3
+      },
+      {
+        "value": "18px",
+        "count": 3
+      },
+      {
+        "value": "30px",
+        "count": 2
+      },
+      {
+        "value": "52px",
+        "count": 1
+      },
+      {
+        "value": "34px",
+        "count": 1
+      }
+    ],
+    "fontWeight": [
+      {
+        "value": "400",
+        "count": 247
+      },
+      {
+        "value": "600",
+        "count": 39
+      },
+      {
+        "value": "700",
+        "count": 15
+      },
+      {
+        "value": "500",
+        "count": 12
+      }
+    ],
+    "lineHeight": [
+      {
+        "value": "24px",
+        "count": 186
+      },
+      {
+        "value": "16.5px",
+        "count": 21
+      },
+      {
+        "value": "18.125px",
+        "count": 12
+      },
+      {
+        "value": "15.8125px",
+        "count": 12
+      },
+      {
+        "value": "43.5px",
+        "count": 12
+      },
+      {
+        "value": "15.75px",
+        "count": 11
+      },
+      {
+        "value": "18px",
+        "count": 9
+      },
+      {
+        "value": "21px",
+        "count": 8
+      },
+      {
+        "value": "40.8px",
+        "count": 5
+      },
+      {
+        "value": "22.75px",
+        "count": 4
+      },
+      {
+        "value": "24.375px",
+        "count": 3
+      },
+      {
+        "value": "15px",
+        "count": 3
+      },
+      {
+        "value": "18.5625px",
+        "count": 3
+      },
+      {
+        "value": "22.5px",
+        "count": 3
+      },
+      {
+        "value": "26px",
+        "count": 3
+      },
+      {
+        "value": "14.25px",
+        "count": 3
+      },
+      {
+        "value": "23.75px",
+        "count": 3
+      },
+      {
+        "value": "27px",
+        "count": 3
+      },
+      {
+        "value": "21.125px",
+        "count": 2
+      },
+      {
+        "value": "19.5px",
+        "count": 2
+      },
+      {
+        "value": "53.56px",
+        "count": 1
+      },
+      {
+        "value": "51px",
+        "count": 1
+      },
+      {
+        "value": "30px",
+        "count": 1
+      },
+      {
+        "value": "37.5px",
+        "count": 1
+      },
+      {
+        "value": "23.5625px",
+        "count": 1
+      }
+    ],
+    "fontFamily": [
+      {
+        "value": "Inter, \"Inter Fallback\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "count": 236
+      },
+      {
+        "value": "Fraunces, \"Fraunces Fallback\", ui-serif, Georgia, serif",
+        "count": 39
+      },
+      {
+        "value": "\"JetBrains Mono\", \"JetBrains Mono Fallback\", ui-monospace, monospace",
+        "count": 38
+      }
+    ],
+    "color": [
+      {
+        "value": "rgb(22, 20, 14)",
+        "count": 166
+      },
+      {
+        "value": "rgb(92, 90, 80)",
+        "count": 31
+      },
+      {
+        "value": "rgb(238, 230, 212)",
+        "count": 21
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 18
+      },
+      {
+        "value": "rgb(66, 62, 52)",
+        "count": 18
+      },
+      {
+        "value": "color(srgb 0.739059 0.229569 0.13851)",
+        "count": 15
+      },
+      {
+        "value": "color(srgb 0.118431 0.271373 0.350745)",
+        "count": 10
+      },
+      {
+        "value": "color(srgb 0.0862745 0.184549 0.148157)",
+        "count": 10
+      },
+      {
+        "value": "color(srgb 0.632941 0.448235 0.109569)",
+        "count": 9
+      },
+      {
+        "value": "color(srgb 0.112 0.358196 0.196392)",
+        "count": 4
+      },
+      {
+        "value": "color(srgb 0.227765 0.21349 0.177098)",
+        "count": 4
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 3
+      },
+      {
+        "value": "rgb(252, 251, 248)",
+        "count": 2
+      },
+      {
+        "value": "rgb(22, 53, 43)",
+        "count": 2
+      }
+    ],
+    "backgroundColor": [
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 252
+      },
+      {
+        "value": "rgb(248, 242, 230)",
+        "count": 21
+      },
+      {
+        "value": "rgb(235, 226, 205)",
+        "count": 10
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 9
+      },
+      {
+        "value": "rgb(22, 53, 43)",
+        "count": 4
+      },
+      {
+        "value": "color(srgb 0.959481 0.849588 0.794006 / 0.966274)",
+        "count": 4
+      },
+      {
+        "value": "rgb(201, 189, 159)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.0862745 0.207843 0.168627 / 0.05)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.849822 0.856974 0.831506 / 0.966274)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.940731 0.888224 0.788893 / 0.966274)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.84414 0.841633 0.795711 / 0.966274)",
+        "count": 2
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.848685 0.872315 0.804234 / 0.966274)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.86914 0.846747 0.800824 / 0.966274)",
+        "count": 1
+      }
+    ],
+    "borderRadius": [
+      {
+        "value": "0px",
+        "count": 246
+      },
+      {
+        "value": "16px",
+        "count": 19
+      },
+      {
+        "value": "3.35544e+07px",
+        "count": 14
+      },
+      {
+        "value": "10px",
+        "count": 12
+      },
+      {
+        "value": "24px",
+        "count": 11
+      },
+      {
+        "value": "8px",
+        "count": 9
+      },
+      {
+        "value": "9999px",
+        "count": 1
+      },
+      {
+        "value": "6px",
+        "count": 1
+      }
+    ],
+    "boxShadow": [
+      {
+        "value": "rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 12
+      },
+      {
+        "value": "color(srgb 0.0862745 0.0784314 0.054902 / 0.08) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 12
+      },
+      {
+        "value": "rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.0862745 0.0784314 0.054902 / 0.7) 0px 12px 22px -12px, color(srgb 0.0862745 0.0784314 0.054902 / 0.16) 0px 0px 0px 1px",
+        "count": 3
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.7) 0px 8px 20px -10px, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.7) 0px 4px 16px -4px",
+        "count": 1
+      }
+    ],
+    "transitionDuration": [],
+    "transitionTimingFunction": [
+      {
+        "value": "ease",
+        "count": 313
+      }
+    ]
+  },
+  "textMeasures": [
+    {
+      "selector": "div:nth-of-type(2) > main > section > div:nth-of-type(2) > p:nth-of-type(2)",
+      "text": "You’re early, but you can try it now. Drop your email and we’ll send you an access code right away.",
+      "chars": 99,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 49.5,
+      "width": 384,
+      "fontSize": "15px",
+      "lineHeight": "24.375px"
+    },
+    {
+      "selector": "main > section > div:nth-of-type(2) > div:nth-of-type(2) > p:nth-of-type(3)",
+      "text": "Open at this hour: Dancing Bear Toys and Games, Odin Crossfit, Artistangle Gallery.",
+      "chars": 83,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 41.5,
+      "width": 350,
+      "fontSize": "12px",
+      "lineHeight": "16.5px"
+    },
+    {
+      "selector": "main > section > div:nth-of-type(2) > form:nth-of-type(1) > p:nth-of-type(2)",
+      "text": "Enter your email and we’ll send you an access code right away.",
+      "chars": 62,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 31,
+      "width": 320,
+      "fontSize": "13px",
+      "lineHeight": "21.125px"
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > div:nth-of-type(1) > section > p",
+      "text": "Everything worth doing is out there. Finding it means a dozen tabs: stale calendars, dead links, and a different page for every town.",
+      "chars": 133,
+      "estimatedLines": 3,
+      "estimatedCharsPerLine": 44.3,
+      "width": 416.4,
+      "fontSize": "15px",
+      "lineHeight": "24.375px"
+    },
+    {
+      "selector": "main > div:nth-of-type(2) > section > div > p",
+      "text": "One link. No app store. Everything below is on right now.",
+      "chars": 57,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 28.5,
+      "width": 378.5,
+      "fontSize": "15px",
+      "lineHeight": "24.375px"
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > div:nth-of-type(3) > section > p",
+      "text": "Not a brochure. These are the county’s numbers, right now.",
+      "chars": 58,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 58,
+      "width": 720,
+      "fontSize": "10.5px",
+      "lineHeight": "15.75px"
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > div:nth-of-type(4) > section > p",
+      "text": "Save the ones you love. They land in your pocket, each with a plate number and its open-now line.",
+      "chars": 97,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 48.5,
+      "width": 480,
+      "fontSize": "14px",
+      "lineHeight": "22.75px"
+    },
+    {
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(1) > p",
+      "text": "It knows what's open now, what's on tonight, and what's worth the drive. Ask in plain words.",
+      "chars": 92,
+      "estimatedLines": 3,
+      "estimatedCharsPerLine": 30.7,
+      "width": 224,
+      "fontSize": "14px",
+      "lineHeight": "22.75px"
+    },
+    {
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(2) > p",
+      "text": "Field notes on the taproom patio, the trail with the overlook, the diner that means it. Not scraped.",
+      "chars": 100,
+      "estimatedLines": 3,
+      "estimatedCharsPerLine": 33.3,
+      "width": 224,
+      "fontSize": "14px",
+      "lineHeight": "22.75px"
+    },
+    {
+      "selector": "div:nth-of-type(6) > section > div:nth-of-type(2) > div:nth-of-type(3) > p",
+      "text": "Weather, the game, the market, road closures, a heat cancellation. The county as it actually is, right now.",
+      "chars": 107,
+      "estimatedLines": 4,
+      "estimatedCharsPerLine": 26.8,
+      "width": 224,
+      "fontSize": "14px",
+      "lineHeight": "22.75px"
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > div:nth-of-type(7) > section > p:nth-of-type(3)",
+      "text": "Have an access code? Scroll back up and come in. No code? Leave your email and we’ll send you one right away.",
+      "chars": 109,
+      "estimatedLines": 3,
+      "estimatedCharsPerLine": 36.3,
+      "width": 384,
+      "fontSize": "14.5px",
+      "lineHeight": "23.5625px"
+    },
+    {
+      "selector": "div:nth-of-type(7) > section > div:nth-of-type(1) > form > p:nth-of-type(2)",
+      "text": "Enter your email and we’ll send you an access code right away.",
+      "chars": 62,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 31,
+      "width": 320,
+      "fontSize": "13px",
+      "lineHeight": "21.125px"
+    }
+  ],
+  "tapTargets": {
+    "total": 8,
+    "under44": [
+      {
+        "selector": "html > body > a",
+        "tag": "a",
+        "role": null,
+        "label": "Skip to content",
+        "width": 1,
+        "height": 1,
+        "effectiveWidth": 1,
+        "effectiveHeight": 1,
+        "hasTapExtender": false,
+        "x": -1,
+        "y": -1
+      },
+      {
+        "selector": "div:nth-of-type(2) > main > div:nth-of-type(7) > section > a",
+        "tag": "a",
+        "role": null,
+        "label": "↑ Enter an access code",
+        "width": 183.9,
+        "height": 16.5,
+        "effectiveWidth": 183.9,
+        "effectiveHeight": 16.5,
+        "hasTapExtender": false,
+        "x": 292,
+        "y": 4656.3
+      }
+    ]
+  },
+  "overflow": [
+    {
+      "selector": "body > div:nth-of-type(2) > main > section > svg",
+      "label": "",
+      "left": -366,
+      "right": 1134,
+      "width": 1500
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > section > svg > circle:nth-of-type(4)",
+      "label": "",
+      "left": -13.5,
+      "right": 781.5,
+      "width": 795
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > section > svg > circle:nth-of-type(5)",
+      "label": "",
+      "left": -126,
+      "right": 894,
+      "width": 1020
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > section > svg > circle:nth-of-type(6)",
+      "label": "",
+      "left": -246,
+      "right": 1014,
+      "width": 1260
+    },
+    {
+      "selector": "div:nth-of-type(2) > main > section > svg > circle:nth-of-type(7)",
+      "label": "",
+      "left": -373.5,
+      "right": 1141.5,
+      "width": 1515
+    }
+  ],
+  "images": [],
+  "axe": {
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+        "nodes": [
+          {
+            "target": [
+              ".z-10 > .space-y-2 > .gap-2.flex > .tap-44.px-3\\.5.disabled\\:opacity-60"
+            ],
+            "html": "<button type=\"submit\" class=\"tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60\" style=\"background:var(--app-brand);color:var(--app-on-brand);box-shadow:0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)\">",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.03 (foreground color: #fcfbf8, background color: #e14328, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#fcfbf8",
+                "bgColor": "#e14328",
+                "contrastRatio": 4.03,
+                "fontSize": "9.8pt (13px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 11
+      }
+    ]
+  }
+}
