@@ -1,5 +1,5 @@
-import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
-import { getDbDealsToday, mergeTodaysDeals } from "@/lib/loaders/fieldNotesDb";
+import { EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
+import { getMergedTodaysDeals } from "@/lib/loaders/fieldNotesDb";
 import TodaysDealsStack from "@/components/today/TodaysDealsStack";
 
 /**
@@ -21,9 +21,7 @@ export default async function TodaysDeals({
   now: Date;
   limit?: number;
 }) {
-  const jsonDeals = todaysDeals(now, limit);
-  const dbDeals = await getDbDealsToday(now, limit);
-  const deals = mergeTodaysDeals(jsonDeals, dbDeals, limit);
+  const deals = await getMergedTodaysDeals(now, limit);
   if (deals.length === 0) return null;
   return <TodaysDealsStack deals={deals} weekday={EASTERN_WEEKDAY(now)} now={now} />;
 }

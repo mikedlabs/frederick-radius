@@ -58,8 +58,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
-          {/* Attributes beta usage to the tester's access code (once per
-              session). Renders nothing; no-op outside the beta wall. */}
+          {/* Counts aggregate beta activity and refreshes internal access-use
+              timing once per session. No personal code goes to analytics. */}
           <BetaTelemetry />
           {/* Beta-only "Send feedback" affordance. Self-gates on the fr_beta
               cookie (renders nothing for the public post-beta) and offsets

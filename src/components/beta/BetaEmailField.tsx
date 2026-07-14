@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  betaInviteWasSent,
+  type BetaEmailResponse,
+} from "@/lib/beta-email-response";
 
 /** The primary beta-access path: email in, personal code out. */
 export default function BetaEmailField() {
@@ -18,8 +22,8 @@ export default function BetaEmailField() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
-      setState(res.ok && data.ok ? "done" : "error");
+      const data = (await res.json().catch(() => ({}))) as BetaEmailResponse;
+      setState(betaInviteWasSent(res.ok, data) ? "done" : "error");
     } catch {
       setState("error");
     }

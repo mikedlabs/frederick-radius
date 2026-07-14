@@ -148,7 +148,7 @@ export default function OverheadMap({
               </p>
               {open.route && (open.route.from || open.route.to) && (
                 <p className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}
-                  title={`${open.route.from?.name ?? "Unknown origin"} → ${open.route.to?.name ?? "Unknown destination"}`}>
+                  title={`${open.route.from?.name ?? "Origin unknown"} → ${open.route.to?.name ?? "Arrival unknown"}`}>
                   {open.route.from?.iata ?? "???"} <span style={{ color: "var(--app-ink-3)" }}>→</span> {open.route.to?.iata ?? "???"}
                 </p>
               )}

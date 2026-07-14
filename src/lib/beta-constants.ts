@@ -12,9 +12,11 @@
 export const BETA_COOKIE = "fr_beta";
 
 /**
- * A SECOND, non-httpOnly cookie carrying the tester's code as a plain label, so
- * client analytics can attribute events to a cohort. It is deliberately NOT the
- * credential — the httpOnly `fr_beta` cookie is — this one is just an
- * identifier the browser is allowed to read. Never trust it for access.
+ * A SECOND, non-httpOnly cookie carrying only a coarse UI marker. It lets
+ * beta-only client affordances render without exposing the personal access
+ * code to browser scripts. It is deliberately NOT the credential — the
+ * httpOnly `fr_beta` cookie is. Never trust it for access.
  */
 export const BETA_ID_COOKIE = "fr_who";
+export const BETA_OWNER_MARKER = "owner";
+export const BETA_TESTER_MARKER = "tester";

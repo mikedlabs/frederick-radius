@@ -17,6 +17,7 @@ import {
   distillOffer,
   extractHours,
   EASTERN_WEEKDAY,
+  todaysDeals,
   type TodaysDeal,
 } from "@/lib/loaders/todaysDeals";
 
@@ -125,3 +126,16 @@ export function mergeTodaysDeals(
     )
     .slice(0, limit);
 }
+
+/**
+ * The canonical merged set for every surface that describes today's deals.
+ * React caches it per request, so the band tally and the rendered deal stack
+ * share the same JSON + owner-authored DB rows without repeating the query.
+ */
+export const getMergedTodaysDeals = cache(
+  async (now: Date, limit = Number.MAX_SAFE_INTEGER): Promise<TodaysDeal[]> => {
+    const jsonDeals = todaysDeals(now, limit);
+    const dbDeals = await getDbDealsToday(now, limit);
+    return mergeTodaysDeals(jsonDeals, dbDeals, limit);
+  },
+);

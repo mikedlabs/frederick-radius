@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { todayDealAvailability } from "./dealAvailability";
+import { dealsAvailableNow, todayDealAvailability } from "./dealAvailability";
 
 const tue6pm = new Date("2026-07-14T18:00:00-04:00");
 
@@ -35,5 +35,31 @@ describe("todayDealAvailability", () => {
       when: "Time not listed",
       rank: 2,
     });
+  });
+
+  it("keeps only specials whose window is active now", () => {
+    const deals = [
+      { slug: "active", hours: "5–9 PM" },
+      { slug: "later", hours: "8–10 PM" },
+      { slug: "earlier", hours: "11 AM–2 PM" },
+      { slug: "single-time", hours: "6 PM" },
+      { slug: "unknown" },
+    ];
+
+    expect(dealsAvailableNow(deals, "Tuesday", tue6pm)).toEqual([
+      { slug: "active", hours: "5–9 PM" },
+    ]);
+  });
+
+  it("returns no live specials late at night when every window has ended or is unknown", () => {
+    const tue1130pm = new Date("2026-07-14T23:30:00-04:00");
+    const deals = [
+      { slug: "lunch", hours: "11 AM–2 PM" },
+      { slug: "dinner", hours: "5–9 PM" },
+      { slug: "single-time", hours: "6 PM" },
+      { slug: "unknown" },
+    ];
+
+    expect(dealsAvailableNow(deals, "Tuesday", tue1130pm)).toEqual([]);
   });
 });

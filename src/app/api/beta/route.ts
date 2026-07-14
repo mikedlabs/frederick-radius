@@ -5,6 +5,8 @@ import { beta_codes } from "@/lib/db/schema";
 import {
   BETA_COOKIE,
   BETA_ID_COOKIE,
+  BETA_OWNER_MARKER,
+  BETA_TESTER_MARKER,
   betaToken,
   normalizeCode,
   signCode,
@@ -30,9 +32,10 @@ const THIRTY_DAYS = 60 * 60 * 24 * 30;
  *   2. Per-user code — looked up in beta_codes (must exist, not be revoked).
  *      On success we mint a SIGNED cookie that embeds the code, so the edge
  *      middleware can verify it without a DB hit, and stamp redemption on the
- *      row (first-seen, use count, last-seen) for the admin list. A companion
- *      non-httpOnly `fr_who` cookie carries the code so client analytics can
- *      attribute events to that tester.
+ *      row (first-seen, use count, last-seen) for beta access management. A
+ *      companion non-httpOnly `fr_who` cookie carries only a coarse tester
+ *      marker for beta-only client UI; the personal code stays out of
+ *      browser-readable telemetry.
  *
  * On failure we bounce back to /beta with an error flag. 303 so the POST
  * becomes a GET on redirect.
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
       path: "/",
       maxAge: THIRTY_DAYS,
     });
-    res.cookies.set(BETA_ID_COOKIE, "owner", {
+    res.cookies.set(BETA_ID_COOKIE, BETA_OWNER_MARKER, {
       httpOnly: false,
       secure: true,
       sameSite: "lax",
@@ -118,7 +121,7 @@ export async function POST(req: NextRequest) {
     path: "/",
     maxAge: THIRTY_DAYS,
   });
-  res.cookies.set(BETA_ID_COOKIE, code, {
+  res.cookies.set(BETA_ID_COOKIE, BETA_TESTER_MARKER, {
     httpOnly: false,
     secure: true,
     sameSite: "lax",

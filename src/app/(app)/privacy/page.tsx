@@ -73,8 +73,13 @@ export default function PrivacyPage() {
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Beta access email.</strong>{" "}
               When you request beta access, we store your email and use it to
-              send and manage your personal access code. Our database and
-              email-delivery providers process it for us. We do not sell it.
+              send and manage your personal access code. We also record when
+              that code is first redeemed, how many times it grants access,
+              and the time of its most recent active session. That information
+              stays linked to your internal access record so we can confirm the
+              beta is being used, help with access problems, and revoke a code
+              when needed. Our database and email-delivery providers process
+              the email for us. We do not sell it.
             </li>
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Corrections and feedback.</strong>{" "}
@@ -101,7 +106,9 @@ export default function PrivacyPage() {
               <strong style={{ color: "var(--app-ink)" }}>Analytics.</strong>{" "}
               We use privacy-friendly, cookieless analytics to count page views
               and understand which features get used. It does not track you across
-              other sites or build an advertising profile.
+              other sites or build an advertising profile. Beta activity is
+              counted only in aggregate; we do not send your email or personal
+              access code to the analytics provider.
             </li>
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Error monitoring.</strong>{" "}

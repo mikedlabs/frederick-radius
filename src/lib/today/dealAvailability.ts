@@ -34,3 +34,16 @@ export function todayDealAvailability(
   }
   return { state: "today", label: "Today", when: hours, rank: 2 };
 }
+
+/**
+ * Keep only deals whose parsed window includes right now. Day-matched deals
+ * with a later, earlier, single, or missing time still belong in the Today's
+ * specials list, but must not contribute to an "On now" claim.
+ */
+export function dealsAvailableNow<T extends { hours?: string }>(
+  deals: T[],
+  weekday: string,
+  now: Date,
+): T[] {
+  return deals.filter((deal) => todayDealAvailability(deal.hours, weekday, now).state === "now");
+}

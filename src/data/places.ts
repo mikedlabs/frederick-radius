@@ -955,7 +955,7 @@ export const PLACES: Place[] = [
     category: "brewery",
     subcategories: ["food-truck"],
     tags: ["dog-friendly", "food-trucks"],
-    short_blurb: "Frederick's flagship craft brewery: flagship IPA, taproom, food trucks on weekends.",
+    short_blurb: "Frederick brewery with an IPA, taproom, and food trucks on weekends.",
     address: "1781 N Market St",
     city: "Frederick", state: "MD", postal_code: "21701",
     municipality: "frederick",
