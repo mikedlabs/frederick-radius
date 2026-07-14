@@ -52,9 +52,12 @@ export default function BetaEmailField() {
         {state === "done" ? "You’re on the list. We’ll write when the doors open." : ""}
       </p>
       {state !== "done" && (
-    <form onSubmit={submit} className="mx-auto mt-8 max-w-[20rem] space-y-2">
+    <form onSubmit={submit} className="mx-auto mt-6 max-w-[20rem] space-y-2">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
+        No access code yet?
+      </p>
       <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        No password? Leave an email and we&rsquo;ll tell you when Frederick Radius opens up.
+        Leave your email and we&rsquo;ll send you a code when we open the doors.
       </p>
       <div className="flex gap-2">
         <input
@@ -79,7 +82,7 @@ export default function BetaEmailField() {
           className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold text-white disabled:opacity-60"
           style={{ background: "var(--app-ink)" }}
         >
-          {state === "busy" ? "…" : "Notify me"}
+          {state === "busy" ? "…" : "Join the list"}
         </button>
       </div>
       {state === "error" && (
