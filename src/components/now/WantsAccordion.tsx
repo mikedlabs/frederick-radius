@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Utensils,
   UtensilsCrossed,
@@ -161,6 +162,7 @@ export default function WantsAccordion({
   meal: { key: string; label: string; phrase: string };
   defaultOpen?: string;
 }) {
+  const router = useRouter();
   const [openKey, setOpenKey] = useState<string>(defaultOpen);
   // The inline answer: which /nearby-style want is expanded below the chips.
   // Label rides along so the panel header paints before the fetch lands.
@@ -227,13 +229,19 @@ export default function WantsAccordion({
     reflectWantInUrl(null);
   };
 
+  /** Warm only the answer request that an inline link actually consumes.
+   *  Next's route prefetch is disabled for those links because their click is
+   *  intercepted and never navigates to /nearby or /category. */
+  const warmTarget = (href: string) => {
+    const w = inlineWantFor(href);
+    if (w) prefetchWant(w.c, w.facet);
+    else router.prefetch(hrefFor(href));
+  };
+
   /** Warm the answer the instant a finger lands on an inline chip, before the
    *  click resolves and the panel mounts, so the network round trip overlaps
    *  the tap gesture instead of following it. No-op for non-inline links. */
-  const prefetchOnPress = (href: string) => () => {
-    const w = inlineWantFor(href);
-    if (w) prefetchWant(w.c, w.facet);
-  };
+  const prefetchOnIntent = (href: string) => () => warmTarget(href);
 
   /** Intercept a /nearby-style link into the inline panel; modified clicks
    *  (new tab, middle click) keep their native navigation. */
@@ -252,6 +260,13 @@ export default function WantsAccordion({
   const promote = (key: string) => {
     haptic("light");
     touchedRef.current = true;
+    const promoted = WANTS.find((cat) => cat.key === key);
+    const promotedHero = promoted?.mealLead
+      ? `/nearby?c=${meal.key}`
+      : promoted
+        ? HERO[promoted.key]?.href ?? promoted.subs[0]?.href
+        : null;
+    if (promotedHero) warmTarget(promotedHero);
     setOpenKey(key);
     closeAnswer();
   };
@@ -261,7 +276,10 @@ export default function WantsAccordion({
       {/* Hero — one primary action for the open category. */}
       <Link
         href={hrefFor(hero.href)}
-        onPointerDown={prefetchOnPress(hero.href)}
+        prefetch={false}
+        onMouseEnter={prefetchOnIntent(hero.href)}
+        onFocus={prefetchOnIntent(hero.href)}
+        onPointerDown={prefetchOnIntent(hero.href)}
         onClick={interceptWant(hero.href, isEat ? meal.label : openCat.label)}
         className="tactile-interactive relative flex items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] p-4"
         style={{
@@ -319,7 +337,10 @@ export default function WantsAccordion({
             <Link
               key={sub.href + sub.label}
               href={hrefFor(sub.href)}
-              onPointerDown={prefetchOnPress(sub.href)}
+              prefetch={false}
+              onMouseEnter={prefetchOnIntent(sub.href)}
+              onFocus={prefetchOnIntent(sub.href)}
+              onPointerDown={prefetchOnIntent(sub.href)}
               onClick={interceptWant(sub.href, sub.label)}
               aria-expanded={w ? active : undefined}
               className="tap-44-y tactile-interactive inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] font-semibold"

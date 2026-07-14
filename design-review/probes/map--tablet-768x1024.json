@@ -1,0 +1,1283 @@
+{
+  "route": {
+    "name": "map",
+    "path": "/map"
+  },
+  "viewport": {
+    "name": "tablet-768x1024",
+    "width": 768,
+    "height": 1024
+  },
+  "responseStatus": 200,
+  "elapsedMs": 11294,
+  "screenshot": "screenshots/map--tablet-768x1024--baseline.png",
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "Image \"cat-park\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-ice-cream\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-wellness\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-family\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-market\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-brewery\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-lodging\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-civic\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-playground\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    },
+    {
+      "type": "warning",
+      "text": "Image \"cat-worship\" could not be loaded. Please make sure you have added the image with map.addImage() or a \"sprite\" property in your style. You can provide missing images by listening for the \"styleimagemissing\" map event."
+    }
+  ],
+  "pageErrors": [],
+  "title": "Map · Frederick County · Frederick Radius",
+  "url": "http://127.0.0.1:3107/map",
+  "document": {
+    "clientWidth": 768,
+    "scrollWidth": 768,
+    "scrollHeight": 1024,
+    "horizontalOverflow": 0
+  },
+  "cls": 0.00892,
+  "fonts": {
+    "status": "loaded",
+    "loadedFamilies": [
+      "Fraunces",
+      "Fraunces Fallback",
+      "Inter",
+      "Inter Fallback",
+      "JetBrains Mono",
+      "JetBrains Mono Fallback",
+      "__nextjs-Geist",
+      "__nextjs-Geist Mono"
+    ]
+  },
+  "landmarks": {
+    "main": 1,
+    "nav": 2,
+    "header": 1,
+    "footer": 0
+  },
+  "headings": [
+    {
+      "level": 1,
+      "text": "Frederick County map",
+      "selector": "div > div > main > div > h1"
+    }
+  ],
+  "styles": {
+    "fontSize": [
+      {
+        "value": "12px",
+        "count": 117
+      },
+      {
+        "value": "16px",
+        "count": 92
+      },
+      {
+        "value": "11px",
+        "count": 24
+      },
+      {
+        "value": "8.5px",
+        "count": 4
+      },
+      {
+        "value": "10px",
+        "count": 2
+      },
+      {
+        "value": "9.5px",
+        "count": 2
+      },
+      {
+        "value": "11.5px",
+        "count": 2
+      },
+      {
+        "value": "14px",
+        "count": 1
+      },
+      {
+        "value": "13px",
+        "count": 1
+      },
+      {
+        "value": "13.5px",
+        "count": 1
+      }
+    ],
+    "fontWeight": [
+      {
+        "value": "400",
+        "count": 206
+      },
+      {
+        "value": "700",
+        "count": 15
+      },
+      {
+        "value": "600",
+        "count": 13
+      },
+      {
+        "value": "500",
+        "count": 12
+      }
+    ],
+    "lineHeight": [
+      {
+        "value": "20px",
+        "count": 114
+      },
+      {
+        "value": "24px",
+        "count": 73
+      },
+      {
+        "value": "16px",
+        "count": 18
+      },
+      {
+        "value": "11px",
+        "count": 14
+      },
+      {
+        "value": "16.5px",
+        "count": 6
+      },
+      {
+        "value": "12.75px",
+        "count": 4
+      },
+      {
+        "value": "18px",
+        "count": 4
+      },
+      {
+        "value": "13.75px",
+        "count": 4
+      },
+      {
+        "value": "14.25px",
+        "count": 2
+      },
+      {
+        "value": "17.25px",
+        "count": 2
+      },
+      {
+        "value": "12.5px",
+        "count": 1
+      },
+      {
+        "value": "14px",
+        "count": 1
+      },
+      {
+        "value": "19.5px",
+        "count": 1
+      },
+      {
+        "value": "20.25px",
+        "count": 1
+      },
+      {
+        "value": "15px",
+        "count": 1
+      }
+    ],
+    "fontFamily": [
+      {
+        "value": "\"Helvetica Neue\", Arial, Helvetica, sans-serif",
+        "count": 145
+      },
+      {
+        "value": "Inter, \"Inter Fallback\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "count": 87
+      },
+      {
+        "value": "Fraunces, \"Fraunces Fallback\", ui-serif, Georgia, serif",
+        "count": 7
+      },
+      {
+        "value": "ui-monospace, monospace",
+        "count": 7
+      }
+    ],
+    "color": [
+      {
+        "value": "rgb(22, 20, 14)",
+        "count": 156
+      },
+      {
+        "value": "rgb(92, 90, 80)",
+        "count": 38
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 29
+      },
+      {
+        "value": "rgb(66, 62, 52)",
+        "count": 11
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 4
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 4
+      },
+      {
+        "value": "rgba(0, 0, 0, 0.75)",
+        "count": 3
+      },
+      {
+        "value": "rgb(22, 53, 43)",
+        "count": 1
+      }
+    ],
+    "backgroundColor": [
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 190
+      },
+      {
+        "value": "rgb(192, 135, 31)",
+        "count": 10
+      },
+      {
+        "value": "rgb(30, 107, 58)",
+        "count": 6
+      },
+      {
+        "value": "rgb(139, 111, 78)",
+        "count": 6
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96)",
+        "count": 4
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 3
+      },
+      {
+        "value": "rgb(126, 44, 111)",
+        "count": 3
+      },
+      {
+        "value": "rgb(42, 61, 137)",
+        "count": 3
+      },
+      {
+        "value": "rgb(255, 173, 63)",
+        "count": 2
+      },
+      {
+        "value": "rgb(15, 119, 199)",
+        "count": 2
+      },
+      {
+        "value": "rgb(244, 21, 43)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.972549 0.94902 0.901961 / 0.903137)",
+        "count": 2
+      },
+      {
+        "value": "oklab(0.914318 0.0013085 0.0296056 / 0.9)",
+        "count": 1
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 1
+      },
+      {
+        "value": "rgb(91, 30, 85)",
+        "count": 1
+      },
+      {
+        "value": "rgb(211, 226, 50)",
+        "count": 1
+      },
+      {
+        "value": "rgb(0, 128, 64)",
+        "count": 1
+      },
+      {
+        "value": "rgb(32, 80, 106)",
+        "count": 1
+      },
+      {
+        "value": "rgb(244, 113, 33)",
+        "count": 1
+      },
+      {
+        "value": "rgb(155, 34, 103)",
+        "count": 1
+      },
+      {
+        "value": "rgb(255, 255, 255)",
+        "count": 1
+      },
+      {
+        "value": "rgba(255, 255, 255, 0.5)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.972549 0.94902 0.901961 / 0.922353)",
+        "count": 1
+      },
+      {
+        "value": "rgb(225, 213, 189)",
+        "count": 1
+      },
+      {
+        "value": "rgb(248, 242, 230)",
+        "count": 1
+      }
+    ],
+    "borderRadius": [
+      {
+        "value": "0px",
+        "count": 163
+      },
+      {
+        "value": "9999px",
+        "count": 36
+      },
+      {
+        "value": "999px",
+        "count": 30
+      },
+      {
+        "value": "3.35544e+07px",
+        "count": 11
+      },
+      {
+        "value": "4px",
+        "count": 1
+      },
+      {
+        "value": "4px 4px 0px 0px",
+        "count": 1
+      },
+      {
+        "value": "0px 0px 4px 4px",
+        "count": 1
+      },
+      {
+        "value": "0px 0px 16px 16px",
+        "count": 1
+      },
+      {
+        "value": "16px",
+        "count": 1
+      },
+      {
+        "value": "5px",
+        "count": 1
+      }
+    ],
+    "boxShadow": [
+      {
+        "value": "rgba(20, 20, 18, 0.08) 0px 1px 3px 0px, rgba(20, 20, 18, 0.14) 0px 8px 18px -4px",
+        "count": 20
+      },
+      {
+        "value": "rgba(0, 0, 0, 0.28) 0px 2px 6px 0px",
+        "count": 14
+      },
+      {
+        "value": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(20, 20, 18, 0.07) 0px 1px 2px 0px, rgba(20, 20, 18, 0.09) 0px 2px 6px -1px",
+        "count": 1
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96) 0px 0px 0px 2px, color(srgb 0.705882 0.137255 0.117647 / 0.5) 0px 0px 0px 3px",
+        "count": 1
+      },
+      {
+        "value": "rgba(0, 0, 0, 0.1) 0px 0px 0px 2px",
+        "count": 1
+      },
+      {
+        "value": "rgba(20, 20, 18, 0.1) 0px 2px 6px 0px, rgba(20, 20, 18, 0.2) 0px 18px 36px -8px",
+        "count": 1
+      },
+      {
+        "value": "rgba(20, 20, 18, 0.22) 0px 10px 28px -8px, rgba(20, 20, 18, 0.1) 0px 2px 6px 0px, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.5) 0px 6px 16px -6px, color(srgb 0.882353 0.262745 0.156863 / 0.28) 0px 0px 0px 1px inset",
+        "count": 1
+      }
+    ],
+    "transitionDuration": [
+      {
+        "value": "0.2s",
+        "count": 37
+      },
+      {
+        "value": "0.3s",
+        "count": 14
+      },
+      {
+        "value": "0.16s",
+        "count": 4
+      },
+      {
+        "value": "0.15s",
+        "count": 3
+      },
+      {
+        "value": "0.24s",
+        "count": 1
+      },
+      {
+        "value": "0.32s",
+        "count": 1
+      },
+      {
+        "value": "0.25s",
+        "count": 1
+      },
+      {
+        "value": "0.25s, 0.08s",
+        "count": 1
+      },
+      {
+        "value": "0.32s, 0.32s, 0.2s",
+        "count": 1
+      }
+    ],
+    "transitionTimingFunction": [
+      {
+        "value": "ease",
+        "count": 232
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1)",
+        "count": 8
+      },
+      {
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "count": 3
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 1
+      },
+      {
+        "value": "ease, ease",
+        "count": 1
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1), cubic-bezier(0.34, 1.4, 0.5, 1), ease",
+        "count": 1
+      }
+    ]
+  },
+  "textMeasures": [
+    {
+      "selector": "div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(3) > div > span",
+      "text": "Showing Everything, Happening now, County, no layers.",
+      "chars": 53,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 53,
+      "width": 1,
+      "fontSize": "9.5px",
+      "lineHeight": "14.25px"
+    }
+  ],
+  "tapTargets": {
+    "total": 56,
+    "under44": [
+      {
+        "selector": "html > body > a",
+        "tag": "a",
+        "role": null,
+        "label": "Skip to content",
+        "width": 1,
+        "height": 1,
+        "effectiveWidth": 1,
+        "effectiveHeight": 1,
+        "hasTapExtender": false,
+        "x": -1,
+        "y": -1
+      },
+      {
+        "selector": "div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(5) > div:nth-of-type(1) > button:nth-of-type(1)",
+        "tag": "button",
+        "role": null,
+        "label": "Zoom in",
+        "width": 32,
+        "height": 32,
+        "effectiveWidth": 32,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 722,
+        "y": 643
+      },
+      {
+        "selector": "div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(5) > div:nth-of-type(1) > button:nth-of-type(2)",
+        "tag": "button",
+        "role": null,
+        "label": "Zoom out",
+        "width": 32,
+        "height": 32,
+        "effectiveWidth": 32,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 722,
+        "y": 675
+      },
+      {
+        "selector": "div:nth-of-type(3) > div:nth-of-type(5) > div:nth-of-type(2) > div > a:nth-of-type(1)",
+        "tag": "a",
+        "role": null,
+        "label": "© Mapbox",
+        "width": 57.2,
+        "height": 14,
+        "effectiveWidth": 57.2,
+        "effectiveHeight": 14,
+        "hasTapExtender": false,
+        "x": 495.5,
+        "y": 720
+      },
+      {
+        "selector": "div:nth-of-type(3) > div:nth-of-type(5) > div:nth-of-type(2) > div > a:nth-of-type(2)",
+        "tag": "a",
+        "role": null,
+        "label": "© OpenStreetMap",
+        "width": 98.3,
+        "height": 14,
+        "effectiveWidth": 98.3,
+        "effectiveHeight": 14,
+        "hasTapExtender": false,
+        "x": 556,
+        "y": 720
+      },
+      {
+        "selector": "div:nth-of-type(3) > div:nth-of-type(5) > div:nth-of-type(2) > div > a:nth-of-type(3)",
+        "tag": "a",
+        "role": null,
+        "label": "Improve this map",
+        "width": 99.3,
+        "height": 15,
+        "effectiveWidth": 99.3,
+        "effectiveHeight": 15,
+        "hasTapExtender": false,
+        "x": 659.7,
+        "y": 719
+      },
+      {
+        "selector": "div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(7) > div > a",
+        "tag": "a",
+        "role": null,
+        "label": "Mapbox homepage",
+        "width": 88,
+        "height": 23,
+        "effectiveWidth": 88,
+        "effectiveHeight": 23,
+        "hasTapExtender": false,
+        "x": 10,
+        "y": 708
+      },
+      {
+        "selector": "div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(1) > div > input",
+        "tag": "input",
+        "role": null,
+        "label": "Search this map",
+        "width": 575.9,
+        "height": 20.3,
+        "effectiveWidth": 575.9,
+        "effectiveHeight": 20.3,
+        "hasTapExtender": false,
+        "x": 85,
+        "y": 82.4
+      }
+    ]
+  },
+  "overflow": [
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+      "label": "Map marker",
+      "left": -4131,
+      "right": -4087,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > button",
+      "label": "Kids' Workshop Series at the Farm at South Mountain Creamery",
+      "left": -4131,
+      "right": -4087,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > button > span:nth-of-type(1)",
+      "label": "",
+      "left": -4122.1,
+      "right": -4095.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > button > span:nth-of-type(2)",
+      "label": "",
+      "left": -4127,
+      "right": -4091,
+      "width": 36
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(8)",
+      "label": "Map marker",
+      "left": -2772,
+      "right": -2728,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(8) > button",
+      "label": "Middletown Farmers Market at Middletown",
+      "left": -2772,
+      "right": -2728,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(8) > button > span:nth-of-type(1)",
+      "label": "",
+      "left": -2763.1,
+      "right": -2736.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(8) > button > span:nth-of-type(2)",
+      "label": "📅",
+      "left": -2768,
+      "right": -2732,
+      "width": 36
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(9)",
+      "label": "Map marker",
+      "left": -2743,
+      "right": -2699,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(9) > button",
+      "label": "Earth to Fire: Foraging Wild Clay & Pit-Fired Pottery [Two-part Workshop] at Fox Haven Farm & Learning Center",
+      "left": -2743,
+      "right": -2699,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(9) > button > span:nth-of-type(1)",
+      "label": "",
+      "left": -2734.1,
+      "right": -2707.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(9) > button > span:nth-of-type(2)",
+      "label": "📅",
+      "left": -2739,
+      "right": -2703,
+      "width": 36
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(15)",
+      "label": "Map marker",
+      "left": 2303,
+      "right": 2347,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(15) > button",
+      "label": "Free Summer Lunch (Ages 0-18) at Emmitsburg Branch Library, Inside Library (EM)",
+      "left": 2303,
+      "right": 2347,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(15) > button > span:nth-of-type(1)",
+      "label": "",
+      "left": 2311.9,
+      "right": 2338.1,
+      "width": 26.2
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(15) > button > span:nth-of-type(2)",
+      "label": "📅",
+      "left": 2307,
+      "right": 2343,
+      "width": 36
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(16)",
+      "label": "Map marker",
+      "left": -4706,
+      "right": -4662,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(16) > button",
+      "label": "Summer Lunch Program (ages 0-18) at Brunswick Branch Library, Community Room (BR)",
+      "left": -4706,
+      "right": -4662,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(16) > button > span:nth-of-type(1)",
+      "label": "",
+      "left": -4697.1,
+      "right": -4670.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(16) > button > span:nth-of-type(2)",
+      "label": "📅",
+      "left": -4702,
+      "right": -4666,
+      "width": 36
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(21)",
+      "label": "Map marker",
+      "left": -116,
+      "right": -72,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(21) > button",
+      "label": "TransIT 51 Connector, at a stop",
+      "left": -116,
+      "right": -72,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(21) > button > span:nth-of-type(2)",
+      "label": "",
+      "left": -109,
+      "right": -79,
+      "width": 30
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(21) > button > span:nth-of-type(3)",
+      "label": "51",
+      "left": -107.1,
+      "right": -80.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(24)",
+      "label": "Map marker",
+      "left": -255,
+      "right": -211,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(24) > button",
+      "label": "TransIT 10 Connector, at a stop",
+      "left": -255,
+      "right": -211,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(24) > button > span:nth-of-type(2)",
+      "label": "",
+      "left": -248,
+      "right": -218,
+      "width": 30
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(24) > button > span:nth-of-type(3)",
+      "label": "10",
+      "left": -246.1,
+      "right": -219.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(27)",
+      "label": "Map marker",
+      "left": -60,
+      "right": -16,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(27) > button",
+      "label": "TransIT 50 Connector, at a stop",
+      "left": -60,
+      "right": -16,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(27) > button > span:nth-of-type(2)",
+      "label": "",
+      "left": -53,
+      "right": -23,
+      "width": 30
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(27) > button > span:nth-of-type(3)",
+      "label": "50",
+      "left": -51.1,
+      "right": -24.9,
+      "width": 26.2
+    },
+    {
+      "selector": "div > div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(30)",
+      "label": "Map marker",
+      "left": -347,
+      "right": -303,
+      "width": 44
+    },
+    {
+      "selector": "div > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(30) > button",
+      "label": "TransIT 40 Connector, at a stop",
+      "left": -347,
+      "right": -303,
+      "width": 44
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(30) > button > span:nth-of-type(2)",
+      "label": "",
+      "left": -340,
+      "right": -310,
+      "width": 30
+    },
+    {
+      "selector": "div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(30) > button > span:nth-of-type(3)",
+      "label": "40",
+      "left": -338.1,
+      "right": -311.9,
+      "width": 26.2
+    }
+  ],
+  "images": [],
+  "axe": {
+    "violations": [
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/nested-interactive?application=axeAPI",
+        "nodes": [
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(2)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(380px, 418px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(3)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(-4113px, -916px) translate(-50%, -100%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(4)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(284px, 347px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(5)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(369px, 345px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(6)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(373px, 338px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(7)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(559px, 101px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(8)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(397px, 454px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(9)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(-2754px, -443px) translate(-50%, -100%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(10)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(-2725px, 1683px) translate(-50%, -100%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(11)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(327px, 374px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(12)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(536px, 453px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(13)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(373px, 414px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(14)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(379px, 364px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(15)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(486px, 54px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(16)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(2321px, -8362px) translate(-50%, -100%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(17)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(-4688px, 3459px) translate(-50%, -100%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(18)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(371px, 418px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(19)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-bottom\" style=\"transform: translate(371px, 436px) translate(-50%, -100%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(20)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(192px, 24px) translate(-50%, -50%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(21)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(561px, -229px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(22)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(-98px, 416px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(23)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(349px, -629px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(24)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(299px, 133px) translate(-50%, -50%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(25)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(-237px, 854px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(26)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(337px, 995px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(27)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(201px, 1194px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(28)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(-42px, 695px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(29)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(167px, -18px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(30)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(317px, 523px) translate(-50%, -50%) translate(0px, 0px); opacity: 1; pointer-events: auto;\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(31)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(-329px, 349px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(32)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(244px, 1024px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(33)"
+            ],
+            "html": "<div aria-label=\"Map marker\" role=\"img\" class=\"mapboxgl-marker mapboxgl-marker-anchor-center\" style=\"transform: translate(363px, -488px) translate(-50%, -50%) translate(0px, 0px);\">",
+            "failureSummary": "Fix any of the following:\n  Element has focusable descendants",
+            "data": []
+          }
+        ]
+      },
+      {
+        "id": "target-size",
+        "impact": "serious",
+        "help": "All touch targets must be 24px large, or leave sufficient space",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/target-size?application=axeAPI",
+        "nodes": [
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(2) > button[type=\"button\"]"
+            ],
+            "html": "<button type=\"button\" aria-label=\"Pour House Trivia at...\" style=\"position: relative; ...\">",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size because it is partially obscured (smallest space is 7px by 36px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 7px instead of at least 24px.",
+            "data": [
+              {
+                "messageKey": "partiallyObscured",
+                "minSize": 24,
+                "width": 7,
+                "height": 36
+              },
+              {
+                "closestOffset": 7,
+                "minOffset": 24
+              }
+            ]
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(5) > button[type=\"button\"]"
+            ],
+            "html": "<button type=\"button\" aria-label=\"Pride at the Pubs at...\" style=\"position: relative; ...\">",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size because it is partially obscured (smallest space is 4px by 29px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 0px instead of at least 24px.",
+            "data": [
+              {
+                "messageKey": "partiallyObscured",
+                "minSize": 24,
+                "width": 4,
+                "height": 29
+              },
+              {
+                "closestOffset": 0,
+                "minOffset": 24
+              }
+            ]
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(13) > button[type=\"button\"]"
+            ],
+            "html": "<button type=\"button\" aria-label=\"Find Waldo Local at ...\" style=\"position: relative; ...\">",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size because it is partially obscured (smallest space is 44px by 4px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 0px instead of at least 24px.",
+            "data": [
+              {
+                "messageKey": "partiallyObscured",
+                "minSize": 24,
+                "width": 44,
+                "height": 4
+              },
+              {
+                "closestOffset": 0,
+                "minOffset": 24
+              }
+            ]
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-bottom.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(18) > button[type=\"button\"]"
+            ],
+            "html": "<button type=\"button\" aria-label=\"Birthday Celebration...\" style=\"position: relative; ...\">",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size because it is partially obscured (smallest space is 44px by 18px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 0px instead of at least 24px.",
+            "data": [
+              {
+                "messageKey": "partiallyObscured",
+                "minSize": 24,
+                "width": 44,
+                "height": 18
+              },
+              {
+                "closestOffset": 0,
+                "minOffset": 24
+              }
+            ]
+          },
+          {
+            "target": [
+              ".mapboxgl-marker-anchor-center.mapboxgl-marker[aria-label=\"Map marker\"]:nth-child(20) > button[type=\"button\"]"
+            ],
+            "html": "<button type=\"button\" aria-label=\"TransIT 50 Connector...\" style=\"position: relative; ...\">",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size because it is partially obscured (smallest space is 44px by 17.4px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 6.4px instead of at least 24px.",
+            "data": [
+              {
+                "messageKey": "partiallyObscured",
+                "minSize": 24,
+                "width": 44,
+                "height": 17.4
+              },
+              {
+                "closestOffset": 6.4,
+                "minOffset": 24
+              }
+            ]
+          },
+          {
+            "target": [
+              ".mapbox-improve-map"
+            ],
+            "html": "<a href=\"https://apps.mapbox.com/feedback/?owner=mapbox&amp;id=light-v11&amp;access_token=pk.eyJ1IjoibWlrZS0tZCIsImEiOiJjbWc4ajU5MTEwN3l1MmlwcmJvZ2VjejV6In0.ma_LGFI0RCGfj42DnNUCcA#/-77.4105/39.4143/14\" rel=\"noopener nofollow\" class=\"mapbox-improve-map\">Improve this map</a>",
+            "failureSummary": "Fix any of the following:\n  Target has insufficient size (99.3px by 15px, should be at least 24px by 24px)\n  Target has insufficient space to its closest neighbors. Safe clickable space has a diameter of 17px instead of at least 24px.",
+            "data": [
+              {
+                "minSize": 24,
+                "width": 99.3,
+                "height": 15
+              },
+              {
+                "closestOffset": 17,
+                "minOffset": 24
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "incomplete": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 22
+      }
+    ]
+  }
+}

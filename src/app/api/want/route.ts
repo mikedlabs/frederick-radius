@@ -8,12 +8,13 @@
  *
  * force-dynamic + no-store on purpose: open_status is computed for THIS
  * request — a cached answer would say "open" after close, the exact bug
- * /nearby exists to avoid. The compute is a filter + decorate over the
- * matched subset (tens of places), single-digit milliseconds.
+ * /nearby exists to avoid. The compute is a local filter + decorate over the
+ * matched subset (tens of places), so this route deliberately skips the
+ * remote KV rate limiter used by paid-upstream endpoints. Waiting on KV added
+ * a network round trip to every tap without protecting a billable resource.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { buildWantAnswer } from "@/lib/want-answer";
-import { isRateLimited } from "@/lib/origin-check";
 import { approxLocation } from "@/lib/ip-geo";
 
 export const runtime = "nodejs";
@@ -22,11 +23,6 @@ export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
-  // Generous for humans tapping cravings, cheap insurance against scripts.
-  if (await isRateLimited(req, "want", 120, 60)) {
-    return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore });
-  }
-
   const p = req.nextUrl.searchParams;
   const c = (p.get("c") ?? "").slice(0, 40);
   const facet = p.get("facet")?.slice(0, 40) || null;

@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { holidayOn } from "@/lib/holidays";
 import { pickSeasonalNote } from "@/lib/seasonal-notes";
 import HolidayNote from "./HolidayNote";
@@ -18,30 +18,15 @@ import CreekWatch from "./CreekWatch";
  *   2. The governed community layer (CommunityNotes): at most one even-handed
  *      community note (Pride in June, Sunday places of worship), which the user
  *      can turn off entirely with one topic-neutral switch.
- *   3. The streamed weather "duck inside" beat (adverse weather is not an
- *      ordinary day, so it may ride alongside).
- *   4. The always-on town picker.
+ *   3. Rare school and creek alerts, streamed independently.
  *
  * The dated predicates MIRROR each leaf's own self-hide guard (holidayOn,
  * pickSeasonalNote), so the cap can only ever SUPPRESS a second dated note,
- * never force a hidden one to show. weatherSlot and contextSlot are passed in
- * PRE-SUSPENDED: this component never awaits NWS or the events feed (the plate
- * paints first). CommunityNotes is a client component that self-governs.
+ * never force a hidden one to show. This component never awaits NWS or the
+ * events feed, so the plate paints first. CommunityNotes is a client component
+ * that self-governs.
  */
-export default function MastheadNotes({
-  now,
-  weatherSlot,
-  contextSlot,
-}: {
-  now: Date;
-  /** Optional since 2026-07-02: the "Weather to duck." nudge was retired
-   *  (Plan the moment carries the Rainy-day action now). */
-  weatherSlot?: ReactNode;
-  /** Optional since 2026-07-13: the town picker moved UP into MastheadTitle
-   *  (the "{town}, today." line IS the picker now), so the masthead no longer
-   *  needs a separate location slot at the foot of the notes stack. */
-  contextSlot?: ReactNode;
-}) {
+export default function MastheadNotes({ now }: { now: Date }) {
   const hasHoliday = Boolean(holidayOn(now));
   const seasonal = pickSeasonalNote(now);
 
@@ -61,8 +46,6 @@ export default function MastheadNotes({
         <CreekWatch />
       </Suspense>
       <CommunityNotes />
-      {weatherSlot}
-      {contextSlot}
     </div>
   );
 }

@@ -1,0 +1,439 @@
+{
+  "base": "http://127.0.0.1:3107",
+  "routes": [
+    {
+      "name": "beta",
+      "path": "/beta",
+      "supplementary": true
+    },
+    {
+      "name": "today",
+      "path": "/today"
+    },
+    {
+      "name": "map",
+      "path": "/map"
+    },
+    {
+      "name": "events",
+      "path": "/events"
+    },
+    {
+      "name": "saved",
+      "path": "/my-radius"
+    },
+    {
+      "name": "search-coffee",
+      "path": "/search?q=coffee"
+    },
+    {
+      "name": "place-brewers-alley",
+      "path": "/places/brewers-alley-frederick"
+    },
+    {
+      "name": "event-alive-at-five",
+      "path": "/events/alive-at-five-2026-07-16"
+    },
+    {
+      "name": "town-frederick",
+      "path": "/m/frederick"
+    }
+  ],
+  "viewports": [
+    {
+      "name": "mobile-375x812",
+      "width": 375,
+      "height": 812
+    },
+    {
+      "name": "tablet-768x1024",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "desktop-1440x900",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "summary": [
+    {
+      "route": "beta",
+      "path": "/beta",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/beta--mobile-375x812--baseline.png",
+      "cls": 0,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 2,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "today",
+      "path": "/today",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/today--mobile-375x812--baseline.png",
+      "cls": 0.00885,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 26,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "map",
+      "path": "/map",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/map--mobile-375x812--baseline.png",
+      "cls": 0.00261,
+      "horizontalOverflow": 0,
+      "axeViolations": 3,
+      "under44": 6,
+      "consoleErrors": 1,
+      "pageErrors": 0
+    },
+    {
+      "route": "events",
+      "path": "/events",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/events--mobile-375x812--baseline.png",
+      "cls": 0.00319,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 22,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "saved",
+      "path": "/my-radius",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/saved--mobile-375x812--baseline.png",
+      "cls": 0.0354,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "search-coffee",
+      "path": "/search?q=coffee",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/search-coffee--mobile-375x812--baseline.png",
+      "cls": 0,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "place-brewers-alley",
+      "path": "/places/brewers-alley-frederick",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/place-brewers-alley--mobile-375x812--baseline.png",
+      "cls": 0.00169,
+      "horizontalOverflow": 0,
+      "axeViolations": 2,
+      "under44": 22,
+      "consoleErrors": 3,
+      "pageErrors": 0
+    },
+    {
+      "route": "event-alive-at-five",
+      "path": "/events/alive-at-five-2026-07-16",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/event-alive-at-five--mobile-375x812--baseline.png",
+      "cls": 0.00349,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 20,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "town-frederick",
+      "path": "/m/frederick",
+      "viewport": "mobile-375x812",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/town-frederick--mobile-375x812--baseline.png",
+      "cls": 0.0017,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 16,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "beta",
+      "path": "/beta",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/beta--tablet-768x1024--baseline.png",
+      "cls": 0.00329,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 2,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "today",
+      "path": "/today",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/today--tablet-768x1024--baseline.png",
+      "cls": 0.01328,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 26,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "map",
+      "path": "/map",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/map--tablet-768x1024--baseline.png",
+      "cls": 0.00892,
+      "horizontalOverflow": 0,
+      "axeViolations": 2,
+      "under44": 8,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "events",
+      "path": "/events",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/events--tablet-768x1024--baseline.png",
+      "cls": 0.00299,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 23,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "saved",
+      "path": "/my-radius",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/saved--tablet-768x1024--baseline.png",
+      "cls": 0.03846,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "search-coffee",
+      "path": "/search?q=coffee",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/search-coffee--tablet-768x1024--baseline.png",
+      "cls": 0,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "place-brewers-alley",
+      "path": "/places/brewers-alley-frederick",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/place-brewers-alley--tablet-768x1024--baseline.png",
+      "cls": 0.10706,
+      "horizontalOverflow": 0,
+      "axeViolations": 2,
+      "under44": 22,
+      "consoleErrors": 5,
+      "pageErrors": 0
+    },
+    {
+      "route": "event-alive-at-five",
+      "path": "/events/alive-at-five-2026-07-16",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/event-alive-at-five--tablet-768x1024--baseline.png",
+      "cls": 0.00301,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 20,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "town-frederick",
+      "path": "/m/frederick",
+      "viewport": "tablet-768x1024",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/town-frederick--tablet-768x1024--baseline.png",
+      "cls": 0.00154,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 16,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "beta",
+      "path": "/beta",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/beta--desktop-1440x900--baseline.png",
+      "cls": 0.00268,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 2,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "today",
+      "path": "/today",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/today--desktop-1440x900--baseline.png",
+      "cls": 0.00503,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 26,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "map",
+      "path": "/map",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/map--desktop-1440x900--baseline.png",
+      "cls": 0.00334,
+      "horizontalOverflow": 0,
+      "axeViolations": 2,
+      "under44": 8,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "events",
+      "path": "/events",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/events--desktop-1440x900--baseline.png",
+      "cls": 0.00031,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 23,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "saved",
+      "path": "/my-radius",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/saved--desktop-1440x900--baseline.png",
+      "cls": 0.01833,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "search-coffee",
+      "path": "/search?q=coffee",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/search-coffee--desktop-1440x900--baseline.png",
+      "cls": 0,
+      "horizontalOverflow": 0,
+      "axeViolations": 0,
+      "under44": 10,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "place-brewers-alley",
+      "path": "/places/brewers-alley-frederick",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/place-brewers-alley--desktop-1440x900--baseline.png",
+      "cls": 0.00015,
+      "horizontalOverflow": 0,
+      "axeViolations": 2,
+      "under44": 22,
+      "consoleErrors": 6,
+      "pageErrors": 0
+    },
+    {
+      "route": "event-alive-at-five",
+      "path": "/events/alive-at-five-2026-07-16",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/event-alive-at-five--desktop-1440x900--baseline.png",
+      "cls": 0.00031,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 20,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    },
+    {
+      "route": "town-frederick",
+      "path": "/m/frederick",
+      "viewport": "desktop-1440x900",
+      "status": 200,
+      "error": null,
+      "screenshot": "screenshots/town-frederick--desktop-1440x900--baseline.png",
+      "cls": 0.00015,
+      "horizontalOverflow": 0,
+      "axeViolations": 1,
+      "under44": 16,
+      "consoleErrors": 0,
+      "pageErrors": 0
+    }
+  ]
+}

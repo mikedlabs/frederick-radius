@@ -1,32 +1,105 @@
 "use client";
 
-import { useState } from "react";
-import { Bus, ChevronDown } from "lucide-react";
-import TransitMap from "@/components/transit/TransitMapClient";
-import NextStopsBoard from "@/components/transit/NextStopsBoard";
-import RoutePearls from "@/components/transit/RoutePearls";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bus, ChevronDown, ChevronUp, LoaderCircle, RotateCcw } from "lucide-react";
 import type { LineFC } from "@/lib/integrations/transitFrederick";
 
-/**
- * BusesReveal — the live TransIT map, loaded on demand.
- *
- * The map is the single heaviest thing on /pulse: mapbox-gl (~200 KB) plus a
- * 300px canvas that, until it paints, is a tall empty "Loading the map…"
- * placeholder dominating the page. On a scan-first civic board that dead space
- * is the opposite of dense. So the map stays behind one tap: a compact button
- * sits in the flow, and only on tap does the map (and its live arrivals board)
- * mount — which also means mapbox-gl never downloads for readers who don't ask
- * for it. Mounting fresh on tap (not display:none) lets mapbox size its canvas
- * correctly the first time it renders.
- */
-export default function BusesReveal({ shapes }: { shapes: LineFC }) {
-  const [open, setOpen] = useState(false);
+// None of the live transit views belong in the closed-state bundle. The map
+// already code-splits Mapbox internally; the two boards also carry the route
+// catalog, geometry helpers, polling hook, and animation code, so defer them
+// until the rider explicitly asks for this part of Pulse.
+const loadTransitMap = () => import("@/components/transit/TransitMap");
+const TransitMap = dynamic(loadTransitMap, {
+  ssr: false,
+  loading: () => null,
+});
+const RoutePearls = dynamic(() => import("@/components/transit/RoutePearls"), {
+  ssr: false,
+  loading: () => null,
+});
+const NextStopsBoard = dynamic(() => import("@/components/transit/NextStopsBoard"), {
+  ssr: false,
+  loading: () => null,
+});
 
-  if (!open) {
-    return (
+type ShapesState =
+  | { status: "idle" | "loading" }
+  | { status: "ready"; shapes: LineFC }
+  | { status: "error" };
+
+function isLineFC(value: unknown): value is LineFC {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { type?: unknown; features?: unknown };
+  return candidate.type === "FeatureCollection" && Array.isArray(candidate.features);
+}
+
+/**
+ * BusesReveal — live TransIT tools loaded only after one deliberate tap.
+ *
+ * The closed state makes no geometry request and mounts none of the transit
+ * visualizations. Opening starts the route-shape request while their chunks
+ * load in parallel. Once fetched, shapes stay in component state so collapsing
+ * and reopening is instant. Upstream failures stay local to the map and offer
+ * a real retry; the live route and next-stop boards can still be useful.
+ */
+export default function BusesReveal() {
+  const [open, setOpen] = useState(false);
+  const [shapesState, setShapesState] = useState<ShapesState>({ status: "idle" });
+  const requestRef = useRef<AbortController | null>(null);
+
+  const loadShapes = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setShapesState({ status: "loading" });
+
+    try {
+      const response = await fetch("/api/transit/shapes", {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("route shapes unavailable");
+
+      const payload = (await response.json()) as { shapes?: unknown };
+      if (!isLineFC(payload.shapes) || payload.shapes.features.length === 0) {
+        throw new Error("invalid route shapes");
+      }
+      setShapesState({ status: "ready", shapes: payload.shapes });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setShapesState({ status: "error" });
+    } finally {
+      if (requestRef.current === controller) requestRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
+
+  function toggleOpen() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+
+    // Start the large Mapbox chunk in the same user gesture as the geometry
+    // request. It remains absent from the closed state without making the map
+    // wait for JSON before its code can begin downloading.
+    void loadTransitMap().catch(() => undefined);
+    setOpen(true);
+    if (shapesState.status === "idle" || shapesState.status === "error") {
+      void loadShapes();
+    }
+  }
+
+  return (
+    <section className="space-y-2.5" aria-label="Live TransIT buses">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={toggleOpen}
+        aria-label={open ? "Hide live buses" : "Show live buses"}
+        aria-expanded={open}
+        aria-controls="pulse-live-buses"
         className="tactile-interactive flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-4 py-3 text-left transition active:scale-[0.99]"
         style={{
           borderColor: "var(--app-border)",
@@ -34,7 +107,7 @@ export default function BusesReveal({ shapes }: { shapes: LineFC }) {
           boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
         }}
       >
-        <span className="flex items-center gap-2.5">
+        <span className="flex min-w-0 items-center gap-2.5">
           <span
             aria-hidden
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
@@ -47,41 +120,82 @@ export default function BusesReveal({ shapes }: { shapes: LineFC }) {
           </span>
           <span className="min-w-0">
             <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Show live buses
+              {open ? "Live buses" : "Show live buses"}
             </span>
             <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-              Map every route and follow the buses in real time
+              {open ? "Route progress, map, and next stops" : "See every route and follow buses in real time"}
             </span>
           </span>
         </span>
-        <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+        )}
       </button>
-    );
-  }
 
-  return (
-    <div className="space-y-2.5">
-      {/* String-of-pearls board FIRST: each active route as a stop-line with
-          the live bus dot gliding along it. It reads without WebGL (and
-          before the tiles paint), so the buses are legible the instant the
-          reveal opens. Shares one vehicle poll with NextStopsBoard. */}
-      <RoutePearls />
-      <TransitMap
-        shapes={shapes}
-        height={300}
-        /* Open on downtown Frederick (Market & Patrick) — the densest part of
-           the network and where most riders are. The lockToService leash keeps
-           the camera over the service area; the user zooms out for outer routes. */
-        center={[-77.4105, 39.4143]}
-        zoom={12.5}
-        liveBuses
-        highlightRoutes
-        hideBadge
-        lockToService
-      />
-      {/* Live arrivals board — every bus's NEXT stop + countdown, no tapping.
-          Polls the same vehicle feed as the map; self-hides when none. */}
-      <NextStopsBoard />
-    </div>
+      {open ? (
+        <div id="pulse-live-buses" className="space-y-2.5">
+          <RoutePearls />
+
+          {shapesState.status === "ready" ? (
+            <TransitMap
+              shapes={shapesState.shapes}
+              height={300}
+              center={[-77.4105, 39.4143]}
+              zoom={12.5}
+              liveBuses
+              highlightRoutes
+              hideBadge
+              lockToService
+            />
+          ) : shapesState.status === "error" ? (
+            <div
+              role="alert"
+              className="flex min-h-[150px] flex-col items-center justify-center gap-3 rounded-[var(--app-radius-lg)] border px-5 py-6 text-center"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-sunken)",
+                color: "var(--app-ink-3)",
+              }}
+            >
+              <p className="max-w-[290px] text-[13px] leading-relaxed">
+                The route map did not load. Live bus progress may still be available above.
+              </p>
+              <button
+                type="button"
+                onClick={() => void loadShapes()}
+                className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
+                style={{
+                  borderColor: "var(--app-border-strong)",
+                  background: "var(--app-bg-elevated)",
+                  color: "var(--app-ink)",
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Try map again
+              </button>
+            </div>
+          ) : (
+            <div
+              role="status"
+              className="grid min-h-[150px] place-items-center rounded-[var(--app-radius-lg)] border text-[13px]"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-sunken)",
+                color: "var(--app-ink-3)",
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2.25} aria-hidden />
+                Loading route map…
+              </span>
+            </div>
+          )}
+
+          <NextStopsBoard />
+        </div>
+      ) : null}
+    </section>
   );
 }

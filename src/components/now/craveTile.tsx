@@ -4,8 +4,8 @@ import { GLYPHS } from "@/components/glyphs";
 
 /**
  * Shared presentation for the "I want…" craving tiles, so the Link tiles
- * (FieldTag) and the button tile (MoreSheetTile, which opens the More drawer
- * instead of navigating) render identically and can never drift. Pure +
+ * and any launcher tile that routes into Compass render identically and can
+ * never drift. Pure +
  * presentational (no hooks/handlers), so it's safe in both a server and a
  * client component.
  *

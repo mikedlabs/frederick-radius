@@ -1,5 +1,5 @@
-import { getNwsForecast, iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
-import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { getNwsForecast, iconForShortForecast, type NwsForecast, type NwsHourly } from "@/lib/integrations/nws";
+import { getAirQuality, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { currentSkyPalette } from "@/components/today/SkyHero";
@@ -189,11 +189,19 @@ function WeekStrip({ days }: { days: Day[] }) {
   );
 }
 
-export default async function PulseWeatherPanel() {
-  const [forecast, aqiObs] = await Promise.all([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    getAirQuality(FREDERICK_CENTER).catch(() => null),
-  ]);
+export default async function PulseWeatherPanel({
+  forecast: providedForecast,
+  aqiObs: providedAqi,
+}: {
+  forecast?: NwsForecast | null;
+  aqiObs?: AqiObservation[] | null;
+} = {}) {
+  const [forecast, aqiObs] = providedForecast !== undefined && providedAqi !== undefined
+    ? [providedForecast, providedAqi]
+    : await Promise.all([
+        getNwsForecast(FREDERICK_CENTER).catch(() => null),
+        getAirQuality(FREDERICK_CENTER).catch(() => null),
+      ]);
   const cur = forecast?.hourly?.[0];
   if (!forecast || !cur) return null;
 

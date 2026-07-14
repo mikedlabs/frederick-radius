@@ -5,7 +5,6 @@ import TodayCard from "@/components/today/TodayCard";
 import TodayAsk from "@/components/today/TodayAsk";
 import EventCountdown from "@/components/today/EventCountdown";
 import { Ticket, ChevronRight } from "lucide-react";
-import MastheadTitle from "@/components/today/MastheadTitle";
 import ShareTodayButton from "@/components/today/ShareTodayButton";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
@@ -251,40 +250,13 @@ export default async function HomePage() {
       </Suspense>
 
       {/* ── MASTHEAD CAPTION ─────────────────────────────────────────────
-          The identity standfirst, the holiday note, and the salutation /
-          golden-hour line are FUSED into one engraved plate beneath the sky
-          card — serif standfirst, then the mono almanac notes, capped by a
-          fg-rule that reads as the cover/body break of the day's almanac.
-          Previously these were three loose mt-blocks that read as a scattered
-          stack; now they're one composed caption. Both the holiday and the
-          context lines self-hide, so on an ordinary day the plate carries just
-          the standfirst + the cap rule (which always sits below it, so the rule
-          never dangles). Identity copy + voice unchanged (finding, not telling). */}
+          County context + the day's almanac notes, capped by the share rule.
+          The former town selector was removed: Today is a countywide briefing,
+          so a page-level picker falsely implied that every section was scoped. */}
       <header className="mt-2 px-0.5">
-        {/* Cover line, personalized: the brand line by default, the home town
-            ("Middletown, today.") once one is set. Client swap post-mount; SSR
-            keeps the brand line for crawlers. */}
-        <MastheadTitle />
-        {/* The FirstVisitNote standfirst ("From Downtown to the surrounding
-            towns…") was cut here (Jul-8 audit): first visit is exactly when the
-            welcome line above the sky ALSO renders, so two identity sentences
-            sandwiched the hero saying the same thing. The welcome line is the
-            one identity beat; the masthead stays personal, not promotional. */}
-        {/* The masthead almanac notes, capped + prioritized by MastheadNotes so
-            the stack never piles up: at most one dated note (holiday / First
-            Saturday / Pride / season) plus the streamed weather "duck inside"
-            beat. The town picker is no longer here — it lives in the
-            "{town}, today." line above (MastheadTitle). */}
-        {/* WeatherNudge ("Weather to duck." + a Rainy-day link) retired
-            (owner call, 2026-07-02): the lead read as cryptic, and Plan the
-            moment already carries the Rainy day Frederick collection — the
-            masthead was double-selling one link. NowIntel still DESCRIBES
-            adverse weather; the collection rail carries the action. */}
-        {/* Town picker moved UP into MastheadTitle (2026-07-13): the
-            "{town}, today." line IS the picker now, so the separate pin +
-            select that used to sit at the foot of the notes stack is gone —
-            it duplicated the location statement and, worse, didn't update the
-            line above it when you changed towns. */}
+        <p className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink-2)" }}>
+          Frederick County, today.
+        </p>
         <MastheadNotes now={now} />
         {/* The cap rule now carries the day's one share affordance: the link
             previews as the daily almanac card (generateMetadata above), so
@@ -630,6 +602,7 @@ async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromis
   return (
     <Link
       href={`/events/${ev.slug}`}
+      prefetch={false}
       className="tactile-interactive group relative z-10 mt-2.5 flex items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2.5"
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",

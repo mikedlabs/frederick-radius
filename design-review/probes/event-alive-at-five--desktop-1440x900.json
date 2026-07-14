@@ -1,0 +1,1280 @@
+{
+  "route": {
+    "name": "event-alive-at-five",
+    "path": "/events/alive-at-five-2026-07-16"
+  },
+  "viewport": {
+    "name": "desktop-1440x900",
+    "width": 1440,
+    "height": 900
+  },
+  "responseStatus": 200,
+  "elapsedMs": 3302,
+  "screenshot": "screenshots/event-alive-at-five--desktop-1440x900--baseline.png",
+  "consoleMessages": [],
+  "pageErrors": [],
+  "title": "Alive @ Five · La Unica · Frederick Radius",
+  "url": "http://127.0.0.1:3107/events/alive-at-five-2026-07-16",
+  "document": {
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "scrollHeight": 3688,
+    "horizontalOverflow": 0
+  },
+  "cls": 0.00031,
+  "fonts": {
+    "status": "loaded",
+    "loadedFamilies": [
+      "Fraunces",
+      "Fraunces Fallback",
+      "Inter",
+      "Inter Fallback",
+      "JetBrains Mono",
+      "JetBrains Mono Fallback",
+      "__nextjs-Geist",
+      "__nextjs-Geist Mono"
+    ]
+  },
+  "landmarks": {
+    "main": 1,
+    "nav": 4,
+    "header": 2,
+    "footer": 1
+  },
+  "headings": [
+    {
+      "level": 1,
+      "text": "Alive @ Five · La Unica",
+      "selector": "div > header > div:nth-of-type(1) > div:nth-of-type(2) > h1"
+    },
+    {
+      "level": 2,
+      "text": "Good to know",
+      "selector": "div > main > div > section:nth-of-type(3) > h2"
+    },
+    {
+      "level": 2,
+      "text": "Full lineup",
+      "selector": "main > div > section:nth-of-type(4) > div > h2"
+    },
+    {
+      "level": 2,
+      "text": "More upcoming events",
+      "selector": "main > div > section:nth-of-type(5) > div > h2"
+    },
+    {
+      "level": 3,
+      "text": "Birthday Celebrations",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 3,
+      "text": "Line Dance @ Urbana",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 3,
+      "text": "Chair Yoga (video) @ Emmitsburg",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 3,
+      "text": "Fitness for All @ Frederick",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 3,
+      "text": "Game Time @ Brunswick",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 3,
+      "text": "Canasta @ Frederick",
+      "selector": "article > a > div > div > h3"
+    },
+    {
+      "level": 2,
+      "text": "Eat & drink before",
+      "selector": "div > main > div > section:nth-of-type(6) > h2"
+    },
+    {
+      "level": 2,
+      "text": "Parking nearby",
+      "selector": "div > main > div > section:nth-of-type(7) > h2"
+    }
+  ],
+  "styles": {
+    "fontSize": [
+      {
+        "value": "16px",
+        "count": 345
+      },
+      {
+        "value": "12px",
+        "count": 77
+      },
+      {
+        "value": "11px",
+        "count": 51
+      },
+      {
+        "value": "13px",
+        "count": 26
+      },
+      {
+        "value": "10px",
+        "count": 25
+      },
+      {
+        "value": "14px",
+        "count": 20
+      },
+      {
+        "value": "15px",
+        "count": 19
+      },
+      {
+        "value": "18px",
+        "count": 11
+      },
+      {
+        "value": "8.5px",
+        "count": 8
+      },
+      {
+        "value": "12.5px",
+        "count": 6
+      },
+      {
+        "value": "30px",
+        "count": 1
+      },
+      {
+        "value": "17px",
+        "count": 1
+      }
+    ],
+    "fontWeight": [
+      {
+        "value": "400",
+        "count": 461
+      },
+      {
+        "value": "600",
+        "count": 79
+      },
+      {
+        "value": "500",
+        "count": 30
+      },
+      {
+        "value": "700",
+        "count": 20
+      }
+    ],
+    "lineHeight": [
+      {
+        "value": "24px",
+        "count": 334
+      },
+      {
+        "value": "16px",
+        "count": 74
+      },
+      {
+        "value": "16.5px",
+        "count": 35
+      },
+      {
+        "value": "15px",
+        "count": 22
+      },
+      {
+        "value": "20px",
+        "count": 19
+      },
+      {
+        "value": "18px",
+        "count": 19
+      },
+      {
+        "value": "21.125px",
+        "count": 16
+      },
+      {
+        "value": "17.875px",
+        "count": 11
+      },
+      {
+        "value": "28px",
+        "count": 11
+      },
+      {
+        "value": "11px",
+        "count": 10
+      },
+      {
+        "value": "8.5px",
+        "count": 8
+      },
+      {
+        "value": "20.625px",
+        "count": 6
+      },
+      {
+        "value": "17.1875px",
+        "count": 6
+      },
+      {
+        "value": "14.6667px",
+        "count": 5
+      },
+      {
+        "value": "13.75px",
+        "count": 4
+      },
+      {
+        "value": "12.5px",
+        "count": 2
+      },
+      {
+        "value": "14px",
+        "count": 1
+      },
+      {
+        "value": "37.5px",
+        "count": 1
+      },
+      {
+        "value": "21.25px",
+        "count": 1
+      },
+      {
+        "value": "21px",
+        "count": 1
+      },
+      {
+        "value": "15.125px",
+        "count": 1
+      },
+      {
+        "value": "24.375px",
+        "count": 1
+      },
+      {
+        "value": "13.3333px",
+        "count": 1
+      },
+      {
+        "value": "15.4px",
+        "count": 1
+      }
+    ],
+    "fontFamily": [
+      {
+        "value": "Inter, \"Inter Fallback\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "count": 531
+      },
+      {
+        "value": "Fraunces, \"Fraunces Fallback\", ui-serif, Georgia, serif",
+        "count": 30
+      },
+      {
+        "value": "\"JetBrains Mono\", \"JetBrains Mono Fallback\", ui-monospace, monospace",
+        "count": 28
+      },
+      {
+        "value": "ui-monospace, monospace",
+        "count": 1
+      }
+    ],
+    "color": [
+      {
+        "value": "rgb(22, 20, 14)",
+        "count": 247
+      },
+      {
+        "value": "rgb(92, 90, 80)",
+        "count": 212
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 26
+      },
+      {
+        "value": "rgb(122, 121, 117)",
+        "count": 24
+      },
+      {
+        "value": "rgb(32, 80, 106)",
+        "count": 18
+      },
+      {
+        "value": "rgb(66, 62, 52)",
+        "count": 16
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 14
+      },
+      {
+        "value": "rgb(135, 92, 16)",
+        "count": 8
+      },
+      {
+        "value": "rgb(192, 135, 31)",
+        "count": 6
+      },
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 5
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 4
+      },
+      {
+        "value": "rgb(30, 107, 58)",
+        "count": 4
+      },
+      {
+        "value": "rgb(126, 44, 111)",
+        "count": 3
+      },
+      {
+        "value": "rgb(252, 251, 248)",
+        "count": 3
+      }
+    ],
+    "backgroundColor": [
+      {
+        "value": "rgba(0, 0, 0, 0)",
+        "count": 514
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96)",
+        "count": 26
+      },
+      {
+        "value": "rgb(225, 213, 189)",
+        "count": 18
+      },
+      {
+        "value": "color(srgb 0.900958 0.88027 0.837756 / 0.966274)",
+        "count": 6
+      },
+      {
+        "value": "rgb(248, 242, 230)",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.12549 0.313726 0.415686 / 0.14)",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.752941 0.529412 0.121569 / 0.16)",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.117647 0.419608 0.227451 / 0.14)",
+        "count": 2
+      },
+      {
+        "value": "rgb(30, 107, 58)",
+        "count": 2
+      },
+      {
+        "value": "oklab(0.914318 0.0013085 0.0296056 / 0.9)",
+        "count": 1
+      },
+      {
+        "value": "rgb(225, 67, 40)",
+        "count": 1
+      },
+      {
+        "value": "rgb(180, 35, 30)",
+        "count": 1
+      },
+      {
+        "value": "rgb(32, 80, 106)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.967865 0.913378 0.863264 / 0.962745)",
+        "count": 1
+      },
+      {
+        "value": "rgb(181, 48, 15)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.948392 0.902863 0.816118)",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.972549 0.94902 0.901961 / 0.92)",
+        "count": 1
+      }
+    ],
+    "borderRadius": [
+      {
+        "value": "0px",
+        "count": 501
+      },
+      {
+        "value": "16px",
+        "count": 39
+      },
+      {
+        "value": "3.35544e+07px",
+        "count": 36
+      },
+      {
+        "value": "15px",
+        "count": 6
+      },
+      {
+        "value": "24px",
+        "count": 6
+      },
+      {
+        "value": "4px",
+        "count": 1
+      },
+      {
+        "value": "32px",
+        "count": 1
+      }
+    ],
+    "boxShadow": [
+      {
+        "value": "rgb(122, 121, 117) 3px 0px 0px 0px inset, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px",
+        "count": 6
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, color(srgb 0.478431 0.47451 0.458824 / 0.34) 0px 6px 14px -8px",
+        "count": 6
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.05) 0px 1px 2px 0px, rgba(40, 30, 20, 0.09) 0px 6px 14px -3px, rgba(40, 30, 20, 0.12) 0px 16px 32px -10px",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.12549 0.313726 0.415686 / 0.24) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.45) 0px 1px 0px 0px inset",
+        "count": 6
+      },
+      {
+        "value": "color(srgb 0.752941 0.529412 0.121569 / 0.3) 0px 0px 0px 1px inset",
+        "count": 2
+      },
+      {
+        "value": "color(srgb 0.117647 0.419608 0.227451 / 0.26) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.45) 0px 1px 0px 0px inset",
+        "count": 2
+      },
+      {
+        "value": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(20, 20, 18, 0.07) 0px 1px 2px 0px, rgba(20, 20, 18, 0.09) 0px 2px 6px -1px",
+        "count": 1
+      },
+      {
+        "value": "rgba(248, 242, 230, 0.96) 0px 0px 0px 2px, color(srgb 0.705882 0.137255 0.117647 / 0.5) 0px 0px 0px 3px",
+        "count": 1
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.14) 0px -1px 0px 0px inset, rgba(40, 30, 20, 0.05) 0px 1px 2px 0px, rgba(40, 30, 20, 0.09) 0px 6px 14px -3px, rgba(40, 30, 20, 0.12) 0px 16px 32px -10px, rgba(225, 67, 40, 0.45) 0px 10px 28px -6px",
+        "count": 1
+      },
+      {
+        "value": "rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset, rgba(40, 30, 20, 0.07) 0px 1px 2px 0px, rgba(40, 30, 20, 0.11) 0px 5px 12px -2px",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.752941 0.529412 0.121569 / 0.16) 0px 0px 0px 1px inset",
+        "count": 1
+      },
+      {
+        "value": "rgba(20, 20, 18, 0.22) 0px 10px 28px -8px, rgba(20, 20, 18, 0.1) 0px 2px 6px 0px, rgba(26, 26, 26, 0.1) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.72) 0px 1px 0px 0px inset",
+        "count": 1
+      },
+      {
+        "value": "color(srgb 0.882353 0.262745 0.156863 / 0.5) 0px 6px 16px -6px, color(srgb 0.882353 0.262745 0.156863 / 0.28) 0px 0px 0px 1px inset",
+        "count": 1
+      }
+    ],
+    "transitionDuration": [
+      {
+        "value": "0.15s",
+        "count": 36
+      },
+      {
+        "value": "0.24s, 0.24s, 0.16s",
+        "count": 13
+      },
+      {
+        "value": "0.2s",
+        "count": 5
+      },
+      {
+        "value": "0.16s",
+        "count": 4
+      },
+      {
+        "value": "0.24s",
+        "count": 1
+      },
+      {
+        "value": "0.32s, 0.32s, 0.2s",
+        "count": 1
+      }
+    ],
+    "transitionTimingFunction": [
+      {
+        "value": "ease",
+        "count": 531
+      },
+      {
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "count": 22
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1)",
+        "count": 22
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1), cubic-bezier(0.34, 1.4, 0.5, 1), cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 13
+      },
+      {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "count": 1
+      },
+      {
+        "value": "cubic-bezier(0.34, 1.4, 0.5, 1), cubic-bezier(0.34, 1.4, 0.5, 1), ease",
+        "count": 1
+      }
+    ]
+  },
+  "textMeasures": [
+    {
+      "selector": "div > header > div:nth-of-type(2) > span > span:nth-of-type(2)",
+      "text": "From the Downtown Frederick Partnership calendar",
+      "chars": 48,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 48,
+      "width": 267.6,
+      "fontSize": "11px",
+      "lineHeight": "15.125px"
+    },
+    {
+      "selector": "main > div > header > div:nth-of-type(2) > p",
+      "text": "La Unica headlines Alive @ Five at the Carroll Creek Amphitheater. It is Downtown Frederick's outdoor happy hour, held every Thursday from May through September, 5 to 8pm. Admission is $5 cash for ages 21 and up. Drink t",
+      "chars": 390,
+      "estimatedLines": 4,
+      "estimatedCharsPerLine": 97.5,
+      "width": 866,
+      "fontSize": "15px",
+      "lineHeight": "24.375px"
+    },
+    {
+      "selector": "div > header > div:nth-of-type(2) > div:nth-of-type(2) > span:nth-of-type(3)",
+      "text": "Every Thursday, May 7 – September 24, 2026",
+      "chars": 42,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 42,
+      "width": 253.3,
+      "fontSize": "11px",
+      "lineHeight": "14.6667px"
+    },
+    {
+      "selector": "div > section:nth-of-type(1) > ul > li:nth-of-type(1) > span",
+      "text": "Parking 370 ft away at Carroll Creek Parking Deck",
+      "chars": 49,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 49,
+      "width": 307.1,
+      "fontSize": "13px",
+      "lineHeight": "17.875px"
+    },
+    {
+      "selector": "div > section:nth-of-type(1) > ul > li:nth-of-type(2) > span",
+      "text": "Eat before at Brudr Bier Co (1 min walk) or 3 more nearby",
+      "chars": 57,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 57,
+      "width": 350.3,
+      "fontSize": "13px",
+      "lineHeight": "17.875px"
+    },
+    {
+      "selector": "section:nth-of-type(3) > ul > li:nth-of-type(1) > div > p:nth-of-type(2)",
+      "text": "$5 cash at the gate. 21 and over only, ID required.",
+      "chars": 51,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 51,
+      "width": 327.5,
+      "fontSize": "14px",
+      "lineHeight": "20px"
+    },
+    {
+      "selector": "section:nth-of-type(3) > ul > li:nth-of-type(2) > div > p:nth-of-type(2)",
+      "text": "$7 tokens for beer and wine from local breweries and distilleries.",
+      "chars": 66,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 66,
+      "width": 427.5,
+      "fontSize": "14px",
+      "lineHeight": "20px"
+    },
+    {
+      "selector": "section:nth-of-type(3) > ul > li:nth-of-type(3) > div > p:nth-of-type(2)",
+      "text": "Rotating food vendors on site each week.",
+      "chars": 40,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 40,
+      "width": 273.7,
+      "fontSize": "14px",
+      "lineHeight": "20px"
+    },
+    {
+      "selector": "div > main > div > section:nth-of-type(4) > p",
+      "text": "Every Thursday, May 7 – September 24, 2026",
+      "chars": 42,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 42,
+      "width": 908,
+      "fontSize": "12px",
+      "lineHeight": "16px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(1) > article > div:nth-of-type(2) > p",
+      "text": "Breweries · Breweries in Downtown Frederick.",
+      "chars": 44,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 44,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(2) > article > div:nth-of-type(2) > p",
+      "text": "Bars · Amenities include a full modern bar, room for caterers and of course McClintock spirits",
+      "chars": 94,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 94,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(3) > article > div:nth-of-type(2) > p",
+      "text": "Restaurants · Carroll Creek-facing patio, farm-to-table small plates, 200+ wines by the bottle.",
+      "chars": 95,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 95,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(4) > article > div:nth-of-type(2) > p",
+      "text": "Restaurants · Located in The Worman's Mill Village Center",
+      "chars": 57,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 57,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(1) > article > div:nth-of-type(2) > p",
+      "text": "Parking · Closest deck to Carroll Creek; ParkMobile after-hours, free first hour weekends.",
+      "chars": 90,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 90,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "ul > li:nth-of-type(2) > article > div:nth-of-type(2) > p",
+      "text": "Parking · City hall-adjacent garage; quickest in/out for North Market dinners.",
+      "chars": 78,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 78,
+      "width": 786,
+      "fontSize": "12.5px",
+      "lineHeight": "17.1875px"
+    },
+    {
+      "selector": "div > div > main > footer > p:nth-of-type(1)",
+      "text": "Frederick Radius: one guide for Frederick City and the towns around it.",
+      "chars": 71,
+      "estimatedLines": 1,
+      "estimatedCharsPerLine": 71,
+      "width": 908,
+      "fontSize": "11px",
+      "lineHeight": "15.4px"
+    },
+    {
+      "selector": "div > div > main > footer > p:nth-of-type(2)",
+      "text": "An independent local guide. Not affiliated with, endorsed by, or operated by the City of Frederick, Frederick County Government, or any municipality. Information may be out of date; never rely on it for emergencies or pu",
+      "chars": 242,
+      "estimatedLines": 2,
+      "estimatedCharsPerLine": 121,
+      "width": 908,
+      "fontSize": "11px",
+      "lineHeight": "17.875px"
+    }
+  ],
+  "tapTargets": {
+    "total": 58,
+    "under44": [
+      {
+        "selector": "html > body > a",
+        "tag": "a",
+        "role": null,
+        "label": "Skip to content",
+        "width": 1,
+        "height": 1,
+        "effectiveWidth": 1,
+        "effectiveHeight": 1,
+        "hasTapExtender": false,
+        "x": -1,
+        "y": -1
+      },
+      {
+        "selector": "header > div:nth-of-type(1) > div:nth-of-type(1) > div > button",
+        "tag": "button",
+        "role": null,
+        "label": "Share Alive @ Five · La Unica",
+        "width": 36,
+        "height": 36,
+        "effectiveWidth": 36,
+        "effectiveHeight": 36,
+        "hasTapExtender": false,
+        "x": 1123,
+        "y": 134
+      },
+      {
+        "selector": "section:nth-of-type(2) > ul > li:nth-of-type(1) > span > a",
+        "tag": "a",
+        "role": null,
+        "label": "all garages",
+        "width": 68.6,
+        "height": 16,
+        "effectiveWidth": 68.6,
+        "effectiveHeight": 16,
+        "hasTapExtender": false,
+        "x": 862.8,
+        "y": 1090.5
+      },
+      {
+        "selector": "section:nth-of-type(2) > ul > li:nth-of-type(2) > span > a",
+        "tag": "a",
+        "role": null,
+        "label": "schedules",
+        "width": 64.7,
+        "height": 16,
+        "effectiveWidth": 64.7,
+        "effectiveHeight": 16,
+        "hasTapExtender": false,
+        "x": 593.6,
+        "y": 1117.7
+      },
+      {
+        "selector": "main > div > section:nth-of-type(5) > div > a",
+        "tag": "a",
+        "role": null,
+        "label": "See all →",
+        "width": 54.1,
+        "height": 18,
+        "effectiveWidth": 54.1,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 1157.9,
+        "y": 2260.3
+      },
+      {
+        "selector": "li:nth-of-type(1) > article > div:nth-of-type(2) > div:nth-of-type(1) > button",
+        "tag": "button",
+        "role": null,
+        "label": "View Brudr Bier Co details",
+        "width": 743.3,
+        "height": 18,
+        "effectiveWidth": 743.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 2917
+      },
+      {
+        "selector": "li:nth-of-type(2) > article > div:nth-of-type(2) > div:nth-of-type(1) > button",
+        "tag": "button",
+        "role": null,
+        "label": "View McClintock's Back Bar details",
+        "width": 743.3,
+        "height": 18,
+        "effectiveWidth": 743.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 3000.2
+      },
+      {
+        "selector": "li:nth-of-type(3) > article > div:nth-of-type(2) > div:nth-of-type(1) > button",
+        "tag": "button",
+        "role": null,
+        "label": "View The Wine Kitchen on the Creek details",
+        "width": 743.3,
+        "height": 18,
+        "effectiveWidth": 743.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 3083.4
+      },
+      {
+        "selector": "li:nth-of-type(4) > article > div:nth-of-type(2) > div:nth-of-type(1) > button",
+        "tag": "button",
+        "role": null,
+        "label": "View Plaza Mexico details",
+        "width": 743.3,
+        "height": 18,
+        "effectiveWidth": 743.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 3166.6
+      },
+      {
+        "selector": "li:nth-of-type(1) > article > div:nth-of-type(2) > div > button",
+        "tag": "button",
+        "role": null,
+        "label": "View Carroll Creek Parking Deck details",
+        "width": 743.3,
+        "height": 18,
+        "effectiveWidth": 743.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 3309.7
+      },
+      {
+        "selector": "li:nth-of-type(2) > article > div:nth-of-type(2) > div > button",
+        "tag": "button",
+        "role": null,
+        "label": "View Court Street Parking Deck details",
+        "width": 742.3,
+        "height": 18,
+        "effectiveWidth": 742.3,
+        "effectiveHeight": 18,
+        "hasTapExtender": false,
+        "x": 370,
+        "y": 3379.7
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(1) > a",
+        "tag": "a",
+        "role": null,
+        "label": "About",
+        "width": 33.8,
+        "height": 32,
+        "effectiveWidth": 33.8,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 304,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(2) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Trust & sources",
+        "width": 88.5,
+        "height": 32,
+        "effectiveWidth": 88.5,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 353.8,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(3) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Towns",
+        "width": 37,
+        "height": 32,
+        "effectiveWidth": 37,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 458.4,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(4) > a",
+        "tag": "a",
+        "role": null,
+        "label": "All places",
+        "width": 54.7,
+        "height": 32,
+        "effectiveWidth": 54.7,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 511.4,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(5) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Events",
+        "width": 38,
+        "height": 32,
+        "effectiveWidth": 38,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 582.1,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(6) > a",
+        "tag": "a",
+        "role": null,
+        "label": "County services",
+        "width": 92.3,
+        "height": 32,
+        "effectiveWidth": 92.3,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 636,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(7) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Privacy",
+        "width": 42,
+        "height": 32,
+        "effectiveWidth": 42,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 744.3,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(8) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Terms",
+        "width": 35.4,
+        "height": 32,
+        "effectiveWidth": 35.4,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 802.3,
+        "y": 3490.8
+      },
+      {
+        "selector": "footer > nav > ul > li:nth-of-type(9) > a",
+        "tag": "a",
+        "role": null,
+        "label": "Suggest a correction",
+        "width": 118.3,
+        "height": 32,
+        "effectiveWidth": 118.3,
+        "effectiveHeight": 32,
+        "hasTapExtender": false,
+        "x": 853.7,
+        "y": 3490.8
+      }
+    ]
+  },
+  "overflow": [],
+  "images": [
+    {
+      "selector": "div > main > div > a > img",
+      "alt": "Map showing Carroll Creek Amphitheater",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/api/static-map?lng=-77.40877&lat=39.41263&pin=e14328&size=640x280",
+      "renderedWidth": 906,
+      "renderedHeight": 140,
+      "naturalWidth": 1280,
+      "naturalHeight": 560
+    },
+    {
+      "selector": "li:nth-of-type(2) > article > div:nth-of-type(1) > div > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fmcclintocks-back-bar%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 46,
+      "renderedHeight": 46,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    },
+    {
+      "selector": "li:nth-of-type(3) > article > div:nth-of-type(1) > div > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fthe-wine-kitchen-frederick%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 46,
+      "renderedHeight": 46,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    },
+    {
+      "selector": "li:nth-of-type(4) > article > div:nth-of-type(1) > div > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fplaza-mexico%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 46,
+      "renderedHeight": 46,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    },
+    {
+      "selector": "li:nth-of-type(1) > article > div:nth-of-type(1) > div > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fcarroll-creek-parking-garage-frederick%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 46,
+      "renderedHeight": 46,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    },
+    {
+      "selector": "li:nth-of-type(2) > article > div:nth-of-type(1) > div > img",
+      "alt": "",
+      "loading": "lazy",
+      "src": "http://127.0.0.1:3107/_next/image?url=https%3A%2F%2Fijszzixn2rzddhti.public.blob.vercel-storage.com%2Fplaces%2Fcourt-street-parking-garage-frederick%2Fhero.jpg&w=3840&q=75",
+      "renderedWidth": 46,
+      "renderedHeight": 46,
+      "naturalWidth": 0,
+      "naturalHeight": 0
+    }
+  ],
+  "axe": {
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=axeAPI",
+        "nodes": [
+          {
+            "target": [
+              "li:nth-child(1) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">JUL</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(2) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">JUL</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(3) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">AUG</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(4) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">AUG</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(5) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">AUG</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(6) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">AUG</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(7) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">SEP</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(8) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">SEP</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(9) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">SEP</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              "li:nth-child(10) > a > .px-3.py-2\\.5.transition > .w-12.h-12.flex-col > .tracking-wider.font-bold.uppercase"
+            ],
+            "html": "<span class=\"text-[10px] font-bold uppercase tracking-wider\" style=\"color:var(--app-brand-press)\">SEP</span>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.25 (foreground color: #b5300f, background color: #e1d5bd, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#b5300f",
+                "bgColor": "#e1d5bd",
+                "contrastRatio": 4.25,
+                "fontSize": "7.5pt (10px)",
+                "fontWeight": "bold",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          },
+          {
+            "target": [
+              ".text-\\[12px\\][href$=\"events\"]"
+            ],
+            "html": "<a class=\"text-[12px] font-semibold\" style=\"color:var(--app-brand)\" href=\"/events\">See all →</a>",
+            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.23 (foreground color: #e14328, background color: #ebe2cd, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+            "data": [
+              {
+                "fgColor": "#e14328",
+                "bgColor": "#ebe2cd",
+                "contrastRatio": 3.23,
+                "fontSize": "9.0pt (12px)",
+                "fontWeight": "normal",
+                "messageKey": null,
+                "expectedContrastRatio": "4.5:1"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "incomplete": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "help": "Elements must only use permitted ARIA attributes",
+        "nodes": 5
+      },
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 77
+      }
+    ]
+  }
+}

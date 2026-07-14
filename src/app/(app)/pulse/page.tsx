@@ -1,38 +1,11 @@
 /**
- * Live Pulse — the one-screen civic snapshot for Frederick County.
+ * Live Pulse — Frederick County as an editorial briefing, not a feed console.
  *
- * Mobile-first redesign. The previous version stacked seven dashboard
- * cards in a flat row regardless of state — even when nothing was
- * happening, the user scrolled through five "no active incidents"
- * cards before finding their answer. That's a directory of feeds,
- * not a live pulse.
- *
- * New architecture:
- *
- *   1. Hero — one editorial line whose verb changes with state:
- *      "All clear across the county", "3 situations across the
- *      county", "Heads-up across the county". A pulsing live dot
- *      (sage when calm, brick when active) makes it obviously live.
- *
- *   2. Status grid — 2×3 mobile, 3×2 tablet+, six tiles (Traffic,
- *      Power, Schools, 311, Safety, Police). Each tile shows icon,
- *      label, ONE big serif number, and a one-word status. The
- *      tile background tints with its accent color when active so
- *      the grid reads as a heat-map of where attention is needed.
- *      Tiles anchor-link to their sections below; Police opens the
- *      external CFS map.
- *
- *   3. Active sections — only sections with current data render
- *      below. Each card carries its accent color as a left-edge
- *      band, a serif title, a count chip, the rows, and a quiet
- *      source attribution at the bottom. No more empty cards.
- *
- *   4. Footer — last-updated line + disclaimer + the full source
- *      list with timestamps, so the data trail is honest.
- *
- * Every feed is fetched server-side, normalized, and rendered IN-
- * APP. The only outbound links are small "source" attributions —
- * the data itself lives here.
+ * The server normalizes trusted public feeds; PulseBoard turns them into one
+ * lead issue, supporting facts, a calm systems ledger, and distinct modules
+ * for transportation, outdoor conditions, and local updates. Heavy bus
+ * geometry waits behind intent, and client-owned drawer URLs keep this route
+ * cacheable while preserving shareable `?open=` links.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -49,7 +22,6 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
-import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
 import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
@@ -60,8 +32,6 @@ import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
-import { publicPlaces } from "@/lib/loaders/places";
-import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
@@ -69,19 +39,6 @@ import PulseBoard, { type PulseTile, type PulseHero, type PulseHeroChip } from "
 import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
-import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import {
-  Users,
-  Square,
-  CalendarHeart,
-  Building2,
-  Bus,
-  Trees,
-  Utensils,
-  Waves as WavesIcon,
-  Mountain,
-  type LucideIcon,
-} from "lucide-react";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -133,6 +90,33 @@ function nowClock(): string {
     minute: "2-digit",
     timeZoneName: "short",
   }).format(new Date());
+}
+
+/** Plain, deterministic local guidance for the alert families NWS publishes.
+ * This deliberately avoids speculative AI copy: the alert type selects a
+ * short action, while the official NWS record remains one tap away. */
+function alertGuidance(event: string): string {
+  const name = event.toLowerCase();
+  if (name.includes("tornado")) return "Move indoors, keep emergency alerts on, and be ready to use a lower interior room.";
+  if (name.includes("severe thunderstorm")) return "Outdoor plans may need to move inside. Secure loose items and keep weather alerts on.";
+  if (name.includes("flood")) return "Avoid low-water crossings and never drive through flooded roads. Check your route before leaving.";
+  if (name.includes("heat")) return "Plan shade and water for time outside, and move strenuous activity to a cooler part of the day.";
+  if (name.includes("winter") || name.includes("snow") || name.includes("ice")) return "Allow extra travel time and check road conditions before heading out.";
+  if (name.includes("wind")) return "Secure loose outdoor items and use extra care around trees and power lines.";
+  if (name.includes("air quality")) return "Sensitive groups may want to shorten strenuous outdoor activity.";
+  return "Keep official alerts on and check the Frederick-specific timing before changing your plans.";
+}
+
+function alertEndLabel(iso: string | undefined): string | undefined {
+  if (!iso) return undefined;
+  const end = new Date(iso);
+  if (!Number.isFinite(end.getTime())) return undefined;
+  return `Through ${new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(end)}`;
 }
 
 // ── River display helpers (mirror /rivers so the two surfaces agree) ──
@@ -217,14 +201,10 @@ function withTimeoutTracked<T>(p: Promise<T>, ms: number, fallback: T, onFail: (
   });
 }
 
-export default async function PulsePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ open?: string }>;
-}) {
-  // ?open=<tileKey> opens that feed's window on arrival (e.g. tapped from
-  // /today's LivePulse, which deep-links /pulse?open=traffic).
-  const { open: openParam } = await searchParams;
+export default async function PulsePage() {
+  // `?open=<tileKey>` is read by PulseBoard after hydration. Keeping query
+  // state out of this server component lets the whole briefing use ISR again
+  // instead of regenerating all county feeds for every deep link.
   // Every feed is raced against a 6s timeout + an empty fallback (withTimeout),
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
@@ -237,7 +217,7 @@ export default async function PulsePage({
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
     withTimeoutTracked(getChartIncidentsFrederick(), FEED_MS, [], markDegraded),
     withTimeoutTracked(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }, markDegraded),
     withTimeoutTracked(getFcpsAlerts(), FEED_MS, [], markDegraded),
@@ -251,15 +231,13 @@ export default async function PulsePage({
     // Official City + County press releases (CivicPlus News Flash RSS). The
     // police-lane items get the breaking strip up top + the blotter below.
     withTimeout(getCivicPressReleases(), FEED_MS, []),
-    // TransIT route count for the "by the numbers" grid (weekly-cached loader).
-    withTimeout(getFrederickTransitRoutes(), FEED_MS, []),
     // USGS live gage height + streamflow for county rivers, WITH 24h history
     // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
-    withTimeout(getFrederickWaterSitesWithHistory(), FEED_MS, [] as WaterSite[]),
+    // Six hours is ~24 readings per gauge: ample for the eight-reading trend
+    // calculation without serializing the full /rivers 24-hour payload here.
+    withTimeout(getFrederickWaterSitesWithHistory("PT6H"), FEED_MS, [] as WaterSite[]),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
-    // TransIT route shapes + stops for the live bus map (weekly-cached).
-    withTimeout(getFrederickTransitRouteShapes(), FEED_MS, { type: "FeatureCollection" as const, features: [] }),
     // Current conditions for the leading Weather tile (the full panel is its
     // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
     withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
@@ -286,19 +264,6 @@ export default async function PulsePage({
   const wxCur = forecast?.hourly?.[0] ?? null;
   const wxCondition = wxCur ? wxCur.shortForecast.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : null;
 
-  // ── "By the numbers" canon — pure / no fetch beyond the routes
-  // above. Computed once at request time. Numbers blend our LIVE
-  // directory counts with established Frederick County facts so the
-  // panel reads as a real snapshot of the place, not a marketing
-  // brochure. Population from US Census ACS 2023 estimate, land
-  // area from the official county profile.
-  const places = publicPlaces();
-  const parksCount = places.filter((p) => p.category === "park" || p.category === "trail" || p.category === "playground").length;
-  const restaurantsCount = places.filter((p) => p.category === "restaurant" || p.category === "pizza" || p.category === "bakery" || p.category === "coffee" || p.category === "bar" || p.category === "brewery").length;
-  // De-dupe route names so the count matches what /transit shows
-  // (variations of one route collapse to one entry there too).
-  const routesCount = new Set(transitRoutes.map((r) => r.name)).size;
-
   const sevRank = { High: 0, Medium: 1, Low: 2 } as const;
   const traffic = [...incidents].sort(
     (a, b) => sevRank[a.severity] - sevRank[b.severity]
@@ -308,7 +273,6 @@ export default async function PulsePage({
   // Power outages are "active" only when 25+ customers are out — below
   // that threshold the data is noise (a single transformer trip).
   const outagesActive = outages.total_out >= 25;
-  const outagesCount = outagesActive ? outages.munis.length || 1 : 0;
 
   // Only count NWS alerts that haven't already expired. The feed
   // includes alerts with `ends_at` in the past until the cache cycles,
@@ -331,44 +295,73 @@ export default async function PulsePage({
   // live MDOT traffic tile). Self-hides when the feeds carry none recent.
   const advisories = advisoryReleases(press).slice(0, 6);
 
-  const totals = {
-    alerts: activeAlerts.length,
-    safety: safety.length,
-    traffic: traffic.length,
-    power: outagesCount,
-    schools: schoolAlerts.length,
-    fixit: fixit.length,
-  };
-  // totalActive rolls up every urgent feed — alerts included — so the
-  // hero line reads truthfully when an NWS alert is up but the
-  // operational feeds are calm. 311 reports are excluded: they're
-  // collapsed by default and don't count as "situations" — most are
-  // potholes and tree-limb requests, not emergencies.
-  const totalActive =
-    totals.alerts +
-    totals.safety +
-    totals.traffic +
-    totals.power +
-    totals.schools;
+  // Pulse is active if any trusted urgent category is active. We intentionally
+  // do not add unlike records into one fake "situation" total.
+  const hasActive =
+    activeAlerts.length > 0 ||
+    safety.length > 0 ||
+    traffic.length > 0 ||
+    outagesActive ||
+    schoolAlerts.length > 0;
   // "All clear" requires BOTH nothing active AND every urgent feed answered.
   // If a feed failed and we found nothing, the truthful read is "unknown", not
   // a reassuring all-clear (audit FR-002).
-  const heroDegraded = totalActive === 0 && urgentDegraded;
-  const allClear = totalActive === 0 && !urgentDegraded;
+  const heroDegraded = !hasActive && urgentDegraded;
+  const allClear = !hasActive && !urgentDegraded;
 
-  // Hero copy varies with state. The verb is the read.
-  const heroLine = allClear
-    ? "All clear across the county"
-    : heroDegraded
-      ? "Some alert feeds are unreachable"
-      : totalActive === 1
-        ? "1 situation across the county"
-        : `${totalActive} situations across the county`;
-  const heroSub = allClear
-    ? "No weather alerts, traffic, outages, or school alerts right now."
-    : heroDegraded
-      ? "We could not reach every alert feed just now, so this is not an all-clear. It refreshes automatically."
-      : "Weather alerts, traffic, power, schools, fire & rescue, combined from six county and state feeds.";
+  const leadAlert = activeAlerts[0];
+  const leadTraffic = traffic[0];
+  const leadSchool = schoolAlerts[0];
+  const leadSafety = safety[0];
+
+  let heroLine = "Frederick is steady right now.";
+  let heroSub = "No active weather alerts, major road incidents, significant outages, or school changes.";
+  let heroLeadKey: string | undefined;
+  let heroLeadMeta: string | undefined;
+  let heroActionLabel: string | undefined;
+
+  if (heroDegraded) {
+    heroLine = "We can’t confirm an all-clear yet.";
+    heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Pulse will retry automatically.";
+  } else if (leadAlert) {
+    heroLeadKey = "alerts";
+    heroLine = `${leadAlert.event} for Frederick County.`;
+    heroSub = alertGuidance(leadAlert.event);
+    heroLeadMeta = alertEndLabel(leadAlert.ends_at);
+    heroActionLabel = "Read the Frederick alert";
+  } else if (outagesActive) {
+    heroLeadKey = "power";
+    heroLine = `${outages.total_out.toLocaleString()} customers are without power.`;
+    heroSub = "Check the affected communities and the latest utility-reported totals before making a backup plan.";
+    heroLeadMeta = "Potomac Edison service area";
+    heroActionLabel = "See affected areas";
+  } else if (leadTraffic) {
+    heroLeadKey = "traffic";
+    heroLine = `${leadTraffic.road}${leadTraffic.direction ? ` ${leadTraffic.direction}` : ""} has a reported incident.`;
+    heroSub = leadTraffic.lanes_affected
+      ? `${leadTraffic.type}. ${leadTraffic.lanes_affected}. Check the location before choosing your route.`
+      : `${leadTraffic.type}. Check the location and expected clearing time before choosing your route.`;
+    heroLeadMeta = leadTraffic.location;
+    heroActionLabel = "Check the road impact";
+  } else if (leadSchool) {
+    heroLeadKey = "schools";
+    heroLine = leadSchool.status === "closed"
+      ? "Frederick County schools are closed."
+      : leadSchool.status === "delayed"
+        ? "Frederick County schools are delayed."
+        : leadSchool.status === "early_dismissal"
+          ? "Frederick County schools are dismissing early."
+          : "FCPS has a schedule update.";
+    heroSub = leadSchool.title;
+    heroLeadMeta = timeAgo(leadSchool.published_at);
+    heroActionLabel = "Read the FCPS update";
+  } else if (leadSafety) {
+    heroLeadKey = "safety";
+    heroLine = `${safety.length} active fire & rescue ${safety.length === 1 ? "call" : "calls"}.`;
+    heroSub = `Most recent: ${leadSafety.type}${leadSafety.address ? ` near ${leadSafety.address}` : ""}.`;
+    heroLeadMeta = timeAgo(leadSafety.received_at);
+    heroActionLabel = "See active calls";
+  }
 
   const pct =
     outages.total_served > 0
@@ -626,7 +619,7 @@ export default async function PulsePage({
             hl: wxHl,
           },
           sourceLabel: "NWS · weather.gov",
-          body: <PulseWeatherPanel />,
+          body: <PulseWeatherPanel forecast={forecast} aqiObs={aqiObs} />,
         } as PulseTile]
       : []),
     // ── Numeric feeds → animated gauge rings ──
@@ -821,10 +814,26 @@ export default async function PulsePage({
                 : a.severity === "Moderate"
                   ? "warning"
                   : "cool";
-            const endsLabel = a.ends_at
-              ? `Through ${new Date(a.ends_at).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" })}`
-              : undefined;
-            return <Row key={a.id} tone={tone} title={a.event} body={a.headline} meta={[a.area, endsLabel]} />;
+            return (
+              <div key={a.id} className="space-y-1.5">
+                <Row
+                  tone={tone}
+                  title={a.event}
+                  body={alertGuidance(a.event)}
+                  meta={["Frederick County", alertEndLabel(a.ends_at)]}
+                />
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-1 text-[11px] font-semibold"
+                  style={{ color: "var(--app-cool)" }}
+                >
+                  Read the full official alert
+                  <ExternalLink aria-hidden className="h-3 w-3" />
+                </a>
+              </div>
+            );
           })
         : emptyNote("No weather alerts for Frederick County right now."),
     },
@@ -937,7 +946,7 @@ export default async function PulsePage({
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
             <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Latest reading + 24-hour trend. Flood categories are the National Weather Service&rsquo;s; crest forecasts stay with them.
+              Latest reading + 6-hour trend. Flood categories are the National Weather Service&rsquo;s; crest forecasts stay with them.
             </p>
           </div>
         )
@@ -1000,7 +1009,7 @@ export default async function PulsePage({
           : marcBoard.serviceToday
             ? "Brunswick Line"
             : undefined,
-      body: <NextTrainBoard />,
+      body: <NextTrainBoard board={marcBoard} alerts={marcAlerts} />,
     },
     // Trout stockings — seasonal, self-hides mid-summer. Frederick's waters
     // (Carroll Creek included) get near-daily drops in the spring/fall runs.
@@ -1117,67 +1126,64 @@ export default async function PulsePage({
     sub: heroSub,
     renderedAt: nowMs,
     refreshedClock: nowClock(),
-    temp: wxCur?.temperature ?? null,
-    situationCount: totalActive,
+    leadKey: heroLeadKey,
+    leadMeta: heroLeadMeta,
+    actionLabel: heroActionLabel,
   };
 
-  // The hero briefing chips. On an ACTIVE day they ARE the situations, each
-  // tapping straight to its feed's window (the tile key). On a CALM day they
-  // flip to proofs: the quiet confirmations that make "all clear" scannable
-  // instead of a bare reassurance. Capped so the header stays a glance.
+  // Supporting facts only: the lead issue is already fully explained in the
+  // hero and must not appear again as a duplicate chip.
   const heroChips: PulseHeroChip[] = [];
+  const addHeroChip = (chip: PulseHeroChip) => {
+    if (chip.key === heroLeadKey || heroChips.some((item) => item.key === chip.key)) return;
+    heroChips.push(chip);
+  };
   if (!allClear) {
-    for (const a of activeAlerts.slice(0, 2)) {
-      heroChips.push({ tone: "danger", label: a.event, key: "alerts" });
-    }
     if (outagesActive) {
-      heroChips.push({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power" });
+      addHeroChip({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power" });
     }
-    for (const i of traffic.slice(0, 3)) {
-      heroChips.push({ tone: "warning", label: `${i.road}${i.direction ? ` ${i.direction}` : ""}`, key: "traffic" });
+    if (leadTraffic) {
+      addHeroChip({ tone: "warning", label: `${leadTraffic.road}${leadTraffic.direction ? ` ${leadTraffic.direction}` : ""}`, key: "traffic" });
     }
-    for (const s of safety.slice(0, 1)) {
-      heroChips.push({ tone: "danger", label: s.type, key: "safety" });
+    if (leadSafety) {
+      addHeroChip({ tone: "danger", label: leadSafety.type, key: "safety" });
     }
-    if (schoolAlerts.length > 0) {
-      const s0 = schoolAlerts[0];
-      heroChips.push({
+    if (leadSchool) {
+      addHeroChip({
         tone: "warning",
-        label: s0.status === "closed" ? "Schools closed" : s0.status === "delayed" ? "Schools delayed" : "School alert",
+        label: leadSchool.status === "closed" ? "Schools closed" : leadSchool.status === "delayed" ? "Schools delayed" : "School update",
         key: "schools",
       });
     }
+    if (!leadTraffic) addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
+    if (!outagesActive) addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
+    if (!leadSchool) addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
+    if (!leadSafety) addHeroChip({ tone: "positive", label: "Fire & rescue quiet", key: "safety" });
+    if (!leadAlert) addHeroChip({ tone: "positive", label: "No weather alerts", key: "alerts" });
   } else {
-    // Calm proofs, in the order people worry about them.
-    heroChips.push({ tone: "positive", label: "Roads clear", key: "traffic" });
-    heroChips.push({ tone: "positive", label: "Power on", key: "power" });
-    heroChips.push({ tone: "positive", label: "Schools normal", key: "schools" });
+    addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
+    addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
+    addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
     if (wxCur) {
-      heroChips.push({ tone: "cool", label: `${wxCur.temperature}°${wxCondition ? ` ${wxCondition}` : ""}`, key: "weather" });
+      addHeroChip({ tone: "cool", label: `${wxCur.temperature}°${wxCondition ? ` ${wxCondition}` : ""}`, key: "weather" });
     }
     if (aqiWorst && aqiWorst.category.id <= 2) {
-      heroChips.push({ tone: "cool", label: `Air ${aqiWorst.category.name.toLowerCase()}`, key: "air" });
+      addHeroChip({ tone: "cool", label: `Air ${aqiWorst.category.name.toLowerCase()}`, key: "air" });
     }
   }
-  const heroChipsCapped = heroChips.slice(0, 6);
+  const heroChipsCapped = heroChips.slice(0, 4);
 
   return (
     <div className="relative space-y-6 pb-4">
       <PageBloom variant={allClear ? "warm-cool" : "single"} />
 
-      {/* ── The board — a state-aware hero, an incident ticker that appears
-          only when something is active, a working All / Needs attention / Calm
-          filter, and the bento grid. The numeric feeds (air, power, the lead
-          river, 311) render as animated conic gauge rings; the rest as compact
-          status tiles; weather leads as the wide feature. Each tile still opens
-          its feed's full detail in the tap-to-open bottom sheet. The breaking
-          police strip rides between the ticker and the filter. */}
+      {/* The briefing owns hierarchy and interaction; detail remains in sourced
+          drawers so the first screen stays useful at a glance. */}
       <PulseBoard
         hero={hero}
         chips={heroChipsCapped}
         tiles={pulseTiles}
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
-        initialOpen={openParam}
       />
 
       {/* ── Where the buses are — the live TransIT map, behind one tap. The map
@@ -1195,112 +1201,16 @@ export default async function PulsePage({
             tap a bus · free
           </span>
         </div>
-        <BusesReveal shapes={transitShapes} />
+        <BusesReveal />
         <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
           every 15 seconds. Tap a route to trace its path and follow just its
           buses. The county bus is free.
         </p>
       </section>
-
-
-      {/* By the numbers — county canon + live directory counts. Collapsed
-          by DEFAULT: on a live-status page this is the largest block and pure
-          static reference (zero live-"pulse" value), so it recedes behind a
-          one-tap disclosure instead of making every visitor scroll an almanac
-          to reach the footer. The choice persists per visitor (localStorage),
-          and the internal links (/parks, /transit, /category/food, Carroll
-          Creek) ship in the HTML, just display:none until expanded. */}
-      <CollapsibleSection
-        title="By the numbers · census + canon"
-        storageKey="pulse-canon"
-        defaultOpen={false}
-      >
-        <ul className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3 lg:grid-cols-4">
-          <CanonTile
-            icon={Users}
-            value="285,464"
-            label="Population"
-            note="2023 ACS estimate"
-            accent="var(--app-brand)"
-          />
-          <CanonTile
-            icon={Square}
-            value="663"
-            unit="mi²"
-            label="Land area"
-            note="From the Maryland line to the Potomac"
-            accent="var(--app-cool)"
-          />
-          <CanonTile
-            icon={CalendarHeart}
-            value="1748"
-            label="Founded"
-            note="Hessian fairs to Civil War crossroads"
-            accent="var(--app-accent)"
-          />
-          <CanonTile
-            icon={Building2}
-            // Incorporated municipalities only (2 cities + 9 towns + 1
-            // village = 12). MUNICIPALITIES also includes Urbana, which is an
-            // unincorporated community — counting it gave a wrong "13."
-            value={MUNICIPALITIES.filter((m) => m.type !== "unincorporated").length}
-            label="Municipalities"
-            note="From Brunswick to Burkittsville"
-            accent="var(--app-brand-2)"
-          />
-          <CanonTile
-            icon={Trees}
-            value={parksCount.toLocaleString()}
-            label="Parks + trails mapped"
-            note="Public, free, in service"
-            accent="var(--app-positive)"
-            href="/parks"
-          />
-          <CanonTile
-            icon={Utensils}
-            value={restaurantsCount.toLocaleString()}
-            label="Eat + drink mapped"
-            note="Cafes, kitchens, taprooms, bakeries"
-            accent="var(--app-brand)"
-            href="/category/food"
-          />
-          <CanonTile
-            icon={Bus}
-            value={
-              routesCount > 0
-                ? routesCount.toLocaleString()
-                : // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
-                  "—"
-            }
-            label="TransIT routes"
-            note="County bus network, every variation"
-            accent="var(--app-cool)"
-            href="/transit"
-          />
-          <CanonTile
-            icon={WavesIcon}
-            value="1.4"
-            unit="mi"
-            label="Carroll Creek"
-            note="Linear park, downtown spine"
-            accent="var(--app-cool)"
-            href="/places/carroll-creek-linear-park-frederick"
-          />
-          <CanonTile
-            icon={Mountain}
-            value="1,888"
-            unit="ft"
-            label="Catoctin Mountain"
-            note="High point of the western ridge"
-            accent="var(--app-ink-2)"
-          />
-        </ul>
-      </CollapsibleSection>
-
       {/* Footer — disclaimer + sources at a glance */}
       <footer
-        className="space-y-3 rounded-[var(--app-radius-md)] border p-4 text-[11px]"
+        className="rounded-[var(--app-radius-md)] border p-4 text-[11px]"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-sunken)",
@@ -1311,18 +1221,24 @@ export default async function PulsePage({
           Informational only, not a substitute for 911 or official
           emergency broadcasts.
         </p>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
-          <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
-          <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
-          <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
-          <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
-          <SourceLine label="MARC trains" source="MTA Maryland" href="https://www.mta.maryland.gov/schedule/marc" />
-          <SourceLine label="Air quality" source="AirNow · EPA" href="https://www.airnow.gov/" />
-          <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
-          <SourceLine label="News" source="Google News · Frederick" href="https://news.google.com/search?q=Frederick%20County%20Maryland" />
-          <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
-        </div>
+        <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            <ChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+            Sources &amp; data trail
+          </summary>
+          <div className="grid grid-cols-1 gap-1.5 pb-1 pt-2 sm:grid-cols-2">
+            <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
+            <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
+            <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
+            <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
+            <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
+            <SourceLine label="MARC trains" source="MTA Maryland" href="https://www.mta.maryland.gov/schedule/marc" />
+            <SourceLine label="Air quality" source="AirNow · EPA" href="https://www.airnow.gov/" />
+            <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
+            <SourceLine label="News" source="Google News · Frederick" href="https://news.google.com/search?q=Frederick%20County%20Maryland" />
+            <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
+          </div>
+        </details>
       </footer>
     </div>
   );
@@ -1392,98 +1308,6 @@ function Row({
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * CanonTile — a single stat in the "By the numbers" grid. Big serif
- * number, small label, optional sub-line, optional unit suffix.
- * When `href` is set the whole tile becomes a tappable link to the
- * source surface (e.g. /transit, /parks). Otherwise it's a static
- * fact card. Same visual rhythm as the existing /pulse StatusTile
- * so the two grids feel like one family.
- */
-function CanonTile({
-  icon: Icon,
-  value,
-  unit,
-  label,
-  note,
-  accent,
-  href,
-}: {
-  icon: LucideIcon;
-  value: string | number;
-  unit?: string;
-  label: string;
-  note?: string;
-  accent: string;
-  href?: string;
-}) {
-  const Body = (
-    <>
-      <div className="flex items-start justify-between gap-2">
-        <span
-          aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{
-            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-            color: accent,
-          }}
-        >
-          <Icon className="h-4 w-4" strokeWidth={2.25} />
-        </span>
-      </div>
-      <p className="mt-2 flex items-baseline gap-1 leading-none">
-        <span
-          className="font-serif text-[26px] font-semibold tabular-nums tracking-tight sm:text-[28px]"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {value}
-        </span>
-        {unit && (
-          <span
-            className="text-[12px] font-semibold"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {unit}
-          </span>
-        )}
-      </p>
-      <p
-        className="mt-1 text-[12px] font-semibold leading-tight"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        {label}
-      </p>
-      {note && (
-        <p
-          className="mt-0.5 text-[11px] leading-snug"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {note}
-        </p>
-      )}
-    </>
-  );
-  const className =
-    "tactile-interactive flex h-full flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition";
-  const style = {
-    borderColor: "var(--app-border)",
-    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-  };
-  return (
-    <li>
-      {href ? (
-        <Link href={href} className={className} style={style}>
-          {Body}
-        </Link>
-      ) : (
-        <div className={className} style={style}>
-          {Body}
-        </div>
-      )}
-    </li>
   );
 }
 

@@ -1,0 +1,338 @@
+{
+  "mobile-375x812": {
+    "place": {
+      "viewportHeight": 812,
+      "toolbar": {
+        "y": 670,
+        "height": 66,
+        "bottom": 736
+      },
+      "primaryNav": {
+        "y": 740,
+        "height": 62,
+        "bottom": 802
+      },
+      "combinedBottomChromeFromToolbarTopPx": 142,
+      "combinedBottomChromeViewportPercent": 17.5,
+      "gapBetweenToolbarAndNavPx": 4,
+      "overlapPx": 0,
+      "allFixed": [
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "app-paper-fx",
+          "y": 0,
+          "height": 812,
+          "bottom": 812
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center",
+          "y": 56,
+          "height": 0,
+          "bottom": 56
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 lg:hidden",
+          "y": 670,
+          "height": 66,
+          "bottom": 736
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 bottom-0 lg:hidden",
+          "y": 740,
+          "height": 72,
+          "bottom": 812
+        }
+      ]
+    },
+    "event": {
+      "viewportHeight": 812,
+      "toolbar": {
+        "y": 665,
+        "height": 71,
+        "bottom": 736
+      },
+      "primaryNav": {
+        "y": 740,
+        "height": 62,
+        "bottom": 802
+      },
+      "combinedBottomChromeFromToolbarTopPx": 147,
+      "combinedBottomChromeViewportPercent": 18.1,
+      "gapBetweenToolbarAndNavPx": 4,
+      "overlapPx": 0,
+      "allFixed": [
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "app-paper-fx",
+          "y": 0,
+          "height": 812,
+          "bottom": 812
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center",
+          "y": 56,
+          "height": 0,
+          "bottom": 56
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 lg:hidden",
+          "y": 665,
+          "height": 71,
+          "bottom": 736
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 bottom-0 lg:hidden",
+          "y": 740,
+          "height": 72,
+          "bottom": 812
+        }
+      ]
+    }
+  },
+  "tablet-768x1024": {
+    "place": {
+      "viewportHeight": 1024,
+      "toolbar": {
+        "y": 882,
+        "height": 66,
+        "bottom": 948
+      },
+      "primaryNav": {
+        "y": 952,
+        "height": 62,
+        "bottom": 1014
+      },
+      "combinedBottomChromeFromToolbarTopPx": 142,
+      "combinedBottomChromeViewportPercent": 13.9,
+      "gapBetweenToolbarAndNavPx": 4,
+      "overlapPx": 0,
+      "allFixed": [
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "app-paper-fx",
+          "y": 0,
+          "height": 1024,
+          "bottom": 1024
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center",
+          "y": 56,
+          "height": 0,
+          "bottom": 56
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 lg:hidden",
+          "y": 882,
+          "height": 66,
+          "bottom": 948
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 bottom-0 lg:hidden",
+          "y": 952,
+          "height": 72,
+          "bottom": 1024
+        }
+      ]
+    },
+    "event": {
+      "viewportHeight": 1024,
+      "toolbar": {
+        "y": 877,
+        "height": 71,
+        "bottom": 948
+      },
+      "primaryNav": {
+        "y": 952,
+        "height": 62,
+        "bottom": 1014
+      },
+      "combinedBottomChromeFromToolbarTopPx": 147,
+      "combinedBottomChromeViewportPercent": 14.4,
+      "gapBetweenToolbarAndNavPx": 4,
+      "overlapPx": 0,
+      "allFixed": [
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "app-paper-fx",
+          "y": 0,
+          "height": 1024,
+          "bottom": 1024
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center",
+          "y": 56,
+          "height": 0,
+          "bottom": 56
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 lg:hidden",
+          "y": 877,
+          "height": 71,
+          "bottom": 948
+        },
+        {
+          "tag": "div",
+          "role": null,
+          "label": null,
+          "className": "pointer-events-none fixed inset-x-0 bottom-0 lg:hidden",
+          "y": 952,
+          "height": 72,
+          "bottom": 1024
+        }
+      ]
+    }
+  },
+  "desktopMap": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "rootBottomNavReserve": "84px",
+    "rootBrowseMapHeight": "calc(100dvh - 56px - 48px - 84px -\n      0px - 0px)",
+    "computedBrowseMapHeight": "calc(100dvh - 56px - 48px - 84px -\n      0px - 0px)",
+    "topbar": {
+      "y": 0,
+      "height": 57,
+      "bottom": 57,
+      "width": 1440,
+      "display": "block"
+    },
+    "map": {
+      "y": 61,
+      "height": 712,
+      "bottom": 773,
+      "width": 1340,
+      "display": "block"
+    },
+    "canvas": {
+      "y": 61,
+      "height": 712,
+      "bottom": 773,
+      "width": 1340,
+      "display": "block"
+    },
+    "main": {
+      "y": 57,
+      "height": 812,
+      "bottom": 869,
+      "width": 1440,
+      "display": "block"
+    },
+    "primaryNav": {
+      "y": 0,
+      "height": 0,
+      "bottom": 0,
+      "width": 0,
+      "display": "block"
+    },
+    "blankViewportBelowMapPx": 127
+  },
+  "mobileEvents": {
+    "quickChipScroller": {
+      "clientWidth": 343,
+      "scrollWidth": 576,
+      "clippedPx": 233,
+      "overflowX": "auto"
+    },
+    "viewButtons": [
+      {
+        "label": "List view",
+        "width": 34,
+        "height": 30,
+        "pseudoWidth": 34,
+        "pseudoHeight": 44
+      },
+      {
+        "label": "Compact view",
+        "width": 34,
+        "height": 30,
+        "pseudoWidth": 33,
+        "pseudoHeight": 44
+      },
+      {
+        "label": "Agenda view",
+        "width": 34,
+        "height": 30,
+        "pseudoWidth": 33,
+        "pseudoHeight": 44
+      },
+      {
+        "label": "Map view",
+        "width": 34,
+        "height": 30,
+        "pseudoWidth": 33,
+        "pseudoHeight": 44
+      }
+    ],
+    "viewGroupText": null
+  },
+  "mobileSearch": {
+    "resultCountLabel": "47 results for coffee",
+    "renderedRows": 47,
+    "firstFive": [
+      {
+        "text": "Frederick Coffee Companycoffee · Frederick",
+        "height": 57.5
+      },
+      {
+        "text": "Dublin Roasters Coffeecoffee · Frederick",
+        "height": 57.5
+      },
+      {
+        "text": "Gravel & Grindcoffee · Frederick",
+        "height": 57.5
+      },
+      {
+        "text": "Baltimore Coffee and Tea Co., Inc.coffee · Frederick",
+        "height": 57.5
+      },
+      {
+        "text": "Druidcraft Coffee Roasting (Office Only)coffee · Middletown",
+        "height": 57.5
+      }
+    ],
+    "rowsMentionOpen": 0,
+    "rowsMentionDistance": 0
+  }
+}

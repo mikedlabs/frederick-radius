@@ -1,83 +1,67 @@
 "use client";
 
 import {
+  createElement,
   useEffect,
-  useId,
+  useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import {
-  Siren,
-  Construction,
-  Zap,
-  School,
   AlertTriangle,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Clock,
   CloudAlert,
-  Waves,
-  Plane,
   CloudSun,
+  Construction,
+  Fish,
   Newspaper,
+  Plane,
   Radio,
+  School,
   Shield,
   ShieldCheck,
+  Siren,
+  Sparkles,
   TrafficCone,
   TrainFront,
+  Waves,
   Wind,
-  Fish,
-  Clock,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
-import {
-  emptyMessage,
-  filterTiles,
-  formatGaugeNumber,
-  type PulseFilter,
-} from "@/components/pulse/format";
-
-/**
- * PulseBoard — the /pulse dashboard as a state-aware bento board.
- *
- * The server page fetches every county feed, races each against a 6s
- * timeout, and hands the results down as serializable tile descriptors +
- * a server-rendered `body` node per feed. This client shell owns only the
- * things a static page cannot do: the count-ups, the conic gauge fills, the
- * incident ticker, the segmented filter, and the tap-to-open bottom sheet.
- *
- * A calm day is a calm board: no ticker, cool/positive gauges resting low,
- * the hero reading "All clear across the county". An active day flips the
- * hero, raises the ticker, tints the live feeds, and the "Needs attention"
- * filter resolves to exactly the feeds the hero is counting.
- */
+import { formatGaugeNumber } from "@/components/pulse/format";
 
 const ICONS: Record<string, LucideIcon> = {
-  Siren,
-  Construction,
-  Zap,
-  School,
   AlertTriangle,
   CloudAlert,
-  Waves,
-  Plane,
   CloudSun,
+  Construction,
+  Fish,
   Newspaper,
+  Plane,
   Radio,
+  School,
   Shield,
+  Siren,
   TrafficCone,
   TrainFront,
+  Waves,
   Wind,
-  Fish,
+  Zap,
 };
 
-export type PulseTicketItem = { tone: "danger" | "warning" | "cool"; text: string };
+const CONDITIONS = new Set(["weather", "air", "rivers"]);
+const GETTING_AROUND = new Set(["traffic", "roadwork", "train", "airports"]);
+const STEADY_SYSTEMS = new Set(["power", "safety", "schools", "alerts"]);
+const LOCAL_UPDATES = new Set(["fixit", "trout", "airspace", "news", "police", "scanner"]);
+const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
 
-/** A single briefing chip in the hero: the actual live situation (active
- *  day) or a calm proof (all-clear day). `key` names the tile it opens on
- *  tap; without one the chip is a static read. */
 export type PulseHeroChip = {
   tone: "danger" | "warning" | "cool" | "positive";
   label: string;
@@ -93,494 +77,462 @@ const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
 
 export type PulseHero = {
   allClear: boolean;
-  /** A source feed failed/timed out and nothing active was found, so the board
-   *  shows an amber "unavailable" hero instead of a green all-clear (FR-002). */
   degraded?: boolean;
   line: string;
   sub: string;
-  /** When the server rendered (feeds fetched) — powers the live "updated Ns". */
   renderedAt: number;
-  /** Human refresh clock, formatted server-side ("3:42 PM EDT"). */
   refreshedClock: string;
-  /** Current temperature for the compact "now" reading. */
-  temp: number | null;
-  /** Count of active situations, for the board subtitle. */
-  situationCount: number;
+  /** The lead situation is fully explained in the hero, so it is not repeated below. */
+  leadKey?: string;
+  leadMeta?: string;
+  actionLabel?: string;
 };
 
 export type PulseTile = {
   key: string;
   label: string;
-  /** Icon name resolved against the local map (keeps the RSC boundary clean). */
   iconName: string;
-  /** Named source, shown as the drawer subtitle. */
   sourceLabel: string;
-  /** At-a-glance datum, for the tile's accessible label. */
   countLabel: string;
-  /** Tone token used for the gauge ring, status dot, and active tint. */
   accent: string;
-  /** Feed has live data now — drives the tile tint. */
   active: boolean;
-  /** In the hero's situation roll-up — drives the "Needs attention" filter. */
   attention: boolean;
-  /** Presentation family. */
   kind: "feature" | "gauge" | "status";
-  /** Status tiles: the one-line read under the big value. */
   peek?: string;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
   feature?: { temp: number; condition: string; hl?: string };
-  /** The feed's full detail, rendered inside the tapped window. Server-rendered. */
   body: ReactNode;
 };
 
-/* ─────────────────────────────────────────────────────────────
- * Animation primitives (respect prefers-reduced-motion)
- * ───────────────────────────────────────────────────────────── */
+type Snapshot = {
+  at: number;
+  active: Record<string, string>;
+};
 
-function prefersReduced(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+function iconFor(tile: PulseTile) {
+  return ICONS[tile.iconName] ?? AlertTriangle;
 }
 
-/** A number that counts up from 0 to its value on mount, formatted identically
- *  at every frame. Renders the final value in SSR (suppressHydrationWarning),
- *  so no-JS / reduced-motion rest at the true reading. */
-function AnimatedNumber({
-  value,
-  decimals,
-  comma,
-  suffix = "",
-  className,
-  style,
+function updateOpenParam(key: string | null, mode: "push" | "replace") {
+  const url = new URL(window.location.href);
+  if (key) url.searchParams.set("open", key);
+  else url.searchParams.delete("open");
+  window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", url);
+}
+
+function timeSince(at: number): string {
+  const mins = Math.max(1, Math.floor((Date.now() - at) / 60_000));
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function GroupHeading({
+  id,
+  eyebrow,
+  title,
+  note,
 }: {
-  value: number;
-  decimals?: number;
-  comma?: boolean;
-  suffix?: string;
-  className?: string;
-  style?: CSSProperties;
+  id: string;
+  eyebrow: string;
+  title: string;
+  note?: string;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const final = formatGaugeNumber(value, { decimals, comma }) + suffix;
-    if (prefersReduced()) {
-      el.textContent = final;
-      return;
-    }
-    let raf = 0;
-    const start = performance.now();
-    const dur = 1100;
-    const tick = (now: number) => {
-      const k = Math.min(1, (now - start) / dur);
-      const e = 1 - Math.pow(1 - k, 3);
-      el.textContent = formatGaugeNumber(value * e, { decimals, comma }) + suffix;
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value, decimals, comma, suffix]);
   return (
-    <span ref={ref} className={className} style={style} suppressHydrationWarning>
-      {formatGaugeNumber(value, { decimals, comma }) + suffix}
-    </span>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
- * Tiles
- * ───────────────────────────────────────────────────────────── */
-
-function tileButtonProps(t: PulseTile, onOpen: () => void) {
-  return {
-    type: "button" as const,
-    onClick: onOpen,
-    "aria-haspopup": "dialog" as const,
-    "aria-label": `${t.label}: ${t.countLabel}. Tap for detail.`,
-  };
-}
-
-function FeatureTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
-  const f = t.feature!;
-  return (
-    <button
-      {...tileButtonProps(t, onOpen)}
-      className="pulse-tile pulse-tile--wx col-span-2 text-left"
-      style={{ "--pulse-i": index } as CSSProperties}
-    >
-      <span className="pulse-tlab">Right now · Frederick</span>
-      <div className="mt-1 flex items-baseline gap-3">
-        <AnimatedNumber
-          value={f.temp}
-          suffix="°"
-          className="pulse-wx-deg font-serif tabular-nums"
-        />
-        <div className="min-w-0">
-          <div className="text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-            {f.condition}
-          </div>
-          {f.hl && (
-            <div className="font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {f.hl}
-            </div>
-          )}
-        </div>
+    <div>
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-ink-3)" }}>
+        {eyebrow}
+      </p>
+      <div className="mt-0.5 flex items-end justify-between gap-3">
+        <h2 id={id} className="font-serif text-[23px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </h2>
+        {note && <span className="pb-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>{note}</span>}
       </div>
-    </button>
-  );
-}
-
-/** The shared tile class list — the boot-in stagger index, the state accent,
- *  the active tint (`is-hot`), and the alert glow (`is-alert`) for a tile the
- *  hero is counting as a live situation. */
-function tileClass(t: PulseTile): string {
-  return `pulse-tile pulse-tile--status text-left${t.active ? " is-hot" : ""}${t.attention ? " is-alert" : ""}`;
-}
-function tileStyle(t: PulseTile, index: number): CSSProperties {
-  return { "--accent": t.accent, "--pulse-i": index } as CSSProperties;
-}
-
-/** The corner status dot: a quiet breathing "live" beacon on a feed that has
- *  live data now, resting dim on a calm feed. */
-function StatusDot({ t }: { t: PulseTile }) {
-  return (
-    <span
-      aria-hidden
-      className={`pulse-sdot${t.active ? " is-live" : ""}`}
-      style={{ background: t.accent, opacity: t.active ? 1 : 0.5 }}
-    />
-  );
-}
-
-/** A numeric feed as a compact stat tile: icon + mono readout + a one-line
- *  state, capped by a thin micro-meter gauge showing where the reading sits in
- *  its range (AQI toward 300, outages toward the county, river toward flood). */
-function GaugeTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
-  const g = t.gauge!;
-  const Icon = ICONS[t.iconName] ?? AlertTriangle;
-  return (
-    <button {...tileButtonProps(t, onOpen)} className={tileClass(t)} style={tileStyle(t, index)}>
-      <StatusDot t={t} />
-      <span className="mb-1 flex items-center gap-1.5">
-        <Icon
-          aria-hidden
-          className="h-3.5 w-3.5 shrink-0"
-          strokeWidth={2}
-          style={{ color: t.active ? t.accent : "var(--app-ink-3)" }}
-        />
-        <span className="pulse-tlab">{t.label}</span>
-      </span>
-      <AnimatedNumber
-        value={g.value}
-        decimals={g.decimals}
-        comma={g.comma}
-        className="pulse-sval font-mono tabular-nums"
-        style={{ color: "var(--app-ink)" }}
-      />
-      <span className="pulse-ssub">{g.unit}</span>
-      <span className="pulse-meter" aria-hidden>
-        <span className="pulse-meter-fill" style={{ width: `${g.pct}%` }} />
-      </span>
-    </button>
-  );
-}
-
-function StatusTile({ t, index, onOpen }: { t: PulseTile; index: number; onOpen: () => void }) {
-  const Icon = ICONS[t.iconName] ?? AlertTriangle;
-  return (
-    <button {...tileButtonProps(t, onOpen)} className={tileClass(t)} style={tileStyle(t, index)}>
-      <StatusDot t={t} />
-      <span className="mb-1 flex items-center gap-1.5">
-        <Icon
-          aria-hidden
-          className="h-3.5 w-3.5 shrink-0"
-          strokeWidth={2}
-          style={{ color: t.active ? t.accent : "var(--app-ink-3)" }}
-        />
-        <span className="pulse-tlab">{t.label}</span>
-      </span>
-      <span className="pulse-sval font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
-        {t.countLabel}
-      </span>
-      {t.peek && <span className="pulse-ssub">{t.peek}</span>}
-    </button>
-  );
-}
-
-/** The hero briefing row: the live situations (or calm proofs) as chips.
- *  A chip with a tile key taps through to that feed's window; the rest are
- *  static reads. This is what makes the header answer "what should I know?"
- *  in place, instead of a count plus a scroll. */
-function HeroChips({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
-  if (chips.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {chips.map((c, i) => {
-        const tone = CHIP_TONE[c.tone];
-        const inner = (
-          <>
-            <span
-              aria-hidden
-              className={`inline-block h-1.5 w-1.5 rounded-full${c.tone === "danger" || c.tone === "warning" ? " pulse-dot" : ""}`}
-              style={{ background: tone }}
-            />
-            {c.label}
-          </>
-        );
-        const style: CSSProperties = {
-          border: `1px solid color-mix(in srgb, ${tone} 30%, var(--app-border))`,
-          background: `color-mix(in srgb, ${tone} 9%, var(--app-bg-elevated))`,
-          color: "var(--app-ink)",
-        };
-        const className =
-          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none";
-        return c.key ? (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onOpen(c.key!)}
-            aria-haspopup="dialog"
-            className={`tap-44-y ${className}`}
-            style={style}
-          >
-            {inner}
-          </button>
-        ) : (
-          <span key={i} className={className} style={style}>
-            {inner}
-          </span>
-        );
-      })}
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Board
- * ───────────────────────────────────────────────────────────── */
+function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
+  if (chips.length === 0) return null;
+  return (
+    <ul className="grid gap-1.5 sm:grid-cols-2">
+      {chips.slice(0, 4).map((chip, index) => {
+        const color = CHIP_TONE[chip.tone];
+        const content = (
+          <>
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+            <span className="min-w-0 flex-1 truncate">{chip.label}</span>
+            {chip.key && <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-50" />}
+          </>
+        );
+        return (
+          <li key={`${chip.key ?? "fact"}-${index}`}>
+            {chip.key ? (
+              <button
+                type="button"
+                onClick={() => onOpen(chip.key!)}
+                className="flex min-h-9 w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[11.5px] font-medium"
+                style={{ borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)", color: "inherit" }}
+              >
+                {content}
+              </button>
+            ) : (
+              <span className="flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-[11.5px] font-medium" style={{ borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)" }}>
+                {content}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
-const FILTERS: { id: PulseFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "attention", label: "Needs attention" },
-  { id: "calm", label: "Calm" },
-];
+function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
+  const [message, setMessage] = useState("Checking what changed…");
+
+  useEffect(() => {
+    // Storage is external state. Read it after paint so hydration remains
+    // deterministic and the first briefing render is never delayed by it.
+    const timer = window.setTimeout(() => {
+      const current = Object.fromEntries(
+        tiles.filter((tile) => tile.attention).map((tile) => [tile.key, tile.countLabel]),
+      );
+      let previous: Snapshot | null = null;
+      try {
+        previous = JSON.parse(window.localStorage.getItem(SNAPSHOT_KEY) ?? "null") as Snapshot | null;
+      } catch {
+        previous = null;
+      }
+
+      if (!previous?.at) {
+        setMessage("First check on this device. We’ll remember today’s snapshot for next time.");
+      } else {
+        const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
+        const cleared = Object.keys(previous.active).filter((key) => !(key in current));
+        if (added.length > 0) {
+          const labels = added
+            .map((key) => tiles.find((tile) => tile.key === key)?.label)
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(" and ");
+          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`);
+        } else if (cleared.length > 0) {
+          const labels = cleared
+            .map((key) => tiles.find((tile) => tile.key === key)?.label ?? key)
+            .slice(0, 2)
+            .join(" and ");
+          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
+        } else {
+          setMessage(`No new urgent changes since ${timeSince(previous.at)}.`);
+        }
+      }
+
+      try {
+        window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ at: Date.now(), active: current } satisfies Snapshot));
+      } catch {
+        // Pulse remains fully useful when storage is blocked.
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [tiles]);
+
+  return (
+    <div className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3.5 py-3" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+      <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
+        <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function AttentionCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      className="group w-full overflow-hidden rounded-[var(--app-radius-lg)] border text-left transition active:scale-[0.995]"
+      style={{
+        borderColor: `color-mix(in srgb, ${tile.accent} 42%, var(--app-border))`,
+        background: `linear-gradient(145deg, color-mix(in srgb, ${tile.accent} 10%, var(--app-bg-elevated)), var(--app-bg-elevated))`,
+        boxShadow: "var(--app-elev-1), var(--app-edge)",
+      }}
+    >
+      <span aria-hidden className="block h-[3px] w-full" style={{ background: tile.accent }} />
+      <span className="flex items-start gap-3 p-4">
+        <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 13%, transparent)` }}>
+          {createElement(iconFor(tile), { className: "h-[18px] w-[18px]", strokeWidth: 2.1 })}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{tile.label}</span>
+          <span className="mt-0.5 block font-serif text-[19px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{tile.countLabel}</span>
+          {tile.peek && <span className="mt-1 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{tile.peek}</span>}
+          <span className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: tile.accent }}>
+            What this means <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function WeatherCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  const feature = tile.feature!;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      className="group flex min-h-[126px] w-full items-center justify-between gap-4 overflow-hidden rounded-[var(--app-radius-lg)] border p-4 text-left transition active:scale-[0.995]"
+      style={{
+        borderColor: "color-mix(in srgb, var(--app-cool) 32%, var(--app-border))",
+        background: "radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--app-cool) 20%, transparent), transparent 48%), var(--app-bg-elevated)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
+    >
+      <span className="min-w-0">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Right now · Frederick</span>
+        <span className="mt-1 block text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{feature.condition}</span>
+        {feature.hl && <span className="mt-1 block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>{feature.hl}</span>}
+        <span className="mt-3 inline-flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: "var(--app-cool)" }}>
+          Hourly & 7-day <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </span>
+      <span className="shrink-0 font-serif text-[56px] font-light leading-none tabular-nums tracking-[-0.06em]" style={{ color: "var(--app-ink)" }}>{feature.temp}°</span>
+    </button>
+  );
+}
+
+function SignalCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  const reading = tile.gauge
+    ? `${formatGaugeNumber(tile.gauge.value, tile.gauge)} ${tile.gauge.unit}`
+    : tile.countLabel;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      aria-label={`${tile.label}: ${tile.countLabel}. Open details.`}
+      className="group flex min-h-[92px] w-full flex-col rounded-[var(--app-radius-md)] border p-3.5 text-left transition active:scale-[0.99]"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+    >
+      <span className="flex items-center gap-2">
+        {createElement(iconFor(tile), { "aria-hidden": true, className: "h-4 w-4 shrink-0", strokeWidth: 2, style: { color: tile.accent } })}
+        <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>{tile.label}</span>
+        <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5" />
+      </span>
+      <span className="mt-2 block text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{reading}</span>
+      {tile.peek && <span className="mt-auto line-clamp-2 pt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{tile.peek}</span>}
+    </button>
+  );
+}
+
+function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
+  if (tiles.length === 0) return null;
+  return (
+    <section aria-labelledby="pulse-systems-heading" className="rounded-[var(--app-radius-lg)] border px-4 py-3.5" style={{ borderColor: "color-mix(in srgb, var(--app-positive) 30%, var(--app-border))", background: "color-mix(in srgb, var(--app-positive) 5%, var(--app-bg-elevated))" }}>
+      <div className="flex items-center gap-2">
+        <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive)" }} />
+        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
+        <span className="ml-auto text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>checked live</span>
+      </div>
+      <ul className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+        {tiles.map((tile) => (
+          <li key={tile.key}>
+            <button type="button" onClick={() => onOpen(tile.key)} className="flex min-h-8 w-full items-center gap-1.5 text-left text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+              <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
+              <span className="truncate">{tile.label}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  return (
+    <li>
+      <button type="button" onClick={onOpen} className="group flex min-h-[58px] w-full items-center gap-3 border-b py-2.5 text-left last:border-b-0" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 10%, transparent)` }}>
+          {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
+          <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ?? tile.countLabel}</span>
+        </span>
+        <span className="shrink-0 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{tile.peek ? tile.countLabel : ""}</span>
+        <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" />
+      </button>
+    </li>
+  );
+}
 
 export default function PulseBoard({
   hero,
   chips,
   tiles,
   breaking,
-  initialOpen,
 }: {
   hero: PulseHero;
   chips: PulseHeroChip[];
   tiles: PulseTile[];
   breaking?: ReactNode;
-  initialOpen?: string;
 }) {
-  const [open, setOpen] = useState<string | null>(() =>
-    initialOpen && tiles.some((t) => t.key === initialOpen) ? initialOpen : null,
-  );
-  const [filter, setFilter] = useState<PulseFilter>("all");
-  const panelId = useId();
+  const [open, setOpen] = useState<string | null>(null);
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const pushedOpen = useRef(false);
 
-  const current = tiles.find((t) => t.key === open) ?? null;
-  const attentionCount = tiles.filter((t) => t.attention).length;
+  const current = tiles.find((tile) => tile.key === open) ?? null;
+  const lead = hero.leadKey ? tiles.find((tile) => tile.key === hero.leadKey) : null;
+  const summarizedKeys = new Set(chips.map((chip) => chip.key).filter((key): key is string => Boolean(key)));
+  const attention = tiles.filter((tile) => tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
+  const conditions = tiles.filter((tile) => CONDITIONS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const gettingAround = tiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const steady = tiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
+  const localUpdates = tiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
+  const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
 
-  // Order: the weather feature anchors the top; then anything that NEEDS
-  // ATTENTION floats up (an airport ground stop, a flood watch) so the board
-  // answers "what should I know?" at a glance instead of burying the one amber
-  // tile below a row of calm zeros — the board's whole job, and what the
-  // "Needs attention" filter already means. The calm remainder keeps its
-  // size-band rhythm: gauge rings, then status tiles. When all-clear there are
-  // no attention tiles, so the calm view is unchanged.
-  const visible = filterTiles(tiles, filter);
-  const feature = visible.filter((t) => t.kind === "feature");
-  const rest = visible.filter((t) => t.kind !== "feature");
-  const attention = rest.filter((t) => t.attention);
-  const calm = rest.filter((t) => !t.attention);
-  const ordered = [
-    ...feature,
-    ...attention,
-    ...calm.filter((t) => t.kind === "gauge"),
-    ...calm.filter((t) => t.kind === "status"),
-  ];
+  const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const onTabKey = (e: KeyboardEvent, i: number) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    e.preventDefault();
-    const next = e.key === "ArrowRight" ? (i + 1) % FILTERS.length : (i - 1 + FILTERS.length) % FILTERS.length;
-    setFilter(FILTERS[next].id);
-    tabRefs.current[next]?.focus();
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const key = new URL(window.location.href).searchParams.get("open");
+      setOpen(key && validKeys.has(key) ? key : null);
+    };
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [validKeys]);
+
+  const openTile = (key: string) => {
+    if (!validKeys.has(key)) return;
+    if (open) updateOpenParam(key, "replace");
+    else {
+      updateOpenParam(key, "push");
+      pushedOpen.current = true;
+    }
+    setOpen(key);
   };
 
-  // Three states, not two: green all-clear, red active, and an amber
-  // "unavailable" when a feed failed and we can't confirm all-clear (FR-002).
+  const closeDrawer = () => {
+    if (pushedOpen.current) {
+      pushedOpen.current = false;
+      window.history.back();
+    } else {
+      updateOpenParam(null, "replace");
+      setOpen(null);
+    }
+  };
+
   const degraded = hero.degraded ?? false;
   const active = !hero.allClear && !degraded;
-  const heroColor = hero.allClear
-    ? "var(--app-positive)"
-    : degraded
-      ? "var(--app-warning)"
-      : "var(--app-danger)";
+  const heroColor = hero.allClear ? "var(--app-positive)" : degraded ? "var(--app-warning)" : "var(--app-danger)";
+  const HeroIcon = hero.allClear ? ShieldCheck : degraded ? AlertTriangle : Siren;
 
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────────── */}
       <header
-        className={`pulse-hero tactile relative overflow-hidden rounded-[var(--app-radius-lg)]${active ? " alert-pulse" : ""}`}
+        className="relative overflow-hidden rounded-[24px] border px-5 pb-5 pt-5 sm:px-7 sm:pb-6 sm:pt-6"
         style={{
-          backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: active
-            ? "var(--app-paper-light), linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 9%, transparent) 0%, transparent 68%)"
-            : "var(--app-paper-light)",
-          boxShadow: "var(--app-elev-2), var(--app-hi), var(--app-edge)",
+          borderColor: active ? "color-mix(in srgb, var(--app-danger) 62%, black)" : "color-mix(in srgb, var(--app-brand-2) 68%, black)",
+          background: active
+            ? "radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--app-danger) 42%, transparent), transparent 42%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 78%, var(--app-bedrock)))"
+            : "radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--app-positive) 35%, transparent), transparent 42%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 78%, var(--app-bedrock)))",
+          boxShadow: "var(--app-elev-2), var(--app-edge)",
+          color: "var(--app-ink-inverse)",
         }}
       >
-        <span
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-[3px]"
-          style={{ background: heroColor, opacity: hero.allClear ? 0.6 : 1 }}
-        />
-        <div className="space-y-3 px-4 py-4 sm:px-5">
-          <div className="flex items-center justify-between gap-3">
-            <span
-              className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              <span
-                aria-hidden
-                className="pulse-dot inline-block h-2 w-2 rounded-full"
-                style={{ background: heroColor }}
-              />
-              Live Pulse
-            </span>
-            <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-              <PulseFreshness renderedAt={hero.renderedAt} />
-            </span>
+        <div aria-hidden className="absolute -right-8 -top-8 grid h-36 w-36 place-items-center rounded-full border opacity-[0.12]" style={{ borderColor: "currentColor" }}>
+          <div className="grid h-20 w-20 place-items-center rounded-full border" style={{ borderColor: "currentColor" }}>
+            <HeroIcon className="h-9 w-9" strokeWidth={1.25} />
           </div>
-
-          <div className="flex items-start gap-3">
-            <span
-              aria-hidden
-              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full"
-              style={{
-                background: `color-mix(in srgb, ${heroColor} 14%, transparent)`,
-                color: heroColor,
-              }}
-            >
-              {hero.allClear ? <ShieldCheck className="h-5 w-5" strokeWidth={2} /> : degraded ? <AlertTriangle className="h-5 w-5" strokeWidth={2} /> : <Siren className="h-5 w-5" strokeWidth={2} />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-serif text-[24px] font-semibold leading-[1.1] tracking-tight" style={{ color: "var(--app-ink)" }}>
-                {hero.line}
-              </h1>
-              {chips.length === 0 && (
-                <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                  {hero.sub}
-                </p>
-              )}
-            </div>
+        </div>
+        <div className="relative max-w-[36rem]">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] opacity-75">
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
+            County pulse
+            <span aria-hidden>·</span>
+            <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
-
-          {/* The briefing: the actual situations (active) or the calm proofs
-              (all-clear) as tappable chips, so the header answers "what should
-              I know?" right here instead of a count plus a scroll. Each chip
-              opens its feed's window. This replaced the scrolling marquee and
-              the generic feed-list sentence (2026-07). */}
-          <HeroChips chips={chips} onOpen={setOpen} />
-
-          {/* No "Now 75°" here — the temperature (and its condition + H/L) is
-              the weather FEATURE tile immediately below, both derived from the
-              same reading, so stating it in the hero too was the same fact
-              twice (2026-07). The hero footer is just freshness now. */}
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2.5 text-[11px] tabular-nums" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-              Refreshed {hero.refreshedClock} · auto-updates every couple of minutes
-            </span>
+          <h1 className="mt-3 max-w-[30rem] font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.035em] text-balance sm:text-[42px]">
+            {hero.line}
+          </h1>
+          <p className="mt-3 max-w-[32rem] text-[13.5px] leading-relaxed opacity-80 sm:text-[14px]">{hero.sub}</p>
+          {hero.leadMeta && <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium opacity-70"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
+          {lead && (
+            <button type="button" onClick={() => openTile(lead.key)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[12.5px] font-semibold transition active:scale-[0.99]" style={{ background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "0 10px 24px -16px rgba(0,0,0,0.75)" }}>
+              {hero.actionLabel ?? "See what this means"}
+              <ArrowRight aria-hidden className="h-4 w-4" />
+            </button>
+          )}
+          <div className="mt-4"><HeroFacts chips={chips} onOpen={openTile} /></div>
+          <p className="mt-4 flex items-center gap-1.5 border-t pt-3 text-[10.5px] opacity-60" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
+            <Clock aria-hidden className="h-3 w-3" /> Refreshed {hero.refreshedClock} · automatic every couple of minutes
           </p>
         </div>
       </header>
 
-      {/* ── Breaking police strip (server-rendered) ──────────── */}
       {breaking}
 
-      {/* ── Filter + board ───────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="pulse-dot inline-block h-2 w-2 rounded-full"
-            style={{ background: heroColor }}
-          />
-          <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
-            County status
-          </span>
-          {/* The hero owns the situation count now (its big line + the
-              briefing chips), so this rail stays a quiet "what am I looking
-              at" label. On a calm day it reassures; on an active one it just
-              names the grid rather than restating the tally. */}
-          <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.05em]" style={{ color: "var(--app-ink-3)" }}>
-            {hero.allClear ? "all calm" : degraded ? "feeds unavailable" : "tap any tile"}
-          </span>
-        </div>
+      <SinceLastLook tiles={tiles} />
 
-        {/* A hairline that reads live: a slow scan highlight sweeps it. */}
-
-        <div className="pulse-seg" role="tablist" aria-label="Filter tiles by status">
-          {FILTERS.map((f, i) => {
-            const on = filter === f.id;
-            const count = f.id === "attention" ? attentionCount : undefined;
-            return (
-              <button
-                key={f.id}
-                ref={(el) => {
-                  tabRefs.current[i] = el;
-                }}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-controls={panelId}
-                tabIndex={on ? 0 : -1}
-                onClick={() => setFilter(f.id)}
-                onKeyDown={(e) => onTabKey(e, i)}
-                className={`pulse-seg-btn tap-44-y${on ? " is-on" : ""}`}
-              >
-                {f.label}
-                {count !== undefined && count > 0 && (
-                  <span className="pulse-seg-count font-mono">{count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {ordered.length > 0 ? (
-          <div id={panelId} role="tabpanel" aria-label="County status tiles" className="pulse-bento">
-            {ordered.map((t, i) => {
-              const onOpen = () => setOpen(t.key);
-              if (t.kind === "feature") return <FeatureTile key={t.key} t={t} index={i} onOpen={onOpen} />;
-              if (t.kind === "gauge") return <GaugeTile key={t.key} t={t} index={i} onOpen={onOpen} />;
-              return <StatusTile key={t.key} t={t} index={i} onOpen={onOpen} />;
-            })}
+      {attention.length > 0 && (
+        <section aria-labelledby="pulse-attention-heading" className="space-y-3">
+          <GroupHeading id="pulse-attention-heading" eyebrow="Needs attention" title="Also happening now" note={`${attention.length} live`} />
+          <div className="space-y-2.5">
+            {attention.map((tile) => <AttentionCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
           </div>
-        ) : (
-          <p id={panelId} role="tabpanel" className="pulse-filter-empty">
-            {emptyMessage(filter)}
-          </p>
-        )}
-      </section>
+        </section>
+      )}
+
+      <SystemsLedger tiles={steady} onOpen={openTile} />
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-8">
+        <section aria-labelledby="pulse-move-heading" className="space-y-3">
+          <GroupHeading id="pulse-move-heading" eyebrow="Plan your day" title="Getting around" note="tap for detail" />
+          {gettingAround.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              {gettingAround.map((tile) => <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
+            </div>
+          ) : (
+            <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>Transportation feeds are briefly quiet.</p>
+          )}
+        </section>
+
+        <section aria-labelledby="pulse-conditions-heading" className="space-y-3">
+          <GroupHeading id="pulse-conditions-heading" eyebrow="Outside right now" title="County conditions" />
+          <div className="space-y-2.5">
+            {conditions.map((tile) => tile.kind === "feature"
+              ? <WeatherCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+              : <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
+          </div>
+        </section>
+      </div>
+
+      {localUpdates.length > 0 && (
+        <section aria-labelledby="pulse-updates-heading" className="space-y-3">
+          <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" note="secondary signals" />
+          <div className="rounded-[var(--app-radius-lg)] border px-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
+            <ul>{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+            {localUpdates.length > 4 && (
+              <button type="button" onClick={() => setShowAllUpdates((value) => !value)} className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more local signals`}
+                <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       <BottomDrawer
         open={open !== null}
-        onOpenChange={(o) => {
-          if (!o) setOpen(null);
-        }}
+        onOpenChange={(nextOpen) => { if (!nextOpen) closeDrawer(); }}
         title={current?.label ?? ""}
         subtitle={current ? `Source: ${current.sourceLabel}` : undefined}
       >
