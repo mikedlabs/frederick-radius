@@ -144,7 +144,7 @@ export default function BeerSwipeDeck({ deck }: { deck: BeerWithBrewery[] }) {
   return (
     <div className="mx-auto w-full max-w-[22rem]">
       {/* Card stack */}
-      <div className="relative mx-auto h-[26rem] select-none">
+      <div className="relative mx-auto h-[21rem] select-none">
         {cards.slice(i, i + 3).map((beer, k) => {
           const isTop = k === 0;
           const dx = isTop ? drag.x : 0;

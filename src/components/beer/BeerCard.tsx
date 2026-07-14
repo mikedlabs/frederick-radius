@@ -50,7 +50,7 @@ export default function BeerCard({ beer }: { beer: BeerWithBrewery }) {
       </div>
 
       <div className="relative">
-        <h3 className="font-serif text-[26px] font-semibold leading-[1.05] tracking-tight text-balance">
+        <h3 className="font-serif text-[30px] font-semibold leading-[1.03] tracking-tight text-balance">
           {beer.name}
         </h3>
         <p className="mt-1 text-[13px] leading-snug text-white/90">{beer.notes}</p>
