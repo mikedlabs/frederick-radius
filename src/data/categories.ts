@@ -111,6 +111,20 @@ export const CATEGORY_BY_SLUG = Object.fromEntries(
 export const TOP_CATEGORIES = CATEGORIES.filter((c) => !c.parent);
 
 /**
+ * Amenity categories (restrooms, Wi-Fi, benches, drinking water, …) are
+ * MAP LAYERS, not place directories: their /category/<slug> pages resolve to
+ * zero ranked places and read as dead ends (and, listed in the sitemap, as
+ * thin indexed pages — audit DQ-016). Their real home is /amenities + the map
+ * amenity tray. This predicate is the single source of truth for "this
+ * category is an amenity layer, not a browsable directory," used to redirect
+ * the page and keep those routes out of the sitemap.
+ */
+export function isAmenityCategory(slug: string): boolean {
+  const c = CATEGORY_BY_SLUG[slug];
+  return c?.slug === "amenities" || c?.parent === "amenities";
+}
+
+/**
  * Resolve a category slug to its editorial kind, inheriting from the
  * parent when the leaf doesn't set it (so "government" → civic's
  * "utility" even though only "civic" is tagged). Unknown / blank slugs

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { CATEGORIES } from "@/data/categories";
+import { CATEGORIES, isAmenityCategory } from "@/data/categories";
 import { COLLECTIONS } from "@/data/collections";
 import { CIVIC_MOMENTS } from "@/data/civic-moments";
 
@@ -69,6 +69,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const cats = CATEGORIES
     // /category/food-truck 308s to /food-trucks (roster) — never list a redirect.
     .filter((c) => c.slug !== "food-truck")
+    // Amenity categories (restrooms, Wi-Fi, benches…) redirect to /amenities and
+    // hold zero places; utility categories (voting) are seasonal/empty. Neither
+    // is a browsable directory, so keep both out of the index (audit DQ-016).
+    .filter((c) => !isAmenityCategory(c.slug) && c.kind !== "utility")
     .map((c) => ({
       url: `${BASE}/category/${c.slug}`,
       lastModified: now,
