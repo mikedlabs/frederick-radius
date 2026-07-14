@@ -4,6 +4,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
 import BeerFinder from "@/components/beer/BeerFinder";
 import MyTaps from "@/components/beer/MyTaps";
+import BeerRecs from "@/components/beer/BeerRecs";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const revalidate = 3600;
@@ -43,6 +44,9 @@ export default function BeerPage() {
 
       {/* My taps — saved beers (self-hides when empty) */}
       <MyTaps />
+
+      {/* Recommendations from saved beers (self-hides until there's signal) */}
+      <BeerRecs />
 
       {/* History */}
       <section aria-labelledby="beer-history" className="space-y-4">

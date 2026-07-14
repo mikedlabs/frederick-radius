@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -165,6 +165,25 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
     setNearMe((v) => !v);
   }
 
+  // Remember the beer sort across visits.
+  useEffect(() => {
+    try {
+      const s = window.localStorage.getItem("fr.beer-sort");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount hydration of a localStorage preference; SSR can't read it
+      if (s === "az" || s === "rating" || s === "abv") setSort(s);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function setSortAndStore(s: BeerSort) {
+    setSort(s);
+    try {
+      window.localStorage.setItem("fr.beer-sort", s);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Search */}
@@ -229,6 +248,14 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
         )}
       </div>
 
+      {/* Inline style explainer when exactly one style is selected. */}
+      {fams.size === 1 && (
+        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>{FAMILY_BY_KEY[[...fams][0]].label}:</span>{" "}
+          {FAMILY_BY_KEY[[...fams][0]].tagline}
+        </p>
+      )}
+
       {/* Content */}
       {tab === "beers" && (
         <>
@@ -236,7 +263,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
             <p className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{beers.length} beers</p>
             <div className="inline-flex rounded-full border p-0.5 text-[12px]" style={{ borderColor: "var(--app-border)" }}>
               {([["az", "A–Z"], ["rating", "Top rated"], ["abv", "Strongest"]] as const).map(([k, l]) => (
-                <button key={k} type="button" onClick={() => setSort(k)} aria-pressed={sort === k} className="tap-44-y rounded-full px-2.5 py-1 font-semibold" style={{ background: sort === k ? "var(--app-bg-elevated)" : "transparent", color: sort === k ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: sort === k ? "var(--app-edge)" : "none" }}>{l}</button>
+                <button key={k} type="button" onClick={() => setSortAndStore(k)} aria-pressed={sort === k} className="tap-44-y rounded-full px-2.5 py-1 font-semibold" style={{ background: sort === k ? "var(--app-bg-elevated)" : "transparent", color: sort === k ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: sort === k ? "var(--app-edge)" : "none" }}>{l}</button>
               ))}
             </div>
           </div>
