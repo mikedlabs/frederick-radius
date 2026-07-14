@@ -6,8 +6,19 @@ import { Search, MapPin, List, Beer as BeerIcon, Bookmark, X, ArrowUpRight } fro
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import AppMapClient from "@/components/map/AppMapClient";
+import dynamic from "next/dynamic";
 import FilterChip from "@/components/ui/FilterChip";
+
+// The map (and Mapbox under it) only downloads when the Map tab is opened, so
+// the Beers/Breweries tabs stay fast.
+const AppMapClient = dynamic(() => import("@/components/map/AppMapClient"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[62vh] min-h-[380px] w-full items-center justify-center rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+      <span className="text-[13px]">Loading map…</span>
+    </div>
+  ),
+});
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import {
   BREWERIES,
