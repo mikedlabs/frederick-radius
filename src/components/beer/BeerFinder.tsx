@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Search, MapPin, List, Beer as BeerIcon, Bookmark, X, ArrowUpRight, Navigation } from "lucide-react";
+import { Search, Bookmark, X, ArrowUpRight, Navigation } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
@@ -36,7 +37,7 @@ const prettyTown = (slug: string) =>
   MUNICIPALITY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 const miles = (m: number) => `${(m / 1609.344).toFixed(1)} mi`;
 
-type Tab = "beers" | "breweries" | "map";
+type Tab = "beers" | "breweries" | "map" | "best";
 type BeerSort = "az" | "rating" | "abv";
 type Amenity = "dog-friendly" | "food-trucks" | "family";
 type BeerAttr = "session" | "strong" | "toprated";
@@ -59,9 +60,9 @@ function beerMatchesAttr(b: { abv: number | null; rating: number | null }, a: Be
 
 /**
  * BeerFinder — search, sort, and filter every Frederick County beer and
- * brewery. Filters: style, town, open-now, amenities (dog-friendly, food,
- * family), ABV band, and top-rated; sort A-Z / rating / ABV or Near me
- * (geolocation). Beers/Breweries/Map tabs. Saving keeps My taps.
+ * brewery. Filters: style, town, open-now, amenities, ABV band, top-rated;
+ * sort A-Z / rating / ABV or Near me (geolocation). Tabs: Beers, Breweries,
+ * Map, and Best (leaderboards). Brewery rows carry a photo + Google rating.
  */
 export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardData[] }) {
   const [tab, setTab] = useState<Tab>("beers");
@@ -141,6 +142,14 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   const mapSlugs = new Set(breweries.map((b) => b.slug));
   const mapPlaces = breweryCards.filter((p) => mapSlugs.has(p.slug) && p.geom);
 
+  // Leaderboards: honor the active filters so "best hazy IPAs" works.
+  const topBeers = [...beers].filter((b) => b.rating != null).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 12);
+  const topBreweries = breweries
+    .map((b) => ({ b, card: cardBySlug.get(b.slug) }))
+    .filter((x): x is { b: Brewery; card: PlaceCardData } => Boolean(x.card?.google_rating))
+    .sort((x, y) => (y.card.google_rating ?? 0) - (x.card.google_rating ?? 0))
+    .slice(0, 10);
+
   const activeFilters = fams.size + amens.size + beerAttrs.size + (town ? 1 : 0) + (openNow ? 1 : 0) + (nearMe ? 1 : 0);
 
   function clearAll() {
@@ -151,7 +160,6 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
     setOpenNow(false);
     setNearMe(false);
   }
-
   function toggleNearMe() {
     if (!nearMe && !position) geo.request();
     setNearMe((v) => !v);
@@ -174,12 +182,11 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Browse beers, breweries, or map" className="inline-flex w-full rounded-full border p-0.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
-        {([["beers", "Beers", BeerIcon], ["breweries", "Breweries", List], ["map", "Map", MapPin]] as const).map(([key, label, Icon]) => {
+      <div role="tablist" aria-label="Browse" className="inline-flex w-full rounded-full border p-0.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+        {([["beers", "Beers"], ["breweries", "Breweries"], ["map", "Map"], ["best", "Best"]] as const).map(([key, label]) => {
           const active = tab === key;
           return (
-            <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setTab(key)} className="tap-44-y flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors" style={{ background: active ? "var(--app-bg-elevated)" : "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none" }}>
-              <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setTab(key)} className="tap-44-y flex flex-1 items-center justify-center rounded-full px-2 py-1.5 text-[13px] font-semibold transition-colors" style={{ background: active ? "var(--app-bg-elevated)" : "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none" }}>
               {label}
             </button>
           );
@@ -188,7 +195,6 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
 
       {/* Filters */}
       <div className="space-y-2">
-        {/* Attributes */}
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
           <FilterChip label="Open now" active={openNow} onClick={() => setOpenNow((v) => !v)} />
           <FilterChip label="Near me" active={nearMe} onClick={toggleNearMe} />
@@ -199,13 +205,11 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
             <FilterChip key={a.key} label={a.label} active={amens.has(a.key)} onClick={() => toggle(amens, setAmens, a.key)} />
           ))}
         </div>
-        {/* Styles */}
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
           {STYLE_FAMILIES.map((f) => (
             <FilterChip key={f.key} label={f.label} active={fams.has(f.key)} onClick={() => toggle(fams, setFams, f.key)} />
           ))}
         </div>
-        {/* Towns */}
         <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
           <FilterChip label="All towns" active={town === null} onClick={() => setTown(null)} />
           {towns.map((t) => (
@@ -236,9 +240,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
               ))}
             </div>
           </div>
-          {beers.length === 0 ? (
-            <Empty />
-          ) : (
+          {beers.length === 0 ? <Empty /> : (
             <ul className="space-y-1.5">
               {beers.map((b) => (
                 <BeerRow key={`${b.brewerySlug}-${b.name}`} beer={b} openBrewery={openSlugs.has(b.brewerySlug)} dist={position ? distBySlug.get(b.brewerySlug) : undefined} />
@@ -251,9 +253,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       {tab === "breweries" && (
         <>
           <p className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{breweries.length} breweries</p>
-          {breweries.length === 0 ? (
-            <Empty />
-          ) : (
+          {breweries.length === 0 ? <Empty /> : (
             <ul className="space-y-2.5">
               {breweries.map((b) => (
                 <BreweryRow key={b.slug} brewery={b} open={openSlugs.has(b.slug)} card={cardBySlug.get(b.slug)} activeFams={fams} dist={position ? distBySlug.get(b.slug) : undefined} />
@@ -268,15 +268,59 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
           <div className="relative h-[62vh] min-h-[380px] w-full overflow-hidden rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)" }}>
             <AppMapClient places={mapPlaces} fullBleed recenterToKnownLocation={nearMe && !!position} />
           </div>
-        ) : (
-          <Empty note="No breweries match on the map with those filters." />
-        )
+        ) : <Empty note="No breweries match on the map with those filters." />
+      )}
+
+      {tab === "best" && (
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Top-rated beers</h3>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>By Untappd rating{activeFilters > 0 ? ", within your filters" : ""}.</p>
+            {topBeers.length === 0 ? <Empty /> : (
+              <ul className="space-y-1.5">
+                {topBeers.map((b, i) => (
+                  <BeerRow key={`${b.brewerySlug}-${b.name}`} beer={b} rank={i + 1} openBrewery={openSlugs.has(b.brewerySlug)} dist={position ? distBySlug.get(b.brewerySlug) : undefined} />
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="space-y-2">
+            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Top-rated breweries</h3>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>By Google rating.</p>
+            {topBreweries.length === 0 ? <Empty /> : (
+              <ul className="space-y-2">
+                {topBreweries.map(({ b, card }, i) => (
+                  <TopBreweryRow key={b.slug} rank={i + 1} brewery={b} card={card} open={openSlugs.has(b.slug)} dist={position ? distBySlug.get(b.slug) : undefined} />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );
 }
 
-function BeerRow({ beer, openBrewery, dist }: { beer: BeerWithBrewery; openBrewery: boolean; dist?: number }) {
+function GoogleRating({ card }: { card?: PlaceCardData }) {
+  if (!card?.google_rating) return null;
+  return (
+    <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-2)" }} title="Google rating">
+      <span style={{ color: "var(--app-accent-press)" }}>★</span>
+      {card.google_rating.toFixed(1)}
+      {card.google_rating_count ? <span style={{ color: "var(--app-ink-3)" }}>({card.google_rating_count})</span> : null}
+    </span>
+  );
+}
+
+function BreweryPhoto({ url, size = 56 }: { url?: string; size?: number }) {
+  return (
+    <div className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)]" style={{ height: size, width: size, background: "var(--app-bg-sunken)", boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}>
+      {url && <Image src={url} alt="" fill sizes="56px" className="object-cover" />}
+    </div>
+  );
+}
+
+function BeerRow({ beer, openBrewery, dist, rank }: { beer: BeerWithBrewery; openBrewery: boolean; dist?: number; rank?: number }) {
   const mounted = useMounted();
   const key = beerKey(beer);
   const saved = useIsSaved("beer", key);
@@ -285,6 +329,9 @@ function BeerRow({ beer, openBrewery, dist }: { beer: BeerWithBrewery; openBrewe
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] border p-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+      {rank != null && (
+        <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 20, textAlign: "right" }}>{rank}</span>
+      )}
       <span aria-hidden className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: fam.base }} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>{beer.name}</p>
@@ -311,22 +358,28 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
   const tags = (card?.tags ?? []).filter((t) => t === "dog-friendly" || t === "food-trucks" || t === "family");
   return (
     <li className="rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
-      <div className="flex items-baseline justify-between gap-3">
-        <Link href={`/places/${brewery.slug}`} className="font-serif text-[17px] font-semibold tracking-tight hover:underline" style={{ color: "var(--app-ink)" }}>
-          {brewery.name}
-        </Link>
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: open ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3)" }}>
-          {open ? "Open now" : prettyTown(brewery.town)}
-        </span>
+      <div className="flex gap-3">
+        <BreweryPhoto url={card?.google_photo_url} size={56} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <Link href={`/places/${brewery.slug}`} className="font-serif text-[17px] font-semibold tracking-tight hover:underline" style={{ color: "var(--app-ink)" }}>
+              {brewery.name}
+            </Link>
+            <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: open ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3)" }}>
+              {open ? "Open now" : prettyTown(brewery.town)}
+            </span>
+          </div>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            <GoogleRating card={card} />
+            <span>· {prettyTown(brewery.town)}</span>
+            {dist != null && <span className="font-mono">· {miles(dist)}</span>}
+            {tags.map((t) => (
+              <span key={t}>· {t === "dog-friendly" ? "Dog-friendly" : t === "food-trucks" ? "Food" : "Family"}</span>
+            ))}
+          </p>
+        </div>
       </div>
-      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-        <span>{prettyTown(brewery.town)}</span>
-        {dist != null && <span className="font-mono">· {miles(dist)}</span>}
-        {tags.map((t) => (
-          <span key={t}>· {t === "dog-friendly" ? "Dog-friendly" : t === "food-trucks" ? "Food" : "Family"}</span>
-        ))}
-      </p>
-      <p className="mt-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{brewery.focus}</p>
+      <p className="mt-2 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{brewery.focus}</p>
       <ul className="mt-2.5 flex flex-wrap gap-1.5">
         {beers.slice(0, 8).map((be) => {
           const fam = FAMILY_BY_KEY[be.family];
@@ -348,6 +401,24 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
             On tap now <ArrowUpRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
           </a>
         )}
+      </div>
+    </li>
+  );
+}
+
+function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brewery: Brewery; card: PlaceCardData; open: boolean; dist?: number }) {
+  return (
+    <li className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+      <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
+      <BreweryPhoto url={card.google_photo_url} size={44} />
+      <div className="min-w-0 flex-1">
+        <Link href={`/places/${brewery.slug}`} className="block truncate text-[14px] font-semibold hover:underline" style={{ color: "var(--app-ink)" }}>{brewery.name}</Link>
+        <p className="flex flex-wrap items-center gap-x-2 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          <GoogleRating card={card} />
+          <span>· {prettyTown(brewery.town)}</span>
+          {dist != null && <span className="font-mono">· {miles(dist)}</span>}
+          {open && <span style={{ color: "var(--app-positive, #1E6B3A)" }}>· open now</span>}
+        </p>
       </div>
     </li>
   );
