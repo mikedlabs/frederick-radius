@@ -38,7 +38,9 @@ const CRAVING_TERMS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["music", ["live music", "concert", "concerts", "karaoke", "open mic"]],
   ["art", ["gallery", "galleries", "museum", "museums", "mural", "murals"]],
   ["farms", ["farm", "farms", "pick your own", "orchard", "pumpkin patch"]],
-  ["outside", ["park", "parks", "trail", "trails", "hike", "hiking", "outdoors", "outside", "nature"]],
+  // Bare "park" is intentionally omitted: it collides with "where to park" /
+  // "parking", which is its own intent. "parks", "trail", "hike" are unambiguous.
+  ["outside", ["parks", "state park", "national park", "trail", "trails", "hike", "hiking", "hiking trail", "outdoors", "nature preserve"]],
   ["shops", ["shop", "shops", "shopping", "boutique", "boutiques", "antiques", "bookstore"]],
   ["stay", ["hotel", "hotels", "motel", "bed and breakfast", "b&b", "lodging", "place to stay", "where to stay", "overnight"]],
   ["drinks", ["drinks", "bar", "bars", "pub", "pubs", "cocktail", "cocktails", "happy hour"]],
