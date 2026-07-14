@@ -73,9 +73,9 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
       style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
     >
       <div className="flex items-center gap-2">
-        <h3 id="fieldnotes-heading" className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
+        <h2 id="fieldnotes-heading" className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
           Field notes
-        </h3>
+        </h2>
         <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
       </div>
 

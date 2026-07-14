@@ -18,7 +18,7 @@ type EventActionsEvent = {
   is_all_day?: boolean;
 };
 
-const ICON = "grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]";
+const ICON = "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95";
 
 export default function EventActions({
   event,

@@ -52,7 +52,7 @@ export default function TonightParkingPlan({
         <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
             Heading to{" "}
-            <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-brand)" }}>
+            <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-brand-press)" }}>
               {eventTitle}
             </Link>
             ?

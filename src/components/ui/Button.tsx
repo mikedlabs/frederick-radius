@@ -16,8 +16,8 @@ type Variant = "primary" | "secondary" | "quiet";
 type Size = "sm" | "md" | "lg";
 
 const SIZE: Record<Size, string> = {
-  sm: "h-8 gap-1.5 px-3 text-[12px]",
-  md: "h-10 gap-2 px-4 text-[13px]",
+  sm: "h-11 gap-1.5 px-3 text-[12px]",
+  md: "h-11 gap-2 px-4 text-[13px]",
   lg: "h-12 gap-2.5 px-6 text-[15px]",
 };
 
@@ -25,8 +25,8 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
   switch (v) {
     case "primary":
       return {
-        cls: "tactile tactile-interactive tactile-lift tactile-glow-brand text-white",
-        style: { backgroundColor: "var(--app-brand-press)" },
+        cls: "tactile tactile-interactive tactile-lift tactile-glow-brand",
+        style: { backgroundColor: "var(--app-brand-press)", color: "var(--app-on-brand)" },
       };
     case "secondary":
       return {
@@ -35,7 +35,7 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
       };
     case "quiet":
       return {
-        cls: "transition-[transform,background-color,color] duration-150 hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)] active:scale-[0.97]",
+        cls: "transition-[transform,background-color,color] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)] active:scale-[0.97]",
         style: { color: "var(--app-ink-2)" },
       };
   }

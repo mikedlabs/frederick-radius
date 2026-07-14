@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import TRANSIT from "@/data/transit.json";
 import { haptic } from "@/lib/haptics";
+import { exposeMarkerChild } from "./markerA11y";
 
 /**
  * LiveBuses — real TransIT vehicles on the map (fulfills the map's own
@@ -146,16 +147,25 @@ const MOVE_EPS = 0.00009;
 // Move that maps to a full-length streak (~240 m / 15 s ≈ 58 km/h).
 const SPEED_FULL = 0.0022;
 
-const readableLum = (hex: string): string => {
+const relativeLuminance = (hex: string): number => {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "#FFFFFF";
+  if (!m) return 0;
   const n = parseInt(m[1], 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#16140E" : "#FFFFFF";
+  const linear = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
 };
-/** White or ink, whichever reads on the route color. */
+/** Paper or ink, whichever has the stronger WCAG contrast on the route. */
 function readableOn(hex: string): string {
-  return readableLum(hex);
+  const bg = relativeLuminance(hex);
+  const ink = relativeLuminance("#16140E");
+  const paper = relativeLuminance("#FCFBF8");
+  const inkContrast = (Math.max(bg, ink) + 0.05) / (Math.min(bg, ink) + 0.05);
+  const paperContrast = (Math.max(bg, paper) + 0.05) / (Math.min(bg, paper) + 0.05);
+  return inkContrast >= paperContrast ? "#16140E" : "#FCFBF8";
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -329,7 +339,12 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
               }}
             />
           </Source>
-          <Marker longitude={nextStopView.stop.lng} latitude={nextStopView.stop.lat} anchor="center">
+          <Marker
+            ref={exposeMarkerChild}
+            longitude={nextStopView.stop.lng}
+            latitude={nextStopView.stop.lat}
+            anchor="center"
+          >
             <span aria-hidden style={{ position: "relative", display: "block", width: 12, height: 12 }}>
               {!reduced && (
                 <span
@@ -367,7 +382,13 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         // Streak length tracks derived speed (10–34px).
         const streakLen = 10 + p.len * 24;
         return (
-          <Marker key={v.vehicleId} longitude={p.lng} latitude={p.lat} anchor="center">
+          <Marker
+            key={v.vehicleId}
+            ref={exposeMarkerChild}
+            longitude={p.lng}
+            latitude={p.lat}
+            anchor="center"
+          >
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.vehicleId); }}

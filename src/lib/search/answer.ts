@@ -5,11 +5,12 @@ import { CRAVING_BY_KEY } from "@/data/cravings";
  * /search leads with "here's the thing you asked for" instead of a ranked list
  * you have to read. "coffee open now near me" should not just float coffee up a
  * text list; it should offer the coffee craving surface (which already ranks the
- * nearest OPEN one). The ranked matches still render underneath as backup.
+ * open picks and can rank from the visitor's location). The ranked matches
+ * still render underneath as backup.
  *
  * Pure: query in, answer (or null) out. The craving surface it points at
- * (/nearby?c=<key>) is open-now and nearest aware by construction, so the
- * answer honors the "open" and "near me" facets the old flat list dropped.
+ * (/nearby?c=<key>) is open-now aware and asks for location before claiming
+ * proximity, so the answer never calls a downtown fallback "near you."
  */
 export type PrimaryAnswer = {
   /** Craving key, or "open-now" for the bare open query. */
@@ -69,7 +70,7 @@ export function primaryAnswerFor(query: string): PrimaryAnswer | null {
         key,
         label: craving.label,
         href: `/nearby?c=${key}`,
-        kicker: "The nearest one open, near you",
+        kicker: "Open picks, nearest when you share your location",
       };
     }
   }

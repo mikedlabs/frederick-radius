@@ -123,6 +123,7 @@ export default function PlaceHero({
           alt={alt}
           width={width}
           height={height}
+          unoptimized={src.startsWith("/api/place-photo")}
           priority={priority}
           sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
           placeholder="blur"

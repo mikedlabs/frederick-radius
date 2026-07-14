@@ -121,6 +121,8 @@ export default function BookExperience({ cover, photos }: Props) {
 
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className="relative isolate min-h-[100dvh] w-full overflow-hidden bg-black text-white"
       style={{ perspective: "1800px", perspectiveOrigin: "50% 50%" }}
     >

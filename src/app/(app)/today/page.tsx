@@ -212,7 +212,7 @@ export default async function HomePage() {
           The sr-only h1 stays the semantic heading; this is the display title. */}
       <header className="mb-4 px-0.5">
         <p className="font-serif text-[26px] font-semibold leading-[1.06] tracking-tight sm:text-[30px]" style={{ color: "var(--app-ink)" }}>
-          Your field guide to Frederick County.
+          Your field guide to Frederick&nbsp;County.
         </p>
         <span aria-hidden className="mt-2.5 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
       </header>

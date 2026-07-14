@@ -74,7 +74,7 @@ export default function TodaysDealsStack({
       <Link
         href="/deals"
         className="tap-44 flex items-center justify-between px-0.5 text-[12px] font-semibold"
-        style={{ color: "var(--app-brand)" }}
+        style={{ color: "var(--app-brand-press)" }}
       >
         All specials, by day
         <span aria-hidden>→</span>

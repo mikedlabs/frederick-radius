@@ -18,6 +18,7 @@
  * hydration falls through to the place page, so a tap is never dead.
  */
 import { useState } from "react";
+import Image from "next/image";
 import { Star } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -181,7 +182,7 @@ function IndexSectionBlock({ section, sort }: { section: IndexSection; sort: Sor
                 haptic("light");
                 setExpanded(true);
               }}
-              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 px-3.5 text-[13px] font-semibold"
+              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 px-3.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:bg-[var(--app-bg-sunken)]"
               style={{ color: "var(--app-ink-2)" }}
             >
               Show {hidden} more
@@ -226,11 +227,12 @@ function PlaceCell({ row }: { row: IndexRow }) {
       {/* 44px anchor: photo with a pressed ring, else the category glyph
           on its tinted paper square. An anchor for recognition, not a hero. */}
       {row.photo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- 44px thumb from the proxied photo pipeline; next/image adds nothing at this size
-        <img
+        <Image
           src={row.photo}
           alt=""
-          loading="lazy"
+          width={88}
+          height={88}
+          sizes="44px"
           className="h-11 w-11 shrink-0 rounded-[9px] object-cover"
           style={{ boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
         />
@@ -289,7 +291,7 @@ function PlaceCell({ row }: { row: IndexRow }) {
             {row.mark && (
               <span
                 className="truncate text-[10px] font-bold uppercase tracking-[0.08em]"
-                style={{ color: "var(--app-accent)" }}
+                style={{ color: "var(--app-accent-press)" }}
               >
                 {row.mark}
               </span>

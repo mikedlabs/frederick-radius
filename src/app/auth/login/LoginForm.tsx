@@ -152,8 +152,8 @@ export default function LoginForm({
       <button
         type="submit"
         disabled={busy}
-        className="tactile tactile-interactive tactile-lift tactile-glow-brand inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-5 py-3 text-[14px] font-semibold text-white disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        className="tactile tactile-interactive tactile-lift tactile-glow-brand inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-5 py-3 text-[14px] font-semibold disabled:opacity-60"
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         {busy ? (
           <>

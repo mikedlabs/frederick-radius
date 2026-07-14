@@ -60,6 +60,7 @@ import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
+import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CLUSTER_FAMILIES } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
@@ -432,7 +433,8 @@ export default function AppMap({
   // prefs are ignored (and cleared on the next write) so no invisible
   // filter can survive without UI to show or clear it.
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
-  const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
+  const wantsOsmInitially = (initialAmenityGroups ?? layerPrefs.amenities ?? []).length > 0;
+  const [osmLoading, setOsmLoading] = useState(wantsOsmInitially && osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
@@ -467,6 +469,11 @@ export default function AppMap({
   // CSS can hide the zoom corner furniture while the dock is expanded.
   const [dockPaneOpen, setDockPaneOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
+  // DOM pins outside the camera must not remain in the keyboard sequence.
+  // This set refreshes after every settled move and on the initial load.
+  const [eventSlugsInView, setEventSlugsInView] = useState<Set<string>>(
+    () => new Set(),
+  );
   // Time scrubber (living map): null = live/off; otherwise a 0-24 Frederick
   // hour the map re-evaluates against. Pure client state — no refetch, no
   // server mode change.
@@ -625,6 +632,14 @@ export default function AppMap({
       setOsmLoading(false);
       return;
     }
+    // Overpass is an optional enrichment source. The curated county map is
+    // complete on cold open, so do not download the county-wide dataset until
+    // the user activates an amenity group (or arrives via an amenity link).
+    if (amenityGroups.size === 0) {
+      setOsmLoading(false);
+      setOsmError(null);
+      return;
+    }
     let cancelled = false;
     setOsmLoading(true);
     setOsmError(null);
@@ -643,7 +658,7 @@ export default function AppMap({
       }
     })();
     return () => { cancelled = true; };
-  }, [osmFromProps]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [osmFromProps, amenityGroups.size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tap a result in the synced list → fly there, glow it, light haptic.
   useEffect(() => {
@@ -701,10 +716,24 @@ export default function AppMap({
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
   const emitInView = () => {
-    if (!onPlacesInView || !mapRef.current) return;
+    if (!mapRef.current) return;
     const map = mapRef.current.getMap();
     const b = map.getBounds();
     if (!b) return;
+    setEventSlugsInView(
+      new Set(
+        events
+          .filter(
+            (event) =>
+              event.lng >= b.getWest() &&
+              event.lng <= b.getEast() &&
+              event.lat >= b.getSouth() &&
+              event.lat <= b.getNorth(),
+          )
+          .map((event) => event.slug),
+      ),
+    );
+    if (!onPlacesInView) return;
     const c = map.getCenter();
     const inside = filteredPlaces
       .filter(
@@ -1455,6 +1484,33 @@ export default function AppMap({
           if (!t || t.dayKey !== scrubTodayKey) return true;
           return withinScrubWindow(t.startH, t.endH, scrubHour);
         });
+
+  // Multiple events often share one venue. Separate those buttons by at
+  // least one tap target so each event remains visible and independently
+  // operable instead of stacking into a single ambiguous pin.
+  const eventOffsets = useMemo(() => {
+    const groups: Record<string, EventPin[]> = {};
+    const offsets: Record<string, [number, number]> = {};
+    for (const event of visibleEvents) {
+      const key = `${event.lng.toFixed(4)}:${event.lat.toFixed(4)}`;
+      (groups[key] ??= []).push(event);
+    }
+    for (const group of Object.values(groups)) {
+      if (group.length === 1) {
+        offsets[group[0].slug] = [0, 0];
+        continue;
+      }
+      const radius = Math.max(32, group.length * 8);
+      group.forEach((event, index) => {
+        const angle = -Math.PI / 2 + (index * Math.PI * 2) / group.length;
+        offsets[event.slug] = [
+          Math.round(Math.cos(angle) * radius),
+          Math.round(Math.sin(angle) * radius),
+        ];
+      });
+    }
+    return offsets;
+  }, [visibleEvents]);
 
   // "Closes within the hour" — the dock's living count line. open_status
   // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
@@ -2627,12 +2683,15 @@ export default function AppMap({
           {visibleEvents.map((e) => (
             <Marker
               key={`ev:${e.slug}`}
+              ref={exposeMarkerChild}
               longitude={e.lng}
               latitude={e.lat}
               anchor="bottom"
+              offset={eventOffsets[e.slug]}
             >
               <button
                 type="button"
+                tabIndex={eventSlugsInView.has(e.slug) ? 0 : -1}
                 onClick={(ev) => {
                   ev.stopPropagation();
                   haptic("light");
@@ -2700,7 +2759,13 @@ export default function AppMap({
               const tone = parkingTone(g);
               const { fill, ink } = PARKING_TONE_STYLE[tone];
               return (
-                <Marker key={`park:${g.slug}`} longitude={g.lng} latitude={g.lat} anchor="bottom">
+                <Marker
+                  key={`park:${g.slug}`}
+                  ref={exposeMarkerChild}
+                  longitude={g.lng}
+                  latitude={g.lat}
+                  anchor="bottom"
+                >
                   <button
                     type="button"
                     onClick={(ev) => {
@@ -2950,4 +3015,3 @@ export default function AppMap({
       </div>
   );
 }
-

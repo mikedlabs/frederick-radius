@@ -19,7 +19,6 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { PRIMARY_INTENTS, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
 import type { Daypart } from "@/lib/daypart";
-import type { EventWithMeta } from "@/lib/loaders/events";
 import {
   EVENT_INTENT_COLOR,
   WHEN_PRESETS,
@@ -62,8 +61,8 @@ type Pane = "what" | "when" | "where";
 export type EventsBoardDockProps = {
   /** Server `now` (ISO) — the dateline + the ribbon's "today". */
   nowISO: string;
-  /** The full event set, for the When pane's 7-day ribbon counts. */
-  events: EventWithMeta[];
+  /** Complete server-computed counts for the When pane's 7-day ribbon. */
+  dayCounts: Record<string, number>;
   /** True count of the filtered set (the mono count line). */
   filteredCount: number;
   /** Per-intent counts over the base set (the What chip badges). */
@@ -160,7 +159,7 @@ const FOCUSABLE =
 export default function EventsBoardDock(props: EventsBoardDockProps) {
   const {
     nowISO,
-    events,
+    dayCounts,
     filteredCount,
     intentCounts,
     categories,
@@ -385,6 +384,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
   return (
     <div className={`eb-dock${collapsed ? " eb-collapsed" : ""}${pane ? " eb-open" : ""}`}>
+      <h1 className="sr-only">Events in Frederick County</h1>
       <div className="eb-head">
         {/* The almanac nameplate — collapses to zero on scroll. */}
         <div className="eb-masthead" aria-hidden={collapsed}>
@@ -427,13 +427,13 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           ))}
         </div>
 
-        {/* The caption bar — pinned. Each word is a tab into its pane. */}
-        <div className="eb-capbar" role="tablist" aria-label="Filter events">
+        {/* The caption bar — pinned. Each word opens its filter pane. */}
+        <div className="eb-capbar" role="group" aria-label="Filter events">
           <button
             type="button"
-            role="tab"
-            aria-selected={pane === "what"}
+            aria-expanded={pane === "what"}
             aria-controls="eb-pane"
+            aria-haspopup="dialog"
             className={`eb-seg eb-seg-what${pane === "what" ? " active-tab" : ""}`}
             onClick={() => toggle("what")}
           >
@@ -444,9 +444,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={pane === "when"}
+            aria-expanded={pane === "when"}
             aria-controls="eb-pane"
+            aria-haspopup="dialog"
             className={`eb-seg${pane === "when" ? " active-tab" : ""}`}
             onClick={() => toggle("when")}
           >
@@ -457,9 +457,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={pane === "where"}
+            aria-expanded={pane === "where"}
             aria-controls="eb-pane"
+            aria-haspopup="dialog"
             className={`eb-seg eb-seg-where${pane === "where" ? " active-tab" : ""}`}
             onClick={() => toggle("where")}
           >
@@ -518,7 +518,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       <div
         className="eb-pane"
         id="eb-pane"
-        role="tabpanel"
+        role="dialog"
         aria-label={paneTitle}
         aria-hidden={pane === null}
         // Collapsed via max-height:0 (not display:none), so without `inert` a
@@ -693,7 +693,12 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </div>
 
               <Sect>Pick a day</Sect>
-              <EventWeekRibbon events={events} activeDay={day} onPickDay={pickDay} />
+              <EventWeekRibbon
+                nowISO={nowISO}
+                countByDate={dayCounts}
+                activeDay={day}
+                onPickDay={pickDay}
+              />
 
               <button type="button" className="eb-jumpwk tap-44" onClick={jumpNextWeekend}>
                 <CalendarRange className="h-[15px] w-[15px]" strokeWidth={2.1} aria-hidden />

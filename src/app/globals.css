@@ -151,6 +151,7 @@
   --app-danger-tint-6:   color-mix(in srgb, var(--app-danger)   6%, transparent);
   --app-danger-tint-14:  color-mix(in srgb, var(--app-danger)  14%, transparent);
   --app-ink-tint-6:      color-mix(in srgb, var(--app-ink)      6%, transparent);
+  --app-ink-tint-8:      color-mix(in srgb, var(--app-ink)      8%, transparent);
   --app-ink-tint-12:     color-mix(in srgb, var(--app-ink)     12%, transparent);
 
   /* ─────────────────────────────────────────────────────
@@ -197,7 +198,7 @@
   --app-topbar-offset: var(--app-topbar-h);
   --app-bottomnav-reserve: 84px;
   --app-browse-map-height: calc(
-    100dvh - var(--app-topbar-h) - 48px - var(--app-bottomnav-reserve) -
+    100dvh - var(--app-topbar-h) - var(--app-bottomnav-reserve) -
       env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
   );
 
@@ -282,6 +283,12 @@
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
+@media (min-width: 64rem) {
+  :root {
+    --app-bottomnav-reserve: 0px;
+  }
+}
+
 /* Dark mode CSS removed during the design-token audit. The paper-
  * cream palette IS the brand and there's no user-facing toggle yet —
  * the ~50 lines of dark overrides were dead CSS shipping on every
@@ -294,6 +301,14 @@
     --app-dur-fast: 0ms;
     --app-dur-med: 0ms;
     --app-dur-slow: 0ms;
+  }
+
+  [data-vaul-drawer],
+  [data-vaul-overlay],
+  .cmdk-root,
+  .cmdk-shell {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -386,12 +401,12 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
 .focus-ring-inset:focus-visible {
   outline-offset: -3px;
 }
-/* The skip-link target: #main takes programmatic focus (tabindex="-1") so
+/* The skip-link target takes programmatic focus (tabindex="-1") so
    the skip link MOVES focus, but the wrapper itself must not draw the ring
    around the entire page. Must live HERE (unlayered) — Tailwind's
    `outline-none` utility sits in @layer utilities and loses to the
    unlayered :focus-visible rule above regardless of specificity. */
-#main:focus-visible {
+#main-content:focus-visible {
   outline: none;
 }
 
@@ -695,8 +710,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
   opacity: 0.09;
   mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
-  background-size: 200px 200px;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.7) 0 0.5px, transparent 0.8px),
+    radial-gradient(circle, rgba(22,20,14,0.45) 0 0.45px, transparent 0.75px);
+  background-position: 0 0, 2px 2px;
+  background-size: 4px 4px, 5px 5px;
 }
 /* Atmospheric depth — a soft inset shadow hugging the bottom edge so
  * the sky has volume and the content below reads as a distinct layer,
@@ -1185,6 +1203,23 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * button doesn't overlap the headline. */
 .mapboxgl-popup-content {
   padding: 14px 56px 14px 14px !important;
+}
+
+/* Mapbox's DOM furniture ships with a Helvetica stack and 29px controls.
+ * Keep it in the field-guide system and make every native map action meet
+ * the same touch-target contract as the rest of the app. */
+.mapboxgl-map,
+.mapboxgl-ctrl,
+.mapboxgl-popup {
+  font-family: var(--font-sans-base), Inter, ui-sans-serif, system-ui, sans-serif !important;
+}
+.mapboxgl-map .mapboxgl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+}
+.mapboxgl-map .mapboxgl-ctrl-attrib-button {
+  min-width: 44px !important;
+  min-height: 44px !important;
 }
 
 /* Radius-map hover preview — a quiet mini-label that follows the dot
@@ -2810,6 +2845,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-search-input {
   flex: 1 1 auto;
+  align-self: stretch;
+  height: 100%;
   min-width: 0;
   background: transparent;
   border: none;
@@ -2835,6 +2872,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: 24px;
   height: 24px;
   color: var(--app-ink-3);
+}
+
+/* Static locator crops come from Mapbox's stock light style until the paper
+ * style is published as a hosted Mapbox style. This restrained treatment
+ * pulls the cool gray tile into the surrounding cream field-guide palette
+ * without obscuring roads, labels, attribution, or the location pin. */
+.field-map-image {
+  filter: sepia(0.14) saturate(0.86) contrast(0.98);
 }
 .dock-search-results {
   position: absolute;
@@ -3571,7 +3616,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
      rides up with it instead of pinning 56px down over a seam of list. */
   top: var(--app-topbar-offset);
   z-index: var(--z-sticky);
-  transition: top 240ms var(--app-ease-out);
+  transition: top var(--app-dur-med) var(--app-ease-out);
 }
 
 /* The pinned head: nameplate + caption bar + sub bar. Frosted paper so the

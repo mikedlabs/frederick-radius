@@ -127,7 +127,7 @@ export default function TimeScrubber({
           <button
             type="button"
             onClick={() => { setPlaying(false); onChange(currentFrederickHour()); }}
-            className="tap-44-y rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            className="inline-flex min-h-11 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{ color: "var(--app-cool)" }}
           >
             Now
@@ -136,8 +136,8 @@ export default function TimeScrubber({
             type="button"
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? "Pause" : "Play the day"}
-            className="tap-44-y grid h-7 w-7 place-items-center rounded-full"
-            style={{ background: playing ? "var(--app-brand)" : "var(--app-brand-tint-2, color-mix(in srgb, var(--app-brand) 14%, transparent))", color: playing ? "#fff" : "var(--app-brand)" }}
+            className="grid h-11 w-11 place-items-center rounded-full"
+            style={{ background: playing ? "var(--app-brand-press)" : "var(--app-brand-tint-14)", color: playing ? "var(--app-on-brand)" : "var(--app-brand-press)" }}
           >
             {playing ? <Pause className="h-3.5 w-3.5" strokeWidth={2.5} /> : <Play className="h-3.5 w-3.5" strokeWidth={2.5} />}
           </button>
@@ -145,7 +145,7 @@ export default function TimeScrubber({
             type="button"
             onClick={() => { setPlaying(false); onChange(null); }}
             aria-label="Back to now"
-            className="tap-44-y grid h-7 w-7 place-items-center rounded-full"
+            className="grid h-11 w-11 place-items-center rounded-full"
             style={{ color: "var(--app-ink-3)" }}
           >
             <X className="h-4 w-4" strokeWidth={2} />

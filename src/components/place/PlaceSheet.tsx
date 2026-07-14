@@ -135,7 +135,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[24px] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
           >
             <PlaceSheetContent place={place} onClose={() => setOpen(false)} />
           </motion.div>

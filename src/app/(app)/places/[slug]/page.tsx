@@ -372,7 +372,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="hidden grid-cols-2 gap-2 lg:grid">
         <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
         <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}

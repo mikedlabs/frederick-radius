@@ -189,7 +189,13 @@ export default async function SkyHero({
   // to the time-only palette so the page never blocks on NWS.
   let mood: SkyMood = "clear";
   try {
-    const forecast = await getNwsForecast(FREDERICK_CENTER);
+    // Paint the hour-based sky immediately on a cold NWS miss. The weather
+    // tint is a progressive enhancement; TodayCard streams the actual
+    // conditions in its own boundary below.
+    const forecast = await Promise.race([
+      getNwsForecast(FREDERICK_CENTER),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 450)),
+    ]);
     const now0 = forecast?.hourly?.[0];
     if (now0) {
       mood = moodFromConditions(now0.shortForecast, now0.probabilityOfPrecipitation ?? 0);
@@ -236,7 +242,7 @@ export default async function SkyHero({
           "--sky-bottom": sky.bottom,
           "--cel-x": `${celX}%`,
           "--cel-y": `${celY}%`,
-          color: sky.tone === "dark" ? "#F4F2EE" : "#1A1A1A",
+          color: sky.tone === "dark" ? "#FCFBF8" : "#11100C",
         } as React.CSSProperties
       }
       data-sky-tone={sky.tone}

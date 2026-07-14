@@ -67,6 +67,7 @@ export default function FeaturedEvents({ events }: { events: EventSlide[] }) {
           >
             <Link
               href={`/events/${e.slug}`}
+              prefetch={false}
               className="group block h-full w-full"
               aria-label={`Featured event: ${e.title}`}
             >
@@ -84,6 +85,7 @@ export default function FeaturedEvents({ events }: { events: EventSlide[] }) {
                   src={e.photo}
                   alt=""
                   fill
+                  unoptimized={e.photo.startsWith("/api/place-photo")}
                   priority={i === 0}
                   sizes="(max-width: 720px) 100vw, 720px"
                   placeholder="blur"

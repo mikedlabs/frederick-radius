@@ -9,8 +9,8 @@
  * a quiet line that completes with a gold mono "soon" tag — a promise,
  * never a dead end.
  *
- * Non-interactive by design (`aria-disabled`); the full sentence rides the
- * label so a screen reader hears the promise plainly, without the badge.
+ * Non-interactive by design; ordinary text exposes the same complete promise
+ * to visual and screen-reader users.
  */
 export default function ClaimComingSoon({
   lead = "Own this business?",
@@ -19,15 +19,9 @@ export default function ClaimComingSoon({
   lead?: string;
 }) {
   return (
-    <span
-      aria-disabled="true"
-      aria-label={`${lead} Claiming is coming soon.`}
-      className="inline-flex items-center gap-1.5"
-      style={{ color: "var(--app-ink-3)" }}
-    >
-      <span aria-hidden>{lead} Claiming is coming</span>
+    <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
+      <span>{lead} Claiming is coming</span>
       <span
-        aria-hidden
         style={{
           fontFamily: "var(--font-mono, monospace)",
           fontSize: "8.5px",
@@ -43,6 +37,7 @@ export default function ClaimComingSoon({
       >
         soon
       </span>
+      <span className="sr-only">.</span>
     </span>
   );
 }

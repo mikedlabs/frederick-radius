@@ -163,6 +163,9 @@ export default function BottomNav() {
               >
                 <Link
                   href={href}
+                  prefetch={false}
+                  onMouseEnter={() => router.prefetch(href)}
+                  onFocus={() => router.prefetch(href)}
                   onPointerDown={() => {
                     if (!isRealActive) setPendingIdx(idx);
                   }}

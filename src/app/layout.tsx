@@ -250,7 +250,7 @@ export default function RootLayout({
         )}
       >
         <a
-          href="#main"
+          href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[var(--z-skip)] focus:rounded-[var(--app-radius-sm)] focus:bg-[var(--app-ink)] focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--app-on-brand)]"
         >
           Skip to content
@@ -261,14 +261,7 @@ export default function RootLayout({
             filter state lives in the URL so views are shareable +
             restorable. No-op cost when no component uses nuqs. */}
         <NuqsAdapter>
-          {/* tabIndex={-1}: the skip link must MOVE FOCUS here, not just
-              scroll — without it Safari resumes tabbing from the link. The
-              ring suppression lives in globals.css (#main:focus-visible) —
-              Tailwind's outline-none is layered and loses to the global
-              unlayered :focus-visible rule, so a class here would be inert. */}
-          <div id="main" tabIndex={-1}>
-            {children}
-          </div>
+          {children}
         </NuqsAdapter>
         {/* Two complementary analytics layers:
             - Plausible (self-hosted feel; product metrics, no IP storage)

@@ -309,7 +309,7 @@ export default async function MunicipalityPage(
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
-            <ul className="grid gap-2 lg:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
               {upcomingEvents.map((e) => (
                 <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
               ))}

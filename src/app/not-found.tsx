@@ -20,6 +20,8 @@ const DOORWAYS: Array<{ label: string; href: string }> = [
 export default function NotFound() {
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className="relative min-h-screen overflow-hidden"
       style={{
         background:

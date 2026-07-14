@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Bookmark, CornerUpRight, X } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
@@ -67,8 +66,11 @@ export default function MapPeek({
   // that ships no photo in the slim payload. A pin marks where it sits, so
   // a small map crop reads as the place at a glance. Fails soft to a
   // category-tinted band (the Referer-restricted token can 403 off-domain).
+  const pin = cat?.color && /^#[0-9a-fA-F]{6}$/.test(cat.color)
+    ? cat.color.slice(1).toLowerCase()
+    : "e14328";
   const staticSrc = place.geom
-    ? `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-s+e14328(${place.geom.lng},${place.geom.lat})/${place.geom.lng},${place.geom.lat},14,0/320x150@2x?access_token=${MAPBOX_TOKEN}`
+    ? `/api/static-map?lng=${place.geom.lng.toFixed(5)}&lat=${place.geom.lat.toFixed(5)}&pin=${pin}&size=320x150`
     : "";
 
   const directionsHref = place.geom
@@ -96,6 +98,7 @@ export default function MapPeek({
               width={80}
               height={80}
               decoding="async"
+              className="field-map-image"
               onError={() => setImgOk(false)}
             />
           )}

@@ -216,6 +216,7 @@ export default function LocationChip() {
               <div className="border-t" style={{ borderColor: "var(--app-border)" }} />
               <Link
                 href={`/m/${scopeTown}`}
+                prefetch={false}
                 onClick={() => setOpen(false)}
                 role="menuitem"
                 className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"

@@ -24,8 +24,12 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
       className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
       style={{ borderColor: "var(--app-control-border)" }}
     >
+      <label htmlFor="site-search-input" className="sr-only">
+        Search places, events, and towns
+      </label>
       <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
       <input
+        id="site-search-input"
         ref={inputRef}
         type="search"
         name="q"

@@ -50,7 +50,15 @@ export default function TopBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const hidden = useHideOnScroll(searchOpen);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const hidden = useHideOnScroll(searchOpen || moreOpen);
+
+  const handleMoreOpenChange = (nextOpen: boolean) => {
+    setMoreOpen(nextOpen);
+    if (!nextOpen) {
+      requestAnimationFrame(() => moreTriggerRef.current?.focus());
+    }
+  };
 
   // Has the user navigated WITHIN the app since arriving? The TopBar lives in
   // the (app) layout, which persists across navigations, so counting pathname
@@ -70,7 +78,7 @@ export default function TopBar() {
   // collapse in sync with the auto-hide instead of orphaning a band of raw
   // list above themselves. Removing the inline value falls back to the
   // :root default (= --app-topbar-h); consumers transition `top` at the
-  // same 240ms ease this header uses for its transform.
+  // same medium-duration ease this header uses for its transform.
   useEffect(() => {
     const root = document.documentElement;
     if (hidden) root.style.setProperty("--app-topbar-offset", "0px");
@@ -148,7 +156,7 @@ export default function TopBar() {
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
           transform: hidden ? "translateY(-100%)" : "translateY(0)",
-          transition: "transform 240ms var(--app-ease-out)",
+          transition: "transform var(--app-dur-med) var(--app-ease-out)",
           willChange: "transform",
         }}
       >
@@ -178,6 +186,9 @@ export default function TopBar() {
           ) : (
             <Link
               href="/"
+              prefetch={false}
+              onMouseEnter={() => router.prefetch("/")}
+              onFocus={() => router.prefetch("/")}
               aria-label="Frederick Radius, home"
               className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
@@ -270,6 +281,7 @@ export default function TopBar() {
               visible label from sm: up makes the whole guide discoverable rather
               than buried under a bare "⋯". tap-44 keeps the 44px target. */}
           <button
+            ref={moreTriggerRef}
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-haspopup="dialog"
@@ -286,7 +298,7 @@ export default function TopBar() {
       </header>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
+      <MoreSheet open={moreOpen} onOpenChange={handleMoreOpenChange} />
     </>
   );
 }

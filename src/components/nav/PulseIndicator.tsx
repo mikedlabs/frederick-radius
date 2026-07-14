@@ -80,6 +80,7 @@ export default function PulseIndicator() {
   return (
     <Link
       href="/pulse"
+      prefetch={false}
       aria-label={
         active
           ? `County alerts: ${count} active ${count === 1 ? "item" : "items"}`

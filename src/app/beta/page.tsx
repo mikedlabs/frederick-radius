@@ -64,7 +64,7 @@ export default async function BetaPage({
   const rings = [70, 130, 195, 265, 340, 420, 505];
 
   return (
-    <main id="top" className="relative overflow-hidden" style={{ background: "var(--app-bg)", backgroundImage: "var(--app-paper-light)" }}>
+    <main id="main-content" tabIndex={-1} className="relative overflow-hidden" style={{ background: "var(--app-bg)", backgroundImage: "var(--app-paper-light)" }}>
       {/* ── HERO — the access cover ────────────────────────────────────── */}
       {/* gridTemplateColumns minmax(0,1fr): the single auto column otherwise
           sizes to the hero's max-content (the 27rem block beats a 390px
@@ -297,7 +297,7 @@ export default async function BetaPage({
           <div className="mt-5">
             <BetaEmailField />
           </div>
-          <Link href="#top" className="mt-6 inline-block font-mono text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
+          <Link href="#top" className="tap-44 mt-6 inline-flex items-center font-mono text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
             &uarr; Enter an access code
           </Link>
           <div
@@ -540,7 +540,7 @@ async function ProofStrip() {
         {p.eventsToday != null && p.eventsToday > 0 && (
           <>
             {" · "}
-            <CountUp value={p.eventsToday} className="font-mono font-semibold tabular-nums" /> on today
+            <CountUp value={p.eventsToday} className="font-mono font-semibold tabular-nums" /> {p.eventsToday === 1 ? "event today" : "events today"}
           </>
         )}
       </p>
@@ -572,7 +572,7 @@ async function PulseGrid() {
     { n: p.places.toLocaleString(), label: "places mapped" },
     { n: String(p.towns), label: "communities, one radius" },
   ];
-  if (p.eventsToday != null) stats.push({ n: String(p.eventsToday), label: p.eventsToday === 1 ? "event on today" : "events on today", live: true });
+  if (p.eventsToday != null) stats.push({ n: String(p.eventsToday), label: p.eventsToday === 1 ? "event today" : "events today", live: true });
   if (p.keys) {
     const k = p.keys;
     // Runs are null before first pitch AND for postponed/cancelled games, so

@@ -138,7 +138,7 @@ export default async function BetaEmailsAdmin({
           <AdminButton variant="primary" type="submit">
             Mint + email codes to {uninvited} {uninvited === 1 ? "person" : "people"}
           </AdminButton>
-          <span className="text-[12px]" style={{ color: resendWired ? "var(--app-ink-3)" : "var(--app-warning)" }}>
+          <span className="text-[12px]" style={{ color: resendWired ? "var(--app-ink-3)" : "var(--app-warning-press)" }}>
             {resendWired
               ? "Sends each person their personal access code via Resend."
               : "RESEND_API_KEY is not set: codes will mint but no email goes out."}

@@ -286,7 +286,7 @@ export default function MapPage() {
  *  for one hydration beat before RadiusBuilder mounts. */
 function MapShellFallback() {
   return (
-    <div className="relative -mx-4 -mt-4 lg:ml-0">
+    <div className="relative -mx-4 sm:-mx-5 lg:ml-0">
       <div
         className="animate-pulse"
         style={{ height: BROWSE_MAP_HEIGHT, background: "var(--app-bg-sunken)" }}
@@ -393,15 +393,9 @@ function BrowseMode() {
   );
 }
 
-// Reserve the floating bottom nav (~84px incl. its lift) + bottom
-// safe-area so the map never slides under the nav (audit: "sticky bottom
-// nav overlays content"). The mode toggle now FLOATS over the map (a map
-// control above the peek sheet) instead of sitting in flow below it, so
-// the ~48px strip that used to be reserved for that in-flow pill is
-// reclaimed — the map extends down to meet the nav's breathing room
-// instead of leaving a dead cream band ("the bottom UI doesn't look fixed").
-// One source of truth (globals.css :root) so the page + its loading skeleton
-// can never drift (that drift caused a visible canvas jump on tab-in).
+// Reserve only the chrome that is actually visible: TopBar plus the floating
+// BottomNav below lg, and TopBar alone once SideRail replaces BottomNav.
+// One source of truth keeps the page and loading skeleton in lockstep.
 const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
 
 /** The heavy half of browse mode — the ~10 upstream feeds, all

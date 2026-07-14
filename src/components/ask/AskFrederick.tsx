@@ -46,12 +46,12 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
           sources: [],
         });
       } else if (!r.ok) {
-        setRes({ configured: true, answer: "Something went wrong. Try again.", sources: [] });
+        setRes({ configured: true, answer: "Radius couldn’t answer just now. Try again in a minute.", sources: [] });
       } else {
         setRes((await r.json()) as AskResult);
       }
     } catch {
-      setRes({ configured: true, answer: "Something went wrong. Try again.", sources: [] });
+      setRes({ configured: true, answer: "Radius couldn’t reach the answer service. Check your connection and try again.", sources: [] });
     } finally {
       setLoading(false);
     }

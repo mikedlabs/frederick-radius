@@ -170,8 +170,8 @@ export default function FeedbackWidget() {
             <button
               type="button"
               onClick={close}
-              className="w-full rounded-[var(--app-radius-md)] py-3 text-[15px] font-semibold text-white"
-              style={{ background: "var(--app-brand)", minHeight: 44 }}
+              className="w-full rounded-[var(--app-radius-md)] py-3 text-[15px] font-semibold"
+              style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)", minHeight: 44 }}
             >
               Done
             </button>
@@ -180,8 +180,8 @@ export default function FeedbackWidget() {
               type="button"
               onClick={send}
               disabled={sending || !message.trim()}
-              className="w-full rounded-[var(--app-radius-md)] py-3 text-[15px] font-semibold text-white disabled:opacity-50"
-              style={{ background: "var(--app-brand)", minHeight: 44 }}
+              className="w-full rounded-[var(--app-radius-md)] py-3 text-[15px] font-semibold disabled:opacity-50"
+              style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)", minHeight: 44 }}
             >
               {sending ? "Sending…" : "Send"}
             </button>

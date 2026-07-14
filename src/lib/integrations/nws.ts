@@ -61,11 +61,12 @@ type ForecastResp = {
   };
 };
 
-async function nwsFetch<T>(url: string, revalidate: number): Promise<T | null> {
+async function nwsFetch<T>(url: string, revalidate: number, signal?: AbortSignal): Promise<T | null> {
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/geo+json" },
       next: { revalidate },
+      signal,
     });
     if (!res.ok) return null;
     return (await res.json()) as T;
@@ -75,14 +76,17 @@ async function nwsFetch<T>(url: string, revalidate: number): Promise<T | null> {
 }
 
 export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null> {
+  // One deadline covers the points lookup and both forecast requests. NWS is
+  // useful context, never a reason to withhold the page shell.
+  const signal = AbortSignal.timeout(5000);
   const lat = point.lat.toFixed(4);
   const lng = point.lng.toFixed(4);
-  const points = await nwsFetch<PointsResp>(`${NWS_BASE}/points/${lat},${lng}`, 86400);
+  const points = await nwsFetch<PointsResp>(`${NWS_BASE}/points/${lat},${lng}`, 86400, signal);
   if (!points) return null;
 
   const [hourly, daily] = await Promise.all([
-    nwsFetch<ForecastResp>(points.properties.forecastHourly, 1800),
-    nwsFetch<ForecastResp>(points.properties.forecast, 3600),
+    nwsFetch<ForecastResp>(points.properties.forecastHourly, 1800, signal),
+    nwsFetch<ForecastResp>(points.properties.forecast, 3600, signal),
   ]);
 
   const mapPeriod = (p: ForecastResp["properties"]["periods"][number]): NwsHourly => ({

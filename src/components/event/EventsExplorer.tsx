@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
 import { CalendarDays, X, ChevronDown } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
@@ -13,6 +11,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
+import type { EventBrowseSummary } from "@/lib/events/browsePayload";
 import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
 import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import { type Daypart } from "@/lib/daypart";
@@ -57,15 +56,23 @@ const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 // are imported from there so both surfaces speak one vocabulary.
 
 type Props = {
+  /** Bounded, server-rendered preview. The full collection loads on intent. */
   events: EventWithMeta[];
   liveSlugs: string[];
   categories: { slug: string; name: string }[];
   towns: { slug: string; name: string }[];
+  summary: EventBrowseSummary;
   /** Server-computed boundaries (avoids client TZ math + hydration drift). */
   nowISO: string;
   next24ISO: string;
   weekendStartISO: string;
   weekendEndISO: string;
+};
+
+type BrowseResponse = {
+  events: EventWithMeta[];
+  liveSlugs: string[];
+  generatedAt: string;
 };
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
@@ -103,134 +110,177 @@ export default function EventsExplorer({
   liveSlugs,
   categories,
   towns,
+  summary,
   nowISO,
   next24ISO,
   weekendStartISO,
   weekendEndISO,
 }: Props) {
-  // Deep-link view (?cats/?m/?when + ?d), parsed CLIENT-side once at
-  // mount. The /events page is a static (ISR) shell now — reading
-  // searchParams server-side would opt the whole route out of static
-  // rendering — and this component already client-renders behind a
-  // Suspense boundary (nuqs reads useSearchParams), so the first thing
-  // the user sees of the board is already the deep-linked view: no
-  // default-view flash. The app-level template remounts this component
-  // on every navigation, so mount-time parsing == navigation-time URL.
-  const urlParams = useSearchParams();
-  const [initial] = useState(() => {
-    const sp = new URLSearchParams(urlParams.toString());
-    const view: ViewState = parseViewState(sp);
-    const d = sp.get("d");
-    return { view, day: d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null };
-  });
-  const [cat, setCat] = useState<string | null>(initial.view.cats?.[0] ?? null);
-  // Lens (Now / Tonight / Weekend / This week / All) — URL-synced via
-  // ?lens=foo so shared links restore the view, and the EventsCompartmented
-  // "See all" deep-links land on the right tab. nuqs handles the param
-  // codec (parseAsStringEnum) and rerenders on browser back/forward.
-  // Default falls through to the mount-parsed ?when= so first paint
-  // still matches the URL with no hydration flash.
-  const [time, setTime] = useQueryState<TimeKey>(
-    "lens",
-    parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
-      .withDefault(whenToTime(initial.view.when)),
-  );
-  // Town default precedence (UX-02): a shared URL ?m= wins; then the global
-  // browsing SCOPE lens set from the nav chip (a town scope seeds that town,
-  // an explicit "whole county" scope clears to no town even over a stale
-  // memory); then the board's own last-used town; else whole county. Every
-  // slug is validated against the live municipality set so a stale value
-  // degrades to whole-county. Reading localStorage in the initializer is the
-  // same client-only-mount trick the URL parse above relies on (this
-  // component never prerenders — useSearchParams bails it to client render).
-  const [town, setTown] = useState<string | null>(() => {
-    if (initial.view.municipality) return initial.view.municipality;
-    const scope = getScope();
-    const scopeTown = scopeTownSlug(scope);
-    if (scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]) return scopeTown;
-    if (scope === "county") return null;
-    const remembered = getEventsTown();
-    return remembered && MUNICIPALITY_BY_SLUG[remembered] ? remembered : null;
-  });
-  useEffect(() => {
-    setEventsTown(town);
-  }, [town]);
-  // Intent + sub — the new category front door (EventsIntentRail). The
-  // seven human intents roll up the ~25 place-categories; `sub` is a real
-  // category slug shown as a second row when an intent has curated subs.
-  // Both URL-synced (?intent / ?sub) so a "free music this weekend" view
-  // is shareable. They compose as AND with the lens / town / free facets.
-  const [intent, setIntent] = useQueryState<IntentId>(
-    "intent",
-    parseAsStringEnum<IntentId>(INTENT_IDS),
-  );
-  const [sub, setSub] = useQueryState("sub");
-  // ?d=YYYY-MM-DD deep-link from the week ribbon / WeekStrip — restricts
-  // the list to a single Eastern calendar day. Coexists with the
-  // time-window filter (Tonight / Weekend / This week); the day wins
-  // when both are set.
-  const [day, setDay] = useState<string | null>(initial.day);
+  // The server renders this bounded preview. The full compact corpus is kept
+  // out of React Flight and fetched only after explicit browsing intent.
+  const [eventPool, setEventPool] = useState(events);
+  const [currentLiveSlugs, setCurrentLiveSlugs] = useState(liveSlugs);
+  const [dataComplete, setDataComplete] = useState(events.length >= summary.totalCount);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const requestRef = useRef<Promise<void> | null>(null);
+
+  // Server-safe defaults let this Client Component emit useful static HTML.
+  // URL and device preferences are applied after hydration, then mirrored
+  // without using router query hooks (which would CSR-bail the whole board).
+  const [urlReady, setUrlReady] = useState(false);
+  const [cat, setCat] = useState<string | null>(null);
+  const [time, setTime] = useState<TimeKey>("all");
+  const [town, setTown] = useState<string | null>(null);
+  const [intent, setIntent] = useState<IntentId | null>(null);
+  const [sub, setSub] = useState<string | null>(null);
+  const [day, setDay] = useState<string | null>(null);
   // Owner-featured slugs (featured-events.json), resolved once against the
   // page clock; pickLeadEvent consults the set before its heuristic.
   const featured = useMemo(() => featuredEventSlugs(new Date(nowISO)), [nowISO]);
   const [q, setQ] = useState("");
   const [view, setView] = useState<ViewKey>("list");
-  // Free-only toggle — URL-synced via ?free=1 so a filtered view is
-  // shareable. Boolean codec maps 0/1 to false/true; default false so
-  // an empty URL = no filter (no extra param on first load).
-  const [freeOnly, setFreeOnly] = useQueryState(
-    "free",
-    parseAsBoolean.withDefault(false),
-  );
+  const [freeOnly, setFreeOnly] = useState(false);
   // Happy-hour-only toggle — URL-synced via ?happy=1. Predicate is a
   // title/venue regex (no formal "happy hour" category in the schema).
   // Added May 2026 in response to a competing iOS-only events app that
   // led with happy hours; this surfaces the same use case from a
   // broader product without bolting on a new event type.
-  const [happyOnly, setHappyOnly] = useQueryState(
-    "happy",
-    parseAsBoolean.withDefault(false),
-  );
+  const [happyOnly, setHappyOnly] = useState(false);
   // ── Composable sub-facets (overhaul wave 3) — orthogonal to the intent
   // and to each other, each backed by a field that already exists on the
   // event and a pure predicate in lib/events/intents.ts. All URL-synced so
   // "free evening music for kids this weekend" is one shareable query.
   // Time of day (?tod=) — single Eastern daypart bucket via eventDaypart().
-  const [tod, setTod] = useQueryState<Daypart>(
-    "tod",
-    parseAsStringEnum<Daypart>(DAYPART_KEYS),
-  );
+  const [tod, setTod] = useState<Daypart | null>(null);
   // Kid-friendly (?kids=1) — audience includes kids-0-5 / kids-6-12.
-  const [kidsOnly, setKidsOnly] = useQueryState("kids", parseAsBoolean.withDefault(false));
+  const [kidsOnly, setKidsOnly] = useState(false);
   // LGBTQ+ community (?lgbtq=1) — isLgbtqEvent: conservative title match
   // (Pride/queer/drag-performance contexts) or a verified community venue
   // (The Frederick Center). Same composable-facet contract as the rest.
-  const [lgbtqOnly, setLgbtqOnly] = useQueryState("lgbtq", parseAsBoolean.withDefault(false));
+  const [lgbtqOnly, setLgbtqOnly] = useState(false);
   // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
-  const [recurringOnly, setRecurringOnly] = useQueryState(
-    "recurring",
-    parseAsBoolean.withDefault(false),
-  );
+  const [recurringOnly, setRecurringOnly] = useState(false);
   // Sort order (?sort=time|az|venue). "time" keeps the horizon
   // grouping ("Tonight / This weekend / This week / Later"); the
   // alphabetical and by-venue sorts drop the grouping and render
   // a flat list so the order the user picked is the order the user sees.
-  const [sort, setSort] = useQueryState<EventSortKey>(
-    "sort",
-    parseAsStringEnum<EventSortKey>(["time", "az", "venue"]).withDefault("time"),
-  );
+  const [sort, setSort] = useState<EventSortKey>("time");
+
+  const applyBrowserState = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    const parsed = parseViewState(params);
+    const lens = params.get("lens");
+    const intentParam = params.get("intent");
+    const todParam = params.get("tod");
+    const sortParam = params.get("sort");
+    const dayParam = params.get("d");
+    const bool = (key: string) => {
+      const value = params.get(key)?.toLowerCase();
+      return value === "true" || value === "1";
+    };
+
+    setCat(parsed.cats?.[0] ?? null);
+    setTime(
+      lens === "all" || lens === "today" || lens === "weekend" || lens === "week"
+        ? lens
+        : whenToTime(parsed.when),
+    );
+    if (parsed.municipality && MUNICIPALITY_BY_SLUG[parsed.municipality]) {
+      setTown(parsed.municipality);
+    } else {
+      const scope = getScope();
+      const scopeTown = scopeTownSlug(scope);
+      const remembered = getEventsTown();
+      setTown(
+        scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]
+          ? scopeTown
+          : scope === "county"
+            ? null
+            : remembered && MUNICIPALITY_BY_SLUG[remembered]
+              ? remembered
+              : null,
+      );
+    }
+    setIntent(INTENT_IDS.includes(intentParam as IntentId) ? intentParam as IntentId : null);
+    setSub(params.get("sub"));
+    setDay(dayParam && /^\d{4}-\d{2}-\d{2}$/.test(dayParam) ? dayParam : null);
+    setFreeOnly(bool("free"));
+    setHappyOnly(bool("happy"));
+    setTod(DAYPART_KEYS.includes(todParam as Daypart) ? todParam as Daypart : null);
+    setKidsOnly(bool("kids"));
+    setLgbtqOnly(bool("lgbtq"));
+    setRecurringOnly(bool("recurring"));
+    setSort(sortParam === "az" || sortParam === "venue" ? sortParam : "time");
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    // Run after the hydrated default paint. This preserves useful static HTML
+    // and avoids a synchronous effect cascade while still applying deep links
+    // before a person can meaningfully interact.
+    queueMicrotask(() => {
+      if (!active) return;
+      applyBrowserState();
+      setUrlReady(true);
+    });
+    window.addEventListener("popstate", applyBrowserState);
+    return () => {
+      active = false;
+      window.removeEventListener("popstate", applyBrowserState);
+    };
+  }, [applyBrowserState]);
+
+  useEffect(() => {
+    if (urlReady) setEventsTown(town);
+  }, [town, urlReady]);
+
+  const ensureAllEvents = useCallback((): Promise<void> => {
+    if (dataComplete) return Promise.resolve();
+    if (requestRef.current) return requestRef.current;
+
+    setLoadingAll(true);
+    setLoadError(null);
+    const request = fetch("/api/events/browse", {
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Events request failed (${response.status})`);
+        const payload = await response.json() as BrowseResponse;
+        if (!Array.isArray(payload.events)) throw new Error("Events response was incomplete");
+        setEventPool(payload.events);
+        setCurrentLiveSlugs(payload.liveSlugs);
+        setDataComplete(true);
+      })
+      .catch(() => {
+        setLoadError("Couldn’t load the rest of the calendar. Try again.");
+      })
+      .finally(() => {
+        requestRef.current = null;
+        setLoadingAll(false);
+      });
+    requestRef.current = request;
+    return request;
+  }, [dataComplete]);
+
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-  const toggleGroup = (k: string) =>
+  const toggleGroup = (k: string) => {
+    if (!openGroups.has(k) && !dataComplete) void ensureAllEvents();
     setOpenGroups((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
       else next.add(k);
       return next;
     });
+  };
 
-  const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
+  const live = useMemo(() => new Set(currentLiveSlugs), [currentLiveSlugs]);
   const now = +new Date(nowISO);
+  const anyFilter =
+    cat !== null || intent !== null || sub !== null || town !== null ||
+    time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
+    tod !== null || kidsOnly || lgbtqOnly || recurringOnly || day !== null;
 
   // Stage 1 — everything EXCEPT the category dimension (intent / sub /
   // exact cat). The intent rail's badges count against THIS set, so a
@@ -238,7 +288,7 @@ export default function EventsExplorer({
   // free filters," not a static all-time tally.
   const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return events.filter((e) => {
+    return eventPool.filter((e) => {
       // FINISHED events never render, on ANY path. The horizon grouping
       // already dropped them, but the flat paths — the week ribbon's ?d= day
       // view, search results, the A-Z/venue sorts — filtered by start-day
@@ -278,11 +328,14 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [events, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [eventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Rail badges — per-intent counts over the base set (post time/town/free,
   // pre intent/sub) so picking an intent doesn't zero out the other badges.
-  const intentCounts = useMemo(() => countByIntent(baseFiltered), [baseFiltered]);
+  const intentCounts = useMemo(
+    () => !dataComplete && !anyFilter ? summary.intentCounts : countByIntent(baseFiltered),
+    [anyFilter, baseFiltered, dataComplete, summary.intentCounts],
+  );
 
   // Stage 2 — the category dimension (intent roll-up + sub + the legacy
   // exact-cat from the Type drawer / deep-links), then the chosen sort.
@@ -360,44 +413,45 @@ export default function EventsExplorer({
     [cat, town, time],
   );
 
-  // Mirror the structural view into the URL (deep-linkable, shareable).
-  // Initial state is parsed from the URL at mount (see `initial` above),
-  // so no hydrate effect is needed. history.replaceState, not router navigation:
-  // filtering is fully client-side, so re-running the page's live-feed
-  // loaders would be wasteful. Search text stays out of the URL by design.
-  // Day filter rides along as ?d= so a tap on the WeekStrip survives a
-  // share.
+  // Mirror the complete shareable filter state into the URL. This uses the
+  // History API directly so the page remains a static, server-rendered route;
+  // browser back/forward is restored by applyBrowserState's popstate listener.
+  // Search text and the visual mode stay local by design.
   useEffect(() => {
-    // Merge the structural (server-readable) params INTO the existing URL
-    // rather than replacing it. nuqs owns the client filter params
-    // (?lens, ?free, ?happy, ?sort, ?q); replacing the whole query string
-    // clobbered them — which reset the filter the instant a lens chip was
-    // tapped (the URL-state race the audit caught). Start from the live
-    // search string so nuqs's params survive.
+    if (!urlReady) return;
     const sp = new URLSearchParams(window.location.search);
+    for (const key of [
+      "cats", "m", "when", "d", "lens", "tod", "intent", "sub",
+      "free", "happy", "kids", "lgbtq", "recurring", "sort",
+    ]) sp.delete(key);
     const structural = new URLSearchParams(toQuery(viewState));
     for (const [k, v] of structural) sp.set(k, v);
     if (day) sp.set("d", day);
-    else sp.delete("d");
-    // lens + tod are nuqs-owned, but pickDay clears them in the same tick
-    // this effect fires. Rebuilding from window.location.search alone can
-    // resurrect the values nuqs is about to remove — nuqs re-syncs state
-    // from our replaceState, so the cleared preset springs back (the
-    // Tonight-and-Tomorrow-both-pressed bug, UX-05). Write them from
-    // React state so both URL writers always agree.
-    if (time === "all") sp.delete("lens");
-    else sp.set("lens", time);
+    if (time !== "all") sp.set("lens", time);
     if (tod) sp.set("tod", tod);
-    else sp.delete("tod");
+    if (intent) sp.set("intent", intent);
+    if (sub) sp.set("sub", sub);
+    if (freeOnly) sp.set("free", "true");
+    if (happyOnly) sp.set("happy", "true");
+    if (kidsOnly) sp.set("kids", "true");
+    if (lgbtqOnly) sp.set("lgbtq", "true");
+    if (recurringOnly) sp.set("recurring", "true");
+    if (sort !== "time") sp.set("sort", sort);
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState, day, time, tod]);
+  }, [viewState, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, recurringOnly, sort, urlReady]);
 
-  const anyFilter =
-    cat !== null || intent !== null || sub !== null || town !== null ||
-    time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
-    tod !== null || kidsOnly || lgbtqOnly || recurringOnly || day !== null;
+  // The bounded preview is sufficient for the default list. Every operation
+  // that promises a complete answer promotes the cached continuation exactly
+  // once. Fetch is deduplicated by requestRef.
+  useEffect(() => {
+    if (!urlReady || dataComplete) return;
+    if (anyFilter || view !== "list" || sort !== "time" || openGroups.size > 0) {
+      queueMicrotask(() => void ensureAllEvents());
+    }
+  }, [anyFilter, dataComplete, ensureAllEvents, openGroups, sort, urlReady, view]);
+
   const clear = () => {
     setCat(null);
     setIntent(null);
@@ -449,8 +503,8 @@ export default function EventsExplorer({
           no saved rail above the first event — the board leads with events. */}
       <EventsBoardDock
         nowISO={nowISO}
-        events={events}
-        filteredCount={filtered.length}
+        dayCounts={summary.dayCounts}
+        filteredCount={!dataComplete && !anyFilter ? summary.totalCount : filtered.length}
         intentCounts={intentCounts}
         categories={categories}
         towns={towns}
@@ -488,7 +542,35 @@ export default function EventsExplorer({
         setSort={setSort}
       />
 
+      {loadingAll && (
+        <p
+          role="status"
+          className="rounded-[var(--app-radius-md)] px-3 py-2 text-center text-[12px]"
+          style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
+        >
+          Loading the complete calendar…
+        </p>
+      )}
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => void ensureAllEvents()}
+            className="tap-44-y shrink-0 font-semibold underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Results */}
+      <div aria-busy={loadingAll} className="space-y-3">
       {view === "calendar" ? (
         <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" ? (
@@ -656,12 +738,17 @@ export default function EventsExplorer({
             // everywhere (EventCard also enforces it at the card seam).
             const leadIsFeature = Boolean(lead.hero_image);
             const rest = g.events.filter((e) => e !== lead);
+            const groupCount = !dataComplete && !anyFilter
+              ? summary.horizonCounts[g.key]
+              : g.events.length;
+            const totalRest = Math.max(0, groupCount - 1);
             const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
-            const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
-            const moreCount = rest.length - shown.length;
+            const overflow = isOpen && dataComplete ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
+            const moreCount = Math.max(0, totalRest - shown.length);
+            const canExpand = totalRest > PEEK;
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading title={g.label} count={g.events.length} />
+                <SectionHeading title={g.label} count={groupCount} />
                 {/* The ONE lead — the main thing in this window. */}
                 <div className="relative">
                   {live.has(lead.slug) && (
@@ -683,7 +770,7 @@ export default function EventsExplorer({
                 </div>
                 {/* Drop-down — the rest of this window, one tap away. The
                     revealed cards animate in (reveal-up); the chevron flips. */}
-                {rest.length > 0 && (
+                {totalRest > 0 && (
                   <>
                     {shown.length > 0 && (
                       // grid-cols-1: clamp the peek track (see the sorted
@@ -698,12 +785,16 @@ export default function EventsExplorer({
                     )}
                     {/* Only when the window holds MORE than the default peek —
                         otherwise the peek already shows everything. */}
-                    {rest.length > PEEK && (
+                    {canExpand && (
                       <>
                         <button
                           type="button"
-                          onClick={() => toggleGroup(g.key)}
+                          onClick={() => {
+                            if (isOpen && !dataComplete) void ensureAllEvents();
+                            else toggleGroup(g.key);
+                          }}
                           aria-expanded={isOpen}
+                          disabled={isOpen && loadingAll}
                           className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
                           style={{
                             borderColor: "var(--app-border)",
@@ -711,7 +802,13 @@ export default function EventsExplorer({
                             color: "var(--app-cool)",
                           }}
                         >
-                          {isOpen ? "Show fewer" : `Show ${moreCount} more`}
+                          {isOpen && !dataComplete
+                            ? loadingAll
+                              ? "Loading more…"
+                              : "Try loading more"
+                            : isOpen
+                              ? "Show fewer"
+                              : `Show ${moreCount} more`}
                           <ChevronDown
                             className="h-4 w-4 transition-transform"
                             strokeWidth={2.25}
@@ -747,7 +844,7 @@ export default function EventsExplorer({
           {utilityFiltered.length > 0 && (
             <CollapsibleSection
               title="Civic & meetings"
-              count={utilityFiltered.length}
+              count={!dataComplete && !anyFilter ? summary.utilityCount : utilityFiltered.length}
               storageKey="fr.events.civic"
               defaultOpen={false}
             >
@@ -760,11 +857,24 @@ export default function EventsExplorer({
                     <EventCard event={e} variant="compact" />
                   </li>
                 ))}
+                {!dataComplete && summary.utilityCount > utilityFiltered.length && (
+                  <li className="p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void ensureAllEvents()}
+                      className="tap-44-y px-3 text-[12px] font-semibold underline"
+                      style={{ color: "var(--app-cool)" }}
+                    >
+                      Load all {summary.utilityCount} civic events
+                    </button>
+                  </li>
+                )}
               </ol>
             </CollapsibleSection>
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

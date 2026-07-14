@@ -44,7 +44,7 @@ export default function ManagePanel({
         setSubmitted(true);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        setError(err instanceof Error ? err.message : "We couldn’t send this update. Try again in a minute.");
       }
     });
   };
@@ -143,8 +143,8 @@ export default function ManagePanel({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-        style={{ background: "var(--app-brand)" }}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
       >
         <Megaphone className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         {pending ? "Submitting…" : "Submit for review"}

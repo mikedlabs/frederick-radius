@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
@@ -32,6 +32,7 @@ export default function PhotoLightbox({
   onClose: () => void;
 }) {
   const count = photos.length;
+  const reduceMotion = useReducedMotion();
   const [i, setI] = useState(startIndex);
   const go = useCallback(
     (d: number) => { setI((p) => (p + d + count) % count); haptic("light"); },
@@ -83,7 +84,7 @@ export default function PhotoLightbox({
         tabIndex={-1}
         className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center outline-none"
         style={{ background: "rgba(8,6,4,0.93)" }}
-        initial={{ opacity: 0 }}
+        initial={reduceMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
@@ -96,10 +97,10 @@ export default function PhotoLightbox({
         <motion.div
           key={i}
           className="absolute inset-0"
-          initial={{ opacity: 0, scale: 0.985 }}
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.985 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.18 }}
-          drag
+          transition={{ duration: reduceMotion ? 0 : 0.18 }}
+          drag={reduceMotion ? false : true}
           dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
           dragElastic={0.2}
           onDragEnd={(_, info) => {
@@ -110,7 +111,15 @@ export default function PhotoLightbox({
             }
           }}
         >
-          <Image src={photos[i]} alt={alt} fill sizes="100vw" className="object-contain" priority />
+          <Image
+            src={photos[i]}
+            alt={alt}
+            fill
+            unoptimized={photos[i].startsWith("/api/place-photo")}
+            sizes="100vw"
+            className="object-contain"
+            priority
+          />
         </motion.div>
 
         <button

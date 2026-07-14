@@ -162,10 +162,10 @@ export default function MoreSheet({
         {/* Right now leads (UX-15): the four time-sensitive asks as compact
             tiles, not deck plates — a quick action, not a browse. */}
         <IconCluster heading="Right now" items={RIGHT_NOW} onClose={close} columns={4} />
-        {/* Explore — the editorial deck, now only the discovery surfaces. */}
+        {/* Discover — the editorial deck, now only the discovery surfaces. */}
         <section className="space-y-2">
           <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-            Explore
+            Discover
           </h3>
           <ExploreDeck items={DISCOVER} onNavigate={close} />
         </section>
@@ -187,6 +187,7 @@ export default function MoreSheet({
               >
                 <Link
                   href={t.href}
+                  prefetch={false}
                   onClick={close}
                   className="tactile-interactive flex min-h-[44px] items-center gap-3 px-3.5 py-2.5"
                 >
@@ -303,6 +304,7 @@ function IconTile({
   ) : (
     <Link
       href={href}
+      prefetch={false}
       onClick={onClose}
       className={className}
       style={style}
@@ -312,4 +314,3 @@ function IconTile({
     </Link>
   );
 }
-

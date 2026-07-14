@@ -62,6 +62,7 @@ export default function ExploreDeck({
           <div className="ex-slot" key={it.href} style={{ zIndex: i }}>
             <Link
               href={it.href}
+              prefetch={false}
               onClick={onNavigate}
               className="ex-card"
               style={style}

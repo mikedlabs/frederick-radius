@@ -48,7 +48,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { isAreaCentroid } from "@/lib/events/geo-confidence";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
-import { MobileActionBar, MobileBarLink, MobileBarControl } from "@/components/ui/MobileActionBar";
+import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
@@ -345,6 +345,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               src={event.hero_image}
               alt=""
               fill
+              unoptimized={event.hero_image.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -435,7 +436,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
           <TrustChip signal={eventTrust(event)} detail />
           {desc && (
-            <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {desc}
             </p>
           )}
@@ -486,7 +487,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
           const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
           return (
-            <div className={`grid ${announceUrl ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
+            <div className={`hidden ${announceUrl ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
               {announceUrl && (
                 <a href={announceUrl} target="_blank" rel="noopener noreferrer" className={quietCls} style={quietStyle}>
                   <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
@@ -522,7 +523,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         const iconOnBrand = { color: "var(--app-on-brand)" };
 
         return (
-          <div className={`grid ${hasThird ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+          <div className={`hidden ${hasThird ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-2 lg:grid`}>
             {isLive ? (
               <EventCalendarButton
                 event={{
@@ -712,7 +713,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                     style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
                     aria-hidden
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand-press)" }}>{db.month}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-ink-2)" }}>{db.month}</span>
                     <span className="font-serif text-base font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{db.day}</span>
                     <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
                   </div>
@@ -776,7 +777,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             <Link
               href="/events"
               className="text-[12px] font-semibold"
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-press)" }}
             >
               See all →
             </Link>
@@ -866,7 +867,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 is_all_day: event.is_all_day,
               }}
               barVariant={event.ticket_url ? "quiet" : "primary"}
-              label="Calendar"
+              label="Add to calendar"
             />
             {event.ticket_url && (
               <MobileBarLink
@@ -887,9 +888,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             />
           </>
         )}
-        <MobileBarControl label="Save">
-          <SaveButton refType="event" refId={event.slug} label={event.title} />
-        </MobileBarControl>
+        <SaveButton refType="event" refId={event.slug} label={event.title} barLabel="Save" />
       </MobileActionBar>
     </div>
   );

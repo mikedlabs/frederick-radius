@@ -177,6 +177,7 @@ function Thumb({
           src={place.google_photo_url}
           alt=""
           fill
+          unoptimized={place.google_photo_url.startsWith("/api/place-photo")}
           sizes="72px"
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}

@@ -67,7 +67,7 @@ export default function BetaEmailField() {
           required
           autoComplete="email"
           inputMode="email"
-          aria-label="Email for launch news"
+          aria-label="Email for your access code"
           placeholder="you@example.com"
           className="min-w-0 flex-1 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-1"
           style={{
@@ -81,17 +81,17 @@ export default function BetaEmailField() {
           disabled={state === "busy"}
           className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60"
           style={{
-            background: "var(--app-brand)",
+            background: "var(--app-brand-press)",
             color: "var(--app-on-brand)",
             boxShadow: "0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
           }}
         >
-          {state === "busy" ? "…" : "Email me a code"}
+          {state === "busy" ? "Sending code…" : "Email me a code"}
         </button>
       </div>
       {state === "error" && (
         <p role="alert" className="text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-          Couldn&rsquo;t save that right now. Try again in a minute.
+          We couldn&rsquo;t send a code right now. Try again in a minute.
         </p>
       )}
     </form>

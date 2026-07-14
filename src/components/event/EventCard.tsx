@@ -18,6 +18,7 @@ import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
+import DatePlate from "@/components/event/DatePlate";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
 // the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
@@ -129,6 +130,7 @@ export default function EventCard({
         </span>
         <Link
           href={`/events/${event.slug}`}
+          prefetch={false}
           className={`min-w-0 flex-1 truncate text-[13px] outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""
           }`}
@@ -207,6 +209,7 @@ export default function EventCard({
         <div className="min-w-0 flex-1">
           <Link
             href={`/events/${event.slug}`}
+            prefetch={false}
             className={`block truncate text-[14px] font-semibold tracking-tight outline-none focus-visible:underline ${
               isCancelled ? "line-through opacity-70" : ""
             }`}
@@ -285,6 +288,7 @@ export default function EventCard({
               src={event.hero_image!}
               alt=""
               fill
+              unoptimized={event.hero_image!.startsWith("/api/place-photo")}
               priority={priorityImage}
               sizes="(max-width: 640px) 100vw, 720px"
               placeholder="blur"
@@ -319,6 +323,7 @@ export default function EventCard({
         <div className="absolute inset-x-0 bottom-0 p-4">
           <Link
             href={`/events/${event.slug}`}
+            prefetch={false}
             className={`block font-serif text-[21px] font-semibold leading-[1.08] tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: titleColor }}
           >
@@ -359,13 +364,13 @@ export default function EventCard({
     // top-left corner squares to meet it, and the old inline label + bottom
     // color band are gone — the tab IS the category now. The wrapper reserves
     // the tab's height so it never clips inside a rail (no parent change).
-    const tabBg = `color-mix(in srgb, ${accent} 82%, var(--app-ink))`;
+    const tabBg = `color-mix(in srgb, ${accent} 68%, var(--app-ink))`;
     const reasons = eventReasons(event);
     return (
       <div className="relative pt-[14px]">
         <span
-          className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
-          style={{ background: tabBg, boxShadow: "var(--app-edge)" }}
+          className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
+          style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-on-brand)" }}
         >
           {live ? "Live now" : categoryLabel}
         </span>
@@ -384,21 +389,14 @@ export default function EventCard({
           <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-3" style={{ color: accent, opacity: 0.06 }}>
             <CategoryIcon slug={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
           </span>
-          <div
-            aria-hidden
-            className="flex shrink-0 flex-col items-center justify-center self-start rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
-            style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
-          >
-            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accentText }}>{date.month}</span>
-            <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
-            <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
-          </div>
+          <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} size="sm" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             {statusText && (
               <span className="self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
             )}
             <Link
               href={`/events/${event.slug}`}
+              prefetch={false}
               className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
               style={{ color: "var(--app-ink)" }}
             >
@@ -465,6 +463,7 @@ export default function EventCard({
       >
         <Link
           href={`/events/${event.slug}`}
+          prefetch={false}
           aria-label={
             date.time
               ? `${event.title} on ${date.weekday} ${date.month} ${date.day} at ${date.time}`
@@ -569,6 +568,7 @@ export default function EventCard({
                   alt=""
                   width={96}
                   height={96}
+                  unoptimized={event.hero_image.startsWith("/api/place-photo")}
                   sizes="48px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
@@ -593,23 +593,7 @@ export default function EventCard({
 
   return (
     <article className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3">
-      <div
-        className="relative flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
-        style={{
-          borderColor: "var(--app-border)",
-          background: `color-mix(in srgb, ${accent} 10%, var(--app-bg-sunken))`,
-        }}
-      >
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accentText }}>
-          {date.month}
-        </span>
-        <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-          {date.day}
-        </span>
-        <span className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-          {date.weekday}
-        </span>
-      </div>
+      <DatePlate month={date.month} day={date.day} weekday={date.weekday} accent={accent} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {statusText && (
@@ -622,6 +606,7 @@ export default function EventCard({
           )}
           <Link
             href={`/events/${event.slug}`}
+            prefetch={false}
             className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}
           >
