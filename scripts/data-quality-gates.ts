@@ -17,7 +17,7 @@
  */
 import PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import ENRICH_RAW from "@/data/places-enrichment.json" with { type: "json" };
-import { CATEGORIES } from "@/data/categories";
+import { CATEGORIES, isAmenityCategory } from "@/data/categories";
 import { isInFrederickCountyArea } from "@/lib/geo";
 import { isAllDayWindow } from "@/lib/hours";
 import { isGooglePlaceId } from "@/lib/provenance";
@@ -167,7 +167,16 @@ const GATES: Gate[] = [
     run: () => {
       // Leaf categories are the browse routes; count places by exact category
       // slug (a lower bound — intent pages match more broadly). Flag zeroes.
-      const leaves = CATEGORIES.filter((c) => !CATEGORIES.some((k) => k.parent === c.slug));
+      // Amenity categories (redirect to /amenities), utility categories, and the
+      // food-truck redirect are NOT directory pages and are out of the sitemap,
+      // so they can't be "indexed empty dead ends" — exclude them (DQ-016 fix).
+      const leaves = CATEGORIES.filter(
+        (c) =>
+          !CATEGORIES.some((k) => k.parent === c.slug) &&
+          !isAmenityCategory(c.slug) &&
+          c.kind !== "utility" &&
+          c.slug !== "food-truck",
+      );
       const counts = new Map<string, number>();
       for (const p of PLACES) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
       const empty = leaves.filter((c) => (counts.get(c.slug) ?? 0) === 0);

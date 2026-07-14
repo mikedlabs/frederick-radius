@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
+import { CATEGORIES, CATEGORY_BY_SLUG, isAmenityCategory } from "@/data/categories";
 import { TAG_BY_SLUG } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { rankPlaces, slimForList } from "@/lib/loaders/places";
@@ -24,7 +24,9 @@ import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 export const revalidate = 600;
 
 export async function generateStaticParams() {
-  return CATEGORIES.map((c) => ({ slug: c.slug }));
+  // Amenity categories redirect to /amenities, so don't prerender their dead
+  // routes (they're excluded from the sitemap too — audit DQ-016).
+  return CATEGORIES.filter((c) => !isAmenityCategory(c.slug)).map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata(
@@ -69,6 +71,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // (a static pin would misstate where they are). Their home is the dedicated
   // roster at /food-trucks; send the category, intent, and craving links there.
   if (slug === "food-truck") redirect("/food-trucks");
+
+  // Amenity categories (restrooms, Wi-Fi, benches, drinking water, …) are map
+  // layers, not directories: their category page resolves to zero places and
+  // is a dead end. Send them to /amenities, their real home, instead (DQ-016).
+  if (isAmenityCategory(slug)) redirect("/amenities");
 
   // C2: origin = browsing scope > home muni centroid > FREDERICK_CENTER.
   // The browsing scope (fr_scope, UX-02) is the session lens set from the
