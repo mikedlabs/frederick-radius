@@ -1,5 +1,5 @@
 /**
- * /api/beta/email — optional launch-news signup from the beta wall.
+ * /api/beta/email — personal-access-code request from the beta wall.
  *
  *   POST { email }
  *

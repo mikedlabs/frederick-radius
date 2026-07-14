@@ -74,6 +74,8 @@ export async function sendBetaCodeEmail(email: string, code: string): Promise<bo
     "",
     "The code is yours alone. If you ever lose access, reply to this email and we will sort it out.",
     "",
+    "We use this address to manage your beta access. Reply with 'remove me' if you want the address and code removed.",
+    "",
     "See you around the county.",
     "Frederick Radius",
   ].join("\n");

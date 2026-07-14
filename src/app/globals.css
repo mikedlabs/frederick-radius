@@ -2513,27 +2513,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .sw-card.is-open .sw-holo { animation: none; opacity: .12; background-position: 40% 0; }
 }
 
-/* ── Deals wallet variant (sw-deals, DealsWallet.tsx) — same sw-* card language, but
-   the lip carries a deal SENTENCE ("Nightly AYCE crabs"), not a short venue
-   name. The headline may wrap to a second line instead of amputating the
-   offer mid-thought, so each tuck leaves a taller lip; and the stub's WHEN
-   column hugs its short time so TOWN never clips ("Downtown Frede…"). */
-.sw-deals .sw-name {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-/* 82px lip: two headline lines + the venue line (base deck lip is 62px). The
-   whole is-open ladder is restated because these later rules would otherwise
-   override the base ladder's first-child/is-open exceptions. */
-.sw-deals .sw-slot { margin-top: -104px; }
-.sw-deals .sw-slot:first-child { margin-top: 0; }
-.sw-deals .sw-slot.is-open { margin-top: -56px; }
-.sw-deals .sw-slot:first-child.is-open { margin-top: 0; }
-.sw-deals .sw-slot.is-open + .sw-slot { margin-top: 10px; }
-.sw-deals .sw-ledger { grid-template-columns: auto minmax(0, 1fr); }
-
 /* ============================================================================
    Saved page furniture (SavedList.tsx) — the almanac frame around the wallet:
    masthead, the On-now ruled running line, the plan-a-day rule, compact event

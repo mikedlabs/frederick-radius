@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           What we collect, plainly.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Last updated: 2026-06-30
+          Last updated: 2026-07-14
         </p>
       </header>
 
@@ -70,6 +70,12 @@ export default function PrivacyPage() {
             What you deliberately send us
           </h2>
           <ul className="ml-5 list-disc space-y-2">
+            <li>
+              <strong style={{ color: "var(--app-ink)" }}>Beta access email.</strong>{" "}
+              When you request beta access, we store your email and use it to
+              send and manage your personal access code. Our database and
+              email-delivery providers process it for us. We do not sell it.
+            </li>
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Corrections and feedback.</strong>{" "}
               If you email a correction, we get your message and email address so
@@ -121,7 +127,8 @@ export default function PrivacyPage() {
           </h2>
           <p>
             Clear your saves and preferences anytime by clearing this site&rsquo;s
-            data in your browser. To have a submission you sent us removed, email{" "}
+            data in your browser. To have a beta-access email, access code, or
+            submission you sent us removed, email{" "}
             <a
               href="mailto:hello@frederickradius.app?subject=Privacy%20request"
               className="font-semibold underline underline-offset-2"

@@ -1,5 +1,5 @@
 /**
- * GET /admin/beta-emails/export — the launch list as a CSV download.
+ * GET /admin/beta-emails/export — the beta-access list as a CSV download.
  *
  * Lives under /admin/ ON PURPOSE: the middleware Basic-Auth gate (ADMIN_USER /
  * ADMIN_PASSWORD, fail-closed) covers the whole /admin/* tree, so this export is

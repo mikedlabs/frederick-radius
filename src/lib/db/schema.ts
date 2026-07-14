@@ -312,11 +312,10 @@ export const push_subscriptions = pgTable(
  * BYPASSRLS server role touches it.
  */
 /**
- * beta_emails — the owned launch-announcement list (experience review, blind
- * spot #5: everyone who ever tried the beta was unreachable; launch day had no
- * channel). One optional field on /beta, nothing else — email + where it came
- * from. RLS deny-all like every table (server role only). Deleting a row is
- * the entire unsubscribe story until a real ESP is chosen.
+ * beta_emails — the beta-access email list. One field on /beta, used to mint,
+ * send, and manage a personal access code. RLS deny-all like every table
+ * (server role only). Deleting the row and its labeled beta code fulfills a
+ * removal request.
  */
 export const beta_emails = pgTable(
   "beta_emails",
