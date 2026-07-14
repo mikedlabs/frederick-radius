@@ -15,6 +15,7 @@ import { useBeenList } from "@/hooks/useBeenHere";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
+import MyTaps from "@/components/beer/MyTaps";
 import SavedWallet from "@/components/saved/SavedWallet";
 import SavedEventWallet from "@/components/saved/SavedEventWallet";
 import { fmtClockShort } from "@/components/saved/walletFacts";
@@ -1044,6 +1045,10 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           )}
         </section>
       )}
+
+      {/* My taps — beers saved from the beer taste finder (/beer). Its own
+          store type in the shared saved system; self-hides when empty. */}
+      <MyTaps />
 
       {/* The almanac colophon: every teaser demoted to one quiet ledger —
           the coming points layer, share, sync, and the notifications nudge
