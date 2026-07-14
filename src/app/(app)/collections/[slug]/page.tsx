@@ -167,14 +167,14 @@ export default async function CollectionPage({
         >
           <span>
             <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Not sure what to order?
+              Looking for a specific beer?
             </span>
             <span className="block text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-              Swipe the beers and we will point you to your breweries.
+              Search every beer and brewery, filter by style, or open the map.
             </span>
           </span>
           <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-            Find your beer →
+            Find a beer →
           </span>
         </Link>
       )}
