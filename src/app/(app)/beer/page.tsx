@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BREWERIES, BEER_HISTORY, ALL_BEERS } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
-import type { PlaceCardData } from "@/lib/loaders/places";
+import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
 import BeerFinder from "@/components/beer/BeerFinder";
 import MyTaps from "@/components/beer/MyTaps";
 import PageBloom from "@/components/ui/PageBloom";
@@ -16,9 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default function BeerPage() {
-  const breweryCards: PlaceCardData[] = BREWERIES.map((b) => clientPlaceBySlug(b.slug)).filter(
-    (p): p is PlaceCardData => Boolean(p),
-  );
+  // Slim the brewery cards (drops the heavy photo/hours blobs, keeps geom +
+  // open_status) so the finder's initial payload stays light.
+  const breweryCards: PlaceCardData[] = BREWERIES.map((b) => clientPlaceBySlug(b.slug))
+    .filter((p): p is PlaceCardData => Boolean(p))
+    .map(slimForList);
 
   return (
     <div className="relative space-y-8">
