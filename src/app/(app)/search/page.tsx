@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Tag } from "lucide-react";
+import { MapPin, Calendar, Building2, Tag, ArrowRight, DoorOpen } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
+import { primaryAnswerFor } from "@/lib/search/answer";
+import { CRAVING_BY_KEY } from "@/data/cravings";
 import SearchInput from "@/components/search/SearchInput";
 
 export const metadata: Metadata = {
@@ -100,6 +102,16 @@ export default async function SearchPage({
   for (const h of hits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
   const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
+  // Answer-first: a query like "coffee open now near me" leads with a direct
+  // answer that jumps to the nearest-open coffee, instead of only floating
+  // coffee up a text list the user has to scan. The ranked list stays below.
+  const answer = query ? primaryAnswerFor(query) : null;
+  const answerColor = answer
+    ? answer.key === "open-now"
+      ? "var(--app-positive)"
+      : CRAVING_BY_KEY[answer.key]?.color ?? "var(--app-brand)"
+    : "var(--app-brand)";
+
   return (
     <div className="space-y-5">
       <header className="space-y-2">
@@ -111,6 +123,34 @@ export default async function SearchPage({
         </h1>
         <SearchInput defaultValue={query} />
       </header>
+
+      {/* Answer-first lead: the direct answer to an intent query, above the
+          ranked list. Links to the nearest-open craving surface (or Open now). */}
+      {answer && (
+        <Link
+          href={answer.href}
+          aria-label={`${answer.label}: ${answer.kicker}`}
+          className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
+          style={{ borderColor: `color-mix(in srgb, ${answerColor} 34%, var(--app-border))`, background: "var(--app-bg-elevated)" }}
+        >
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+            style={{ background: `color-mix(in srgb, ${answerColor} 15%, transparent)`, color: answerColor }}
+          >
+            <DoorOpen className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {answer.label}
+            </span>
+            <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              {answer.kicker}
+            </span>
+          </span>
+          <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: answerColor }} />
+        </Link>
+      )}
 
       {!query && (
         <div className="space-y-3">
