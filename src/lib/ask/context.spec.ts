@@ -80,8 +80,20 @@ describe("eventContextLines", () => {
   });
 
   it("caps the block", () => {
-    const pool = Array.from({ length: 20 }, (_, i) => ev({ slug: `e${i}`, title: `Show ${i}` }));
-    expect(eventContextLines(pool, "today", WED_6PM).picked).toHaveLength(12);
+    const pool = Array.from({ length: 24 }, (_, i) => ev({ slug: `e${i}`, title: `Show ${i}` }));
+    expect(eventContextLines(pool, "today", WED_6PM).picked).toHaveLength(16);
+  });
+
+  it("query-relevant rows survive the cap (the second prod miss: 7 PM music past 16 earlier rows)", () => {
+    const noon = new Date("2026-07-15T12:00:00-04:00");
+    const early = Array.from({ length: 18 }, (_, i) =>
+      ev({ slug: `k${i}`, title: `Karaoke ${i}`, starts_at: "2026-07-15T17:00:00-04:00", ends_at: "2026-07-15T18:00:00-04:00" }),
+    );
+    const jam = ev({ slug: "jam", title: "Bluegrass Jam", category: "music", starts_at: "2026-07-15T19:00:00-04:00", ends_at: "2026-07-15T21:00:00-04:00" });
+    const { picked } = eventContextLines([...early, jam], "tonight", noon, "Music tonight");
+    expect(picked.some((e) => e.slug === "jam")).toBe(true);
+    // ...and the block stays chronological after the relevance cut.
+    expect(picked[picked.length - 1].slug).toBe("jam");
   });
 });
 

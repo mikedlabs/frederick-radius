@@ -92,7 +92,8 @@ export function eventContextLines(
   events: AskEvent[],
   anchor: TimeAnchor,
   now: Date,
-  cap = 12,
+  query = "",
+  cap = 16,
 ): { block: string; picked: AskEvent[] } {
   const bounds = buildHorizonBounds(now);
   const groups = groupByHorizon(events, bounds);
@@ -127,7 +128,16 @@ export function eventContextLines(
     label = "TODAY (including tonight)";
   }
 
-  picked = picked.slice(0, cap);
+  // The cap exists to bound tokens, but a CHRONOLOGICAL cap silently drops
+  // the late rows — twice now the 7 PM music sat past it while the model
+  // told users an earlier karaoke was "the only music tonight". Rank by
+  // query relevance BEFORE capping (so the asked-about rows always survive),
+  // then restore clock order for the block the model reads.
+  if (picked.length > cap) {
+    picked = rankForSources(picked, query)
+      .slice(0, cap)
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  }
   if (picked.length === 0) {
     return { block: `EVENTS ${label}: (no listed events in this window)\n`, picked };
   }

@@ -181,7 +181,7 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   if (anchor) {
     try {
       const { publicEvents } = await assembleUnifiedEvents(now);
-      const ctx = eventContextLines(publicEvents, anchor, now);
+      const ctx = eventContextLines(publicEvents, anchor, now, q);
       eventsBlock = `${ctx.block}\n`;
       for (const e of rankForSources(ctx.picked, q).slice(0, 3)) {
         sources.push({ slug: e.slug, name: e.title, category: "event", city: e.municipality_name ?? "", href: `/events/${e.slug}` });
