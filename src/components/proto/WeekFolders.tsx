@@ -61,7 +61,7 @@ export default function WeekFolders() {
                           <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: d.ink }} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline gap-2">
-                              <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.14em]" style={{ color: d.ink }}>{KIND_LABEL[it.kind]}</span>
+                              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: d.ink }}>{KIND_LABEL[it.kind]}</span>
                               <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{it.when}</span>
                             </div>
                             <h3 className="mt-0.5 font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>{it.title}</h3>

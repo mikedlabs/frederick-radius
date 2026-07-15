@@ -820,7 +820,7 @@ export default function EventsExplorer({
                           <div className="px-1 pt-1 text-center">
                             <Link
                               href="/events/calendar"
-                              className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                              className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
                               style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
                             >
                               {overflow} more on the calendar →

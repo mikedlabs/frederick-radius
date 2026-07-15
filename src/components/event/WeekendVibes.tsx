@@ -3,6 +3,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { ACCENTS } from "@/data/categories";
 import EventCard from "@/components/event/EventCard";
 
 /**
@@ -28,14 +29,14 @@ const VIBE_ORDER: Vibe[] = [
 ];
 
 const VIBE_META: Record<Vibe, { label: string; icon: LucideIcon; accent: string }> = {
-  // Accents reuse the category palette from src/data/categories.ts so a
-  // vibe header reads in the same color as its cards' left rail.
-  music:    { label: "Music",    icon: Music,     accent: "#7E2C6F" },
-  food:     { label: "Eat & drink", icon: Utensils, accent: "#A03A22" },
-  family:   { label: "Family",   icon: Baby,      accent: "#C99632" },
-  arts:     { label: "Arts",     icon: Palette,   accent: "#7E2C6F" },
-  outdoors: { label: "Outdoors", icon: Trees,     accent: "#1E6B3A" },
-  civic:    { label: "Civic",    icon: Building2, accent: "#2F5470" },
+  // Accents come from the shared ACCENTS palette (src/data/categories.ts)
+  // so a vibe header reads in the same hue everywhere it appears.
+  music:    { label: "Music",    icon: Music,     accent: ACCENTS.plum },
+  food:     { label: "Eat & drink", icon: Utensils, accent: ACCENTS.terracotta },
+  family:   { label: "Family",   icon: Baby,      accent: ACCENTS.amber },
+  arts:     { label: "Arts",     icon: Palette,   accent: ACCENTS.plum },
+  outdoors: { label: "Outdoors", icon: Trees,     accent: ACCENTS.catoctin },
+  civic:    { label: "Civic",    icon: Building2, accent: ACCENTS.slate },
   more:     { label: "More this weekend", icon: Sparkles, accent: "#6B5334" },
 };
 

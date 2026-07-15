@@ -157,7 +157,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
       )}
       <Link
         href={`/places/${p.slug}`}
-        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}
+        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand-press)" }}
       >
         Open page →
       </Link>

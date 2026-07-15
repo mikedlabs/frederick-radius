@@ -140,3 +140,28 @@ export function categoryKind(slug: string | undefined): "draw" | "utility" {
   if (c.parent) return CATEGORY_BY_SLUG[c.parent]?.kind ?? "draw";
   return "draw";
 }
+
+/**
+ * Decorative accent palette — the calmer, field-guide-adjacent hues used
+ * for vibe chips, plan presets, poster fallbacks, and map paint (softer
+ * than the full-saturation CATEGORIES colors, which stay the taxonomy's
+ * own identity).
+ *
+ * ONE source of truth (design review P2-2): these five hues were re-typed
+ * as raw hex in five components, and the slate had drifted — #2F5470 is
+ * the PRE-brand-deck value of `--app-cool` (#20506A). Mapbox GL paint
+ * cannot read CSS custom properties, so map layers import from here too.
+ * If you need one of these hues, import it; never re-type the hex.
+ */
+export const ACCENTS = {
+  /** Warm market terracotta — food/eat accents, MARC stations on the transit map. */
+  terracotta: "#A03A22",
+  /** Carroll Creek slate — civic/calm. Same value as `--app-cool`. */
+  slate: "#20506A",
+  /** Arts & music plum. */
+  plum: "#7E2C6F",
+  /** Catoctin green — parks/outdoors (matches the outdoors category color). */
+  catoctin: "#1E6B3A",
+  /** Golden-hour amber — family/active accents. */
+  amber: "#C99632",
+} as const;

@@ -23,7 +23,7 @@ export default function FieldNoteTag({
     <span
       title="Verified local intel on file: happy hour, a deal, parking, or an insider tip"
       className={`inline-flex shrink-0 items-center gap-1 rounded-full font-mono font-semibold uppercase leading-none tracking-[0.1em] ${
-        compact ? "px-1.5 py-[3px] text-[8.5px]" : "px-2 py-[3.5px] text-[9.5px]"
+        compact ? "px-1.5 py-[3px] text-[9px]" : "px-2 py-[3.5px] text-[9.5px]"
       } ${className}`}
       style={{ background: "var(--app-brand-tint-14)", color: "var(--app-brand-press)" }}
     >
@@ -55,7 +55,7 @@ export function DealHookTag({
     <span
       title={`Verified deal on file: ${label}`}
       className={`inline-flex shrink-0 items-center gap-1 rounded-full font-mono font-bold uppercase leading-none tracking-[0.08em] tabular-nums ${
-        compact ? "px-1.5 py-[3px] text-[8.5px]" : "px-2 py-[3.5px] text-[9.5px]"
+        compact ? "px-1.5 py-[3px] text-[9px]" : "px-2 py-[3.5px] text-[9.5px]"
       } ${className}`}
       style={{
         background: "color-mix(in srgb, var(--app-accent) 16%, transparent)",
