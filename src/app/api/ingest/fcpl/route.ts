@@ -80,15 +80,34 @@ export async function GET(req: NextRequest) {
   const stats: UpsertStats = emptyStats();
   const perMunicipality: Record<string, number> = {};
   let failed = 0;
+  let budgetStopped = 0;
 
-  for (const { event, municipality, category } of mapped) {
-    perMunicipality[municipality] = (perMunicipality[municipality] ?? 0) + 1;
-    if (dry || !sql) continue;
-    try {
-      await upsertEvent(sql, { sourceDomain: FCPL_SOURCE_DOMAIN, municipality, category }, event, stats);
-    } catch {
-      failed++;
+  // Bounded-concurrency upserts with a hard time budget. The old strictly
+  // sequential loop scaled linearly with the feed and outgrew maxDuration
+  // as the library added programs — Vercel killed the function mid-run and
+  // the run-log row dangled as "running" with nothing revalidated. Small
+  // pool (one shared sql connection), and past the budget we STOP CLEANLY
+  // and say so in ingest_runs instead of being killed silently. The daily
+  // re-run resumes where the upserted rows left off (idempotent upserts).
+  const BUDGET_MS = 240_000; // maxDuration 300s minus feed fetch + geocode headroom
+  const POOL = 8;
+  for (let i = 0; i < mapped.length; i += POOL) {
+    if (Date.now() - t0 > BUDGET_MS && !dry && sql) {
+      budgetStopped = mapped.length - i;
+      break;
     }
+    const chunk = mapped.slice(i, i + POOL);
+    await Promise.all(
+      chunk.map(async ({ event, municipality, category }) => {
+        perMunicipality[municipality] = (perMunicipality[municipality] ?? 0) + 1;
+        if (dry || !sql) return;
+        try {
+          await upsertEvent(sql, { sourceDomain: FCPL_SOURCE_DOMAIN, municipality, category }, event, stats);
+        } catch {
+          failed++;
+        }
+      }),
+    );
   }
 
   // Geocode pass after ingest (skipped on dry run).
@@ -102,7 +121,11 @@ export async function GET(req: NextRequest) {
   }
 
   await finishIngestRun(runId, {
-    status: "ok",
+    // A budget stop is loud, not "ok": the admin ingest_runs board must show
+    // that rows were left on the table (the silent version of this cost two
+    // months of library coverage).
+    status: budgetStopped > 0 ? "error" : "ok",
+    error: budgetStopped > 0 ? `time budget: stopped with ${budgetStopped} of ${mapped.length} rows remaining` : undefined,
     records_in: mapped.length,
     records_upserted: stats.normUpserted,
     records_failed: failed,
@@ -120,6 +143,7 @@ export async function GET(req: NextRequest) {
     dry,
     feed_records: feed.length,
     mapped: mapped.length,
+    budget_stopped: budgetStopped,
     failed,
     perMunicipality,
     stats: dry ? undefined : stats,
