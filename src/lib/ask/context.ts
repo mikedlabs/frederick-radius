@@ -51,19 +51,32 @@ export function clockLine(now: Date): string {
   return `${date}, ${hour}`;
 }
 
-export type TimeAnchor = "today" | "tomorrow" | "weekend";
+export type TimeAnchor = "today" | "tonight" | "tomorrow" | "weekend";
 
 /**
  * Which real-time window a question is anchored to, or null for the
  * timeless kind ("best coffee?"). Checked most-specific first so
- * "tomorrow night" reads as tomorrow, not tonight.
+ * "tomorrow night" reads as tomorrow, not tonight. "tonight" is its own
+ * anchor: a whole-day window capped chronologically spends the line
+ * budget on afternoon programs and CHOPS the evening — the live check
+ * against prod answered "Music tonight" with "karaoke is the only music
+ * event" while a 7 PM show sat past the cap.
  */
 export function timeAnchorOf(query: string): TimeAnchor | null {
   const q = query.toLowerCase();
   if (/\b(this weekend|weekend|saturday|sunday)\b/.test(q)) return "weekend";
   if (/\btomorrow\b/.test(q)) return "tomorrow";
-  if (/\b(tonight|today|this (evening|afternoon|morning)|right now|now|happening|going on)\b/.test(q)) return "today";
+  if (/\b(tonight|this evening)\b/.test(q)) return "tonight";
+  if (/\b(today|this (afternoon|morning)|right now|now|happening|going on)\b/.test(q)) return "today";
   return null;
+}
+
+/** Eastern wall-clock hour (0-23) of an ISO instant. */
+function easternHour(iso: string): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" })
+      .format(new Date(iso)),
+  );
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -102,6 +115,13 @@ export function eventContextLines(
       return Number.isFinite(t) && t >= start && t < end;
     });
     label = "TOMORROW";
+  } else if (anchor === "tonight") {
+    // Evening only: what's still ahead (or running) from late afternoon on.
+    // All-day listings stay — a festival's last hours are a real "tonight".
+    picked = [...of("live"), ...of("today")].filter(
+      (e) => e.is_all_day || easternHour(e.starts_at) >= 16,
+    );
+    label = "TONIGHT";
   } else {
     picked = [...of("live"), ...of("today")];
     label = "TODAY (including tonight)";
