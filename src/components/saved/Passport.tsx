@@ -117,6 +117,74 @@ function stampDay(iso: string): string {
     .replace(/,\s*(\d{2})$/, " ’$1");
 }
 
+/* ── Pictograms ────────────────────────────────────────────────────
+   Every stamp carries a small line engraving, the way real park
+   cancellation stamps do: Frederick's clustered spires, Brunswick's
+   rails, Thurmont's peaks, a pint for the beer stamps. Drawn as plain
+   stroke paths in the 100×100 stamp space, centered around (50,34);
+   the ink filter roughens them into the pressed look. Static markup,
+   no user input, so the innerHTML injection is safe. */
+const ART: Record<string, string> = {
+  "first-mark":
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M43,21 h14 v24 l-7,-6 -7,6 z"/></g>',
+  "the-dozen":
+    '<g stroke="none">' +
+    [0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => `<circle cx="${40 + c * 6.6}" cy="${25 + r * 7.2}" r="1.9"/>`).join("")).join("") +
+    "</g>",
+  "boots-on":
+    '<g stroke-linejoin="round" stroke-width="2"><path fill="none" d="M44,20 c7,-2 11,2 10,8 c-1,5 -4,7 -5,11 l-9,0 c-1.5,-6 -0.5,-13 4,-19 z"/><ellipse cx="45.5" cy="45" rx="4.5" ry="3" fill="none"/></g>',
+  "ten-boots":
+    '<g stroke-linejoin="round" stroke-width="1.8"><path fill="none" d="M38,22 c5.5,-1.5 8.5,1.5 8,6 c-0.8,4 -3,5.5 -4,8.5 l-7,0 c-1.2,-4.5 -0.5,-10 3,-14.5 z"/><ellipse cx="39" cy="41" rx="3.5" ry="2.4" fill="none"/><path fill="none" d="M56,24 c5.5,-1.5 8.5,1.5 8,6 c-0.8,4 -3,5.5 -4,8.5 l-7,0 c-1.2,-4.5 -0.5,-10 3,-14.5 z"/><ellipse cx="57" cy="43" rx="3.5" ry="2.4" fill="none"/></g>',
+  "margin-writer":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path fill="none" d="M50,19 l9,11 c0,8 -5,12 -9,16 c-4,-4 -9,-8 -9,-16 z"/><path fill="none" d="M50,27 v9"/><circle cx="50" cy="38" r="1.6" stroke="none"/></g>',
+  "on-tap":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path fill="none" d="M42,26 h16 l-2,20 h-12 z"/><circle cx="44" cy="24" r="3" stroke="none"/><circle cx="50" cy="22.5" r="3.4" stroke="none"/><circle cx="56" cy="24" r="3" stroke="none"/><path d="M46,32 v8 M52,32 v8" stroke-width="1.4" fill="none"/></g>',
+  "flight-six":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="1.8"><path fill="none" d="M34,24 h9 l-1.2,13 h-6.6 z M45.5,24 h9 l-1.2,13 h-6.6 z M57,24 h9 l-1.2,13 h-6.6 z"/><path fill="none" stroke-width="2" d="M32,43 h36"/></g>',
+  "brewery-trail":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="1.9"><path fill="none" d="M50,19 c6,3.5 8.5,9 7,15 c-1.5,6 -4.5,9 -7,11.5 c-2.5,-2.5 -5.5,-5.5 -7,-11.5 c-1.5,-6 1,-11.5 7,-15 z"/><path fill="none" d="M50,22 v21 M45,28 c1.5,2 3.5,3 5,3.5 c1.5,-0.5 3.5,-1.5 5,-3.5 M44.5,35 c1.7,2 3.8,3 5.5,3.5 c1.7,-0.5 3.8,-1.5 5.5,-3.5"/></g>',
+  "calendar-keeper":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><rect x="39" y="24" width="22" height="20" rx="1.5" fill="none"/><path fill="none" d="M39,31 h22 M45,24 v-4 M55,24 v-4"/><circle cx="50" cy="38" r="2" stroke="none"/></g>',
+  "four-seasons":
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><circle cx="50" cy="33" r="13" fill="none"/><path fill="none" d="M50,20 v26 M37,33 h26"/><circle cx="44" cy="27" r="1.5" stroke="none"/><circle cx="56" cy="27" r="1.5" stroke="none"/><circle cx="44" cy="39" r="1.5" stroke="none"/><circle cx="56" cy="39" r="1.5" stroke="none"/></g>',
+  "full-county":
+    '<g stroke-linejoin="round" stroke-width="2"><path fill="none" d="M50,19 l3.9,8.3 9.1,1.1 -6.7,6.3 1.7,9 -8,-4.5 -8,4.5 1.7,-9 -6.7,-6.3 9.1,-1.1 z"/></g>',
+};
+const TOWN_ART: Record<string, string> = {
+  frederick:
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M38,46 v-9 l4,-7 4,7 v9"/><path d="M47,46 v-13 l3,-6 3,6 v13"/><path d="M57,46 v-8 l4,-6 4,6 v8"/><path d="M42,30 v-3 M50,27 v-3 M61,32 v-3"/></g>',
+  brunswick:
+    '<g fill="none" stroke-linecap="round" stroke-width="2"><path d="M32,36 c12,-5 24,-5 36,0"/><path d="M32,44 c12,-5 24,-5 36,0"/><path d="M37,34.6 l-1,7.4 M44,32.6 l-0.6,7.6 M50,32 l0,7.7 M56,32.6 l0.6,7.6 M63,34.6 l1,7.4" stroke-width="1.5"/></g>',
+  thurmont:
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M34,46 l9,-16 6,10 5,-8 12,14"/><path d="M41,34 l2,3 2,-3"/></g>',
+  emmitsburg:
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M41,46 v-11 a9,9 0 0,1 18,0 v11"/><path d="M50,25 v-6 M46.8,21.8 h6.4"/></g>',
+};
+const TOWN_DEFAULT =
+  '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M41,46 v-10 l9,-7 9,7 v10 z"/><path d="M47,46 v-6 h6 v6"/><path d="M50,29 v-7 M47.5,24.5 h5"/></g>';
+
+function artFor(key: string): string {
+  if (ART[key]) return ART[key];
+  if (key.startsWith("town-")) return TOWN_ART[key.slice(5)] ?? TOWN_DEFAULT;
+  return TOWN_DEFAULT;
+}
+
+/** Scalloped rosette edge for the gold stamps — 26 outward arcs. */
+function scallopPath(cx: number, cy: number, R: number, n: number, amp: number): string {
+  let d = "";
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI * 2;
+    const a1 = ((i + 1) / n) * Math.PI * 2;
+    const am = (a0 + a1) / 2;
+    const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
+    const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+    const xm = cx + (R + amp) * Math.cos(am), ym = cy + (R + amp) * Math.sin(am);
+    d += (i ? "" : `M ${x0.toFixed(2)},${y0.toFixed(2)} `) + `Q ${xm.toFixed(2)},${ym.toFixed(2)} ${x1.toFixed(2)},${y1.toFixed(2)} `;
+  }
+  return d + "Z";
+}
+const GOLD_EDGE = scallopPath(50, 50, 45.5, 26, 2.6);
+
 /** Deterministic per-key hash → stable "hand-pressed" irregularity:
  *  rotation, a small vertical drift, and a slight size variance, so the
  *  spread reads organically stamped rather than laid out on a grid. */
@@ -170,8 +238,13 @@ function Stamp({ state, date, index }: { state: StampState; date: string; index:
           <path id={`arc-b-${def.key}`} d="M 50,50 m -35,0 a 35,35 0 1,0 70,0" fill="none" />
         </defs>
         <g filter={`url(#${fid})`} fill="currentColor" stroke="currentColor" opacity="0.92">
-          <circle cx="50" cy="50" r="47" fill="none" strokeWidth="2.4" />
-          <circle cx="50" cy="50" r="43" fill="none" strokeWidth="0.9" />
+          {/* gold stamps get the scalloped rosette edge; the rest press a plain ring */}
+          {def.tone === "gold" ? (
+            <path d={GOLD_EDGE} fill="none" strokeWidth="1.8" />
+          ) : (
+            <circle cx="50" cy="50" r="47" fill="none" strokeWidth="2.4" />
+          )}
+          <circle cx="50" cy="50" r="42.5" fill="none" strokeWidth="0.9" />
           {/* rim text */}
           <text fontSize="9.5" fontWeight="700" letterSpacing="1.6" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
             <textPath href={`#arc-t-${def.key}`} startOffset="50%" textAnchor="middle">
@@ -183,23 +256,23 @@ function Stamp({ state, date, index }: { state: StampState; date: string; index:
               {def.sub.toUpperCase()}
             </textPath>
           </text>
-          {/* center plate: separators + earned day */}
-          <path d="M 30,42 h 40" strokeWidth="0.8" />
-          <path d="M 30,58 h 40" strokeWidth="0.8" />
-          <circle cx="23.5" cy="50" r="1.3" stroke="none" />
-          <circle cx="76.5" cy="50" r="1.3" stroke="none" />
+          {/* the engraving — static line art, no user input */}
+          <g dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
+          {/* date banner under the engraving */}
+          <path d="M 33,54 h 34" strokeWidth="0.8" />
           <text
             x="50"
-            y="53.5"
+            y="62.5"
             textAnchor="middle"
-            fontSize="9"
+            fontSize="8"
             fontWeight="700"
-            letterSpacing="0.6"
+            letterSpacing="0.5"
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
             {date || "EARNED"}
           </text>
+          <path d="M 33,66.5 h 34" strokeWidth="0.8" />
         </g>
       </svg>
       <figcaption className="sr-only">{def.hint}</figcaption>
