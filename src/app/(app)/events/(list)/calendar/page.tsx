@@ -45,7 +45,7 @@ export default async function CalendarPage({
           </div>
           <Link
             href="/events"
-            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+            className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
             <List className="h-3.5 w-3.5" strokeWidth={2} aria-hidden /> List view

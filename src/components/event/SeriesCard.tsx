@@ -142,7 +142,7 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-medium"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             <CalendarPlus className="h-3 w-3" aria-hidden /> Event page
           </a>

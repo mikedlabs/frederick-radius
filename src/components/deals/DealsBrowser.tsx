@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { townAccent } from "@/lib/townAccent";
 import Link from "next/link";
 import Image from "next/image";
-import { Tag } from "lucide-react";
+import { BadgeCheck, Tag } from "lucide-react";
 import type { DealRow } from "@/lib/loaders/todaysDeals";
 import DealLines from "@/components/happy/DealLines";
 
@@ -61,7 +61,7 @@ function RowCard({ r, accent, hideTown }: { r: DealRow; accent?: string; hideTow
             {!hideTown && r.town && <span className="shrink-0 whitespace-pre font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
           </h3>
           {r.verified ? (
-            <span aria-label="verified" title="verified at the source" className="shrink-0 font-mono text-[11px] font-bold leading-none" style={{ color: "var(--app-positive)" }}>✓</span>
+            <BadgeCheck role="img" aria-label="verified at the source" className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-positive)" }} />
           ) : null}
         </div>
         {/* WHEN (accent mono, when stated), then the offer as clean clause lines

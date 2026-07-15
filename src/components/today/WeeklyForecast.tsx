@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getNwsForecast, iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { ACCENTS } from "@/data/categories";
 
 const ICONS = {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
@@ -23,7 +24,7 @@ const TINT: Record<keyof typeof ICONS, string> = {
   Sun: "#E8A33D",
   CloudSun: "#C99632",
   Cloud: "#8A8884",
-  CloudRain: "#2F5470",
+  CloudRain: ACCENTS.slate,
   CloudSnow: "#7CA8D8",
   CloudLightning: "#7E2C6F",
   CloudFog: "#9A9690",

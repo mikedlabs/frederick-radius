@@ -22,6 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { resetModeState } from "@/hooks/useMode";
+import { ACCENTS } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import {
   getHomeMuni,
@@ -58,10 +59,10 @@ const INTEREST_OPTIONS: Array<{
   Icon: typeof Utensils;
   color: string;
 }> = [
-  { slug: "food", label: "Eat & drink", Icon: Utensils, color: "#A03A22" },
-  { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: "#1E6B3A" },
-  { slug: "arts", label: "Arts & Culture", Icon: Palette, color: "#7E2C6F" },
-  { slug: "family", label: "Family", Icon: Baby, color: "#C99632" },
+  { slug: "food", label: "Eat & drink", Icon: Utensils, color: ACCENTS.terracotta },
+  { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: ACCENTS.catoctin },
+  { slug: "arts", label: "Arts & Culture", Icon: Palette, color: ACCENTS.plum },
+  { slug: "family", label: "Family", Icon: Baby, color: ACCENTS.amber },
   { slug: "sports", label: "Sports", Icon: Activity, color: "#0F8A5F" },
   { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: "#B26B00" },
   { slug: "wellness", label: "Wellness", Icon: Heart, color: "#A02929" },

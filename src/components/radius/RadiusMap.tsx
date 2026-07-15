@@ -9,7 +9,7 @@ import LiveBuses from "@/components/map/LiveBuses";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import { installCountySpotlight } from "@/components/map/countySpotlight";
@@ -51,9 +51,9 @@ const COUNTY_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 const MODE_HEX: Partial<Record<TravelMode, string>> = {
-  walk: "#2F5470",
+  walk: ACCENTS.slate,
   bike: "#3B7A52",
-  drive: "#A03A22",
+  drive: ACCENTS.terracotta,
 };
 
 /** 72-step polygon approximating a circle of `meters` around `center`. */
@@ -173,7 +173,7 @@ export default function RadiusMap({
   onSelectPlace?: (slug: string) => void;
   height?: string;
 }) {
-  const accentHex = MODE_HEX[mode] ?? "#2F5470";
+  const accentHex = MODE_HEX[mode] ?? ACCENTS.slate;
   const mapRef = useRef<MapRef | null>(null);
   // Map layers in the DEFAULT (Nearby) map — the GIS overlays were only
   // reachable in Whole-county mode before, so the field-guide layers

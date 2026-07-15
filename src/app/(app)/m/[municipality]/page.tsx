@@ -198,7 +198,7 @@ export default async function MunicipalityPage(
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
           {townPhoto && (
-            <p className="absolute bottom-1 right-2 z-10 font-mono text-[8.5px] tracking-wide text-white/55">
+            <p className="absolute bottom-1 right-2 z-10 font-mono text-[9px] tracking-wide text-white/55">
               {townPhoto.author} · {townPhoto.license} · Wikimedia
             </p>
           )}

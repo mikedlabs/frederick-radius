@@ -945,7 +945,7 @@ export default function RadiusBuilder({
                 className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
                 style={{
                   background: "var(--app-bg-elevated)",
-                  color: "var(--app-brand)",
+                  color: "var(--app-brand-press)",
                   border: "1px solid color-mix(in srgb, var(--app-brand) 50%, var(--app-border))",
                 }}
               >
@@ -1191,7 +1191,7 @@ export default function RadiusBuilder({
                     >
                       <span
                         className="text-[10px] font-bold uppercase tracking-wide"
-                        style={{ color: "var(--app-brand)" }}
+                        style={{ color: "var(--app-brand-press)" }}
                       >
                         {parts.monthShort}
                       </span>
@@ -1226,7 +1226,7 @@ export default function RadiusBuilder({
             <Link
               href="/events"
               className="inline-flex items-center gap-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-press)" }}
             >
               All {eventsInReach.length} within reach on the events page →
             </Link>
@@ -1484,7 +1484,7 @@ export default function RadiusBuilder({
                 type="button"
                 onClick={() => toggleExpand(g.key)}
                 className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
-                style={{ color: "var(--app-brand)" }}
+                style={{ color: "var(--app-brand-press)" }}
               >
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Map, { Source, Layer } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
+import { ACCENTS } from "@/data/categories";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
@@ -255,8 +256,10 @@ export default function TransitMap({
             id="transit-routes-line"
             type="line"
             paint={{
-              // Carroll Creek slate, the brand's "calm civic" hue.
-              "line-color": "#2F5470",
+              // Carroll Creek slate, the brand's "calm civic" hue. GL paint
+              // can't read CSS vars, so the shared ACCENTS constant keeps
+              // the map on-token (slate === --app-cool).
+              "line-color": ACCENTS.slate,
               "line-width": 3,
               "line-opacity": 0.8,
             }}
@@ -319,7 +322,7 @@ export default function TransitMap({
                   11, 3,
                   14, 5,
                 ],
-                "circle-color": "#2F5470",
+                "circle-color": ACCENTS.slate,
                 "circle-stroke-color": "#ffffff",
                 "circle-stroke-width": 1.2,
                 "circle-opacity": 0.92,
@@ -349,7 +352,7 @@ export default function TransitMap({
             type="circle"
             paint={{
               "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 7],
-              "circle-color": "#A03A22",
+              "circle-color": ACCENTS.terracotta,
               "circle-stroke-color": "#ffffff",
               "circle-stroke-width": 2,
             }}
@@ -365,7 +368,7 @@ export default function TransitMap({
               "text-optional": true,
             }}
             paint={{
-              "text-color": "#A03A22",
+              "text-color": ACCENTS.terracotta,
               "text-halo-color": "#ffffff",
               "text-halo-width": 1.5,
             }}

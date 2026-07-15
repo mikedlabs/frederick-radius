@@ -257,7 +257,7 @@ export default function NearbyNow() {
           <Link
             href="/events"
             className="font-semibold"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             See what’s on across the county
           </Link>

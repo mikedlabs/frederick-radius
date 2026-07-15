@@ -393,7 +393,7 @@ export default function SearchOverlay({
               The North Star front door, on real data. */}
           {hasAnswer && (
             <div className="border-b px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "color-mix(in srgb, var(--app-brand) 5%, transparent)" }}>
-              <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand)" }}>Direct answer</p>
+              <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand-press)" }}>Direct answer</p>
               {quickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
                   {quickAnswers.map((qa) => {

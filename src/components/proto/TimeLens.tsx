@@ -47,7 +47,7 @@ function Marker({ min, label, total = 1439 }: { min: number | null; label: strin
     <div className="pointer-events-none absolute top-0 h-full" style={{ left }}>
       <div className="h-full w-px" style={{ background: "rgba(255,255,255,0.55)" }} />
       <span
-        className="absolute top-1 -translate-x-1/2 whitespace-nowrap rounded px-1 font-mono text-[8px] uppercase tracking-wide"
+        className="absolute top-1 -translate-x-1/2 whitespace-nowrap rounded px-1 font-mono text-[9px] uppercase tracking-wide"
         style={{ background: "rgba(0,0,0,0.35)", color: "rgba(255,255,255,0.9)" }}
       >
         {label}
@@ -135,7 +135,7 @@ export default function TimeLens({ windows, events, nowMin }: { windows: Windows
                 className="flex items-baseline gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
                 style={{ borderColor: "var(--app-border)" }}
               >
-                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-brand)" }}>{fmt(e.startMin)}</span>
+                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>{fmt(e.startMin)}</span>
                 <span className="min-w-0">
                   <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{e.title}</span>
                   <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{e.venue}</span>

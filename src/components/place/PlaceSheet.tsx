@@ -639,7 +639,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             href={`/places/${place.slug}`}
             onClick={() => haptic("light")}
             className="inline-flex items-center gap-1 font-medium"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             See full page <ExternalLink className="h-3 w-3" aria-hidden />
           </Link>
