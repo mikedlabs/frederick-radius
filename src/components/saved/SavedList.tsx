@@ -33,6 +33,7 @@ import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isEventToday } from "@/lib/eventWhenLabel";
+import Passport from "@/components/saved/Passport";
 import type { ReactNode } from "react";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
@@ -952,6 +953,11 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           </ul>
         </section>
       )}
+
+      {/* Passport — the earned layer. Field-guide cancellation stamps derived
+          from real local signals (saves, been-here, notes, taps); presses the
+          first-earned date into each stamp. Self-hides for a brand-new user. */}
+      <Passport placesBySlug={placesBySlug} />
 
       {/* Recently viewed — soft signal. Surfaces places the user has opened
           (via PlaceSheet) but hasn't explicitly bookmarked. Quieter visual
