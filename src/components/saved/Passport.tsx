@@ -126,42 +126,42 @@ function stampDay(iso: string): string {
    no user input, so the innerHTML injection is safe. */
 const ART: Record<string, string> = {
   "first-mark":
-    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M43,21 h14 v24 l-7,-6 -7,6 z"/></g>',
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path d="M25,22 h18 v28 l-9,-7.5 -9,7.5 z"/></g>',
   "the-dozen":
     '<g stroke="none">' +
-    [0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => `<circle cx="${40 + c * 6.6}" cy="${25 + r * 7.2}" r="1.9"/>`).join("")).join("") +
+    [0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => `<circle cx="${19 + c * 10}" cy="${26 + r * 11}" r="2.6"/>`).join("")).join("") +
     "</g>",
   "boots-on":
-    '<g stroke-linejoin="round" stroke-width="2"><path fill="none" d="M44,20 c7,-2 11,2 10,8 c-1,5 -4,7 -5,11 l-9,0 c-1.5,-6 -0.5,-13 4,-19 z"/><ellipse cx="45.5" cy="45" rx="4.5" ry="3" fill="none"/></g>',
+    '<g stroke-linejoin="round" stroke-width="2.2"><path fill="none" d="M26,22 c9,-2.6 14,2.6 13,10 c-1.2,6 -4.8,8.6 -6,13.4 l-11.4,0 c-1.8,-7.4 -0.6,-16 4.4,-23.4 z"/><ellipse cx="28" cy="53" rx="5.6" ry="3.8" fill="none"/></g>',
   "ten-boots":
-    '<g stroke-linejoin="round" stroke-width="1.8"><path fill="none" d="M38,22 c5.5,-1.5 8.5,1.5 8,6 c-0.8,4 -3,5.5 -4,8.5 l-7,0 c-1.2,-4.5 -0.5,-10 3,-14.5 z"/><ellipse cx="39" cy="41" rx="3.5" ry="2.4" fill="none"/><path fill="none" d="M56,24 c5.5,-1.5 8.5,1.5 8,6 c-0.8,4 -3,5.5 -4,8.5 l-7,0 c-1.2,-4.5 -0.5,-10 3,-14.5 z"/><ellipse cx="57" cy="43" rx="3.5" ry="2.4" fill="none"/></g>',
+    '<g stroke-linejoin="round" stroke-width="2"><path fill="none" d="M18,26 c6.5,-1.9 10,1.9 9.4,7.2 c-0.9,4.4 -3.5,6.2 -4.4,9.7 l-8.2,0 c-1.3,-5.3 -0.4,-11.6 3.2,-16.9 z"/><ellipse cx="19.5" cy="48" rx="4" ry="2.8" fill="none"/><path fill="none" d="M40,28 c6.5,-1.9 10,1.9 9.4,7.2 c-0.9,4.4 -3.5,6.2 -4.4,9.7 l-8.2,0 c-1.3,-5.3 -0.4,-11.6 3.2,-16.9 z"/><ellipse cx="41.5" cy="50" rx="4" ry="2.8" fill="none"/></g>',
   "margin-writer":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path fill="none" d="M50,19 l9,11 c0,8 -5,12 -9,16 c-4,-4 -9,-8 -9,-16 z"/><path fill="none" d="M50,27 v9"/><circle cx="50" cy="38" r="1.6" stroke="none"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path fill="none" d="M34,22 l11,13 c0,10 -6,14.5 -11,19 c-5,-4.5 -11,-9 -11,-19 z"/><path fill="none" d="M34,31 v11"/><circle cx="34" cy="45" r="1.9" stroke="none"/></g>',
   "on-tap":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path fill="none" d="M42,26 h16 l-2,20 h-12 z"/><circle cx="44" cy="24" r="3" stroke="none"/><circle cx="50" cy="22.5" r="3.4" stroke="none"/><circle cx="56" cy="24" r="3" stroke="none"/><path d="M46,32 v8 M52,32 v8" stroke-width="1.4" fill="none"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path fill="none" d="M22,28 h22 l-2.8,26 h-16.4 z"/><circle cx="25" cy="25" r="4" stroke="none"/><circle cx="33" cy="23" r="4.6" stroke="none"/><circle cx="41" cy="25" r="4" stroke="none"/><path d="M28,36 v11 M37,36 v11" stroke-width="1.6" fill="none"/><path fill="none" d="M44,33 h3.5 a5,6 0 0 1 0,12 h-2.6" stroke-width="1.9"/></g>',
   "flight-six":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="1.8"><path fill="none" d="M34,24 h9 l-1.2,13 h-6.6 z M45.5,24 h9 l-1.2,13 h-6.6 z M57,24 h9 l-1.2,13 h-6.6 z"/><path fill="none" stroke-width="2" d="M32,43 h36"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path fill="none" d="M14,26 h11 l-1.5,16 h-8 z M29.5,26 h11 l-1.5,16 h-8 z M45,26 h11 l-1.5,16 h-8 z"/><path fill="none" stroke-width="2.2" d="M12,50 h46"/></g>',
   "brewery-trail":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="1.9"><path fill="none" d="M50,19 c6,3.5 8.5,9 7,15 c-1.5,6 -4.5,9 -7,11.5 c-2.5,-2.5 -5.5,-5.5 -7,-11.5 c-1.5,-6 1,-11.5 7,-15 z"/><path fill="none" d="M50,22 v21 M45,28 c1.5,2 3.5,3 5,3.5 c1.5,-0.5 3.5,-1.5 5,-3.5 M44.5,35 c1.7,2 3.8,3 5.5,3.5 c1.7,-0.5 3.8,-1.5 5.5,-3.5"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.1"><path fill="none" d="M34,20 c7.5,4.4 10.6,11.3 8.8,18.8 c-1.9,7.5 -5.6,11.3 -8.8,14.4 c-3.2,-3.1 -6.9,-6.9 -8.8,-14.4 c-1.9,-7.5 1.2,-14.4 8.8,-18.8 z"/><path fill="none" d="M34,24 v26 M27.5,31 c2,2.5 4.5,3.7 6.5,4.3 c2,-0.6 4.5,-1.8 6.5,-4.3 M27,39.5 c2.2,2.5 4.8,3.7 7,4.3 c2.2,-0.6 4.8,-1.8 7,-4.3" stroke-width="1.7"/></g>',
   "calendar-keeper":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><rect x="39" y="24" width="22" height="20" rx="1.5" fill="none"/><path fill="none" d="M39,31 h22 M45,24 v-4 M55,24 v-4"/><circle cx="50" cy="38" r="2" stroke="none"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><rect x="21" y="24" width="26" height="24" rx="2" fill="none"/><path fill="none" d="M21,32.5 h26 M28,24 v-5 M40,24 v-5"/><circle cx="34" cy="41.5" r="2.4" stroke="none"/></g>',
   "four-seasons":
-    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><circle cx="50" cy="33" r="13" fill="none"/><path fill="none" d="M50,20 v26 M37,33 h26"/><circle cx="44" cy="27" r="1.5" stroke="none"/><circle cx="56" cy="27" r="1.5" stroke="none"/><circle cx="44" cy="39" r="1.5" stroke="none"/><circle cx="56" cy="39" r="1.5" stroke="none"/></g>',
+    '<g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><circle cx="34" cy="40" r="15" fill="none"/><path fill="none" d="M34,25 v30 M19,40 h30"/><circle cx="27" cy="33" r="1.8" stroke="none"/><circle cx="41" cy="33" r="1.8" stroke="none"/><circle cx="27" cy="47" r="1.8" stroke="none"/><circle cx="41" cy="47" r="1.8" stroke="none"/></g>',
   "full-county":
-    '<g stroke-linejoin="round" stroke-width="2"><path fill="none" d="M50,19 l3.9,8.3 9.1,1.1 -6.7,6.3 1.7,9 -8,-4.5 -8,4.5 1.7,-9 -6.7,-6.3 9.1,-1.1 z"/></g>',
+    '<g stroke-linejoin="round" stroke-width="2.2"><path fill="none" d="M34,26 l4.9,10.4 11.4,1.4 -8.4,7.9 2.1,11.3 -10,-5.6 -10,5.6 2.1,-11.3 -8.4,-7.9 11.4,-1.4 z"/></g>',
 };
 const TOWN_ART: Record<string, string> = {
   frederick:
-    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M38,46 v-9 l4,-7 4,7 v9"/><path d="M47,46 v-13 l3,-6 3,6 v13"/><path d="M57,46 v-8 l4,-6 4,6 v8"/><path d="M42,30 v-3 M50,27 v-3 M61,32 v-3"/></g>',
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path d="M18,58 v-12 l4,-7 4,7 v12"/><path d="M30,58 v-17 l4,-7 4,7 v17"/><path d="M42,58 v-11 l4,-6.5 4,6.5 v11"/><path d="M22,36 v-3.5 M34,31 v-3.5 M46,37.5 v-3.5"/><path d="M12,58 h44" stroke-width="1.6"/></g>',
   brunswick:
-    '<g fill="none" stroke-linecap="round" stroke-width="2"><path d="M32,36 c12,-5 24,-5 36,0"/><path d="M32,44 c12,-5 24,-5 36,0"/><path d="M37,34.6 l-1,7.4 M44,32.6 l-0.6,7.6 M50,32 l0,7.7 M56,32.6 l0.6,7.6 M63,34.6 l1,7.4" stroke-width="1.5"/></g>',
+    '<g fill="none" stroke-linecap="round" stroke-width="2.2"><path d="M10,42 c16,-8 32,-8 48,0"/><path d="M10,54 c16,-8 32,-8 48,0"/><path d="M17,39.6 l-1.6,12 M25,36.8 l-0.9,12.3 M34,36 l0,12.4 M43,36.8 l0.9,12.3 M51,39.6 l1.6,12" stroke-width="1.7"/></g>',
   thurmont:
-    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M34,46 l9,-16 6,10 5,-8 12,14"/><path d="M41,34 l2,3 2,-3"/></g>',
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path d="M11,58 l14,-26 9,16 7,-12 15,22"/><path d="M22,45 l3,4 3,-4"/></g>',
   emmitsburg:
-    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M41,46 v-11 a9,9 0 0,1 18,0 v11"/><path d="M50,25 v-6 M46.8,21.8 h6.4"/></g>',
+    '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path d="M21,60 v-17 a13,13 0 0,1 26,0 v17"/><path d="M34,29 v-8 M29.5,24.8 h9"/><path d="M14,60 h40" stroke-width="1.6"/></g>',
 };
 const TOWN_DEFAULT =
-  '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2"><path d="M41,46 v-10 l9,-7 9,7 v10 z"/><path d="M47,46 v-6 h6 v6"/><path d="M50,29 v-7 M47.5,24.5 h5"/></g>';
+  '<g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="2.2"><path d="M20,60 v-14 l14,-11 14,11 v14 z"/><path d="M30,60 v-9 h8 v9"/><path d="M34,33 v-8 M30.5,27.8 h7"/></g>';
 
 function artFor(key: string): string {
   if (ART[key]) return ART[key];
@@ -206,7 +206,7 @@ function sizeOf(key: string): number {
   return 86 + (hashOf(key + "s") % 12);
 }
 
-function Stamp({ state, date, index }: { state: StampState; date: string; index: number }) {
+export function Stamp({ state, date, index }: { state: StampState; date: string; index: number }) {
   const { def } = state;
   const ink = TONE[def.tone];
   const fid = `pm-${def.key}`;
@@ -254,13 +254,14 @@ function Stamp({ state, date, index }: { state: StampState; date: string; index:
             fontSize={longTitle ? 4.7 : 5.6}
             fontWeight="700"
             letterSpacing={longTitle ? 0.7 : 1.1}
+            {...(def.title.length > 13 ? { textLength: SW - 22, lengthAdjust: "spacingAndGlyphs" as const } : {})}
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
             {def.title.toUpperCase()}
           </text>
           <path d={`M10,16.5 h${SW - 20}`} strokeWidth="0.5" />
-          <g transform="translate(-1.6,17) scale(0.71)" dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
+          <g dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
           <path d={`M10,${SH - 16} h${SW - 20}`} strokeWidth="0.5" />
           <text
             x={SW / 2}
@@ -269,6 +270,7 @@ function Stamp({ state, date, index }: { state: StampState; date: string; index:
             fontSize="4.4"
             fontWeight="600"
             letterSpacing="0.8"
+            {...(def.sub.length > 13 ? { textLength: SW - 22, lengthAdjust: "spacingAndGlyphs" as const } : {})}
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
@@ -280,14 +282,14 @@ function Stamp({ state, date, index }: { state: StampState; date: string; index:
           filter={`url(#${fid})`}
           stroke="var(--app-ink-2, #423E34)"
           fill="var(--app-ink-2, #423E34)"
-          opacity="0.78"
+          opacity="0.85"
           transform={`rotate(-10 ${SW - 4} 6)`}
         >
-          <circle cx={SW - 4} cy="6" r="11.5" fill="none" strokeWidth="1.3" />
-          <text x={SW - 4} y="4.6" textAnchor="middle" fontSize="4.4" fontWeight="700" letterSpacing="0.4" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
+          <circle cx={SW - 4} cy="6" r="11.5" fill="none" strokeWidth="1.5" />
+          <text x={SW - 4} y="4.4" textAnchor="middle" fontSize="5" fontWeight="700" letterSpacing="0.4" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
             {d1}
           </text>
-          <text x={SW - 4} y="10.2" textAnchor="middle" fontSize="4.4" fontWeight="700" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
+          <text x={SW - 4} y="10.6" textAnchor="middle" fontSize="5" fontWeight="700" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
             {d2}
           </text>
           <path d={`M ${SW - 26},16 q 8,3 22,3 M ${SW - 28},20.5 q 10,3 26,2.6`} fill="none" strokeWidth="1.1" />
