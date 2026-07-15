@@ -98,8 +98,10 @@ export default function TodaysDealsStack({
                   </span>
 
                   <span className="min-w-0 flex-1">
+                    {/* text-wrap pretty: multi-line deal headlines ("… by the
+                        bottle / only") otherwise orphan their last word. */}
                     <span
-                      className="block font-serif text-[17px] font-semibold leading-[1.22] tracking-[-0.01em]"
+                      className="block font-serif text-[17px] font-semibold leading-[1.22] tracking-[-0.01em] [text-wrap:pretty]"
                       style={{ color: "var(--app-ink)" }}
                     >
                       {deal.headline}
