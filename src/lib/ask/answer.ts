@@ -5,6 +5,8 @@ import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { clockLine, timeAnchorOf, eventContextLines, rankForSources, stripInlineMarkdown } from "@/lib/ask/context";
+import { getOpenStatus, isOpenNow, formatHoursLine } from "@/lib/hours";
+import type { Place } from "@/data/places";
 
 /**
  * "Ask Frederick" — the grounded concierge brain.
@@ -45,6 +47,7 @@ Answer the user's question using ONLY the FREDERICK DATA provided in the message
 Rules you must follow:
 - NEVER invent a place, address, hour, price, rating, or fact. Use only what's in the data.
 - The CURRENT DATE & TIME is always provided. Use it: "tonight", "today", and "this weekend" questions are answered directly from the EVENTS block. Never say you don't know today's date.
+- Place lines may carry a LIVE open state ("Open until 9pm", "Closed · Opens Thu 8am") computed for the current time — trust it. A line with no open state means the hours are unconfirmed: say so rather than guessing. For "open now" questions, recommend only places marked Open.
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map — do not guess.
 - Keep it tight: 2–4 sentences, then name your top 1–3 specific picks from the data.
 - Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler.
@@ -213,21 +216,41 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
     ? `OFFICIAL DEPARTMENT CONTACT (cite if relevant): ${dept.name}${dept.phone ? ` — ${dept.phone}` : ""}${dept.address ? ` — ${dept.address}` : ""}\n`
     : "";
 
-  for (const h of hits) {
+  // "Open now" intent: the questions that burned us are the TIME-anchored
+  // kind, and "is anything open" is the place-side version. Confirmed-open
+  // places lead the block so the model's picks are doors that are actually
+  // unlocked; the open state itself rides on every place line below.
+  const wantsOpen = /\bopen\b/i.test(q);
+  const placeStatus = (place: Place) =>
+    getOpenStatus(place.hours, { verified: place.hours_verified ?? false }, now);
+  const ordered = wantsOpen
+    ? [...hits].sort((a, b) => {
+        const openRank = (h: (typeof hits)[number]) =>
+          h.type === "place" && isOpenNow(placeStatus(h.place)) ? 0 : 1;
+        return openRank(a) - openRank(b);
+      })
+    : hits;
+
+  for (const h of ordered) {
     if (lines.length >= 14) break;
     if (h.type === "place") {
-      const p = h.place as {
-        slug: string;
-        name: string;
-        category: string;
-        city?: string;
-        municipality?: string;
-        short_blurb?: string;
-      };
-      const where = p.city || p.municipality || "";
+      const p = h.place;
+      const where = (p as { city?: string; municipality?: string }).city || (p as { municipality?: string }).municipality || "";
       const blurb = (p.short_blurb || "").slice(0, 90);
+      // Live open state, computed for `now` from the same verified hours the
+      // place pages use. Unknown stays silent; unverified is stated only
+      // when the question is about being open (honesty without noise).
+      const status = placeStatus(p);
+      const openBit =
+        status.state === "unknown"
+          ? ""
+          : status.state === "unverified"
+            ? wantsOpen
+              ? " — hours not confirmed"
+              : ""
+            : ` — ${formatHoursLine(status)}`;
       lines.push(
-        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${blurb ? ` — ${blurb}` : ""}`,
+        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${openBit}${blurb ? ` — ${blurb}` : ""}`,
       );
       if (sources.length < 6)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
