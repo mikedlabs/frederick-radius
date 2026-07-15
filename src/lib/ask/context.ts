@@ -1,4 +1,4 @@
-import { buildHorizonBounds, groupByHorizon } from "@/lib/eventHorizon";
+import { buildHorizonBounds, groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventDateBlock } from "@/lib/events/format";
 import type { Event } from "@/data/events";
 
@@ -99,6 +99,20 @@ export function eventContextLines(
   const groups = groupByHorizon(events, bounds);
   const of = (key: string) => groups.find((g) => g.key === key)?.events ?? [];
 
+  // In-progress date-RANGE listings: a feed flattens a weekly residency
+  // ("Freddie Long at Pistarro's, through Aug 19") into one noon-anchored
+  // row, and the horizon logic honestly shelves it under "Coming up" while
+  // it runs — which made a band literally playing in Frederick today
+  // invisible to "Music tonight" (owner catch, Jul 2026). For the ask,
+  // a running range IS part of today's answer; its line prints the honest
+  // "through Aug 19" instead of a fake clock time.
+  const runningRanges = events.filter((e) => {
+    if (!isRangeListing(e)) return false;
+    const s = Date.parse(e.starts_at);
+    const end = Date.parse(e.ends_at);
+    return Number.isFinite(s) && Number.isFinite(end) && s <= bounds.now && end >= bounds.now;
+  });
+
   let picked: AskEvent[];
   let label: string;
   if (anchor === "weekend") {
@@ -106,27 +120,44 @@ export function eventContextLines(
     // "today" bucket claims those events first — so a Saturday "this
     // weekend?" must include both buckets (live too: a street festival
     // running right now IS this weekend's answer).
-    picked = [...of("live"), ...of("today"), ...of("weekend")];
+    picked = [...of("live"), ...of("today"), ...of("weekend"), ...runningRanges];
     label = "THIS WEEKEND";
   } else if (anchor === "tomorrow") {
     const start = bounds.next24;
     const end = start + DAY_MS;
-    picked = events.filter((e) => {
-      const t = Date.parse(e.starts_at);
-      return Number.isFinite(t) && t >= start && t < end;
-    });
+    picked = [
+      ...events.filter((e) => {
+        const t = Date.parse(e.starts_at);
+        return Number.isFinite(t) && t >= start && t < end;
+      }),
+      // A residency running "through Aug 19" spans tomorrow too.
+      ...runningRanges.filter((e) => Date.parse(e.ends_at) >= end),
+    ];
     label = "TOMORROW";
   } else if (anchor === "tonight") {
-    // Evening only: what's still ahead (or running) from late afternoon on.
-    // All-day listings stay — a festival's last hours are a real "tonight".
-    picked = [...of("live"), ...of("today")].filter(
-      (e) => e.is_all_day || easternHour(e.starts_at) >= 16,
-    );
+    // Evening only: what's still ahead from late afternoon on. LIVE rows
+    // are exempt from the hour gate — a show that started at 3 and is
+    // still going IS tonight's answer. All-day listings stay too.
+    picked = [
+      ...of("live"),
+      ...of("today").filter((e) => e.is_all_day || easternHour(e.starts_at) >= 16),
+      ...runningRanges,
+    ];
     label = "TONIGHT";
   } else {
-    picked = [...of("live"), ...of("today")];
+    picked = [...of("live"), ...of("today"), ...runningRanges];
     label = "TODAY (including tonight)";
   }
+
+  // Belt-and-braces dedupe: the window buckets are disjoint by
+  // construction, but one duplicated line would read as a glitch.
+  const seen = new Set<string>();
+  picked = picked.filter((e) => {
+    const key = `${e.slug}|${e.starts_at}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   // The cap exists to bound tokens, but a CHRONOLOGICAL cap silently drops
   // the late rows — twice now the 7 PM music sat past it while the model

@@ -73,6 +73,27 @@ describe("eventContextLines", () => {
     expect(picked.map((e) => e.slug)).toEqual(["jam"]);
   });
 
+  it("a live show that started mid-afternoon survives the tonight hour gate", () => {
+    const six = new Date("2026-07-15T18:00:00-04:00");
+    const running = ev({ slug: "freddie", title: "Freddie Long at Pistarro's", category: "music", starts_at: "2026-07-15T15:00:00-04:00", ends_at: "2026-07-15T22:00:00-04:00" });
+    const { picked } = eventContextLines([running], "tonight", six);
+    expect(picked.map((e) => e.slug)).toEqual(["freddie"]);
+  });
+
+  it("an in-progress range listing (flattened residency) joins tonight with its honest 'through' line", () => {
+    const six = new Date("2026-07-15T18:00:00-04:00");
+    const residency = ev({
+      slug: "freddie-range",
+      title: "Freddie Long at Pistarro's",
+      category: "music",
+      starts_at: "2026-07-15T12:00:00-04:00",
+      ends_at: "2026-08-19T23:59:59-04:00",
+    });
+    const { block, picked } = eventContextLines([residency], "tonight", six);
+    expect(picked.map((e) => e.slug)).toEqual(["freddie-range"]);
+    expect(block).toContain("through Aug 19");
+  });
+
   it("an empty window says so explicitly instead of omitting the block", () => {
     const { block, picked } = eventContextLines([], "today", WED_6PM);
     expect(block).toContain("(no listed events in this window)");
