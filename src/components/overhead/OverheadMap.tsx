@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Map, { Marker, Popup } from "react-map-gl/mapbox";
+import Map, { Marker, Popup, AttributionControl } from "react-map-gl/mapbox";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
@@ -71,9 +71,11 @@ export default function OverheadMap({
         style={{ width: "100%", height: "100%" }}
         interactive
         cooperativeGestures={false}
+        attributionControl={false}
         onLoad={(e) => applyFrederickPalette(e.target)}
         onClick={() => onSelect(null)}
       >
+        <AttributionControl compact position="bottom-right" />
         {/* Frederick — the home point. */}
         <Marker longitude={FREDERICK_CENTER.lng} latitude={FREDERICK_CENTER.lat} anchor="center">
           <span aria-hidden className="block h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-brand-2)", boxShadow: "0 0 0 3px color-mix(in srgb, var(--app-brand-2) 28%, transparent)" }} />

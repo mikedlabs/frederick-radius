@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
+import Map, { Marker, Popup, NavigationControl, AttributionControl } from "react-map-gl/mapbox";
 import type { Map as GLMap } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
@@ -71,12 +71,13 @@ export default function EventsMapInner({
         initialViewState={view}
         mapStyle={STYLE_URL}
         style={{ width: "100%", height: "100%" }}
-        attributionControl={true}
+        attributionControl={false}
         dragRotate={false}
         touchPitch={false}
         onLoad={(e) => applyFrederickPalette(e.target as unknown as GLMap)}
         onClick={() => setSelected(null)}
       >
+        <AttributionControl compact position="bottom-right" />
         <NavigationControl position="top-right" showCompass={false} />
         {events.map((e) => {
           const color = CATEGORY_BY_SLUG[e.category]?.color ?? "var(--app-brand)";

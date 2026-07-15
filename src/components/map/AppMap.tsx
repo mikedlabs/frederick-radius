@@ -6,6 +6,7 @@ import Map, {
   Marker,
   NavigationControl,
   GeolocateControl,
+  AttributionControl,
   Source,
   Layer,
   type MapRef,
@@ -1714,7 +1715,7 @@ export default function AppMap({
           }
           mapStyle={MAP_BAKED_STYLE ? (BAKED_STYLE as unknown as StyleSpecification) : STYLE_URL}
           style={{ width: "100%", height: "100%" }}
-          attributionControl={true}
+          attributionControl={false}
           // ── Mobile-smoothness flags ──
           // This is a flat 2D county map: rotation and pitch only ever
           // happen by accident on a two-finger pan, leaving the user
@@ -1792,6 +1793,9 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
+          {/* Required Mapbox/OSM credits, collapsed to the compact ⓘ badge
+              (permitted by Mapbox ToS) so the text never sits on the map. */}
+          <AttributionControl compact position="bottom-right" />
           {/* (Removed an orphaned mapbox-dem raster-dem Source: there is no
               `terrain` prop on <Map> — see the note above — and
               applyFrederickPalette installs its own `fr-dem` source + hillshade,

@@ -38,6 +38,7 @@ const Map = dynamic(() => import("react-map-gl/mapbox").then((m) => m.default), 
 });
 const Source = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Source), { ssr: false });
 const Layer = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Layer), { ssr: false });
+const AttributionControl = dynamic(() => import("react-map-gl/mapbox").then((m) => m.AttributionControl), { ssr: false });
 const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker), { ssr: false });
 const Popup = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Popup), { ssr: false });
 
@@ -551,9 +552,9 @@ export default function RadiusMap({
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
-        // Mapbox's logo and attribution must remain visible on every map that
-        // uses its styles or tiles. Keep the compact default control enabled.
-        attributionControl
+        // Mapbox's logo and credits must remain visible; the compact ⓘ badge
+        // (added as a child control) satisfies that without the text bar.
+        attributionControl={false}
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -596,6 +597,7 @@ export default function RadiusMap({
         cursor={hover ? "pointer" : onCenterChange ? "crosshair" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
+        <AttributionControl compact position="bottom-right" />
         {/* THE WHOLE COUNTY as category-iconed markers — the map reads as
             a story at a glance: food orange, parks green, arts purple.
             The radius is a LENS, not a fence — every place is plotted; the
