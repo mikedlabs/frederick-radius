@@ -48,7 +48,7 @@ describe("eventContextLines", () => {
       WED_6PM,
     );
     expect(block).toContain("EVENTS TODAY (including tonight)");
-    expect(block).toContain("7:00 PM — Bluegrass Jam @ Steinhardt Brewing (Frederick) [music]");
+    expect(block).toContain("7:00 PM — Bluegrass Jam @ Steinhardt Brewing (Frederick) [live music]");
     expect(picked.map((e) => e.slug)).toEqual(["jam"]);
   });
 
@@ -119,6 +119,16 @@ describe("eventContextLines", () => {
 });
 
 describe("rankForSources", () => {
+  it("'bands playing in frederick today' finds the music category past 16 morning rows (the prod miss)", () => {
+    const noon = new Date("2026-07-15T09:00:00-04:00");
+    const morning = Array.from({ length: 16 }, (_, i) =>
+      ev({ slug: `m${i}`, title: `Senior Yoga ${i}`, category: "wellness", venue_name: "Frederick Parks & Rec", starts_at: "2026-07-15T10:00:00-04:00", ends_at: "2026-07-15T11:00:00-04:00" }),
+    );
+    const jam = ev({ slug: "jam", title: "Bluegrass Jam", category: "music", starts_at: "2026-07-15T19:00:00-04:00", ends_at: "2026-07-15T21:00:00-04:00" });
+    const { picked } = eventContextLines([...morning, jam], "today", noon, "are there any bands playing in frederick today");
+    expect(picked.some((e) => e.slug === "jam")).toBe(true);
+  });
+
   it("'Music tonight' leads with the music event, not the earlier tai chi", () => {
     const picked = [
       ev({ slug: "tai-chi", title: "Tai Chi with Cain", category: "wellness" }),
