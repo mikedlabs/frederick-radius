@@ -14,7 +14,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { beta_emails } from "@/lib/db/schema";
-import { isRateLimited } from "@/lib/origin-check";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 import { inviteEmail } from "@/lib/beta-invite";
@@ -23,21 +27,30 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const noStore = { "Cache-Control": "no-store" };
+const MAX_BETA_EMAIL_BODY_BYTES = 4 * 1024;
 
 // Deliberately simple: catches typos ("a@b", no TLD) without rejecting valid
 // unusual addresses. The unique index is the real dedupe.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore });
+  }
   if (await isRateLimited(req, "beta-email", 5, 3600)) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore });
   }
-  let body: { email?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore });
+  const rawBody = await readJsonBodyWithLimit(req, MAX_BETA_EMAIL_BODY_BYTES);
+  if (!rawBody.ok) {
+    return NextResponse.json(
+      { error: rawBody.error },
+      { status: rawBody.error === "body-too-large" ? 413 : 400, headers: noStore },
+    );
   }
+  const body =
+    typeof rawBody.value === "object" && rawBody.value !== null && !Array.isArray(rawBody.value)
+      ? (rawBody.value as { email?: unknown })
+      : {};
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 254) : "";
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "invalid-email" }, { status: 400, headers: noStore });

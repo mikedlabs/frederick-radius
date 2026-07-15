@@ -1,195 +1,143 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { METRICS, ECONOMY } from "@/data/city-data-engine";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowRight, CheckCircle2, FlaskConical, Lightbulb } from "lucide-react";
+import { PRODUCT_STATUS } from "@/data/city-data-engine";
 
 /**
- * SCENE 5: THE DATA STORY (The "Google" Layer)
- * Interactive heat maps and charts from economic/demographic files
- * Clean, thin-line graphs with glowing data points
+ * SCENE 5: PRODUCT STATUS
+ * Replaces invented telemetry and financial charts with the actual beta stage.
  */
 export default function Scene05_DataStory() {
     return (
-        <div className="relative w-full h-full bg-gradient-to-b from-[#030014] to-[#0a0118] overflow-hidden flex items-center justify-center p-8">
-            {/* Header */}
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 text-center z-20">
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#030014] to-[#0a0118] px-8 py-28">
+            <div className="relative z-10 w-full max-w-7xl">
                 <motion.div
+                    className="mb-10 text-center"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1 }}
                 >
-                    <h2 className="text-5xl font-light text-white tracking-tight mb-3">
-                        The Data <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Story</span>
+                    <p className="mb-3 text-sm font-medium uppercase tracking-[0.28em] text-emerald-300">
+                        Honest product view
+                    </p>
+                    <h2 className="mb-3 text-5xl font-light tracking-tight text-white">
+                        Where Radius <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">actually stands</span>
                     </h2>
-                    <p className="text-gray-400 text-lg font-light">
-                        Real metrics. Real impact. Real time.
+                    <p className="text-lg font-light text-gray-400">
+                        No vanity metrics or invented revenue chart — just the beta, the tests, and the next decisions.
                     </p>
                 </motion.div>
-            </div>
 
-            {/* Main Content Grid */}
-            <div className="max-w-7xl w-full mt-24 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* LEFT: Real-Time Metrics */}
-                <motion.div
-                    className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8"
-                    initial={{ opacity: 0, x: -40 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 1, delay: 0.3 }}
-                >
-                    <h3 className="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                        Live Metrics
-                    </h3>
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                    <motion.section
+                        aria-labelledby="product-status-heading"
+                        className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl"
+                        initial={{ opacity: 0, x: -40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 1, delay: 0.3 }}
+                    >
+                        <h3 id="product-status-heading" className="mb-6 text-2xl font-semibold text-white">
+                            Product status
+                        </h3>
 
-                    <div className="space-y-4">
-                        {METRICS.realtime.map((item, index) => (
-                            <motion.div
-                                key={item.metric}
-                                className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.5 + index * 0.1, duration: 0.6 }}
-                            >
-                                <div className="flex-1">
-                                    <div className="text-sm text-gray-400 uppercase tracking-wider mb-1">
-                                        {item.metric}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {PRODUCT_STATUS.cards.map((item, index) => {
+                                const Icon = item.stage === "available"
+                                    ? CheckCircle2
+                                    : item.stage === "testing"
+                                        ? FlaskConical
+                                        : Lightbulb;
+                                const tone = item.stage === "available"
+                                    ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/20"
+                                    : item.stage === "testing"
+                                        ? "text-cyan-300 bg-cyan-400/10 border-cyan-400/20"
+                                        : "text-amber-300 bg-amber-400/10 border-amber-400/20";
+
+                                return (
+                                    <motion.div
+                                        key={item.label}
+                                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
+                                    >
+                                        <div className={`mb-4 inline-flex rounded-xl border p-2 ${tone}`}>
+                                            <Icon className="h-5 w-5" aria-hidden="true" />
+                                        </div>
+                                        <div className="mb-1 text-xs font-medium uppercase tracking-wider text-gray-500">
+                                            {item.label}
+                                        </div>
+                                        <div className="mb-2 text-xl font-semibold text-white">
+                                            {item.value}
+                                        </div>
+                                        <p className="text-sm leading-relaxed text-gray-400">
+                                            {item.detail}
+                                        </p>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    </motion.section>
+
+                    <motion.section
+                        aria-labelledby="roadmap-heading"
+                        className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl"
+                        initial={{ opacity: 0, x: 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 1, delay: 0.3 }}
+                    >
+                        <div className="mb-6 flex items-end justify-between gap-4">
+                            <div>
+                                <h3 id="roadmap-heading" className="text-2xl font-semibold text-white">
+                                    Product roadmap
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-500">Sequence, not a performance forecast</p>
+                            </div>
+                            <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-200">
+                                Private beta
+                            </span>
+                        </div>
+
+                        <div className="space-y-3">
+                            {PRODUCT_STATUS.roadmap.map((step, index) => (
+                                <motion.div
+                                    key={step.period}
+                                    className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.55 + index * 0.12, duration: 0.5 }}
+                                >
+                                    <div className="w-16 shrink-0 text-xs font-semibold uppercase tracking-widest text-cyan-300">
+                                        {step.period}
                                     </div>
-                                    <div className="text-2xl font-semibold text-white">
-                                        {item.value}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        {item.change}
-                                    </div>
-                                </div>
-                                <div className="ml-4">
-                                    {item.trend === "up" && <TrendingUp className="w-6 h-6 text-green-400" />}
-                                    {item.trend === "down" && <TrendingDown className="w-6 h-6 text-red-400" />}
-                                    {item.trend === "stable" && <Minus className="w-6 h-6 text-gray-400" />}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                </motion.div>
-
-                {/* RIGHT: Growth Chart */}
-                <motion.div
-                    className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-8"
-                    initial={{ opacity: 0, x: 40 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 1, delay: 0.3 }}
-                >
-                    <h3 className="text-2xl font-semibold text-white mb-6">
-                        Growth Trajectory
-                    </h3>
-
-                    {/* Simple Line Chart */}
-                    <div className="relative h-64 mt-8">
-                        <svg width="100%" height="100%" viewBox="0 0 500 250" preserveAspectRatio="none">
-                            {/* Grid Lines */}
-                            {[0, 1, 2, 3, 4].map(i => (
-                                <line
-                                    key={i}
-                                    x1="0"
-                                    y1={i * 62.5}
-                                    x2="500"
-                                    y2={i * 62.5}
-                                    stroke="rgba(255,255,255,0.05)"
-                                    strokeWidth="1"
-                                />
-                            ))}
-
-                            {/* Growth Line */}
-                            <motion.path
-                                d="M 50 200 L 200 120 L 350 60 L 450 20"
-                                fill="none"
-                                stroke="url(#gradient)"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                initial={{ pathLength: 0 }}
-                                animate={{ pathLength: 1 }}
-                                transition={{ duration: 2, delay: 0.8, ease: "easeOut" }}
-                            />
-
-                            {/* Gradient Definition */}
-                            <defs>
-                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#10b981" />
-                                    <stop offset="100%" stopColor="#06b6d4" />
-                                </linearGradient>
-                            </defs>
-
-                            {/* Data Points */}
-                            {[
-                                { x: 50, y: 200 },
-                                { x: 200, y: 120 },
-                                { x: 350, y: 60 },
-                                { x: 450, y: 20 },
-                            ].map((point, index) => (
-                                <motion.circle
-                                    key={index}
-                                    cx={point.x}
-                                    cy={point.y}
-                                    r="6"
-                                    fill="#10b981"
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ delay: 1 + index * 0.2, duration: 0.5 }}
-                                    style={{
-                                        filter: "drop-shadow(0 0 8px rgba(16, 185, 129, 0.8))"
-                                    }}
-                                />
-                            ))}
-                        </svg>
-
-                        {/* Labels */}
-                        <div className="flex justify-between mt-4 text-xs text-gray-500 px-2">
-                            {METRICS.growth.map((q, i) => (
-                                <div key={i} className="text-center">
-                                    <div className="font-medium">{q.period}</div>
-                                    <div className="text-emerald-400 font-semibold mt-1">{q.revenue}</div>
-                                </div>
+                                    <ArrowRight className="h-4 w-4 shrink-0 text-gray-600" aria-hidden="true" />
+                                    <div className="text-base text-gray-200">{step.outcome}</div>
+                                </motion.div>
                             ))}
                         </div>
-                    </div>
-                </motion.div>
+
+                        <div className="mt-6 border-t border-white/10 pt-6">
+                            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-gray-500">
+                                What guides the work
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {PRODUCT_STATUS.principles.map((principle) => (
+                                    <span
+                                        key={principle}
+                                        className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300"
+                                    >
+                                        {principle}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.section>
+                </div>
             </div>
 
-            {/* BOTTOM: Business Category Breakdown */}
-            <motion.div
-                className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-7xl px-8"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.5, duration: 1 }}
-            >
-                <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                        Business Distribution
-                    </h3>
-                    <div className="flex gap-2 h-8 rounded-full overflow-hidden">
-                        {ECONOMY.businessCategories.map((cat, index) => (
-                            <motion.div
-                                key={cat.type}
-                                className="relative group cursor-pointer"
-                                style={{
-                                    width: `${cat.percentage}%`,
-                                    backgroundColor: `hsl(${index * 60}, 70%, 50%)`
-                                }}
-                                initial={{ scaleX: 0 }}
-                                animate={{ scaleX: 1 }}
-                                transition={{ delay: 1.8 + index * 0.1, duration: 0.5 }}
-                            >
-                                <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
-                                    {cat.type}: {cat.count} ({cat.percentage}%)
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* Background Elements */}
-            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none" />
+            <div className="pointer-events-none absolute inset-0 bg-[url('/grid.svg')] opacity-5" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[700px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-emerald-600/10 to-cyan-600/10 blur-3xl" />
         </div>
     );
 }

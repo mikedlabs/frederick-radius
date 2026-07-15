@@ -143,7 +143,7 @@ async function lookupAirport(icao: string): Promise<AirportRef | null> {
 // Spotter photos (planespotters.net), keyed by the airframe's ICAO hex. Static
 // per airframe, so cached for the process lifetime. planespotters REQUIRES a
 // contact in the User-Agent or it 403s.
-const PHOTO_UA = "frederick-radius/1.0 (+https://frederickradius.app; miked@madproductions.io)";
+const PHOTO_UA = "frederick-radius/1.0 (+https://frederickradius.app; hello@frederickradius.app)";
 const photoCache = new Map<string, AircraftPhoto | null>();
 
 async function lookupPhoto(hex: string): Promise<AircraftPhoto | null> {

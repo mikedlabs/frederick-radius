@@ -246,7 +246,7 @@ export default function TrustPage() {
         className="pt-2 text-center text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Made in Frederick, MD by Michael DeMattia, a downtown Frederick resident.
+        Made locally in Frederick, Maryland. Independent of local government.
       </p>
     </div>
   );
@@ -277,9 +277,9 @@ const BADGES: Array<{
     body: "Submitted by a local or pulled from a public community feed. Reliable but not directly verified by us.",
   },
   {
-    label: "Official",
+    label: "Official source",
     color: "var(--app-civic)",
     icon: Database,
-    body: "From an official county or government data feed. Refreshed on a schedule and never edited by us.",
+    body: "Imported from a government source. Frederick Radius may normalize or summarize it. The source agency does not operate or endorse this app; check the linked source for the current official record.",
   },
 ];

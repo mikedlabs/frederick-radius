@@ -2,23 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy",
+  title: "Privacy policy",
   description:
-    "Privacy policy for Frederick Radius: what little we collect, what stays on your device, and how community submissions and analytics work.",
+    "How Frederick Radius collects, uses, shares, retains, and protects information.",
 };
 
-/**
- * /privacy — public-facing privacy policy.
- *
- * Written to match how the app ACTUALLY works, not a generic template:
- * saves/preferences live in your browser (localStorage), location is used
- * on-device for "near me" and never stored, the only data that reaches our
- * server is what you deliberately submit (corrections, community reports,
- * field markers), and analytics are privacy-friendly + cookieless. Honest and
- * specific beats long and boilerplate.
- *
- * Companion to /terms. Linked from the sitewide footer.
- */
+const headingClass = "font-serif text-[20px] font-semibold tracking-tight";
+const linkClass = "font-semibold underline underline-offset-2";
+
 export default function PrivacyPage() {
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-6 py-6">
@@ -30,164 +21,216 @@ export default function PrivacyPage() {
           className="font-serif text-[32px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          What we collect, plainly.
+          What the app knows and why.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Last updated: 2026-07-14
+          Effective July 14, 2026
         </p>
       </header>
 
       <section className="space-y-5 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
-          Frederick Radius is built to need as little of your data as possible.
-          Most of what makes the app feel personal never leaves your device. Here
-          is the whole picture.
+          Frederick Radius is designed to collect little personal information.
+          This policy explains what is processed when you use the app, request
+          beta access, sign in, enable notifications, or send something to us.
         </p>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Stays on your device
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Information kept on your device
           </h2>
           <ul className="ml-5 list-disc space-y-2">
             <li>
-              <strong style={{ color: "var(--app-ink)" }}>Saved places and preferences.</strong>{" "}
-              Your saved spots, your home town, and whether you&rsquo;re browsing
-              as a resident or a visitor are stored in your browser
-              (localStorage and a small preference cookie). They are not sent to
-              us and not tied to your name.
+              <strong style={{ color: "var(--app-ink)" }}>Saves and preferences.</strong>{" "}
+              Saved places, home-town and browsing preferences, dismissed items,
+              and similar settings are generally stored in your browser using
+              local storage and small cookies.
             </li>
             <li>
-              <strong style={{ color: "var(--app-ink)" }}>Location.</strong>{" "}
-              If you grant location permission, your position is used in your
-              browser to sort &ldquo;near me&rdquo; results and center the map.
-              We do not store your location or build a history of where you go.
+              <strong style={{ color: "var(--app-ink)" }}>Precise location.</strong>{" "}
+              If you grant browser location permission, the app uses that
+              location to center maps and rank nearby results. Frederick Radius
+              does not store a history of your precise browser-provided location.
             </li>
           </ul>
+          <p>
+            Clearing this site&rsquo;s browser data removes device-only saves and
+            preferences. If you sign in or follow a place, some choices may also
+            be stored with your account so they can work across devices.
+          </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            What you deliberately send us
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Information you provide
           </h2>
           <ul className="ml-5 list-disc space-y-2">
             <li>
-              <strong style={{ color: "var(--app-ink)" }}>Beta access email.</strong>{" "}
-              When you request beta access, we store your email and use it to
-              send and manage your personal access code. We also record when
-              that code is first redeemed, how many times it grants access,
-              and the time of its most recent active session. That information
-              stays linked to your internal access record so we can confirm the
-              beta is being used, help with access problems, and revoke a code
-              when needed. Our database and email-delivery providers process
-              the email for us. We do not sell it.
+              <strong style={{ color: "var(--app-ink)" }}>Beta access.</strong>{" "}
+              We store the email address you enter, the access code associated
+              with it, and timestamps and counts used to issue, manage, secure,
+              and revoke beta access.
             </li>
             <li>
-              <strong style={{ color: "var(--app-ink)" }}>Corrections and feedback.</strong>{" "}
-              If you email a correction, we get your message and email address so
-              we can fix the entry and reply.
+              <strong style={{ color: "var(--app-ink)" }}>Sign-in and profile.</strong>{" "}
+              If you choose to sign in, our authentication provider processes
+              your email and session information. We may store app profile,
+              saved, or followed-place records associated with your account.
+            </li>
+            <li>
+              <strong style={{ color: "var(--app-ink)" }}>Feedback, corrections, claims, and submissions.</strong>{" "}
+              We process the details you send, which may include your name,
+              contact information, message, business relationship, and the page
+              you were viewing, so we can review, publish, fix, or respond.
             </li>
             <li>
               <strong style={{ color: "var(--app-ink)" }}>Community reports and field markers.</strong>{" "}
-              When you submit a report (a hazard, condition, tip, or note) or
-              mark a public amenity, we store what you submitted: the text,
-              category, the map point you chose, and any photo you add, so it can
-              be reviewed and shown on the map. Don&rsquo;t include
-              personal information in these submissions; treat them as public.
+              We store the category, text, selected map point, optional name,
+              and any photo you submit. Approved material may be public. Do not
+              include private personal information or people&rsquo;s faces unless
+              you have the right to share them.
             </li>
           </ul>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Measurement and reliability
-          </h2>
-          <ul className="ml-5 list-disc space-y-2">
-            <li>
-              <strong style={{ color: "var(--app-ink)" }}>Analytics.</strong>{" "}
-              We use privacy-friendly, cookieless analytics to count page views
-              and understand which features get used. It does not track you across
-              other sites or build an advertising profile. Beta activity is
-              counted only in aggregate; we do not send your email or personal
-              access code to the analytics provider.
-            </li>
-            <li>
-              <strong style={{ color: "var(--app-ink)" }}>Error monitoring.</strong>{" "}
-              When something breaks, we collect technical diagnostics (the error,
-              the page, your browser type) to fix it, not to identify you.
-            </li>
-          </ul>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            What we never do
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Notifications
           </h2>
           <p>
-            We don&rsquo;t sell your data, we don&rsquo;t run third-party ad
-            trackers, and we don&rsquo;t need an account for you to use the app.
+            If you enable push notifications, we store a browser-generated push
+            endpoint and encryption keys, the topics you choose, basic device and
+            browser labels, your selected home town if provided, and delivery or
+            interaction timestamps. This information is used only to manage and
+            deliver the notifications you request. You can disable notifications
+            in the app or your browser settings.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Deleting your data
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Technical, security, and measurement data
           </h2>
           <p>
-            Clear your saves and preferences anytime by clearing this site&rsquo;s
-            data in your browser. To have a beta-access email, access code, or
-            submission you sent us removed, email{" "}
+            Hosting, security, analytics, and error-monitoring services may
+            process IP address, approximate region derived by the hosting
+            platform, request time, page or route, browser and device type,
+            performance measurements, and error details. We use this information
+            to operate the app, prevent abuse, understand aggregate use, and fix
+            failures. We configure error monitoring not to intentionally collect
+            user identity or form contents, but technical reports can sometimes
+            contain unexpected data.
+          </p>
+          <p>
+            Frederick Radius does not use this information for targeted
+            advertising and does not attempt to build a history of your precise
+            movements.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Service providers and disclosures
+          </h2>
+          <p>
+            We use service providers to host the app, store data, authenticate
+            users, send email and push notifications, measure aggregate use,
+            monitor errors, and provide maps or place information. These
+            providers currently include Vercel, Supabase, Resend, Plausible,
+            Sentry, Mapbox, and Google. They process information under their own
+            terms and our configurations.
+          </p>
+          <p>
+            Google may process information when Maps or Places content is
+            requested or displayed, as described in the{" "}
             <a
-              href="mailto:hello@frederickradius.app?subject=Privacy%20request"
-              className="font-semibold underline underline-offset-2"
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
               style={{ color: "var(--app-brand-press)" }}
             >
-              hello@frederickradius.app
-            </a>{" "}
-            and we&rsquo;ll take care of it.
+              Google Privacy Policy
+            </a>
+            .
+          </p>
+          <p>
+            We do not sell personal information or share it for cross-context
+            behavioral advertising. We may disclose information when required by
+            law, to protect rights or safety, to investigate abuse, or as part of
+            a merger, financing, acquisition, or transfer of the project, subject
+            to appropriate protections.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Accuracy and emergencies
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Retention and security
           </h2>
           <p>
-            Frederick Radius is an independent local guide. It is not affiliated
-            with, endorsed by, or operated by the City of Frederick, Frederick
-            County Government, or any municipality. Hours, events, closures, and
-            civic information can be out of date. Never rely on this app for
-            emergencies or public-safety decisions. Call 911 and follow official
-            emergency channels.
+            We keep information only while it is reasonably needed for the
+            purposes above, to resolve disputes, maintain security, or meet legal
+            obligations. Public reports expire according to their category;
+            rejected and operational records may remain for a limited period to
+            prevent abuse and preserve an audit trail. Provider logs and backups
+            follow provider retention schedules. A deletion request may not
+            immediately remove data from encrypted backups, but restored data
+            remains subject to the request.
+          </p>
+          <p>
+            We use access controls, encryption in transit, restricted database
+            permissions, and other reasonable safeguards. No online service can
+            promise absolute security.
           </p>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Children
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Your choices and requests
           </h2>
           <p>
-            Frederick Radius is a general-audience local guide and is not directed
-            at children under 13. We don&rsquo;t knowingly collect personal
-            information from them.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Changes and contact
-          </h2>
-          <p>
-            If this policy changes, we&rsquo;ll update the date above. Questions?
-            Email{" "}
+            You may ask what personal information we have about you, request a
+            correction or deletion, or withdraw from beta access by emailing{" "}
             <a
-              href="mailto:hello@frederickradius.app"
-              className="font-semibold underline underline-offset-2"
+              href="mailto:hello@frederickradius.app?subject=Privacy%20request"
+              className={linkClass}
               style={{ color: "var(--app-brand-press)" }}
             >
               hello@frederickradius.app
             </a>
+            . We may need to verify the request. Some information may be kept
+            when the law permits or requires it. You can also clear browser data,
+            revoke location permission, unsubscribe from email, disable push
+            notifications, or sign out using the relevant controls.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Children
+          </h2>
+          <p>
+            Frederick Radius is a general-audience guide and is not directed to
+            children under 13. We do not knowingly collect personal information
+            from children under 13. Contact us if you believe a child submitted
+            personal information so we can review and remove it.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Independence, changes, and contact
+          </h2>
+          <p>
+            Frederick Radius is an independent local guide, not a government
+            service. If this policy changes, we will update the effective date
+            above and provide additional notice when appropriate. Questions can
+            be sent to{" "}
+            <a href="mailto:hello@frederickradius.app?subject=Privacy%20question" className={linkClass} style={{ color: "var(--app-brand-press)" }}>
+              hello@frederickradius.app
+            </a>
             . See also our{" "}
-            <Link href="/terms" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-brand-press)" }}>
+            <Link href="/terms" className={linkClass} style={{ color: "var(--app-brand-press)" }}>
               Terms of use
             </Link>
             .

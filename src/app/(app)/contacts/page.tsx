@@ -70,7 +70,7 @@ export default function ContactsPage() {
         and Frederick County department index pages. Phone numbers are
         added as they&rsquo;re confirmed. Spotted a wrong or missing number?{" "}
         <a
-          href="mailto:miked@madproductions.io?subject=Frederick%20Radius%20contacts%20fix"
+          href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20contacts%20fix"
           className="underline"
           style={{ color: "var(--app-cool)" }}
         >

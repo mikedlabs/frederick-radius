@@ -2,6 +2,41 @@ import type { NextConfig } from "next";
 import path from "path";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Enforcing baseline CSP. Next currently needs inline boot scripts and the app
+// uses inline style props, so those two allowances remain explicit. Every
+// other executable/network origin is constrained to the services the product
+// actually uses. A nonce-based policy can tighten the inline allowances later,
+// but would force dynamic rendering across otherwise cacheable pages.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "frame-src 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline' https://plausible.io",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "media-src 'self' blob: https:",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  "manifest-src 'self'",
+  [
+    "connect-src 'self'",
+    "https://api.mapbox.com",
+    "https://events.mapbox.com",
+    "https://*.tiles.mapbox.com",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://plausible.io",
+    "https://*.ingest.sentry.io",
+    "https://*.ingest.us.sentry.io",
+    "https://vitals.vercel-insights.com",
+  ].join(" "),
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
@@ -132,18 +167,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Security headers — applied to every response. These are the
-  // zero-risk, high-value ones: they don't depend on which origins we
-  // load and won't break Mapbox / Supabase / analytics, so they ship
-  // enforcing. (A Content-Security-Policy is the next step but has to
-  // be tuned against the live third-party origins and verified on a
-  // preview deploy first — see docs/SECURITY_AUDIT.md — so it is NOT
-  // shipped blind here.)
+  // Browser security headers applied to every response. CSP constrains scripts,
+  // frames, workers, forms, and network calls; the remaining headers cover
+  // transport, MIME sniffing, referrers, legacy framing, and browser features.
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },

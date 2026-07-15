@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Frederick Radius — A smarter way to experience Frederick County",
+  title: "Frederick Radius — Product concept & private-beta overview",
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

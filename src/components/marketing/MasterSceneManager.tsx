@@ -17,9 +17,7 @@ import Scene09_CivicHub from "./scenes/Scene09_CivicHub";
 import Scene10_Vision from "./scenes/Scene10_Vision";
 
 /**
- * FREDERICK RADIUS // MASTER SCENE MANAGER
- * Orchestrates the 10-scene cinematic experience
- * Fuses Google utility, Apple elegance, Tesla precision
+ * Orchestrates the pitch's 10-scene product overview.
  */
 export default function MasterSceneManager() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -40,8 +38,8 @@ export default function MasterSceneManager() {
         { component: <Scene05_DataStory key="scene-05" />, name: "Data Story" },
         { component: <Scene06_CommercialIntegration key="scene-06" />, name: "Business Tools" },
         { component: <Scene07_Ecosystem key="scene-07" />, name: "Community" },
-        { component: <Scene08_RadiusCoin key="scene-08" />, name: "Radius Coin" },
-        { component: <Scene09_CivicHub key="scene-09" />, name: "Civic Hub" },
+        { component: <Scene08_RadiusCoin key="scene-08" />, name: "Rewards Concept" },
+        { component: <Scene09_CivicHub key="scene-09" />, name: "Civic Guide" },
         { component: <Scene10_Vision key="scene-10" />, name: "The Vision" },
     ];
 

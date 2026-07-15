@@ -27,6 +27,8 @@ import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
 import { nearestAerial, currentSeason } from "@/lib/aerial";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
+import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 /**
  * Bottom-sheet detail view for a place. Slides up with spring physics,
@@ -169,6 +171,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
   // build-time enrichment. Curated places already carry google_photo_url.
   const [extra, setExtra] = useState<{
     photos: string[]; hours: string[]; phone?: string; website?: string;
+    photo_attributions?: GooglePhotoAttribution[]; google_maps_uri?: string;
   } | null>(null);
   useEffect(() => {
     if (place.google_photo_url) return; // already statically enriched
@@ -195,6 +198,9 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     ? place.google_photos
     : (extra?.photos ?? []);
   const heroUrl = place.google_photo_url ?? photos[0];
+  const photoAttributions = place.google_photo_attributions ?? extra?.photo_attributions ?? [];
+  const heroAttribution = place.google_photo_attribution ?? photoAttributions[0];
+  const googleMapsUri = place.google_maps_uri ?? extra?.google_maps_uri;
   // Every unique photo (hero first), for the tap-to-enlarge lightbox.
   const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
   const hoursLines = place.google_hours?.length
@@ -249,18 +255,20 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
          *  When there is no photo, we fall back to a category-tinted
          *  panel with the icon — still cinematic, still on-brand. */}
         {heroUrl ? (
-          <div
-            className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
-            role="button"
-            tabIndex={0}
-            aria-label={`View ${place.name} photos`}
-            onClick={() => { haptic("light"); setLightboxAt(0); }}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
-          >
+          <>
+            <div
+              className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${place.name} photos`}
+              onClick={() => { haptic("light"); setLightboxAt(0); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
+            >
             <Image
               src={heroUrl}
               alt={place.name}
               fill
+              unoptimized={heroUrl.startsWith("/api/place-photo")}
               priority
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"
@@ -305,7 +313,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             <div className="absolute left-3 top-3 z-10">
               <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
             </div>
-          </div>
+            </div>
+            <div className="px-5 pt-1 text-right" style={{ color: "var(--app-ink-3)" }}>
+              <GooglePhotoAttributionLine
+                attribution={heroAttribution}
+                placeGoogleMapsUri={googleMapsUri}
+              />
+            </div>
+          </>
         ) : (
           <div className="px-5 pt-2">
             <div
@@ -389,6 +404,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                 {place.google_rating_count ? (
                   <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
                 ) : null}
+                <span className="text-[9px]" translate="no" style={{ color: "var(--app-ink-3)" }}>Google Maps</span>
               </span>
             )}
             {place.price_band && (
@@ -503,12 +519,21 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                   src={u}
                   alt=""
                   fill
+                  unoptimized={u.startsWith("/api/place-photo")}
                   loading="lazy"
                   sizes="128px"
                   placeholder="blur"
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
                 />
+                <span
+                  className="absolute bottom-0 right-0 max-w-full truncate rounded-tl bg-black/70 px-1 py-0.5 text-[8px] leading-none text-white"
+                  translate="no"
+                >
+                  {photoAttributions[i + 1]?.authors[0]?.display_name
+                    ? `${photoAttributions[i + 1].authors[0].display_name} · Google Maps`
+                    : "Google Maps"}
+                </span>
               </div>
             ))}
           </div>

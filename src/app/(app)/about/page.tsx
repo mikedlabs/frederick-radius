@@ -53,7 +53,7 @@ const ABOUT_INTENTS: AboutIntent[] = [
     hint: "Wrong hours, wrong phone, closed location. Tell us",
     icon: Pencil,
     accent: "var(--app-warning)",
-    href: "mailto:miked@madproductions.io?subject=Frederick%20Radius%20correction",
+    href: "mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction",
     external: true,
   },
   {
@@ -64,11 +64,11 @@ const ABOUT_INTENTS: AboutIntent[] = [
     href: "/trust",
   },
   {
-    label: "Email Michael",
-    hint: "Partnerships, press, or just a hello from a downtown neighbor",
+    label: "Email Radius",
+    hint: "Partnerships, press, corrections, or just a hello",
     icon: Mail,
     accent: "var(--app-brand-2)",
-    href: "mailto:miked@madproductions.io",
+    href: "mailto:hello@frederickradius.app",
     external: true,
   },
   {

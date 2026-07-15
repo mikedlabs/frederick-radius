@@ -7,8 +7,7 @@ import { useState } from "react";
 
 /**
  * SCENE 7: THE ECOSYSTEM (Community)
- * Horizontal scroller with four personas
- * Data-driven benefits for each persona
+ * Horizontal scroller with four honest beta use cases
  */
 export default function Scene07_Ecosystem() {
     const [activePersona, setActivePersona] = useState(0);
@@ -30,10 +29,10 @@ export default function Scene07_Ecosystem() {
                     transition={{ duration: 1 }}
                 >
                     <h2 className="text-6xl font-light text-white tracking-tight mb-3">
-                        Built for <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">Everyone</span>
+                        Built around <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">real local tasks</span>
                     </h2>
                     <p className="text-gray-400 text-xl font-light">
-                        Four personas. One unified ecosystem.
+                        Different needs, one clearer starting point
                     </p>
                 </motion.div>
             </div>
@@ -46,16 +45,19 @@ export default function Scene07_Ecosystem() {
                         const isActive = activePersona === index;
 
                         return (
-                            <motion.div
+                            <motion.button
                                 key={persona.id}
-                                className={`relative flex-shrink-0 w-80 backdrop-blur-xl border rounded-3xl p-8 cursor-pointer transition-all duration-500 ${isActive
+                                type="button"
+                                className={`relative flex-shrink-0 w-80 backdrop-blur-xl border rounded-3xl p-8 transition-all duration-500 ${isActive
                                     ? "bg-white/10 border-white/30 scale-105"
                                     : "bg-white/5 border-white/10 hover:bg-white/10"
-                                    }`}
+                                    } text-left`}
                                 initial={{ opacity: 0, x: 40 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.15, duration: 0.8 }}
                                 onMouseEnter={() => setActivePersona(index)}
+                                onFocus={() => setActivePersona(index)}
+                                onClick={() => setActivePersona(index)}
                                 whileHover={{ y: -8 }}
                             >
                                 {/* Icon */}
@@ -99,12 +101,12 @@ export default function Scene07_Ecosystem() {
                                     ))}
                                 </div>
 
-                                {/* Engagement Badge */}
+                                {/* Use-case Badge */}
                                 <div className="mt-6 pt-6 border-t border-white/10">
                                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
-                                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                                        <div className="w-2 h-2 rounded-full bg-purple-300" />
                                         <span className="text-xs text-gray-300 font-medium">
-                                            {persona.engagement} Engagement
+                                            {persona.useCase}
                                         </span>
                                     </div>
                                 </div>
@@ -113,13 +115,13 @@ export default function Scene07_Ecosystem() {
                                 {isActive && (
                                     <div className="absolute -inset-6 bg-gradient-to-br from-pink-600/30 via-purple-600/30 to-indigo-600/30 blur-3xl -z-10" />
                                 )}
-                            </motion.div>
+                            </motion.button>
                         );
                     })}
                 </div>
             </div>
 
-            {/* Bottom Stat */}
+            {/* Bottom Principle */}
             <motion.div
                 className="mt-12 text-center"
                 initial={{ opacity: 0 }}
@@ -127,10 +129,10 @@ export default function Scene07_Ecosystem() {
                 transition={{ delay: 1.5, duration: 1 }}
             >
                 <p className="text-gray-500 text-sm uppercase tracking-widest mb-2">
-                    Total Reach
+                    Product principle
                 </p>
-                <p className="text-4xl font-light text-white">
-                    305,000+ <span className="text-gray-500">residents connected</span>
+                <p className="text-3xl font-light text-white">
+                    Earn usefulness first. <span className="text-gray-500">Measure adoption honestly.</span>
                 </p>
             </motion.div>
 

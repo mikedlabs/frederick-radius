@@ -1,5 +1,5 @@
 const NWS = "https://api.weather.gov";
-const UA = "Frederick Radius (miked@madproductions.io)";
+const UA = "Frederick Radius (hello@frederickradius.app)";
 
 // SAME (FIPS) codes for the alerts we WANT to surface. Filtering by
 // `areaDesc` substring matching `/Frederick/i` was the prior bug: a

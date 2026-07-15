@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { community_reports } from "@/lib/db/schema";
+import { deleteCommunityReportPhoto } from "@/lib/community-report-photo";
 
 /**
  * Moderate one community report. Form action: reads `id` and `decision`
@@ -24,6 +25,16 @@ export async function reviewReport(formData: FormData): Promise<void> {
   if (!db) throw new Error("Database not configured.");
 
   if (decision === "delete") {
+    const row = (
+      await db
+        .select({ photo_url: community_reports.photo_url })
+        .from(community_reports)
+        .where(eq(community_reports.id, id))
+        .limit(1)
+    )[0];
+    if (!(await deleteCommunityReportPhoto(row?.photo_url))) {
+      throw new Error("The report photo could not be removed; the report was kept so cleanup can be retried.");
+    }
     await db.delete(community_reports).where(eq(community_reports.id, id));
   } else {
     await db

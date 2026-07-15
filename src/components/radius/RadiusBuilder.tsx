@@ -39,6 +39,7 @@ import {
   type TravelMode,
   formatDistance,
 } from "@/lib/geo";
+import { roundCoord } from "@/lib/walkTime";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -516,8 +517,10 @@ export default function RadiusBuilder({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous isochrone the moment center/mode/minutes change so the map doesn't show last query's polygon while the new one is fetching
     setIsochrone(null);
     const params = new URLSearchParams({
-      lng: String(center.lng),
-      lat: String(center.lat),
+      // Exact device coordinates stay in browser memory. The isochrone
+      // request uses the same ~100m privacy grid as routed walk times.
+      lng: String(roundCoord(center.lng)),
+      lat: String(roundCoord(center.lat)),
       mode,
       minutes: String(minutes),
     });

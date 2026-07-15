@@ -6,6 +6,8 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { currentSkyPalette } from "@/components/today/SkyHero";
 import { nextSunHint } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 type Props = {
   slug: string;
@@ -17,6 +19,8 @@ type Props = {
   priority?: boolean;
   /** Real Google photo (proxied, key-safe). Wins over generic stock. */
   photoSrc?: string;
+  photoAttribution?: GooglePhotoAttribution;
+  googleMapsUri?: string;
 };
 
 /**
@@ -36,6 +40,7 @@ function resolvePhotoSrc(slug: string, width: number) {
 export default function PlaceHero({
   slug, name, category,
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
+  photoAttribution, googleMapsUri,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
   // Vermilion brand fallback for uncategorized places. Kept as a literal
@@ -79,6 +84,7 @@ export default function PlaceHero({
   // category pill, a quarter of the height, and the place name is on screen
   // from the first paint.
   const hasPhoto = Boolean(src);
+  const usesGooglePhoto = Boolean(photoSrc && !resolved?.preferCurated);
 
   return (
     <div
@@ -131,6 +137,19 @@ export default function PlaceHero({
           className={`absolute inset-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
           style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
         />
+      )}
+
+      {usesGooglePhoto && (
+        <div
+          className="absolute bottom-2 right-2 z-10 max-w-[80%] rounded bg-black/70 px-2 py-1 text-right text-white shadow-sm backdrop-blur-sm"
+          aria-label="Google photo attribution"
+        >
+          <GooglePhotoAttributionLine
+            attribution={photoAttribution}
+            placeGoogleMapsUri={googleMapsUri}
+            compact={size === "card"}
+          />
+        </div>
       )}
 
       {/* The Living Frame wash — a soft time-of-day tint (soft-light, low alpha
@@ -225,11 +244,9 @@ export function PhotoCredit({
   // A preferCurated entry overrides the Google hero in PlaceHero, so credit the
   // curated source even when a Google photo exists. Otherwise Google wins.
   if (hasGooglePhoto && !wm?.preferCurated) {
-    return (
-      <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-        Photos via Google
-      </p>
-    );
+    // Google attribution is rendered directly on the photo container above,
+    // where it remains visible and unambiguously attached to that content.
+    return null;
   }
   if (wm) {
     return (

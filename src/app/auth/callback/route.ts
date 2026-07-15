@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getDb } from "@/lib/db/client";
 import { user_profiles } from "@/lib/db/schema";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 /**
  * /auth/callback — completes the magic-link sign-in.
@@ -27,7 +28,7 @@ import { user_profiles } from "@/lib/db/schema";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/my-radius";
+  const next = safeRedirectPath(url.searchParams.get("next"), "/my-radius");
 
   if (!code) {
     return NextResponse.redirect(new URL("/auth/login?error=missing_code", req.url));
@@ -58,9 +59,5 @@ export async function GET(req: NextRequest) {
     console.error("[auth/callback] profile upsert failed:", err);
   }
 
-  // Safe-list `next` to same-origin paths only — prevents using us as an
-  // open redirector. Must reject protocol-relative "//evil.com" too: it
-  // startsWith("/") but the browser resolves it off-origin.
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/my-radius";
-  return NextResponse.redirect(new URL(safeNext, req.url));
+  return NextResponse.redirect(new URL(next, req.url));
 }

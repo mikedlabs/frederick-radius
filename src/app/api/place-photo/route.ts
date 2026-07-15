@@ -3,8 +3,9 @@
  *
  * Google photo media URLs embed the API key, so we can never put them in
  * client HTML. This route takes a photo resource name, fetches the image
- * server-side with the key, and streams it back with long cache headers
- * (Vercel edge + browser cache make repeat loads free).
+ * server-side with the key, and streams it back without storing the Google
+ * content. Google Places photo names and photo bytes are not ours to mirror
+ * or retain, so every successful response is explicitly `no-store`.
  *
  *   /api/place-photo?name=places/XXX/photos/YYY&w=800
  *
@@ -13,50 +14,15 @@
  */
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
-import { list, put } from "@vercel/blob";
 import { photoUrl } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 export const runtime = "nodejs";
-// Cache the proxied image aggressively — photos rarely change.
-export const revalidate = 604800; // 7 days
-
-/**
- * Cost control: mirror each Google photo to Vercel Blob the FIRST time
- * it's requested, then 308-redirect to the CDN copy forever after. Google
- * Place Photo (~$7/1k) is billed once per photo ever — not once per
- * edge-cache cycle — and the image bytes then serve from cheap blob/CDN
- * instead of streaming through this function. No-ops gracefully when
- * BLOB_READ_WRITE_TOKEN isn't set (falls back to streaming below).
- */
-async function serveFromBlob(name: string, w: number, googleUrl: string): Promise<Response | null> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
-  const key = `place-photos/${name.replace(/[^A-Za-z0-9_-]/g, "_")}_${w}.jpg`;
-  const redirect = (u: string) =>
-    new Response(null, {
-      status: 308,
-      headers: { Location: u, "Cache-Control": "public, max-age=2592000, s-maxage=2592000" },
-    });
-  try {
-    const { blobs } = await list({ prefix: key, limit: 1 });
-    const existing = blobs.find((b) => b.pathname === key);
-    if (existing) return redirect(existing.url); // already mirrored — no Google call
-    meterUsage("google_photo");
-    const up = await fetch(googleUrl, { redirect: "follow" });
-    if (!up.ok) return null; // let the streaming path handle the failure/placeholder
-    const buf = Buffer.from(await up.arrayBuffer());
-    const { url } = await put(key, buf, {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: up.headers.get("content-type") || "image/jpeg",
-    });
-    return redirect(url);
-  } catch {
-    return null; // any blob hiccup → graceful fallback to streaming
-  }
-}
+// A route-level revalidate value would put Google photo bytes in Next/Vercel's
+// data cache. Keep this route dynamic and make the upstream request explicit.
+export const dynamic = "force-dynamic";
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 const VALID_SLUG = /^[a-z0-9-]+$/;
@@ -185,18 +151,12 @@ export async function GET(req: NextRequest) {
     return placeholderResponse(name, w, "no-key", slug);
   }
 
-  // Serve from (or populate) the blob mirror first — bills Google once
-  // per photo ever. Returns null when blob isn't configured / fails, in
-  // which case we fall through to the original streaming path.
-  const mirrored = await serveFromBlob(name, w, url);
-  if (mirrored) return mirrored;
-
   try {
     meterUsage("google_photo");
     const upstream = await fetch(url, {
       // Google redirects to the actual CDN object; follow it.
       redirect: "follow",
-      next: { revalidate: 604800 },
+      cache: "no-store",
     });
     if (!upstream.ok || !upstream.body) {
       // Upstream 4xx/5xx (rotated photo reference, throttled, etc.) —
@@ -207,7 +167,11 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": upstream.headers.get("content-type") || "image/jpeg",
-        "Cache-Control": "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400",
+        // Do not retain or re-host Places content in the browser, Next data
+        // cache, or Vercel CDN. The endpoint remains a key-safe same-origin
+        // transport only.
+        "Cache-Control": "private, no-store, max-age=0",
+        Pragma: "no-cache",
       },
     });
   } catch {

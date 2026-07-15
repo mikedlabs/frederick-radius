@@ -25,9 +25,14 @@ const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
 const slim = publicPlaces().map((p) => {
   const d = decoratePlace(p) as PlaceCardData & {
     google_photos?: unknown;
+    google_photo_attributions?: unknown;
     google_hours?: unknown;
     review_snippet?: unknown;
     review_author?: unknown;
+    review_author_uri?: unknown;
+    review_author_photo_uri?: unknown;
+    review_google_maps_uri?: unknown;
+    google_maps_uri?: unknown;
     source_url?: unknown;
     license?: unknown;
     source_id?: unknown;
@@ -60,9 +65,14 @@ const slim = publicPlaces().map((p) => {
   // rebuild. The compact `hours` it recomputes from is kept.
   const {
     google_photos: _gp,
+    google_photo_attributions: _gpa,
     google_hours: _gh,
     review_snippet: _rs,
     review_author: _ra,
+    review_author_uri: _rau,
+    review_author_photo_uri: _rap,
+    review_google_maps_uri: _rgm,
+    google_maps_uri: _pgm,
     source_url: _su,
     license: _lic,
     source_id: _sid,
@@ -72,7 +82,8 @@ const slim = publicPlaces().map((p) => {
     open_status: _os,
     ...rest
   } = d;
-  void _gp; void _gh; void _rs; void _ra;
+  void _gp; void _gpa; void _gh; void _rs; void _ra;
+  void _rau; void _rap; void _rgm; void _pgm;
   void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _os;
   return {
     ...rest,

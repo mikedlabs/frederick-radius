@@ -16,6 +16,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildWantAnswer } from "@/lib/want-answer";
 import { approxLocation } from "@/lib/ip-geo";
+import { roundCoord } from "@/lib/walkTime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const lng = lngRaw ? Number(lngRaw) : NaN;
   let origin =
     Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
-      ? { lat, lng }
+      ? { lat: roundCoord(lat), lng: roundCoord(lng) }
       : null;
   // No precise fix on the request → seed ranking from the edge IP geo, the
   // exact trick /nearby uses. Ranking only, never a printed distance: the

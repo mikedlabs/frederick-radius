@@ -9,6 +9,7 @@
 import { and, eq, gt, isNull, or, desc, lt } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { community_reports } from "@/lib/db/schema";
+import { deleteCommunityReportPhoto } from "@/lib/community-report-photo";
 
 export type CommunityReport = {
   id: string;
@@ -89,21 +90,34 @@ export async function pruneExpiredReports(graceDays = 1): Promise<number> {
   if (!db) return 0;
   const now = new Date();
   const cutoff = new Date(Date.now() - graceDays * 86_400_000);
+  const expired = or(
+    and(
+      eq(community_reports.status, "approved"),
+      lt(community_reports.expires_at, now),
+    ),
+    and(
+      eq(community_reports.status, "rejected"),
+      lt(community_reports.reviewed_at, cutoff),
+    ),
+  );
   try {
+    const rows = await db
+      .select({ photo_url: community_reports.photo_url })
+      .from(community_reports)
+      .where(expired);
+
+    // Remove public files before their database references. A failed Blob
+    // deletion leaves the row available for the next cleanup run instead of
+    // creating an untracked public orphan.
+    const cleanup = await Promise.all(rows.map((row) => deleteCommunityReportPhoto(row.photo_url)));
+    if (cleanup.some((ok) => !ok)) {
+      console.warn("[community-reports] prune deferred: one or more photos could not be deleted");
+      return 0;
+    }
+
     const deleted = await db
       .delete(community_reports)
-      .where(
-        or(
-          and(
-            eq(community_reports.status, "approved"),
-            lt(community_reports.expires_at, now),
-          ),
-          and(
-            eq(community_reports.status, "rejected"),
-            lt(community_reports.reviewed_at, cutoff),
-          ),
-        ),
-      )
+      .where(expired)
       .returning({ id: community_reports.id });
     return deleted.length;
   } catch (err) {

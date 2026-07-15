@@ -3,6 +3,7 @@
 import { track } from "@/lib/track";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Map, { type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -45,7 +46,8 @@ export default function ReportClient({
 }: {
   /** When arriving from the map's "Mark a spot" FAB, the map's current camera
    *  is carried through so /report opens on the exact spot you were looking at
-   *  (instead of re-geolocating). Parsed server-side from `?c=lng,lat,zoom`. */
+   *  instead of the default downtown view. Parsed server-side from
+   *  `?c=lng,lat,zoom`. */
   initialCamera?: { longitude: number; latitude: number; zoom: number } | null;
 } = {}) {
   const router = useRouter();
@@ -97,12 +99,6 @@ export default function ReportClient({
       { enableHighAccuracy: true, timeout: 9000, maximumAge: 8000 },
     );
   }, [flyTo]);
-
-  useEffect(() => {
-    // Only auto-locate when we DIDN'T arrive with a camera from the map — a
-    // passed camera is the user's chosen spot; re-locating would yank it away.
-    if (!initialCamera) locate();
-  }, [locate, initialCamera]);
 
   // Reset subtype when switching to a category that doesn't have the current one.
   const subtypes = def?.subtypes ?? [];
@@ -247,7 +243,8 @@ export default function ReportClient({
           <button
             type="button"
             onClick={locate}
-            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2 text-sm font-semibold"
+            disabled={locating}
+            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-60"
             aria-label="Use my location"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className={locating ? "animate-spin" : undefined}>
@@ -362,6 +359,13 @@ export default function ReportClient({
             {status.text}
           </p>
         )}
+
+        <p className="text-center text-[10px] leading-[1.35] text-[var(--app-ink)]/60">
+          Reports may be public with this exact map point. Don&apos;t include faces or private
+          information; only share content you have the right to post. By sending, you agree to the{" "}
+          <Link href="/terms" className="underline underline-offset-2">Terms</Link> and acknowledges the{" "}
+          <Link href="/privacy" className="underline underline-offset-2">Privacy Policy</Link>.
+        </p>
 
         <button
           type="button"

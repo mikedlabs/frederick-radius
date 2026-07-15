@@ -1,7 +1,7 @@
 import type { LngLat } from "@/lib/geo";
 
 const NWS_BASE = "https://api.weather.gov";
-const UA = "Frederick Radius (miked@madproductions.io)";
+const UA = "Frederick Radius (hello@frederickradius.app)";
 
 export type NwsHourly = {
   startTime: string;

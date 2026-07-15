@@ -44,6 +44,7 @@ import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar"
 import SourceBadge from "@/components/place/SourceBadge";
 import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
+import { GoogleReviewAttribution } from "@/components/place/GoogleAttribution";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -238,6 +239,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           size="hero"
           priority
           photoSrc={place.google_photo_url}
+          photoAttribution={place.google_photo_attribution}
+          googleMapsUri={place.google_maps_uri}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
           {/* Title row carries the place name + address only. Save
@@ -342,9 +345,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               <blockquote className="text-[13px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 &ldquo;{place.review_snippet}&rdquo;
               </blockquote>
-              <figcaption className="mt-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                {place.review_author ? `${place.review_author} · ` : ""}via Google reviews
-              </figcaption>
+              <GoogleReviewAttribution
+                author={place.review_author}
+                authorUri={place.review_author_uri}
+                reviewGoogleMapsUri={place.review_google_maps_uri}
+                placeGoogleMapsUri={place.google_maps_uri}
+              />
             </figure>
           )}
           {/* Personal margin tooling comes LAST in the card — a first-time
@@ -450,7 +456,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <GoogleHours lines={place.google_hours} />
       ) : null}
 
-      <PlacePhotoGallery photos={place.google_photos ?? []} name={place.name} />
+      <PlacePhotoGallery
+        photos={place.google_photos ?? []}
+        name={place.name}
+        attributions={place.google_photo_attributions}
+        placeGoogleMapsUri={place.google_maps_uri}
+      />
 
       <section className="space-y-2">
         <h2 className="eyebrow">

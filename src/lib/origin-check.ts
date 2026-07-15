@@ -17,6 +17,7 @@
 const ALLOWED_HOSTS = new Set<string>([
   // Production
   "frederickradius.app",
+  "www.frederickradius.app",
   // Vercel preview URLs follow this pattern
   // (we accept *.vercel.app subdomains for our project only)
   // Localhost for dev. Ports vary — the host comparison strips the port.
@@ -28,6 +29,8 @@ const ALLOWED_HOSTS = new Set<string>([
 // Matches our own preview deploys: frederick-radius-<hash>-mikedlab.vercel.app
 const PROJECT_PREVIEW_HOST = /^frederick-radius-[a-z0-9]+(?:-mikedlab)?\.vercel\.app$/;
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
 function hostFromUrl(value: string | null): string | null {
   if (!value) return null;
   try {
@@ -35,6 +38,25 @@ function hostFromUrl(value: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+function parsedUrl(value: string | null): URL | null {
+  if (!value) return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedAppUrl(url: URL): boolean {
+  if (LOCAL_HOSTS.has(url.hostname)) {
+    return url.protocol === "http:" || url.protocol === "https:";
+  }
+  return (
+    url.protocol === "https:" &&
+    (ALLOWED_HOSTS.has(url.hostname) || PROJECT_PREVIEW_HOST.test(url.hostname))
+  );
 }
 
 /**
@@ -60,15 +82,149 @@ export function isSameOriginRequest(req: Request): boolean {
 }
 
 /**
+ * Strict CSRF-style guard for browser POST endpoints that mutate public data.
+ *
+ * Unlike `isSameOriginRequest`, this rejects production requests when both
+ * browser source headers are absent. Every supplied Origin/Referer must be a
+ * valid app URL and must exactly match the request origin; a good Referer can
+ * therefore never mask a foreign Origin. Localhost requests may omit both
+ * headers so unit tests, curl-driven local checks, and local development keep
+ * working without weakening the production path.
+ */
+export function isSameOriginMutationRequest(req: Request): boolean {
+  const target = parsedUrl(req.url);
+  if (!target || !isAllowedAppUrl(target)) return false;
+
+  const supplied = [req.headers.get("origin"), req.headers.get("referer")].filter(
+    (value): value is string => value !== null,
+  );
+
+  if (supplied.length === 0) return LOCAL_HOSTS.has(target.hostname);
+
+  return supplied.every((value) => {
+    const source = parsedUrl(value);
+    return source !== null && isAllowedAppUrl(source) && source.origin === target.origin;
+  });
+}
+
+export type LimitedJsonResult =
+  | { ok: true; value: unknown }
+  | { ok: false; error: "body-too-large" | "invalid-json" };
+
+export type LimitedTextResult =
+  | { ok: true; value: string }
+  | { ok: false; error: "body-too-large" | "invalid-body" };
+
+/**
+ * Read and parse JSON with a hard retained-body cap. Content-Length provides an
+ * early rejection when present; the streaming byte count remains authoritative
+ * for chunked or dishonest requests and stops the read as soon as the cap is
+ * crossed.
+ */
+export async function readJsonBodyWithLimit(
+  req: Request,
+  maxBytes: number,
+): Promise<LimitedJsonResult> {
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength)) {
+    const declaredBytes = Number(contentLength);
+    if (declaredBytes > maxBytes) return { ok: false, error: "body-too-large" };
+  }
+
+  if (!req.body) return { ok: false, error: "invalid-json" };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel();
+        return { ok: false, error: "body-too-large" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, error: "invalid-json" };
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) as unknown };
+  } catch {
+    return { ok: false, error: "invalid-json" };
+  }
+}
+
+/**
+ * Read a small text/form body without ever retaining more than `maxBytes`.
+ * This is intentionally separate from `request.formData()`: the platform
+ * parser may buffer an entire attacker-controlled multipart body before an
+ * application can reject it.
+ */
+export async function readTextBodyWithLimit(
+  req: Request,
+  maxBytes: number,
+): Promise<LimitedTextResult> {
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength)) {
+    const declaredBytes = Number(contentLength);
+    if (declaredBytes > maxBytes) return { ok: false, error: "body-too-large" };
+  }
+
+  if (!req.body) return { ok: false, error: "invalid-body" };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel();
+        return { ok: false, error: "body-too-large" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, error: "invalid-body" };
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, value: new TextDecoder().decode(bytes) };
+}
+
+/**
  * Per-IP rate limiter backed by Vercel KV (Upstash Redis under the
  * hood). Returns true when the request is OVER the limit and should
  * be rejected; false otherwise.
  *
  * Graceful fallback: when `KV_REST_API_URL` and `KV_REST_API_TOKEN`
- * are not set, this is a NO-OP that always allows the request — so
- * pre-KV deploys still work, and the origin-check guard above
- * remains the only defense. Adding the Vercel KV integration in the
- * dashboard auto-injects the env vars and this guard lights up.
+ * are not set or temporarily fail, a bounded in-memory counter still
+ * rate-limits each warm function instance. It cannot coordinate across
+ * serverless instances, so KV remains the stronger production option, but a
+ * missing integration no longer turns every application limit into a no-op.
  *
  * Uses Upstash's REST API directly (a single fetch with INCR + EXPIRE)
  * to avoid adding the `@upstash/redis` SDK as a dependency. Each
@@ -89,9 +245,43 @@ function warnKvUnconfiguredOnce(): void {
   kvWarned = true;
   if (process.env.NODE_ENV === "production") {
     console.warn(
-      "[rate-limit] KV_REST_API_URL/KV_REST_API_TOKEN not set: isRateLimited is a NO-OP and every API route is unmetered.",
+      "[rate-limit] KV_REST_API_URL/KV_REST_API_TOKEN not set: using a per-instance fallback; distributed limits require KV.",
     );
   }
+}
+
+type LocalLimit = { count: number; expiresAt: number };
+const localLimits = new Map<string, LocalLimit>();
+const MAX_LOCAL_LIMIT_KEYS = 5_000;
+let nextLocalSweep = 0;
+
+function isLocallyRateLimited(
+  ip: string,
+  bucket: string,
+  max: number,
+  windowSec: number,
+): boolean {
+  const now = Date.now();
+  if (now >= nextLocalSweep) {
+    for (const [key, value] of localLimits) {
+      if (value.expiresAt <= now) localLimits.delete(key);
+    }
+    nextLocalSweep = now + 60_000;
+  }
+
+  const key = `${bucket}:${ip}`;
+  const current = localLimits.get(key);
+  if (!current || current.expiresAt <= now) {
+    if (localLimits.size >= MAX_LOCAL_LIMIT_KEYS) {
+      const oldest = localLimits.keys().next().value as string | undefined;
+      if (oldest) localLimits.delete(oldest);
+    }
+    localLimits.set(key, { count: 1, expiresAt: now + windowSec * 1_000 });
+    return false;
+  }
+
+  current.count += 1;
+  return current.count > max;
 }
 
 export async function isRateLimited(
@@ -100,20 +290,16 @@ export async function isRateLimited(
   max: number,
   windowSec: number,
 ): Promise<boolean> {
+  const ip = clientIp(req);
+  if (!ip) return false; // no stable identity to bucket
+
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
   if (!url || !token) {
-    // KV not configured — the limiter is a silent pass-through. In production
-    // that means paid upstreams (Google photos, Mapbox isochrone/travel-time,
-    // the LLM behind /api/ask) are effectively UNMETERED, a failure mode the
-    // owner only discovers on the monthly invoice. Say so once per instance,
-    // loudly enough for Vercel logs, quietly enough not to spam.
+    // Say so once per instance, then retain meaningful local protection.
     warnKvUnconfiguredOnce();
-    return false;
+    return isLocallyRateLimited(ip, bucket, max, windowSec);
   }
-
-  const ip = clientIp(req);
-  if (!ip) return false; // no IP to bucket against — let it through
 
   const key = `rl:${bucket}:${ip}`;
   try {
@@ -133,14 +319,13 @@ export async function isRateLimited(
       // fail open rather than block the user.
       signal: AbortSignal.timeout(750),
     });
-    if (!res.ok) return false; // KV error — fail open
+    if (!res.ok) return isLocallyRateLimited(ip, bucket, max, windowSec);
     const data = (await res.json()) as Array<{ result?: number }>;
     const count = data[0]?.result ?? 0;
     return count > max;
   } catch {
-    // Network error, timeout, JSON parse error — fail open. We'd
-    // rather serve a legit user than block them on a transient KV blip.
-    return false;
+    // A transient KV failure falls back to the bounded warm-instance counter.
+    return isLocallyRateLimited(ip, bucket, max, windowSec);
   }
 }
 

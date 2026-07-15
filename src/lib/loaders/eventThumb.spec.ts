@@ -92,31 +92,24 @@ describe("withVenueThumbs — venue-photo trust gates", () => {
     expect(notBorrowed.hero_image).toBeUndefined();
   });
 
-  it("gives the real Alive @ Five series its Carroll Creek amphitheater photo", () => {
-    // The series led with an empty gradient plate because the curated rows
-    // carried a venue NAME ("Carroll Creek Amphitheater") with no place
-    // literally named that in the client set. The fix links each row to the
-    // real venue via venue_place_slug. Assert the canonical place is present
-    // WITH a photo, and that every Alive @ Five row resolves to it — so the
-    // card can never regress to the plate.
+  it("does not resurrect the legacy Carroll Creek Google-photo Blob for Alive @ Five", () => {
+    // The curated rows still link to the real venue. Its only image was a
+    // permanently mirrored Google Places photo, which the client loader now
+    // suppresses. Until the record has a compliant on-demand photo, the
+    // honest fallback plate is preferable to re-exposing that legacy Blob.
     const amphitheater = clientPlaces().find(
       (p) => p.slug === "carroll-creek-outdoor-amphitheater",
     );
-    expect(
-      amphitheater?.google_photo_url,
-      "Carroll Creek amphitheater must be in the slim set with a real photo",
-    ).toBeTruthy();
-    if (!amphitheater?.google_photo_url) return;
+    expect(amphitheater, "canonical Carroll Creek venue should remain available").toBeTruthy();
+    expect(amphitheater?.google_photo_url).toBeUndefined();
 
     const aliveAtFive = (EVENTS as EventWithMeta[]).filter((e) =>
       e.slug.startsWith("alive-at-five-"),
     );
     expect(aliveAtFive.length).toBeGreaterThan(0);
     for (const e of withVenueThumbs(aliveAtFive)) {
-      expect(
-        e.hero_image,
-        `${e.slug} should wear the amphitheater's real venue photo`,
-      ).toBe(amphitheater.google_photo_url);
+      expect(e.venue_place_slug).toBe("carroll-creek-outdoor-amphitheater");
+      expect(e.hero_image, `${e.slug} should use the non-photo fallback`).toBeUndefined();
     }
   });
 });

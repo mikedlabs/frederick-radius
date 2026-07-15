@@ -30,6 +30,7 @@ import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { roundCoord } from "@/lib/walkTime";
 
 export const runtime = "nodejs";
 // Cache each polygon for a day. Walking routes don't change minute
@@ -88,15 +89,36 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, reason: "no-token" });
   }
 
+  // Snap to the same ~100m grid as the browser. This prevents an exact device
+  // fix from reaching Mapbox or being reflected in our public response/cache.
+  const approximateLng = roundCoord(lng);
+  const approximateLat = roundCoord(lat);
+  if (lng !== approximateLng || lat !== approximateLat) {
+    const canonical = req.nextUrl.clone();
+    canonical.searchParams.set("lng", String(approximateLng));
+    canonical.searchParams.set("lat", String(approximateLat));
+    return new Response(null, {
+      status: 307,
+      headers: {
+        Location: canonical.toString(),
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
+
   // Build the Mapbox URL. `polygons=true` returns one filled polygon
   // (rather than line contours). `denoise=1` reduces tiny islands of
   // unreachable area — cleaner rendering at our zoom levels.
-  const upstream = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${lng},${lat}` +
+  const upstream = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${approximateLng},${approximateLat}` +
     `?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${MAPBOX_TOKEN}`;
 
   try {
     meterUsage("mapbox_isochrone");
-    const r = await fetch(upstream, { headers: MAPBOX_SERVER_HEADERS, next: { revalidate: 86400 } });
+    const r = await fetch(upstream, {
+      headers: MAPBOX_SERVER_HEADERS,
+      next: { revalidate: 86400 },
+      signal: AbortSignal.timeout(6_000),
+    });
     if (!r.ok) {
       return Response.json({ ok: false, reason: `upstream-${r.status}` });
     }
@@ -104,7 +126,13 @@ export async function GET(req: NextRequest) {
     // Mapbox returns a FeatureCollection; pass through with a small
     // wrapper so the client knows it's a real success vs a fallback.
     return Response.json(
-      { ok: true, geojson: data, mode, minutes, origin: { lng, lat } },
+      {
+        ok: true,
+        geojson: data,
+        mode,
+        minutes,
+        origin: { lng: approximateLng, lat: approximateLat },
+      },
       {
         headers: {
           "Cache-Control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",

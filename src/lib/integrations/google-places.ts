@@ -13,9 +13,10 @@
  * the "Pro + Enterprise" fields (hours, rating) is billed per the field mask,
  * so we keep the mask tight.
  *
- * Caching: callers persist results to the `place_enrichment` table with a
- * `fetched_at` timestamp and only re-fetch past the TTL. This module itself
- * does NOT cache — it's a thin client. The backfill script + loaders own TTL.
+ * Caching: this client always uses `no-store`. Callers must not persist Google
+ * content unless a specific Maps Platform term permits that field. Place IDs
+ * are the durable identifier; photo names in particular can expire and must
+ * be obtained from a current Places response.
  */
 
 import type { OperationalStatus } from "@/data/places";
@@ -61,6 +62,10 @@ export type PlaceEnrichment = {
   user_rating_count?: number;
   /** Photo resource names — turn into URLs with photoUrl() */
   photo_names: string[];
+  /** Attribution metadata returned alongside each Google photo. Keep this
+   *  paired with its resource name so every rendered photo can credit its
+   *  author and link to its Google Maps source when those fields exist. */
+  photo_attributions: GooglePhotoAttribution[];
   phone?: string;
   website?: string;
   lat?: number;
@@ -77,6 +82,23 @@ export type PlaceEnrichment = {
    *  summary. Never presented as our own copy. */
   review_snippet?: string;
   review_author?: string;
+  review_author_uri?: string;
+  review_author_photo_uri?: string;
+  review_google_maps_uri?: string;
+  /** Canonical Google Maps source for the place record. */
+  google_maps_uri?: string;
+};
+
+export type GoogleAuthorAttribution = {
+  display_name?: string;
+  uri?: string;
+  photo_uri?: string;
+};
+
+export type GooglePhotoAttribution = {
+  photo_name: string;
+  google_maps_uri?: string;
+  authors: GoogleAuthorAttribution[];
 };
 
 function key(): string | null {
@@ -103,7 +125,7 @@ const FIELDS_FULL = [
   "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
   "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
   "rating", "userRatingCount", "nationalPhoneNumber", "websiteUri", "location",
-  "photos", "editorialSummary", "primaryTypeDisplayName", "reviews",
+  "photos", "editorialSummary", "primaryTypeDisplayName", "reviews", "googleMapsUri",
 ];
 const FIELDS_LEAN = FIELDS_FULL.filter((f) => f !== "reviews");
 const FIELDS_STATUS = ["id", "businessStatus"];
@@ -130,14 +152,28 @@ type GApiPlace = {
   userRatingCount?: number;
   nationalPhoneNumber?: string;
   websiteUri?: string;
+  googleMapsUri?: string;
   location?: { latitude?: number; longitude?: number };
-  photos?: Array<{ name?: string }>;
+  photos?: Array<{
+    name?: string;
+    googleMapsUri?: string;
+    authorAttributions?: Array<{
+      displayName?: string;
+      uri?: string;
+      photoUri?: string;
+    }>;
+  }>;
   editorialSummary?: { text?: string };
   primaryTypeDisplayName?: { text?: string };
   reviews?: Array<{
     text?: { text?: string };
     rating?: number;
-    authorAttribution?: { displayName?: string };
+    googleMapsUri?: string;
+    authorAttribution?: {
+      displayName?: string;
+      uri?: string;
+      photoUri?: string;
+    };
   }>;
 };
 
@@ -146,9 +182,15 @@ type GApiPlace = {
  * length (a one-liner, not an essay), single line, trimmed. Returns
  * undefined when nothing clears the bar — never fabricates.
  */
-function pickReview(
+export function pickReview(
   reviews: GApiPlace["reviews"],
-): { snippet: string; author?: string } | undefined {
+): {
+  snippet: string;
+  author?: string;
+  authorUri?: string;
+  authorPhotoUri?: string;
+  googleMapsUri?: string;
+} | undefined {
   if (!Array.isArray(reviews) || reviews.length === 0) return undefined;
   // Logistics-y reviews ("clean bathroom", "easy parking", "they were
   // closed") make odd "human highlights" — skip them when a substantive
@@ -159,6 +201,9 @@ function pickReview(
       snippet: r.text?.text?.replace(/\s+/g, " ").trim() ?? "",
       rating: r.rating ?? 0,
       author: r.authorAttribution?.displayName?.trim() || undefined,
+      authorUri: r.authorAttribution?.uri || undefined,
+      authorPhotoUri: r.authorAttribution?.photoUri || undefined,
+      googleMapsUri: r.googleMapsUri || undefined,
     }))
     .filter((c) => c.snippet.length >= 40 && c.snippet.length <= 240 && c.rating >= 4);
   if (candidates.length === 0) return undefined;
@@ -169,7 +214,13 @@ function pickReview(
   pool.sort(
     (a, b) => b.rating - a.rating || Math.abs(a.snippet.length - 140) - Math.abs(b.snippet.length - 140),
   );
-  return { snippet: pool[0].snippet, author: pool[0].author };
+  return {
+    snippet: pool[0].snippet,
+    author: pool[0].author,
+    authorUri: pool[0].authorUri,
+    authorPhotoUri: pool[0].authorPhotoUri,
+    googleMapsUri: pool[0].googleMapsUri,
+  };
 }
 
 function normalize(p: GApiPlace): PlaceEnrichment | null {
@@ -179,6 +230,19 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     p.regularOpeningHours?.weekdayDescriptions ??
     [];
   const status = (p.businessStatus as GoogleBusinessStatus) || "UNKNOWN";
+  const selectedReview = pickReview(p.reviews);
+  const photoAttributions = (p.photos ?? []).flatMap((photo) => {
+    if (!photo.name) return [];
+    return [{
+      photo_name: photo.name,
+      google_maps_uri: photo.googleMapsUri,
+      authors: (photo.authorAttributions ?? []).map((author) => ({
+        display_name: author.displayName?.trim() || undefined,
+        uri: author.uri || undefined,
+        photo_uri: author.photoUri || undefined,
+      })),
+    } satisfies GooglePhotoAttribution];
+  });
   return {
     google_place_id: p.id,
     business_status: status,
@@ -189,6 +253,7 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     rating: p.rating,
     user_rating_count: p.userRatingCount,
     photo_names: (p.photos ?? []).map((ph) => ph.name).filter(Boolean) as string[],
+    photo_attributions: photoAttributions,
     phone: p.nationalPhoneNumber,
     website: p.websiteUri,
     lat: p.location?.latitude,
@@ -196,8 +261,12 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     primary_type: p.primaryType,
     editorial_summary: p.editorialSummary?.text,
     primary_type_display: p.primaryTypeDisplayName?.text,
-    review_snippet: pickReview(p.reviews)?.snippet,
-    review_author: pickReview(p.reviews)?.author,
+    review_snippet: selectedReview?.snippet,
+    review_author: selectedReview?.author,
+    review_author_uri: selectedReview?.authorUri,
+    review_author_photo_uri: selectedReview?.authorPhotoUri,
+    review_google_maps_uri: selectedReview?.googleMapsUri,
+    google_maps_uri: p.googleMapsUri,
   };
 }
 
@@ -216,8 +285,11 @@ export async function getPlaceDetails(
         "X-Goog-Api-Key": k,
         "X-Goog-FieldMask": fieldsFor(fields).join(","),
       },
-      // 24h ISR-friendly; real TTL is owned by the enrichment table.
-      next: { revalidate: 86400 },
+      // Places content is fetched for the current request only. Persisting
+      // Google content belongs to a separate licensed-data decision; this
+      // thin client does not put responses into Next's data cache.
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) {
        
@@ -305,7 +377,8 @@ export async function resolveAndEnrich(opts: {
         "X-Goog-FieldMask": fieldsFor(fields).map((f) => `places.${f}`).join(","),
       },
       body: JSON.stringify(body),
-      next: { revalidate: 86400 },
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) {
        

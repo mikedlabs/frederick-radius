@@ -1,4 +1,5 @@
 import { readCachedPosition } from "@/hooks/useGeolocation";
+import { roundCoord } from "@/lib/walkTime";
 
 /**
  * Client-side want-answer cache + prefetch.
@@ -30,10 +31,18 @@ const cache = new Map<string, Entry>();
 
 function buildUrl(cKey: string, facet: string | null): { url: string; key: string } {
   const fix = readCachedPosition();
-  const geo = fix ? `&lat=${fix.lat}&lng=${fix.lng}` : "";
+  // Never put an exact device fix into a URL, CDN key, access log, or error
+  // trace. A ~100m snap preserves useful neighborhood ranking while keeping
+  // the browser request itself coarse (the server rounds again defensively).
+  const approximateFix = fix
+    ? { lat: roundCoord(fix.lat), lng: roundCoord(fix.lng) }
+    : null;
+  const geo = approximateFix
+    ? `&lat=${approximateFix.lat}&lng=${approximateFix.lng}`
+    : "";
   const url = `/api/want?c=${encodeURIComponent(cKey)}${facet ? `&facet=${encodeURIComponent(facet)}` : ""}${geo}`;
   // Geo rides in the key so a moved position doesn't serve a stale ranking.
-  const key = `${cKey}|${facet ?? ""}|${fix ? `${fix.lat.toFixed(3)},${fix.lng.toFixed(3)}` : ""}`;
+  const key = `${cKey}|${facet ?? ""}|${approximateFix ? `${approximateFix.lat},${approximateFix.lng}` : ""}`;
   return { url, key };
 }
 

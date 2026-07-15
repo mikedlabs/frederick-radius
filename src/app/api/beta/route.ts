@@ -11,15 +11,15 @@ import {
   normalizeCode,
   signCode,
 } from "@/lib/beta-gate";
+import { safeRedirectPath } from "@/lib/safe-redirect";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readTextBodyWithLimit,
+} from "@/lib/origin-check";
 
 // Needs the Node runtime so it can reach Postgres to validate a per-user code.
 export const runtime = "nodejs";
-
-/** Only same-origin app paths are valid redirect targets (no open redirect). */
-function safeNext(raw: unknown): string {
-  const s = typeof raw === "string" ? raw : "";
-  return s.startsWith("/") && !s.startsWith("//") ? s : "/today";
-}
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
@@ -41,18 +41,48 @@ const THIRTY_DAYS = 60 * 60 * 24 * 30;
  * becomes a GET on redirect.
  */
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  // Access codes are short. This ceiling stops oversized parser work, while
+  // the low attempt budget makes online guessing of even legacy short codes
+  // impractical. A distributed KV limit is used when configured, with the
+  // bounded per-instance fallback otherwise.
+  if (await isRateLimited(req, "beta-unlock", 10, 15 * 60)) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "900", "Cache-Control": "no-store" },
+    });
+  }
+
   const pw = process.env.BETA_PASSWORD;
-  const form = await req.formData().catch(() => null);
+  const contentType = req.headers.get("content-type")?.split(";", 1)[0]?.trim();
+  if (contentType !== "application/x-www-form-urlencoded") {
+    return new Response("Unsupported Media Type", {
+      status: 415,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+  const body = await readTextBodyWithLimit(req, 4 * 1024);
+  if (!body.ok) {
+    return new Response(body.error === "body-too-large" ? "Payload Too Large" : "Bad Request", {
+      status: body.error === "body-too-large" ? 413 : 400,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+  const form = new URLSearchParams(body.value);
   // Field is still named `password` for backward compatibility with any cached
   // form markup; it now accepts a code too.
-  const submitted = form ? String(form.get("password") ?? "") : "";
-  const next = safeNext(form?.get("next"));
+  const submitted = String(form.get("password") ?? "").slice(0, 256);
+  const next = safeRedirectPath(form.get("next"), "/today");
 
   const fail = () => {
     const back = new URL("/beta", req.url);
     back.searchParams.set("error", "1");
     back.searchParams.set("next", next);
-    return NextResponse.redirect(back, { status: 303 });
+    const response = NextResponse.redirect(back, { status: 303 });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   };
 
   if (!submitted) return fail();
@@ -60,6 +90,7 @@ export async function POST(req: NextRequest) {
   // 1. Master password (exact match, unchanged behavior).
   if (pw && submitted === pw) {
     const res = NextResponse.redirect(new URL(next, req.url), { status: 303 });
+    res.headers.set("Cache-Control", "no-store");
     res.cookies.set(BETA_COOKIE, await betaToken(pw), {
       httpOnly: true,
       secure: true,
@@ -114,6 +145,7 @@ export async function POST(req: NextRequest) {
   if (!valid) return fail();
 
   const res = NextResponse.redirect(new URL(next, req.url), { status: 303 });
+  res.headers.set("Cache-Control", "no-store");
   res.cookies.set(BETA_COOKIE, signed, {
     httpOnly: true,
     secure: true,

@@ -551,7 +551,9 @@ export default function RadiusMap({
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
-        attributionControl={false}
+        // Mapbox's logo and attribution must remain visible on every map that
+        // uses its styles or tiles. Keep the compact default control enabled.
+        attributionControl
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}

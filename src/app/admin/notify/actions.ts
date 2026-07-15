@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { broadcast, parseSegment, segmentLabel } from "@/lib/push-broadcast";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 /**
  * Send one owner broadcast. Owner-triggered only (the whole /admin surface is
@@ -22,9 +23,7 @@ export async function sendBroadcast(formData: FormData) {
     redirect("/admin/notify?error=1");
   }
 
-  // Only a relative, same-origin path may open on click (never an off-site or
-  // protocol-relative URL a stray paste could smuggle in).
-  const url = rawUrl.startsWith("/") && !rawUrl.startsWith("//") ? rawUrl : "/today";
+  const url = safeRedirectPath(rawUrl, "/today");
 
   const res = await broadcast(seg, { title, body, url }, { urgent });
   revalidatePath("/admin/notify");

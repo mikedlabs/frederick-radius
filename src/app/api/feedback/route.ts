@@ -16,7 +16,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
-import { isRateLimited } from "@/lib/origin-check";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 import { parseFeedback, buildFeedbackRow } from "@/lib/feedback";
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
@@ -25,21 +29,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const noStore = { "Cache-Control": "no-store" };
+const MAX_FEEDBACK_BODY_BYTES = 32 * 1024;
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore });
+  }
   // 12 notes/hour/IP is generous for a real tester, cheap insurance otherwise.
   if (await isRateLimited(req, "feedback", 12, 3600)) {
     return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore });
+  const body = await readJsonBodyWithLimit(req, MAX_FEEDBACK_BODY_BYTES);
+  if (!body.ok) {
+    return NextResponse.json(
+      { error: body.error },
+      { status: body.error === "body-too-large" ? 413 : 400, headers: noStore },
+    );
   }
 
-  const parsed = parseFeedback(body);
+  const parsed = parseFeedback(body.value);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400, headers: noStore });
   }
