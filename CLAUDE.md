@@ -33,6 +33,33 @@ SHIPPED brand deck (see `src/app/globals.css` tokens) is:
   action per view. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.
 
+## Owner's public voice (Reddit, social, email — anything Mike posts)
+
+When drafting replies or posts the owner will publish under his own name
+(owner rule, 2026-07-15: "that's how I need to talk all the time"), the
+draft must read like a person typing in a thread, not composed copy:
+
+- **No em dashes, ever.** Periods, commas, or parentheses. (Same rule as
+  app copy, and the #1 "AI wrote this" tell.)
+- **No bullet lists in forum/social replies.** Flowing prose with uneven
+  sentence lengths. A rough inline list is fine; parallel-polished
+  structure is not.
+- **Banned tics:** "genuinely", "truly", "I appreciate", "delve",
+  snappy symmetric phrasing ("crowned the answer"), tidy
+  concede→enumerate→invite arcs, and any closing line that sells.
+- **Specifics are the voice.** "South of downtown", "filed under
+  coffee", "dog waste stations" beat any adjective. One technical
+  detail max, picked for the audience ("a test that fails the build"
+  for a software person).
+- **Concede fast, prove with shipped facts.** "You were right, it's
+  fixed, it's live" and only claim what is actually deployed; anything
+  pending is "still on my list."
+- **Small human roughness:** contractions, digits ("5 minutes"), an
+  occasional self-deprecation ("my screwup"). Shorter beats charming;
+  when unsure, end plain.
+- **Never argue about AI or tools.** The app being right is the entire
+  argument; that debate gets zero oxygen.
+
 ## Locked architecture (do not restructure)
 
 - /map is the clean whole-county browse surface by default (owner call
