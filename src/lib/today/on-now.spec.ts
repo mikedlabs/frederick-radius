@@ -142,6 +142,36 @@ describe("selectOnNowChips — event slot", () => {
     expect(chips).toEqual([]);
   });
 
+  it("skips the excluded headliner slug and features the next-best live draw", () => {
+    const chips = selectOnNowChips({
+      now: NOW,
+      events: [
+        ev({ slug: "headliner", title: "Bluegrass on the Creek", venue_name: "Sky Stage" }),
+        ev({ slug: "runner-up", title: "Open Mic Night", venue_name: "Olde Mother" }),
+      ],
+      pours: [],
+      markets: [],
+      excludeEventSlug: "headliner",
+    });
+    expect(chips).toHaveLength(1);
+    expect(chips[0].href).toBe("/events/runner-up");
+  });
+
+  it("with the only live draw excluded, falls through to the countdown fallback", () => {
+    const chips = selectOnNowChips({
+      now: NOW,
+      events: [
+        ev({ slug: "headliner", title: "Bluegrass on the Creek" }),
+        ev({ slug: "openmic", title: "Open Mic Night", starts_at: inMin(25), ends_at: inMin(120) }),
+      ],
+      pours: [],
+      markets: [],
+      excludeEventSlug: "headliner",
+    });
+    expect(chips).toHaveLength(1);
+    expect(chips[0].kicker).toBe("Starts in 25 min");
+  });
+
   it("place + market chips still assemble in reading order after the event", () => {
     const chips = selectOnNowChips({
       now: NOW,

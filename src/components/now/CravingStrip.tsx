@@ -23,7 +23,7 @@ function defaultWant(now: Date): string {
  * CravingStrip — the "I want…" fast lane on Today.
  *
  * A HIERARCHY, not a flat wall: a row of main category tiles (Eat · Drink ·
- * Outdoors · See & do · Shop · Wellness & stay · Get around), each expanding to
+ * Outdoors · See & do · Shop · Wind down · Get around), each expanding to
  * its subcategories inline (WantsAccordion). This replaced the old ~22-peer-tile
  * grid where "Dinner" sat confusingly beside "Food" and utilities mixed in with
  * cravings. Now there's one main per intent, subcategories underneath, and the

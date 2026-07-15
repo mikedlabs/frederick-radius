@@ -29,6 +29,7 @@ export default function EventCard({
   event,
   variant = "glance",
   live = false,
+  hideDate = false,
   whyItMatters,
   priorityImage = true,
 }: {
@@ -54,6 +55,13 @@ export default function EventCard({
   /** Live right now — renders a small pulsing dot in the compact row so
    *  "happening now" reads even in the dense listing. */
   live?: boolean;
+  /**
+   * The surface's own header already names the day ("Also today",
+   * "Earlier today"), so the utility row prints only the clock — repeating
+   * "Tue Jul 15" on every row of a today-only list is dead ink that steals
+   * width from the title. Utility variant only; other variants ignore it.
+   */
+  hideDate?: boolean;
   /**
    * One honest "why it matters" line for the HERO (feature) card,
    * derived upstream from the event's real description — never
@@ -149,8 +157,9 @@ export default function EventCard({
           {statusText && (
             <span className="font-semibold" style={{ color: statusBg }}>{statusText} · </span>
           )}
-          {date.weekday} {date.month} {date.day}
-          {date.time ? ` · ${date.time}` : ""}
+          {hideDate
+            ? date.time
+            : `${date.weekday} ${date.month} ${date.day}${date.time ? ` · ${date.time}` : ""}`}
         </span>
       </article>
     );

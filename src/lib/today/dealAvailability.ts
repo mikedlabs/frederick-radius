@@ -19,7 +19,10 @@ export function todayDealAvailability(
   now: Date,
 ): DealAvailability {
   if (!hours) {
-    return { state: "today", label: "Today", when: "Time not listed", rank: 2 };
+    // No stated time → say nothing. "Time not listed" repeated down the
+    // stack read as the page apologizing four times; the soft "Today"
+    // label already carries the honest claim, absence carries the rest.
+    return { state: "today", label: "Today", when: "", rank: 2 };
   }
 
   const status = happyHourStatus(`${weekday} ${hours}`, now);

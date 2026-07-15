@@ -29,10 +29,13 @@ describe("todayDealAvailability", () => {
       when: "6 PM",
       rank: 2,
     });
+    // Missing time → empty `when`: the row's soft "Today" label already
+    // carries the claim; renderers skip an empty string instead of
+    // printing "Time not listed" down the whole stack.
     expect(todayDealAvailability(undefined, "Tuesday", tue6pm)).toEqual({
       state: "today",
       label: "Today",
-      when: "Time not listed",
+      when: "",
       rank: 2,
     });
   });

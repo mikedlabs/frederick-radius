@@ -657,7 +657,9 @@ async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromis
           {!ev.is_all_day && ` · ${eventDateBlock(ev).time}`}
           <EventCountdown startsAt={ev.starts_at} endsAt={ev.ends_at ?? ev.starts_at} />
         </span>
-        <span className="block truncate font-serif text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        {/* Two lines before ellipsis: tonight's ONE headline is the last
+            title on the page that should read "Curious Iguana Presents: …". */}
+        <span className="line-clamp-2 font-serif text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {ev.title}
         </span>
         {/* Where: the venue and the town, so "Sky Stage · Frederick" tells
@@ -827,7 +829,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 <ul>
                   {alsoToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} variant="utility" />
+                      <EventCard event={e} variant="utility" hideDate />
                     </li>
                   ))}
                 </ul>
@@ -843,7 +845,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 <ul>
                   {earlierToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} variant="utility" />
+                      <EventCard event={e} variant="utility" hideDate />
                     </li>
                   ))}
                 </ul>
