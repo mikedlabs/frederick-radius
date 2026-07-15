@@ -65,6 +65,67 @@ describe("normalizeTransitRoutes", () => {
   });
 });
 
+// July 2026 Socrata schema: no route_name column anymore — rt_long_nm
+// carries a segment-level long name and route_id the short code. The
+// normalizer maps ids to the county's canonical route names (so the
+// page's group-by-name collapses segments), disambiguates the shared
+// "MTM" id into its two real shuttles, and keeps distinct segments
+// (same id + variation) as separate variations.
+const raw2026 = {
+  type: "FeatureCollection",
+  features: [
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.41, 39.41], [-77.4, 39.42]]] },
+      properties: { route_id: "65", rt_long_nm: "#65/Walkersville Connector", destination: "Loop", objectid: "1" },
+    },
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.42, 39.43], [-77.43, 39.44]]] },
+      properties: { route_id: "65", rt_long_nm: "#65 route alternate segment 1", variation: "Riverside Corp. Park", objectid: "24" },
+    },
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.44, 39.45], [-77.45, 39.46]]] },
+      properties: { route_id: "65", rt_long_nm: "#65 route alternate segment 2", variation: "Riverside Corp. Park", objectid: "25" },
+    },
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.53, 39.27], [-77.54, 39.28]]] },
+      properties: { route_id: "MTM", rt_long_nm: "Point of Rocks Meet-the-MARC shuttle", objectid: "30" },
+    },
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.35, 39.48], [-77.36, 39.49]]] },
+      properties: { route_id: "MTM", rt_long_nm: "Walkersville Meet-the-MARC shuttle a.m.", objectid: "31" },
+    },
+    // unknown id → falls back to the long name, segment suffix stripped
+    {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.4, 39.4], [-77.41, 39.41]]] },
+      properties: { route_id: "ZZZ", rt_long_nm: "#99 route alternate segment 3", objectid: "40" },
+    },
+  ],
+};
+
+describe("normalizeTransitRoutes — 2026 schema (rt_long_nm)", () => {
+  it("maps route_id to the county's canonical route names", () => {
+    const out = normalizeTransitRoutes(raw2026);
+    const names = out.map((r) => r.name);
+    expect(names.filter((n) => n === "65 Connector")).toHaveLength(3);
+  });
+
+  it("keeps same-id segments as distinct variations (no dedupe collapse)", () => {
+    const out = normalizeTransitRoutes(raw2026);
+    expect(out.filter((r) => r.id === "65")).toHaveLength(3);
+  });
+
+  it("splits the shared MTM id into its two real shuttles", () => {
+    const names = normalizeTransitRoutes(raw2026).map((r) => r.name);
+    expect(names).toContain("Point of Rocks Meet-the-MARC Shuttle");
+    expect(names).toContain("Walkersville Meet-the-MARC Shuttle");
+  });
+
+  it("unknown ids fall back to the cleaned long name", () => {
+    const names = normalizeTransitRoutes(raw2026).map((r) => r.name);
+    expect(names).toContain("99");
+  });
+});
+
 import { transitRouteShapesFC } from "@/lib/integrations/transitFrederick";
 describe("transitRouteShapesFC (geometry foundation)", () => {
   it("keeps in-county route lines with light props, drops the rest", () => {
