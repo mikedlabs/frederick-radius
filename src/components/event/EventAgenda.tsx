@@ -106,7 +106,7 @@ export default function EventAgenda({
                   >
                     <span
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-brand)" }}
+                      style={{ color: "var(--app-brand-press)" }}
                     >
                       {e.is_all_day ? "All day" : nyTime(e.starts_at)}
                     </span>

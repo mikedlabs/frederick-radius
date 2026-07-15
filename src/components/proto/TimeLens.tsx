@@ -135,7 +135,7 @@ export default function TimeLens({ windows, events, nowMin }: { windows: Windows
                 className="flex items-baseline gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
                 style={{ borderColor: "var(--app-border)" }}
               >
-                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-brand)" }}>{fmt(e.startMin)}</span>
+                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>{fmt(e.startMin)}</span>
                 <span className="min-w-0">
                   <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{e.title}</span>
                   <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{e.venue}</span>

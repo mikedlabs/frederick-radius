@@ -71,7 +71,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
           hideLabel) — the page's "Ask Radius anything." headline already
           labels it, so the eyebrow is hidden to avoid saying it twice. */}
       {!hideLabel && (
-        <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand)" }}>
+        <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand-press)" }}>
           <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Radius
         </div>
       )}

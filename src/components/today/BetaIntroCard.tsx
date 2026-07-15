@@ -65,7 +65,7 @@ export default function BetaIntroCard() {
         <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
           New here? What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time around here.
         </span>
-        <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: "var(--app-brand)" }}>
+        <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: "var(--app-brand-press)" }}>
           How it works
           <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         </span>
