@@ -246,50 +246,49 @@ export default function CompassHub() {
 
   return (
     <div className="space-y-9">
-      <header
-        className="relative overflow-hidden rounded-[24px] border px-5 pb-5 pt-6 sm:px-7 sm:pb-7 sm:pt-8"
-        style={{
-          borderColor: "color-mix(in srgb, var(--app-brand-2) 70%, black)",
-          background:
-            "radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--app-cool) 70%, transparent), transparent 36%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 76%, var(--app-bedrock)))",
-          boxShadow: "var(--app-elev-2), var(--app-edge)",
-          color: "var(--app-ink-inverse)",
-        }}
-      >
-        <CompassDial />
-        <div className="relative max-w-[34rem]">
-          <p className="flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] opacity-75">
-            <Compass className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            Frederick County compass
-          </p>
-          <h1 className="mt-3 max-w-[19rem] font-serif text-[34px] font-semibold leading-[0.98] tracking-[-0.035em] text-balance sm:max-w-[30rem] sm:text-[44px]">
-            Find your way around Frederick.
-          </h1>
-          <p className="mt-3 max-w-[28rem] text-[13.5px] leading-relaxed opacity-80 sm:text-[14px]">
-            Start with what you need. Compass will get you to the right guide,
-            map, calendar, or local tool.
-          </p>
-          <Link
-            href="/search"
-            prefetch={false}
-            onClick={openSearch}
-            className="tactile-interactive mt-5 flex min-h-12 w-full items-center gap-3 rounded-[14px] border px-4 text-left"
-            style={{
-              borderColor: "rgba(255,255,255,0.24)",
-              background: "var(--app-bg-elevated-solid)",
-              color: "var(--app-ink)",
-              boxShadow: "0 10px 30px -18px rgba(0,0,0,0.75), var(--app-hi)",
-            }}
-          >
-            <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-[14px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-              Search places, events, towns…
-            </span>
-            <span className="hidden rounded-md border px-1.5 py-0.5 font-mono text-[9px] sm:inline" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-              ⌘K
-            </span>
-          </Link>
-        </div>
+      {/* Field-guide plate masthead — the wayfinding hub now speaks the same
+          paper-cream plate language as every sibling surface (eyebrow +
+          serif title + brand rule) instead of a one-off dark gradient hero.
+          The compass motif rides as a small eyebrow mark, not a banner. */}
+      <header className="px-0.5">
+        <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
+          <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          Frederick County compass
+        </p>
+        <h1
+          className="mt-2 max-w-[19rem] font-serif text-[34px] font-semibold leading-[0.98] tracking-[-0.02em] text-balance sm:max-w-[30rem] sm:text-[44px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Find your way around Frederick.
+        </h1>
+        <p
+          className="mt-3 max-w-[28rem] text-[13.5px] leading-relaxed sm:text-[14px]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Start with what you need. Compass will get you to the right guide,
+          map, calendar, or local tool.
+        </p>
+        <span aria-hidden className="mt-3 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
+        <Link
+          href="/search"
+          prefetch={false}
+          onClick={openSearch}
+          className="tactile-interactive mt-4 flex min-h-12 w-full max-w-[34rem] items-center gap-3 rounded-[14px] border px-4 text-left"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated-solid)",
+            color: "var(--app-ink)",
+            boxShadow: "var(--app-elev-1), var(--app-hi)",
+          }}
+        >
+          <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[14px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            Search places, events, towns…
+          </span>
+          <span className="hidden rounded-md border px-1.5 py-0.5 font-mono text-[9px] sm:inline" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+            ⌘K
+          </span>
+        </Link>
       </header>
 
       <section aria-labelledby="compass-start">
@@ -484,23 +483,6 @@ export default function CompassHub() {
         <Link href="/terms" prefetch={false} {...intentProps("/terms")} className="hover:underline">Terms & privacy</Link>
       </nav>
     </div>
-  );
-}
-
-function CompassDial() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 200 200"
-      className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 opacity-[0.16] sm:-right-7 sm:-top-14 sm:h-64 sm:w-64"
-      fill="none"
-    >
-      <circle cx="100" cy="100" r="78" stroke="currentColor" strokeWidth="1" />
-      <circle cx="100" cy="100" r="56" stroke="currentColor" strokeWidth="1" strokeDasharray="2 6" />
-      <path d="M100 9 113 87 191 100 113 113 100 191 87 113 9 100 87 87 100 9Z" stroke="currentColor" strokeWidth="1.5" />
-      <path d="m100 34 9 57-9 9-9-9 9-57Z" fill="currentColor" />
-      <circle cx="100" cy="100" r="7" fill="currentColor" />
-    </svg>
   );
 }
 
