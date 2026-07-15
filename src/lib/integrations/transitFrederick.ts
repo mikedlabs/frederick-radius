@@ -82,9 +82,58 @@ function firstVertex(coords: unknown): [number, number] | null {
 }
 
 /**
+ * Canonical TransIT route names by the feed's `route_id`, verified against
+ * the county's own route list (transit.json snapshot, 2026-06). The July
+ * 2026 Socrata schema dropped the `route_name` column in favor of
+ * `rt_long_nm` ("#65 route alternate segment 1"), which is segment-level
+ * and ugly for display; the id → canonical-name map restores the county's
+ * real route names and lets the page's group-by-name collapse segments
+ * back into their route.
+ */
+const CANONICAL_ROUTE_NAMES: Record<string, string> = {
+  "10": "10 Connector",
+  "20": "20 Connector",
+  "40": "40 Connector",
+  "50": "50 Connector",
+  "51": "51 Connector",
+  "60": "60 Connector",
+  "61": "61 Connector",
+  "65": "65 Connector",
+  "80": "80 Connector",
+  "85": "Route 85 Shuttle",
+  BJS: "Brunswick Jefferson Shuttle",
+  EFS: "East Frederick Shuttle",
+  ETS: "Emmitsburg Thurmont Shuttle",
+  NFS: "North Frederick Shuttle",
+};
+
+/**
+ * Route name under the 2026 schema. One quirk: route_id "MTM" covers TWO
+ * distinct shuttles (Point of Rocks and Walkersville Meet-the-MARC), so
+ * those disambiguate on the long name BEFORE the id map. Unknown ids fall
+ * back to the long name with the segment suffix stripped.
+ */
+function canonicalRouteName(p: Record<string, unknown>): string | undefined {
+  const long = pick(p, "rt_long_nm", "rt_long_name");
+  if (long && /meet-the-marc/i.test(long)) {
+    if (/walkersville/i.test(long)) return "Walkersville Meet-the-MARC Shuttle";
+    if (/point of rocks/i.test(long)) return "Point of Rocks Meet-the-MARC Shuttle";
+  }
+  const id = pick(p, "route_id", "Route ID");
+  if (id && CANONICAL_ROUTE_NAMES[id]) return CANONICAL_ROUTE_NAMES[id];
+  if (!long) return undefined;
+  const base = long
+    .replace(/\s*(?:route\s+)?(?:alternate\s+segment|alt\s+seg|segment)\s*\d*\s*$/i, "")
+    .replace(/^#/, "")
+    .trim();
+  return base || undefined;
+}
+
+/**
  * Pure: Socrata GeoJSON FeatureCollection → TransitRoute[]. Drops
  * nameless / geometry-less / out-of-county. Exported for unit tests
- * (no network). Defensive about Socrata's column casing.
+ * (no network). Defensive about Socrata's column casing, and handles
+ * both the pre-2026 schema (route_name) and the 2026 one (rt_long_nm).
  */
 export function normalizeTransitRoutes(raw: unknown): TransitRoute[] {
   const feats = (raw as { features?: Feature[] })?.features;
@@ -94,7 +143,7 @@ export function normalizeTransitRoutes(raw: unknown): TransitRoute[] {
   const out: TransitRoute[] = [];
   for (const f of feats) {
     const p = f?.properties ?? {};
-    const name = pick(p, "route_name", "Route Name", "routename");
+    const name = pick(p, "route_name", "Route Name", "routename") ?? canonicalRouteName(p);
     if (!name) continue;
     const pt = firstVertex(f?.geometry?.coordinates);
     if (!pt) continue;
@@ -102,7 +151,10 @@ export function normalizeTransitRoutes(raw: unknown): TransitRoute[] {
     if (lat < s || lat > n || lng < w || lng > e) continue;
     const id = pick(p, "route_id", "Route ID", "gis_object_id") ?? name;
     const variation = pick(p, "variation", "Variation");
-    const key = `${id}|${variation ?? ""}`;
+    // Segment-level rows share route_id (and often variation) under the
+    // 2026 schema — key on the long name too so segments survive as
+    // distinct variations instead of being deduped away.
+    const key = `${id}|${variation ?? ""}|${pick(p, "rt_long_nm", "rt_long_name") ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
