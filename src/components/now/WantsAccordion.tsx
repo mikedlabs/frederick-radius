@@ -46,7 +46,6 @@ import {
   PawPrint,
   Church,
   Pill,
-  ChevronRight,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -309,7 +308,9 @@ export default function WantsAccordion({
               {meal.label} · now
             </span>
           )}
-          <span className="mt-0.5 block truncate font-serif text-[20px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {/* Two lines before ellipsis: this is the page's ONE primary action,
+              and "Restaurants open …" (360px) is not an answer. */}
+          <span className="mt-0.5 line-clamp-2 font-serif text-[20px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             {hero.title}
           </span>
           <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
@@ -403,10 +404,13 @@ export default function WantsAccordion({
               >
                 {renderIcon(cat.icon, "h-[18px] w-[18px]")}
               </span>
+              {/* No chevron: at 360px its 24px (glyph + gap) is exactly the
+                  difference between "Community" and "Commu…". The tile is a
+                  whole-surface control (cards carry no arrow, AFFORDANCES §4);
+                  promotion is instant and in place, not a navigation. */}
               <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 {cat.label}
               </span>
-              <ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-30" style={{ color: "var(--app-ink-3)" }} />
             </button>
           );
         })}

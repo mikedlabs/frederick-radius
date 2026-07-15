@@ -147,7 +147,9 @@ export default async function TodayCard() {
       {/* The hook — greeting + a confident weather mood, in the display face.
           The 3-second "I get it" line, now a tighter lead above one compact
           weather row (was a 28px headline stacked over a 64px number). */}
-      <h2 className="mt-1.5 font-serif text-[18px] font-semibold leading-snug tracking-tight sm:text-[20px]">
+      {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
+          otherwise strands its last word at narrow widths. */}
+      <h2 className="mt-1.5 font-serif text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
         {GREETING[band]}
         {mood ? ` ${mood}` : ""}
       </h2>

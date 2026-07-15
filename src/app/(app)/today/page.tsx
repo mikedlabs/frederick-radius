@@ -776,9 +776,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             {railEvents.length > 0 && (
               <div className="-mx-4 px-4">
                 <div className="reveal-up shelf-rail gap-3 pb-1">
+                  {/* Per tile, flex-col + flex-1 hand the rail's stretch height
+                      down to the card, so one two-line title doesn't leave
+                      every one-line tile floating over a blank band. */}
                   {railEvents.map((e) => (
-                    <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
-                      <div className="tactile-ring rounded-[var(--app-radius-lg)]">
+                    <div key={`${e.slug}-${e.starts_at}`} className="flex w-[280px] shrink-0 flex-col">
+                      <div className="tactile-ring flex-1 rounded-[var(--app-radius-lg)]">
                         {isKeysEvent(e)
                           ? <KeysCard event={e} variant="tile" />
                           : <EventCard event={e} variant="tile" />}
@@ -795,11 +798,15 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                       count says how much of today didn't fit, and the whole
                       tile is the door to /events. Quiet by design (dashed
                       hairline, no photo) so it reads as an edge, not a peer. */}
+                  {/* self-stretch matches the tiles' natural height — a fixed
+                      min-h here once inflated every photoless tile's wrapper
+                      (flex stretch) and printed a ~54px dead band under the
+                      whole shelf. */}
                   {railOverflow > 0 && (
                     <div className="flex w-[150px] shrink-0 self-stretch">
                       <Link
                         href="/events"
-                        className="tactile-interactive flex min-h-[160px] w-full flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] border border-dashed px-3"
+                        className="tactile-interactive flex w-full flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] border border-dashed px-3"
                         style={{
                           borderColor: "color-mix(in srgb, var(--app-ink) 22%, transparent)",
                           background: "color-mix(in srgb, var(--app-ink) 3%, transparent)",
