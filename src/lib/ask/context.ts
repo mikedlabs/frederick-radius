@@ -1,5 +1,6 @@
 import { buildHorizonBounds, groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventDateBlock } from "@/lib/events/format";
+import { isLiveMusicEvent } from "@/lib/events/live-music";
 import type { Event } from "@/data/events";
 
 /**
@@ -27,6 +28,8 @@ export type AskEvent = {
   is_all_day?: boolean;
   category?: string;
   venue_name?: string | null;
+  /** Resolved venue place slug — feeds the live-music venue join. */
+  venue_place_slug?: string | null;
   municipality_name?: string;
 };
 
@@ -177,27 +180,73 @@ export function eventContextLines(
     // starts_at / ends_at / is_all_day — the fields AskEvent carries.
     const time = eventDateBlock(e as unknown as Event).time;
     const town = e.municipality_name?.trim();
-    return `- ${time} — ${e.title}${e.venue_name ? ` @ ${e.venue_name}` : ""}${town ? ` (${town})` : ""}${e.category ? ` [${e.category}]` : ""}`;
+    // Venue-joined shows inherit the venue's sell-category ("restaurant"),
+    // which would hide the music from the model — tag them honestly.
+    const tag = isMusic(e) ? "live music" : e.category;
+    return `- ${time} — ${e.title}${e.venue_name ? ` @ ${e.venue_name}` : ""}${town ? ` (${town})` : ""}${tag ? ` [${tag}]` : ""}`;
   });
   return { block: `EVENTS ${label}, from the live Frederick calendar:\n${lines.join("\n")}\n`, picked };
 }
 
+/** isLiveMusicEvent's param type requires a definite category string;
+ *  AskEvent's is optional — bridge once here. */
+function isMusic(e: AskEvent): boolean {
+  return isLiveMusicEvent({
+    category: e.category ?? "",
+    venue_place_slug: e.venue_place_slug ?? undefined,
+    title: e.title,
+  });
+}
+
+/** Words that appear in (nearly) every Frederick event and carry zero
+ *  ranking signal — "bands playing in frederick today" must not score
+ *  every row 1 for "frederick" and collapse back to chronological. */
+const STOP_TOKENS = new Set([
+  "frederick", "county", "maryland", "downtown",
+  "today", "tonight", "tomorrow", "weekend", "evening", "morning", "afternoon", "now",
+  "there", "here", "anywhere", "around", "going", "happening", "what", "whats", "anything",
+]);
+
+/** What everyday words mean in category terms: "bands playing" is the
+ *  music category even though no title contains the word "bands". */
+const CATEGORY_HINTS: Record<string, string[]> = {
+  music: ["music", "band", "bands", "concert", "concerts", "gig", "gigs", "dj", "karaoke", "song", "songs", "jam"],
+  theater: ["theater", "theatre", "play", "plays", "performance", "comedy", "improv"],
+  market: ["market", "markets", "farmers"],
+  "food-drink": ["food", "eat", "dinner", "lunch", "truck", "tasting"],
+  family: ["kids", "kid", "family", "children", "child", "toddler"],
+  sports: ["game", "games", "sports", "keys", "baseball"],
+};
+
 /**
- * Order a picked-events window by relevance to the question for the SOURCE
- * cards (the model sees the whole block; the UI shows only ~3 cards, and
- * "Music tonight" must not lead with tai chi). Token overlap against
- * title + category + venue; chronological order breaks ties (sort is
- * stable, and the input is already date-sorted).
+ * Order a picked-events window by relevance to the question — used both for
+ * the SOURCE cards (the UI shows only ~3) and to decide which rows survive
+ * the block cap. Category hints outweigh raw token overlap (+3 vs +1 per
+ * hit) so "bands tonight" beats a title that merely contains a stray word;
+ * chronological order breaks ties (stable sort over date-sorted input).
  */
 export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
   const tokens = query
     .toLowerCase()
     .split(/[^a-z]+/)
-    .filter((t) => t.length > 3);
+    .filter((t) => t.length > 1 && !STOP_TOKENS.has(t));
   if (tokens.length === 0) return picked;
+  const hinted = new Set(
+    Object.entries(CATEGORY_HINTS)
+      .filter(([, words]) => words.some((w) => tokens.includes(w)))
+      .map(([cat]) => cat),
+  );
+  // Music gets the REAL classifier, not a slug guess: isLiveMusicEvent also
+  // joins verified music venues (most Frederick music is brewery/bar lineups
+  // whose events inherit the venue's sell-category, never "music") and
+  // excludes yoga-at-the-taproom titles.
+  const musicHinted = CATEGORY_HINTS.music.some((w) => tokens.includes(w));
   const score = (e: AskEvent) => {
     const hay = `${e.title} ${e.category ?? ""} ${e.venue_name ?? ""}`.toLowerCase();
-    return tokens.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0);
+    const text = tokens.reduce((n, t) => n + (t.length > 3 && hay.includes(t) ? 1 : 0), 0);
+    const catBoost =
+      (musicHinted && isMusic(e)) || (e.category && hinted.has(e.category)) ? 3 : 0;
+    return text + catBoost;
   };
   return [...picked].sort((a, b) => score(b) - score(a));
 }
