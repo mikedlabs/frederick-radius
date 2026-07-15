@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
@@ -305,7 +305,7 @@ export default async function MunicipalityPage(
               className="text-[13px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
-              All events →
+              All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
@@ -337,7 +337,7 @@ export default async function MunicipalityPage(
                     className="font-semibold underline-offset-2 hover:underline"
                     style={{ color: "var(--app-ink-2)" }}
                   >
-                    {nearbyEvents[0].title} and more nearby →
+                    {nearbyEvents[0].title} and more nearby <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                   </Link>
                 </p>
               )}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, CalendarSearch } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarSearch } from "lucide-react";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { easternDayKey } from "@/lib/tz";
 import EventCard from "@/components/event/EventCard";
@@ -210,7 +210,7 @@ export default async function CheckADatePage({
                 {dayEvents.length > 20 && (
                   <li className="text-center text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                     <Link href={`/events?d=${picked}`} className="underline">
-                      All {dayEvents.length} on the board →
+                      All {dayEvents.length} on the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                     </Link>
                   </li>
                 )}
@@ -241,7 +241,7 @@ export default async function CheckADatePage({
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-semibold">
               <Link href={`/events?d=${picked}`} style={{ color: "var(--app-brand-press)" }}>
-                See this day on the board →
+                See this day on the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </Link>
               <Link href="/submit/event" style={{ color: "var(--app-ink-3)" }}>
                 Add your event

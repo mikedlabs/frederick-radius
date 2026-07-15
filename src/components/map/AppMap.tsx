@@ -229,7 +229,7 @@ import MapParkingPeek from "./MapParkingPeek";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
-import { LocateFixed } from "lucide-react";
+import { ArrowRight, ChevronRight, LocateFixed } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -1657,7 +1657,7 @@ export default function AppMap({
               className="inline-flex max-w-[calc(100%-7rem)] items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
-              <span aria-hidden style={{ color: "var(--app-cool)" }}>→</span>
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
               <span className="truncate">{routeInfo.name}</span>
               <span style={{ color: "var(--app-ink-3)" }}>
                 {routeInfo.dist} · {routeInfo.eta}
@@ -1972,7 +1972,7 @@ export default function AppMap({
                   )}
                   {muni && (
                     <Link href={`/m/${muni.slug}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--app-brand, #E14328)" }}>
-                      {title} guide &rarr;
+                      {title} guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                     </Link>
                   )}
                 </div>

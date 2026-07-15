@@ -4,7 +4,7 @@ import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayAsk from "@/components/today/TodayAsk";
 import EventCountdown from "@/components/today/EventCountdown";
-import { Ticket, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Ticket } from "lucide-react";
 import ShareTodayButton from "@/components/today/ShareTodayButton";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
@@ -228,10 +228,25 @@ export default async function HomePage() {
           the crafted-product-hero move the primitive reserves for a single
           element. It freezes under prefers-reduced-motion. (The old className
           shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
+      {/* The whole weather plate is a door to the full forecast (July 2026
+          Reddit review: it looked tappable and wasn't — now it is, with the
+          standard right-edge disclosure chevron). */}
       <SkyHero className="shader-rim relative z-10">
-        <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
-          <TodayCard />
-        </Suspense>
+        <Link
+          href="/pulse?open=weather"
+          prefetch={false}
+          aria-label="Open the full forecast"
+          className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
+            <TodayCard />
+          </Suspense>
+          <ChevronRight
+            aria-hidden
+            strokeWidth={2.25}
+            className="absolute bottom-2 right-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-0.5"
+          />
+        </Link>
       </SkyHero>
 
       {/* ── ASK — the core promise, finally on the front door (UX-01 p1).
@@ -527,7 +542,7 @@ export default async function HomePage() {
         style={{ color: "var(--app-ink-3)" }}
       >
         Full forecast &amp; almanac
-        <span aria-hidden>→</span>
+        <ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} aria-hidden />
       </Link>
 
         </div>{/* /LEFT column */}
@@ -782,9 +797,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                         <span className="text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
                           more today
                         </span>
-                        <span aria-hidden className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                          →
-                        </span>
+                        <ChevronRight className="mt-1 h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                       </Link>
                     </div>
                   )}

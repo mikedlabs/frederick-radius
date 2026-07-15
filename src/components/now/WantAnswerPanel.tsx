@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, NotebookPen, X } from "lucide-react";
+import { ArrowRight, ChevronRight, NotebookPen, X } from "lucide-react";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getWantAnswer } from "@/lib/want-cache";
@@ -335,6 +335,7 @@ export default function WantAnswerPanel({
                         <span className="shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                           {r.fact.toLowerCase()}
                         </span>
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                       </button>
                     </li>
                   ))}
@@ -350,7 +351,7 @@ export default function WantAnswerPanel({
                   {answer.laterMore > 0 || answer.later.length > 0 ? (
                     <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                       {answer.later[0]?.fact.toLowerCase()}
-                      {" ›"}
+                      
                     </span>
                   ) : null}
                 </button>

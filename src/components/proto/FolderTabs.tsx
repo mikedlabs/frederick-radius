@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 
 const REVERSED = "var(--app-ink-inverse)";
 
@@ -64,7 +65,7 @@ export default function FolderTabs() {
             <li key={i} className="flex items-baseline gap-3 border-t py-3" style={{ borderColor: "var(--app-border)" }}>
               <span className="font-mono text-[10px] font-bold tabular-nums" style={{ color: f.ink }}>{String(i).padStart(2, "0")}</span>
               <span className="flex-1 text-[16px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>{it}</span>
-              <span aria-hidden className="font-mono text-[13px]" style={{ color: "var(--app-ink-3)" }}>→</span>
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             </li>
           ))}
         </ul>

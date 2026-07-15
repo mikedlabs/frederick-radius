@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Waves } from "lucide-react";
+import { ArrowRight, Waves } from "lucide-react";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { classifyFlood, FLOOD_STAGES, type FloodKey } from "@/lib/integrations/floodStage";
 
@@ -62,7 +62,7 @@ export default async function CreekWatch() {
         {worst.at ? ` as of ${worst.at}` : ""}.
       </span>
       <Link href="/rivers" className="font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
-        River levels →
+        River levels <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
     </p>
   );

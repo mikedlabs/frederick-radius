@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Building2 } from "lucide-react";
+import { ArrowRight, Building2 } from "lucide-react";
 import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
@@ -141,7 +141,7 @@ export default async function EventsIndexPage() {
             className="underline"
             style={{ color: "var(--app-cool)" }}
           >
-            Submit it →
+            Submit it <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </a>
         </p>
       </footer>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
@@ -181,7 +182,7 @@ export default async function BetaPage({
                     boxShadow: "var(--app-hi)",
                   }}
                 >
-                  Enter Radius &rarr;
+                  Enter Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                 </button>
               </form>
             </details>

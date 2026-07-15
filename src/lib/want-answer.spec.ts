@@ -83,3 +83,46 @@ describe("partitionWant", () => {
     expect(other.map((c) => c.slug)).toEqual(["closed-near", "closed-far"]);
   });
 });
+
+// ── approxHeroIndex — the coarse-origin hero rule ────────────────────
+// An IP-seeded centroid may ORDER the list but must not CROWN the hero:
+// among the nearest pool, the strongest place wins (the July 2026 Reddit
+// review caught a chain nearest the IP centroid outranking downtown).
+import { approxHeroIndex, type WantCandidate as WC } from "./want-answer";
+
+const openAt = (slug: string, distance_m: number, feature_score: number): WC => ({
+  slug,
+  name: slug,
+  open_status: { state: "open" } as WC["open_status"],
+  distance_m,
+  feature_score,
+});
+
+describe("approxHeroIndex", () => {
+  it("crowns the strongest place in the near pool, not the fluke nearest", () => {
+    const open = [
+      openAt("chain-nearest-centroid", 400, 0.2),
+      openAt("downtown-favorite", 2100, 0.9),
+      openAt("solid-second", 2400, 0.7),
+    ];
+    expect(approxHeroIndex(open)).toBe(1);
+  });
+
+  it("keeps the nearest when it is also the strongest", () => {
+    const open = [openAt("best-and-nearest", 300, 0.95), openAt("weaker", 900, 0.4)];
+    expect(approxHeroIndex(open)).toBe(0);
+  });
+
+  it("only considers the plausibly-near pool (first 10)", () => {
+    const open = [
+      ...Array.from({ length: 10 }, (_, i) => openAt(`near-${i}`, 100 * (i + 1), 0.5)),
+      openAt("far-side-of-county-superstar", 30000, 1),
+    ];
+    expect(approxHeroIndex(open)).toBeLessThan(10);
+  });
+
+  it("handles empty and single-item lists", () => {
+    expect(approxHeroIndex([])).toBe(0);
+    expect(approxHeroIndex([openAt("only", 100, 0.1)])).toBe(0);
+  });
+});

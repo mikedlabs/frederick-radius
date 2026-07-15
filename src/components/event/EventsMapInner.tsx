@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import Map, { Marker, Popup, NavigationControl, AttributionControl } from "react-map-gl/mapbox";
 import type { Map as GLMap } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -137,7 +138,7 @@ export default function EventsMapInner({
                 </span>
               )}
               <span className="mt-1 block text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-                View event →
+                View event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </span>
             </Link>
           </Popup>

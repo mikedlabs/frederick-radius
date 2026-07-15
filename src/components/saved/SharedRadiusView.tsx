@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, MapPin } from "lucide-react";
+import { Bookmark, ChevronRight, MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -117,7 +117,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
             Find food, events, and the places worth your time
           </span>
         </span>
-        <span aria-hidden className="shrink-0 text-[12px] font-bold" style={{ color: "var(--app-brand-press)" }}>→</span>
+        <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
       </Link>
     </div>
   );
