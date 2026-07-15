@@ -6,7 +6,7 @@
  * Grants THIS browser's push subscription the owner-alerts topic via the
  * Basic-Auth-gated /admin/api/owner-alerts endpoint (the public subscribe
  * route strips that topic on purpose — the payloads carry feedback text and
- * signup emails). The browser attaches the admin credentials to same-origin
+ * private operational alerts). The browser attaches the admin credentials to same-origin
  * fetches under /admin automatically, so no extra auth plumbing is needed.
  */
 import { useEffect, useState } from "react";

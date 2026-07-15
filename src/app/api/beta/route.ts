@@ -7,7 +7,9 @@ import {
   BETA_ID_COOKIE,
   BETA_OWNER_MARKER,
   BETA_TESTER_MARKER,
+  BETA_CODE_SESSION_SECONDS,
   betaToken,
+  isRedeemableBetaCode,
   normalizeCode,
   signCode,
 } from "@/lib/beta-gate";
@@ -125,7 +127,7 @@ export async function POST(req: NextRequest) {
         .where(eq(beta_codes.code, code))
         .limit(1)
     )[0];
-    valid = Boolean(row) && !row.revoked;
+    valid = isRedeemableBetaCode(row);
     if (valid) {
       // Stamp redemption: first-seen once, bump use count + last-seen always.
       await db
@@ -151,14 +153,14 @@ export async function POST(req: NextRequest) {
     secure: true,
     sameSite: "lax",
     path: "/",
-    maxAge: THIRTY_DAYS,
+    maxAge: BETA_CODE_SESSION_SECONDS,
   });
   res.cookies.set(BETA_ID_COOKIE, BETA_TESTER_MARKER, {
     httpOnly: false,
     secure: true,
     sameSite: "lax",
     path: "/",
-    maxAge: THIRTY_DAYS,
+    maxAge: BETA_CODE_SESSION_SECONDS,
   });
   return res;
 }

@@ -19,6 +19,7 @@ import {
   History,
   Landmark,
   Layers3,
+  Library,
   Map,
   MapPin,
   Navigation,
@@ -28,7 +29,6 @@ import {
   Search,
   Settings,
   ShieldCheck,
-  Store,
   Tag,
   type LucideIcon,
 } from "lucide-react";
@@ -76,6 +76,13 @@ const START_HERE: CompassItem[] = [
 ];
 
 const DISCOVER: CompassItem[] = [
+  {
+    href: "/archive",
+    label: "Archive Lens",
+    description: "Open Frederick's old maps, measured buildings, newspapers, and documentary photographs.",
+    icon: Library,
+    color: "var(--app-accent-press)",
+  },
   {
     href: "/collections",
     label: "Collections",
@@ -214,13 +221,6 @@ const CONTRIBUTE: CompassItem[] = [
     description: "Tell us what the map is missing",
     icon: CirclePlus,
     color: "var(--app-positive)",
-  },
-  {
-    href: "/business/claim",
-    label: "Claim a business",
-    description: "Keep your listing accurate",
-    icon: Store,
-    color: "var(--app-brand-2)",
   },
 ];
 
@@ -378,7 +378,7 @@ export default function CompassHub() {
         />
         <ul className="mt-3 grid grid-cols-2 gap-2.5">
           {DISCOVER.map((item, index) => (
-            <li key={item.href}>
+            <li key={item.href} className={item.href === "/archive" ? "col-span-2" : undefined}>
               <EditorialCard item={item} index={index} intentProps={intentProps(item.href)} />
             </li>
           ))}

@@ -22,7 +22,7 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
-import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
+import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
@@ -62,16 +62,6 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
-}
-
-/** "5:42 PM" → minutes-from-midnight, for picking the soonest MARC departure
- *  across stations (the board hands back display clock labels, not epochs). */
-function clockToMin(s: string): number {
-  const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!m) return Number.POSITIVE_INFINITY;
-  let h = Number(m[1]) % 12;
-  if (/pm/i.test(m[3])) h += 12;
-  return h * 60 + Number(m[2]);
 }
 
 /** AirNow's local observation hour (0-23) → "2 PM", so the AQI reads as a
@@ -506,7 +496,7 @@ export default async function PulsePage() {
       return d ? [{ label: d.live && d.predicted ? d.predicted : d.scheduled, dep: d }] : [];
     }),
   );
-  marcCandidates.sort((a, b) => clockToMin(a.label) - clockToMin(b.label));
+  marcCandidates.sort((a, b) => marcClockMinutes(a.label) - marcClockMinutes(b.label));
   const marcNext = marcCandidates[0] ?? null;
 
   // Air quality — the worst pollutant leads (AQI reports the max across
@@ -715,17 +705,19 @@ export default async function PulsePage() {
       sourceLabel: "MDOT CHART",
       peek:
         traffic.length > 0
-          ? `${traffic[0].road}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
+          ? `${traffic[0].road || traffic[0].location}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
           : "roads moving",
       body: traffic.length > 0
         ? traffic.slice(0, 12).map((i) => (
             <Row
               key={i.id}
               tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
-              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
+              title={`${i.road || i.location}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
               body={i.description}
               meta={[
-                i.location,
+                i.location.trim().toLocaleLowerCase() !== i.description.trim().toLocaleLowerCase()
+                  ? i.location
+                  : undefined,
                 i.lanes_affected,
                 i.expected_end
                   ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`

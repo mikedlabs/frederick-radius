@@ -52,7 +52,6 @@ import {
 } from "lucide-react";
 import { WANTS, type WantSub } from "@/data/wants";
 import { GLYPHS } from "@/components/glyphs";
-import { getHomeMuni } from "@/lib/personalize";
 import { prefetchWant } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
 import { useSavedTasteWant } from "@/hooks/useSavedTasteWant";
@@ -189,15 +188,10 @@ export default function WantsAccordion({
       setOpenKey(savedWant);
     }
   }, [savedWant]);
-  // Home town (read post-mount, client-only). When set, geo-aware /nearby
-  // answers default to that town. Curated/page links are left alone.
-  const [homeSlug, setHomeSlug] = useState<string | null>(null);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage read; SSR can't see the home town
-    setHomeSlug(getHomeMuni());
-  }, []);
-  const hrefFor = (href: string): string =>
-    homeSlug && href.startsWith("/nearby?c=") ? `${href}&town=${homeSlug}` : href;
+  // Keep the native/new-tab URL unpinned. /nearby resolves the canonical
+  // scope cookie first and the home preference second, so normal clicks and
+  // modified/no-JS clicks cannot answer from different towns.
+  const hrefFor = (href: string): string => href;
 
   const openCat = WANTS.find((c) => c.key === openKey) ?? WANTS[0];
   const accent = openCat.color;
@@ -207,7 +201,7 @@ export default function WantsAccordion({
   const hero = isEat
     ? {
         title: "Restaurants open now",
-        sub: `Open ${meal.phrase} near you`,
+        sub: `Open ${meal.phrase}, ranked for your current area`,
         href: `/nearby?c=${meal.key}`,
       }
     : HERO[openCat.key] ?? {
@@ -218,16 +212,26 @@ export default function WantsAccordion({
 
   const rest = WANTS.filter((c) => c.key !== openCat.key);
 
-  const openAnswer = (want: { c: string; facet: string | null }, label: string) => {
+  const answerOpenerRef = useRef<HTMLElement | null>(null);
+  const openAnswer = (
+    want: { c: string; facet: string | null },
+    label: string,
+    opener: HTMLElement,
+  ) => {
     haptic("light");
     touchedRef.current = true;
+    answerOpenerRef.current = opener;
     setAnswer({ ...want, label });
     reflectWantInUrl(want);
   };
-  const closeAnswer = () => {
+  const dismissAnswer = (restoreFocus: boolean) => {
+    const opener = answerOpenerRef.current;
     setAnswer(null);
     reflectWantInUrl(null);
+    if (restoreFocus) queueMicrotask(() => opener?.focus());
+    else answerOpenerRef.current = null;
   };
+  const closeAnswer = () => dismissAnswer(true);
 
   /** Warm only the answer request that an inline link actually consumes.
    *  Next's route prefetch is disabled for those links because their click is
@@ -245,7 +249,7 @@ export default function WantsAccordion({
 
   /** Intercept a /nearby-style link into the inline panel; modified clicks
    *  (new tab, middle click) keep their native navigation. */
-  const interceptWant = (href: string, label: string) => (e: React.MouseEvent) => {
+  const interceptWant = (href: string, label: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
     const w = inlineWantFor(href);
     if (!w || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       haptic("light");
@@ -254,7 +258,7 @@ export default function WantsAccordion({
     e.preventDefault();
     // Tapping the already-open chip folds the panel — the toggle read.
     if (answer && answer.c === w.c && answer.facet === w.facet) closeAnswer();
-    else openAnswer(w, label);
+    else openAnswer(w, label, e.currentTarget);
   };
 
   const promote = (key: string) => {
@@ -268,7 +272,7 @@ export default function WantsAccordion({
         : null;
     if (promotedHero) warmTarget(promotedHero);
     setOpenKey(key);
-    closeAnswer();
+    dismissAnswer(false);
   };
 
   return (

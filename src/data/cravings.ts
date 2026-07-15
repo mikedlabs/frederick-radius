@@ -74,7 +74,7 @@ export type Craving = {
 // word-boundary token are added.
 const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve|dairy ?queen|\bdq\b/i;
 const PIZZA = /pizza|pizzeria/i;
-const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|megamart|mega ?mart/i;
+const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|h\s*mart|megamart|mega ?mart/i;
 // Family fun is matched by ACTIVITY name, not the `family` category — that
 // category is a junk bucket (mostly schools, daycares, PTAs, a driving school,
 // art studios). We want the genuinely-fun outings: arcades, escape rooms,
@@ -406,6 +406,24 @@ export const CRAVING_BY_KEY: Record<string, Craving> = Object.fromEntries(
   CRAVINGS.map((c) => [c.key, c]),
 );
 
+/** Corrected primary category plus every additional taxonomy tag. A place may
+ * legitimately answer more than one intent (restaurant + coffee, market +
+ * grocery); forcing one primary bucket was the source of Today/Nearby drift. */
+function categoryViews(p: CravingMatchable): CravingMatchable[] {
+  const categories = [...new Set([p.category, ...(p.subcategories ?? [])].filter(Boolean))];
+  return categories.map((category) => ({ ...p, category }));
+}
+
+/** Canonical craving eligibility used by Today, Nearby, Ask, and Search. */
+export function matchesCraving(craving: Craving, p: CravingMatchable): boolean {
+  return categoryViews(p).some((view) => craving.match(view));
+}
+
+/** Canonical facet eligibility over the same multi-category views. */
+export function matchesCravingFacet(facet: CravingFacet, p: CravingMatchable): boolean {
+  return categoryViews(p).some((view) => facet.match(view));
+}
+
 export type Moment = {
   /** Eastern-clock hour, 0–23. */
   hour: number;
@@ -452,5 +470,5 @@ export function orderCravingsForMoment(cravings: Craving[], { hour, weekend, wet
 /** True if a place is eligible for ANY craving — used server-side to slim
  *  the /now payload to just the craving-answering places. */
 export function isCravingPlace(p: CravingMatchable): boolean {
-  return CRAVINGS.some((c) => c.match(p));
+  return CRAVINGS.some((c) => matchesCraving(c, p));
 }

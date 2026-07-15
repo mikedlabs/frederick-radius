@@ -1,6 +1,8 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
-import { search } from "@/lib/search";
+import { qualifiedSearch, type QualifiedSearchContext } from "@/lib/search";
+import { isEventSearchIntent } from "@/lib/search";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 
@@ -61,6 +63,13 @@ function hasKey(): boolean {
 }
 
 async function callModel(userContent: string): Promise<string | null> {
+  // One user-visible deadline across every provider attempt. A stalled gateway
+  // must not consume the full 30-second function ceiling before the direct
+  // fallback even starts; quick failures still leave the remaining budget for
+  // the next provider.
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 8_000);
+  try {
   // 1) Vercel AI Gateway — the preferred path. A plain "provider/model"
   // string routes through the gateway, authenticated by AI_GATEWAY_API_KEY
   // if set, else the keyless VERCEL_OIDC_TOKEN that Vercel injects when the
@@ -79,6 +88,7 @@ async function callModel(userContent: string): Promise<string | null> {
         // local-expert voice consistent and the output near-deterministic.
         maxOutputTokens: 400,
         temperature: 0.3,
+        abortSignal: controller.signal,
       });
       if (text) return text.trim();
     } catch {
@@ -102,6 +112,7 @@ async function callModel(userContent: string): Promise<string | null> {
           system: SYSTEM,
           messages: [{ role: "user", content: userContent }],
         }),
+        signal: controller.signal,
       });
       if (res.ok) {
         const j = (await res.json()) as { content?: Array<{ text?: string }> };
@@ -120,6 +131,7 @@ async function callModel(userContent: string): Promise<string | null> {
         model: openai("gpt-4o-mini"),
         system: SYSTEM,
         prompt: userContent,
+        abortSignal: controller.signal,
       });
       if (text) return text.trim();
     } catch {
@@ -127,6 +139,9 @@ async function callModel(userContent: string): Promise<string | null> {
     }
   }
   return null;
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 /**
@@ -156,11 +171,24 @@ const cachedCallModel = unstable_cache(
   { revalidate: 3600, tags: ["ask"] },
 );
 
-export async function askFrederick(query: string): Promise<AskResult> {
+export async function askFrederick(
+  query: string,
+  context: QualifiedSearchContext = {},
+): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { configured: hasKey(), answer: null, sources: [] };
 
-  const hits = search(q, 18);
+  // Event questions need the same live, deduplicated calendar as /events and
+  // /search. Bound a cold miss so Ask still fails soft to curated seeds rather
+  // than making the visitor wait on a slow third-party calendar.
+  const eventPool = isEventSearchIntent(q)
+    ? await Promise.race([
+        assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => undefined),
+        new Promise<undefined>((resolve) => setTimeout(resolve, 1_500)),
+      ])
+    : undefined;
+  const retrieval = qualifiedSearch(q, 18, eventPool, context);
+  const hits = retrieval.hits;
   const lines: string[] = [];
   const sources: AskSource[] = [];
 
@@ -205,11 +233,27 @@ export async function askFrederick(query: string): Promise<AskResult> {
       if (sources.length < 6)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
     } else if (h.type === "event") {
-      const e = h.event as { title: string; starts_at?: string; venue_name?: string };
+      const e = h.event as {
+        slug: string;
+        title: string;
+        category: string;
+        municipality?: string;
+        starts_at?: string;
+        venue_name?: string;
+      };
       const when = e.starts_at
         ? new Date(e.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" })
         : "";
       lines.push(`${lines.length + 1}. EVENT: ${e.title}${when ? ` (${when})` : ""}${e.venue_name ? ` @ ${e.venue_name}` : ""}`);
+      if (sources.length < 6) {
+        sources.push({
+          slug: e.slug,
+          name: e.title,
+          category: e.category,
+          city: e.municipality,
+          href: `/events/${e.slug}`,
+        });
+      }
     }
   }
 
@@ -217,7 +261,20 @@ export async function askFrederick(query: string): Promise<AskResult> {
     lines.length > 0
       ? lines.join("\n")
       : "(no matching places or events were found in the Frederick catalog)";
-  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
+  const constraintLines = [
+    retrieval.meta.qualifiers.categoryLabel
+      ? `Category filter applied: ${retrieval.meta.qualifiers.categoryLabel}.`
+      : null,
+    retrieval.meta.qualifiers.openNow
+      ? "Open-now filter applied: every listed place has recently verified hours confirming it is open."
+      : null,
+    retrieval.meta.qualifiers.nearMe
+      ? retrieval.meta.nearMeApplied
+        ? `Nearest-first ranking applied${retrieval.meta.contextLabel ? ` from ${retrieval.meta.contextLabel}` : ""}.`
+        : "The user asked for nearby results, but no usable location was available. Do not claim that any result is near or nearest."
+      : null,
+  ].filter(Boolean).join("\n");
+  const userContent = `The user asked: "${q}"\n\n${constraintLines ? `RETRIEVAL RULES:\n${constraintLines}\n\n` : ""}FREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
 
   // Cached on a hit (identical question + identical data); a miss or a cached
   // failure (sentinel throw) falls back to null without poisoning the cache.

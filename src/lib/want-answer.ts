@@ -1,14 +1,15 @@
 import "server-only";
-import { CRAVINGS } from "@/data/cravings";
+import { CRAVINGS, matchesCraving, matchesCravingFacet } from "@/data/cravings";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
-import { MEALS, isMealKey } from "@/lib/meal";
+import { MEALS, isMealKey, matchMeal } from "@/lib/meal";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { knownFor } from "@/lib/cuisine";
 import { formatHoursLine, getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 
 /**
  * The want answer — "I want coffee" resolved to places, ranked for RIGHT
@@ -69,6 +70,10 @@ export type WantAnswer = {
   total: number;
   /** The deep-browse door — the same URL the sub-chip used to navigate to. */
   browseHref: string;
+  /** Honest ranking/filter context shown in the panel. */
+  contextLabel: string;
+  contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
+  fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
 /** The slice of a decorated place the partition logic reads — kept minimal
@@ -206,7 +211,16 @@ const NOTABLE_MAX = 6;
 function resolveWant(
   cKey: string,
   facetKey: string | null,
-): { label: string; browseHref: string; match: (p: { category: string; name: string; subcategories?: string[] }) => boolean } | null {
+): {
+  label: string;
+  browseHref: string;
+  match: (p: {
+    category: string;
+    name: string;
+    subcategories?: string[];
+    primary_type?: string;
+  }) => boolean;
+} | null {
   // Category chips (/category/<slug>) answer inline too, not just the
   // /nearby?c= cravings — so tapping "Bakeries" or "Pharmacies" flows the
   // same list down in place. The key is prefixed "cat:" so it can't collide
@@ -226,11 +240,10 @@ function resolveWant(
   }
   if (isMealKey(cKey)) {
     const meal = MEALS[cKey];
-    const cats = new Set<string>(meal.cats);
     return {
       label: meal.label,
       browseHref: `/nearby?c=${cKey}`,
-      match: (p) => cats.has(p.category),
+      match: (p) => matchMeal(meal, p),
     };
   }
   const craving = CRAVINGS.find((c) => c.key === cKey);
@@ -240,8 +253,14 @@ function resolveWant(
     label: facet?.label ?? craving.label,
     browseHref: `/nearby?c=${cKey}${facet ? `&facet=${facet.key}` : ""}`,
     // A facet narrows the already-matched set, same as /nearby.
-    match: (p) => craving.match(p) && (!facet || facet.match(p)),
+    match: (p) =>
+      matchesCraving(craving, p) && (!facet || matchesCravingFacet(facet, p)),
   };
+}
+
+function browseHrefForScope(href: string, municipality: string | null | undefined): string {
+  if (!municipality || !href.startsWith("/nearby?")) return href;
+  return `${href}&town=${encodeURIComponent(municipality)}`;
 }
 
 /**
@@ -268,28 +287,48 @@ export function buildWantAnswer(
   facetKey: string | null,
   origin: { lng: number; lat: number } | null,
   now: Date = new Date(),
-  opts?: { approximateOrigin?: boolean },
+  opts?: {
+    approximateOrigin?: boolean;
+    municipality?: string | null;
+    contextLabel?: string;
+    contextSource?: WantAnswer["contextSource"];
+    fallbackReason?: WantAnswer["fallbackReason"];
+  },
 ): WantAnswer | null {
   const want = resolveWant(cKey, facetKey);
   if (!want) return null;
 
   const candidates: WantCandidate[] = WANT_PLACES
+    .filter((p) => !opts?.municipality || p.municipality === opts.municipality)
     .filter((p) =>
       want.match({
-        category: p.want_match_category,
+        // The decorated category is the canonical corrected category. Include
+        // every secondary tag and primary type so Today and Nearby execute the
+        // same matcher instead of Today falling back to a raw legacy bucket.
+        category: p.category,
         name: p.name,
-        subcategories: p.want_match_subcategories,
+        subcategories: p.subcategories,
+        primary_type: p.primary_type,
       }),
     )
-    .map((p) => ({
-      ...p,
-      open_status: getOpenStatus(
-        p.hours,
-        { verified: mayAssertOpenState(p.hours_verified, p.hours_updated_at, now) },
+    .map((p) => {
+      const mayAssertHours = mayAssertOpenState(
+        p.hours_verified,
+        p.hours_updated_at,
         now,
-      ),
-      distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
-    }));
+      ) && mayPublishVisitabilityHours(p.slug, p.hours, now);
+      return {
+        ...p,
+        hours: mayAssertHours ? p.hours : undefined,
+        hours_verified: mayAssertHours,
+        open_status: getOpenStatus(
+          mayAssertHours ? p.hours : undefined,
+          { verified: mayAssertHours },
+          now,
+        ),
+        distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
+      };
+    });
 
   const { open, later, other, total } = partitionWant(candidates);
 
@@ -313,6 +352,9 @@ export function buildWantAnswer(
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,
     total,
-    browseHref: want.browseHref,
+    browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+    contextLabel: opts?.contextLabel ?? "Whole county",
+    contextSource: opts?.contextSource ?? "county",
+    fallbackReason: opts?.fallbackReason ?? null,
   };
 }

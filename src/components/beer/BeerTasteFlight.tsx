@@ -53,21 +53,21 @@ export default function BeerTasteFlight() {
   }
 
   return (
-    <section id="find-your-pour" aria-labelledby="flight-heading" className="scroll-mt-24 space-y-5">
+    <section id="find-your-pour" aria-labelledby="shortlist-heading" className="scroll-mt-24 space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-[38rem]">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
             Pick by taste
           </p>
           <h2
-            id="flight-heading"
+            id="shortlist-heading"
             className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Build a Frederick flight
+            Build a taste shortlist
           </h2>
           <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Pick a flavor and ABV range. We&rsquo;ll match up to three beers from different breweries.
+            Pick a flavor and strength. We&rsquo;ll match up to three signature pours, each from a different brewery.
           </p>
         </div>
         <div
@@ -171,7 +171,7 @@ export default function BeerTasteFlight() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-serif text-[20px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Your {path.shortLabel.toLowerCase()} flight
+              Your {path.shortLabel.toLowerCase()} shortlist
             </p>
             <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
               {flight.length} signature {flight.length === 1 ? "pour" : "pours"} · {flight.length} different {flight.length === 1 ? "brewery" : "breweries"}
@@ -189,7 +189,7 @@ export default function BeerTasteFlight() {
             }}
           >
             {allSaved ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Bookmark className="h-3.5 w-3.5" aria-hidden />}
-            {allSaved ? "Flight saved" : "Save flight"}
+            {allSaved ? "Shortlist saved" : "Save shortlist"}
           </button>
         </div>
 
@@ -276,7 +276,7 @@ function PourCard({
       <div className="space-y-3 p-4">
         <div>
           <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            {featured ? "First pour" : "Also in the flight"}
+            {featured ? "First match" : "Another match"}
           </p>
           <h3 className={`${featured ? "text-[24px]" : "text-[19px]"} mt-1 font-serif font-semibold leading-tight tracking-tight`} style={{ color: "var(--app-ink)" }}>
             {beer.name}

@@ -17,17 +17,28 @@
  */
 import PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import ENRICH_RAW from "@/data/places-enrichment.json" with { type: "json" };
-import { CATEGORIES, isAmenityCategory } from "@/data/categories";
+import { PLACES as SOURCE_PLACES } from "@/data/places";
+import {
+  CATEGORIES,
+  categoryRouteOverride,
+  isAmenityCategory,
+} from "@/data/categories";
 import { isInFrederickCountyArea } from "@/lib/geo";
-import { isAllDayWindow } from "@/lib/hours";
+import {
+  hasReviewedAllWeek24hVisitability,
+  isAllWeekAllDay,
+  is24hVisitabilityReviewCurrent,
+  REVIEWED_ALL_WEEK_24H_VISITABILITY,
+} from "@/lib/hours-visitability";
 import { isGooglePlaceId } from "@/lib/provenance";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import type { DayOfWeek } from "@/data/places";
+import {
+  isManualPlaceStatusReviewCurrent,
+  MANUAL_PLACE_STATUS_OVERRIDES,
+} from "@/lib/place-status-overrides";
 
 const PLACES = PLACES_RAW as unknown as PlaceCardData[];
 const ENRICH = ENRICH_RAW as Record<string, { google_place_id?: string }>;
-const DAYS: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
 type Severity = "critical" | "high" | "medium" | "low";
 type Gate = {
   id: string;
@@ -101,17 +112,38 @@ const GATES: Gate[] = [
     severity: "critical",
     audit: "DQ-002",
     run: () => {
-      const allWeek247 = PLACES.filter((p) => {
-        if (!p.hours) return false;
-        return DAYS.every((d) => {
-          const w = p.hours?.[d];
-          return w && w.length > 0 && w.some(isAllDayWindow);
-        });
-      });
+      const allWeek247 = PLACES.filter((p) => isAllWeekAllDay(p.hours));
+      const publishedSlugs = new Set(allWeek247.map((p) => p.slug));
+      const unreviewed = allWeek247.filter(
+        (p) => !hasReviewedAllWeek24hVisitability(p.slug),
+      );
+      const exemptions = Object.entries(REVIEWED_ALL_WEEK_24H_VISITABILITY);
+      const stale = exemptions.filter(([, entry]) =>
+        !is24hVisitabilityReviewCurrent(entry.review_after),
+      );
+      const unmatched = exemptions.filter(([slug]) => !publishedSlugs.has(slug));
       return {
-        pass: allWeek247.length === 0,
-        observed: `${allWeek247.length} places encoded 24/7 on all seven days`,
-        expect: "0 without a reviewed visitability exemption",
+        pass: unreviewed.length === 0 && stale.length === 0 && unmatched.length === 0,
+        observed: `${unreviewed.length} unreviewed; ${stale.length} stale; ${unmatched.length} missing/changed; ${allWeek247.length} reviewed published`,
+        expect: "0 unreviewed, stale, or unmatched all-week 24/7 schedules",
+      };
+    },
+  },
+  {
+    id: "manual_place_status_review",
+    severity: "high",
+    audit: "operational status",
+    run: () => {
+      const entries = Object.entries(MANUAL_PLACE_STATUS_OVERRIDES);
+      const stale = entries.filter(([, override]) =>
+        !isManualPlaceStatusReviewCurrent(override),
+      );
+      const sourceSlugs = new Set(SOURCE_PLACES.map((place) => place.slug));
+      const unmatched = entries.filter(([slug]) => !sourceSlugs.has(slug));
+      return {
+        pass: stale.length === 0 && unmatched.length === 0,
+        observed: `${stale.length} stale; ${unmatched.length} unmatched of ${entries.length} manual status override${entries.length === 1 ? "" : "s"}`,
+        expect: "0 overrides past review_after or missing from source places",
       };
     },
   },
@@ -175,7 +207,7 @@ const GATES: Gate[] = [
           !CATEGORIES.some((k) => k.parent === c.slug) &&
           !isAmenityCategory(c.slug) &&
           c.kind !== "utility" &&
-          c.slug !== "food-truck",
+          !categoryRouteOverride(c.slug),
       );
       const counts = new Map<string, number>();
       for (const p of PLACES) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
@@ -198,9 +230,13 @@ const MANUAL = [
 
 function main() {
   const asJson = process.argv.includes("--json");
+  const failHigh = process.argv.includes("--fail-high");
   const results = GATES.map((g) => ({ ...g, ...g.run() }));
   const failed = results.filter((r) => !r.pass);
   const p0Failed = failed.filter((r) => r.severity === "critical");
+  const highOrCriticalFailed = failed.filter(
+    (r) => r.severity === "critical" || r.severity === "high",
+  );
 
   if (asJson) {
     const rows = results.map((r) => ({ id: r.id, severity: r.severity, audit: r.audit, pass: r.pass, observed: r.observed, expect: r.expect }));
@@ -220,8 +256,12 @@ function main() {
     for (const m of MANUAL) console.log(`    · ${m}`);
     console.log("");
   }
-  // CI signal: a failing CRITICAL gate breaks the build; others are advisory.
-  process.exit(p0Failed.length > 0 ? 1 : 0);
+  // Normal release builds block on critical gates. The nightly data steward
+  // opts into --fail-high so review deadlines and coverage regressions create
+  // a visible failed run without making the known medium editorial-copy debt
+  // prevent ordinary deploys.
+  const blocking = failHigh ? highOrCriticalFailed : p0Failed;
+  process.exit(blocking.length > 0 ? 1 : 0);
 }
 
 main();

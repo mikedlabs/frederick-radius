@@ -19,6 +19,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 
 const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
 
@@ -87,6 +88,11 @@ const slim = publicPlaces().map((p) => {
   void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _os;
   return {
     ...rest,
+    // Browser code cannot safely read the private HOURS_FRESHNESS_ENFORCED
+    // env var. Stamp the build policy into each slim row; strict builds can
+    // continue aging schedules out at runtime, staged builds keep legacy
+    // verified schedules available until the refresh snapshot is populated.
+    hours_policy_strict: hoursFreshnessEnforced(),
     // /api/want historically matches the canonical RAW category first, then
     // decorates the matched rows. Preserve that distinction so the slim route
     // returns the exact same answer set as the full loader even when Google

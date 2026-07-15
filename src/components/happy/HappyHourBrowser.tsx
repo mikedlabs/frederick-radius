@@ -90,7 +90,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: rail }} />
       <Link href={`/places/${r.slug}`} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
       <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
-        {r.photo ? <Image src={r.photo} alt="" fill sizes="52px" className="object-cover" /> : <PhotoFallback />}
+        {r.photo ? <Image src={r.photo} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">

@@ -1,4 +1,3 @@
-import type { Place } from "@/data/places";
 // Slim, client-safe set (same canonical public places, pre-decorated
 // at build) so this shared search core never drags the ~12MB
 // places-enrichment.json into the SearchOverlay client bundle.
@@ -9,10 +8,16 @@ import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
 import { isUpcomingEvent } from "@/lib/events/visible";
+import { haversineMeters, type LngLat } from "@/lib/geo";
+import {
+  matchesSearchQualifiers,
+  parseSearchQualifiers,
+  type SearchQualifiers,
+} from "@/lib/search/qualifiers";
 
 export type SearchHit =
-  | { type: "place"; place: Place; score: number }
-  | { type: "event"; event: Event; score: number }
+  | { type: "place"; place: PlaceCardData; score: number }
+  | { type: "event"; event: Event & { distance_m?: number }; score: number }
   | { type: "municipality"; municipality: Municipality; score: number }
   | { type: "category"; category: Category; score: number };
 
@@ -144,6 +149,8 @@ function intentScore(
  */
 type EventIntent = {
   triggers: string[];
+  /** Generic discovery language ("events near me") accepts any upcoming event. */
+  allUpcoming?: boolean;
   /** event.category values that strongly answer this intent. */
   eventCats: Set<string>;
   /** an event qualifies for the boost if its text reads on-topic. */
@@ -153,6 +160,16 @@ type EventIntent = {
 };
 
 const EVENT_INTENTS: EventIntent[] = [
+  {
+    triggers: [
+      "events", "event", "things to do", "what's on", "whats on",
+      "what is on", "what's happening", "whats happening", "happening tonight",
+    ],
+    allUpcoming: true,
+    eventCats: new Set(),
+    topicalRx: /\b(event|festival|show|performance|workshop|class|meetup|happening)\b/i,
+    venueCats: new Set(),
+  },
   {
     triggers: ["live music", "music", "concert", "concerts", "karaoke", "open mic", "open-mic"],
     eventCats: new Set(["music"]),
@@ -170,9 +187,16 @@ function detectEventIntent(query: string): EventIntent | null {
   return null;
 }
 
+/** Public parser used by server concierge paths to decide when loading the
+ * larger live-event pool is worth the latency. */
+export function isEventSearchIntent(query: string): boolean {
+  return detectEventIntent(query) !== null;
+}
+
 /** Does this event read as on-topic for the event intent? */
 function eventMatchesIntent(e: Event, intent: EventIntent): boolean {
   return (
+    intent.allUpcoming === true ||
     intent.eventCats.has(e.category) ||
     intent.topicalRx.test(e.title) ||
     intent.topicalRx.test(e.description ?? "")
@@ -202,9 +226,24 @@ function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
  * (fresh-eyes audit, Jul 2026). EventWithMeta extends Event, so unified
  * rows pass through unchanged.
  */
-export function search(query: string, limit = 30, eventPool: readonly Event[] = EVENTS): SearchHit[] {
+export type SearchOptions = {
+  placeFilter?: (place: PlaceCardData) => boolean;
+  onlyPlaces?: boolean;
+  includeMatchingPlaces?: boolean;
+  origin?: LngLat | null;
+  rankPlacesByDistance?: boolean;
+  rankEventsByDistance?: boolean;
+  eventMunicipality?: string | null;
+};
+
+export function search(
+  query: string,
+  limit = 30,
+  eventPool: readonly Event[] = EVENTS,
+  options: SearchOptions = {},
+): SearchHit[] {
   const terms = normalize(query);
-  if (terms.length === 0) return [];
+  if (terms.length === 0 && !options.includeMatchingPlaces) return [];
 
   const hits: SearchHit[] = [];
   const intent = detectIntent(query);
@@ -212,6 +251,7 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
   const now = new Date();
 
   for (const p of clientPlaces()) {
+    if (options.placeFilter && !options.placeFilter(p)) continue;
     const s =
       fieldScore(p.name, terms) * 4 +
       fieldScore(p.short_blurb, terms) * 1 +
@@ -226,10 +266,16 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
     // place whose only claim was an incidental name token (the candle
     // shop "Liveyoung") steps aside for the actual events below.
     const ev = eventIntent ? (eventIntent.venueCats.has(p.category) ? 2 : -6) : 0;
-    if (s > 0 || iv > 0) hits.push({ type: "place", place: p, score: s + p.feature_score + iv + ev });
+    if (s > 0 || iv > 0 || options.includeMatchingPlaces) {
+      const place = options.origin
+        ? { ...p, distance_m: haversineMeters(options.origin, p.geom) }
+        : p;
+      hits.push({ type: "place", place, score: s + p.feature_score + iv + ev });
+    }
   }
 
-  for (const e of eventPool) {
+  if (!options.onlyPlaces) for (const e of eventPool) {
+    if (options.eventMunicipality && e.municipality !== options.eventMunicipality) continue;
     const s =
       fieldScore(e.title, terms) * 4 +
       fieldScore(e.description, terms) * 1 +
@@ -239,15 +285,20 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
     // first); a past one is sunk. Lets a music show with no literal
     // term match still surface above places for "live music".
     const ev = eventIntent ? eventIntentScore(e, eventIntent, now) : 0;
-    if (s > 0 || ev > 0) hits.push({ type: "event", event: e, score: s + ev });
+    if (s > 0 || ev > 0) {
+      const event = options.origin
+        ? { ...e, distance_m: haversineMeters(options.origin, e.geom) }
+        : e;
+      hits.push({ type: "event", event, score: s + ev });
+    }
   }
 
-  for (const m of MUNICIPALITIES) {
+  if (!options.onlyPlaces) for (const m of MUNICIPALITIES) {
     const s = fieldScore(m.name, terms) * 5 + fieldScore(m.description, terms) * 1;
     if (s > 0) hits.push({ type: "municipality", municipality: m, score: s });
   }
 
-  for (const c of CATEGORIES) {
+  if (!options.onlyPlaces) for (const c of CATEGORIES) {
     const s = fieldScore(c.name, terms) * 3 + fieldScore(c.blurb, terms) * 1;
     if (s > 0) hits.push({ type: "category", category: c, score: s });
   }
@@ -259,7 +310,7 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
   // sets (a DB round-trip would be strictly slower at ~1.5k names). Gated
   // at 4+ chars: shorter typos are indistinguishable from prefixes the
   // substring pass already handles.
-  if (query.trim().length >= 4) {
+  if (!options.onlyPlaces && !options.placeFilter && query.trim().length >= 4) {
     if (!hits.some((h) => h.type === "place")) {
       const close: { p: PlaceCardData; f: number }[] = [];
       for (const p of clientPlaces()) {
@@ -279,6 +330,85 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
     }
   }
 
-  hits.sort((a, b) => b.score - a.score);
+  hits.sort((a, b) => {
+    if (options.rankPlacesByDistance && a.type === "place" && b.type === "place") {
+      const distance = (a.place.distance_m ?? Infinity) - (b.place.distance_m ?? Infinity);
+      if (distance !== 0) return distance;
+    }
+    if (options.rankEventsByDistance && a.type === "event" && b.type === "event") {
+      const distance = (a.event.distance_m ?? Infinity) - (b.event.distance_m ?? Infinity);
+      if (distance !== 0) return distance;
+    }
+    return b.score - a.score;
+  });
   return hits.slice(0, limit);
+}
+
+export type QualifiedSearchContext = {
+  origin?: LngLat | null;
+  municipality?: string | null;
+  contextLabel?: string;
+  fallbackReason?: "outside-county" | "location-unavailable" | null;
+};
+
+export type QualifiedSearchMeta = {
+  qualifiers: SearchQualifiers;
+  contextLabel: string | null;
+  nearMeApplied: boolean;
+  fallbackReason: "outside-county" | "location-unavailable" | null;
+};
+
+/** Execute, rather than merely recognize, category/open/near language. */
+export function qualifiedSearch(
+  query: string,
+  limit = 30,
+  eventPool: readonly Event[] = EVENTS,
+  context: QualifiedSearchContext = {},
+): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
+  const qualifiers = parseSearchQualifiers(query);
+  if (!qualifiers.constrained) {
+    return {
+      hits: search(query, limit, eventPool),
+      meta: {
+        qualifiers,
+        contextLabel: null,
+        nearMeApplied: false,
+        fallbackReason: null,
+      },
+    };
+  }
+
+  const nearMeApplied = qualifiers.nearMe && Boolean(context.origin);
+  const effectiveQuery = qualifiers.cleanedQuery;
+  // Location language alone must not turn an event-intent query into a
+  // place-only search. "Live music near me" should still return concerts;
+  // the origin may rank genuine venue places without suppressing events.
+  const preserveMixedEventResults = Boolean(
+    detectEventIntent(query) && !qualifiers.categoryKey && !qualifiers.openNow,
+  );
+  const includeMatchingPlaces = qualifiers.categoryKey
+    ? qualifiers.includeAllCategoryMatches || effectiveQuery.length === 0
+    : qualifiers.openNow ||
+      (qualifiers.nearMe && !preserveMixedEventResults) ||
+      effectiveQuery.length === 0;
+  const hits = search(effectiveQuery, limit, eventPool, {
+    onlyPlaces: !preserveMixedEventResults,
+    includeMatchingPlaces,
+    origin: nearMeApplied ? context.origin : null,
+    rankPlacesByDistance: nearMeApplied,
+    rankEventsByDistance: nearMeApplied,
+    eventMunicipality: context.municipality,
+    placeFilter: (place) =>
+      matchesSearchQualifiers(place, qualifiers, context.municipality),
+  });
+
+  return {
+    hits,
+    meta: {
+      qualifiers,
+      contextLabel: context.contextLabel ?? null,
+      nearMeApplied,
+      fallbackReason: context.fallbackReason ?? null,
+    },
+  };
 }

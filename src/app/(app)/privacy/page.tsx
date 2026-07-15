@@ -24,7 +24,7 @@ export default function PrivacyPage() {
           What the app knows and why.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Effective July 14, 2026
+          Effective July 15, 2026
         </p>
       </header>
 
@@ -47,10 +47,12 @@ export default function PrivacyPage() {
               local storage and small cookies.
             </li>
             <li>
-              <strong style={{ color: "var(--app-ink)" }}>Precise location.</strong>{" "}
-              If you grant browser location permission, the app uses that
-              location to center maps and rank nearby results. Frederick Radius
-              does not store a history of your precise browser-provided location.
+              <strong style={{ color: "var(--app-ink)" }}>Location.</strong>{" "}
+              If you grant browser location permission, the precise fix is kept
+              in this browser session for up to 30 minutes and can be used on
+              your device to center maps and rank nearby results. Frederick
+              Radius does not save a history of those precise fixes in its app
+              database.
             </li>
           </ul>
           <p>
@@ -125,6 +127,14 @@ export default function PrivacyPage() {
             Frederick Radius does not use this information for targeted
             advertising and does not attempt to build a history of your precise
             movements.
+          </p>
+          <p>
+            Features that need server-side distance, walking-time, or
+            reachability calculations send coordinates rounded to roughly 100
+            meters. Those rounded coordinates are also used for request caches
+            and are rounded again before route or reachability requests are sent
+            to Mapbox. A map provider may additionally process IP address and
+            map viewport, tile, or interaction data needed to serve the map.
           </p>
         </div>
 

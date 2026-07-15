@@ -2,6 +2,15 @@ import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus } from "@/lib/hours";
+import { isHoursFresh } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+
+type ClientPlaceData = PlaceCardData & {
+  /** Build-time policy stamped by build-client-places. This avoids reading a
+   * private server env var from a browser bundle while still aging strict
+   * schedules out during a long-lived deployment. */
+  hours_policy_strict?: boolean;
+};
 
 /**
  * CLIENT-SAFE place data. Imports ONLY the slim, pre-decorated
@@ -29,7 +38,7 @@ function withoutLegacyGoogleBlobMirror(place: PlaceCardData): PlaceCardData {
   return place;
 }
 
-const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as PlaceCardData[]).map(
+const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[]).map(
   withoutLegacyGoogleBlobMirror,
 );
 
@@ -62,10 +71,23 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
  * few hundred bytes), not the heavy google_hours strings that were
  * dropped to keep this bundle small.
  */
-function withLiveStatus(p: PlaceCardData): PlaceCardData {
+function withLiveStatus(p: ClientPlaceData): PlaceCardData {
+  const now = new Date();
+  const mayAssertHours = Boolean(
+    p.hours_verified &&
+      p.hours &&
+      (!p.hours_policy_strict || isHoursFresh(p.hours_updated_at, now)) &&
+      mayPublishVisitabilityHours(p.slug, p.hours, now),
+  );
   return {
     ...p,
-    open_status: getOpenStatus(p.hours, { verified: p.hours_verified ?? false }),
+    hours: mayAssertHours ? p.hours : undefined,
+    hours_verified: mayAssertHours,
+    open_status: getOpenStatus(
+      mayAssertHours ? p.hours : undefined,
+      { verified: mayAssertHours },
+      now,
+    ),
   };
 }
 

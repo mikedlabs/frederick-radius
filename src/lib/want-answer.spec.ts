@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partitionWant, type WantCandidate } from "./want-answer";
+import { buildWantAnswer, partitionWant, type WantCandidate } from "./want-answer";
 
 function cand(over: Partial<WantCandidate> & { slug: string }): WantCandidate {
   return {
@@ -81,6 +81,23 @@ describe("partitionWant", () => {
     // The notable fallback pool: nearest first, so a no-hours category
     // (markets, playgrounds) still flows down with the closest places.
     expect(other.map((c) => c.slug)).toEqual(["closed-near", "closed-far"]);
+  });
+});
+
+describe("buildWantAnswer context", () => {
+  it("carries an explicit town scope into both the answer and browse door", () => {
+    const answer = buildWantAnswer("coffee", null, null, new Date("2026-07-15T16:00:00Z"), {
+      municipality: "thurmont",
+      contextLabel: "Thurmont",
+      contextSource: "town",
+    });
+    expect(answer).not.toBeNull();
+    expect(answer).toMatchObject({
+      contextLabel: "Thurmont",
+      contextSource: "town",
+      fallbackReason: null,
+    });
+    expect(answer?.browseHref).toContain("town=thurmont");
   });
 });
 

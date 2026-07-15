@@ -1,12 +1,18 @@
 {
-  "generated_at": "2026-06-08T01:32:34.152Z",
-  "count": 4,
+  "generated_at": "2026-07-15T16:26:19.422Z",
+  "count": 6,
   "closures": [
     {
       "name": "Ayse Meze Lounge",
       "place_id": null,
       "date_marked": null,
       "source": "manual_denylist"
+    },
+    {
+      "name": "Cozy Restaurant",
+      "place_id": null,
+      "date_marked": null,
+      "source": "curated:closed_permanently"
     },
     {
       "name": "Firestone's Culinary Tavern",
@@ -25,6 +31,12 @@
       "place_id": null,
       "date_marked": "2020",
       "source": "manual_denylist"
+    },
+    {
+      "name": "Wiles Branch Dog Park",
+      "place_id": "ChIJBbTsRXzdyYkRIHec_8mXy5A",
+      "date_marked": "2026-07-04",
+      "source": "manual:closed_temporarily:https://www.middletown.md.us/index.asp?SEC=7B516C9F-7FC3-4D59-B4F9-D084637D2E99&Type=B_PR"
     }
   ]
 }

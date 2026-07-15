@@ -90,7 +90,7 @@ export default function Scene10_Vision() {
                     className="mb-10"
                 >
                     <p className="mb-4 text-sm font-medium uppercase tracking-[0.28em] text-violet-300">
-                        Independent private beta
+                        Independent early-access beta
                     </p>
                     <h1 className="mb-6 text-6xl font-light leading-none tracking-tight text-white md:text-8xl">
                         Find what fits
@@ -170,7 +170,7 @@ export default function Scene10_Vision() {
                         </div>
 
                         <p className="mt-4 text-sm text-gray-500">
-                            Current phase: private beta. Confirmation appears only after the server accepts the access email for delivery.
+                            Current phase: early-access beta. Confirmation appears only after the server accepts the access email for delivery.
                         </p>
                         <p className="mt-2 text-xs text-gray-600">
                             Your email is used to process beta access. By submitting, you agree to the{" "}
@@ -203,7 +203,7 @@ export default function Scene10_Vision() {
                     {[
                         { value: "Independent", label: "Project" },
                         { value: "Local-first", label: "Focus" },
-                        { value: "Private beta", label: "Current stage" },
+                        { value: "Early-access beta", label: "Current stage" },
                     ].map((item) => (
                         <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-xl">
                             <div className="mb-1 text-2xl font-light text-white">{item.value}</div>

@@ -780,7 +780,9 @@ function parseICalEvents(text: string): ParsedVEvent[] {
   return out;
 }
 
-async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+type FeedFetchResult = { events: LiveEvent[]; ok: boolean };
+
+async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   // Reset per-source counts at the start of every pull so the admin
   // dashboard reflects the current fetch, not lifetime aggregates.
   resetFeedMetrics(feed.source);
@@ -806,13 +808,13 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       } else {
         console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
-      return [];
+      return { events: [], ok: false };
     }
     const text = await res.text();
     if (!text.includes("BEGIN:VCALENDAR")) {
 
       console.warn(`[ical-live] ${feed.source}: not iCal (fail-soft, skipped)`);
-      return [];
+      return { events: [], ok: false };
     }
     const now = new Date();
     const horizon = new Date(now);
@@ -876,7 +878,7 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
 
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} events in window`);
     recordSnapshot(feed.source, events);
-    return events;
+    return { events, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     // Expected fail-soft: an unreliable upstream feed timed out / refused. We
@@ -887,13 +889,13 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return { events: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   const ctrl = new AbortController();
@@ -910,7 +912,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       } else {
         console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
-      return [];
+      return { events: [], ok: false };
     }
     const xml = await res.text();
     const now = new Date();
@@ -989,7 +991,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
 
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
     recordSnapshot(feed.source, events);
-    return events;
+    return { events, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     // Expected fail-soft (see note in fetchIcalFeed): warn, don't error.
@@ -997,7 +999,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       `[ical-live] ${feed.source} RSS ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return { events: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
@@ -1039,7 +1041,7 @@ function jsonEventDateToISO(utc?: string, local?: string): string | null {
  * museum / theater / land-trust nonprofits whose sites run the plugin
  * (civilwarmed.org, marylandensemble.org, catoctinlandtrust.org).
  */
-async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   const ctrl = new AbortController();
@@ -1064,7 +1066,7 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveE
       } else {
         console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
-      return [];
+      return { events: [], ok: false };
     }
     const data = (await res.json()) as { events?: TribeEvent[] };
     const items = Array.isArray(data.events) ? data.events : [];
@@ -1118,14 +1120,14 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveE
     }
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} tribe events in window`);
     recordSnapshot(feed.source, events);
-    return events;
+    return { events, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     console.warn(
       `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return { events: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
@@ -1140,7 +1142,7 @@ async function fetchTribeFeed(feed: FeedSpec, windowDays: number): Promise<LiveE
  *     (startDateTimeUtc is absolute UTC).
  * Same window + fail-soft + validate contract as the iCal/tribe paths.
  */
-async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
   const ctrl = new AbortController();
@@ -1171,7 +1173,7 @@ async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<L
       } else {
         console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
-      return [];
+      return { events: [], ok: false };
     }
     const data = (await res.json()) as unknown;
     const items = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
@@ -1235,20 +1237,20 @@ async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<L
     }
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} ${feed.format} events in window`);
     recordSnapshot(feed.source, events);
-    return events;
+    return { events, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     console.warn(
       `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return { events: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
   if (feed.format === "moderncampus" || feed.format === "presence") return fetchJsonArrayFeed(feed, windowDays);
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
@@ -1269,7 +1271,11 @@ export async function getLiveEvents(windowDays = 60): Promise<{
       // Skip env-gated feeds whose URL is unset (DFP, Hood) so a dead
       // or unconfigured source costs zero network and zero log noise.
       FEEDS.filter((f) => f.url).map((f) =>
-        fetchFeed(f, windowDays).then((evts) => ({ source: f.source, evts })),
+        fetchFeed(f, windowDays).then((result) => ({
+          source: f.source,
+          evts: result.events,
+          ok: result.ok,
+        })),
       ),
     ),
     fetchTicketmasterMusic(),
@@ -1279,13 +1285,14 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   // horizon the feed fetchers honor so getLiveEvents(7) cannot surface a
   // concert three months out.
   const horizonMs = Date.now() + windowDays * 86_400_000;
-  const results: Array<{ source: LiveEvent["source"]; evts: LiveEvent[] }> = [
+  const results: Array<{ source: LiveEvent["source"]; evts: LiveEvent[]; ok: boolean }> = [
     ...feedResults,
     {
       source: "ticketmaster",
       evts: ticketmasterEvents.filter(
         (e) => +new Date(e.starts_at) <= horizonMs,
       ),
+      ok: true,
     },
   ];
 
@@ -1322,8 +1329,8 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 
   return {
     events,
-    sources_succeeded: results.filter((r) => r.evts.length > 0).map((r) => r.source),
-    sources_failed: results.filter((r) => r.evts.length === 0).map((r) => r.source),
+    sources_succeeded: results.filter((r) => r.ok).map((r) => r.source),
+    sources_failed: results.filter((r) => !r.ok).map((r) => r.source),
   };
 }
 

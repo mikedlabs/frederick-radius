@@ -21,7 +21,7 @@
 | Nightly 07:00 UTC | `business-status` | Refreshes open/closed + hours from Google Places. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 09:30 UTC | `data-health` | Server-side data freshness/health snapshot. | Vercel cron (`/api/cron/data-health`) |
 | Daily 12:00/13:00 UTC | `daily-briefing` | Builds the daily briefing payload. | Vercel cron (`/api/cron/daily-briefing`) |
-| Nightly 06:00 UTC | **data-steward** | Runs feed-health (informational), then `refresh:business-status`, `build:transit`, `build:park-amenities` (each `\|\| true`). Opens a PR on any change to committed data artifacts. | GitHub Actions (`.github/workflows/data-steward.yml`) |
+| Nightly 06:00 UTC | **data-steward** | Runs feed-health (informational), then `refresh:business-status`, `refresh:hours`, `build:transit`, `build:park-amenities` (each `\|\| true`). Opens a PR on any change to committed data artifacts. | GitHub Actions (`.github/workflows/data-steward.yml`) |
 | Daily 12:00 UTC | **feed-health** | Probes the critical external feeds and exits non-zero if any critical endpoint is down — the job goes red so you can alert. | GitHub Actions (`.github/workflows/feed-health.yml`) |
 | Weekly Mon 07:00 UTC | **discovery** | `npm run discover` dry run ($0, no API call). Publishes the candidate count + cost projection to the job summary and an artifact. | GitHub Actions (`.github/workflows/discovery.yml`) |
 
@@ -72,6 +72,7 @@ workflow with `${{ secrets.NAME }}` and pass them into a step via `env:`.
 | Secret | Used by | Purpose |
 | --- | --- | --- |
 | `GOOGLE_PLACES_API_KEY` | data-steward (`refresh:business-status`), a live `discover` run | Google Places lookups for business status and place discovery. |
+| `DATABASE_URL` | data-steward (`refresh:hours`) | Read the server cron's `place_hours_refresh` table into the PR-reviewed committed snapshot. |
 | `ANTHROPIC_API_KEY` | discovery (future Claude review step) | Lets Claude Code review the discovery plan and open a PR. |
 | `BLOB_READ_WRITE_TOKEN` | any job that reads/writes Vercel Blob artifacts | Auth for `@vercel/blob` storage (photos, generated artifacts). |
 

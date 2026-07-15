@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { CATEGORIES, CATEGORY_BY_SLUG, isAmenityCategory } from "@/data/categories";
+import {
+  CATEGORIES,
+  CATEGORY_BY_SLUG,
+  categoryRouteOverride,
+  isAmenityCategory,
+} from "@/data/categories";
 import { TAG_BY_SLUG } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { rankPlaces, slimForList } from "@/lib/loaders/places";
@@ -26,7 +31,9 @@ export const revalidate = 600;
 export async function generateStaticParams() {
   // Amenity categories redirect to /amenities, so don't prerender their dead
   // routes (they're excluded from the sitemap too — audit DQ-016).
-  return CATEGORIES.filter((c) => !isAmenityCategory(c.slug)).map((c) => ({ slug: c.slug }));
+  return CATEGORIES.filter(
+    (c) => !isAmenityCategory(c.slug) && !categoryRouteOverride(c.slug),
+  ).map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata(
@@ -67,10 +74,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const c = CATEGORY_BY_SLUG[slug];
   if (!c) notFound();
 
-  // Food trucks roam, so they don't live in the fixed-location places catalog
-  // (a static pin would misstate where they are). Their home is the dedicated
-  // roster at /food-trucks; send the category, intent, and craving links there.
-  if (slug === "food-truck") redirect("/food-trucks");
+  // Some taxonomy labels belong to another first-class surface: sports and
+  // community are event intents, public art is a map overlay, food trucks roam,
+  // and empty utility leaves have a useful parent/directory destination.
+  const routeOverride = categoryRouteOverride(slug);
+  if (routeOverride) redirect(routeOverride);
 
   // Amenity categories (restrooms, Wi-Fi, benches, drinking water, …) are map
   // layers, not directories: their category page resolves to zero places and

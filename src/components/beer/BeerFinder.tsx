@@ -475,7 +475,7 @@ function BreweryPhoto({
       }}
     >
       {url ? (
-        <Image src={url} alt="" fill sizes="56px" className="object-cover" />
+        <Image src={url} alt="" fill sizes="56px" unoptimized={url.startsWith("/api/place-photo")} className="object-cover" />
       ) : (
         <BeerGlassArt family={family} variant="pint" className="h-full w-full p-1" />
       )}

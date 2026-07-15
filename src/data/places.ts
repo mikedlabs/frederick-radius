@@ -846,6 +846,53 @@ export const PLACES: Place[] = [
     updated_at: "2026-05-14",
   },
 
+  // Curated grocery anchors. These two stores were missing from the discovery
+  // feed even though both are active and listed by Giant Eagle. Keep hours
+  // unset until a store-hours sync confirms them; existence and coordinates
+  // were checked against the operator's current store pages.
+  {
+    slug: "giant-eagle-west-patrick-frederick",
+    name: "Giant Eagle - West Patrick Street",
+    category: "market",
+    subcategories: ["grocery"],
+    short_blurb: "Full-service Giant Eagle grocery store on West Patrick Street.",
+    address: "1275 W Patrick St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21702",
+    municipality: "frederick",
+    geom: { lng: -77.4477961, lat: 39.4193883 },
+    phone: "(301) 668-8712",
+    website: "https://www.getgocafe.com/stores/1841",
+    is_verified: true,
+    hours_verified: false,
+    is_operational: "operational",
+    feature_score: 7.8,
+    source: "manual",
+    updated_at: "2026-07-15",
+  },
+  {
+    slug: "giant-eagle-west-seventh-frederick",
+    name: "Giant Eagle - West Seventh Street",
+    category: "market",
+    subcategories: ["grocery"],
+    short_blurb: "Full-service Giant Eagle grocery store on West Seventh Street.",
+    address: "1305 W 7th St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21702",
+    municipality: "frederick",
+    geom: { lng: -77.4184578, lat: 39.431484 },
+    phone: "(301) 631-3822",
+    website: "https://www.getgocafe.com/stores/1842",
+    is_verified: true,
+    hours_verified: false,
+    is_operational: "operational",
+    feature_score: 7.8,
+    source: "manual",
+    updated_at: "2026-07-15",
+  },
+
   // ─── Curated restaurants/bars/coffee — operational but hours unverified ────
   // All marked `is_operational: "needs_verification"` until cross-checked with
   // Google Places. The "Verify" badge surfaces in the UI; users get a

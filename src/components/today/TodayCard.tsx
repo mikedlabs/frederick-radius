@@ -3,6 +3,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
+import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
 
@@ -87,7 +88,10 @@ export default async function TodayCard() {
     day: "numeric",
   }).format(now);
 
-  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  const [forecast, activeAlerts] = await Promise.all([
+    getNwsForecast(FREDERICK_CENTER).catch(() => null),
+    getNwsAlerts().catch(() => []),
+  ]);
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
@@ -114,6 +118,8 @@ export default async function TodayCard() {
           shortForecast: cur.shortForecast,
           precipNow: cur.probabilityOfPrecipitation ?? 0,
           hourly: forecast.hourly,
+          forecastHigh: high,
+          activeAlerts: activeAlerts.map(({ event, severity }) => ({ event, severity })),
           now,
         }).line
       : null;

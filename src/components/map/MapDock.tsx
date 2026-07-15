@@ -12,7 +12,7 @@ import type { LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
-import { setScope } from "@/lib/scope";
+import { getScope, parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM } from "@/lib/scope";
 import { track } from "@/lib/track";
 import {
   TIME_WINDOWS,
@@ -248,6 +248,36 @@ export default function MapDock(props: MapDockProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
+  // Match the readout to the scope that already seeded the map's camera.
+  // localStorage is client-only, so this intentionally runs after hydration.
+  useEffect(() => {
+    const scope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope();
+    const applyReadout = (nextScope: ReturnType<typeof getScope>) => {
+      if (nextScope === "nearme") {
+        setWhereSel({ kind: "nearme" });
+        return;
+      }
+      const slug = scopeTownSlug(nextScope);
+      const town = slug ? MUNICIPALITIES.find((m) => m.slug === slug) : null;
+      setWhereSel(town ? { kind: "town", slug: town.slug, name: town.name } : { kind: "county" });
+    };
+    applyReadout(scope);
+    return subscribeScopeChange((nextScope) => {
+      applyReadout(nextScope);
+      if (nextScope === "nearme") {
+        props.goNearMe();
+        return;
+      }
+      const slug = scopeTownSlug(nextScope);
+      const town = slug ? MUNICIPALITIES.find((m) => m.slug === slug) : null;
+      if (town) props.flyTo([town.centroid.lng, town.centroid.lat], TOWN_ZOOM);
+      else props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
+    });
+  // One-shot initialization: camera moves append ?c= and must not reset a
+  // deliberate Where choice by rerunning this effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // A landed location fix means the camera is on the user — the Where
   // word reads "Near me" until they choose somewhere else.
   const [prevLoc, setPrevLoc] = useState(props.userLoc);
@@ -309,30 +339,24 @@ export default function MapDock(props: MapDockProps) {
     });
   };
 
-  // Where picks WRITE BACK to the global browsing lens (UX-02): choosing a
-  // town or the whole county on the map propagates to the nav chip and the
-  // list surfaces, so the map is a first-class scope contributor. (Seeding
-  // the map's camera FROM scope on entry is the remaining half — it needs a
-  // coherent initial center + zoom, its own change.) The camera move is
-  // unchanged; only the extra setScope line is new.
-  const goTown = (slug: string, name: string, center: [number, number]) => {
+  // Where picks write to the global lens; the subscription above updates both
+  // this readout and the camera, including changes made from the top-bar chip.
+  const goTown = (slug: string, name: string) => {
     haptic("light");
     setWhereSel({ kind: "town", slug, name });
     setScope(`town:${slug}`);
-    props.flyTo(center, TOWN_ZOOM);
   };
   const goCounty = () => {
     haptic("light");
     setWhereSel({ kind: "county" });
     setScope("county");
-    props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
   };
   // Explicit near-me tap (not the automatic fix-landed relabel, which must
   // not clobber a chosen town scope on every map mount): set the lens, then
   // run the map's own locate.
   const pickNearMe = () => {
+    setWhereSel({ kind: "nearme" });
     setScope("nearme");
-    props.goNearMe();
   };
 
   // ── Derived caption state ──
@@ -435,7 +459,7 @@ export default function MapDock(props: MapDockProps) {
     for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
     setAmenExpanded(false);
     setWhereSel({ kind: "county" });
-    props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
+    setScope("county");
     setPane(null);
     router.replace(pathname, { scroll: false });
   };
@@ -636,7 +660,7 @@ export default function MapDock(props: MapDockProps) {
                       key={m.slug}
                       on={whereSel.kind === "town" && whereSel.slug === m.slug}
                       color="var(--app-cool)"
-                      onClick={() => goTown(m.slug, m.name, [m.centroid.lng, m.centroid.lat])}
+                      onClick={() => goTown(m.slug, m.name)}
                     >
                       {m.name}
                     </Chip>
@@ -755,7 +779,7 @@ export default function MapDock(props: MapDockProps) {
                         return next;
                       })
                     }
-                    items={AMENITY_GROUPS.map((g) => ({
+                    items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
                       key: g.key,
                       label: g.label,
                       on: props.amenityGroups.has(g.key),

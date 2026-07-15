@@ -88,7 +88,7 @@ export async function POST(request: Request) {
   //   - biz:<slug> place follows (SaveButton/Follow) — the card never sends
   //     them, so a naive replace silently unfollowed every business a user
   //     had followed the moment they touched any toggle (data-loss bug).
-  //   - owner-alerts — carries feedback text + signup emails; this open
+  //   - owner-alerts — carries private operational alerts; this open
   //     endpoint can neither grant it (stripped from input here) nor revoke
   //     it. Only /admin/api/owner-alerts, behind Basic Auth, toggles it.
   // Both are preserved from the EXISTING row in the ON CONFLICT update below.

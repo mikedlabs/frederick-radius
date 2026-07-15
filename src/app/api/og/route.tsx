@@ -114,7 +114,7 @@ export async function GET(request: Request) {
     // The Facebook tease card. Not time-baked (social caches at share time),
     // so it reads true whenever it surfaces in a feed.
     title = "You're early.";
-    kicker = "Private beta · Frederick Radius";
+    kicker = "Early-access beta · Frederick Radius";
     blurb = "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time.";
     accent = "#E14328";
   } else if (type === "almanac") {

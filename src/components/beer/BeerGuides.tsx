@@ -32,11 +32,11 @@ const BEER_DAYS: BeerDayDefinition[] = [
     eyebrow: "Downtown Frederick",
     title: "A downtown contrast",
     description:
-      "Look for a hop-forward IPA from Olde Mother and a soft Munich helles from Steinhardt. Two different flavors, both downtown.",
+      "Look for a hop-forward IPA from Olde Mother and a crisp kölsch from Brewer's Alley. Two different flavors, both downtown.",
     accent: "#7A4A0E",
     stops: [
       { brewerySlug: "olde-mother-brewing-frederick", beerName: "Impressionist" },
-      { brewerySlug: "steinhardt-brewing-company-frederick", beerName: "What the Helles" },
+      { brewerySlug: "brewers-alley-frederick", beerName: "Kolsch" },
     ],
   },
   {
@@ -64,17 +64,17 @@ const BEER_DAYS: BeerDayDefinition[] = [
   },
 ];
 
-function resolveStop(definition: GuideStopDefinition): ResolvedStop {
+function resolveStop(definition: GuideStopDefinition): ResolvedStop | null {
   const brewery = BREWERY_BY_SLUG[definition.brewerySlug];
   const beer = brewery?.beers.find(
     (candidate) => candidate.name === definition.beerName && candidate.flagship,
   );
-  if (!brewery || !beer) {
-    throw new Error(
-      `Beer guide references a missing signature pour: ${definition.brewerySlug} / ${definition.beerName}`,
-    );
-  }
+  if (!brewery || !beer) return null;
   return { brewery, beer };
+}
+
+function isResolvedStop(stop: ResolvedStop | null): stop is ResolvedStop {
+  return stop !== null;
 }
 
 /** Curated day ideas over the durable signature-beer snapshot, never live taps. */
@@ -99,7 +99,8 @@ export default function BeerGuides() {
 
       <div className="grid gap-3 lg:grid-cols-3">
         {BEER_DAYS.map((guide, guideIndex) => {
-          const stops = guide.stops.map(resolveStop);
+          const stops = guide.stops.map(resolveStop).filter(isResolvedStop);
+          if (stops.length === 0) return null;
           return (
             <article
               key={guide.slug}

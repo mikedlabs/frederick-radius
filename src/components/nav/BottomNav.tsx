@@ -43,7 +43,14 @@ export default function BottomNav() {
     function measure() {
       const strip = stripRef.current;
       const cell = tabRefs.current[activeIdx];
-      if (!strip || !cell) return;
+      if (!strip) return;
+      // A detail/settings route belongs to no primary tab. Explicitly hide
+      // the pill instead of leaving it parked under the tab from the previous
+      // route (which made that tab look active while aria-current said none).
+      if (!cell) {
+        setPill((current) => current.width === 0 ? current : { left: 0, width: 0 });
+        return;
+      }
       const sBox = strip.getBoundingClientRect();
       const cBox = cell.getBoundingClientRect();
       // Pad the pill to roughly the chip width — 48px wide centered
@@ -172,7 +179,9 @@ export default function BottomNav() {
                   onClick={(e) => handleActivate(e)}
                   className={tabClass + " w-full"}
                   style={tabStyle}
-                  aria-current={active ? "page" : undefined}
+                  // Optimistic color/position can move immediately, but only
+                  // the route the user is actually on is the current page.
+                  aria-current={isRealActive ? "page" : undefined}
                 >
                   <Icon
                     className="transition-transform duration-200"

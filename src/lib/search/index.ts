@@ -10,7 +10,13 @@
  * resolver keeps working.
  */
 
-import { search, type SearchHit } from "@/lib/search";
+import {
+  qualifiedSearch,
+  search,
+  type QualifiedSearchContext,
+  type QualifiedSearchMeta,
+  type SearchHit,
+} from "@/lib/search";
 import type { Event } from "@/data/events";
 import { OVERLAYS } from "@/lib/overlays";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -243,4 +249,30 @@ export function searchIndex(
   const head = [...actions, ...layers];
   const hits = search(query, Math.max(1, limit - head.length), eventPool).map(hitToResult);
   return [...head, ...hits];
+}
+
+export type QualifiedSearchIndexResult = {
+  results: SearchResult[];
+  meta: QualifiedSearchMeta;
+};
+
+/** Search adapter for natural-language qualifiers. Recognized constraints are
+ * applied to the result set; they are never reduced to decorative copy. */
+export function qualifiedSearchIndex(
+  query: string,
+  limit = 12,
+  eventPool?: readonly Event[],
+  context: QualifiedSearchContext = {},
+): QualifiedSearchIndexResult {
+  const qualified = qualifiedSearch(query, limit, eventPool, context);
+  if (!qualified.meta.qualifiers.constrained) {
+    return {
+      results: searchIndex(query, limit, eventPool),
+      meta: qualified.meta,
+    };
+  }
+  return {
+    results: qualified.hits.map(hitToResult),
+    meta: qualified.meta,
+  };
 }

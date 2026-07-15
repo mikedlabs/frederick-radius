@@ -26,7 +26,7 @@ export type EventLane =
 // "something to do". Includes pavilion/park bookings for personal events
 // (birthdays, reunions, picnics) which some county feeds publish as events.
 const RE_RENTAL =
-  /\b(wedding|reception|banquet|reunion)\b|\bprivate\b[^|]*\b(event|party|booking|rental|reservation|corp)\b|\bcorporate (event|party|booking)\b|\bemployee\s+picnic\b|facility rental|pavilion (reservation|rental)|\bpavilion\b[^|]*\b(birthday|reunion|party|graduation|wedding|shower|anniversary|picnic)\b|\b(birthday|graduation)\s+party\b/i;
+  /\b(wedding|reception|banquet|reunion)\b|\bprivate\b[^|]*\b(event|party|booking|rental|reservation|corp)\b|\bcorporate (event|party|booking)\b|\bemployee\s+picnic\b|\b(?:facility|pavilion|shelter|room|field|court)\s+(?:reservation|rental|booking)\b|^\s*(?:private\s+)?reservation(?:\s*#?\d+)?\s*$|\bpavilion\b[^|]*\b(birthday|reunion|party|graduation|wedding|shower|anniversary|picnic)\b|\b(birthday|graduation)\s+party\b/i;
 
 // Municipal service / public-works reminders — keep, but in their own lane.
 const RE_REMINDER =

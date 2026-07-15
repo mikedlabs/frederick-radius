@@ -145,6 +145,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      // Library of Congress curated archive imagery. The app stores only
+      // reviewed item metadata locally, then requests an explicit, pre-sized
+      // IIIF/JPEG rendition from LOC's image CDN. No user request triggers a
+      // search of the LOC catalog at runtime.
+      { protocol: "https", hostname: "tile.loc.gov" },
+      { protocol: "https", hostname: "www.loc.gov" },
       // Google Places photo CDN. The app normally proxies these via
       // /api/place-photo to keep the API key off the client, but the
       // allowlist is here for defensive parity in case any future

@@ -125,11 +125,11 @@ export default function FeedbackWidget() {
   const sending = phase === "sending";
   const succeeded = phase === "ok";
 
-  // Place- and event-detail pages pin a MobileActionBar ~76px above the
-  // nav; lift the feedback trigger clear of it so the two don't overlap on
-  // the bottom-left. Every other route keeps the base 76px clearance.
+  // Reserve the shell's real bottom-nav footprint instead of relying on a
+  // magic 76px offset. At 390px the floating nav is taller once safe-area and
+  // borders are included, which previously let this button overlap it.
   const overActionBar = /^\/(places|events)\/[^/]+$/.test(pathname || "");
-  const triggerBottom = overActionBar ? 150 : 76;
+  const triggerOffset = overActionBar ? 78 : 12;
 
   return (
     <>
@@ -147,7 +147,7 @@ export default function FeedbackWidget() {
           style={{
             zIndex: "var(--z-fab)",
             left: "max(0.75rem, env(safe-area-inset-left, 0px))",
-            bottom: `calc(env(safe-area-inset-bottom, 0px) + ${triggerBottom}px)`,
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + ${triggerOffset}px)`,
             background: "var(--app-bg-elevated-solid)",
             borderColor: "var(--app-border)",
             color: "var(--app-ink-2)",

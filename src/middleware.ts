@@ -83,7 +83,7 @@ async function expectedBetaToken(pw: string): Promise<string> {
 /** Link-preview / unfurl bots that may pass the beta wall READ-ONLY.
  *
  *  The wall 307s every scraper to /beta, so every place or event link a beta
- *  tester texts or posts renders the generic "private beta" card — the built
+ *  tester texts or posts renders the generic early-access card — the built
  *  /api/og cards (place, event, muni, story) are unreachable, muting word of
  *  mouth during exactly the highest-enthusiasm window. These UAs fetch a page
  *  once to render its preview; they are not indexers (Googlebot is NOT here,

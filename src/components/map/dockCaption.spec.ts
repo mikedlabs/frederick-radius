@@ -55,8 +55,8 @@ describe("whatCaption", () => {
 });
 
 describe("layersCaption (the fourth caption word)", () => {
-  it("rests on No layers", () => {
-    expect(layersCaption([])).toEqual({ main: "No layers", active: false });
+  it("names the always-visible base map when no overlays are on", () => {
+    expect(layersCaption([])).toEqual({ main: "Base map", active: false });
   });
   it("names a single layer", () => {
     expect(layersCaption(["Trails"])).toEqual({ main: "Trails", active: true });

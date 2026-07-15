@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { MapPin, Calendar, Building2, Tag, ArrowRight, DoorOpen } from "lucide-react";
-import { search, type SearchHit } from "@/lib/search";
+import { isEventSearchIntent, qualifiedSearch, type SearchHit } from "@/lib/search";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { CRAVING_BY_KEY } from "@/data/cravings";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SearchInput from "@/components/search/SearchInput";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import { approxLocation } from "@/lib/ip-geo";
+import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -93,14 +97,37 @@ function displayFor(hit: SearchHit): Display {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; in?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, in: scopeParam } = await searchParams;
   const query = (q ?? "").trim();
-  // `search()` already sorts by score descending — keep that order.
-  // Cap at 50 results to keep the page scannable; if more rows match
-  // a power user can refine the query.
-  const hits = query ? search(query, 50) : [];
+  const eventsPromise = query && isEventSearchIntent(query)
+    ? assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => undefined)
+    : Promise.resolve(undefined);
+  const [cookieStore, approx, eventPool] = await Promise.all([
+    cookies(),
+    approxLocation(),
+    eventsPromise,
+  ]);
+  const context = resolveDecisionContext({
+    scopeRaw: scopeParam || cookieStore.get(SCOPE_COOKIE)?.value || null,
+    homeMuniRaw: cookieStore.get("fr_home_muni")?.value ?? null,
+    approximateOrigin: approx.origin,
+    approximateStatus: approx.status,
+  });
+  // Recognized words are real constraints, not decorative intent copy:
+  // category limits eligibility, open-now requires fresh verified hours, and
+  // near-me sorts from an available origin (or says that it could not).
+  const qualified = query
+    ? qualifiedSearch(query, 50, eventPool, {
+        origin: context.origin,
+        municipality: context.filterMunicipality,
+        contextLabel: context.label,
+        fallbackReason: context.fallbackReason,
+      })
+    : null;
+  const hits = qualified?.hits ?? [];
+  const searchMeta = qualified?.meta ?? null;
   // Mark the exception, not the rule: a query like "coffee" returns ~45
   // places plus a stray event, and stamping every row with an identical
   // "PLACE" pill is badge noise that steals ~70px of title width (the
@@ -132,6 +159,24 @@ export default async function SearchPage({
         </h1>
         <SearchInput defaultValue={query} />
       </header>
+
+      {searchMeta?.qualifiers.constrained && (
+        <p className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+          {[
+            searchMeta.qualifiers.categoryLabel,
+            searchMeta.qualifiers.openNow ? "Confirmed open" : null,
+            searchMeta.qualifiers.nearMe
+              ? searchMeta.nearMeApplied
+                ? `Nearest first${searchMeta.contextLabel ? ` · ${searchMeta.contextLabel}` : ""}`
+                : searchMeta.fallbackReason === "outside-county"
+                  ? "Location is outside Frederick County · not distance-ranked"
+                  : "Location unavailable · not distance-ranked"
+              : searchMeta.contextLabel && searchMeta.qualifiers.categoryLabel
+                ? searchMeta.contextLabel
+                : null,
+          ].filter(Boolean).join(" · ")}
+        </p>
+      )}
 
       {/* Answer-first lead: the direct answer to an intent query, above the
           ranked list. Links to the nearest-open craving surface (or Open now). */}
@@ -202,7 +247,9 @@ export default async function SearchPage({
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          No results for &ldquo;{query}&rdquo;. Try a category, town, or shorter phrase.
+          {searchMeta?.qualifiers.openNow
+            ? `No ${searchMeta.qualifiers.categoryLabel?.toLowerCase() ?? "places"} have recently confirmed open hours right now.`
+            : `No results for “${query}”. Try a category, town, or shorter phrase.`}
         </p>
       )}
 

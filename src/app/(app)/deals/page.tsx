@@ -8,9 +8,9 @@ import DealsBrowser from "@/components/deals/DealsBrowser";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/deals" },
-  title: "Briefing: verified daily specials in Frederick County",
+  title: "Briefing: source-checked daily specials in Frederick County",
   description:
-    "Verified daily specials around Frederick County: taco Tuesdays, wing nights, crab feasts, and the deals locals plan their week around. Confirmed at the source, day by day.",
+    "Source-checked daily specials around Frederick County: taco Tuesdays, wing nights, crab feasts, and the deals locals plan their week around.",
 };
 
 export const revalidate = 600;
@@ -55,14 +55,14 @@ export default function DealsPage() {
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               {todayCount > 0 ? (
-                <><span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>{todayCount} running today.</span>{" "}Pick a day to see the specials by town. Verified means confirmed at the source.</>
+                <><span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>{todayCount} running today.</span>{" "}Pick a day to see the specials by town. Each one was checked at its source.</>
               ) : (
-                <>Pick a day to see the specials by town. Verified means confirmed at the source.</>
+                <>Pick a day to see the specials by town. Each one was checked at its source.</>
               )}
             </p>
             <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-brand)" }} />
           </div>
-          <FieldStamp id="deals" top="VERIFIED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
+          <FieldStamp id="deals" top="CHECKED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
         </div>
       </header>
 

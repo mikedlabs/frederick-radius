@@ -177,7 +177,11 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
   const { publicEvents } = await withTimeout(
     assembleUnifiedEvents(now),
     8000,
-    { unified: [] as EventWithMeta[], publicEvents: [] as EventWithMeta[] },
+    {
+      unified: [] as EventWithMeta[],
+      publicEvents: [] as EventWithMeta[],
+      sourceHealth: { degraded: true, unavailable: ["event feeds"] },
+    },
   );
   return publicEvents;
 }

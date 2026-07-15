@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, Route } from "lucide-react";
+import { ArrowDown, BookOpen } from "lucide-react";
+import { ALL_BEERS, BREWERIES } from "@/data/beers";
 import { BeerGlassArt } from "./BeerGlassArt";
 
 /**
@@ -70,7 +71,7 @@ export default function BeerHero() {
             className="mt-5 max-w-[34rem] text-[15px] leading-relaxed sm:text-[16px]"
             style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
           >
-            174 signature pours from 17 local breweries. Start with what sounds good, not a list.
+            {ALL_BEERS.length} signature pours across {BREWERIES.length} brewery guides. Start with what sounds good, not a list.
           </p>
 
           <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row min-[430px]:flex-wrap">
@@ -87,7 +88,7 @@ export default function BeerHero() {
               <ArrowDown className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             </Link>
             <Link
-              href="#beer-days"
+              href="#beer-settings"
               className="tap-44-y inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-colors hover:bg-white/10"
               style={{
                 borderColor: "color-mix(in srgb, var(--app-on-brand) 42%, transparent)",
@@ -95,8 +96,8 @@ export default function BeerHero() {
                 color: "var(--app-on-brand)",
               }}
             >
-              Build a beer day
-              <Route className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+              Browse local beer ideas
+              <BookOpen className="h-4 w-4" strokeWidth={2.1} aria-hidden />
             </Link>
           </div>
 
@@ -130,7 +131,7 @@ export default function BeerHero() {
             }}
           >
             <span className="block text-[9px] tracking-[0.16em] opacity-70">County pour book</span>
-            <span className="mt-0.5 block text-[13px] font-bold tracking-[0.08em]">17 breweries</span>
+            <span className="mt-0.5 block text-[13px] font-bold tracking-[0.08em]">{BREWERIES.length} brewery guides</span>
           </div>
 
           <BeerGlassArt

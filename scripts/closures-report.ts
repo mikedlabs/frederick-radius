@@ -9,6 +9,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN_CLOSED_CANONICAL } from "@/lib/integrations/closures";
+import { MANUAL_PLACE_STATUS_OVERRIDES } from "@/lib/place-status-overrides";
 import { PLACES } from "@/data/places";
 
 type ClosureRow = {
@@ -26,6 +27,16 @@ for (const c of KNOWN_CLOSED_CANONICAL) {
     place_id: c.place_id,
     date_marked: c.closed_since,
     source: c.source,
+  });
+}
+
+for (const [slug, override] of Object.entries(MANUAL_PLACE_STATUS_OVERRIDES)) {
+  const place = PLACES.find((candidate) => candidate.slug === slug);
+  rows.push({
+    name: place?.name ?? slug,
+    place_id: place?.google_place_id ?? null,
+    date_marked: override.effective_at,
+    source: `manual:${override.status}:${override.source}`,
   });
 }
 

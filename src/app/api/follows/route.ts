@@ -3,6 +3,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { follows, user_profiles } from "@/lib/db/schema";
 import { getServerUserId } from "@/lib/auth";
+import {
+  hasJsonContentType,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 /**
  * /api/follows — user's follow relationships to places.
@@ -24,6 +29,32 @@ import { getServerUserId } from "@/lib/auth";
 
 function noStore() {
   return { "Cache-Control": "no-store" };
+}
+
+async function readMutationBody(req: NextRequest): Promise<
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; response: NextResponse }
+> {
+  if (!isSameOriginMutationRequest(req)) {
+    return { ok: false, response: NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore() }) };
+  }
+  if (!hasJsonContentType(req)) {
+    return { ok: false, response: NextResponse.json({ error: "content-type" }, { status: 415, headers: noStore() }) };
+  }
+  const parsed = await readJsonBodyWithLimit(req, 2_048);
+  if (!parsed.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: parsed.error },
+        { status: parsed.error === "body-too-large" ? 413 : 400, headers: noStore() },
+      ),
+    };
+  }
+  if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+    return { ok: false, response: NextResponse.json({ error: "invalid-body" }, { status: 400, headers: noStore() }) };
+  }
+  return { ok: true, body: parsed.value as Record<string, unknown> };
 }
 
 async function requireUser(): Promise<
@@ -89,17 +120,14 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const input = await readMutationBody(req);
+  if (!input.ok) return input.response;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
   const dbr = requireDb();
   if (!dbr.ok) return dbr.response;
 
-  let body: { slug?: unknown; source?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
+  const body = input.body;
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
   if (!slug || slug.length > 120) {
     return NextResponse.json({ error: "invalid-slug" }, { status: 400, headers: noStore() });
@@ -117,17 +145,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const input = await readMutationBody(req);
+  if (!input.ok) return input.response;
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
   const dbr = requireDb();
   if (!dbr.ok) return dbr.response;
 
-  let body: { slug?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
+  const body = input.body;
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
   if (!slug) {
     return NextResponse.json({ error: "invalid-slug" }, { status: 400, headers: noStore() });

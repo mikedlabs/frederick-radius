@@ -73,3 +73,33 @@ describe("weatherVerdict daytime/evening bands are unchanged", () => {
     expect(v.line).not.toMatch(/evening/i);
   });
 });
+
+describe("weatherVerdict safety overrides", () => {
+  it("never recommends being outside during an active heat advisory", () => {
+    const v = weatherVerdict(input({
+      temp: 85,
+      forecastHigh: 102,
+      shortForecast: "Sunny",
+      activeAlerts: [{ event: "Heat Advisory", severity: "Moderate" }],
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/dangerous heat/i);
+    expect(v.line).not.toMatch(/good day|outside\.$|patio/i);
+  });
+
+  it("uses a dangerous forecast high even when the current hour is mild", () => {
+    const v = weatherVerdict(input({ temp: 78, forecastHigh: 102, shortForecast: "Clear" }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/dangerous heat later/i);
+  });
+
+  it("suppresses cheerful copy for any active weather alert", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Clear",
+      activeAlerts: [{ event: "Flood Watch", severity: "Moderate" }],
+    }));
+    expect(v.tone).toBe("mixed");
+    expect(v.line).toMatch(/Flood Watch active/);
+    expect(v.line).not.toMatch(/good day|patio|easy day/i);
+  });
+});

@@ -173,7 +173,7 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
               <button
                 type="button"
                 onClick={() => onOpen(chip.key!)}
-                className="flex min-h-9 w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[11.5px] font-medium"
+                className="flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[11.5px] font-medium"
                 style={{ borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)", color: "inherit" }}
               >
                 {content}
@@ -344,7 +344,7 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
       <ul className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         {tiles.map((tile) => (
           <li key={tile.key}>
-            <button type="button" onClick={() => onOpen(tile.key)} className="flex min-h-8 w-full items-center gap-1.5 text-left text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            <button type="button" onClick={() => onOpen(tile.key)} className="flex min-h-11 w-full items-center gap-1.5 text-left text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
               <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
               <span className="truncate">{tile.label}</span>
             </button>

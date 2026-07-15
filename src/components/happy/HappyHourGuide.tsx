@@ -154,7 +154,7 @@ function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
       className={`tactile-interactive relative block aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]${bloom ? " pop-in" : ""}`}
       style={{ boxShadow: "var(--app-elev-1), var(--app-hi)" }}
     >
-      {it.r.photo ? <Image src={it.r.photo} alt="" fill sizes="(max-width: 640px) 100vw, 640px" className="object-cover" /> : <PhotoFallback big />}
+      {it.r.photo ? <Image src={it.r.photo} alt="" fill sizes="(max-width: 640px) 100vw, 640px" unoptimized={it.r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback big />}
       {/* Bottom ink scrim for legibility + a faint warm sheen up top. */}
       <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 92%, transparent) 4%, color-mix(in srgb, var(--app-ink) 60%, transparent) 34%, transparent 62%), linear-gradient(to bottom, color-mix(in srgb, var(--app-accent) 14%, transparent), transparent 30%)" }} />
 

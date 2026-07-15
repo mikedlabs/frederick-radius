@@ -19,12 +19,20 @@
  */
 
 import type { Hours } from "@/data/places";
+import type { LngLat } from "@/lib/geo";
 import type { CommerceLink } from "@/lib/commerce/types";
 
 export type PatchFields = {
   name?: string;
   category?: string;
   short_blurb?: string;
+  /** Human-confirmed contact and location corrections. These fields take
+   * precedence over stale scrape data and automated coordinate snapping. */
+  address?: string;
+  city?: string;
+  website?: string;
+  phone?: string;
+  geom?: LngLat;
   /** Remap an out-of-vocabulary / wrong municipality slug to a valid one (the
    *  unincorporated communities Jefferson, Ijamsville, etc. have no town page,
    *  so a place tagged with them silently drops from every municipality filter). */
@@ -112,6 +120,11 @@ export function patchRecord<T extends { slug: string }>(
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  if (x.address) (out as Record<string, unknown>).address = x.address;
+  if (x.city) (out as Record<string, unknown>).city = x.city;
+  if (x.website) (out as Record<string, unknown>).website = x.website;
+  if (x.phone) (out as Record<string, unknown>).phone = x.phone;
+  if (x.geom) (out as Record<string, unknown>).geom = x.geom;
   if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
   // hours runs here (before applyEnrichment) so the loader's
   // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule

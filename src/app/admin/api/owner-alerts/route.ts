@@ -3,7 +3,7 @@
  *
  * Lives under /admin so the edge middleware's Basic Auth gates it (the
  * public /api/push/subscribe strips the owner topic on purpose — the alert
- * payloads carry feedback text and signup emails). The browser attaches the
+ * payloads can carry submitted feedback text). The browser attaches the
  * admin credentials automatically to same-origin fetches under /admin once
  * the owner has logged in, so the dashboard card can call this directly.
  *

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChevronUp, Search, SlidersHorizontal } from "lucide-react";
-import { ALL_BEERS } from "@/data/beers";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 const EXPLORER_ID = "beer-explorer-panel";
@@ -31,16 +30,16 @@ const LazyBeerFinder = dynamic(() => import("./BeerFinder"), {
  */
 export default function BeerExplorerLauncher({
   breweryCards,
+  beerCount,
 }: {
   breweryCards: PlaceCardData[];
+  beerCount: number;
 }) {
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const wasOpen = useRef(false);
-  const beerCount = ALL_BEERS.length;
-
   useEffect(() => {
     if (open) headingRef.current?.focus();
     else if (wasOpen.current) triggerRef.current?.focus();

@@ -2,11 +2,28 @@
 
 import { track } from "@/lib/track";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowUp, MapPin } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import type { AskResult } from "@/lib/ask/answer";
+import { readCachedPosition } from "@/hooks/useGeolocation";
+import { getScope, subscribeScopeChange } from "@/lib/scope";
+
+const ASK_CACHE_LIMIT = 24;
+const ASK_CACHE_TTL_MS = 45_000;
+type AskCacheEntry = { at: number; result: AskResult };
+const askCache = new Map<string, AskCacheEntry>();
+
+function cacheAskResult(key: string, result: AskResult) {
+  if (askCache.has(key)) askCache.delete(key);
+  askCache.set(key, { at: Date.now(), result });
+  while (askCache.size > ASK_CACHE_LIMIT) {
+    const oldest = askCache.keys().next().value as string | undefined;
+    if (!oldest) break;
+    askCache.delete(oldest);
+  }
+}
 
 /**
  * "Ask Radius" — the natural-language concierge box. Type a real
@@ -20,40 +37,92 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<AskResult | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribeScopeChange(() => {
+      requestIdRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setLoading(false);
+      setRes(null);
+    });
+    return () => {
+      unsubscribe();
+      abortRef.current?.abort();
+    };
+  }, []);
 
   async function ask(query: string) {
     const text = query.trim();
-    if (!text || loading) return;
+    if (!text) return;
+    abortRef.current?.abort();
+    const requestId = ++requestIdRef.current;
+    const position = readCachedPosition();
+    const scope = getScope();
+    const cacheKey = `${text.toLocaleLowerCase()}|${scope ?? "no-scope"}|${position ? `${position.lat.toFixed(3)},${position.lng.toFixed(3)}` : "no-fix"}`;
     setQ(text);
+    haptic("light");
+    track("ask_submit");
+
+    // Repeat questions answer in the same frame instead of paying another
+    // network/model round trip. The API already grounds these answers in the
+    // same app dataset, so a small session cache is both fast and predictable.
+    const cached = askCache.get(cacheKey);
+    if (cached && Date.now() - cached.at <= ASK_CACHE_TTL_MS) {
+      askCache.delete(cacheKey);
+      askCache.set(cacheKey, cached);
+      setRes(cached.result);
+      setLoading(false);
+      return;
+    }
+    if (cached) askCache.delete(cacheKey);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setRes(null);
-    haptic("light");
     try {
-      track("ask_submit");
       const r = await fetch("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: text }),
+        body: JSON.stringify({
+          query: text,
+          scope: scope ?? undefined,
+          lat: position ? Number(position.lat.toFixed(4)) : undefined,
+          lng: position ? Number(position.lng.toFixed(4)) : undefined,
+        }),
+        signal: controller.signal,
       });
+      let next: AskResult;
       if (r.status === 429) {
         // Rate limited (abuse guard on the paid LLM route). Show the
         // server's friendly note, not a crash — the body is {error,message},
         // not an AskResult, so never cast it straight into state.
         const j = (await r.json().catch(() => ({}))) as { message?: string };
-        setRes({
+        next = {
           configured: true,
           answer: j.message ?? "Too many questions. Give it a moment.",
           sources: [],
-        });
+        };
       } else if (!r.ok) {
-        setRes({ configured: true, answer: "Radius couldn’t answer just now. Try again in a minute.", sources: [] });
+        next = { configured: true, answer: "Radius couldn’t answer just now. Try again in a minute.", sources: [] };
       } else {
-        setRes((await r.json()) as AskResult);
+        next = (await r.json()) as AskResult;
+        cacheAskResult(cacheKey, next);
       }
-    } catch {
-      setRes({ configured: true, answer: "Radius couldn’t reach the answer service. Check your connection and try again.", sources: [] });
+      if (requestId === requestIdRef.current) setRes(next);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (requestId === requestIdRef.current) {
+        setRes({ configured: true, answer: "Radius couldn’t reach the answer service. Check your connection and try again.", sources: [] });
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        if (abortRef.current === controller) abortRef.current = null;
+      }
     }
   }
 
@@ -94,9 +163,9 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
         />
         <button
           type="submit"
-          disabled={!q.trim() || loading}
+          disabled={!q.trim()}
           aria-label="Ask"
-          className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90 disabled:opacity-40"
+          className="tap-44 grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-90 disabled:opacity-40"
           style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
         >
           <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -116,7 +185,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
               Only when there's genuinely nothing do we fall back to a hint. */}
           {res.configured === false && res.sources.length === 0 ? (
             <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              Ask Radius is warming up. Meanwhile, try a category above, or ask for a place, a cuisine, or &ldquo;open now&rdquo;.
+              Ask Radius is warming up. Meanwhile, browse a category or open the map, or ask for a place, a cuisine, or &ldquo;open now&rdquo;.
             </p>
           ) : (
             <>

@@ -57,7 +57,7 @@ export default function TodaysDealsStack({
           }}
         >
           <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-          Verified
+          Checked at source
         </span>
       </div>
 

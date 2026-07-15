@@ -29,6 +29,9 @@ describe("classifyEvent", () => {
       "2026 FCG Summer Social - Employee Picnic",
       "Smith Wedding Reception",
       "Graduation Party",
+      "Facility Reservation",
+      "Room Reservation",
+      "Private Reservation #204",
     ]) {
       expect(classifyEvent({ title }), title).toBe("private_rental");
       expect(isPublicEvent({ title }), title).toBe(false);
@@ -46,6 +49,7 @@ describe("classifyEvent", () => {
       "Skateboard Jam at the Skate Park",
       "Punch Brothers",
       "Frederick Arts Council Gallery Opening",
+      "Dinner reservations open for Restaurant Week",
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);

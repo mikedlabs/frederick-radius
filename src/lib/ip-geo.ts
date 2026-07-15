@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import { isInFrederickCountyArea } from "@/lib/geo";
 
 /**
  * Approximate location from Vercel's edge geo headers.
@@ -11,29 +11,41 @@ import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
  * never used to print a distance (that still requires a real device fix); it
  * only improves the fallback ordering + the "near <town>" label.
  *
- * Honesty guard: if the IP resolves OUTSIDE the county area (> ~60 km from
- * Frederick — an out-of-town visitor, a VPN, a carrier hub far away), we return
- * nothing and the caller keeps the existing "near Downtown" default rather than
- * claim "near San Jose" over a list of Frederick places.
+ * Honesty guard: if the IP resolves OUTSIDE the real county polygon, we return
+ * nothing. A radial distance check admitted Martinsburg and other neighboring
+ * towns, producing exact-looking Frederick recommendations from the wrong state.
  */
-const MAX_DISTANCE_M = 60_000;
-
 export type ApproxLocation = {
   /** Coarse origin for ranking only — never for printed distances. */
   origin: { lng: number; lat: number } | null;
   /** City label for the header ("near Thurmont"), null when out of area. */
   city: string | null;
+  /** Why there is no origin, so callers can label a county-wide fallback. */
+  status: "available" | "missing" | "outside-county";
 };
+
+/** Pure normalization kept separate from next/headers for regression tests. */
+export function approximateLocationFromValues(
+  lat: number,
+  lng: number,
+  city: string | null,
+): ApproxLocation {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { origin: null, city: null, status: "missing" };
+  }
+  if (!isInFrederickCountyArea(lng, lat)) {
+    return { origin: null, city: null, status: "outside-county" };
+  }
+  return { origin: { lng, lat }, city, status: "available" };
+}
 
 export async function approxLocation(): Promise<ApproxLocation> {
   const h = await headers();
   const lat = Number.parseFloat(h.get("x-vercel-ip-latitude") ?? "");
   const lng = Number.parseFloat(h.get("x-vercel-ip-longitude") ?? "");
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { origin: null, city: null };
-
-  const origin = { lng, lat };
-  // Out-of-area (or VPN/carrier hub) → don't seed; keep the Downtown default.
-  if (haversineMeters(origin, FREDERICK_CENTER) > MAX_DISTANCE_M) return { origin: null, city: null };
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { origin: null, city: null, status: "missing" };
+  }
 
   const rawCity = h.get("x-vercel-ip-city");
   let city: string | null = null;
@@ -44,5 +56,5 @@ export async function approxLocation(): Promise<ApproxLocation> {
       city = rawCity.trim() || null;
     }
   }
-  return { origin, city };
+  return approximateLocationFromValues(lat, lng, city);
 }

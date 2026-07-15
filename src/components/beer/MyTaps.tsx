@@ -43,7 +43,7 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
           <div className="flex items-center gap-2.5">
             <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-accent)" }} aria-hidden />
             <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-on-brand)" }}>
-              Your saved flight
+              Your saved pours
             </h2>
           </div>
           <span className="rounded-full border border-white/20 px-2.5 py-1 font-mono text-[11px] tabular-nums text-white/75">

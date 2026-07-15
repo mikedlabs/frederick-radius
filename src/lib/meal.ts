@@ -20,7 +20,12 @@ import { easternParts } from "@/lib/tz";
 
 export type MealKey = "breakfast" | "brunch" | "lunch" | "dinner" | "late";
 
-type MealMatchable = { category: string; name: string; primary_type?: string };
+type MealMatchable = {
+  category: string;
+  name: string;
+  primary_type?: string;
+  subcategories?: string[];
+};
 
 export type Meal = {
   key: MealKey;
@@ -73,16 +78,39 @@ export function mealForKey(k: string | null | undefined): Meal | null {
 // fallback — the /nearby slim() strips primary_type off the client set.
 const DINNER_EXCLUDED_TYPES = new Set(["caterer", "juice_shop", "meal_delivery"]);
 const DINNER_EXCLUDED_NAME_RE = /\b(caterers?|catering|juices?|smoothies?)\b/i;
+const TREAT_TYPES = new Set([
+  "candy_store",
+  "chocolate_shop",
+  "dessert_shop",
+  "ice_cream_shop",
+]);
+const TREAT_NAME_RE = /\b(candy|chocolatier|chocolate shop|ice ?cream|creamery|gelato|frozen yogurt|froyo)\b/i;
+const BREAKFAST_EXCLUDED_TYPES = new Set([
+  ...TREAT_TYPES,
+  "sushi_restaurant",
+  "pizza_restaurant",
+  "seafood_restaurant",
+  "steak_house",
+  "bar",
+  "bar_and_grill",
+]);
+const BREAKFAST_EXCLUDED_NAME_RE = /\b(sushi|pizzeria|pizza|seafood|crab house|steakhouse)\b/i;
 
 /** Whether a place fits a meal occasion (category gate + pizza-by-name). Honest
  *  by construction: it never asserts the place SERVES the meal, only that it's
  *  the kind of place you'd go for it — the open-now filter does the rest. */
 export function matchMeal(meal: Meal, p: MealMatchable): boolean {
+  if (TREAT_TYPES.has(p.primary_type ?? "") || TREAT_NAME_RE.test(p.name)) return false;
+  if (meal.key === "breakfast" || meal.key === "brunch") {
+    if (BREAKFAST_EXCLUDED_TYPES.has(p.primary_type ?? "")) return false;
+    if (BREAKFAST_EXCLUDED_NAME_RE.test(p.name)) return false;
+  }
   if (meal.key === "dinner") {
     if (p.primary_type && DINNER_EXCLUDED_TYPES.has(p.primary_type)) return false;
     if (DINNER_EXCLUDED_NAME_RE.test(p.name)) return false;
   }
-  return meal.cats.includes(p.category) || (meal.pizza && PIZZA_RE.test(p.name));
+  const categories = new Set([p.category, ...(p.subcategories ?? [])]);
+  return meal.cats.some((category) => categories.has(category)) || (meal.pizza && PIZZA_RE.test(p.name));
 }
 
 /**

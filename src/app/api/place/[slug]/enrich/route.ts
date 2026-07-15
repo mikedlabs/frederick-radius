@@ -22,6 +22,9 @@ import {
   type GooglePhotoAttribution,
 } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { parseGoogleHours } from "@/lib/googleHours";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
 
 // Wrong-business quarantine (UX audit P0): these slugs were bound to a
 // DIFFERENT business's Google listing, and the base record's stored
@@ -57,7 +60,7 @@ const EMPTY: EnrichResponse = { photos: [], hours: [] };
 
 async function enrichSlug(slug: string): Promise<EnrichResponse> {
   const p = PLACE_BY_SLUG[slug];
-  if (!p || QUARANTINED.has(slug)) return EMPTY;
+  if (!p || QUARANTINED.has(slug) || manualPlaceStatusOverride(slug)) return EMPTY;
 
   const data =
     p.google_place_id && /^ChIJ/.test(p.google_place_id)
@@ -70,9 +73,14 @@ async function enrichSlug(slug: string): Promise<EnrichResponse> {
         });
 
   if (!data) return EMPTY;
+  const weekdayHours = data.weekday_hours ?? [];
+  const publishHours = mayPublishVisitabilityHours(
+    slug,
+    parseGoogleHours(weekdayHours),
+  );
   return {
     photos: (data.photo_names ?? []).slice(0, 8).map((n) => photoProxy(n, 800)),
-    hours: data.weekday_hours ?? [],
+    hours: publishHours ? weekdayHours : [],
     phone: data.phone,
     website: data.website,
     rating: data.rating,

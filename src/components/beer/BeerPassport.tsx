@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Beer, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
   BREWERIES,
@@ -9,6 +9,7 @@ import {
   type Brewery,
   type StyleFamily,
 } from "@/data/beers";
+import { BreweryLogo } from "./BreweryLogo";
 
 const STORAGE_KEY = "fr:beer-passport:v1";
 const VALID_SLUGS = new Set(BREWERIES.map((brewery) => brewery.slug));
@@ -248,29 +249,49 @@ export default function BeerPassport() {
                       : `Mark ${brewery.name} as visited`
                   }
                   onClick={() => toggleVisited(brewery.slug)}
-                  className="tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16"
+                  className={`tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16 ${isVisited ? "border-solid" : "border-dashed"}`}
                   style={{
                     borderColor: isVisited ? family.deep : "var(--app-border-strong)",
                     background: isVisited
-                      ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
+                      ? `linear-gradient(145deg, color-mix(in srgb, ${family.deep} 15%, white), color-mix(in srgb, ${family.deep} 7%, white))`
                       : "var(--app-bg-sunken)",
-                    color: isVisited ? "white" : "var(--app-ink-3)",
                     boxShadow: isVisited
-                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent), inset 0 0 0 3px color-mix(in srgb, white 18%, transparent)`
+                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent), inset 0 0 0 3px color-mix(in srgb, white 54%, transparent)`
                       : "inset 0 0 0 3px var(--app-bg-elevated)",
                   }}
                 >
                   <span
                     aria-hidden
-                    className="absolute left-1.5 top-1 font-mono text-[8px] font-bold tabular-nums opacity-70"
+                    className="absolute left-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 font-mono text-[7px] font-bold leading-none tabular-nums"
+                    style={{
+                      background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
+                      color: "var(--app-ink-3)",
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
+                    }}
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
+                  <BreweryLogo
+                    brewerySlug={brewery.slug}
+                    breweryName={brewery.name}
+                    decorative
+                    sizes="48px"
+                    className="h-10 w-10 rounded-full bg-white p-1 shadow-sm transition-transform group-hover:scale-[1.04] sm:h-12 sm:w-12"
+                  />
                   {isVisited ? (
-                    <Check className="h-6 w-6" strokeWidth={2.6} aria-hidden />
-                  ) : (
-                    <Beer className="h-5 w-5 transition-transform group-hover:-rotate-6" strokeWidth={1.8} aria-hidden />
-                  )}
+                    <span
+                      aria-hidden
+                      className="absolute -bottom-0.5 -right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2"
+                      style={{
+                        borderColor: "var(--app-bg-elevated-solid)",
+                        background: family.deep,
+                        color: "white",
+                        boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
+                      }}
+                    >
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  ) : null}
                 </button>
                 <Link
                   href={`/places/${brewery.slug}`}

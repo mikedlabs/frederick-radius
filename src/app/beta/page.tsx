@@ -8,13 +8,13 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
-  title: "Frederick Radius: private beta",
+  title: "Frederick Radius: early-access beta",
   description:
     "Your field guide to Frederick County. Find what's open, what's on, and what matters before you head out.",
   openGraph: {
     title: "Your field guide to Frederick County",
     description:
-      "Find what's open, what's on, and what matters before you head out. Private beta.",
+      "Find what's open, what's on, and what matters before you head out. Early-access beta.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
@@ -55,7 +55,7 @@ export default async function BetaPage({
               className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.2em]"
               style={{ color: "var(--app-brand-press)" }}
             >
-              Private beta
+              Early-access beta
             </p>
 
             <h1

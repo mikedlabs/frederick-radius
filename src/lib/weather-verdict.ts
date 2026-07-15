@@ -22,6 +22,15 @@ export type VerdictInput = {
   shortForecast: string;
   /** Current hour precipitation probability, 0–100. */
   precipNow: number;
+  /** Forecast daytime high, °F. A mild current hour must not hide a
+   *  dangerous afternoon high (the 85° now / 102° high audit failure). */
+  forecastHigh?: number | null;
+  /** Active NWS alerts for Frederick County. Any real alert suppresses
+   *  outdoor-positive copy; heat / severe alerts get the strongest read. */
+  activeAlerts?: Array<{
+    event: string;
+    severity?: "Minor" | "Moderate" | "Severe" | "Extreme" | "Unknown";
+  }>;
   /** Upcoming hours (already time-sorted), for precip-timing. */
   hourly: Array<{
     startTime: string;
@@ -56,6 +65,8 @@ function hourLabel(iso: string): string {
 const STORM = /thunder|t-?storm|severe/i;
 const SNOW = /snow|sleet|flurr|wintry|ice/i;
 const WET = /\b(rain|showers?|drizzle)\b/i;
+const HEAT_ALERT = /\b(heat|heat index)\b/i;
+const AIR_ALERT = /\b(air quality|smoke|ozone)\b/i;
 
 /** Minimum current-hour precipitation probability to call it "actively wet".
  *  NWS uses 50%+ for "likely"; below that is "chance"/"slight chance" and a
@@ -91,7 +102,15 @@ export function mentionsWet(shortForecast: string): boolean {
  * cheerful line can never paper over a storm.
  */
 export function weatherVerdict(input: VerdictInput): Verdict {
-  const { temp, shortForecast, precipNow, hourly, now } = input;
+  const {
+    temp,
+    shortForecast,
+    precipNow,
+    hourly,
+    now,
+    forecastHigh,
+    activeAlerts = [],
+  } = input;
   const hour = easternHour(now);
   // Three time frames, so the words match the clock: overnight (22–05,
   // it is DARK — never claim a "day"), evening (17–22), else daytime.
@@ -99,6 +118,51 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   // the overnight band owns the dark hours now.
   const overnight = hour >= 22 || hour < 5;
   const evening = hour >= 17 && hour < 22;
+
+  // 0. Safety overrides. These run before every descriptive / cheerful
+  // branch: a clear current hour is not "a good day to be outside" when an
+  // active alert or a dangerous forecast high says otherwise.
+  const heatAlert = activeAlerts.find((a) => HEAT_ALERT.test(a.event));
+  if (heatAlert) {
+    return {
+      line: "Dangerous heat today, limit time outside and stay hydrated.",
+      tone: "rough",
+    };
+  }
+  const airAlert = activeAlerts.find((a) => AIR_ALERT.test(a.event));
+  if (airAlert) {
+    return {
+      line: "Air quality alert active, take it easy outside.",
+      tone: "rough",
+    };
+  }
+  const severeAlert = activeAlerts.find(
+    (a) => a.severity === "Severe" || a.severity === "Extreme" || /\bwarning\b/i.test(a.event),
+  );
+  if (severeAlert) {
+    return {
+      line: `${severeAlert.event} active, check conditions before heading out.`,
+      tone: "rough",
+    };
+  }
+  if (activeAlerts.length > 0) {
+    return {
+      line: `${activeAlerts[0].event} active, check conditions before heading out.`,
+      tone: "mixed",
+    };
+  }
+  if (typeof forecastHigh === "number" && forecastHigh >= 100) {
+    return {
+      line: "Dangerous heat later today, limit time outside and stay hydrated.",
+      tone: "rough",
+    };
+  }
+  if (typeof forecastHigh === "number" && forecastHigh >= 95) {
+    return {
+      line: "Very hot later today, plan around shade and AC.",
+      tone: "mixed",
+    };
+  }
 
   // 1. Storms, the loudest read, always wins — current hour first, then
   //    the same six-hour window rule 4 uses for rain timing. A "Clear"

@@ -41,26 +41,26 @@ const SOURCE_BASIS: Record<KnownEventSource, string> = {
   celebrate: "From Celebrate Frederick",
   county: "From the Frederick County calendar",
   manual: "Aggregated from a live feed",
-  seed: "Picked by Frederick Radius",
+  seed: "Selected and reviewed by Frederick Radius",
 };
 
 /** Trust for an event, from its provenance and verification flag.
  *  Source drives the label so it reads honestly and never says "Verified"
  *  (reserved for owner-managed records): a Downtown Frederick Partnership
- *  event is "Official", a seed pick is "Hand-picked", a live-feed row is
- *  "Live" — bumped to "Confirmed" once we've checked it. The basis never
+ *  event is "Official", a seed pick is "Radius reviewed", a live-feed row is
+ *  "Live" — bumped to "Checked at source" once we've checked it. The basis never
  *  repeats the label (the old is_verified branch produced the duplicated
  *  "Verified · Verified by Frederick Radius" the audit caught). */
 export function eventTrust(e: EventTrustInput): TrustSignal {
   if (e.source === "seed") {
-    return { level: "verified", label: "Hand-picked", basis: SOURCE_BASIS.seed };
+    return { level: "verified", label: "Radius reviewed", basis: SOURCE_BASIS.seed };
   }
   if (e.source === "dfp" || e.source === "celebrate" || e.source === "county") {
     return { level: "official", label: "Official", basis: SOURCE_BASIS[e.source] };
   }
   // manual / live feed
   return e.is_verified
-    ? { level: "official", label: "Confirmed", basis: "Confirmed by Frederick Radius" }
+    ? { level: "official", label: "Checked at source", basis: "Checked by Frederick Radius against the source" }
     : { level: "likely", label: "Live", basis: SOURCE_BASIS.manual };
 }
 
@@ -76,8 +76,8 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
     case "closed":
       return {
         level: "verified",
-        label: "Confirmed",
-        basis: "Checked against current hours",
+        label: "Checked at source",
+        basis: "Checked against posted hours",
       };
     case "unverified":
       return {

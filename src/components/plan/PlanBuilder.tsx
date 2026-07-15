@@ -1209,6 +1209,7 @@ function Stop({
             <Image
               src={stop.photo_url}
               alt=""
+              unoptimized={stop.photo_url.startsWith("/api/place-photo")}
               fill
               sizes="(max-width: 720px) 100vw, 720px"
               placeholder="blur"

@@ -35,17 +35,20 @@ describe("shared-photo de-twin (photo-twins pass)", () => {
     }
   });
 
-  it("the three folds collapse alias → canonical (alias gone, canonical kept)", () => {
+  it("active duplicate folds collapse alias → canonical", () => {
     const slugs = new Set(pub.map((p) => p.slug));
     const folds: [string, string][] = [
       ["new-york-new-york-hair-salon-and-day-spa", "new-york-new-york-hair-salon-spa"],
-      ["serenity-tearoom", "serenity-tearoom-fine-dining"],
       ["holistic-family-medicine_dolma-johanison-lac", "holistic-family-medicine"],
     ];
     for (const [alias, canonical] of folds) {
       expect(slugs.has(alias)).toBe(false);
       expect(slugs.has(canonical)).toBe(true);
     }
+    // Serenity's physical Frederick tearoom closed; neither its old alias nor
+    // the former canonical storefront may reappear as a visitable place.
+    expect(slugs.has("serenity-tearoom")).toBe(false);
+    expect(slugs.has("serenity-tearoom-fine-dining")).toBe(false);
   });
 
   it("keeps distinct venues SEPARATE (no over-dedupe — Rockwell stays two)", () => {

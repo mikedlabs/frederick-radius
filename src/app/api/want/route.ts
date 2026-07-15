@@ -17,6 +17,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildWantAnswer } from "@/lib/want-answer";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
+import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,33 +34,38 @@ export async function GET(req: NextRequest) {
   const lngRaw = p.get("lng");
   const lat = latRaw ? Number(latRaw) : NaN;
   const lng = lngRaw ? Number(lngRaw) : NaN;
-  let origin =
+  const deviceOrigin =
     Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
       ? { lat: roundCoord(lat), lng: roundCoord(lng) }
       : null;
-  // No precise fix on the request → seed ranking from the edge IP geo, the
-  // exact trick /nearby uses. Ranking only, never a printed distance: the
-  // panel shows walk times only for coordinates the CLIENT sent, so a
-  // coarse IP centroid can't masquerade as "1 min walk".
-  let approximate = false;
-  if (!origin) {
-    const approx = await approxLocation();
-    if (approx.origin) {
-      origin = { lat: approx.origin.lat, lng: approx.origin.lng };
-      approximate = true;
-    }
-  }
+  const approx = await approxLocation();
+  // The client includes its current scope so the 45-second answer cache keys
+  // by it; the validated cookie remains the fallback for direct/API requests.
+  const scopeRaw = p.get("scope")?.slice(0, 60) || req.cookies.get(SCOPE_COOKIE)?.value || null;
+  const context = resolveDecisionContext({
+    scopeRaw,
+    homeMuniRaw: req.cookies.get("fr_home_muni")?.value ?? null,
+    deviceOrigin,
+    approximateOrigin: approx.origin,
+    approximateStatus: approx.status,
+  });
 
   if (!c) {
     return NextResponse.json({ error: "c-required" }, { status: 400, headers: noStore });
   }
-  const answer = buildWantAnswer(c, facet, origin, new Date(), { approximateOrigin: approximate });
+  const answer = buildWantAnswer(c, facet, context.origin, new Date(), {
+    approximateOrigin: context.source !== "device",
+    municipality: context.filterMunicipality,
+    contextLabel: context.label,
+    contextSource: context.source,
+    fallbackReason: context.fallbackReason,
+  });
   if (!answer) {
     return NextResponse.json({ error: "unknown-want" }, { status: 400, headers: noStore });
   }
-  if (approximate) {
-    // IP-seeded ranking: distances are honest only to the ordering, so
-    // strip the printed labels (the panel simply omits its distance column).
+  if (!context.canShowDistance) {
+    // Town/home/IP centroids are honest enough to order a list, never to print
+    // an exact-looking walk time from a place the visitor is not standing.
     const strip = (r: { distance: string | null }) => {
       r.distance = null;
     };

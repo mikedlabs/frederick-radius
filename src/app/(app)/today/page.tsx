@@ -64,6 +64,7 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import GoldenHourCard from "@/components/today/GoldenHourCard";
 import EventWalkTime from "@/components/today/EventWalkTime";
+import ArchiveTodayMoment from "@/components/archive/ArchiveTodayMoment";
 
 /**
  * Now — the daily briefing.
@@ -347,7 +348,9 @@ export default async function HomePage() {
           What's-on streams inside its own Suspense boundary. */}
       {sectionOrder(daypart(now)).map((section: TodaySection) =>
         section === "curated" ? (
-          <CuratedPicks key="curated" />
+          <Suspense key="curated" fallback={null}>
+            <CuratedPicks />
+          </Suspense>
         ) : (
           <div key="whats-on" id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
             <Suspense
@@ -572,6 +575,7 @@ export default async function HomePage() {
           single secondary disclosure the whole page hands off to. */}
       <div className="space-y-4">
         <FoodTruckToday />
+        <ArchiveTodayMoment date={now} />
         <PartnerAppsRow />
         <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
           <WorthALook />

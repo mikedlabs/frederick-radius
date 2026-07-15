@@ -16,7 +16,7 @@ export const QUICK_INTENTS: QuickIntent[] = [
     key: "open-now",
     terms: ["open now", "whats open", "what's open", "open right now", "open late", "anything open"],
     title: "What's open right now",
-    sub: "Places confirmed open near you",
+    sub: "Places with recently confirmed open hours",
     chip: "Open now",
     href: "/map?mode=browse&open=now",
     icon: "clock",
@@ -96,7 +96,7 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
     out.push({
       key: `craving:${answer.key}`,
       terms: [],
-      title: `${answer.label} near you`,
+      title: answer.label,
       sub: answer.kicker,
       chip: answer.label,
       href: answer.href,

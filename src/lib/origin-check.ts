@@ -107,6 +107,11 @@ export function isSameOriginMutationRequest(req: Request): boolean {
   });
 }
 
+/** Exact-enough JSON media-type check; accepts the normal optional charset. */
+export function hasJsonContentType(req: Request): boolean {
+  return req.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() === "application/json";
+}
+
 export type LimitedJsonResult =
   | { ok: true; value: unknown }
   | { ok: false; error: "body-too-large" | "invalid-json" };

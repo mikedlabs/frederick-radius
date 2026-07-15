@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { CATEGORIES, isAmenityCategory } from "@/data/categories";
+import { CATEGORIES, categoryRouteOverride, isAmenityCategory } from "@/data/categories";
 import { COLLECTIONS } from "@/data/collections";
 import { CIVIC_MOMENTS } from "@/data/civic-moments";
 
@@ -29,6 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/collections`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/nonprofits`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/archive`, lastModified: now, changeFrequency: "monthly", priority: 0.65 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     // Public content surfaces with self-canonicals: the directory index and
     // the two county-reference pages (amenities, government contacts).
@@ -69,8 +70,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.85,
   }));
   const cats = CATEGORIES
-    // /category/food-truck 308s to /food-trucks (roster) — never list a redirect.
-    .filter((c) => c.slug !== "food-truck")
+    // Cross-surface categories redirect to their real answer (events, map,
+    // food-truck roster, etc.), so never list those redirects as pages.
+    .filter((c) => !categoryRouteOverride(c.slug))
     // Amenity categories (restrooms, Wi-Fi, benches…) redirect to /amenities and
     // hold zero places; utility categories (voting) are seasonal/empty. Neither
     // is a browsable directory, so keep both out of the index (audit DQ-016).

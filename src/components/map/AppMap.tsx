@@ -507,8 +507,25 @@ export default function AppMap({
   // cramped popup into a real card you can act on without leaving the map.
   const [peekPlace, setPeekPlace] = useState<MapPinPlace | null>(null);
   // Map ↔ list toggle: flip the currently-filtered pins into a scannable
-  // list. Pure client state layered over the same filtered pool.
+  // list. ?view=list preserves the choice without dropping any existing
+  // filter, layer, scope, or camera parameter.
   const [listView, setListView] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") === "list") {
+      setListView(true);
+    }
+  }, []);
+  const updateListView = (next: boolean) => {
+    setListView(next);
+    try {
+      const url = new URL(window.location.href);
+      if (next) url.searchParams.set("view", "list");
+      else url.searchParams.delete("view");
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      // URL persistence is an enhancement; the local toggle still works.
+    }
+  };
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
@@ -1591,7 +1608,7 @@ export default function AppMap({
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
-                  className="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  className="inline-flex min-h-11 items-center rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >
                   Reload the map
@@ -1599,7 +1616,7 @@ export default function AppMap({
               )}
               <Link
                 href="/places"
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
+                className="inline-flex min-h-11 items-center rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
                 style={{ background: "var(--app-brand-press)" }}
               >
                 Browse all places
@@ -1786,7 +1803,7 @@ export default function AppMap({
           }}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
-            if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)/i.test(msg)) {
+            if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)|\bsprite\b.*(?:failed|404|not found)|(?:failed|404).*\bsprite\b/i.test(msg)) {
               setMapError(true);
             }
           }}
@@ -1838,13 +1855,10 @@ export default function AppMap({
               }}
             />
           </Source>
-          {/* Live TransIT vehicles — real GTFS-realtime positions, ALWAYS on
-              (decoupled from the transit route-line toggle) so the map opens as
-              a living town with the buses moving, even with no layers selected.
-              Eases between polls; honest empty when the feed reports no buses
-              (evenings/weekends run sparse). The transit toggle adds the route
-              LINES under them. */}
-          <LiveBuses show />
+          {/* Live vehicles and route lines are one honest Transit layer. The
+              old always-on vehicles made the dock say "No layers" while buses
+              were visibly moving on the map. */}
+          <LiveBuses show={showTransit} />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"
@@ -1967,7 +1981,7 @@ export default function AppMap({
                     </div>
                   ) : (
                     <p style={{ marginTop: 6, fontSize: 12, color: "var(--app-ink-3, #5C5A50)" }}>
-                      Civic details coming soon for {title}.
+                      Civic details are not available for {title}.
                     </p>
                   )}
                   {muni && (
@@ -2874,7 +2888,7 @@ export default function AppMap({
             searchMatches={searchMatches}
             pickSearch={pickSearch}
             listView={listView}
-            onToggleList={() => setListView((v) => !v)}
+            onToggleList={() => updateListView(!listView)}
             savedCount={followedSlugs.size}
             showSavedOnly={showSavedOnly}
             setShowSavedOnly={setShowSavedOnly}
@@ -2951,7 +2965,7 @@ export default function AppMap({
             places={visiblePlaces}
             userLoc={userLoc}
             onPick={(p) => {
-              setListView(false);
+              updateListView(false);
               setSelectedSlug(p.slug);
               const m = mapRef.current?.getMap();
               if (m && p.geom) smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });

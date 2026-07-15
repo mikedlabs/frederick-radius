@@ -125,7 +125,7 @@ export const PRODUCT_STATUS = {
     ],
     roadmap: [
         { period: "Built", outcome: "Core discovery" },
-        { period: "Now", outcome: "Private beta" },
+        { period: "Now", outcome: "Early-access beta" },
         { period: "Next", outcome: "Validate with locals" },
         { period: "Later", outcome: "Expand what earns trust" },
     ],
@@ -148,7 +148,7 @@ export const RADIUS_COIN = {
 
 export const SNAPSHOT = {
     eyebrow: "Private-beta product overview",
-    stage: "Private beta",
+    stage: "Early-access beta",
     focus: "Frederick County",
     model: "Independent",
     posture: "Source-aware",

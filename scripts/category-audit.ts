@@ -67,15 +67,37 @@ const NAME_RULES: Array<{ re: RegExp; cat: string }> = [
 type Flag = { slug: string; name: string; current: string; suggest: string; why: string };
 const flags: Flag[] = [];
 
+// Human-reviewed cases where a strong machine signal describes a secondary
+// trait rather than the listing's best primary category. Keeping these here
+// makes future audits useful instead of repeatedly resurfacing known noise.
+const REVIEWED_EXCEPTIONS = new Set([
+  "fingerboard-country-inn-new-market:agritourism", // a farmstay, primarily lodging
+  "the-orchard-frederick:agritourism", // restaurant name, not an orchard attraction
+  "brewers-alley-frederick:brewery", // brewpub whose primary discovery use is restaurant
+  "cafe-nola:coffee", // full-service bistro; coffee remains a secondary tag
+  "schroyers-tavern-at-maryland-national-golf-club-middletown:golf", // restaurant at a course
+  "urbana-library-farmers-market-new-market:library", // market hosted at the library
+  "best-kept-secret-hair-salon:wellness", // hair salon; spa is a secondary Google type
+  "quince-orchard-psychotherapy:agritourism", // mental-health practice whose brand contains Orchard
+]);
+
 for (const p of places) {
   const pt = enrichment[p.slug]?.primary_type;
   const typeSuggest = pt ? TYPE_MAP[pt] : undefined;
-  if (typeSuggest && typeSuggest !== p.category) {
+  if (
+    typeSuggest &&
+    typeSuggest !== p.category &&
+    !REVIEWED_EXCEPTIONS.has(`${p.slug}:${typeSuggest}`)
+  ) {
     flags.push({ slug: p.slug, name: p.name, current: p.category, suggest: typeSuggest, why: `Google primary_type = ${pt}` });
     continue; // one flag per place; type signal is strongest
   }
   for (const r of NAME_RULES) {
-    if (r.re.test(p.name) && r.cat !== p.category) {
+    if (
+      r.re.test(p.name) &&
+      r.cat !== p.category &&
+      !REVIEWED_EXCEPTIONS.has(`${p.slug}:${r.cat}`)
+    ) {
       flags.push({ slug: p.slug, name: p.name, current: p.category, suggest: r.cat, why: `name matches /${r.re.source.slice(0, 40)}…/` });
       break;
     }

@@ -71,6 +71,38 @@ function stripName(blurb: string, name?: string): string {
   return rest.join(" ").replace(/^[\s,;:·|–-]+|[\s,;:·|–-]+$/g, "");
 }
 
+/**
+ * Remove an exact, complete place-name prefix from otherwise useful copy.
+ * This is intentionally stricter than `stripName`, which is only used while
+ * detecting scrape debris: every meaningful name token must be the opening
+ * token sequence. That keeps ordinary prose such as "Island vibes on Market
+ * Street" intact while turning "The Flying Barrel Come by the shop..." into
+ * the sentence a card should actually show.
+ */
+export function stripRepeatedNamePrefix(blurb: string, name?: string): string {
+  const text = blurb.trim();
+  const nameTokens = (name ?? "")
+    .match(/[A-Za-z0-9][A-Za-z0-9'’]*/g)
+    ?.map((token) => normTok(token))
+    .filter((token) => token && token !== "and") ?? [];
+  if (nameTokens.length === 0) return text;
+
+  const textTokens = [...text.matchAll(/[A-Za-z0-9][A-Za-z0-9'’]*/g)]
+    .map((match) => ({ token: normTok(match[0]), end: (match.index ?? 0) + match[0].length }))
+    .filter(({ token }) => token && token !== "and");
+  if (textTokens.length < nameTokens.length) return text;
+
+  for (let i = 0; i < nameTokens.length; i += 1) {
+    if (textTokens[i]?.token !== nameTokens[i]) return text;
+  }
+
+  const prefixEnd = textTokens[nameTokens.length - 1]?.end ?? 0;
+  return text
+    .slice(prefixEnd)
+    .replace(/^[\s,;:·|&\u2013\u2014-]+/, "")
+    .trim();
+}
+
 /** Directory/scrape boilerplate no editorial sentence contains. */
 const BOILERPLATE: RegExp[] = [
   // "More info about JKW Beauty ; 504 N Market St" (directory link text)
@@ -87,6 +119,25 @@ const BOILERPLATE: RegExp[] = [
   // "Contact us at or visit us at 801 Toll house ave, …"
   /\bcontact us at\s+or\s+visit us at\b/i,
 ];
+
+/**
+ * Synthetic directory labels are valid taxonomy, not decision-making copy.
+ * These exact shapes came from the importer's fallback templates and were
+ * repeated across hundreds of cards (for example "Restaurants in Thurmont").
+ * Drop them instead of dressing a missing description up as useful prose.
+ */
+const GENERIC_DIRECTORY_BLURB = new RegExp(
+  "^(?:Antiques|Bakeries|Bars|Book Stores|Breweries|Churches & Worship|Civic & Public|Coffee|Galleries|Live Music|Lodging|Markets|Museums|Parks?|Playgrounds|Restaurants|Services|Shopping|Theaters|Trails|Wellness|Yoga & Fitness) in (?:Downtown )?[A-Z][A-Za-z .'-]+\\.?$",
+  "i",
+);
+
+function isGenericDirectoryBlurb(text: string): boolean {
+  return (
+    GENERIC_DIRECTORY_BLURB.test(text) ||
+    /^Local shop in downtown Frederick\.?$/i.test(text) ||
+    /^(?:Local )?(?:park|shop|restaurant|service|attraction) in Frederick County\.?$/i.test(text)
+  );
+}
 
 /**
  * Google-Maps address mash: "…MD 21703, USASchedule an appointment" /
@@ -195,6 +246,7 @@ export function isJunkBlurb(blurb: string, name?: string): boolean {
   const b = blurb.trim();
   if (!b) return false; // nothing to judge; empty is handled by callers
   if (BOILERPLATE.some((re) => re.test(b))) return true;
+  if (isGenericDirectoryBlurb(b)) return true;
   if (USA_MASH.test(b)) return true;
 
   const r = stripName(b, name);

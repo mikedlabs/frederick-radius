@@ -24,22 +24,52 @@ export type CoordAuditFlag = {
   authoritative: { address?: string; lat: number; lng: number };
 };
 
+function streetNumber(address?: string): string | undefined {
+  return address?.trim().match(/^(\d+[a-z]?)(?:\s|$)/i)?.[1]?.toLowerCase();
+}
+
+/**
+ * A repeated business name is not enough to identify one storefront. Chains
+ * and local businesses can have multiple county locations, so when both rows
+ * provide a street number it must agree before coordinates are compared.
+ */
+function couldBeSameListing(a?: string, b?: string): boolean {
+  const aNumber = streetNumber(a);
+  const bNumber = streetNumber(b);
+  return !aNumber || !bNumber || aNumber === bNumber;
+}
+
 export function auditCoordDivergence(
   curated: CoordAuditPlace[],
   authoritative: CoordAuditPlace[],
   thresholdM = 200,
 ): CoordAuditFlag[] {
-  const byName = new Map<string, CoordAuditPlace>();
+  const byName = new Map<string, CoordAuditPlace[]>();
   for (const r of authoritative) {
     const nm = normName(r.name ?? "");
-    if (nm && r.geom && !byName.has(nm)) byName.set(nm, r);
+    if (!nm || !r.geom) continue;
+    const rows = byName.get(nm) ?? [];
+    rows.push(r);
+    byName.set(nm, rows);
   }
 
   const out: CoordAuditFlag[] = [];
   for (const p of curated) {
     if (!p.geom) continue;
-    const d = byName.get(normName(p.name));
-    if (!d?.geom) continue;
+    const candidates = (byName.get(normName(p.name)) ?? []).filter(
+      (row) => row.geom && couldBeSameListing(p.address, row.address),
+    );
+    if (candidates.length === 0) continue;
+    // If the authoritative source contains duplicate rows for one address,
+    // compare the nearest candidate instead of whichever happened to load
+    // first. This keeps the audit deterministic and branch-safe.
+    const d = candidates.reduce((best, row) => {
+      if (!best.geom || !row.geom) return best;
+      return haversineMeters(p.geom!, row.geom) < haversineMeters(p.geom!, best.geom)
+        ? row
+        : best;
+    });
+    if (!d.geom) continue;
     const meters = Math.round(haversineMeters(p.geom, d.geom));
     if (meters > thresholdM) {
       out.push({

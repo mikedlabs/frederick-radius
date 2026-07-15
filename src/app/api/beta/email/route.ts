@@ -79,7 +79,12 @@ export async function POST(req: NextRequest) {
       try {
         await fanoutToTopic(OWNER_ALERTS_TOPIC, `signup:${id}`, {
           title: "New beta signup",
-          body: `${email} · ${invite.sent ? "code emailed" : invite.code ? "code minted, email not delivered" : "code mint failed"}`,
+          // Push payloads and push_log are operational channels, not a safe
+          // place to duplicate a tester's email address. Review the record in
+          // the Basic-Auth-gated Beta Desk instead.
+          body: invite.sent
+            ? "A new access request is ready in Beta Desk."
+            : "A new access request needs attention in Beta Desk.",
           url: "/admin/beta",
         });
       } catch (err) {

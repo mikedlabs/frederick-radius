@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Wine, Baby, CloudRain, Sparkles, ArrowRight, type LucideIcon } from "lucide-react";
 import { COLLECTION_BY_SLUG } from "@/data/collections";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import { rainyDayIsRelevant } from "@/lib/weather-context";
 
 /**
  * CuratedPicks — the "want a plan, not just a thing" rail on /today.
@@ -30,10 +33,19 @@ const PICKS: { slug: string; Icon: LucideIcon }[] = [
   { slug: "hidden-gems", Icon: Sparkles },
 ];
 
-export default function CuratedPicks() {
-  const picks = PICKS.map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] })).filter(
-    (p) => p.c && p.c.places.length > 0,
-  );
+export default async function CuratedPicks() {
+  // This is a contextual recommendation rail, not the full collection
+  // catalogue. Hide the rain plan on a clear day; /collections still keeps it
+  // available whenever someone deliberately browses every guide.
+  const forecast = await Promise.race([
+    getNwsForecast(FREDERICK_CENTER).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+  ]);
+  const showRainyDay = rainyDayIsRelevant(forecast?.hourly ?? []);
+  const picks = PICKS
+    .filter((p) => p.slug !== "rainy-day-frederick" || showRainyDay)
+    .map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] }))
+    .filter((p) => p.c && p.c.places.length > 0);
   if (picks.length === 0) return null;
 
   return (

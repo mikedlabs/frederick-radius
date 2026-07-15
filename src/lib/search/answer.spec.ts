@@ -6,7 +6,7 @@ describe("primaryAnswerFor", () => {
     const a = primaryAnswerFor("coffee open now near me");
     expect(a?.key).toBe("coffee");
     expect(a?.href).toBe("/nearby?c=coffee");
-    expect(a?.kicker).toBe("Open picks, nearest when you share your location");
+    expect(a?.kicker).toBe("Open picks; nearest when location is available");
   });
 
   it("resolves specific terms before the broad buckets", () => {
