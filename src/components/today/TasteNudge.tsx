@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { CRAVINGS, CRAVING_BY_KEY, type CravingMatchable } from "@/data/cravings";
@@ -152,7 +153,7 @@ export default function TasteNudge() {
           {noun.cap} near you
         </span>
       </span>
-      <span aria-hidden className="shrink-0 font-bold" style={{ color: "var(--app-ink-3)" }}>→</span>
+      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
     </Link>
   );
 }

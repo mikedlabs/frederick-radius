@@ -105,7 +105,7 @@ function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
         <b>{event.title}</b>
         {where && <span className={today ? "is-today" : undefined}>{where}</span>}
       </span>
-      <span className="arr" aria-hidden>→</span>
+      <span className="arr" aria-hidden><ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
     </Link>
   );
 }
@@ -882,7 +882,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             <b>{dominantTown![1]} of your saves are in {dominantMuni.name}.</b>{" "}
             String them into one day out.
           </span>
-          <span className="go">Plan a day →</span>
+          <span className="go">Plan a day <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
         </Link>
       )}
 
@@ -1079,12 +1079,12 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           {!userEmail && (
             <Link className="sv-colophon-row" href="/auth/login?next=/my-radius">
               <span className="k">Keep this list on your other devices</span>
-              <span className="v link">Magic link →</span>
+              <span className="v link">Magic link <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
             </Link>
           )}
           <Link className="sv-colophon-row" href="/settings/notifications">
             <span className="k">A nudge before a saved place closes</span>
-            <span className="v link">Turn on →</span>
+            <span className="v link">Turn on <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
           </Link>
         </div>
         <p className="sv-colophon-fin">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, Compass } from "lucide-react";
+import { ArrowRight, Bike, Car, ChevronDown, ChevronUp, Compass, Footprints, Locate, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
@@ -1228,7 +1228,7 @@ export default function RadiusBuilder({
               className="inline-flex items-center gap-1 text-[12px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
-              All {eventsInReach.length} within reach on the events page →
+              All {eventsInReach.length} within reach on the events page <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
         </section>

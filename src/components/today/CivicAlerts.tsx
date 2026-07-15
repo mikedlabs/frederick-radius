@@ -1,4 +1,4 @@
-import { AlertTriangle, Info, AlertCircle, Clock, CalendarX } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import { activeEventNotices } from "@/lib/events/notices";
@@ -194,7 +194,7 @@ export default async function CivicAlerts() {
       )}
       {more > 0 && (
         <a href="/pulse" className="block px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-          +{more} more active {more === 1 ? "alert" : "alerts"} →
+          +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </a>
       )}
     </section>

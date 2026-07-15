@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight } from "@/lib/events/live-music";
 import EventCard from "@/components/event/EventCard";
@@ -120,7 +120,7 @@ export default async function LiveMusicPage() {
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold">
             <Link href="/nearby?c=music" style={{ color: "var(--app-brand-press)" }}>
-              See where the stages are →
+              See where the stages are <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
             <Link href="/events" style={{ color: "var(--app-ink-3)" }}>
               The full board

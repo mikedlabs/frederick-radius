@@ -156,7 +156,7 @@ export default function TodaysDealsStack({
         style={{ color: "var(--app-brand-press)" }}
       >
         See all {deals.length} {deals.length === 1 ? "special" : "specials"}
-        <span aria-hidden>→</span>
+        <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       </Link>
     </section>
   );

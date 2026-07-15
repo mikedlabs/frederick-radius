@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Martini } from "lucide-react";
+import { ArrowRight, Martini, Star } from "lucide-react";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -139,7 +139,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             Happy hour
           </h2>
           <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
-            All pours →
+            All pours <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </div>
         <Link
@@ -199,7 +199,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
           </p>
         </div>
         <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
-          All pours →
+          All pours <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </div>
 
@@ -286,7 +286,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
 
       {overflow > 0 && (
         <Link href="/happy-hour" className="tap-44 block text-center font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          +{overflow} more pouring now →
+          +{overflow} more pouring now <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       )}
     </section>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Flame } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Flame } from "lucide-react";
 import { getFrederickRedditPulse, type RedditPost } from "@/lib/integrations/reddit";
 
 // Each `color` is used both as the badge text AND (mixed into the elevated
@@ -50,7 +50,7 @@ export default async function RedditPulse() {
           className="text-[11px] font-medium"
           style={{ color: "var(--app-ink-3)" }}
         >
-          r/FrederickMD →
+          r/FrederickMD <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </header>
       <ul>

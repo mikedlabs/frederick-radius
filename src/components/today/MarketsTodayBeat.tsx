@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShoppingBasket } from "lucide-react";
+import { ArrowRight, ShoppingBasket } from "lucide-react";
 import { marketsOpenToday } from "@/lib/markets-today";
 
 /**
@@ -44,7 +44,7 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
           className="font-semibold whitespace-nowrap"
           style={{ color: "var(--app-brand-press)" }}
         >
-          All markets →
+          All markets <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </p>
     </div>

@@ -541,7 +541,7 @@ export default async function AboutPage() {
         <p className="inline-flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-cool)" }} />
           <Link href="/trust" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
-            How we verify everything we publish →
+            How we verify everything we publish <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </p>
 

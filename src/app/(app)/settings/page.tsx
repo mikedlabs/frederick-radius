@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LogOut, Mail } from "lucide-react";
+import { ChevronRight, LogOut, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
@@ -128,10 +128,10 @@ export default async function SettingsPage() {
             </span>
             <span
               aria-hidden
-              className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
+              className="transition-transform group-hover:translate-x-0.5"
               style={{ color: "var(--app-ink-3)" }}
             >
-              →
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} />
             </span>
           </Link>
         )}

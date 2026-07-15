@@ -1,6 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { Clock } from "lucide-react";
+import { ChevronRight, Clock } from "lucide-react";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 
 /**
@@ -93,7 +93,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                 color: "var(--app-ink-2)",
               }}
             >
-              <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+              <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
             </span>
           </div>
         )}

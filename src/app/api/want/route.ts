@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   if (!c) {
     return NextResponse.json({ error: "c-required" }, { status: 400, headers: noStore });
   }
-  const answer = buildWantAnswer(c, facet, origin);
+  const answer = buildWantAnswer(c, facet, origin, new Date(), { approximateOrigin: approximate });
   if (!answer) {
     return NextResponse.json({ error: "unknown-want" }, { status: 400, headers: noStore });
   }

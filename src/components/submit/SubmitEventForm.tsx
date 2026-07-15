@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { submitEventAction, type SubmitEventInput } from "./actions";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
@@ -70,7 +70,7 @@ export default function SubmitEventForm() {
         </div>
         <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks, submitted</h2>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We&apos;ll review and reach out within 3 business days.</p>
-        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</Link>
+        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></Link>
       </div>
     );
   }

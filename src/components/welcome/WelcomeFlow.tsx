@@ -294,7 +294,7 @@ export default function WelcomeFlow() {
               className="font-semibold underline-offset-2 hover:underline"
               style={{ color: "var(--app-brand)" }}
             >
-              Claim or add your listing →
+              Claim or add your listing <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </p>
         </div>

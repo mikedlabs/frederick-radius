@@ -244,11 +244,31 @@ function resolveWant(
   };
 }
 
+/**
+ * Pick the hero from an APPROXIMATE (IP-seeded) origin. A coarse centroid
+ * is honest enough to ORDER a list, but it must never CROWN one place "the
+ * answer": Frederick's IP geolocation habitually lands on the south-side
+ * corridor, which was promoting whatever chain sat nearest the centroid
+ * (a Reddit reviewer caught Chick-fil-A leading a downtown list, July
+ * 2026). Among the plausibly-near open places, the hero is the strongest
+ * PLACE (feature score = curation + quality), not the fluke nearest.
+ */
+export function approxHeroIndex(open: WantCandidate[]): number {
+  if (open.length <= 1) return 0;
+  const pool = Math.min(open.length, 10);
+  let best = 0;
+  for (let i = 1; i < pool; i++) {
+    if (open[i].feature_score > open[best].feature_score) best = i;
+  }
+  return best;
+}
+
 export function buildWantAnswer(
   cKey: string,
   facetKey: string | null,
   origin: { lng: number; lat: number } | null,
   now: Date = new Date(),
+  opts?: { approximateOrigin?: boolean },
 ): WantAnswer | null {
   const want = resolveWant(cKey, facetKey);
   if (!want) return null;
@@ -281,11 +301,14 @@ export function buildWantAnswer(
     ? other.slice(0, NOTABLE_MAX).map((c) => toRow(c, false))
     : [];
 
+  const heroIdx = opts?.approximateOrigin ? approxHeroIndex(open) : 0;
+  const alsoPool = open.filter((_, i) => i !== heroIdx);
+
   return {
     key: cKey,
     label: want.label,
-    hero: open[0] ? toRow(open[0], false) : null,
-    also: open.slice(1, 1 + ALSO_MAX).map((c) => toRow(c, false)),
+    hero: open[heroIdx] ? toRow(open[heroIdx], false) : null,
+    also: alsoPool.slice(0, ALSO_MAX).map((c) => toRow(c, false)),
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,

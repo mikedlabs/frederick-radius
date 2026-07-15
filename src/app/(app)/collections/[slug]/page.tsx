@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { COLLECTION_BY_SLUG, COLLECTIONS } from "@/data/collections";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -174,7 +174,7 @@ export default async function CollectionPage({
             </span>
           </span>
           <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-            Find a beer →
+            Find a beer <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </span>
         </Link>
       )}
@@ -212,7 +212,7 @@ export default async function CollectionPage({
               className="text-[13px] font-semibold hover:underline"
               style={{ color: "var(--app-brand-press)" }}
             >
-              See the board →
+              See the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           {communityEvents.length > 0 ? (

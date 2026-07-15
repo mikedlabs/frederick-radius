@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { submitPlaceAction, type SubmitPlaceInput } from "./actions";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
@@ -62,7 +62,7 @@ export default function SubmitPlaceForm() {
           We&apos;ll cross-verify and either publish or reach out to you for clarification within a week.
         </p>
         <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>
-          Back to Frederick Radius →
+          Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </div>
     );

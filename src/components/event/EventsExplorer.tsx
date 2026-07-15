@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, X, ChevronDown } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
@@ -823,7 +823,7 @@ export default function EventsExplorer({
                               className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
                               style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
                             >
-                              {overflow} more on the calendar →
+                              {overflow} more on the calendar <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                             </Link>
                           </div>
                         )}

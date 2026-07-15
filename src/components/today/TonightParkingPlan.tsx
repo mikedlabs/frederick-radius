@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleParking } from "lucide-react";
+import { ArrowRight, CircleParking } from "lucide-react";
 
 /**
  * Tonight's parking play — a quiet, self-hiding line on /today.
@@ -59,7 +59,7 @@ export default function TonightParkingPlan({
           </span>{" "}
           {primaryGarageName} fills fast. {backups}{" "}
           <Link href="/parking" className="font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
-            Parking guide →
+            Parking guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </p>
       </div>

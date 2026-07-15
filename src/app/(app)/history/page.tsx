@@ -233,7 +233,7 @@ export default async function HistoryPage({
             Moments
           </h2>
           <p className="text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            {moments.length} dated events · swipe →
+            {moments.length} dated events · swipe <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </p>
         </header>
         <div className="-mx-4 px-4">

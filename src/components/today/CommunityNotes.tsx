@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Church, X } from "lucide-react";
+import { ArrowRight, Church, X } from "lucide-react";
 import { pickCommunityNote, type CommunityNote } from "@/lib/community-notes";
 import { getCommunityNotes, setCommunityNotes } from "@/lib/personalize";
 
@@ -68,7 +68,7 @@ export default function CommunityNotes() {
       )}
       <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{note.lead}</span>
       <Link href={note.href} className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
-        {note.ctaLabel} →
+        {note.ctaLabel} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
       <button
         type="button"

@@ -39,6 +39,20 @@ export const RELIABLE_OPEN_WINDOWS: Record<string, OpenWindow> = {
   "hootch-and-banter-frederick": wk("16:00", "23:59"),
   "the-cozy-creamery-thurmont": wk("11:00", "21:00"),
   "delaplaine-arts-center-frederick": wk("10:00", "17:00"),
+  // Downtown staples a Reddit reviewer rightly flagged as missing from
+  // "open now" (July 2026). Windows verified against the businesses' own
+  // posted hours (cafe-nola.com: 8am-2am, Tue to 2pm; beansnbagels.com:
+  // daily 8am-3pm), then narrowed conservatively per this file's rule.
+  "cafe-nola": {
+    mon: ["08:00", "21:00"],
+    tue: ["08:00", "13:30"],
+    wed: ["08:00", "21:00"],
+    thu: ["08:00", "21:00"],
+    fri: ["08:00", "21:00"],
+    sat: ["08:00", "21:00"],
+    sun: ["08:00", "21:00"],
+  },
+  "beans-bagels-frederick": wk("08:00", "14:30"),
 };
 
 /**

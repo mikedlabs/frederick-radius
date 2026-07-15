@@ -8,6 +8,7 @@
  * file. No behavior change: same JSX, same imports, same props.
  */
 import type { CSSProperties } from "react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { specimenLedger, type LedgerCell } from "@/lib/ui/specimenLedger";
@@ -108,7 +109,7 @@ export function EventPopup({ e }: { e: EventPin }) {
           href={`/events/${e.slug}`}
           style={{ display: "inline-block", fontSize: 12, fontWeight: 700, color }}
         >
-          See event →
+          See event <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </div>
     </div>
@@ -159,7 +160,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
         href={`/places/${p.slug}`}
         style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand-press)" }}
       >
-        Open page →
+        Open page <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
     </div>
   );

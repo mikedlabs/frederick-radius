@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Car, Instagram, ExternalLink } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, Car, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -532,7 +532,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <div className="flex flex-wrap gap-3 text-xs">
           {cat && (
             <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand-press)" }}>
-              More {cat.name.toLowerCase()} →
+              More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
           <a

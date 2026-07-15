@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban, AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Calendar, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
@@ -779,7 +779,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               className="text-[12px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
-              See all →
+              See all <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           <ul className="space-y-2">

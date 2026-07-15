@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { pickSeasonalNote } from "@/lib/seasonal-notes";
 
 /**
@@ -22,7 +22,7 @@ export default function SeasonalBeat({ now }: { now: Date }) {
       <span>{note.detail}</span>
       {note.href && note.hrefLabel && (
         <Link href={note.href} className="font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
-          {note.hrefLabel} →
+          {note.hrefLabel} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       )}
       {note.source && (

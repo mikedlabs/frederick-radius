@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { School } from "lucide-react";
+import { ArrowRight, School } from "lucide-react";
 import { getFcpsAlerts, type FcpsStatus } from "@/lib/integrations/fcps";
 
 // Only these statuses are worth a masthead line; "open"/"unknown" are not news.
@@ -38,7 +38,7 @@ export default async function FcpsBeat({ now }: { now: Date }) {
       <School className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
       <span className="font-semibold" style={{ color: "var(--app-ink)" }}>FCPS {ACTIONABLE[hit.status]}.</span>
       <Link href={hit.url} className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
-        Details →
+        Details <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
       </Link>
     </p>
   );
