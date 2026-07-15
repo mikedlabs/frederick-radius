@@ -123,4 +123,15 @@ describe("fcplMapFeed — filters the whole feed", () => {
   it("returns [] for a non-array", () => {
     expect(fcplMapFeed(null, NOW)).toEqual([]);
   });
+
+  it("drops rows beyond the ingest horizon (the unbounded feed outgrew the run budget)", () => {
+    const feed = [
+      { title: "Soon", id: "1", public: true, start_date: "2026-06-20 10:00:00", branch: "Thurmont Regional Library" },
+      { title: "Next season", id: "2", public: true, start_date: "2026-12-01 10:00:00", branch: "Thurmont Regional Library" },
+    ];
+    const out = fcplMapFeed(feed, NOW);
+    expect(out.map((m) => m.event.uid)).toEqual(["1"]);
+    // A wider explicit horizon still admits it — the daily cron rolls forward.
+    expect(fcplMapFeed(feed, NOW, 365).length).toBe(2);
+  });
 });
