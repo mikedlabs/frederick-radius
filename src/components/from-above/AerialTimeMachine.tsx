@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Map, { Source, Layer } from "react-map-gl/mapbox";
+import Map, { Source, Layer, AttributionControl } from "react-map-gl/mapbox";
 import type { RasterLayerSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -101,15 +101,16 @@ export default function AerialTimeMachine() {
           [-77.55, 39.34],
           [-77.27, 39.50],
         ]}
-        // Keep Mapbox attribution visible; the City imagery credit remains in
-        // the scrubber below for the raster overlay.
-        attributionControl
+        // Mapbox credits collapse to the compact ⓘ badge; the City imagery
+        // credit remains in the scrubber below for the raster overlay.
+        attributionControl={false}
         onError={(e) => {
           const src = (e as unknown as { sourceId?: string }).sourceId ?? "";
           const msg = String((e as unknown as { error?: unknown }).error ?? "");
           if (src.startsWith("aerial-") || /cityoffrederick|Aerial_/i.test(msg)) setOrthoFailed(true);
         }}
       >
+        <AttributionControl compact position="bottom-right" />
         {/* Every year is mounted; only the active layer is opaque, so
             scrubbing crossfades with the raster-fade-duration. The newest
             year is mounted FIRST so Mapbox stacks it at the BOTTOM as a

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Map, { Source, Layer } from "react-map-gl/mapbox";
+import Map, { Source, Layer, AttributionControl } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { ACCENTS } from "@/data/categories";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -211,6 +211,7 @@ export default function TransitMap({
         // pan works without the "use two fingers" hint.
         interactive
         cooperativeGestures={false}
+        attributionControl={false}
         maxBounds={lockToService ? SERVICE_BOUNDS : undefined}
         minZoom={lockToService ? 10.5 : undefined}
         onLoad={(e) => {
@@ -225,6 +226,7 @@ export default function TransitMap({
           }
         }}
       >
+        <AttributionControl compact position="bottom-right" />
         {/* The loader types geometry as `unknown` to stay defensive
             about Socrata's response, but Mapbox's Source needs the
             strict GeoJSON shape. Cast at the boundary — the

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import Map, { Marker } from "react-map-gl/mapbox";
+import Map, { Marker, AttributionControl } from "react-map-gl/mapbox";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -61,12 +61,13 @@ export default function CountyOverview({
         // route is the interactive one; this is editorial chrome.
         interactive={false}
         cooperativeGestures={false}
-        // Keep the default Mapbox attribution + logo. Their ToS
-        // requires the logo to remain visible when using their tiles,
-        // and the default control sits compact in the bottom-right.
+        // Mapbox ToS: logo + credits must remain visible when using their
+        // tiles. The compact ⓘ control below satisfies that quietly.
+        attributionControl={false}
         style={{ width: "100%", height: "100%" }}
         onLoad={(e) => applyFrederickPalette(e.target)}
       >
+        <AttributionControl compact position="bottom-right" />
         {MUNICIPALITIES.map((m) => {
           const isSeat = m.slug === "frederick";
           const isHighlight = highlightSlug === m.slug;
