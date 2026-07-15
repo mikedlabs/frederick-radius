@@ -3,11 +3,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, Database } from "lucide-react";
 import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
-import BeerGuides from "@/components/beer/BeerGuides";
-import BeerHero from "@/components/beer/BeerHero";
-import BeerPassport from "@/components/beer/BeerPassport";
-import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
-import { BreweryScenes } from "@/components/beer/BreweryScenes";
+import BeerTapWall from "@/components/beer/BeerTapWall";
 import MyTaps from "@/components/beer/MyTaps";
 import { ALL_BEERS, BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -18,7 +14,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Frederick beer guide: find your pour",
   description:
-    `A visual guide to ${ALL_BEERS.length} signature pours across ${BREWERIES.length} Frederick County brewery guides. Match by flavor, save a shortlist, stamp your brewery passport, and verify availability before you go.`,
+    `A visual tap wall for ${BREWERIES.length} Frederick County brewery guides and ${ALL_BEERS.length} signature pours. Pick a brewery, explore its setting, and verify availability before you go.`,
   alternates: { canonical: "/beer" },
 };
 
@@ -33,7 +29,7 @@ export default function BeerPage() {
 
   return (
     <div
-      className="relative space-y-20 pb-4 sm:space-y-24"
+      className="relative space-y-8 pb-4 sm:space-y-10"
       style={{
         "--beer-ink": "#101713",
         "--beer-ink-soft": "#1b2620",
@@ -43,15 +39,10 @@ export default function BeerPage() {
         "--beer-mist": "#d9ddd5",
       } as CSSProperties}
     >
-      <BeerHero />
-      <BeerTasteFlight />
+      <BeerTapWall />
 
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
-
-      <BreweryScenes />
-      <BeerGuides />
-      <BeerPassport />
       <BeerExplorerLauncher breweryCards={breweryCards} beerCount={ALL_BEERS.length} />
 
       <footer
