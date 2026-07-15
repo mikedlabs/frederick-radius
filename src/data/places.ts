@@ -1786,6 +1786,35 @@ export const PLACES: Place[] = [
     is_verified: false, is_operational: "operational",
     feature_score: 6.5, source: "manual", updated_at: "2026-06-18",
   },
+
+  // ──── Tours & rides ───────────────────────────────────────────────────
+  {
+    slug: "maryland-double-deckers",
+    name: "Maryland Double Deckers",
+    category: "tours",
+    tags: ["ticketed", "outdoor"],
+    short_blurb:
+      "Frederick's yellow vintage London double-decker, running history, brewery, and family tours from downtown.",
+    description:
+      "An open-top London bus that rolls through downtown on scheduled public tours: local history runs, an African American heritage tour with AARCH, Brew with a View brewery hops, Pages & Pastries bookstore-and-bakery stops, and family routes. Also hires out for weddings and private events. Tours sell out, so book ahead.",
+    address: "125 E All Saints St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    // Same address block as the East All Saints garage (dataset-verified coords).
+    geom: { lng: -77.4073, lat: 39.4118 },
+    phone: "301-202-1738",
+    website: "https://marylanddoubledeckers.com",
+    price_band: 2,
+    // No standing hours on purpose: it runs on a tour schedule, not a
+    // storefront clock. Hours would be a fabrication.
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 7.5,
+    source: "seed",
+    updated_at: "2026-07-15",
+  },
 ];
 
 /**
