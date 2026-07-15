@@ -130,7 +130,6 @@ export default async function NonprofitsPage({
           </h2>
           <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {list.length.toLocaleString()}
-            {!active ? " of " + total.toLocaleString() : ""}
           </span>
         </div>
         {activeMeta ? (

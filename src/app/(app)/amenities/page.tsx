@@ -195,24 +195,16 @@ export default async function AmenitiesPage() {
                     borderColor: "var(--app-border)",
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                      style={{
-                        background: "var(--app-brand-tint-6)",
-                        color: "var(--app-brand)",
-                      }}
-                      aria-hidden
-                    >
-                      <Icon className="h-4 w-4" strokeWidth={2} />
-                    </span>
-                    <span
-                      className="text-[11px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {g.list.length}
-                    </span>
-                  </div>
+                  <span
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+                    style={{
+                      background: "var(--app-brand-tint-6)",
+                      color: "var(--app-brand)",
+                    }}
+                    aria-hidden
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={2} />
+                  </span>
                   <p
                     className="text-[14px] font-semibold leading-tight"
                     style={{ color: "var(--app-ink)" }}
@@ -224,6 +216,12 @@ export default async function AmenitiesPage() {
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {g.blurb}
+                  </p>
+                  <p
+                    className="mt-auto pt-1 font-mono text-[11px] tabular-nums"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {g.list.length} mapped
                   </p>
                 </Link>
               </li>
@@ -272,23 +270,21 @@ export default async function AmenitiesPage() {
                     className="group flex h-full flex-col gap-1.5 rounded-[var(--app-radius-md)] border p-3 transition active:scale-[0.985]"
                     style={{ background: "var(--app-paper)", borderColor: "var(--app-border)" }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                        style={{ background: "var(--app-brand-tint-6)", color: "var(--app-brand-2, #2F5470)" }}
-                        aria-hidden
-                      >
-                        <Icon className="h-4 w-4" strokeWidth={2} />
-                      </span>
-                      <span
-                        className="text-[11px] font-semibold tabular-nums"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {g.count}
-                      </span>
-                    </div>
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+                      style={{ background: "var(--app-brand-tint-6)", color: "var(--app-brand-2, #2F5470)" }}
+                      aria-hidden
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={2} />
+                    </span>
                     <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
                       {g.label}
+                    </p>
+                    <p
+                      className="mt-auto pt-1 font-mono text-[11px] tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {g.count} mapped
                     </p>
                   </Link>
                 </li>

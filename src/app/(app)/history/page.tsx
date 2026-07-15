@@ -54,10 +54,6 @@ export default async function HistoryPage({
   const topic = topicParam && topics.some((t) => t.tag === topicParam) ? topicParam : null;
   const inTopic = (h: HistoryEntry) => !topic || h.tags.includes(topic);
 
-  const momentCount = HISTORY.filter((h) => h.kind === "moment").length;
-  const personCount = HISTORY.filter((h) => h.kind === "person").length;
-  const factCount = HISTORY.filter((h) => h.kind === "fact").length;
-
   // Hero "did you know" – rotates daily so a return visitor sees a
   // different fact each morning. Deterministic per day; never random
   // (async server component, request-scoped, no hydration mismatch).
@@ -110,12 +106,8 @@ export default async function HistoryPage({
           <h1 className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight text-white sm:text-[40px]">
             A place with stories.
           </h1>
-          <p
-            className="text-[11px] tabular-nums text-white/85"
-          >
-            <span className="font-semibold text-white">{momentCount}</span> moments ·{" "}
-            <span className="font-semibold text-white">{personCount}</span> people ·{" "}
-            <span className="font-semibold text-white">{factCount}</span> facts
+          <p className="max-w-[30rem] text-[13px] leading-snug text-white/85">
+            The moments, the people, and the plain facts that made the place.
           </p>
         </div>
       </header>

@@ -19,6 +19,7 @@ import {
   KeyRound,
   Receipt,
   Bell,
+  Accessibility,
   type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
@@ -251,8 +252,8 @@ export default async function ParkingPage() {
           ].map(([k, v]) => (
             <div
               key={k}
-              className="rounded-[var(--app-radius-md)] border px-3 py-2"
-              style={{ borderColor: "var(--app-border)" }}
+              className="rounded-[var(--app-radius-md)] px-3 py-2"
+              style={{ background: "var(--app-bg-sunken)" }}
             >
               <dt style={{ color: "var(--app-ink-3)" }}>{k}</dt>
               <dd
@@ -855,9 +856,7 @@ export default async function ParkingPage() {
               className="flex gap-2 text-[13px] leading-snug"
               style={{ color: "var(--app-ink-2)" }}
             >
-              <span aria-hidden style={{ color: "var(--app-cool)" }}>
-                ♿
-              </span>
+              <Accessibility className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
               <span>{rule}</span>
             </li>
           ))}
