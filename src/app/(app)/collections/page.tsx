@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarCheck } from "lucide-react";
 import { COLLECTIONS } from "@/data/collections";
 import PageBloom from "@/components/ui/PageBloom";
 
@@ -39,6 +39,32 @@ export default function CollectionsIndex() {
           Hand-picked shortlists for the moment you&rsquo;re in.
         </p>
       </header>
+
+      {/* The generator door — hand-picked lists below, a fresh plan here.
+          (July 2026 outside review: "it's static! …you could generate
+          different plans/paths." /plan already does; this is its front door.) */}
+      <Link
+        href="/plan"
+        className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-sunken)] p-4"
+        style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
+      >
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}
+        >
+          <CalendarCheck className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-serif text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Want one built for right now?
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Pick a mood, who&rsquo;s with you, and how long you have. A fresh plan every time.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+      </Link>
 
       <ul className="grid gap-3">
         {COLLECTIONS.map((c) => (

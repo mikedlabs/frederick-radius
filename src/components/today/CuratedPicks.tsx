@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Wine, Baby, CloudRain, Sparkles, ArrowRight, type LucideIcon } from "lucide-react";
+import { Wine, Baby, CloudRain, Sparkles, ArrowRight, CalendarCheck, Footprints, type LucideIcon } from "lucide-react";
 import { COLLECTION_BY_SLUG } from "@/data/collections";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
  * CuratedPicks — the "want a plan, not just a thing" rail on /today.
@@ -20,20 +22,50 @@ import { COLLECTION_BY_SLUG } from "@/data/collections";
  * can never render a dead card.
  */
 
-// The picks to promote, in order, each with a glyph that reads at a glance.
-// Kept to a short, evergreen set — the full catalogue is one tap away via the
-// trailing "All collections" link.
+// The picks to promote, each with a glyph that reads at a glance. Kept to a
+// short set — the full catalogue is one tap away via "All collections."
 const PICKS: { slug: string; Icon: LucideIcon }[] = [
   { slug: "walkable-date-night", Icon: Wine },
   { slug: "kid-energy-burners", Icon: Baby },
   { slug: "rainy-day-frederick", Icon: CloudRain },
   { slug: "hidden-gems", Icon: Sparkles },
 ];
+const CLEAR_DAY_SWAP: { slug: string; Icon: LucideIcon } = {
+  slug: "frederick-without-a-plan",
+  Icon: Footprints,
+};
 
-export default function CuratedPicks() {
-  const picks = PICKS.map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] })).filter(
-    (p) => p.c && p.c.places.length > 0,
-  );
+/**
+ * Weather-aware ordering (July 2026 outside review: "funny there's a
+ * collection on the front page for Rainy Days yet the forecast is clear").
+ * Rain coming in the next 12 hours leads with the rainy-day plan; a clear
+ * forecast swaps it out for the unscripted-afternoon walk; an unavailable
+ * forecast (null) keeps the evergreen order rather than guessing. Pure and
+ * exported so the rule lives under unit tests.
+ */
+export function orderPicks(rainAhead: boolean | null): { slug: string; Icon: LucideIcon }[] {
+  if (rainAhead === true) {
+    const rainy = PICKS.find((p) => p.slug === "rainy-day-frederick")!;
+    return [rainy, ...PICKS.filter((p) => p.slug !== "rainy-day-frederick")];
+  }
+  if (rainAhead === false) {
+    return PICKS.map((p) => (p.slug === "rainy-day-frederick" ? CLEAR_DAY_SWAP : p));
+  }
+  return PICKS;
+}
+
+export default async function CuratedPicks() {
+  // Same cached NWS call every weather surface makes — no extra fetch cost.
+  const fc = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  const next12 = fc?.hourly?.slice(0, 12) ?? [];
+  const rainAhead: boolean | null =
+    next12.length > 0
+      ? next12.some((h) => (h.probabilityOfPrecipitation ?? 0) >= 40)
+      : null;
+
+  const picks = orderPicks(rainAhead)
+    .map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] }))
+    .filter((p) => p.c && p.c.places.length > 0);
   if (picks.length === 0) return null;
 
   return (
@@ -107,6 +139,43 @@ export default function CuratedPicks() {
             </Link>
           </li>
         ))}
+        {/* The generator door — the answer to "these lists never change."
+            /plan builds a fresh route from mood, group, and hours. */}
+        <li className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
+          <Link
+            href="/plan"
+            className="tactile tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-sunken)] p-3.5 transition"
+            style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
+          >
+            <span
+              aria-hidden
+              className="ml-1 grid h-9 w-9 shrink-0 place-items-center rounded-full"
+              style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}
+            >
+              <CalendarCheck className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3
+                className="font-serif text-[15px] font-semibold leading-snug tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Build your own
+              </h3>
+              <p
+                className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Mood, group, hours
+              </p>
+            </div>
+            <ArrowRight
+              className="mt-1 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+          </Link>
+        </li>
       </ul>
     </section>
   );
