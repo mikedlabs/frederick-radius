@@ -332,7 +332,7 @@ export default function CollectClient() {
         >
           {userPos && (
             <Marker longitude={userPos.lng} latitude={userPos.lat} anchor="center">
-              <span className="block h-4 w-4 rounded-full border-2 border-white bg-[#2F5470] shadow-[0_0_0_4px_rgba(47,84,112,0.25)]" />
+              <span className="block h-4 w-4 rounded-full border-2 border-white bg-[var(--app-cool)] shadow-[0_0_0_4px_rgba(32,80,106,0.25)]" />
             </Marker>
           )}
           {recent.map((p) => {

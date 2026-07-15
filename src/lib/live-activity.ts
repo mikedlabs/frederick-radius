@@ -4,6 +4,8 @@
  * this payload to plain serializable data (no function refs / components).
  */
 
+import { ACCENTS } from "@/data/categories";
+
 /** Default event length when a feed gives a start but no end. */
 const DEFAULT_EVENT_MS = 3 * 60 * 60 * 1000;
 
@@ -87,7 +89,7 @@ export function buildActivities({
         title: `${weather.shortForecast} ahead`,
         subtitle: `${precip}% chance · plan indoor options`,
         href: "/",
-        accent: "#2F5470",
+        accent: ACCENTS.slate,
         icon: "rain",
       });
     }

@@ -26,6 +26,7 @@ export type IntentMatchable = Pick<
 >;
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { cuisinesOf } from "@/lib/cuisine";
+import { ACCENTS } from "@/data/categories";
 
 export type IntentKey =
   | "coffee"
@@ -528,7 +529,7 @@ export const INTENTS: Intent[] = [
     key: "civic",
     label: "Civic & services",
     blurb: "Libraries, government, voting, pharmacies — the practical stuff.",
-    color: "#2F5470",
+    color: ACCENTS.slate,
     icon: "Landmark",
     match: (p) => CIVIC.has(p.category),
     preferOpen: false,

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle } from "lucide-react";
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
+import { ACCENTS } from "@/data/categories";
 
 /**
  * MoodTiles v8 — direct-to-map.
@@ -47,7 +48,7 @@ const MOODS: Mood[] = [
   { label: "Outdoors",  nudge: "Parks, trails, water",      href: intentHref("outdoor"), icon: Trees,           color: intentColor("outdoor") },
   { label: "With kids", nudge: "Family-friendly",           href: intentHref("family"),  icon: Baby,            color: intentColor("family")  },
   // Utility moods use muted civic accents (slate + warm ink).
-  { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: "#2F5470" },
+  { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: ACCENTS.slate },
   { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "#4A4844" },
 ];
 

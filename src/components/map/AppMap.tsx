@@ -19,7 +19,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import Link from "next/link";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
@@ -86,12 +86,20 @@ const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
 // chip reads as the same season as the dots it controls. DOM chips, so
 // var() is fine for the neutral "All".
 type AerialSeason = "all" | "spring" | "summer" | "fall" | "winter";
+// One season → hue map for the chips, the GL dot paint, and the selected
+// label, so the three can never drift apart. Shared hues come from ACCENTS.
+const SEASON_HEX = {
+  spring: "#859076",
+  summer: ACCENTS.amber,
+  fall: ACCENTS.terracotta,
+  winter: ACCENTS.slate,
+} as const;
 const AERIAL_SEASONS: { key: AerialSeason; label: string; color: string }[] = [
   { key: "all", label: "All", color: "var(--app-ink-2)" },
-  { key: "spring", label: "Spring", color: "#859076" },
-  { key: "summer", label: "Summer", color: "#C99632" },
-  { key: "fall", label: "Fall", color: "#A03A22" },
-  { key: "winter", label: "Winter", color: "#2F5470" },
+  { key: "spring", label: "Spring", color: SEASON_HEX.spring },
+  { key: "summer", label: "Summer", color: SEASON_HEX.summer },
+  { key: "fall", label: "Fall", color: SEASON_HEX.fall },
+  { key: "winter", label: "Winter", color: SEASON_HEX.winter },
 ];
 const AERIAL_SEASON_COUNTS: Record<string, number> = AERIAL_PHOTOS.reduce(
   (acc, p) => ((acc[p.season] = (acc[p.season] ?? 0) + 1), acc),
@@ -2091,7 +2099,7 @@ export default function AppMap({
               minzoom={10}
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2F5470",
+                "circle-color": ACCENTS.slate,
                 "circle-opacity": 0.5,
                 "circle-blur": 0.25,
                 "circle-radius": [
@@ -2468,7 +2476,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 9,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#20506A"],
+                "circle-color": ["match", ["get", "kind"], "traffic", ACCENTS.amber, ACCENTS.slate],
                 "circle-opacity": 0.22,
               }}
             />
@@ -2477,7 +2485,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#20506A"],
+                "circle-color": ["match", ["get", "kind"], "traffic", ACCENTS.amber, ACCENTS.slate],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.8,
               }}
@@ -2507,11 +2515,11 @@ export default function AppMap({
                 "circle-color": [
                   "match",
                   ["get", "season"],
-                  "spring", "#859076",
-                  "summer", "#C99632",
-                  "fall", "#A03A22",
-                  "winter", "#2F5470",
-                  "#A03A22",
+                  "spring", SEASON_HEX.spring,
+                  "summer", SEASON_HEX.summer,
+                  "fall", SEASON_HEX.fall,
+                  "winter", SEASON_HEX.winter,
+                  SEASON_HEX.fall,
                 ],
                 "circle-opacity":
                   aerialSeason === "all"
@@ -2528,11 +2536,11 @@ export default function AppMap({
                 "circle-color": [
                   "match",
                   ["get", "season"],
-                  "spring", "#859076",
-                  "summer", "#C99632",
-                  "fall", "#A03A22",
-                  "winter", "#2F5470",
-                  "#A03A22",
+                  "spring", SEASON_HEX.spring,
+                  "summer", SEASON_HEX.summer,
+                  "fall", SEASON_HEX.fall,
+                  "winter", SEASON_HEX.winter,
+                  SEASON_HEX.fall,
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.6,
@@ -2590,11 +2598,11 @@ export default function AppMap({
                     className="text-[11px] font-bold uppercase tracking-[0.12em]"
                     style={{
                       color: ({
-                        spring: "#859076",
-                        summer: "#C99632",
-                        fall: "#A03A22",
-                        winter: "#2F5470",
-                      }[selectedAerial.season]) ?? "#A03A22",
+                        spring: SEASON_HEX.spring,
+                        summer: SEASON_HEX.summer,
+                        fall: SEASON_HEX.fall,
+                        winter: SEASON_HEX.winter,
+                      }[selectedAerial.season]) ?? SEASON_HEX.fall,
                     }}
                   >
                     {selectedAerial.season}

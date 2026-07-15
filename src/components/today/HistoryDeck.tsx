@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Landmark, MapPin } from "lucide-react";
 import type { HistoryEntry } from "@/data/history";
 import { eraForYear } from "@/lib/history-era";
+import { ACCENTS } from "@/data/categories";
 
 /**
  * HistoryDeck: the interactive "Did you know?" card on Today.
@@ -33,7 +34,7 @@ import { eraForYear } from "@/lib/history-era";
 
 /** Evergreen facts carry no year, so they have no era. They take the
  *  steady civic blue Today already uses for the history accent. */
-const FACT_ACCENT = "#2F5470";
+const FACT_ACCENT = ACCENTS.slate;
 
 /** A swipe must travel this far horizontally, and be clearly more
  *  horizontal than vertical, before it steps the deck. Keeps a

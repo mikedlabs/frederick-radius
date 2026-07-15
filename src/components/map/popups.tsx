@@ -9,7 +9,7 @@
  */
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { specimenLedger, type LedgerCell } from "@/lib/ui/specimenLedger";
 import { ticketStubDate, stubEyebrow } from "@/lib/ui/ticketStub";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
@@ -174,11 +174,11 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
   if (p.osm_id?.startsWith("report:")) {
     const REPORT_LABEL: Record<string, { label: string; color: string }> = {
       "report-hazard": { label: "Hazard", color: "#C2410C" },
-      "report-condition": { label: "Condition", color: "#2F5470" },
+      "report-condition": { label: "Condition", color: ACCENTS.slate },
       "report-tip": { label: "Tip", color: "#B07A1E" },
       "report-note": { label: "Local note", color: "#7A7975" },
     };
-    const meta = REPORT_LABEL[p.category_slug] ?? { label: "Report", color: "#2F5470" };
+    const meta = REPORT_LABEL[p.category_slug] ?? { label: "Report", color: ACCENTS.slate };
     return (
       <div style={{ minWidth: 200, maxWidth: 240, padding: 4 }}>
         {p.photo && (
