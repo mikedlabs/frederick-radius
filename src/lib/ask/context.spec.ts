@@ -23,8 +23,11 @@ describe("clockLine", () => {
 });
 
 describe("timeAnchorOf", () => {
-  it("hears tonight/today/now as today", () => {
-    expect(timeAnchorOf("Music tonight")).toBe("today");
+  it("hears tonight/this evening as the evening window", () => {
+    expect(timeAnchorOf("Music tonight")).toBe("tonight");
+    expect(timeAnchorOf("anything this evening?")).toBe("tonight");
+  });
+  it("hears today/now as the whole day", () => {
     expect(timeAnchorOf("what's happening today")).toBe("today");
     expect(timeAnchorOf("anything going on right now?")).toBe("today");
   });
@@ -57,6 +60,17 @@ describe("eventContextLines", () => {
     ];
     const { picked } = eventContextLines(pool, "tomorrow", WED_6PM);
     expect(picked.map((e) => e.slug)).toEqual(["tmrw"]);
+  });
+
+  it("tonight keeps the 7 PM show even when afternoon programs would eat the cap (the prod miss)", () => {
+    const afternoon = Array.from({ length: 12 }, (_, i) =>
+      ev({ slug: `pm${i}`, title: `Program ${i}`, starts_at: "2026-07-15T13:45:00-04:00", ends_at: "2026-07-15T14:45:00-04:00" }),
+    );
+    const jam = ev({ slug: "jam", title: "Bluegrass Jam", category: "music", starts_at: "2026-07-15T19:00:00-04:00", ends_at: "2026-07-15T21:00:00-04:00" });
+    const noon = new Date("2026-07-15T12:00:00-04:00");
+    const { block, picked } = eventContextLines([...afternoon, jam], "tonight", noon);
+    expect(block).toContain("EVENTS TONIGHT");
+    expect(picked.map((e) => e.slug)).toEqual(["jam"]);
   });
 
   it("an empty window says so explicitly instead of omitting the block", () => {
