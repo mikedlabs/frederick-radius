@@ -1815,6 +1815,32 @@ export const PLACES: Place[] = [
     source: "seed",
     updated_at: "2026-07-15",
   },
+  {
+    slug: "ghost-tours-of-historic-frederick",
+    name: "Ghost Tours of Historic Frederick",
+    category: "tours",
+    tags: ["ticketed", "outdoor", "seasonal"],
+    short_blurb:
+      "Maryland's longest-running ghost tour: 90 candlelit minutes through the historic district, April through December.",
+    description:
+      "Maryland Heritage Tours' candlelight walk has run for more than 25 years: about 90 minutes and an easy 1.2 miles through downtown's documented hauntings, meeting in front of Brewer's Alley at 124 N Market St. Select weekends April through December, with cemetery history and Civil War tours in the same family. Group size is limited, so reserve ahead.",
+    address: "124 N Market St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    // Meets in front of Brewer's Alley — coords from our own record there.
+    geom: { lng: -77.4105, lat: 39.4161 },
+    phone: "301-668-8922",
+    website: "https://marylandghosttours.com",
+    price_band: 2,
+    // Tour schedule, not storefront hours — none on purpose.
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 7.0,
+    source: "seed",
+    updated_at: "2026-07-15",
+  },
 ];
 
 /**
