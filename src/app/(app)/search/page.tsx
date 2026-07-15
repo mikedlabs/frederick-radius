@@ -53,7 +53,12 @@ function displayFor(hit: SearchHit): Display {
       return {
         href: `/places/${hit.place.slug}`,
         title: hit.place.name,
-        subtitle: [hit.place.category, hit.place.city].filter(Boolean).join(" · "),
+        // Display name, never the raw slug — "Ice cream & treats · Frederick",
+        // not "ice-cream · Frederick".
+        subtitle: [
+          CATEGORY_BY_SLUG[hit.place.category]?.name ?? hit.place.category.replace(/-/g, " "),
+          hit.place.city,
+        ].filter(Boolean).join(" · "),
         badge: { label: "Place", color: CATEGORY_BY_SLUG[hit.place.category]?.color ?? "var(--app-brand)" },
         Icon: MapPin,
         categorySlug: hit.place.category,

@@ -147,11 +147,12 @@ export function categoryKind(slug: string | undefined): "draw" | "utility" {
  * than the full-saturation CATEGORIES colors, which stay the taxonomy's
  * own identity).
  *
- * ONE source of truth (design review P2-2): these five hues were re-typed
- * as raw hex in five components, and the slate had drifted — #2F5470 is
- * the PRE-brand-deck value of `--app-cool` (#20506A). Mapbox GL paint
- * cannot read CSS custom properties, so map layers import from here too.
- * If you need one of these hues, import it; never re-type the hex.
+ * ONE source of truth (design review P2-2): these hues were re-typed as
+ * raw hex across a dozen-plus components and libs, and the slate had
+ * drifted — #2F5470 is the PRE-brand-deck value of `--app-cool` (#20506A).
+ * Mapbox GL paint cannot read CSS custom properties, so map layers import
+ * from here too. If you need one of these hues, import it; never re-type
+ * the hex.
  */
 export const ACCENTS = {
   /** Warm market terracotta — food/eat accents, MARC stations on the transit map. */

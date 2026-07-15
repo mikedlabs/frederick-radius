@@ -16,6 +16,8 @@
  * with the source's own initials, no fabricated color. The fallback is
  * the floor, not the ceiling: when a new source shows up, add it here.
  */
+import { ACCENTS } from "@/data/categories";
+
 export type NewsLane = "gov" | "press" | "community";
 export type NewsMediaType =
   | "civic"
@@ -52,7 +54,7 @@ const KNOWN: Array<[string, SourceMeta]> = [
   ],
   [
     "frederick county government",
-    { lane: "gov", mediaType: "civic", brandColor: "#2F5470", display: "Frederick County Gov.", monogram: "FC" },
+    { lane: "gov", mediaType: "civic", brandColor: ACCENTS.slate, display: "Frederick County Gov.", monogram: "FC" },
   ],
   [
     "fcps",
@@ -179,7 +181,7 @@ const KNOWN: Array<[string, SourceMeta]> = [
 ];
 
 const PRESS_FALLBACK_COLOR = "#6F6A63";
-const GOV_FALLBACK_COLOR = "#2F5470";
+const GOV_FALLBACK_COLOR = ACCENTS.slate;
 
 const STOPWORDS = new Set([
   "the", "a", "an", "of", "and", "or", "for", "in", "on", "at", "to", "by",
@@ -241,7 +243,7 @@ export const LANE_META: Record<
   gov: {
     label: "Government",
     tagline: "Official county, city, school, and law-enforcement releases.",
-    color: "#2F5470",
+    color: ACCENTS.slate,
   },
   press: {
     label: "Press & Broadcast",

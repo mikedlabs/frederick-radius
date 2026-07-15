@@ -9,6 +9,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
+import { ACCENTS } from "@/data/categories";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/history" },
@@ -18,9 +19,9 @@ export const metadata: Metadata = {
 };
 
 const KIND_META: Record<HistoryEntry["kind"], { label: string; icon: typeof Landmark; color: string }> = {
-  moment: { label: "Moment", icon: Calendar, color: "#A03A22" },
-  person: { label: "Person", icon: Users, color: "#7E2C6F" },
-  fact: { label: "Did you know", icon: Sparkles, color: "#2F5470" },
+  moment: { label: "Moment", icon: Calendar, color: ACCENTS.terracotta },
+  person: { label: "Person", icon: Users, color: ACCENTS.plum },
+  fact: { label: "Did you know", icon: Sparkles, color: ACCENTS.slate },
 };
 
 function formatYear(e: HistoryEntry): string | null {
