@@ -136,7 +136,7 @@ export default function OverheadMap({
                 >
                   <Image src={open.photo.thumb} alt={`${open.flight || open.type || "Aircraft"} photo`} fill sizes="220px" className="object-cover" />
                   {open.photo.by && (
-                    <span className="absolute bottom-0 right-0 rounded-tl bg-black/55 px-1 py-0.5 text-[8px] font-medium text-white">
+                    <span className="absolute bottom-0 right-0 rounded-tl bg-black/55 px-1 py-0.5 text-[9px] font-medium text-white">
                       © {open.photo.by}
                     </span>
                   )}

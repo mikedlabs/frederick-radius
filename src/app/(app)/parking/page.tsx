@@ -549,7 +549,7 @@ export default async function ParkingPage() {
                         style={{
                           background:
                             "color-mix(in srgb, var(--app-brand) 10%, transparent)",
-                          color: "var(--app-brand)",
+                          color: "var(--app-brand-press)",
                         }}
                       >
                         <Smartphone className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />

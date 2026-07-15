@@ -19,7 +19,7 @@ import { formatDistance } from "@/lib/geo";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import CategoryIcon from "@/components/place/CategoryIcon";
 
 /**
@@ -73,10 +73,10 @@ const VIBES: {
   color: string;
 }[] = [
   { value: "easy",     label: "Easy",     tagline: "Wander, sit, sip.",      Icon: Leaf, color: "#859076" },
-  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     Icon: Zap, color: "#C99632" },
-  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", Icon: Drama, color: "#7E2C6F" },
+  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     Icon: Zap, color: ACCENTS.amber },
+  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", Icon: Drama, color: ACCENTS.plum },
   { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     Icon: Footprints, color: "#2E3B2C" },
-  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: "#A03A22" },
+  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: ACCENTS.terracotta },
 ];
 
 type Preset = {
@@ -92,14 +92,14 @@ type Preset = {
 };
 
 const PRESETS: Preset[] = [
-  { id: "library-date", Icon: BookOpen, label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: "#7E2C6F" },
-  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A03A22" },
+  { id: "library-date", Icon: BookOpen, label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: ACCENTS.plum },
+  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: ACCENTS.terracotta },
   { id: "first-date", Icon: Coffee, label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
   { id: "girls-night", Icon: Wine, label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
-  { id: "family-sunday", Icon: Trees, label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: "#1E6B3A" },
-  { id: "rainy-day", Icon: CloudRain, label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: "#2F5470" },
-  { id: "sunny-saturday", Icon: Sun, label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: "#C99632" },
-  { id: "showing-friends", Icon: Compass, label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: "#2F5470" },
+  { id: "family-sunday", Icon: Trees, label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: ACCENTS.catoctin },
+  { id: "rainy-day", Icon: CloudRain, label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: ACCENTS.slate },
+  { id: "sunny-saturday", Icon: Sun, label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: ACCENTS.amber },
+  { id: "showing-friends", Icon: Compass, label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: ACCENTS.slate },
 ];
 
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];

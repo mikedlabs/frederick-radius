@@ -7,7 +7,7 @@ import {
   ToyBrick, Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi,
   Wine, Wrench, MapPin,
 } from "lucide-react";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 
 /**
  * CategoryGraphic — the visual baseline for any card that has no
@@ -46,12 +46,12 @@ const ICONS: Record<string, typeof Coffee> = {
 // know" grey rectangles. Pulls brand-aligned colors only (no
 // red/yellow that read as warnings).
 const FALLBACK_PALETTE = [
-  { color: "#2F5470", icon: Sparkles },    // cool — events
-  { color: "#A04A3E", icon: GraduationCap }, // brick — civic / graduations
-  { color: "#1E6B3A", icon: Trees },        // catoctin green — outdoor
-  { color: "#C99632", icon: Music },        // amber — music
-  { color: "#5B4B7C", icon: Theater },      // plum — arts
-  { color: "#3F6E7F", icon: BookOpen },     // teal — community
+  { color: ACCENTS.slate, icon: Sparkles },    // slate — events
+  { color: "#A04A3E", icon: GraduationCap },   // brick — civic / graduations
+  { color: ACCENTS.catoctin, icon: Trees },    // catoctin green — outdoor
+  { color: ACCENTS.amber, icon: Music },       // amber — music
+  { color: "#5B4B7C", icon: Theater },         // muted plum — arts
+  { color: "#3F6E7F", icon: BookOpen },        // teal — community
 ];
 
 /** Deterministic hash of a seed string → 32-bit int. djb2 variant. */

@@ -47,7 +47,7 @@ function Marker({ min, label, total = 1439 }: { min: number | null; label: strin
     <div className="pointer-events-none absolute top-0 h-full" style={{ left }}>
       <div className="h-full w-px" style={{ background: "rgba(255,255,255,0.55)" }} />
       <span
-        className="absolute top-1 -translate-x-1/2 whitespace-nowrap rounded px-1 font-mono text-[8px] uppercase tracking-wide"
+        className="absolute top-1 -translate-x-1/2 whitespace-nowrap rounded px-1 font-mono text-[9px] uppercase tracking-wide"
         style={{ background: "rgba(0,0,0,0.35)", color: "rgba(255,255,255,0.9)" }}
       >
         {label}

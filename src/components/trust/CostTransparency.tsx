@@ -100,7 +100,7 @@ export default function CostTransparency() {
                 className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
                 style={{
                   background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
-                  color: "var(--app-brand)",
+                  color: "var(--app-brand-press)",
                 }}
               >
                 ${lo}k–${hi}k
