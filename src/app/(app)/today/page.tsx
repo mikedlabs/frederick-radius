@@ -347,7 +347,19 @@ export default async function HomePage() {
           What's-on streams inside its own Suspense boundary. */}
       {sectionOrder(daypart(now)).map((section: TodaySection) =>
         section === "curated" ? (
-          <CuratedPicks key="curated" />
+          // Suspense so the rail's NWS read (weather-aware ordering) streams
+          // in like every other weather consumer on this page — a cold
+          // forecast fetch must never hold the first paint hostage.
+          <Suspense
+            key="curated"
+            fallback={
+              <section className="mt-6" aria-label="Plan the moment">
+                <Skeleton.Block height={140} round="var(--app-radius-lg)" />
+              </section>
+            }
+          >
+            <CuratedPicks />
+          </Suspense>
         ) : (
           <div key="whats-on" id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
             <Suspense
