@@ -54,7 +54,8 @@ import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isValidCoord } from "@/lib/geo";
-import { isEventToday, isEventEnded, eventWhenLabel } from "@/lib/eventWhenLabel";
+import { isEventToday, isEventEnded, isEventLiveNow, eventWhenLabel } from "@/lib/eventWhenLabel";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { pickTonightEvent } from "@/lib/today/tonight";
 import { daypart, sectionOrder, type TodaySection } from "@/lib/daypart";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -708,9 +709,89 @@ function hasPreciseGeo(e: { geo_confidence?: string; geom?: { lng: number; lat: 
   );
 }
 
+/** Eastern wall-clock hour (0-23) of an ISO instant — the program's
+ *  daypart grouping key. */
+function easternStartHour(iso: string): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" })
+      .format(new Date(iso)),
+  );
+}
+
+/** One line of the day program: mono time column (the visible sort key),
+ *  then title + venue. The editorial tier reads as TYPOGRAPHY — draws get
+ *  weight, ink, and their category's color dot; civic/routine rows sit in
+ *  the same timeline, smaller and grayer. Live rows swap the clock for a
+ *  pulsing "Now". */
+function ProgramRow({
+  event: e,
+  quiet,
+  now,
+}: {
+  event: Awaited<EventsPromise>["publicEvents"][number];
+  quiet: boolean;
+  now: Date;
+}) {
+  const live = isEventLiveNow(e, now);
+  const time = eventDateBlock(e).time;
+  const accent = CATEGORY_BY_SLUG[e.category ?? ""]?.color ?? "#7A7975";
+  const town = eventTown(e);
+  // "Frederick · Frederick": some feeds stamp the town as the venue name.
+  // One mention is information, two is noise.
+  const venue = e.venue_name?.trim();
+  const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <li>
+      <Link
+        href={`/events/${e.slug}`}
+        prefetch={false}
+        className="tap-44-y flex items-start gap-3 border-b py-2 pr-0.5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span
+          className="flex w-[58px] shrink-0 items-center gap-1 pt-px font-mono text-[11px] font-semibold tabular-nums leading-snug"
+          style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+        >
+          {live && (
+            <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
+          )}
+          {live ? "Now" : time}
+        </span>
+        {quiet ? (
+          <span className="min-w-0 flex-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {e.title}
+            {(venue || town) && (
+              <span style={{ color: "var(--app-ink-3)" }}> · {venue ?? town}</span>
+            )}
+          </span>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <span className="line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {e.title}
+            </span>
+            {where && (
+              <span className="mt-0.5 block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                {where}
+              </span>
+            )}
+            {/* Real walk minutes from the user's cached fix (LocationPrime
+                consent), precisely-located venues only; self-hides. */}
+            {hasPreciseGeo(e) && <EventWalkTime dest={e.geom} />}
+          </div>
+        )}
+        {!quiet && (
+          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
+        )}
+      </Link>
+    </li>
+  );
+}
+
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
- *  sink to the end; civic/utility business shows quietly as "Also today". */
+ *  join the same chronological program as quiet rows. */
 async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
   const { publicEvents } = await eventsPromise;
   const todayAll = publicEvents
@@ -749,12 +830,34 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     : todaysEvents;
   const feature = featuredEvent ? withoutTeaser[0] : undefined;
   const upcomingRest = feature ? withoutTeaser.slice(1) : withoutTeaser;
-  // Cap the rail: ~5,600px of sideways scroll (the July audit measured ~20
-  // tiles) buries the "See all" door. Eight draws is a real shelf; the
-  // overflow closes the rail as an honest "+N more today" stub into /events.
-  const RAIL_MAX = 8;
-  const railEvents = upcomingRest.slice(0, RAIL_MAX);
-  const railOverflow = upcomingRest.length - railEvents.length;
+
+  // The day PROGRAM (replaced the unlabeled sideways rail + separate "Also
+  // today" bucket, owner call 2026-07-15: "feels like a list with no
+  // understanding of what's in the list"). One chronological spine, grouped
+  // by daypart, draws and quiet civic/routine rows interleaved at their real
+  // times — the tier survives as typography (weight + ink), not as a second
+  // mystery list. A vertical column also shows the whole evening at a
+  // glance where the rail hid all but two tiles.
+  const program = [
+    ...upcomingRest.map((e) => ({ e, quiet: false })),
+    ...alsoToday.map((e) => ({ e, quiet: true })),
+  ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
+  const PROGRAM_MAX = 18;
+  const shown = program.slice(0, PROGRAM_MAX);
+  const programOverflow = program.length - shown.length;
+  const partOf = (row: (typeof program)[number]): string => {
+    if (row.e.is_all_day) return "All day";
+    const h = easternStartHour(row.e.starts_at);
+    return h < 12 ? "This morning" : h < 17 ? "This afternoon" : "Tonight";
+  };
+  const programGroups: { label: string; rows: typeof program }[] = [];
+  for (const row of shown) {
+    const label = partOf(row);
+    const last = programGroups[programGroups.length - 1];
+    if (last && last.label === label) last.rows.push(row);
+    else programGroups.push({ label, rows: [row] });
+  }
+  const tonightCount = ahead.filter((e) => !e.is_all_day && easternStartHour(e.starts_at) >= 17).length;
 
   return (
     <section className="mt-6 space-y-3" aria-label="What's on">
@@ -765,98 +868,69 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         cta="See all"
         eyebrow="What's on"
         plateNo="Pl. I"
+        meta={
+          todayAll.length > 0
+            ? `${todayAll.length} ${todayAll.length === 1 ? "event" : "events"} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""}`
+            : undefined
+        }
       >
         {feature || upcomingRest.length > 0 || alsoToday.length > 0 || earlierToday.length > 0 ? (
           <div className="space-y-3">
+            {/* The one editor's pick, and it SAYS so — the unlabeled hero was
+                the first "why is this big?" of the section. */}
             {feature && (
-              isKeysEvent(feature)
-                ? <KeysCard event={feature} variant="feature" />
-                : <EventCard event={feature} variant="feature" />
-            )}
-            {railEvents.length > 0 && (
-              <div className="-mx-4 px-4">
-                <div className="reveal-up shelf-rail gap-3 pb-1">
-                  {/* Per tile, flex-col + flex-1 hand the rail's stretch height
-                      down to the card, so one two-line title doesn't leave
-                      every one-line tile floating over a blank band. */}
-                  {railEvents.map((e) => (
-                    <div key={`${e.slug}-${e.starts_at}`} className="flex w-[280px] shrink-0 flex-col">
-                      <div className="tactile-ring flex-1 rounded-[var(--app-radius-lg)]">
-                        {isKeysEvent(e)
-                          ? <KeysCard event={e} variant="tile" />
-                          : <EventCard event={e} variant="tile" />}
-                      </div>
-                      {/* Real walk minutes from the user's cached fix (LocationPrime
-                          consent), for precisely-located venues only — the single
-                          most decision-useful number on a downtown event tile.
-                          Client + self-hiding: no fix, or no precise coordinate,
-                          renders nothing. Never fabricated. */}
-                      {hasPreciseGeo(e) && <EventWalkTime dest={e.geom} />}
-                    </div>
-                  ))}
-                  {/* End-cap stub: the honest close of a capped shelf — the mono
-                      count says how much of today didn't fit, and the whole
-                      tile is the door to /events. Quiet by design (dashed
-                      hairline, no photo) so it reads as an edge, not a peer. */}
-                  {/* self-stretch matches the tiles' natural height — a fixed
-                      min-h here once inflated every photoless tile's wrapper
-                      (flex stretch) and printed a ~54px dead band under the
-                      whole shelf. */}
-                  {railOverflow > 0 && (
-                    <div className="flex w-[150px] shrink-0 self-stretch">
-                      <Link
-                        href="/events"
-                        className="tactile-interactive flex w-full flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-lg)] border border-dashed px-3"
-                        style={{
-                          borderColor: "color-mix(in srgb, var(--app-ink) 22%, transparent)",
-                          background: "color-mix(in srgb, var(--app-ink) 3%, transparent)",
-                        }}
-                      >
-                        <span className="font-mono text-[17px] font-bold tabular-nums leading-none" style={{ color: "var(--app-ink)" }}>
-                          +{railOverflow}
-                        </span>
-                        <span className="text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                          more today
-                        </span>
-                        <ChevronRight className="mt-1 h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Civic / municipal business + routine recurring programs
-                happening today — present but quiet, as muted one-line rows so
-                they never compete with the draws. */}
-            {alsoToday.length > 0 && (
-              <div className="space-y-1">
-                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                  Also today
+              <div>
+                <p className="mb-1.5 px-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+                  {!feature.is_all_day && easternStartHour(feature.starts_at) >= 17 ? "Tonight's pick" : "Today's pick"}
                 </p>
-                <ul>
-                  {alsoToday.map((e) => (
-                    <li key={`${e.slug}-${e.starts_at}`}>
-                      <EventCard event={e} variant="utility" hideDate />
-                    </li>
-                  ))}
-                </ul>
+                {isKeysEvent(feature)
+                  ? <KeysCard event={feature} variant="feature" />
+                  : <EventCard event={feature} variant="feature" />}
               </div>
             )}
-            {/* Finished draws, demoted to quiet one-liners: still the honest
-                record of the day, never ranked over what's still catchable. */}
+            {programGroups.length > 0 && (
+              <div className="reveal-up">
+                {programGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="px-0.5 pb-1 pt-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                      {group.label}
+                    </p>
+                    <ul>
+                      {group.rows.map(({ e, quiet }) => (
+                        <ProgramRow key={`${e.slug}-${e.starts_at}`} event={e} quiet={quiet} now={now} />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {programOverflow > 0 && (
+                  <Link
+                    href="/events"
+                    className="tap-44-y flex items-center justify-between px-0.5 py-2.5 text-[13px] font-semibold"
+                    style={{ color: "var(--app-brand-press)" }}
+                  >
+                    +{programOverflow} more today
+                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  </Link>
+                )}
+              </div>
+            )}
+            {/* Finished draws collapse to one honest line — the record of the
+                day is a tap away, but done things don't spend screen. Native
+                <details>: no client JS. */}
             {earlierToday.length > 0 && (
-              <div className="space-y-1">
-                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                  Earlier today
-                </p>
-                <ul>
+              <details className="group">
+                <summary className="tap-44-y flex cursor-pointer list-none items-center gap-1.5 px-0.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
+                  <ChevronRight aria-hidden className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.5} />
+                  Earlier today · {earlierToday.length} wrapped up
+                </summary>
+                <ul className="mt-1">
                   {earlierToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" hideDate />
                     </li>
                   ))}
                 </ul>
-              </div>
+              </details>
             )}
           </div>
         ) : (
