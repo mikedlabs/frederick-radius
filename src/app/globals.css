@@ -4198,3 +4198,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   outline-offset: 2px;
   border-radius: 999px;
 }
+
+/* ── Passport stamps (/saved) ─────────────────────────────────────
+   Each earned stamp "presses" onto the page on arrival: it lands from
+   above at a slight overshoot, the way a real hand stamp hits paper.
+   Stagger comes from --press-delay set per stamp. Freezes under
+   prefers-reduced-motion. */
+@keyframes fr-stamp-press {
+  0%   { opacity: 0; transform: scale(1.7); }
+  55%  { opacity: 1; transform: scale(0.92); }
+  75%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.stamp-press {
+  animation: fr-stamp-press 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: var(--press-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stamp-press { animation: none; opacity: 1; transform: none; }
+}
