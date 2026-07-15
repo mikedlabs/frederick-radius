@@ -169,21 +169,24 @@ function artFor(key: string): string {
   return TOWN_DEFAULT;
 }
 
-/** Scalloped rosette edge for the gold stamps — 26 outward arcs. */
-function scallopPath(cx: number, cy: number, R: number, n: number, amp: number): string {
-  let d = "";
-  for (let i = 0; i < n; i++) {
-    const a0 = (i / n) * Math.PI * 2;
-    const a1 = ((i + 1) / n) * Math.PI * 2;
-    const am = (a0 + a1) / 2;
-    const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
-    const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
-    const xm = cx + (R + amp) * Math.cos(am), ym = cy + (R + amp) * Math.sin(am);
-    d += (i ? "" : `M ${x0.toFixed(2)},${y0.toFixed(2)} `) + `Q ${xm.toFixed(2)},${ym.toFixed(2)} ${x1.toFixed(2)},${y1.toFixed(2)} `;
-  }
-  return d + "Z";
+/** Perforated stamp outline: a rectangle with punched semicircle bites,
+ *  the die-cut edge of a real postage stamp. Built once per geometry. */
+function perfPath(w: number, h: number, r: number, step: number): string {
+  const nx = Math.round(w / step);
+  const ny = Math.round(h / step);
+  let d = `M ${r},0 `;
+  for (let i = 1; i < nx; i++) { const x = (w * i) / nx; d += `L ${(x - r).toFixed(1)},0 A ${r},${r} 0 0 0 ${(x + r).toFixed(1)},0 `; }
+  d += `L ${w - r},0 A ${r},${r} 0 0 0 ${w},${r} `;
+  for (let i = 1; i < ny; i++) { const y = (h * i) / ny; d += `L ${w},${(y - r).toFixed(1)} A ${r},${r} 0 0 0 ${w},${(y + r).toFixed(1)} `; }
+  d += `L ${w},${h - r} A ${r},${r} 0 0 0 ${w - r},${h} `;
+  for (let i = nx - 1; i > 0; i--) { const x = (w * i) / nx; d += `L ${(x + r).toFixed(1)},${h} A ${r},${r} 0 0 0 ${(x - r).toFixed(1)},${h} `; }
+  d += `L ${r},${h} A ${r},${r} 0 0 0 0,${h - r} `;
+  for (let i = ny - 1; i > 0; i--) { const y = (h * i) / ny; d += `L 0,${(y + r).toFixed(1)} A ${r},${r} 0 0 0 0,${(y - r).toFixed(1)} `; }
+  return d + `L 0,${r} A ${r},${r} 0 0 0 ${r},0 Z`;
 }
-const GOLD_EDGE = scallopPath(50, 50, 45.5, 26, 2.6);
+const SW = 68; // stamp width in local units
+const SH = 82; // stamp height
+const PERF = perfPath(SW, SH, 2.1, 6.8);
 
 /** Deterministic per-key hash → stable "hand-pressed" irregularity:
  *  rotation, a small vertical drift, and a slight size variance, so the
@@ -200,79 +203,94 @@ function drift(key: string): number {
   return ((hashOf(key + "y") % 9) - 4) * 1.6;
 }
 function sizeOf(key: string): number {
-  return 88 + (hashOf(key + "s") % 14);
+  return 86 + (hashOf(key + "s") % 12);
 }
 
 function Stamp({ state, date, index }: { state: StampState; date: string; index: number }) {
   const { def } = state;
   const ink = TONE[def.tone];
-  const fid = `ink-${def.key}`;
-  const seed = Math.abs(tilt(def.key) * 7) + 2;
-  const size = sizeOf(def.key);
+  const fid = `pm-${def.key}`;
+  const seed = (hashOf(def.key) % 11) + 3;
+  const w = sizeOf(def.key);
+  const h = Math.round((w * (SH + 12)) / (SW + 12));
+  const [d1, d2] = date ? [date.replace(/ ’\d+$/, ""), "2026"] : ["EARNED", "HERE"];
+  const longTitle = def.title.length > 11;
   return (
     <figure
-      className="stamp-press m-0 flex flex-col items-center"
+      className="stamp-press m-0"
       style={{
         transform: `rotate(${tilt(def.key)}deg) translateY(${drift(def.key)}px)`,
-        marginInline: "-4px",
+        marginInline: "-2px",
+        filter: "drop-shadow(0 2px 3px rgba(22,20,14,.22))",
         "--press-delay": `${Math.min(index, 10) * 85}ms`,
       } as React.CSSProperties}
     >
       <svg
-        viewBox="0 0 100 100"
-        width={size}
-        height={size}
+        viewBox={`-6 -6 ${SW + 12} ${SH + 12}`}
+        width={w}
+        height={h}
         role="img"
         aria-label={`${def.title} stamp, earned ${date || "around here"}`}
-        style={{ color: ink }}
       >
         <defs>
-          {/* Ink erosion: turbulence eats tiny bites out of every stroke so
-              the stamp reads pressed, not printed. */}
-          <filter id={fid} x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed={seed} result="n" />
-            <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 -0.18" result="a" />
+          {/* ink erosion for the postmark strike only — the stamp itself
+              stays crisp, the way print sits under a hand cancellation */}
+          <filter id={fid} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed={seed} result="n" />
+            <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.5 -0.25" result="a" />
             <feComposite in="SourceGraphic" in2="a" operator="in" />
           </filter>
-          <path id={`arc-t-${def.key}`} d="M 50,50 m -35,0 a 35,35 0 1,1 70,0" fill="none" />
-          <path id={`arc-b-${def.key}`} d="M 50,50 m -35,0 a 35,35 0 1,0 70,0" fill="none" />
         </defs>
-        <g filter={`url(#${fid})`} fill="currentColor" stroke="currentColor" opacity="0.92">
-          {/* gold stamps get the scalloped rosette edge; the rest press a plain ring */}
-          {def.tone === "gold" ? (
-            <path d={GOLD_EDGE} fill="none" strokeWidth="1.8" />
-          ) : (
-            <circle cx="50" cy="50" r="47" fill="none" strokeWidth="2.4" />
-          )}
-          <circle cx="50" cy="50" r="42.5" fill="none" strokeWidth="0.9" />
-          {/* rim text */}
-          <text fontSize="9.5" fontWeight="700" letterSpacing="1.6" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
-            <textPath href={`#arc-t-${def.key}`} startOffset="50%" textAnchor="middle">
-              {def.title.toUpperCase()}
-            </textPath>
-          </text>
-          <text fontSize="6" fontWeight="600" letterSpacing="1.3" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
-            <textPath href={`#arc-b-${def.key}`} startOffset="50%" textAnchor="middle">
-              {def.sub.toUpperCase()}
-            </textPath>
-          </text>
-          {/* the engraving — static line art, no user input */}
-          <g dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
-          {/* date banner under the engraving */}
-          <path d="M 33,54 h 34" strokeWidth="0.8" />
+        {/* stamp paper with die-cut perforations */}
+        <path d={PERF} fill="var(--app-paper, #FCF8EE)" stroke="var(--app-ink-tint-12, rgba(22,20,14,.14))" strokeWidth="0.5" />
+        {/* engraved frame + tablets + vignette, in the stamp's ink */}
+        <g style={{ color: ink }} stroke="currentColor" fill="currentColor">
+          <rect x="4.5" y="4.5" width={SW - 9} height={SH - 9} fill="none" strokeWidth="1.4" />
+          <rect x="7" y="7" width={SW - 14} height={SH - 14} fill="none" strokeWidth="0.5" />
           <text
-            x="50"
-            y="62.5"
+            x={SW / 2}
+            y="13.5"
             textAnchor="middle"
-            fontSize="8"
+            fontSize={longTitle ? 4.7 : 5.6}
             fontWeight="700"
-            letterSpacing="0.5"
+            letterSpacing={longTitle ? 0.7 : 1.1}
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
-            {date || "EARNED"}
+            {def.title.toUpperCase()}
           </text>
-          <path d="M 33,66.5 h 34" strokeWidth="0.8" />
+          <path d={`M10,16.5 h${SW - 20}`} strokeWidth="0.5" />
+          <g transform="translate(-1.6,17) scale(0.71)" dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
+          <path d={`M10,${SH - 16} h${SW - 20}`} strokeWidth="0.5" />
+          <text
+            x={SW / 2}
+            y={SH - 9.5}
+            textAnchor="middle"
+            fontSize="4.4"
+            fontWeight="600"
+            letterSpacing="0.8"
+            stroke="none"
+            style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
+          >
+            {def.sub.toUpperCase()}
+          </text>
+        </g>
+        {/* the cancellation: earning IS the postmark, struck over the corner */}
+        <g
+          filter={`url(#${fid})`}
+          stroke="var(--app-ink-2, #423E34)"
+          fill="var(--app-ink-2, #423E34)"
+          opacity="0.78"
+          transform={`rotate(-10 ${SW - 4} 6)`}
+        >
+          <circle cx={SW - 4} cy="6" r="11.5" fill="none" strokeWidth="1.3" />
+          <text x={SW - 4} y="4.6" textAnchor="middle" fontSize="4.4" fontWeight="700" letterSpacing="0.4" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
+            {d1}
+          </text>
+          <text x={SW - 4} y="10.2" textAnchor="middle" fontSize="4.4" fontWeight="700" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
+            {d2}
+          </text>
+          <path d={`M ${SW - 26},16 q 8,3 22,3 M ${SW - 28},20.5 q 10,3 26,2.6`} fill="none" strokeWidth="1.1" />
         </g>
       </svg>
       <figcaption className="sr-only">{def.hint}</figcaption>
