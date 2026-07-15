@@ -3,6 +3,8 @@ import { unstable_cache } from "next/cache";
 import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, stripInlineMarkdown } from "@/lib/ask/context";
 
 /**
  * "Ask Frederick" — the grounded concierge brain.
@@ -42,9 +44,11 @@ Answer the user's question using ONLY the FREDERICK DATA provided in the message
 
 Rules you must follow:
 - NEVER invent a place, address, hour, price, rating, or fact. Use only what's in the data.
+- The CURRENT DATE & TIME is always provided. Use it: "tonight", "today", and "this weekend" questions are answered directly from the EVENTS block. Never say you don't know today's date.
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map — do not guess.
 - Keep it tight: 2–4 sentences, then name your top 1–3 specific picks from the data.
-- Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler, no markdown headers.`;
+- Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler.
+- PLAIN TEXT ONLY. No markdown of any kind: no asterisks, underscores, backticks, bullet lists, headers, or [text](url) links. Write prose.`;
 
 function hasKey(): boolean {
   return Boolean(
@@ -148,21 +152,44 @@ const cachedCallModel = unstable_cache(
     if (answer === null) throw new Error("ask:no-answer"); // don't cache failures
     // Boundary cleaning for MODEL prose, same rule as feed text: the LLM
     // loves em dashes and the voice bans them (verified in the first live
-    // answer: "though fair warning—they sell out often"). Clean once here,
-    // pre-cache, so every surface renders on-voice text.
-    return answer.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-");
+    // answer: "though fair warning—they sell out often"), and it italicizes
+    // for emphasis even when told not to — the Ask surfaces render PLAIN
+    // text, so raw asterisks reached users (the Reddit screenshot). Clean
+    // once here, pre-cache, so every surface renders on-voice text.
+    return stripInlineMarkdown(answer).replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-");
   },
-  ["ask-answer-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["ask-answer-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ask"] },
 );
 
-export async function askFrederick(query: string): Promise<AskResult> {
+export async function askFrederick(query: string, now: Date = new Date()): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { configured: hasKey(), answer: null, sources: [] };
 
   const hits = search(q, 18);
   const lines: string[] = [];
   const sources: AskSource[] = [];
+
+  // Time-anchored grounding: "music tonight" / "what's on this weekend" is
+  // THE natural question for a local guide, and keyword search alone can
+  // never answer it — the window matters more than the words. Feed the
+  // model the same unified event set /today renders, bucketed to the asked
+  // window, with clock times. (The live failure this closes: "I don't have
+  // today's date in the data", screenshotted on Reddit.)
+  const anchor = timeAnchorOf(q);
+  let eventsBlock = "";
+  if (anchor) {
+    try {
+      const { publicEvents } = await assembleUnifiedEvents(now);
+      const ctx = eventContextLines(publicEvents, anchor, now);
+      eventsBlock = `${ctx.block}\n`;
+      for (const e of rankForSources(ctx.picked, q).slice(0, 3)) {
+        sources.push({ slug: e.slug, name: e.title, category: "event", city: e.municipality_name ?? "", href: `/events/${e.slug}` });
+      }
+    } catch {
+      /* events unavailable → the search hits below still ground the answer */
+    }
+  }
 
   // Civic intent grounding: if the question is a "how do I…" (register to
   // vote, report a pothole, pay a bill, permits…), surface the county's
@@ -205,11 +232,14 @@ export async function askFrederick(query: string): Promise<AskResult> {
       if (sources.length < 6)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
     } else if (h.type === "event") {
-      const e = h.event as { title: string; starts_at?: string; venue_name?: string };
+      const e = h.event as { slug?: string; title: string; starts_at?: string; venue_name?: string };
       const when = e.starts_at
         ? new Date(e.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" })
         : "";
       lines.push(`${lines.length + 1}. EVENT: ${e.title}${when ? ` (${when})` : ""}${e.venue_name ? ` @ ${e.venue_name}` : ""}`);
+      if (e.slug && sources.length < 6 && !sources.some((s) => s.slug === e.slug)) {
+        sources.push({ slug: e.slug, name: e.title, category: "event", city: "", href: `/events/${e.slug}` });
+      }
     }
   }
 
@@ -217,7 +247,9 @@ export async function askFrederick(query: string): Promise<AskResult> {
     lines.length > 0
       ? lines.join("\n")
       : "(no matching places or events were found in the Frederick catalog)";
-  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
+  // The clock line is HOUR-granular (see clockLine) so this prompt — which
+  // is also the answer-cache key — stays stable within the hour.
+  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
 
   // Cached on a hit (identical question + identical data); a miss or a cached
   // failure (sentinel throw) falls back to null without poisoning the cache.
