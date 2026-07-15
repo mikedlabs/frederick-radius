@@ -17,6 +17,7 @@ import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
+import { GOOGLE_REVIEW_SELECTION_DISCLOSURE } from "@/components/place/GoogleAttribution";
 
 /**
  * PlaceCard — the unified TYPOGRAPHIC browse card (Photo Policy, Phase 1).
@@ -56,6 +57,7 @@ function Rave({
     >
       <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
       {rating.toFixed(1)}
+      <span className="text-[9px] font-medium" translate="no">Google Maps</span>
     </span>
   );
 }
@@ -183,6 +185,14 @@ function Thumb({
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
         />
+        <span
+          className="absolute bottom-0 right-0 max-w-full truncate rounded-tl bg-black/70 px-1.5 py-0.5 text-[8px] leading-none text-white"
+          translate="no"
+        >
+          {place.google_photo_attribution?.authors[0]?.display_name
+            ? `${place.google_photo_attribution.authors[0].display_name} · Google Maps`
+            : "Google Maps"}
+        </span>
       </div>
     );
   }
@@ -378,9 +388,12 @@ export default function PlaceCard({
                 <span className="line-clamp-2">&ldquo;{place.review_snippet}&rdquo;</span>
                 {place.review_author && (
                   <cite className="mt-0.5 block text-[11px] not-italic" style={{ color: "var(--app-ink-3)" }}>
-                    {place.review_author}, Google
+                    {place.review_author}, <span translate="no">Google Maps</span>
                   </cite>
                 )}
+                <span className="mt-1 block text-[9px] not-italic leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                  {GOOGLE_REVIEW_SELECTION_DISCLOSURE}
+                </span>
               </blockquote>
             ) : loved.length > 0 ? (
               <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>

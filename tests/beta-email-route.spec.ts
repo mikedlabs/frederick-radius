@@ -4,12 +4,20 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   isRateLimited: vi.fn(),
+  isSameOriginMutationRequest: vi.fn(),
   inviteEmail: vi.fn(),
   fanoutToTopic: vi.fn(),
 }));
 
 vi.mock("@/lib/db/client", () => ({ getDb: mocks.getDb }));
-vi.mock("@/lib/origin-check", () => ({ isRateLimited: mocks.isRateLimited }));
+vi.mock("@/lib/origin-check", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/origin-check")>();
+  return {
+    ...actual,
+    isRateLimited: mocks.isRateLimited,
+    isSameOriginMutationRequest: mocks.isSameOriginMutationRequest,
+  };
+});
 vi.mock("@/lib/beta-invite", () => ({ inviteEmail: mocks.inviteEmail }));
 vi.mock("@/lib/push-fanout", () => ({ fanoutToTopic: mocks.fanoutToTopic }));
 
@@ -33,6 +41,7 @@ function dbReturning(inserted: Array<{ id: string }>) {
 describe("POST /api/beta/email", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.isSameOriginMutationRequest.mockReturnValue(true);
     mocks.isRateLimited.mockResolvedValue(false);
     mocks.fanoutToTopic.mockResolvedValue(undefined);
   });

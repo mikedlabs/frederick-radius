@@ -27,12 +27,21 @@ import {
 } from "@/lib/reports/categories";
 import { statusForSubmission, expiresAtFor, sanitizeText, textSpamConcern } from "@/lib/reports/logic";
 import { getCommunityReports } from "@/lib/loaders/communityReports";
+import { deleteCommunityReportPhoto } from "@/lib/community-report-photo";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const noStore = () => ({ "Cache-Control": "no-store" });
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+// A 4 MiB image expands to roughly 5.34 MiB as base64. Leave room for the
+// data-URL prefix and report fields without accepting an unbounded JSON body.
+const MAX_REPORT_BODY_BYTES = 6 * 1024 * 1024;
 
 /** A submitter with the shared passcode is "trusted" → instant publish. */
 function isTrusted(supplied: unknown): boolean {
@@ -76,17 +85,25 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore() });
+  }
+  // Generous enough for a field collector, but ahead of JSON, Blob, and DB work.
+  if (await isRateLimited(req, "community-reports", 20, 3600)) {
+    return NextResponse.json({ error: "rate-limited" }, { status: 429, headers: noStore() });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
+  const rawBody = await readJsonBodyWithLimit(req, MAX_REPORT_BODY_BYTES);
+  if (!rawBody.ok) {
+    return NextResponse.json(
+      { error: rawBody.error },
+      { status: rawBody.error === "body-too-large" ? 413 : 400, headers: noStore() },
+    );
   }
+  if (typeof rawBody.value !== "object" || rawBody.value === null || Array.isArray(rawBody.value)) {
+    return NextResponse.json({ error: "invalid-body" }, { status: 400, headers: noStore() });
+  }
+  const body = rawBody.value as Record<string, unknown>;
 
   const category = typeof body.category === "string" ? body.category : "";
   if (!isReportCategory(category)) {
@@ -118,6 +135,11 @@ export async function POST(req: NextRequest) {
   // Tips/notes carry no subtype, so they must say SOMETHING.
   if ((category === "tip" || category === "note") && !title && !note) {
     return NextResponse.json({ error: "need-text" }, { status: 400, headers: noStore() });
+  }
+
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
   }
 
   const photo_url = await uploadPhoto(body.photo);
@@ -153,6 +175,10 @@ export async function POST(req: NextRequest) {
       { headers: noStore() },
     );
   } catch {
+    // The Blob upload happens before the database insert. Roll it back when
+    // persistence fails so a rejected submission cannot leave a public,
+    // unreferenced photo behind indefinitely.
+    if (photo_url) await deleteCommunityReportPhoto(photo_url);
     return NextResponse.json({ error: "insert-failed" }, { status: 500, headers: noStore() });
   }
 }

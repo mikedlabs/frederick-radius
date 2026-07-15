@@ -1,79 +1,71 @@
 import type { Metadata } from "next";
-import { BREWERIES, BEER_HISTORY, ALL_BEERS } from "@/data/beers";
+import Link from "next/link";
+import { ArrowRight, Database } from "lucide-react";
+import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
+import BeerGuides from "@/components/beer/BeerGuides";
+import BeerHero from "@/components/beer/BeerHero";
+import BeerPassport from "@/components/beer/BeerPassport";
+import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
+import MyTaps from "@/components/beer/MyTaps";
+import PageBloom from "@/components/ui/PageBloom";
+import { BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
-import BeerFinder from "@/components/beer/BeerFinder";
-import MyTaps from "@/components/beer/MyTaps";
-import BeerRecs from "@/components/beer/BeerRecs";
-import PageBloom from "@/components/ui/PageBloom";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Frederick County beer: find breweries and beers",
+  title: "Frederick beer guide: find your pour",
   description:
-    "Every open Frederick County brewery and their flagship beers. Search, sort A-Z, filter by style, town, and open-now, or browse the map. Save the ones you like.",
+    "A visual guide to 174 signature pours from 17 Frederick County breweries. Match by flavor, save a flight, stamp your brewery passport, and verify availability before you go.",
   alternates: { canonical: "/beer" },
 };
 
 export default function BeerPage() {
-  // Slim the brewery cards (drops the heavy photo/hours blobs, keeps geom +
-  // open_status) so the finder's initial payload stays light.
-  const breweryCards: PlaceCardData[] = BREWERIES.map((b) => clientPlaceBySlug(b.slug))
-    .filter((p): p is PlaceCardData => Boolean(p))
+  // The complete explorer is secondary and lazy. Its cards still need a slim
+  // place record for town, map, rating, and user-triggered distance tools.
+  const breweryCards: PlaceCardData[] = BREWERIES.map((brewery) =>
+    clientPlaceBySlug(brewery.slug),
+  )
+    .filter((place): place is PlaceCardData => Boolean(place))
     .map(slimForList);
 
   return (
-    <div className="relative space-y-8">
+    <div className="relative space-y-12 pb-4">
       <PageBloom variant="warm-cool" />
 
-      <header className="space-y-2">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Frederick County beer
-        </p>
-        <h1 className="font-serif text-[32px] font-semibold leading-[1.02] tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Every beer, every brewery
-        </h1>
-        <p className="max-w-[34rem] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {ALL_BEERS.length} beers from {BREWERIES.length} local breweries. Search it, sort it, filter by style or
-          town, see who is open now, or open the map. Save the ones you like to My taps.
-        </p>
-      </header>
+      <BeerHero />
+      <BeerTasteFlight />
 
-      <BeerFinder breweryCards={breweryCards} />
-
-      {/* My taps — saved beers (self-hides when empty) */}
+      {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
 
-      {/* Recommendations from saved beers (self-hides until there's signal) */}
-      <BeerRecs />
+      <BeerPassport />
+      <BeerGuides />
+      <BeerExplorerLauncher breweryCards={breweryCards} />
 
-      {/* History */}
-      <section aria-labelledby="beer-history" className="space-y-4">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>A little history</p>
-          <h2 id="beer-history" className="font-serif text-[22px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Beer in Frederick, then and now
-          </h2>
+      <footer
+        className="flex flex-col gap-3 rounded-[var(--app-radius-md)] border p-4 sm:flex-row sm:items-center sm:justify-between"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-sunken)",
+          color: "var(--app-ink-3)",
+        }}
+      >
+        <div className="flex max-w-[42rem] gap-2.5">
+          <Database className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.9} aria-hidden />
+          <p className="text-[11px] leading-relaxed">
+            July 2026 snapshot, not a live tap list. Beer details came from brewery websites and Untappd. Verify availability and hours with the brewery.
+          </p>
         </div>
-        <p className="max-w-[42rem] text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {BEER_HISTORY.summary}
-        </p>
-        <ol className="relative space-y-4 border-l-2 pl-5" style={{ borderColor: "var(--app-border)" }}>
-          {BEER_HISTORY.milestones.map((m) => (
-            <li key={m.year} className="relative">
-              <span aria-hidden className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2" style={{ background: "var(--app-bg)", borderColor: "var(--app-brand)" }} />
-              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>{m.year}</p>
-              <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>{m.title}</p>
-              <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{m.detail}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <footer className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        Beers shown are each brewery&rsquo;s flagship and signature pours, with Untappd ratings. Taps rotate, so
-        check each brewery&rsquo;s Untappd for what is pouring right now. Gathered July 2026.
+        <Link
+          href="/trust"
+          className="tap-44-y inline-flex shrink-0 items-center gap-1.5 self-start text-[11px] font-semibold sm:self-auto"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          How Radius checks data
+          <ArrowRight className="h-3 w-3" strokeWidth={2.4} aria-hidden />
+        </Link>
       </footer>
     </div>
   );

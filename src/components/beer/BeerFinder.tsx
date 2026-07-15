@@ -6,11 +6,13 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Search, Bookmark, X, ArrowUpRight, Navigation } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { isOpenNow } from "@/lib/hours";
+import { getOpenStatus, isOpenNow } from "@/lib/hours";
+import { isHoursFresh } from "@/lib/hours-freshness";
 import { haversineMeters } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import FilterChip from "@/components/ui/FilterChip";
+import { BeerGlassArt } from "@/components/beer/BeerGlassArt";
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import {
   BREWERIES,
@@ -50,8 +52,10 @@ const AMENITIES: Array<{ key: Amenity; label: string }> = [
 const BEER_ATTRS: Array<{ key: BeerAttr; label: string }> = [
   { key: "session", label: "Session <5%" },
   { key: "strong", label: "Strong 8%+" },
-  { key: "toprated", label: "Top rated" },
+  { key: "toprated", label: "Rated 3.9+" },
 ];
+const INITIAL_BEER_ROWS = 24;
+const INITIAL_BREWERY_ROWS = 12;
 function beerMatchesAttr(b: { abv: number | null; rating: number | null }, a: BeerAttr): boolean {
   if (a === "session") return b.abv != null && b.abv < 5;
   if (a === "strong") return b.abv != null && b.abv >= 8;
@@ -62,7 +66,7 @@ function beerMatchesAttr(b: { abv: number | null; rating: number | null }, a: Be
  * BeerFinder — search, sort, and filter every Frederick County beer and
  * brewery. Filters: style, town, open-now, amenities, ABV band, top-rated;
  * sort A-Z / rating / ABV or Near me (geolocation). Tabs: Beers, Breweries,
- * Map, and Best (leaderboards). Brewery rows carry a photo + Google rating.
+ * Map, and rating snapshots. Brewery rows carry a visual + Google rating.
  */
 export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardData[] }) {
   const [tab, setTab] = useState<Tab>("beers");
@@ -74,12 +78,26 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   const [openNow, setOpenNow] = useState(false);
   const [nearMe, setNearMe] = useState(false);
   const [sort, setSort] = useState<BeerSort>("az");
+  const [visibleBeerRows, setVisibleBeerRows] = useState(INITIAL_BEER_ROWS);
+  const [visibleBreweryRows, setVisibleBreweryRows] = useState(INITIAL_BREWERY_ROWS);
 
   const geo = useGeolocation();
   const position = geo.state.status === "granted" ? geo.state.position : null;
   const query = q.trim().toLowerCase();
 
-  const openSlugs = new Set(breweryCards.filter((p) => isOpenNow(p.open_status)).map((p) => p.slug));
+  // Recompute against the browser's current clock. The server-rendered card
+  // status can be up to one ISR window old even when its stored hours are the
+  // same. Copy below still labels this as stored-hours guidance, not live data.
+  const freshHoursCards = breweryCards.filter(
+    (place) => place.hours_verified && isHoursFresh(place.hours_updated_at),
+  );
+  const hasReliableHoursCoverage = breweryCards.length > 0
+    && freshHoursCards.length / breweryCards.length >= 0.6;
+  const openSlugs = new Set(
+    (hasReliableHoursCoverage ? freshHoursCards : [])
+      .filter((place) => isOpenNow(getOpenStatus(place.hours, { verified: place.hours_verified ?? false })))
+      .map((place) => place.slug),
+  );
   const cardBySlug = new Map(breweryCards.map((p) => [p.slug, p]));
   const tagsBySlug = new Map(breweryCards.map((p) => [p.slug, new Set(p.tags ?? [])]));
   const distBySlug = new Map<string, number>();
@@ -91,11 +109,17 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   for (const b of BREWERIES) townCounts.set(b.town, (townCounts.get(b.town) ?? 0) + 1);
   const towns = [...townCounts.keys()].sort((a, b) => prettyTown(a).localeCompare(prettyTown(b)));
 
+  function resetVisibleCounts() {
+    setVisibleBeerRows(INITIAL_BEER_ROWS);
+    setVisibleBreweryRows(INITIAL_BREWERY_ROWS);
+  }
+
   function toggle<T>(set: Set<T>, setter: (s: Set<T>) => void, v: T) {
     const n = new Set(set);
     if (n.has(v)) n.delete(v);
     else n.add(v);
     setter(n);
+    resetVisibleCounts();
   }
 
   function amenityOk(slug: string): boolean {
@@ -108,7 +132,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
 
   function breweryPasses(b: Brewery): boolean {
     if (town && b.town !== town) return false;
-    if (openNow && !openSlugs.has(b.slug)) return false;
+    if (openNow && hasReliableHoursCoverage && !openSlugs.has(b.slug)) return false;
     if (!amenityOk(b.slug)) return false;
     if (fams.size && !b.beers.some((be) => fams.has(be.family))) return false;
     if (beerAttrs.size && !b.beers.some((be) => [...beerAttrs].every((a) => beerMatchesAttr(be, a)))) return false;
@@ -119,12 +143,16 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   const beers = ALL_BEERS.filter((b) => {
     if (fams.size && !fams.has(b.family)) return false;
     if (town && b.town !== town) return false;
-    if (openNow && !openSlugs.has(b.brewerySlug)) return false;
+    if (openNow && hasReliableHoursCoverage && !openSlugs.has(b.brewerySlug)) return false;
     if (!amenityOk(b.brewerySlug)) return false;
     if (beerAttrs.size && ![...beerAttrs].every((a) => beerMatchesAttr(b, a))) return false;
     if (query && !`${b.name} ${b.style} ${b.breweryName}`.toLowerCase().includes(query)) return false;
     return true;
   }).sort((a, b) => {
+    if (nearMe && position) {
+      const distanceDifference = (distBySlug.get(a.brewerySlug) ?? Infinity) - (distBySlug.get(b.brewerySlug) ?? Infinity);
+      if (distanceDifference !== 0) return distanceDifference;
+    }
     if (sort === "rating") return (b.rating ?? 0) - (a.rating ?? 0) || a.name.localeCompare(b.name);
     if (sort === "abv") return (b.abv ?? 0) - (a.abv ?? 0) || a.name.localeCompare(b.name);
     return a.name.localeCompare(b.name);
@@ -149,8 +177,12 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
     .filter((x): x is { b: Brewery; card: PlaceCardData } => Boolean(x.card?.google_rating))
     .sort((x, y) => (y.card.google_rating ?? 0) - (x.card.google_rating ?? 0))
     .slice(0, 10);
+  const shownBeers = beers.slice(0, visibleBeerRows);
+  const shownBreweries = breweries.slice(0, visibleBreweryRows);
+  const beerRowsRemaining = Math.max(0, beers.length - shownBeers.length);
+  const breweryRowsRemaining = Math.max(0, breweries.length - shownBreweries.length);
 
-  const activeFilters = fams.size + amens.size + beerAttrs.size + (town ? 1 : 0) + (openNow ? 1 : 0) + (nearMe ? 1 : 0);
+  const activeFilters = fams.size + amens.size + beerAttrs.size + (town ? 1 : 0) + (openNow && hasReliableHoursCoverage ? 1 : 0) + (nearMe ? 1 : 0);
 
   function clearAll() {
     setFams(new Set());
@@ -159,10 +191,12 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
     setTown(null);
     setOpenNow(false);
     setNearMe(false);
+    resetVisibleCounts();
   }
   function toggleNearMe() {
     if (!nearMe && !position) geo.request();
     setNearMe((v) => !v);
+    resetVisibleCounts();
   }
 
   // Remember the beer sort across visits.
@@ -177,6 +211,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   }, []);
   function setSortAndStore(s: BeerSort) {
     setSort(s);
+    resetVisibleCounts();
     try {
       window.localStorage.setItem("fr.beer-sort", s);
     } catch {
@@ -192,7 +227,10 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
         <input
           type="search"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            resetVisibleCounts();
+          }}
           placeholder="Search beers, breweries, styles"
           aria-label="Search beers and breweries"
           className="w-full rounded-full border py-2.5 pl-9 pr-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
@@ -201,11 +239,21 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Browse" className="inline-flex w-full rounded-full border p-0.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
-        {([["beers", "Beers"], ["breweries", "Breweries"], ["map", "Map"], ["best", "Best"]] as const).map(([key, label]) => {
+      <div role="group" aria-label="Browse beer guide" className="inline-flex w-full rounded-full border p-0.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+        {([["beers", "Beers"], ["breweries", "Breweries"], ["map", "Map"], ["best", "Ratings"]] as const).map(([key, label]) => {
           const active = tab === key;
           return (
-            <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setTab(key)} className="tap-44-y flex flex-1 items-center justify-center rounded-full px-2 py-1.5 text-[13px] font-semibold transition-colors" style={{ background: active ? "var(--app-bg-elevated)" : "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none" }}>
+            <button
+              key={key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setTab(key);
+                resetVisibleCounts();
+              }}
+              className="tap-44-y flex flex-1 items-center justify-center rounded-full px-2 py-1.5 text-[13px] font-semibold transition-colors"
+              style={{ background: active ? "var(--app-bg-elevated)" : "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none" }}
+            >
               {label}
             </button>
           );
@@ -215,7 +263,16 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       {/* Filters */}
       <div className="space-y-2">
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-          <FilterChip label="Open now" active={openNow} onClick={() => setOpenNow((v) => !v)} />
+          {hasReliableHoursCoverage && (
+            <FilterChip
+              label="Hours say open"
+              active={openNow}
+              onClick={() => {
+                setOpenNow((v) => !v);
+                resetVisibleCounts();
+              }}
+            />
+          )}
           <FilterChip label="Near me" active={nearMe} onClick={toggleNearMe} />
           {BEER_ATTRS.map((a) => (
             <FilterChip key={a.key} label={a.label} active={beerAttrs.has(a.key)} onClick={() => toggle(beerAttrs, setBeerAttrs, a.key)} />
@@ -230,9 +287,24 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
           ))}
         </div>
         <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
-          <FilterChip label="All towns" active={town === null} onClick={() => setTown(null)} />
+          <FilterChip
+            label="All towns"
+            active={town === null}
+            onClick={() => {
+              setTown(null);
+              resetVisibleCounts();
+            }}
+          />
           {towns.map((t) => (
-            <FilterChip key={t} label={prettyTown(t)} active={town === t} onClick={() => setTown(town === t ? null : t)} />
+            <FilterChip
+              key={t}
+              label={prettyTown(t)}
+              active={town === t}
+              onClick={() => {
+                setTown(town === t ? null : t);
+                resetVisibleCounts();
+              }}
+            />
           ))}
           {activeFilters > 0 && (
             <button type="button" onClick={clearAll} className="tap-44-y ml-auto shrink-0 inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
@@ -244,6 +316,11 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
           <p className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             <Navigation className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             {geo.state.status === "denied" ? "Location is off. Turn it on to sort by distance." : geo.state.status === "loading" ? "Getting your location…" : "Allow location to sort by distance."}
+          </p>
+        )}
+        {openNow && hasReliableHoursCoverage && (
+          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            Based on stored hours, not live status. Verify before going.
           </p>
         )}
       </div>
@@ -260,32 +337,70 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       {tab === "beers" && (
         <>
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{beers.length} beers</p>
+            <p aria-live="polite" className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              Showing {shownBeers.length} of {beers.length} beers
+            </p>
             <div className="inline-flex rounded-full border p-0.5 text-[12px]" style={{ borderColor: "var(--app-border)" }}>
-              {([["az", "A–Z"], ["rating", "Top rated"], ["abv", "Strongest"]] as const).map(([k, l]) => (
+              {([["az", "A–Z"], ["rating", "Rating"], ["abv", "Strongest"]] as const).map(([k, l]) => (
                 <button key={k} type="button" onClick={() => setSortAndStore(k)} aria-pressed={sort === k} className="tap-44-y rounded-full px-2.5 py-1 font-semibold" style={{ background: sort === k ? "var(--app-bg-elevated)" : "transparent", color: sort === k ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: sort === k ? "var(--app-edge)" : "none" }}>{l}</button>
               ))}
             </div>
           </div>
           {beers.length === 0 ? <Empty /> : (
-            <ul className="space-y-1.5">
-              {beers.map((b) => (
-                <BeerRow key={`${b.brewerySlug}-${b.name}`} beer={b} openBrewery={openSlugs.has(b.brewerySlug)} dist={position ? distBySlug.get(b.brewerySlug) : undefined} />
-              ))}
-            </ul>
+            <>
+              <ul id="beer-results" className="space-y-1.5">
+                {shownBeers.map((b) => (
+                  <BeerRow key={`${b.brewerySlug}-${b.name}`} beer={b} openBrewery={openSlugs.has(b.brewerySlug)} dist={position ? distBySlug.get(b.brewerySlug) : undefined} />
+                ))}
+              </ul>
+              {beerRowsRemaining > 0 && (
+                <button
+                  type="button"
+                  aria-controls="beer-results"
+                  aria-label={`Show ${Math.min(INITIAL_BEER_ROWS, beerRowsRemaining)} more beers. ${beerRowsRemaining} remaining.`}
+                  onClick={() => setVisibleBeerRows((count) => Math.min(beers.length, count + INITIAL_BEER_ROWS))}
+                  className="tap-44-y mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold"
+                  style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+                >
+                  Show more beers
+                  <span className="font-mono text-[11px] font-normal tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    Next {Math.min(INITIAL_BEER_ROWS, beerRowsRemaining)} · {beerRowsRemaining} remaining
+                  </span>
+                </button>
+              )}
+            </>
           )}
         </>
       )}
 
       {tab === "breweries" && (
         <>
-          <p className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{breweries.length} breweries</p>
+          <p aria-live="polite" className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            Showing {shownBreweries.length} of {breweries.length} breweries
+          </p>
           {breweries.length === 0 ? <Empty /> : (
-            <ul className="space-y-2.5">
-              {breweries.map((b) => (
-                <BreweryRow key={b.slug} brewery={b} open={openSlugs.has(b.slug)} card={cardBySlug.get(b.slug)} activeFams={fams} dist={position ? distBySlug.get(b.slug) : undefined} />
-              ))}
-            </ul>
+            <>
+              <ul id="brewery-results" className="space-y-2.5">
+                {shownBreweries.map((b) => (
+                  <BreweryRow key={b.slug} brewery={b} open={openSlugs.has(b.slug)} card={cardBySlug.get(b.slug)} activeFams={fams} dist={position ? distBySlug.get(b.slug) : undefined} />
+                ))}
+              </ul>
+              {breweryRowsRemaining > 0 && (
+                <button
+                  type="button"
+                  aria-controls="brewery-results"
+                  aria-label={`Show ${Math.min(INITIAL_BREWERY_ROWS, breweryRowsRemaining)} more breweries. ${breweryRowsRemaining} remaining.`}
+                  onClick={() => setVisibleBreweryRows((count) => Math.min(breweries.length, count + INITIAL_BREWERY_ROWS))}
+                  className="tap-44-y mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold"
+                  style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+                >
+                  Show more breweries
+                  <span className="font-mono text-[11px] font-normal tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    Next {Math.min(INITIAL_BREWERY_ROWS, breweryRowsRemaining)} · {breweryRowsRemaining} remaining
+                  </span>
+                </button>
+              )}
+            </>
           )}
         </>
       )}
@@ -301,8 +416,8 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
       {tab === "best" && (
         <div className="space-y-6">
           <section className="space-y-2">
-            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Top-rated beers</h3>
-            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>By Untappd rating{activeFilters > 0 ? ", within your filters" : ""}.</p>
+            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Beer ratings</h3>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>Untappd ratings captured July 2026. Review counts aren&rsquo;t included, so treat the order as a rough signal{activeFilters > 0 ? " within your filters" : ""}.</p>
             {topBeers.length === 0 ? <Empty /> : (
               <ul className="space-y-1.5">
                 {topBeers.map((b, i) => (
@@ -312,8 +427,8 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
             )}
           </section>
           <section className="space-y-2">
-            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Top-rated breweries</h3>
-            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>By Google rating.</p>
+            <h3 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Brewery ratings</h3>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>Google ratings from the latest Radius place record.</p>
             {topBreweries.length === 0 ? <Empty /> : (
               <ul className="space-y-2">
                 {topBreweries.map(({ b, card }, i) => (
@@ -339,10 +454,31 @@ function GoogleRating({ card }: { card?: PlaceCardData }) {
   );
 }
 
-function BreweryPhoto({ url, size = 56 }: { url?: string; size?: number }) {
+function BreweryPhoto({
+  url,
+  size = 56,
+  family = "lager-pilsner",
+}: {
+  url?: string;
+  size?: number;
+  family?: StyleFamily;
+}) {
+  const colors = FAMILY_BY_KEY[family];
   return (
-    <div className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)]" style={{ height: size, width: size, background: "var(--app-bg-sunken)", boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}>
-      {url && <Image src={url} alt="" fill sizes="56px" className="object-cover" />}
+    <div
+      className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)]"
+      style={{
+        height: size,
+        width: size,
+        background: url ? "var(--app-bg-sunken)" : `linear-gradient(145deg, ${colors.base}, ${colors.deep})`,
+        boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)",
+      }}
+    >
+      {url ? (
+        <Image src={url} alt="" fill sizes="56px" className="object-cover" />
+      ) : (
+        <BeerGlassArt family={family} variant="pint" className="h-full w-full p-1" />
+      )}
     </div>
   );
 }
@@ -367,7 +503,7 @@ function BeerRow({ beer, openBrewery, dist, rank }: { beer: BeerWithBrewery; ope
           {" · "}
           <Link href={`/places/${beer.brewerySlug}`} className="hover:underline" style={{ color: "var(--app-ink-2)" }}>{beer.breweryName}</Link>
           {dist != null && <span className="font-mono"> · {miles(dist)}</span>}
-          {openBrewery && <span style={{ color: "var(--app-positive, #1E6B3A)" }}> · open now</span>}
+          {openBrewery && <span style={{ color: "var(--app-positive, #1E6B3A)" }}> · hours say open</span>}
         </p>
       </div>
       {beer.rating != null && (
@@ -386,14 +522,14 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
   return (
     <li className="rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
       <div className="flex gap-3">
-        <BreweryPhoto url={card?.google_photo_url} size={56} />
+        <BreweryPhoto url={card?.google_photo_url} size={56} family={brewery.beers[0]?.family} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
             <Link href={`/places/${brewery.slug}`} className="font-serif text-[17px] font-semibold tracking-tight hover:underline" style={{ color: "var(--app-ink)" }}>
               {brewery.name}
             </Link>
             <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: open ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3)" }}>
-              {open ? "Open now" : prettyTown(brewery.town)}
+              {open ? "Hours say open" : prettyTown(brewery.town)}
             </span>
           </div>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
@@ -425,7 +561,7 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
         <Link href={`/places/${brewery.slug}`} style={{ color: "var(--app-cool)" }}>See brewery</Link>
         {brewery.untappd && (
           <a href={brewery.untappd} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5" style={{ color: "var(--app-cool)" }}>
-            On tap now <ArrowUpRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+            View on Untappd <ArrowUpRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
           </a>
         )}
       </div>
@@ -437,14 +573,14 @@ function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brew
   return (
     <li className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
       <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
-      <BreweryPhoto url={card.google_photo_url} size={44} />
+      <BreweryPhoto url={card.google_photo_url} size={44} family={brewery.beers[0]?.family} />
       <div className="min-w-0 flex-1">
         <Link href={`/places/${brewery.slug}`} className="block truncate text-[14px] font-semibold hover:underline" style={{ color: "var(--app-ink)" }}>{brewery.name}</Link>
         <p className="flex flex-wrap items-center gap-x-2 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           <GoogleRating card={card} />
           <span>· {prettyTown(brewery.town)}</span>
           {dist != null && <span className="font-mono">· {miles(dist)}</span>}
-          {open && <span style={{ color: "var(--app-positive, #1E6B3A)" }}>· open now</span>}
+          {open && <span style={{ color: "var(--app-positive, #1E6B3A)" }}>· hours say open</span>}
         </p>
       </div>
     </li>

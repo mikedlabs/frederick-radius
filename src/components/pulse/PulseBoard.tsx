@@ -457,19 +457,20 @@ export default function PulseBoard({
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] opacity-75">
             <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
             County pulse
-            <span aria-hidden>·</span>
             <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
           <h1 className="mt-3 max-w-[30rem] font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.035em] text-balance sm:text-[42px]">
             {hero.line}
           </h1>
           <p className="mt-3 max-w-[32rem] text-[13.5px] leading-relaxed opacity-80 sm:text-[14px]">{hero.sub}</p>
-          {hero.leadMeta && <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium opacity-70"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
+          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11.5px] font-medium opacity-70"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
           {lead && (
-            <button type="button" onClick={() => openTile(lead.key)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[12.5px] font-semibold transition active:scale-[0.99]" style={{ background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "0 10px 24px -16px rgba(0,0,0,0.75)" }}>
-              {hero.actionLabel ?? "See what this means"}
-              <ArrowRight aria-hidden className="h-4 w-4" />
-            </button>
+            <div className="mt-4">
+              <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[12.5px] font-semibold transition active:scale-[0.99]" style={{ background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "0 10px 24px -16px rgba(0,0,0,0.75)" }}>
+                {hero.actionLabel ?? "See what this means"}
+                <ArrowRight aria-hidden className="h-4 w-4" />
+              </button>
+            </div>
           )}
           <div className="mt-4"><HeroFacts chips={chips} onOpen={openTile} /></div>
           <p className="mt-4 flex items-center gap-1.5 border-t pt-3 text-[10.5px] opacity-60" style={{ borderColor: "rgba(255,255,255,0.16)" }}>

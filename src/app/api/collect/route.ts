@@ -14,12 +14,23 @@
  * a misconfigured deploy can never accept anonymous writes.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { getDb } from "@/lib/db/client";
 import { field_amenities } from "@/lib/db/schema";
 import { isInFrederickCounty } from "@/components/map/constants";
+import {
+  deleteFieldPhoto,
+  isManagedFieldPhoto,
+  parseFieldPhotoDataUrl,
+  type ParsedFieldPhoto,
+} from "@/lib/field-photo";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,39 +39,35 @@ function noStore() {
   return { "Cache-Control": "no-store" };
 }
 
-// Decoded-image size cap (~4 MB) — the client downscales to ~1280px before
-// sending, so a normal photo is far under this; the cap just rejects abuse.
-const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+// A 4 MiB image expands to roughly 5.34 MiB as base64. This leaves room for
+// its data-URL prefix and the remaining fields while bounding retained JSON.
+const MAX_COLLECT_BODY_BYTES = 6 * 1024 * 1024;
+const COLLECT_RATE_LIMIT = 60;
+const COLLECT_RATE_WINDOW_SECONDS = 60 * 60;
+
+type ValidFieldPhoto = Extract<ParsedFieldPhoto, { status: "valid" }>;
+type UploadedPhoto =
+  | { ok: true; url: string }
+  | { ok: false; error: "photo-storage-unavailable" };
 
 /**
- * Upload a base64 data-URL image to blob storage, return its public URL.
- * Returns null when there's no photo, the data URL is malformed/too big, or
- * blob isn't configured (no BLOB_READ_WRITE_TOKEN) / the upload fails — the
- * caller treats a null as "save the point without a photo" rather than failing
- * the whole save.
+ * Upload a previously signature-checked image. If the user supplied a photo,
+ * saving must fail explicitly when Blob is unavailable instead of silently
+ * publishing a point without the photo they expected to attach.
  */
-async function uploadPhoto(raw: unknown): Promise<string | null> {
-  if (typeof raw !== "string" || !raw.startsWith("data:image/")) return null;
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
-  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(raw);
-  if (!m) return null;
-  const ext = m[1] === "image/png" ? "png" : m[1] === "image/webp" ? "webp" : "jpg";
-  let buf: Buffer;
-  try {
-    buf = Buffer.from(m[2], "base64");
-  } catch {
-    return null;
+async function uploadPhoto(photo: ValidFieldPhoto): Promise<UploadedPhoto> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return { ok: false, error: "photo-storage-unavailable" };
   }
-  if (buf.length === 0 || buf.length > MAX_PHOTO_BYTES) return null;
   try {
-    const { url } = await put(`field-photos/${randomUUID()}.${ext}`, buf, {
+    const { url } = await put(`field-photos/${randomUUID()}.${photo.extension}`, photo.bytes, {
       access: "public",
       addRandomSuffix: false,
-      contentType: m[1],
+      contentType: photo.contentType,
     });
-    return url;
+    return { ok: true, url };
   } catch {
-    return null;
+    return { ok: false, error: "photo-storage-unavailable" };
   }
 }
 
@@ -71,20 +78,110 @@ const KINDS = new Set([
   "dog_waste", "dog_water", "outlet", "ev_charging", "restroom", "other",
 ]);
 
-/** Constant-ish-time passcode check. Returns false when no passcode is
- *  configured, so the route is closed by default. */
+/** Constant-time digest comparison. A missing passcode keeps writes closed. */
 function passcodeOk(supplied: unknown): boolean {
   const expected = process.env.COLLECT_PASSCODE;
   if (!expected) return false;
   if (typeof supplied !== "string" || supplied.length === 0) return false;
-  // Length-independent compare to avoid trivially leaking length via timing.
-  const a = supplied;
-  const b = expected;
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  const suppliedDigest = createHash("sha256").update(supplied, "utf8").digest();
+  const expectedDigest = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(suppliedDigest, expectedDigest);
+}
+
+type MutationBodyResult =
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; response: NextResponse };
+
+/** Apply origin, abuse, size, shape, and authentication checks in that order. */
+async function readMutationBody(req: NextRequest): Promise<MutationBodyResult> {
+  if (!isSameOriginMutationRequest(req)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "forbidden-origin" },
+        { status: 403, headers: noStore() },
+      ),
+    };
   }
-  return diff === 0;
+
+  // This runs before reading a multi-megabyte body or touching Blob/Postgres.
+  if (
+    await isRateLimited(
+      req,
+      "collect-write",
+      COLLECT_RATE_LIMIT,
+      COLLECT_RATE_WINDOW_SECONDS,
+    )
+  ) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "rate-limited" },
+        {
+          status: 429,
+          headers: {
+            ...noStore(),
+            "Retry-After": String(COLLECT_RATE_WINDOW_SECONDS),
+          },
+        },
+      ),
+    };
+  }
+
+  const rawBody = await readJsonBodyWithLimit(req, MAX_COLLECT_BODY_BYTES);
+  if (!rawBody.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: rawBody.error },
+        {
+          status: rawBody.error === "body-too-large" ? 413 : 400,
+          headers: noStore(),
+        },
+      ),
+    };
+  }
+  if (typeof rawBody.value !== "object" || rawBody.value === null || Array.isArray(rawBody.value)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "invalid-body" },
+        { status: 400, headers: noStore() },
+      ),
+    };
+  }
+
+  const body = rawBody.value as Record<string, unknown>;
+  if (!passcodeOk(body.passcode)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "bad-passcode" },
+        { status: 401, headers: noStore() },
+      ),
+    };
+  }
+  return { ok: true, body };
+}
+
+function invalidPhotoResponse(photo: Extract<ParsedFieldPhoto, { status: "invalid" }>) {
+  return NextResponse.json(
+    { error: photo.error },
+    { status: photo.error === "photo-too-large" ? 413 : 400, headers: noStore() },
+  );
+}
+
+function storageUnavailableResponse() {
+  return NextResponse.json(
+    { error: "photo-storage-unavailable" },
+    { status: 503, headers: noStore() },
+  );
+}
+
+function matchingPhotoCondition(photoUrl: string | null) {
+  return photoUrl === null
+    ? isNull(field_amenities.photo_url)
+    : eq(field_amenities.photo_url, photoUrl);
 }
 
 export async function GET() {
@@ -118,24 +215,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json(
-      { error: "database-unavailable" },
-      { status: 503, headers: noStore() },
-    );
-  }
-
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
-
-  if (!passcodeOk(body.passcode)) {
-    return NextResponse.json({ error: "bad-passcode" }, { status: 401, headers: noStore() });
-  }
+  const mutation = await readMutationBody(req);
+  if (!mutation.ok) return mutation.response;
+  const { body } = mutation;
 
   const kind = typeof body.kind === "string" ? body.kind : "";
   if (!KINDS.has(kind)) {
@@ -163,9 +245,24 @@ export async function POST(req: NextRequest) {
   const note = clip(body.note, 280);
   const municipality = clip(body.municipality, 80);
   const collected_by = clip(body.collectedBy, 60);
-  // Upload the reference photo (if any) before the insert so its URL lands on
-  // the row. A failed/absent photo never blocks the save.
-  const photo_url = await uploadPhoto(body.photo);
+
+  const parsedPhoto = parseFieldPhotoDataUrl(body.photo);
+  if (parsedPhoto.status === "invalid") return invalidPhotoResponse(parsedPhoto);
+
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json(
+      { error: "database-unavailable" },
+      { status: 503, headers: noStore() },
+    );
+  }
+
+  let photo_url: string | null = null;
+  if (parsedPhoto.status === "valid") {
+    const uploaded = await uploadPhoto(parsedPhoto);
+    if (!uploaded.ok) return storageUnavailableResponse();
+    photo_url = uploaded.url;
+  }
 
   try {
     const [row] = await db
@@ -183,6 +280,10 @@ export async function POST(req: NextRequest) {
       .returning({ id: field_amenities.id });
     return NextResponse.json({ ok: true, id: row?.id, photo_url }, { headers: noStore() });
   } catch {
+    // Blob and Postgres cannot share a transaction. If the insert loses the
+    // race or fails, compensate immediately so the public upload is not left
+    // unreferenced.
+    if (photo_url) await deleteFieldPhoto(photo_url);
     return NextResponse.json({ error: "insert-failed" }, { status: 500, headers: noStore() });
   }
 }
@@ -192,19 +293,10 @@ export async function POST(req: NextRequest) {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PATCH(req: NextRequest) {
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
-  }
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
-  if (!passcodeOk(body.passcode)) {
-    return NextResponse.json({ error: "bad-passcode" }, { status: 401, headers: noStore() });
-  }
+  const mutation = await readMutationBody(req);
+  if (!mutation.ok) return mutation.response;
+  const { body } = mutation;
+
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) {
     return NextResponse.json({ error: "invalid-id" }, { status: 400, headers: noStore() });
@@ -222,54 +314,162 @@ export async function PATCH(req: NextRequest) {
     const t = body.note.trim();
     patch.note = t ? t.slice(0, 280) : null;
   }
-  if (typeof body.photo === "string" && body.photo.startsWith("data:image/")) {
-    const url = await uploadPhoto(body.photo);
-    if (url) patch.photo_url = url;
-  }
-  if (Object.keys(patch).length === 0) {
+
+  const parsedPhoto = parseFieldPhotoDataUrl(body.photo);
+  if (parsedPhoto.status === "invalid") return invalidPhotoResponse(parsedPhoto);
+  if (Object.keys(patch).length === 0 && parsedPhoto.status === "absent") {
     return NextResponse.json({ ok: true, unchanged: true }, { headers: noStore() });
   }
 
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
+  }
+
+  let previousPhoto: string | null | undefined;
+  let uploadedPhoto: string | null = null;
+  if (parsedPhoto.status === "valid") {
+    try {
+      const [existing] = await db
+        .select({ photo_url: field_amenities.photo_url })
+        .from(field_amenities)
+        .where(eq(field_amenities.id, id))
+        .limit(1);
+      if (!existing) {
+        return NextResponse.json({ error: "not-found" }, { status: 404, headers: noStore() });
+      }
+      previousPhoto = existing.photo_url;
+    } catch {
+      return NextResponse.json({ error: "lookup-failed" }, { status: 500, headers: noStore() });
+    }
+
+    const uploaded = await uploadPhoto(parsedPhoto);
+    if (!uploaded.ok) return storageUnavailableResponse();
+    uploadedPhoto = uploaded.url;
+    patch.photo_url = uploaded.url;
+  }
+
   try {
+    const condition =
+      previousPhoto === undefined
+        ? eq(field_amenities.id, id)
+        : and(eq(field_amenities.id, id), matchingPhotoCondition(previousPhoto));
     const rows = await db
       .update(field_amenities)
       .set(patch)
-      .where(eq(field_amenities.id, id))
+      .where(condition)
       .returning({ id: field_amenities.id });
     if (rows.length === 0) {
-      return NextResponse.json({ error: "not-found" }, { status: 404, headers: noStore() });
+      if (uploadedPhoto) await deleteFieldPhoto(uploadedPhoto);
+      return NextResponse.json(
+        { error: previousPhoto === undefined ? "not-found" : "conflict-retry" },
+        { status: previousPhoto === undefined ? 404 : 409, headers: noStore() },
+      );
     }
-    return NextResponse.json({ ok: true, id }, { headers: noStore() });
+
+    let previousPhotoCleanupFailed = false;
+    if (uploadedPhoto && previousPhoto !== undefined && previousPhoto !== uploadedPhoto) {
+      previousPhotoCleanupFailed = !(await deleteFieldPhoto(previousPhoto));
+      if (previousPhotoCleanupFailed) {
+        console.warn("[field-photos] replacement saved but previous Blob cleanup failed");
+      }
+    }
+    return NextResponse.json(
+      {
+        ok: true,
+        id,
+        ...(uploadedPhoto ? { photo_url: uploadedPhoto } : {}),
+        ...(previousPhotoCleanupFailed ? { photo_cleanup_failed: true } : {}),
+      },
+      { headers: noStore() },
+    );
   } catch {
+    if (uploadedPhoto) await deleteFieldPhoto(uploadedPhoto);
     return NextResponse.json({ error: "update-failed" }, { status: 500, headers: noStore() });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  const db = getDb();
-  if (!db) {
-    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
-  }
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
-  if (!passcodeOk(body.passcode)) {
-    return NextResponse.json({ error: "bad-passcode" }, { status: 401, headers: noStore() });
-  }
+  const mutation = await readMutationBody(req);
+  if (!mutation.ok) return mutation.response;
+  const { body } = mutation;
+
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) {
     return NextResponse.json({ error: "invalid-id" }, { status: 400, headers: noStore() });
   }
+
+  const db = getDb();
+  if (!db) {
+    return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
+  }
+
+  let previousPhoto: string | null;
+  try {
+    const [existing] = await db
+      .select({ photo_url: field_amenities.photo_url })
+      .from(field_amenities)
+      .where(eq(field_amenities.id, id))
+      .limit(1);
+    if (!existing) {
+      return NextResponse.json({ error: "not-found" }, { status: 404, headers: noStore() });
+    }
+    previousPhoto = existing.photo_url;
+  } catch {
+    return NextResponse.json({ error: "lookup-failed" }, { status: 500, headers: noStore() });
+  }
+
+  let deleteCondition = and(
+    eq(field_amenities.id, id),
+    matchingPhotoCondition(previousPhoto),
+  );
+
+  if (isManagedFieldPhoto(previousPhoto)) {
+    // Delete the Blob first. If that fails, keep the row and URL so the same
+    // DELETE can safely retry instead of creating an untracked public image.
+    if (!(await deleteFieldPhoto(previousPhoto))) {
+      return NextResponse.json(
+        { error: "photo-cleanup-failed" },
+        { status: 503, headers: noStore() },
+      );
+    }
+
+    try {
+      const cleared = await db
+        .update(field_amenities)
+        .set({ photo_url: null })
+        .where(deleteCondition)
+        .returning({ id: field_amenities.id });
+      if (cleared.length === 0) {
+        return NextResponse.json(
+          { error: "conflict-retry" },
+          { status: 409, headers: noStore() },
+        );
+      }
+      // If the final delete fails, the surviving row no longer points at a
+      // deleted Blob; a retry can remove the now-photo-less row cleanly.
+      deleteCondition = and(
+        eq(field_amenities.id, id),
+        isNull(field_amenities.photo_url),
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "photo-state-cleanup-failed" },
+        { status: 500, headers: noStore() },
+      );
+    }
+  }
+
   try {
     const rows = await db
       .delete(field_amenities)
-      .where(eq(field_amenities.id, id))
+      .where(deleteCondition)
       .returning({ id: field_amenities.id });
     if (rows.length === 0) {
-      return NextResponse.json({ error: "not-found" }, { status: 404, headers: noStore() });
+      return NextResponse.json(
+        { error: "conflict-retry" },
+        { status: 409, headers: noStore() },
+      );
     }
     return NextResponse.json({ ok: true, id }, { headers: noStore() });
   } catch {

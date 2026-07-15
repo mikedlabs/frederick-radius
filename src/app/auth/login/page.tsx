@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { getServerUser } from "@/lib/auth";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import LoginForm from "./LoginForm";
 
 export const metadata: Metadata = {
@@ -31,10 +32,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; email_sent?: string; error?: string }>;
 }) {
   const sp = await searchParams;
-  // Same-origin only (and reject protocol-relative "//evil.com"): an
-  // unvalidated ?next would 302 a signed-in user off-site — an open redirect.
-  const next = sp.next;
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/my-radius";
+  const safeNext = safeRedirectPath(sp.next, "/my-radius");
   const user = await getServerUser();
   if (user) {
     redirect(safeNext);
@@ -93,7 +91,7 @@ export default async function LoginPage({
       )}
 
       <LoginForm
-        next={next && next.startsWith("/") && !next.startsWith("//") ? next : null}
+        next={safeNext}
         initialSentTo={sp.email_sent ?? null}
       />
 

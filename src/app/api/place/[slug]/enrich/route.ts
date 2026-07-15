@@ -4,8 +4,8 @@
  * The 51 curated places are enriched at build time into
  * places-enrichment.json. The ~1,280 DFP places are NOT — they have no
  * photos/hours/rating. This route fills that gap the first time anyone
- * actually opens a place, then caches the result in Next's data cache for
- * 7 days. Idle cost is $0; cost scales only with real usage.
+ * actually opens a place. The response is deliberately no-store: Google
+ * Places content is request-scoped and is not retained in Next's data cache.
  *
  *   GET /api/place/<slug>/enrich  →  { photos, hours, phone, website, ... }
  *
@@ -13,14 +13,15 @@
  * can always treat a response as best-effort and degrade gracefully.
  */
 import { NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
 import { PLACE_BY_SLUG } from "@/data/places";
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import {
   getPlaceDetails,
   resolveAndEnrich,
   type PlaceEnrichment,
+  type GooglePhotoAttribution,
 } from "@/lib/integrations/google-places";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 // Wrong-business quarantine (UX audit P0): these slugs were bound to a
 // DIFFERENT business's Google listing, and the base record's stored
@@ -48,58 +49,66 @@ type EnrichResponse = {
   rating?: number;
   rating_count?: number;
   status?: PlaceEnrichment["business_status"];
+  photo_attributions?: GooglePhotoAttribution[];
+  google_maps_uri?: string;
 };
 
 const EMPTY: EnrichResponse = { photos: [], hours: [] };
 
-/** Cached per-slug for 7 days. The Google fetch inside is the billed call. */
-const enrichSlug = unstable_cache(
-  async (slug: string): Promise<EnrichResponse> => {
-    const p = PLACE_BY_SLUG[slug];
-    if (!p || QUARANTINED.has(slug)) return EMPTY;
+async function enrichSlug(slug: string): Promise<EnrichResponse> {
+  const p = PLACE_BY_SLUG[slug];
+  if (!p || QUARANTINED.has(slug)) return EMPTY;
 
-    const data =
-      p.google_place_id && /^ChIJ/.test(p.google_place_id)
-        ? await getPlaceDetails(p.google_place_id)
-        : await resolveAndEnrich({
-            name: p.name,
-            address: `${p.address}, ${p.city}, MD`,
-            lat: p.geom?.lat,
-            lng: p.geom?.lng,
-          });
+  const data =
+    p.google_place_id && /^ChIJ/.test(p.google_place_id)
+      ? await getPlaceDetails(p.google_place_id)
+      : await resolveAndEnrich({
+          name: p.name,
+          address: `${p.address}, ${p.city}, MD`,
+          lat: p.geom?.lat,
+          lng: p.geom?.lng,
+        });
 
-    if (!data) return EMPTY;
-    return {
-      photos: (data.photo_names ?? []).slice(0, 8).map((n) => photoProxy(n, 800)),
-      hours: data.weekday_hours ?? [],
-      phone: data.phone,
-      website: data.website,
-      rating: data.rating,
-      rating_count: data.user_rating_count,
-      status: data.business_status,
-    };
-  },
-  // SHA-pin the key (isr-3): the Data Cache survives deploys, so a key without
-  // the deploy SHA would serve a stale EnrichResponse SHAPE for up to 7 days
-  // after a projection change (the #509 lesson) — every other cache in the app
-  // is SHA-pinned; this one was the lone exception.
-  ["place-enrich-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 604800, tags: ["place-enrich"] }
-);
+  if (!data) return EMPTY;
+  return {
+    photos: (data.photo_names ?? []).slice(0, 8).map((n) => photoProxy(n, 800)),
+    hours: data.weekday_hours ?? [],
+    phone: data.phone,
+    website: data.website,
+    rating: data.rating,
+    rating_count: data.user_rating_count,
+    status: data.business_status,
+    photo_attributions: data.photo_attributions,
+    google_maps_uri: data.google_maps_uri,
+  };
+}
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  if (!isSameOriginRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  // A place sheet should make at most one enrichment request. Keep the paid
+  // Google path deliberately tighter than image/map browsing.
+  if (await isRateLimited(req, "place-enrich", 30, 60)) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60", "Cache-Control": "private, no-store" },
+    });
+  }
   const { slug } = await params;
   try {
     const data = await enrichSlug(slug);
     return NextResponse.json(data, {
       headers: {
-        "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+        "Cache-Control": "private, no-store, max-age=0",
       },
     });
   } catch {
-    return NextResponse.json(EMPTY);
+    return NextResponse.json(EMPTY, {
+      headers: { "Cache-Control": "private, no-store, max-age=0" },
+    });
   }
 }

@@ -19,10 +19,23 @@
  *
  * Drops to 503 when push isn't configured for this deployment.
  */
-import { NextResponse } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions } from "@/lib/db/schema";
+import {
+  applyPublicTopicChanges,
+  parsePublicTopicChanges,
+  publicPushTopics,
+} from "@/lib/push-topics";
+import {
+  PUSH_BODY_LIMITS,
+  guardPushMutation,
+  guardPushRead,
+  isJsonObject,
+  isRecognizedPushEndpoint,
+  pushJson,
+  readPushJson,
+} from "@/lib/push-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,80 +49,83 @@ export const dynamic = "force-dynamic";
  * subscription isn't found.
  */
 export async function GET(request: Request) {
-  const db = getDb();
-  if (!db) return NextResponse.json({ topics: [] });
+  const guarded = await guardPushRead(request, "push-topics-read", 60, 60);
+  if (guarded) return guarded;
+
   const endpoint = new URL(request.url).searchParams.get("endpoint");
-  if (!endpoint) {
-    return NextResponse.json({ error: "endpoint required" }, { status: 400 });
+  if (!isRecognizedPushEndpoint(endpoint)) {
+    return pushJson({ error: "Valid endpoint required." }, { status: 400 });
   }
+
+  const db = getDb();
+  if (!db) return pushJson({ topics: [] });
   try {
     const rows = await db
       .select({ topics: push_subscriptions.topics })
       .from(push_subscriptions)
       .where(eq(push_subscriptions.endpoint, endpoint))
       .limit(1);
-    return NextResponse.json({ topics: rows[0]?.topics ?? [] });
+    return pushJson({ topics: publicPushTopics(rows[0]?.topics ?? []) });
   } catch (err) {
     console.error("[push/topics GET] failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json({ topics: [] });
+    return pushJson({ topics: [] });
   }
-}
-
-type Body = {
-  endpoint?: string;
-  add?: string[];
-  remove?: string[];
-};
-
-function asStringArray(v: unknown): string[] {
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
 
 export async function POST(request: Request) {
+  const guarded = await guardPushMutation(request, "push-topics-write", 60, 60);
+  if (guarded) return guarded;
+
+  const parsedBody = await readPushJson(request, PUSH_BODY_LIMITS.topics);
+  if (!parsedBody.ok) return parsedBody.response;
+  if (!isJsonObject(parsedBody.value)) {
+    return pushJson({ error: "Invalid request body." }, { status: 400 });
+  }
+  const body = parsedBody.value;
+  if (!isRecognizedPushEndpoint(body.endpoint)) {
+    return pushJson({ error: "Valid endpoint required." }, { status: 400 });
+  }
+  const endpoint = body.endpoint;
+
+  const changes = parsePublicTopicChanges(body.add, body.remove);
+  if (!changes) {
+    return pushJson({ error: "Invalid topic change." }, { status: 400 });
+  }
+  if (changes.add.length === 0 && changes.remove.length === 0) {
+    return pushJson({ error: "Add or remove a topic." }, { status: 400 });
+  }
+
   const db = getDb();
   if (!db) {
-    return NextResponse.json(
+    return pushJson(
       { error: "Push not configured on this deployment." },
       { status: 503 },
     );
-  }
-  let body: Body;
-  try {
-    body = (await request.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
-  }
-  if (!body.endpoint) {
-    return NextResponse.json({ error: "endpoint required" }, { status: 400 });
-  }
-  const toAdd = asStringArray(body.add);
-  const toRemove = asStringArray(body.remove);
-  if (toAdd.length === 0 && toRemove.length === 0) {
-    return NextResponse.json({ error: "add or remove must be a non-empty array" }, { status: 400 });
   }
 
   try {
     const rows = await db
       .select({ topics: push_subscriptions.topics })
       .from(push_subscriptions)
-      .where(eq(push_subscriptions.endpoint, body.endpoint))
+      .where(eq(push_subscriptions.endpoint, endpoint))
       .limit(1);
     if (rows.length === 0) {
-      return NextResponse.json({ error: "subscription not found" }, { status: 404 });
+      return pushJson({ error: "Subscription not found." }, { status: 404 });
     }
-    const current = new Set(rows[0].topics ?? []);
-    for (const t of toAdd) current.add(t);
-    for (const t of toRemove) current.delete(t);
-    const next = [...current];
+    const next = applyPublicTopicChanges(rows[0].topics ?? [], changes);
 
-    await db
+    const updated = await db
       .update(push_subscriptions)
       .set({ topics: next, updated_at: sql`now()`, last_seen_at: sql`now()` })
-      .where(eq(push_subscriptions.endpoint, body.endpoint));
+      .where(eq(push_subscriptions.endpoint, endpoint))
+      .returning({ id: push_subscriptions.id });
+    if (updated.length === 0) {
+      return pushJson({ error: "Subscription not found." }, { status: 404 });
+    }
 
-    return NextResponse.json({ ok: true, topics: next });
+    return pushJson({ ok: true, topics: publicPushTopics(next) });
   } catch (err) {
     console.error("[push/topics] failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: "DB write failed." }, { status: 500 });
+    return pushJson({ error: "DB write failed." }, { status: 500 });
   }
 }

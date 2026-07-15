@@ -8,7 +8,7 @@
  * and classes.
  *
  *   GET /api/ingest/fcpl           (cron, needs CRON_SECRET)
- *   GET /api/ingest/fcpl?dry=1     (fetch + parse + count only, no writes)
+ *   GET /api/ingest/fcpl?dry=1     (auth required; fetch + parse + count only)
  *   GET /api/ingest/fcpl?only=brunswick
  */
 import { NextRequest } from "next/server";
@@ -43,12 +43,12 @@ async function fetchFeed(): Promise<unknown[] | null> {
 }
 
 export async function GET(req: NextRequest) {
+  // A dry run still downloads and parses the full remote feed.
+  const denied = verifyCronAuth(req);
+  if (denied) return denied;
+
   const dry = req.nextUrl.searchParams.get("dry") === "1";
   const only = req.nextUrl.searchParams.get("only");
-  if (!dry) {
-    const denied = verifyCronAuth(req);
-    if (denied) return denied;
-  }
 
   const sql = getSql();
   if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });

@@ -24,6 +24,7 @@ import { formatEventWhen } from "@/lib/events/format"; // data-free module — s
 import PlaceCard from "@/components/place/PlaceCard";
 import LiveDot from "@/components/ui/LiveDot";
 import { haptic } from "@/lib/haptics";
+import { roundCoord } from "@/lib/walkTime";
 
 // Tiny pure helper — was previously imported from lib/connect, but
 // inlining it lets us drop the connect runtime import entirely.
@@ -74,9 +75,13 @@ export default function NearbyNow() {
       return;
     }
     const { lng, lat } = state.position;
+    const approximateLng = roundCoord(lng);
+    const approximateLat = roundCoord(lat);
     const ctrl = new AbortController();
     setLoading(true);
-    fetch(`/api/nearby?lng=${lng}&lat=${lat}&limit=6`, { signal: ctrl.signal })
+    fetch(`/api/nearby?lng=${approximateLng}&lat=${approximateLat}&limit=6`, {
+      signal: ctrl.signal,
+    })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: NearbyContext) => {
         setCtx(data);

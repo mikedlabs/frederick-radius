@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Bookmark, X, ArrowRight } from "lucide-react";
+import { Bookmark, X } from "lucide-react";
 import { useMemo } from "react";
 import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
@@ -29,34 +28,34 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
 
   if (!mounted || beers.length === 0) return null;
 
-  const breweries = [...new Set(beers.map((b) => b.beer.brewerySlug))];
-
   return (
-    <section aria-label="My taps" className="space-y-3">
+    <section
+      aria-label="My taps"
+      className="space-y-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-4"
+      style={{
+        borderColor: "color-mix(in srgb, var(--app-accent) 32%, var(--app-border))",
+        background: "linear-gradient(135deg, var(--app-brand-2), #0d241d)",
+        boxShadow: "var(--app-shadow-2)",
+      }}
+    >
       {heading && (
-        <div className="flex items-baseline gap-2.5">
-          <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
-          <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            My taps
-          </h2>
-          <span className="font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {beers.length}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-accent)" }} aria-hidden />
+            <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-on-brand)" }}>
+              Your saved flight
+            </h2>
+          </div>
+          <span className="rounded-full border border-white/20 px-2.5 py-1 font-mono text-[11px] tabular-nums text-white/75">
+            {beers.length} {beers.length === 1 ? "pour" : "pours"}
           </span>
         </div>
       )}
-      <ul className="space-y-2">
+      <ul className="-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-1">
         {beers.map(({ beer, key }) => (
           <TapRow key={key} beer={beer} savedKey={key} />
         ))}
       </ul>
-      <Link
-        href="/collections/beer-around-frederick"
-        className="inline-flex items-center gap-1.5 text-[13px] font-semibold"
-        style={{ color: "var(--app-brand-press)" }}
-      >
-        Plan a day around these {breweries.length} {breweries.length === 1 ? "brewery" : "breweries"}
-        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-      </Link>
     </section>
   );
 }
@@ -66,8 +65,8 @@ function TapRow({ beer, savedKey }: { beer: BeerWithBrewery; savedKey: string })
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
-      className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-2.5"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      className="flex min-w-[245px] max-w-[290px] snap-start items-center gap-3 rounded-[var(--app-radius-md)] border p-3"
+      style={{ borderColor: "rgba(255,255,255,.14)", background: "var(--app-bg-elevated-solid)" }}
     >
       <span aria-hidden className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: fam.base }} />
       <div className="min-w-0 flex-1">
@@ -79,11 +78,6 @@ function TapRow({ beer, savedKey }: { beer: BeerWithBrewery; savedKey: string })
           {beer.abv != null && ` · ${beer.abv.toFixed(1)}%`} · {beer.breweryName}, {prettyTown(beer.town)}
         </p>
       </div>
-      {beer.rating != null && (
-        <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          ★ {beer.rating.toFixed(2)}
-        </span>
-      )}
       <button
         type="button"
         onClick={remove}

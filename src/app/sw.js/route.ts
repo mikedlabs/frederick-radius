@@ -60,6 +60,36 @@ const STATIC_CACHE = CACHE_VERSION + "-static";
 const IMAGE_CACHE = CACHE_VERSION + "-img";
 const OFFLINE_URL = "/offline";
 
+function cacheControlForbidsStorage(response) {
+  const value = (response.headers.get("cache-control") || "").toLowerCase();
+  return value.includes("private") || value.includes("no-store");
+}
+
+function isCacheableResponse(response) {
+  return Boolean(
+    response &&
+      response.ok &&
+      response.type === "basic" &&
+      !response.redirected &&
+      !cacheControlForbidsStorage(response),
+  );
+}
+
+async function cacheOfflineFallback() {
+  const response = await fetch(OFFLINE_URL, {
+    cache: "reload",
+    credentials: "same-origin",
+  });
+  if (!isCacheableResponse(response)) return;
+
+  // A beta/auth redirect must never be stored under the /offline key.
+  const finalUrl = new URL(response.url);
+  if (finalUrl.origin !== self.location.origin || finalUrl.pathname !== OFFLINE_URL) return;
+
+  const cache = await caches.open(STATIC_CACHE);
+  await cache.put(OFFLINE_URL, response);
+}
+
 self.addEventListener("install", (event) => {
   // Do NOT call skipWaiting() here. We want a freshly deployed SW
   // to enter the "waiting" state so ServiceWorkerRegister can prompt
@@ -69,9 +99,26 @@ self.addEventListener("install", (event) => {
     // Non-fatal: a transient non-200 on /offline during install must not
     // abort the SW install (which would disable offline support). The runtime
     // navigate handler re-fetches /offline on demand.
-    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)).catch(() => {}),
+    cacheOfflineFallback().catch(() => {}),
   );
 });
+
+async function purgeLegacyRuntimeEntries() {
+  // A same-version worker may inherit HTML cached by an older version of this
+  // file. Keep only the explicit offline fallback and immutable build assets.
+  const cache = await caches.open(STATIC_CACHE);
+  const keys = await cache.keys();
+  await Promise.all([
+    ...keys.map((request) => {
+      const pathname = new URL(request.url).pathname;
+      if (pathname === OFFLINE_URL || pathname.startsWith("/_next/static/")) return undefined;
+      return cache.delete(request);
+    }),
+    // Clear any same-version image cache created by the older worker. Public
+    // images will refill; a formerly cacheable personalized image must not.
+    caches.delete(IMAGE_CACHE),
+  ]);
+}
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -84,6 +131,7 @@ self.addEventListener("activate", (event) => {
             .map((k) => caches.delete(k)),
         ),
       )
+      .then(() => purgeLegacyRuntimeEntries())
       .then(() => self.clients.claim()),
   );
 });
@@ -103,28 +151,65 @@ function isImage(req, url) {
   );
 }
 
+const PRIVATE_PATH_PREFIXES = [
+  "/admin",
+  "/auth",
+  "/beta",
+  "/settings",
+  "/my-radius",
+  "/collect",
+  "/business/manage",
+];
+const PUBLIC_IMAGE_API_PREFIXES = ["/api/place-photo", "/api/static-map", "/api/og"];
+const CAPABILITY_QUERY_KEYS = new Set([
+  "code",
+  "token",
+  "key",
+  "secret",
+  "signature",
+  "sig",
+  "endpoint",
+  "passcode",
+  "manage_token",
+]);
+
+function matchesPathPrefix(pathname, prefix) {
+  return pathname === prefix || pathname.startsWith(prefix + "/");
+}
+
+function isSensitiveRequest(request, url) {
+  if (request.headers.has("authorization") || request.cache === "no-store") return true;
+  if (PRIVATE_PATH_PREFIXES.some((prefix) => matchesPathPrefix(url.pathname, prefix))) return true;
+  for (const key of url.searchParams.keys()) {
+    if (CAPABILITY_QUERY_KEYS.has(key.toLowerCase())) return true;
+  }
+
+  // API responses are private by default. Only the three image-proxy routes
+  // are intentionally public and eligible for the image cache.
+  if (
+    url.pathname.startsWith("/api/") &&
+    !PUBLIC_IMAGE_API_PREFIXES.some((prefix) => matchesPathPrefix(url.pathname, prefix))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Bound a cache to its newest MAX entries (FIFO by insertion order; Cache
- * keys() returns insertion order). Navigations and images previously
- * accumulated WITHOUT LIMIT for the life of a deploy: every visited page's
- * full HTML and every photo stayed cached, so a heavy browsing session could
- * quietly grow the origin's storage by tens of MB. Fire-and-forget after
- * each put; never blocks a response.
+ * Bound the public image cache to its newest MAX entries (FIFO by insertion
+ * order; Cache keys() returns insertion order). Fire-and-forget after each
+ * put; never blocks a response.
  */
 function trimCache(name, max) {
   caches.open(name).then(async (cache) => {
     const keys = await cache.keys();
     let excess = keys.length - max;
     for (let i = 0; i < keys.length && excess > 0; i++) {
-      // Never evict the offline fallback page: it must survive any session
-      // length or the offline experience silently dies mid-deploy.
-      if (new URL(keys[i].url).pathname === OFFLINE_URL) continue;
       cache.delete(keys[i]);
       excess--;
     }
   }).catch(() => {});
 }
-const MAX_NAV_ENTRIES = 30;
 const MAX_IMAGE_ENTRIES = 150;
 
 self.addEventListener("fetch", (event) => {
@@ -141,24 +226,20 @@ self.addEventListener("fetch", (event) => {
   // /admin request natively; the admin surface needs no offline support.
   if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) return;
 
-  // 1. Navigations: NETWORK-FIRST. Live content always wins.
+  // 1. Navigations: network-only with one generic offline fallback. Never
+  // persist HTML: a page can vary by login, beta access, cookies, location,
+  // or a capability URL even when its pathname looks public.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((res) => {
-          // Only cache a successful, same-origin (basic) navigation, never a
-          // 4xx/5xx/redirect, or we would replay an error page offline instead
-          // of the offline screen.
-          if (res.ok && res.type === "basic") {
-            const copy = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).then(() => trimCache(STATIC_CACHE, MAX_NAV_ENTRIES + 60)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(async () => (await caches.match(request)) || (await caches.match(OFFLINE_URL))),
+        .catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
     );
     return;
   }
+
+  // Authenticated, personalized, API, and capability-bearing requests never
+  // enter any runtime cache. Let the browser perform its normal network fetch.
+  if (isSensitiveRequest(request, url)) return;
 
   // 2. Build assets (content-hashed, immutable): cache-first.
   if (url.pathname.startsWith("/_next/static/")) {
@@ -167,8 +248,10 @@ self.addEventListener("fetch", (event) => {
         (hit) =>
           hit ||
           fetch(request).then((res) => {
-            const copy = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+            if (isCacheableResponse(res)) {
+              const copy = res.clone();
+              caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+            }
             return res;
           }),
       ),
@@ -183,7 +266,7 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(request);
         const net = fetch(request)
           .then((res) => {
-            if (res && res.status === 200) {
+            if (isCacheableResponse(res)) {
               cache.put(request, res.clone()).then(() => trimCache(IMAGE_CACHE, MAX_IMAGE_ENTRIES)).catch(() => {});
             }
             return res;
@@ -201,6 +284,41 @@ self.addEventListener("fetch", (event) => {
 /* ─────────────────────────────────────────────────────
  * Web Push: opt-in notifications.
  * ───────────────────────────────────────────────────── */
+function hasUnsafeRedirectCharacters(value) {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (value[i] === "\\\\" || code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
+function safeNavigationTarget(raw) {
+  if (typeof raw !== "string") return "/today";
+  if (hasUnsafeRedirectCharacters(raw)) return "/today";
+  const candidate = raw.trim();
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) return "/today";
+
+  let inspected = candidate;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const decoded = decodeURIComponent(inspected);
+      if (decoded === inspected) break;
+      inspected = decoded;
+    } catch {
+      return "/today";
+    }
+  }
+  if (inspected.startsWith("//") || hasUnsafeRedirectCharacters(inspected)) return "/today";
+
+  try {
+    const parsed = new URL(candidate, self.location.origin);
+    if (parsed.origin !== self.location.origin || parsed.pathname.startsWith("//")) return "/today";
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    return "/today";
+  }
+}
+
 self.addEventListener("push", (event) => {
   let payload = {};
   try {
@@ -210,7 +328,7 @@ self.addEventListener("push", (event) => {
   }
   const title = payload.title || "Frederick Radius";
   const body = payload.body || "";
-  const url = payload.url || "/today";
+  const url = safeNavigationTarget(payload.url);
   const options = {
     body,
     icon: payload.icon || "/icons/icon-192.png",
@@ -223,7 +341,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/today";
+  const url = safeNavigationTarget(event.notification.data && event.notification.data.url);
   // Fire-and-forget open ping so the composer can count opens per send.
   const n = event.notification.data && event.notification.data.n;
   if (n) fetch("/api/push/opened?n=" + encodeURIComponent(n), { keepalive: true }).catch(() => {});

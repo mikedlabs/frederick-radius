@@ -14,6 +14,8 @@
 import { meterUsage } from "@/lib/usage-meter";
 import { NextRequest } from "next/server";
 import { MAPBOX_TOKEN, MAPBOX_SERVER_HEADERS } from "@/lib/mapbox";
+import { CATEGORIES } from "@/data/categories";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 // A locator image of a fixed pin never changes; cache hard.
@@ -27,8 +29,22 @@ const BBOX = { south: 39.265, west: -77.7, north: 39.745, east: -77.15 };
 // the route being used as a general-purpose Mapbox renderer.
 const SIZES = new Set(["640x352", "640x280", "320x150"]);
 const ZOOMS = new Set(["14.6"]);
+const PIN_COLORS = new Set([
+  "e14328",
+  ...CATEGORIES.map((category) => category.color.slice(1).toLowerCase()),
+]);
 
 export async function GET(req: NextRequest) {
+  if (!isSameOriginRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (await isRateLimited(req, "static-map", 120, 60)) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
+  }
+
   const sp = req.nextUrl.searchParams;
   const lng = parseFloat(sp.get("lng") || "");
   const lat = parseFloat(sp.get("lat") || "");
@@ -42,12 +58,15 @@ export async function GET(req: NextRequest) {
   if (lat < BBOX.south || lat > BBOX.north || lng < BBOX.west || lng > BBOX.east) {
     return new Response("out of county", { status: 400 });
   }
-  if (!/^[0-9a-f]{6}$/.test(pin) || !SIZES.has(size) || !ZOOMS.has(zoom)) {
+  if (!PIN_COLORS.has(pin) || !SIZES.has(size) || !ZOOMS.has(zoom)) {
     return new Response("bad params", { status: 400 });
   }
+  if (!MAPBOX_TOKEN) return new Response("upstream unavailable", { status: 503 });
 
-  const lngs = lng.toFixed(5);
-  const lats = lat.toFixed(5);
+  // Eleven-meter precision is ample for a locator thumbnail and reduces the
+  // paid CDN cache-key surface by two orders of magnitude.
+  const lngs = lng.toFixed(4);
+  const lats = lat.toFixed(4);
   const upstream =
     `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/` +
     `pin-s+${pin}(${lngs},${lats})/${lngs},${lats},${zoom},0/${size}@2x` +
@@ -58,6 +77,7 @@ export async function GET(req: NextRequest) {
     const r = await fetch(upstream, {
       headers: MAPBOX_SERVER_HEADERS,
       next: { revalidate: 2592000 },
+      signal: AbortSignal.timeout(6_000),
     });
     if (!r.ok) return new Response("upstream", { status: 502 });
     const body = await r.arrayBuffer();

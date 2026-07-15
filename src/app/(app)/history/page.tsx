@@ -9,6 +9,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
+import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/history" },
@@ -455,7 +456,10 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
                 era. The scrubber's earliest layer is 1958, so the link only
                 renders for 1958+ moments — "see this block in 1864" would
                 land on imagery a century late, which breaks the promise. */}
-            {entry.geom && typeof entry.year === "number" && entry.year >= 1958 && (
+            {CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED &&
+              entry.geom &&
+              typeof entry.year === "number" &&
+              entry.year >= 1958 && (
               <Link
                 href={`/from-above/time-machine?lng=${entry.geom.lng}&lat=${entry.geom.lat}&year=${entry.year}&zoom=16.5`}
                 className="inline-flex items-center gap-1 text-[11px] font-semibold"

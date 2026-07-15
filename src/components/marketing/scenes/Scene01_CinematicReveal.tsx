@@ -6,7 +6,7 @@ import { GradientText } from "@/components/ui/gradient-text";
 
 /**
  * SCENE 1: THE CINEMATIC REVEAL
- * A slow-pan cinematic drone shot with minimal overlay data
+ * A slow-pan cinematic reveal with an honest product-status overview
  * Vibe: Confident, quiet luxury
  */
 export default function Scene01_CinematicReveal() {
@@ -48,7 +48,7 @@ export default function Scene01_CinematicReveal() {
                                 Frederick <GradientText>Radius</GradientText>
                             </h1>
                             <p className="text-xl text-gray-400 font-light tracking-wide">
-                                Current Snapshot · {SNAPSHOT.date}
+                                {SNAPSHOT.eyebrow}
                             </p>
                         </motion.div>
 
@@ -59,10 +59,10 @@ export default function Scene01_CinematicReveal() {
                             animate={{ opacity: 1 }}
                             transition={{ delay: 2.5, duration: 1 }}
                         >
-                            <StatCard label="Population" value={SNAPSHOT.population} />
-                            <StatCard label="Active Businesses" value={SNAPSHOT.activeBusinesses} />
-                            <StatCard label="Economic Impact" value={SNAPSHOT.annualImpact} />
-                            <StatCard label="Municipalities" value={SNAPSHOT.municipalities.toString()} />
+                            <StatCard label="Stage" value={SNAPSHOT.stage} />
+                            <StatCard label="Focus" value={SNAPSHOT.focus} />
+                            <StatCard label="Project" value={SNAPSHOT.model} />
+                            <StatCard label="Approach" value={SNAPSHOT.posture} />
                         </motion.div>
 
                         {/* Tagline */}

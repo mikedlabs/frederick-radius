@@ -10,8 +10,9 @@ import ExitChip from "@/components/from-above/ExitChip";
 /**
  * Aerial Time Machine — scrub Frederick's history on a real, pannable map.
  *
- * The City of Frederick publishes 15 years of cached orthoimagery as open
- * ArcGIS MapServers (Aerial_1958 … Aerial_2025). We mount each as a Mapbox
+ * When written public-display permission is recorded, Frederick Radius can
+ * mount the City's cached orthoimagery ArcGIS MapServers (Aerial_1958 …
+ * Aerial_2025) as Mapbox
  * raster source via the ArcGIS `export` endpoint with the `{bbox-epsg-3857}`
  * token (ArcGIS reprojects to Web Mercator on the fly), then crossfade
  * between years with `raster-opacity`. Pan/zoom anywhere in the city and
@@ -100,7 +101,9 @@ export default function AerialTimeMachine() {
           [-77.55, 39.34],
           [-77.27, 39.50],
         ]}
-        attributionControl={false}
+        // Keep Mapbox attribution visible; the City imagery credit remains in
+        // the scrubber below for the raster overlay.
+        attributionControl
         onError={(e) => {
           const src = (e as unknown as { sourceId?: string }).sourceId ?? "";
           const msg = String((e as unknown as { error?: unknown }).error ?? "");

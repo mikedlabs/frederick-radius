@@ -18,7 +18,8 @@ function tierFor(place: PlaceCardData): Tier | null {
   // hand-picked editorial canon (wineries, the curated 50-odd
   // marquee venues). Highest confidence.
   if (place.source === "seed" || place.source === "manual") return "curated";
-  // "Official" — government / county GIS imports.
+  // "Official source" — government / county GIS imports. The qualifier is
+  // important: it describes the record's source, not this app's status.
   if (place.source === "arcgis") return "official";
   // "Confirmed" — Google says it's operational and we've enriched it
   // (rating + hours), so the basics are current. NOTE this is NOT
@@ -42,7 +43,7 @@ const META: Record<Tier, { label: string; color: string; icon: typeof CheckCircl
   curated:   { label: "Hand-picked", color: "var(--app-brand-press)", icon: Sparkles,    tooltip: "We picked this one ourselves." },
   verified:  { label: "Confirmed", color: "var(--app-positive)", icon: CheckCircle2,  tooltip: "Confirmed operational and current. Basics enriched from Google. Not owner-managed." },
   community: { label: "Community", color: "var(--app-cool)", icon: Users,         tooltip: "Submitted by a local or pulled from a community feed. Reliable but not directly verified." },
-  official:  { label: "Official",  color: "var(--app-civic)", icon: Database,      tooltip: "From an official county or government feed." },
+  official:  { label: "Official source", color: "var(--app-civic)", icon: Database, tooltip: "Imported from a government source. The source agency does not operate or endorse Frederick Radius." },
 };
 
 export default function SourceBadge({

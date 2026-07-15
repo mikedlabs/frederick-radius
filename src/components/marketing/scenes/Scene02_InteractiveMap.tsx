@@ -2,18 +2,18 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { DEMOGRAPHICS } from "@/data/city-data-engine";
-import { MapPin, Users, TrendingUp } from "lucide-react";
+import { COMMUNITIES } from "@/data/city-data-engine";
+import { Compass, MapPin } from "lucide-react";
 
 /**
  * SCENE 2: THE INTERACTIVE RADIUS MAP
- * Stylized 3D map of Frederick County with 12 municipality zones
- * Hovering triggers Micro-HUD with unique stats
+ * Stylized community browser. This intentionally avoids presenting the
+ * illustration as a geographic boundary or a live demographic map.
  */
 export default function Scene02_InteractiveMap() {
     const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
 
-    const selected = DEMOGRAPHICS.municipalities.find(m => m.id === selectedMunicipality);
+    const selected = COMMUNITIES.find((community) => community.id === selectedMunicipality);
 
     return (
         <div className="relative w-full h-full bg-gradient-to-b from-[#030014] to-[#0a0118] overflow-hidden">
@@ -25,10 +25,10 @@ export default function Scene02_InteractiveMap() {
                 transition={{ duration: 1 }}
             >
                 <h2 className="text-5xl font-light text-white mb-2 tracking-tight">
-                    The <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">12</span> Communities
+                    Community by <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Community</span>
                 </h2>
                 <p className="text-gray-400 text-lg font-light">
-                    Hover any town to see what&apos;s there
+                    Illustrative coverage preview — not a boundary or population map
                 </p>
             </motion.div>
 
@@ -40,7 +40,7 @@ export default function Scene02_InteractiveMap() {
                     viewBox="0 0 900 700"
                     className="max-w-full"
                 >
-                    {/* County Outline */}
+                    {/* Illustrative frame — intentionally not a county boundary. */}
                     <motion.path
                         d="M 100 150 L 800 150 L 800 550 L 100 550 Z"
                         fill="none"
@@ -51,14 +51,30 @@ export default function Scene02_InteractiveMap() {
                         transition={{ duration: 2, ease: "easeInOut" }}
                     />
 
-                    {/* Municipality Zones */}
-                    {DEMOGRAPHICS.municipalities.map((muni, index) => {
+                    {/* Community previews */}
+                    {COMMUNITIES.map((community, index) => {
                         const x = 150 + (index % 4) * 180;
                         const y = 200 + Math.floor(index / 4) * 120;
-                        const isSelected = selectedMunicipality === muni.id;
+                        const isSelected = selectedMunicipality === community.id;
 
                         return (
-                            <g key={muni.id}>
+                            <g
+                                key={community.id}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Preview ${community.name}`}
+                                className="cursor-pointer outline-none"
+                                onMouseEnter={() => setSelectedMunicipality(community.id)}
+                                onMouseLeave={() => setSelectedMunicipality(null)}
+                                onFocus={() => setSelectedMunicipality(community.id)}
+                                onBlur={() => setSelectedMunicipality(null)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                        event.preventDefault();
+                                        setSelectedMunicipality(community.id);
+                                    }
+                                }}
+                            >
                                 {/* Zone Circle */}
                                 <motion.circle
                                     cx={x}
@@ -67,9 +83,7 @@ export default function Scene02_InteractiveMap() {
                                     fill={isSelected ? "rgba(251, 191, 36, 0.2)" : "rgba(139, 92, 246, 0.1)"}
                                     stroke={isSelected ? "#fbbf24" : "rgba(139, 92, 246, 0.3)"}
                                     strokeWidth={isSelected ? 3 : 2}
-                                    className="cursor-pointer transition-all duration-300"
-                                    onMouseEnter={() => setSelectedMunicipality(muni.id)}
-                                    onMouseLeave={() => setSelectedMunicipality(null)}
+                                    className="transition-all duration-300"
                                     initial={{ scale: 0, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
                                     transition={{ delay: index * 0.1, duration: 0.5 }}
@@ -113,7 +127,7 @@ export default function Scene02_InteractiveMap() {
                                     textAnchor="middle"
                                     className="pointer-events-none font-sans tracking-wide"
                                 >
-                                    {muni.name}
+                                    {community.name}
                                 </text>
                             </g>
                         );
@@ -139,21 +153,21 @@ export default function Scene02_InteractiveMap() {
                                 {selected.name}
                             </h3>
                             <p className="text-sm text-gray-400 uppercase tracking-wider">
-                                {selected.type}
+                                Community preview
                             </p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <MicroStat
-                            icon={<Users className="w-4 h-4" />}
-                            label="Population"
-                            value={selected.population.toLocaleString()}
+                            icon={<MapPin className="w-4 h-4" />}
+                            label="Preview"
+                            value={selected.preview}
                         />
                         <MicroStat
-                            icon={<TrendingUp className="w-4 h-4" />}
-                            label="Coordinates"
-                            value={`${selected.lat.toFixed(2)}, ${selected.lng.toFixed(2)}`}
+                            icon={<Compass className="w-4 h-4" />}
+                            label="Map status"
+                            value="Illustrative"
                         />
                     </div>
 

@@ -14,7 +14,24 @@ import { getOpenStatus } from "@/lib/hours";
  * cards never read are dropped. `import type` of PlaceCardData is
  * erased, so this module pulls in zero loader code.
  */
-const ALL_CLIENT_PLACES = CLIENT_RAW as unknown as PlaceCardData[];
+function withoutLegacyGoogleBlobMirror(place: PlaceCardData): PlaceCardData {
+  const photo = place.google_photo_url;
+  if (!photo) return place;
+  try {
+    const url = new URL(photo);
+    if (url.hostname.endsWith(".public.blob.vercel-storage.com")) {
+      return { ...place, google_photo_url: undefined };
+    }
+  } catch {
+    // Same-origin proxy paths are intentionally relative and therefore land
+    // here. Keep them: /api/place-photo is the no-store transport.
+  }
+  return place;
+}
+
+const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as PlaceCardData[]).map(
+  withoutLegacyGoogleBlobMirror,
+);
 
 /** Hide places Google or our manual curation has marked closed. The
  *  server's `isOperational` filter is the source of truth, but client

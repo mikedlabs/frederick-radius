@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
+import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 
 type CompassItem = {
   href: string;
@@ -165,13 +166,17 @@ const PRACTICAL: CompassItem[] = [
 ];
 
 const CURIOSITIES: CompassItem[] = [
-  {
-    href: "/from-above/time-machine",
-    label: "Time Machine",
-    description: "Scrub a block through 65 years of aerial imagery.",
-    icon: History,
-    color: "var(--app-cool)",
-  },
+  ...(CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED
+    ? [
+        {
+          href: "/from-above/time-machine",
+          label: "Time Machine",
+          description: "Scrub a block through 65 years of aerial imagery.",
+          icon: History,
+          color: "var(--app-cool)",
+        } satisfies CompassItem,
+      ]
+    : []),
   {
     href: "/rhythm",
     label: "The Rhythm",

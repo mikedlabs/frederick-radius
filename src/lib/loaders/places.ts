@@ -10,6 +10,7 @@ import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
@@ -157,6 +158,7 @@ type Enrichment = {
   rating?: number;
   user_rating_count?: number;
   photo_names?: string[];
+  photo_attributions?: GooglePhotoAttribution[];
   phone?: string;
   website?: string;
   lat?: number;
@@ -165,6 +167,10 @@ type Enrichment = {
   editorial_summary?: string;
   review_snippet?: string;
   review_author?: string;
+  review_author_uri?: string;
+  review_author_photo_uri?: string;
+  review_google_maps_uri?: string;
+  google_maps_uri?: string;
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
@@ -409,6 +415,9 @@ export type PlaceEnriched = Omit<Provenance, "source"> & {
   google_photo_url?: string;
   /** All proxied photo URLs (key-safe), for galleries */
   google_photos?: string[];
+  /** Google-supplied author/source metadata for the photos above. */
+  google_photo_attribution?: GooglePhotoAttribution;
+  google_photo_attributions?: GooglePhotoAttribution[];
   google_rating?: number;
   google_rating_count?: number;
   /** Google Places primaryType — drives recommendation eligibility
@@ -427,6 +436,10 @@ export type PlaceEnriched = Omit<Provenance, "source"> & {
    *  as labelled UGC, never as our own description/SEO copy. */
   review_snippet?: string;
   review_author?: string;
+  review_author_uri?: string;
+  review_author_photo_uri?: string;
+  review_google_maps_uri?: string;
+  google_maps_uri?: string;
   /** Structured signal extracted (by AI) from editorial_summary +
    *  review_snippet — see scripts/extract-known-for.mjs. Surfaced as
    *  a chip strip on /places/[slug] so visitors get the WHAT (food,
@@ -459,13 +472,6 @@ const SEED_PLACE_VERIFIED_AT = "2026-05-14T00:00:00Z";
 // to a generic gradient.
 const photoProxy = (name: string, w = 800, slug?: string) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
-
-// Blob-backed photos win over the rotating Google proxy. The download
-// script (npm run download:photos) writes src/data/places-photos.json
-// mapping slug → public Blob URL. Imported here so the loader resolves
-// the right source ONCE per place at build time. Slugs not in the map
-// fall through to the proxy.
-import { placePhotoBlob } from "@/lib/places-photos";
 
 export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
@@ -548,6 +554,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     e.business_status === "OPERATIONAL" ? "operational" :
     p.is_operational;
   const photos = (e.photo_names ?? []).slice(0, 8);
+  const photoAttributions = (e.photo_attributions ?? []).filter((credit) =>
+    photos.includes(credit.photo_name),
+  );
   // Pin accuracy: the DFP scrape geocoded ~157 places to the wrong
   // spot (owner verified several on the ground). Google's coordinate
   // for a matched place is authoritative, so snap to it — but ONLY
@@ -614,19 +623,15 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
-    // Photo source resolution:
-    //   1. Blob URL from the downloader (permanent, never rotates)
-    //   2. Live proxy through the API key (rotates every few weeks)
-    //   3. undefined (component falls back to category placeholder)
-    // The Blob URL is the long-term answer; the proxy is the bridge
-    // until the downloader has been run for that slug.
-    google_photo_url:
-      placePhotoBlob(p.slug) ??
-      (photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined),
-    // The detail page's photo gallery still uses the proxy for the
-    // 2nd-8th photos — the downloader only stores the hero for now.
-    // A future pass can extend it to the whole array.
+    // Google photo bytes are never selected from the old permanent Blob
+    // mirror. The same-origin proxy protects the API key while its no-store
+    // response prevents first-party/browser/CDN retention.
+    google_photo_url: photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined,
     google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
+    google_photo_attribution: photoAttributions.find(
+      (credit) => credit.photo_name === photos[0],
+    ),
+    google_photo_attributions: photoAttributions.length > 0 ? photoAttributions : undefined,
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
     primary_type: e.primary_type,
@@ -640,6 +645,10 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     google_verified: Boolean(e.business_status && e.business_status !== "UNKNOWN"),
     review_snippet: e.review_snippet?.trim() || undefined,
     review_author: e.review_author?.trim() || undefined,
+    review_author_uri: e.review_author_uri,
+    review_author_photo_uri: e.review_author_photo_uri,
+    review_google_maps_uri: e.review_google_maps_uri,
+    google_maps_uri: e.google_maps_uri,
     known_for: KNOWN_FOR[p.slug]?.known_for?.length
       ? KNOWN_FOR[p.slug]?.known_for
       : undefined,
@@ -811,11 +820,18 @@ function fieldNoteTip(slug: string): string | undefined {
  * hero (google_photo_url), review_snippet/author, known_for, customers_loved.
  */
 export function slimForList(p: PlaceCardData): PlaceCardData {
-  const { google_photos: _gp, google_hours: _gh, ...rest } = p as PlaceCardData & {
+  const {
+    google_photos: _gp,
+    google_photo_attributions: _gpa,
+    google_hours: _gh,
+    ...rest
+  } = p as PlaceCardData & {
     google_photos?: unknown;
+    google_photo_attributions?: unknown;
     google_hours?: unknown;
   };
   void _gp;
+  void _gpa;
   void _gh;
   return rest as PlaceCardData;
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { nearbyNow } from "@/lib/connect";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { roundCoord } from "@/lib/walkTime";
 
 /**
  * GET /api/nearby?lng=&lat=&limit=&radiusM=
@@ -25,6 +27,16 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 export async function GET(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (await isRateLimited(request, "nearby", 120, 60)) {
+    return new Response("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
+  }
+
   const url = new URL(request.url);
   const lng = Number(url.searchParams.get("lng"));
   const lat = Number(url.searchParams.get("lat"));
@@ -51,8 +63,21 @@ export async function GET(request: Request) {
     ? clamp(Math.floor(radiusRaw), 500, 80_000)
     : undefined;
 
+  // Legitimate clients already snap before sending. Re-round here so a
+  // handcrafted request cannot make an exact location part of the response
+  // or explode the public edge-cache key space.
+  const approximateOrigin = { lng: roundCoord(lng), lat: roundCoord(lat) };
+  if (lng !== approximateOrigin.lng || lat !== approximateOrigin.lat) {
+    const canonical = new URL(request.url);
+    canonical.searchParams.set("lng", String(approximateOrigin.lng));
+    canonical.searchParams.set("lat", String(approximateOrigin.lat));
+    return NextResponse.redirect(canonical, {
+      status: 307,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
   const ctx = nearbyNow(
-    { lng, lat },
+    approximateOrigin,
     { now: new Date(), limit, ...(radiusM ? { radiusM } : {}) },
   );
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
 import { getBetaPulse } from "@/lib/loaders/betaPulse";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -28,8 +29,7 @@ export default async function BetaPage({
   searchParams: Promise<{ next?: string; error?: string; code?: string }>;
 }) {
   const { next, error, code } = await searchParams;
-  const safeNext =
-    next && next.startsWith("/") && !next.startsWith("//") ? next : "/today";
+  const safeNext = safeRedirectPath(next, "/today");
   const prefillCode =
     code && /^[a-z0-9-]{1,40}$/.test(code) ? code : undefined;
 
@@ -192,7 +192,7 @@ export default async function BetaPage({
           className="flex flex-col items-center justify-between gap-2 border-t py-5 text-center text-[11.5px] sm:flex-row sm:text-left"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          <p>Built in downtown Frederick for Frederick County.</p>
+          <p>Made locally in Frederick, Maryland. An independent project.</p>
           <p className="flex items-center gap-3">
             <Link
               href="/privacy"

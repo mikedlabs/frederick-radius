@@ -5,7 +5,7 @@
  * never blocks the others.
  *
  *   GET /api/ingest/civicengage           (cron, needs CRON_SECRET)
- *   GET /api/ingest/civicengage?dry=1     (parse+count only, no writes)
+ *   GET /api/ingest/civicengage?dry=1     (auth required; parse+count only)
  *   GET /api/ingest/civicengage?only=Thurmont
  */
 import { NextRequest } from "next/server";
@@ -51,13 +51,12 @@ async function fetchFeed(url: string): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
-  // Auth: shared cron-secret helper (skip for ?dry=1 local checks)
+  // Dry runs still fetch every upstream feed, so they share the same cron gate.
+  const denied = verifyCronAuth(req);
+  if (denied) return denied;
+
   const dry = req.nextUrl.searchParams.get("dry") === "1";
   const only = req.nextUrl.searchParams.get("only");
-  if (!dry) {
-    const denied = verifyCronAuth(req);
-    if (denied) return denied;
-  }
 
   const sql = getSql();
   if (!sql && !dry) return Response.json({ error: "no database" }, { status: 503 });
