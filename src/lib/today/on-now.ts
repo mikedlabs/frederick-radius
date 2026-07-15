@@ -174,11 +174,17 @@ export function selectOnNowChips(input: {
   events: OnNowEvent[];
   pours: OnNowPour[];
   markets: OnNowMarket[];
+  /** Event slug already headlining elsewhere on the page (the TonightSolo
+   *  card sits two rows above this strip and both rank the same pool, so a
+   *  live headliner appeared TWICE in the first screen). The slot skips it
+   *  and features the next-best live thing instead. */
+  excludeEventSlug?: string | null;
 }): OnNowChip[] {
-  const { now, events, pours, markets } = input;
+  const { now, events, pours, markets, excludeEventSlug } = input;
   const chips: OnNowChip[] = [];
 
-  const event = pickLiveEvent(events, now);
+  const eventPool = excludeEventSlug ? events.filter((e) => e.slug !== excludeEventSlug) : events;
+  const event = pickLiveEvent(eventPool, now);
   if (event) {
     chips.push({
       kind: "event",
@@ -192,7 +198,7 @@ export function selectOnNowChips(input: {
     // No draw is live — fall back honestly to the next one starting soon,
     // with a countdown kicker instead of a "live" claim (and never a utility
     // or routine-program filler).
-    const next = pickNextDraw(events, now);
+    const next = pickNextDraw(eventPool, now);
     if (next) {
       chips.push({
         kind: "event",

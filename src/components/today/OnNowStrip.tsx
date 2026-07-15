@@ -7,6 +7,7 @@ import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
 import { isClosedNow } from "@/lib/hours";
 import { marketsOpenToday } from "@/lib/markets-today";
 import { selectOnNowChips, type OnNowChip, type OnNowPour } from "@/lib/today/on-now";
+import { pickTonightEvent } from "@/lib/today/tonight";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
@@ -72,6 +73,9 @@ export default async function OnNowStrip({ now, eventsPromise }: { now: Date; ev
     events: publicEvents,
     pours: livePoursNow(now),
     markets: markets.map((m) => ({ name: m.name, hours: m.hours })),
+    // TonightSolo (two rows up) already carries the headliner; without this
+    // the same live event printed twice in the first screen.
+    excludeEventSlug: pickTonightEvent(now, publicEvents)?.slug ?? null,
   });
 
   if (chips.length === 0) return null;

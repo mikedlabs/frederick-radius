@@ -128,9 +128,11 @@ export default function TodaysDealsStack({
                         />
                         {availability.label}
                       </span>
-                      <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                        {availability.when}
-                      </span>
+                      {availability.when ? (
+                        <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                          {availability.when}
+                        </span>
+                      ) : null}
                       {deal.terms ? (
                         <span style={{ color: "var(--app-ink-3)" }}>{deal.terms}</span>
                       ) : null}

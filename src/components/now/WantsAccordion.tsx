@@ -375,14 +375,17 @@ export default function WantsAccordion({
 
       {/* The rest — quiet two-column list; tap to promote to the hero. */}
       <div className="grid grid-cols-2 gap-2 pt-0.5">
-        {rest.map((cat) => {
+        {rest.map((cat, i) => {
           const ink = cat.color;
+          // An odd count leaves a lone tile beside an empty cell; the last
+          // one takes the full row instead (a hole reads as a loading bug).
+          const spansRow = rest.length % 2 === 1 && i === rest.length - 1;
           return (
             <button
               key={cat.key}
               type="button"
               onClick={() => promote(cat.key)}
-              className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 text-left"
+              className={`tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 text-left${spansRow ? " col-span-2" : ""}`}
               style={{
                 border: "1px solid var(--app-border)",
                 background: "var(--app-bg-elevated)",
