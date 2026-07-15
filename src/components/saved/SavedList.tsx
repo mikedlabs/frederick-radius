@@ -1002,7 +1002,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             />
             <h2
               className="text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-press)" }}
             >
               Events
             </h2>

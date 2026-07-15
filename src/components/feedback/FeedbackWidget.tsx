@@ -246,7 +246,7 @@ export default function FeedbackWidget() {
             </p>
 
             {phase === "error" && (
-              <p className="text-[13px]" role="status" style={{ color: "var(--app-brand)" }}>
+              <p className="text-[13px]" role="status" style={{ color: "var(--app-brand-press)" }}>
                 {errorText}
               </p>
             )}

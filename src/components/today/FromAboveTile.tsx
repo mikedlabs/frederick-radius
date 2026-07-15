@@ -99,7 +99,7 @@ export default function FromAboveTile() {
         </p>
         <p
           className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold"
-          style={{ color: "var(--app-brand)" }}
+          style={{ color: "var(--app-brand-press)" }}
         >
           Visit miked.store
           <ArrowRight

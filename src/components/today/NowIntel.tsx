@@ -91,7 +91,7 @@ export default async function NowIntel({ now, eventsPromise }: { now: Date; even
             </span>
           )}
           {part.key === "happy" && (
-            <Link href={part.href!} className="font-semibold" style={{ color: "var(--app-brand)" }}>
+            <Link href={part.href!} className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
               {i === 0 ? capFirst(part.text) : part.text}
             </Link>
           )}

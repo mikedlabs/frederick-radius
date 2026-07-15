@@ -24,7 +24,7 @@ export default function Module({
           <Link
             href={href}
             className="inline-flex items-center gap-1 text-xs font-medium tracking-tight"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           </Link>
