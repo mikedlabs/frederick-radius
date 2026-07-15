@@ -260,6 +260,7 @@ function PourCard({
           <BeerGlassArt
             family={beer.family}
             variant={featured ? "tulip" : "pint"}
+            ink="#FBF3E2"
             className={featured ? "h-36 w-24" : "h-28 w-20"}
           />
           <div className="pb-1 text-right text-[#fffaf0]">
