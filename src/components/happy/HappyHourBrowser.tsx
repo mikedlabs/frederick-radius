@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { townAccent } from "@/lib/townAccent";
 import Link from "next/link";
 import Image from "next/image";
-import { Martini } from "lucide-react";
+import { BadgeCheck, Martini } from "lucide-react";
 import DealLines from "@/components/happy/DealLines";
 import { figureCount } from "@/lib/happyHourDeal";
 import type { Hours } from "@/data/places";
@@ -104,7 +104,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
               {endsAt && endsAt < 1440 ? `till ${fmtMin(endsAt)}` : "on now"}
             </span>
           ) : r.verified ? (
-            <span aria-label="verified" title="verified at the source" className="shrink-0 font-mono text-[11px] font-bold leading-none" style={{ color: "var(--app-positive)" }}>✓</span>
+            <BadgeCheck role="img" aria-label="verified at the source" className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-positive)" }} />
           ) : null}
         </div>
         {/* WHEN (accent mono), then the deal as clean clauses (each figure
