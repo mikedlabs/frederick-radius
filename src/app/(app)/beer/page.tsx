@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, Database } from "lucide-react";
 import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
@@ -8,7 +9,6 @@ import BeerPassport from "@/components/beer/BeerPassport";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import { BreweryScenes } from "@/components/beer/BreweryScenes";
 import MyTaps from "@/components/beer/MyTaps";
-import PageBloom from "@/components/ui/PageBloom";
 import { ALL_BEERS, BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
@@ -32,18 +32,26 @@ export default function BeerPage() {
     .map(slimForList);
 
   return (
-    <div className="relative space-y-12 pb-4">
-      <PageBloom variant="warm-cool" />
-
+    <div
+      className="relative space-y-20 pb-4 sm:space-y-24"
+      style={{
+        "--beer-ink": "#101713",
+        "--beer-ink-soft": "#1b2620",
+        "--beer-paper": "#f4efe4",
+        "--beer-copper": "#c98a45",
+        "--beer-copper-light": "#e9bd7d",
+        "--beer-mist": "#d9ddd5",
+      } as CSSProperties}
+    >
       <BeerHero />
-      <BreweryScenes />
       <BeerTasteFlight />
 
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
 
-      <BeerPassport />
+      <BreweryScenes />
       <BeerGuides />
+      <BeerPassport />
       <BeerExplorerLauncher breweryCards={breweryCards} beerCount={ALL_BEERS.length} />
 
       <footer

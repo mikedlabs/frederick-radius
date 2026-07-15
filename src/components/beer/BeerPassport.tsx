@@ -1,14 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
-import { useSyncExternalStore } from "react";
-import {
-  BREWERIES,
-  FAMILY_BY_KEY,
-  type Brewery,
-  type StyleFamily,
-} from "@/data/beers";
+import { ArrowUpRight, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { BREWERIES } from "@/data/beers";
 import { BreweryLogo } from "./BreweryLogo";
 
 const STORAGE_KEY = "fr:beer-passport:v1";
@@ -130,27 +125,12 @@ function toggleVisited(slug: string): void {
   }
 }
 
-function dominantFamily(brewery: Brewery): StyleFamily {
-  const counts = new Map<StyleFamily, number>();
-  let best = brewery.beers[0]?.family ?? "specialty-other";
-  let bestCount = 0;
-  for (const beer of brewery.beers) {
-    const count = (counts.get(beer.family) ?? 0) + 1;
-    counts.set(beer.family, count);
-    if (count > bestCount) {
-      best = beer.family;
-      bestCount = count;
-    }
-  }
-  return best;
-}
-
 function progressLine(count: number): string {
-  if (count === BREWERIES.length) return "County complete. That is one well-used field guide.";
+  if (count === BREWERIES.length) return "You made it across the county.";
   if (count >= 12) return "Nearly the whole county.";
   if (count >= 6) return "A proper Frederick sampler.";
-  if (count > 0) return "The passport is underway.";
-  return "Your first stamp is waiting.";
+  if (count > 0) return "Your county log is underway.";
+  return "Start with the places you already know.";
 }
 
 /**
@@ -159,153 +139,64 @@ function progressLine(count: number): string {
  */
 export default function BeerPassport() {
   const visited = useSyncExternalStore(subscribe, readVisited, readServerSnapshot);
+  const [expanded, setExpanded] = useState(false);
   const visitedSet = new Set(visited);
   const percent = Math.round((visited.length / BREWERIES.length) * 100);
+  const visibleBreweries = expanded ? BREWERIES : BREWERIES.slice(0, 6);
 
   return (
     <section
       aria-labelledby="beer-passport-heading"
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border p-4 sm:p-5"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
+      className="border-y py-7 sm:py-9"
+      style={{ borderColor: "var(--app-border-strong)" }}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-70"
-        style={{
-          background:
-            "radial-gradient(70% 80% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent), transparent 68%)",
-        }}
-      />
+      <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12">
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.17em]" style={{ color: "var(--app-ink-3)" }}>Your county log</p>
+          <h2 id="beer-passport-heading" className="mt-2 max-w-[9ch] font-serif text-[clamp(2.3rem,5vw,3.8rem)] font-semibold leading-[0.94] tracking-[-0.04em]" style={{ color: "var(--beer-ink)" }}>
+            Remember the good rooms.
+          </h2>
+          <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Mark a brewery after you visit. Nothing leaves this device. No account and no location tracking.
+          </p>
 
-      <div className="relative space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Your Frederick passport
-            </p>
-            <h2
-              id="beer-passport-heading"
-              className="font-serif text-[22px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Taprooms you&rsquo;ve visited
-            </h2>
-            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Tap a stamp after a visit. Saved only on this device; no account or location.
-            </p>
-          </div>
-          <div className="shrink-0 text-right" aria-live="polite" aria-atomic="true">
-            <p
-              className="font-mono text-[22px] font-bold leading-none tabular-nums"
-              style={{ color: "var(--app-brand-press)" }}
-            >
-              {visited.length}/{BREWERIES.length}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-              stamped
-            </p>
+          <div className="mt-7" aria-live="polite" aria-atomic="true">
+            <div className="flex items-end justify-between gap-4">
+              <p className="font-serif text-[42px] leading-none tabular-nums" style={{ color: "var(--beer-ink)" }}>{visited.length}<span className="text-[18px] opacity-35">/{BREWERIES.length}</span></p>
+              <p className="pb-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>{progressLine(visited.length)}</p>
+            </div>
+            <div role="progressbar" aria-label={`${visited.length} of ${BREWERIES.length} breweries visited`} aria-valuemin={0} aria-valuemax={BREWERIES.length} aria-valuenow={visited.length} className="mt-3 h-1 overflow-hidden bg-[var(--app-bg-sunken)]">
+              <div className="h-full transition-[width] duration-300" style={{ width: `${percent}%`, background: "var(--beer-copper)" }} />
+            </div>
           </div>
         </div>
 
         <div>
-          <div
-            role="progressbar"
-            aria-label={`${visited.length} of ${BREWERIES.length} breweries visited`}
-            aria-valuemin={0}
-            aria-valuemax={BREWERIES.length}
-            aria-valuenow={visited.length}
-            className="h-1.5 overflow-hidden rounded-full"
-            style={{ background: "var(--app-bg-sunken)" }}
-          >
-            <div
-              className="h-full rounded-full transition-[width] duration-300"
-              style={{
-                width: `${percent}%`,
-                background: "linear-gradient(90deg, var(--app-accent), var(--app-brand))",
-              }}
-            />
-          </div>
-          <p className="mt-1.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            {progressLine(visited.length)}
-          </p>
-        </div>
-
-        <ul className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6" aria-label="Brewery passport stamps">
-          {BREWERIES.map((brewery, index) => {
+          <ul className="grid sm:grid-cols-2" aria-label="Brewery visit log">
+          {visibleBreweries.map((brewery, index) => {
             const isVisited = visitedSet.has(brewery.slug);
-            const family = FAMILY_BY_KEY[dominantFamily(brewery)];
             return (
-              <li key={brewery.slug} className="min-w-0 text-center">
-                <button
-                  type="button"
-                  aria-pressed={isVisited}
-                  aria-label={
-                    isVisited
-                      ? `Remove the visited stamp for ${brewery.name}`
-                      : `Mark ${brewery.name} as visited`
-                  }
-                  onClick={() => toggleVisited(brewery.slug)}
-                  className={`tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16 ${isVisited ? "border-solid" : "border-dashed"}`}
-                  style={{
-                    borderColor: isVisited ? family.deep : "var(--app-border-strong)",
-                    background: isVisited
-                      ? `linear-gradient(145deg, color-mix(in srgb, ${family.deep} 15%, white), color-mix(in srgb, ${family.deep} 7%, white))`
-                      : "var(--app-bg-sunken)",
-                    boxShadow: isVisited
-                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent), inset 0 0 0 3px color-mix(in srgb, white 54%, transparent)`
-                      : "inset 0 0 0 3px var(--app-bg-elevated)",
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute left-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 font-mono text-[7px] font-bold leading-none tabular-nums"
-                    style={{
-                      background: "color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent)",
-                      color: "var(--app-ink-3)",
-                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
-                    }}
-                  >
-                    {String(index + 1).padStart(2, "0")}
+              <li key={brewery.slug} className="grid min-h-[78px] grid-cols-[48px_1fr_42px] items-center gap-3 border-t px-1 py-3 sm:odd:pr-4 sm:even:pl-4" style={{ borderColor: "var(--app-border)" }}>
+                <BreweryLogo brewerySlug={brewery.slug} breweryName={brewery.name} decorative sizes="48px" className="h-12 w-12 rounded-[10px] bg-white object-contain p-1.5 shadow-sm" />
+                <Link href={`/places/${brewery.slug}`} className="group min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]" aria-label={`Open the guide page for ${brewery.name}`}>
+                  <span className="block truncate text-[12px] font-semibold" style={{ color: "var(--beer-ink)" }}>{brewery.name}</span>
+                  <span className="mt-1 flex items-center gap-1 font-mono text-[8px] font-bold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                    {isVisited ? "Visited" : `Guide ${String(index + 1).padStart(2, "0")}`}
+                    <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
                   </span>
-                  <BreweryLogo
-                    brewerySlug={brewery.slug}
-                    breweryName={brewery.name}
-                    decorative
-                    sizes="48px"
-                    className="h-10 w-10 rounded-full bg-white p-1 shadow-sm transition-transform group-hover:scale-[1.04] sm:h-12 sm:w-12"
-                  />
-                  {isVisited ? (
-                    <span
-                      aria-hidden
-                      className="absolute -bottom-0.5 -right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2"
-                      style={{
-                        borderColor: "var(--app-bg-elevated-solid)",
-                        background: family.deep,
-                        color: "white",
-                        boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
-                      }}
-                    >
-                      <Check className="h-3 w-3" strokeWidth={3} />
-                    </span>
-                  ) : null}
-                </button>
-                <Link
-                  href={`/places/${brewery.slug}`}
-                  className="mt-1.5 block text-[10px] font-semibold leading-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                  style={{ color: isVisited ? "var(--app-ink)" : "var(--app-ink-2)" }}
-                  title={brewery.name}
-                  aria-label={`Open the guide page for ${brewery.name}`}
-                >
-                  <span className="line-clamp-2">{brewery.name}</span>
                 </Link>
+                <button type="button" aria-pressed={isVisited} aria-label={isVisited ? `Remove ${brewery.name} from visited breweries` : `Mark ${brewery.name} as visited`} onClick={() => toggleVisited(brewery.slug)} className="tap-44 inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]" style={{ borderColor: isVisited ? "var(--beer-copper)" : "var(--app-border-strong)", background: isVisited ? "var(--beer-copper)" : "transparent", color: isVisited ? "white" : "var(--app-ink-3)" }}>
+                  {isVisited ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden /> : <span className="h-2 w-2 rounded-full border" style={{ borderColor: "currentColor" }} aria-hidden />}
+                </button>
               </li>
             );
           })}
-        </ul>
+          </ul>
+          <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="tap-44-y mt-4 inline-flex items-center gap-2 text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+            {expanded ? "Show fewer breweries" : `Show all ${BREWERIES.length} breweries`}
+          </button>
+        </div>
       </div>
     </section>
   );

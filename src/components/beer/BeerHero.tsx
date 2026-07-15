@@ -1,23 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, BookOpen } from "lucide-react";
+import { ArrowDown, MapPinned, Search } from "lucide-react";
 import { ALL_BEERS, BREWERIES } from "@/data/beers";
-import { BeerGlassArt } from "./BeerGlassArt";
 
-/**
- * Editorial lead for the Frederick beer guide. The aerial is a user-owned
- * local image; the glasswork is inert SVG. No third-party image, rating, tap,
- * or live-status claim is made here.
- */
+const START_POINTS = [
+  {
+    href: "#find-your-pour",
+    label: "Match my taste",
+    detail: "Build a three-pour shortlist",
+    icon: ArrowDown,
+  },
+  {
+    href: "#beer-settings",
+    label: "Choose the setting",
+    detail: "Creekside, city, farm, or detour",
+    icon: MapPinned,
+  },
+  {
+    href: "#all-beer",
+    label: "Search everything",
+    detail: `${ALL_BEERS.length} pours by style, brewery, or town`,
+    icon: Search,
+  },
+] as const;
+
+/** Cinematic, choice-led entry to the county beer guide. */
 export default function BeerHero() {
   return (
     <section
       aria-labelledby="beer-hero-title"
-      className="relative isolate min-h-[620px] overflow-hidden rounded-[var(--app-radius-xl)] border sm:min-h-[570px] lg:min-h-[540px]"
+      className="relative isolate min-h-[650px] overflow-hidden rounded-[30px] border sm:min-h-[610px] lg:min-h-[590px]"
       style={{
-        borderColor: "color-mix(in srgb, var(--app-accent) 44%, var(--app-border))",
-        background: "var(--app-brand-2)",
-        boxShadow: "var(--app-elev-3), var(--app-edge), var(--app-hi)",
+        borderColor: "rgba(226, 194, 144, 0.26)",
+        background: "var(--beer-ink)",
+        boxShadow: "0 28px 80px rgba(24, 28, 23, 0.24)",
       }}
     >
       <Image
@@ -26,136 +42,88 @@ export default function BeerHero() {
         fill
         priority
         sizes="(min-width: 1280px) 1152px, (min-width: 768px) calc(100vw - 64px), calc(100vw - 32px)"
-        className="object-cover object-[58%_center]"
-      />
-
-      {/* A hard editorial grade protects text contrast while leaving the real
-          city lights legible. It intentionally avoids the generic mesh/blob
-          treatment retired elsewhere in the design system. */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,25,21,0.95)_0%,rgba(8,25,21,0.80)_52%,rgba(8,25,21,0.54)_100%)] lg:bg-[linear-gradient(90deg,rgba(8,25,21,0.97)_0%,rgba(8,25,21,0.90)_43%,rgba(8,25,21,0.45)_76%,rgba(8,25,21,0.30)_100%)]"
+        className="object-cover object-[61%_center]"
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[rgba(5,17,14,0.88)] to-transparent lg:h-1/2"
+        className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,15,12,0.50)_0%,rgba(9,15,12,0.80)_58%,rgba(9,15,12,0.98)_100%)] lg:bg-[linear-gradient(90deg,rgba(9,15,12,0.97)_0%,rgba(9,15,12,0.88)_46%,rgba(9,15,12,0.38)_76%,rgba(9,15,12,0.52)_100%)]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-[0.14] mix-blend-soft-light [background-image:radial-gradient(rgba(255,255,255,.7)_0.55px,transparent_0.55px)] [background-size:5px_5px]"
       />
 
-      <div className="relative z-10 grid min-h-[620px] grid-rows-[auto_1fr] sm:min-h-[570px] lg:min-h-[540px] lg:grid-cols-[minmax(0,1.12fr)_minmax(300px,0.88fr)] lg:grid-rows-1">
-        <div className="flex flex-col justify-center px-5 pb-2 pt-7 sm:px-9 sm:pb-5 sm:pt-10 lg:px-12 lg:py-12">
-          <p
-            className="eyebrow flex items-center gap-2"
-            style={{ color: "color-mix(in srgb, var(--app-accent) 72%, white)" }}
-          >
-            <span
-              aria-hidden
-              className="h-px w-7"
-              style={{ background: "color-mix(in srgb, var(--app-accent) 72%, white)" }}
-            />
-            Frederick County beer guide
-          </p>
-
-          <h1
-            id="beer-hero-title"
-            className="mt-4 max-w-[9ch] font-serif text-[clamp(3.25rem,9vw,5.8rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-balance"
-            style={{ color: "var(--app-on-brand)" }}
-          >
-            Frederick,
-            <br />
-            <span style={{ color: "color-mix(in srgb, var(--app-accent) 74%, white)" }}>
-              on tap.
-            </span>
-          </h1>
-
-          <p
-            className="mt-5 max-w-[34rem] text-[15px] leading-relaxed sm:text-[16px]"
-            style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
-          >
-            {ALL_BEERS.length} signature pours across {BREWERIES.length} brewery guides. Start with what sounds good, not a list.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row min-[430px]:flex-wrap">
-            <Link
-              href="#find-your-pour"
-              className="tap-44-y inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-0"
-              style={{
-                background: "var(--app-bg-elevated-solid)",
-                color: "var(--app-brand-2)",
-                boxShadow: "0 10px 24px rgba(5, 17, 14, 0.28), var(--app-hi)",
-              }}
-            >
-              Find your pour
-              <ArrowDown className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </Link>
-            <Link
-              href="#beer-settings"
-              className="tap-44-y inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold transition-colors hover:bg-white/10"
-              style={{
-                borderColor: "color-mix(in srgb, var(--app-on-brand) 42%, transparent)",
-                background: "rgba(8, 25, 21, 0.28)",
-                color: "var(--app-on-brand)",
-              }}
-            >
-              Browse local beer ideas
-              <BookOpen className="h-4 w-4" strokeWidth={2.1} aria-hidden />
-            </Link>
+      <div className="relative z-10 grid min-h-[650px] sm:min-h-[610px] lg:min-h-[590px] lg:grid-cols-[minmax(0,1fr)_330px]">
+        <div className="flex flex-col justify-between px-5 pb-8 pt-7 sm:px-9 sm:pb-10 sm:pt-9 lg:px-12 lg:py-11">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-white/68">
+              Frederick County beer field guide
+            </p>
+            <p className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-white/52 sm:block">
+              Edition 01 · 2026
+            </p>
           </div>
 
-          <p
-            className="mt-5 inline-flex w-fit items-center rounded-full border px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.09em]"
-            style={{
-              borderColor: "color-mix(in srgb, var(--app-accent) 46%, transparent)",
-              background: "rgba(8, 25, 21, 0.48)",
-              color: "color-mix(in srgb, var(--app-on-brand) 78%, transparent)",
-            }}
-          >
-            Signature-pour guide · Verify today&rsquo;s availability before you go.
-          </p>
-        </div>
-
-        <div className="relative min-h-[230px] overflow-hidden sm:min-h-[260px] lg:min-h-0">
-          <div
-            aria-hidden
-            className="sw-m-facet absolute inset-y-4 right-0 w-[88%] border-l opacity-70 lg:inset-y-10 lg:w-full"
-            style={{ borderColor: "rgba(255,255,255,0.18)" }}
-          />
-
-          <div
-            aria-hidden
-            className="absolute right-4 top-3 rotate-2 rounded-[var(--app-radius-sm)] border px-3 py-2 text-right font-mono uppercase sm:right-8 sm:top-7 lg:right-8 lg:top-10"
-            style={{
-              borderColor: "color-mix(in srgb, var(--app-accent) 54%, transparent)",
-              background: "rgba(8, 25, 21, 0.48)",
-              color: "var(--app-on-brand)",
-              boxShadow: "var(--app-edge)",
-            }}
-          >
-            <span className="block text-[9px] tracking-[0.16em] opacity-70">County pour book</span>
-            <span className="mt-0.5 block text-[13px] font-bold tracking-[0.08em]">{BREWERIES.length} brewery guides</span>
+          <div className="max-w-[650px] pb-8 pt-20 sm:pt-24 lg:pb-0 lg:pt-14">
+            <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--beer-copper-light)]">
+              Drink local. Choose well.
+            </p>
+            <h1
+              id="beer-hero-title"
+              className="max-w-[9.5ch] font-serif text-[clamp(3.5rem,9vw,6.8rem)] font-semibold leading-[0.86] tracking-[-0.055em] text-[#f7f0e4] text-balance"
+            >
+              The county,
+              <br />
+              <span className="font-normal italic text-[var(--beer-copper-light)]">by the glass.</span>
+            </h1>
+            <p className="mt-6 max-w-[37rem] text-[15px] leading-relaxed text-white/74 sm:text-[17px]">
+              A sharper way into Frederick beer: start with your taste, the room you want, or the day you have. Not a directory.
+            </p>
           </div>
 
-          <BeerGlassArt
-            family="stout-porter"
-            variant="pint"
-            className="absolute -bottom-8 left-[7%] h-[205px] w-auto -rotate-[8deg] drop-shadow-[0_22px_18px_rgba(3,12,10,0.48)] sm:left-[20%] sm:h-[235px] lg:-bottom-7 lg:left-[2%] lg:h-[285px]"
-          />
-          <BeerGlassArt
-            family="lager-pilsner"
-            variant="pilsner"
-            className="absolute -bottom-7 left-1/2 z-10 h-[245px] w-auto -translate-x-1/2 drop-shadow-[0_26px_20px_rgba(3,12,10,0.55)] sm:h-[280px] lg:-bottom-8 lg:h-[350px]"
-          />
-          <BeerGlassArt
-            family="sour-wild"
-            variant="tulip"
-            className="absolute -bottom-9 right-[5%] h-[215px] w-auto rotate-[7deg] drop-shadow-[0_22px_18px_rgba(3,12,10,0.48)] sm:right-[19%] sm:h-[245px] lg:-bottom-8 lg:right-[1%] lg:h-[300px]"
-          />
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-white/16 pt-5">
+            <Stat value={BREWERIES.length} label="brewery guides" />
+            <Stat value={ALL_BEERS.length} label="signature pours" />
+            <p className="max-w-[18rem] text-[10px] leading-relaxed text-white/46">
+              Editorial guide, not a live tap list. Check today&rsquo;s hours and availability before heading out.
+            </p>
+          </div>
         </div>
+
+        <nav
+          aria-label="Start the Frederick beer guide"
+          className="self-end border-t border-white/16 bg-[rgba(9,15,12,0.78)] p-4 backdrop-blur-xl sm:p-5 lg:m-5 lg:rounded-[22px] lg:border"
+        >
+          <p className="px-2 pb-3 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white/46">
+            Start with one question
+          </p>
+          {START_POINTS.map(({ href, label, detail, icon: Icon }, index) => (
+            <Link
+              key={href}
+              href={href}
+              className="group grid min-h-[72px] grid-cols-[28px_1fr_auto] items-center gap-2 border-t border-white/12 px-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--beer-copper-light)]"
+            >
+              <span className="font-mono text-[10px] tabular-nums text-white/35">0{index + 1}</span>
+              <span className="min-w-0">
+                <span className="block text-[14px] font-semibold">{label}</span>
+                <span className="mt-0.5 block truncate text-[11px] text-white/48">{detail}</span>
+              </span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/18 text-[var(--beer-copper-light)] transition-[transform,background-color] group-hover:translate-x-0.5 group-hover:bg-white/8">
+                <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+              </span>
+            </Link>
+          ))}
+        </nav>
       </div>
-
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/15"
-      />
     </section>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <p className="flex items-baseline gap-2 text-[#f7f0e4]">
+      <span className="font-serif text-[28px] leading-none tabular-nums">{value}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.11em] text-white/48">{label}</span>
+    </p>
   );
 }

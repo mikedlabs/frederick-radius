@@ -33,15 +33,15 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
       aria-label="My taps"
       className="space-y-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-4"
       style={{
-        borderColor: "color-mix(in srgb, var(--app-accent) 32%, var(--app-border))",
-        background: "linear-gradient(135deg, var(--app-brand-2), #0d241d)",
-        boxShadow: "var(--app-shadow-2)",
+        borderColor: "rgba(226, 194, 144, 0.22)",
+        background: "var(--beer-ink)",
+        boxShadow: "0 18px 44px rgba(20,28,23,.16)",
       }}
     >
       {heading && (
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-accent)" }} aria-hidden />
+            <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--beer-copper-light)" }} aria-hidden />
             <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-on-brand)" }}>
               Your saved pours
             </h2>

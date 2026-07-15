@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ChevronUp, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ChevronUp, Search } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 const EXPLORER_ID = "beer-explorer-panel";
@@ -50,12 +50,11 @@ export default function BeerExplorerLauncher({
     <section
       id="all-beer"
       aria-labelledby={open ? "beer-explorer-heading" : "all-beer-heading"}
-      className="scroll-mt-24 overflow-hidden rounded-[var(--app-radius-xl)] border"
+      className="scroll-mt-24 overflow-hidden rounded-[28px] border"
       style={{
-        borderColor: "var(--app-border-strong)",
-        background:
-          "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 58%, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)) 100%)",
-        boxShadow: "var(--app-shadow-1), var(--app-hi)",
+        borderColor: open ? "var(--app-border-strong)" : "rgba(226, 194, 144, 0.24)",
+        background: open ? "var(--app-bg-elevated)" : "var(--beer-ink)",
+        boxShadow: open ? "var(--app-shadow-1)" : "0 22px 58px rgba(20,28,23,.18)",
       }}
     >
       <div id={EXPLORER_ID} hidden={!open} className="space-y-5 p-4 sm:p-5">
@@ -96,33 +95,20 @@ export default function BeerExplorerLauncher({
         </div>
       </div>
 
-      <div hidden={open} className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
-        <div className="flex gap-3.5">
-          <span
-            aria-hidden
-            className="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-accent) 18%, transparent)",
-              color: "var(--app-accent-press)",
-            }}
-          >
-            <SlidersHorizontal className="h-5 w-5" strokeWidth={2} />
-          </span>
-          <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Looking for something specific?
+      <div hidden={open} className="grid gap-7 p-6 sm:grid-cols-[1fr_auto] sm:items-end sm:p-9">
+        <div>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.17em] text-white/42">
+              The complete index
             </p>
             <h2
               id="all-beer-heading"
-              className="mt-1 font-serif text-[22px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
+              className="mt-3 max-w-[11ch] font-serif text-[clamp(2.1rem,5vw,3.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-[#f7f0e4]"
             >
-              The complete beer explorer
+              Know exactly what you want?
             </h2>
-            <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Search all {beerCount} beers by name, style, brewery, or town.
+            <p className="mt-3 max-w-xl text-[12px] leading-relaxed text-white/52">
+              Open the full index only when you need it. Search all {beerCount} beers by name, style, brewery, town, strength, or distance.
             </p>
-          </div>
         </div>
 
         <button
@@ -134,11 +120,12 @@ export default function BeerExplorerLauncher({
           }}
           aria-controls={EXPLORER_ID}
           aria-expanded="false"
-          className="tactile tactile-interactive tap-44-y inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold text-white sm:w-auto"
-          style={{ background: "var(--app-brand)", boxShadow: "var(--app-shadow-1)" }}
+          className="tap-44-y group inline-flex w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-[13px] font-semibold sm:w-auto"
+          style={{ background: "#f4efe4", color: "var(--beer-ink)" }}
         >
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Search all {beerCount} beers
+          Open the full index
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} aria-hidden />
         </button>
       </div>
     </section>
