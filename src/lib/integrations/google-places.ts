@@ -119,7 +119,7 @@ export function googlePlacesConfigured(): boolean {
  *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
  *                business-status cron, which reads nothing else.
  */
-export type GoogleFieldSet = "status" | "hours" | "lean" | "full";
+export type GoogleFieldSet = "status" | "hours" | "lean" | "full" | "photos";
 
 const FIELDS_FULL = [
   "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
@@ -136,8 +136,13 @@ const FIELDS_HOURS = [
   "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
 ];
 
+// Photo self-heal (place-photo proxy): photo resource names only, so the
+// per-call cost of refreshing a rotated name stays on the smallest SKU
+// that carries photos.
+const FIELDS_PHOTOS = ["id", "photos"];
+
 function fieldsFor(set: GoogleFieldSet): string[] {
-  return set === "status" ? FIELDS_STATUS : set === "hours" ? FIELDS_HOURS : set === "full" ? FIELDS_FULL : FIELDS_LEAN;
+  return set === "status" ? FIELDS_STATUS : set === "hours" ? FIELDS_HOURS : set === "full" ? FIELDS_FULL : set === "photos" ? FIELDS_PHOTOS : FIELDS_LEAN;
 }
 
 type GApiPlace = {
