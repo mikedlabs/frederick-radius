@@ -45,6 +45,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/rivers", title: "River levels", blurb: "Live USGS gauges: Monocacy, Catoctin, Linganore, the Potomac.", keywords: ["river", "rivers", "water level", "gauge", "fishing", "kayak"] },
   { href: "/overhead", title: "Overhead flights", blurb: "Live map of the planes over Frederick right now.", keywords: ["planes", "plane", "flight", "flights", "helicopter"] },
   { href: "/rhythm", title: "The county rhythm", blurb: "Watch 1,200 places wake and sleep; scrub the week hour by hour.", keywords: ["rhythm"] },
+  { href: "/numbers", title: "The county, counted", blurb: "Every figure in the guide, computed from the live dataset.", keywords: ["numbers", "stats", "statistics", "how many", "almanac", "counted"] },
 
   // ── Directories & discovery ──
   { href: "/places", title: "Every place, A to Z", blurb: "The full directory, by category, town, or map.", keywords: ["directory", "all places", "a to z", "listings"] },
