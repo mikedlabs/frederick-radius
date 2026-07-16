@@ -46,7 +46,14 @@ const QUESTIONS = [
     q: "how do I report a pothole",
     must: [{ re: /report|pothole|city|county/i, why: "civic action grounding" }],
   },
-  { q: "where can I park downtown" },
+  {
+    q: "where can I park downtown",
+    must: [{ re: /garage|deck/i, why: "the verified garage dataset is routed in now" }],
+  },
+  {
+    q: "will it rain this weekend",
+    must: [{ re: /rain|shower|storm|sunny|clear|cloud|°|degrees/i, why: "the live NWS forecast is routed in now" }],
+  },
   { q: "best coffee in frederick" },
 ];
 
@@ -106,7 +113,7 @@ for (const { q, must = [] } of QUESTIONS) {
     console.log(`✓ "${q}" (${ms}ms) — ${(d.answer ?? "").slice(0, 90)}...`);
   }
   // Stay well under the 15/min per-IP rate limit.
-  await new Promise((r) => setTimeout(r, 1500));
+  await new Promise((r) => setTimeout(r, 3000));
 }
 
 console.log(failures === 0 ? "\nPASS — every golden question holds." : `\nFAIL — ${failures} question(s) regressed.`);

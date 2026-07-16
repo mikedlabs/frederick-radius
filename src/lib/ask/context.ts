@@ -82,6 +82,20 @@ function easternHour(iso: string): number {
   );
 }
 
+/**
+ * Parking intent — word-boundary tight so "parks near me" (green space)
+ * never trips it; "where can I park", "garage", and "meters" do.
+ */
+export function wantsParking(query: string): boolean {
+  return /\b(parking|garages?|meters?|park\s+(?:my|the|a)\s+car|where\s+(?:can|do|should)\s+(?:i|we)\s+park)\b/i.test(query);
+}
+
+/** Weather intent — explicit weather words only; the events grounder
+ *  already covers "what should we do saturday". */
+export function wantsWeather(query: string): boolean {
+  return /\b(weather|forecast|rain(?:ing|y)?|umbrella|sunny|snow(?:ing)?|storm(?:s|y)?|temperature|humid(?:ity)?|hot out|cold out|heat advisory)\b/i.test(query);
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

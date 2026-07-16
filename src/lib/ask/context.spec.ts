@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -140,6 +140,22 @@ describe("rankForSources", () => {
   it("no meaningful tokens → chronological order untouched", () => {
     const picked = [ev({ slug: "a" }), ev({ slug: "b" })];
     expect(rankForSources(picked, "now?").map((e) => e.slug)).toEqual(["a", "b"]);
+  });
+});
+
+describe("wantsParking / wantsWeather", () => {
+  it("parking questions trip it; green-space 'parks' never does", () => {
+    expect(wantsParking("where can I park downtown")).toBe(true);
+    expect(wantsParking("any parking garages near the creek")).toBe(true);
+    expect(wantsParking("do the meters run on saturday")).toBe(true);
+    expect(wantsParking("best parks for kids")).toBe(false);
+    expect(wantsParking("dog park near me")).toBe(false);
+  });
+  it("weather questions trip it; ordinary plans don't", () => {
+    expect(wantsWeather("will it rain this weekend")).toBe(true);
+    expect(wantsWeather("what's the forecast tomorrow")).toBe(true);
+    expect(wantsWeather("is it going to be sunny")).toBe(true);
+    expect(wantsWeather("what should we do this weekend")).toBe(false);
   });
 });
 
