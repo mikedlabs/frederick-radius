@@ -10,8 +10,12 @@ import {
   ShoppingBag,
   Toilet,
   SquareParking,
+  Droplets,
+  Trash2,
+  Armchair,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { metersToMinutes, type TravelMode } from "@/lib/geo";
@@ -40,6 +44,7 @@ type Group = {
   color: string;
   cats?: string[]; // place categories that satisfy this kind
   amenity?: string; // OR an OSM amenity kind
+  mapGroup?: string;
 };
 
 const GROUPS: Group[] = [
@@ -50,6 +55,9 @@ const GROUPS: Group[] = [
   { key: "art", label: "Art", icon: Palette, color: "#7E2C6F", cats: ["gallery", "museum", "theater"] },
   { key: "shops", label: "Shops", icon: ShoppingBag, color: "var(--app-cool)", cats: ["shopping", "market", "book-store"] },
   { key: "restroom", label: "Restroom", icon: Toilet, color: "var(--app-cool)", amenity: "restroom" },
+  { key: "water", label: "Water", icon: Droplets, color: "var(--app-cool)", amenity: "water", mapGroup: "water" },
+  { key: "trash", label: "Trash", icon: Trash2, color: "var(--app-ink-3)", amenity: "trash", mapGroup: "trash" },
+  { key: "bench", label: "Seat", icon: Armchair, color: "var(--app-ink-3)", amenity: "bench", mapGroup: "seating" },
   { key: "parking", label: "Parking", icon: SquareParking, color: "var(--app-ink-3)", cats: ["parking"] },
 ];
 
@@ -58,6 +66,7 @@ type Reach = {
   name: string;
   minutes: number;
   place?: PlaceCardData;
+  href?: string;
 };
 
 export default function WithinReach({
@@ -99,6 +108,7 @@ export default function WithinReach({
             group,
             name: hit.name ?? group.label,
             minutes: Math.max(1, metersToMinutes(mode, hit.distance_m)),
+            href: `/map?amenity=${group.mapGroup ?? group.key}&at=${hit.lat.toFixed(6)},${hit.lng.toFixed(6)}`,
           });
         }
       }
@@ -117,49 +127,57 @@ export default function WithinReach({
       <ul className="flex flex-wrap gap-1.5">
         {reach.map((r) => {
           const Icon = r.group.icon;
-          const tappable = Boolean(r.place);
-          const Tag = tappable ? "button" : "div";
+          const body = (
+            <>
+              <span
+                className="grid h-5 w-5 shrink-0 place-items-center rounded-full"
+                style={{ background: `color-mix(in srgb, ${r.group.color} 16%, transparent)` }}
+                aria-hidden
+              >
+                <Icon className="h-3 w-3" strokeWidth={2.25} style={{ color: r.group.color }} />
+              </span>
+              <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                {r.group.label}
+              </span>
+              <span
+                className="font-mono text-[12px] font-bold tabular-nums"
+                style={{ color: r.group.color }}
+              >
+                {r.minutes}m
+              </span>
+            </>
+          );
           return (
             <li key={r.group.key}>
-              <Tag
-                type={tappable ? "button" : undefined}
-                title={r.name}
-                onClick={
-                  tappable
-                    ? () => {
-                        haptic("light");
-                        openSheet(r.place!);
-                      }
-                    : undefined
-                }
-                className={`inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition ${
-                  tappable ? "tactile-interactive active:scale-[0.96]" : ""
-                }`}
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <span
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded-full"
-                  style={{ background: `color-mix(in srgb, ${r.group.color} 16%, transparent)` }}
-                  aria-hidden
+              {r.place ? (
+                <button
+                  type="button"
+                  title={r.name}
+                  onClick={() => {
+                    haptic("light");
+                    openSheet(r.place!);
+                  }}
+                  className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
+                  style={{ borderColor: "var(--app-border)" }}
                 >
-                  <Icon className="h-3 w-3" strokeWidth={2.25} style={{ color: r.group.color }} />
-                </span>
-                <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {r.group.label}
-                </span>
-                <span
-                  className="font-mono text-[12px] font-bold tabular-nums"
-                  style={{ color: r.group.color }}
+                  {body}
+                </button>
+              ) : (
+                <Link
+                  href={r.href ?? "/map"}
+                  title={r.name}
+                  className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
+                  style={{ borderColor: "var(--app-border)" }}
                 >
-                  {r.minutes}m
-                </span>
-              </Tag>
+                  {body}
+                </Link>
+              )}
             </li>
           );
         })}
       </ul>
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-        Nearest of each, by {mode === "drive" ? "drive" : mode === "bike" ? "bike" : "walk"} time. Tap to open.
+        Nearest of each, by {mode === "drive" ? "drive" : mode === "bike" ? "bike" : "walk"} time. Tap any one to open.
       </p>
     </section>
   );

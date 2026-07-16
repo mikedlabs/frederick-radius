@@ -10,6 +10,11 @@ import {
   isAdminEmail,
   composeUpdatePush,
 } from "@/lib/business-updates";
+import {
+  hasJsonContentType,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 /**
  * POST /api/business/updates — PUBLISH half of the follow -> reach loop.
@@ -41,6 +46,19 @@ function noStore() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore() });
+  }
+  if (!hasJsonContentType(req)) {
+    return NextResponse.json({ error: "content-type" }, { status: 415, headers: noStore() });
+  }
+  const parsedBody = await readJsonBodyWithLimit(req, 8 * 1_024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.error === "body-too-large" ? 413 : 400, headers: noStore() },
+    );
+  }
   const user = await getServerUser();
   if (!user) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401, headers: noStore() });
@@ -51,14 +69,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "database-unavailable" }, { status: 503, headers: noStore() });
   }
 
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore() });
-  }
-
-  const parsed = parsePublishBody(raw);
+  const parsed = parsePublishBody(parsedBody.value);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400, headers: noStore() });
   }

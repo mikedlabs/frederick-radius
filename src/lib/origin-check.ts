@@ -59,6 +59,16 @@ function isAllowedAppUrl(url: URL): boolean {
   );
 }
 
+function isSameAppOrigin(source: URL, target: URL): boolean {
+  // Next's development server can canonicalize the request URL to localhost
+  // even when the browser opened 127.0.0.1. They are the same loopback app;
+  // keep the port/protocol exact so this exception cannot bridge dev servers.
+  if (LOCAL_HOSTS.has(source.hostname) && LOCAL_HOSTS.has(target.hostname)) {
+    return source.protocol === target.protocol && source.port === target.port;
+  }
+  return source.origin === target.origin;
+}
+
 /**
  * Returns true when the request looks like it came from our own app
  * (server-rendered page or client fetch within the same origin).
@@ -103,8 +113,13 @@ export function isSameOriginMutationRequest(req: Request): boolean {
 
   return supplied.every((value) => {
     const source = parsedUrl(value);
-    return source !== null && isAllowedAppUrl(source) && source.origin === target.origin;
+    return source !== null && isAllowedAppUrl(source) && isSameAppOrigin(source, target);
   });
+}
+
+/** Exact-enough JSON media-type check; accepts the normal optional charset. */
+export function hasJsonContentType(req: Request): boolean {
+  return req.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() === "application/json";
 }
 
 export type LimitedJsonResult =

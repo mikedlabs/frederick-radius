@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
  * Business claim — page-level e2e.
  *
  * Covers the surfaces that don't need a writable database:
- *  - /business/claim renders the form
+ *  - /business/claim honestly explains that owner claiming is not open yet
  *  - /business/claim?place=<slug> accepts the deep-link
  *  - /business/manage/<bogus-token> returns 404 (the no-account
  *    capability check refuses unknown tokens, not just expired ones)
@@ -15,36 +15,18 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("/business/claim", () => {
-  test("renders the form with the four required fields", async ({ page }) => {
+  test("renders the intentional coming-soon state and correction contact", async ({ page }) => {
     await page.goto("/business/claim");
     await expect(
       page.getByRole("heading", { name: /Claim your business/i }),
     ).toBeVisible();
 
-    // Field names from ClaimForm.tsx — the contract the server action
-    // depends on. If a field gets renamed, the integration spec also
-    // breaks; both should change together.
-    await expect(page.locator('input[name="business_name"]')).toBeVisible();
-    await expect(page.locator('input[name="owner_name"]')).toBeVisible();
-    await expect(page.locator('input[name="owner_email"]')).toBeVisible();
-
-    await expect(
-      page.getByRole("button", { name: /Submit claim for review/i }),
-    ).toBeVisible();
-  });
-
-  test("client-side validation blocks the submit with no email", async ({
-    page,
-  }) => {
-    await page.goto("/business/claim");
-    await page.locator('input[name="business_name"]').fill("Acme Test Co.");
-    await page.locator('input[name="owner_name"]').fill("Test Owner");
-    // owner_email left empty
-    await page.getByRole("button", { name: /Submit claim for review/i }).click();
-
-    // The validator should refuse without the email — the form
-    // surfaces a "valid email" or "email is required" message.
-    await expect(page.getByText(/email/i).first()).toBeVisible();
+    await expect(page.getByText("Coming soon", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "hello@frederickradius.app" })).toHaveAttribute(
+      "href",
+      /^mailto:hello@frederickradius\.app/,
+    );
+    await expect(page.locator("form")).toHaveCount(0);
   });
 
   test("accepts a ?place= deep link without crashing", async ({ page }) => {

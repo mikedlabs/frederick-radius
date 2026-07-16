@@ -88,8 +88,24 @@ function extractRoad(text: string): string {
 }
 
 /** Strip CHART's "Action Event @ " / "Incident @ " logging prefix. */
-function cleanDescription(text: string): string {
-  return text.replace(/^(action event|incident|event|road ?work)\s*@\s*/i, "").trim() || text;
+export function cleanChartDescription(text: string): string {
+  const clean = text
+    .replace(/^(action event|incident|event|road ?work)\s*@\s*/i, "")
+    .replace(/\bVOL\s*:\s*Compacted Demand\b/gi, "Heavy traffic")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean || text.trim();
+}
+
+/** Translate CHART machine labels before they reach a human-facing detail row. */
+export function cleanChartLaneStatus(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  const clean = String(value)
+    .trim()
+    .replace(/^VOL\s*:\s*Compacted Demand$/i, "Heavy traffic")
+    .replace(/^VOL\s*:\s*/i, "Traffic volume: ");
+  if (!clean || /^(none|n\/?a|unknown|null|undefined)$/i.test(clean)) return undefined;
+  return clean;
 }
 
 /** CHART sends the literal string "None" (and "N/A", "Unknown") for an unset
@@ -100,6 +116,38 @@ function cleanDirection(v: unknown): string | undefined {
   const s = String(v).trim();
   if (!s || /^(none|n\/?a|unknown|null|undefined)$/i.test(s)) return undefined;
   return s;
+}
+
+const SEVERITY_RANK: Record<ChartIncident["severity"], number> = {
+  Low: 0,
+  Medium: 1,
+  High: 2,
+};
+
+/** CHART occasionally republishes one active road event under a new row id.
+ * Collapse those copies using normalized content + ~100m coordinates, keeping
+ * the more severe/newer record. */
+export function dedupeChartIncidents(incidents: ChartIncident[]): ChartIncident[] {
+  const byKey = new Map<string, ChartIncident>();
+  for (const incident of incidents) {
+    const key = [
+      incident.type,
+      incident.road.toLocaleLowerCase(),
+      (incident.direction ?? "").toLocaleLowerCase(),
+      incident.description.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+      incident.lat.toFixed(3),
+      incident.lng.toFixed(3),
+    ].join("|");
+    const previous = byKey.get(key);
+    if (
+      !previous ||
+      SEVERITY_RANK[incident.severity] > SEVERITY_RANK[previous.severity] ||
+      (incident.severity === previous.severity && Date.parse(incident.started_at) > Date.parse(previous.started_at))
+    ) {
+      byKey.set(key, incident);
+    }
+  }
+  return [...byKey.values()];
 }
 
 export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
@@ -137,7 +185,7 @@ export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
       const action = raw.additionalData?.actionTypes?.[0]?.actionType ?? "";
       const text = `${name} ${action} ${raw.incidentType ?? ""}`;
       if (isMaintenanceNoise(text)) continue;
-      const clean = cleanDescription(name) || action || "Active traffic event";
+      const clean = cleanChartDescription(name) || cleanChartDescription(action) || "Active traffic event";
       const startMs = num(raw.startDateTime);
       incidents.push({
         id: String(raw.id ?? `${clean}-${lat}-${lng}`),
@@ -151,11 +199,11 @@ export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
         lng,
         started_at: startMs ? new Date(startMs).toISOString() : new Date().toISOString(),
         severity: severity(raw, text),
-        lanes_affected: raw.lanesStatus ? String(raw.lanesStatus).trim() || undefined : undefined,
+        lanes_affected: cleanChartLaneStatus(raw.lanesStatus),
       });
     }
-    incidents.sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at));
-    return incidents;
+    return dedupeChartIncidents(incidents)
+      .sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at));
   } catch {
     return [];
   }

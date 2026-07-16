@@ -191,6 +191,34 @@ export type MarcStationBoard = {
   departures: Record<MarcDirection, MarcDeparture[]>;
 };
 
+/** Normalize GTFS's 24-hour HH:MM strings for display. Realtime clocks from
+ * Intl are already 12-hour labels; accepting those too keeps this safe at the
+ * overlay seam and makes every Pulse/MARC surface speak one clock format. */
+export function formatMarcClock(value: string): string {
+  const raw = value.trim();
+  if (/\b(?:AM|PM)\b/i.test(raw)) return raw.replace(/\b(am|pm)\b/i, (v) => v.toUpperCase());
+  const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return raw;
+  const hour24 = Number(match[1]);
+  if (!Number.isInteger(hour24) || hour24 < 0 || hour24 > 23) return raw;
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${match[2]} ${hour24 < 12 ? "AM" : "PM"}`;
+}
+
+/** Display-clock minutes, used only to compare same-day departures. Supports
+ * both raw GTFS 24-hour values and the normalized 12-hour labels. */
+export function marcClockMinutes(value: string): number {
+  const twelve = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (twelve) {
+    let hour = Number(twelve[1]) % 12;
+    if (/pm/i.test(twelve[3])) hour += 12;
+    return hour * 60 + Number(twelve[2]);
+  }
+  const twentyFour = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (twentyFour) return Number(twentyFour[1]) * 60 + Number(twentyFour[2]);
+  return Number.POSITIVE_INFINITY;
+}
+
 /** Format an epoch-seconds instant as an Eastern HH:MM clock label. */
 function etClock(epochSec: number): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -225,15 +253,16 @@ export async function getMarcBoard(
   const day = Number(ymd.slice(6, 8));
 
   const overlay = (dep: NextDeparture, stopId: string): MarcDeparture => {
+    const scheduled = formatMarcClock(dep.t);
     const predictedSec = predictions.get(`${dep.trip}|${stopId}`);
     if (predictedSec == null) {
-      return { scheduled: dep.t, headsign: dep.headsign, live: false };
+      return { scheduled, headsign: dep.headsign, live: false };
     }
     const [hh, mm] = dep.t.split(":").map(Number);
     const scheduledSec = Date.parse(easternWallToUtcISO(year, month, day, hh, mm)) / 1000;
     const delayMin = Math.round((predictedSec - scheduledSec) / 60);
     return {
-      scheduled: dep.t,
+      scheduled,
       headsign: dep.headsign,
       predicted: etClock(predictedSec),
       delayMin,

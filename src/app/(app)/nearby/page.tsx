@@ -4,7 +4,7 @@ import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/p
 import { isCravingPlace } from "@/data/cravings";
 import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
-import { parseScope, scopeTownSlug, SCOPE_COOKIE } from "@/lib/scope";
+import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/nearby" },
@@ -43,21 +43,28 @@ function slim(p: PlaceCardData): PlaceCardData {
 export default async function NowPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; facet?: string; town?: string }>;
+  searchParams: Promise<{ c?: string; facet?: string; town?: string; in?: string }>;
 }) {
-  const { c, facet, town } = await searchParams;
-  // Town seed precedence (UX-02): a shared URL ?town= wins; then the global
-  // browsing SCOPE lens (fr_scope) set from the nav chip; else null, which
-  // lets IP-geo below choose. A "whole county" / "near me" scope carries no
-  // town, so it falls through to the geo seed — exactly right.
+  const { c, facet, town, in: scopeParam } = await searchParams;
+  // Resolve the exact same origin policy as Today/Ask. The legacy ?town=
+  // deep link remains supported, but canonical ?in= and the shared cookie
+  // preserve county and near-me semantics instead of reducing everything to
+  // a nullable town and accidentally letting IP override Whole county.
   const store = await cookies();
-  const scopeTown = scopeTownSlug(parseScope(store.get(SCOPE_COOKIE)?.value ?? null));
   // Edge IP geo: a coarse "which town" seed so a visitor outside Downtown ranks
   // from where they actually are BEFORE granting precise location. Ranking only,
   // never a printed distance. Null (out of area / no header) keeps the Downtown
   // default. Free at the edge; /nearby is already force-dynamic so reading the
-  // request headers costs nothing extra.
+  // request headers costs nothing extra. A rejected/outside-county result is
+  // labeled in the client and never replaced with a hidden Downtown origin.
   const approx = await approxLocation();
+  const scope = parseScope(scopeParam ?? town ?? store.get(SCOPE_COOKIE)?.value ?? null);
+  const context = resolveDecisionContext({
+    scopeRaw: scope,
+    homeMuniRaw: store.get("fr_home_muni")?.value ?? null,
+    approximateOrigin: approx.origin,
+    approximateStatus: approx.status,
+  });
   const places = publicPlaces()
     // Filter to craving-eligible FIRST (the matcher only reads category + name,
     // both on the raw Place), then decorate only that subset instead of
@@ -73,9 +80,15 @@ export default async function NowPage({
       places={places}
       initialCraving={c ?? null}
       initialFacet={facet ?? null}
-      initialTown={town ?? scopeTown ?? null}
-      approxOrigin={approx.origin}
-      approxCity={approx.city}
+      initialTown={context.filterMunicipality}
+      initialScope={scope}
+      approxOrigin={context.origin}
+      approxCity={context.source === "home"
+        ? context.label.replace(/^Ranked from /, "")
+        : context.source === "ip"
+          ? approx.city
+          : null}
+      approxStatus={context.fallbackReason === "outside-county" ? "outside-county" : approx.status}
     />
   );
 }

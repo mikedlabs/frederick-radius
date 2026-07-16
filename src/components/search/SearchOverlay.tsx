@@ -5,7 +5,11 @@ import { track } from "@/lib/track";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
-import type { SearchResult, SearchResultType } from "@/lib/search/index";
+import type {
+  QualifiedSearchIndexResult,
+  SearchResult,
+  SearchResultType,
+} from "@/lib/search/index";
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { haversineMeters, formatDistance } from "@/lib/geo";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
@@ -137,6 +141,7 @@ export default function SearchOverlay({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchMeta, setSearchMeta] = useState<QualifiedSearchIndexResult["meta"] | null>(null);
   // Fetch lifecycle, so a network/API failure never masquerades as "nothing in
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
@@ -163,18 +168,27 @@ export default function SearchOverlay({
     if (!q) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous fetch's results when the user empties the input, so the overlay never shows stale answers
       setResults([]);
+      setSearchMeta(null);
       setStatus("idle");
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       setStatus("loading");
-      fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`, {
+      const params = new URLSearchParams({ q, limit: "12" });
+      if (coords) {
+        // About 11m precision: enough to rank nearby places without sending an
+        // unnecessarily exact location to the search endpoint.
+        params.set("lat", coords.lat.toFixed(4));
+        params.set("lng", coords.lng.toFixed(4));
+      }
+      fetch(`/api/search?${params.toString()}`, {
         signal: ctrl.signal,
       })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-        .then((data: { results: SearchResult[] }) => {
+        .then((data: QualifiedSearchIndexResult) => {
           setResults(data.results ?? []);
+          setSearchMeta(data.meta ?? null);
           setStatus("done");
         })
         .catch((err) => {
@@ -184,6 +198,7 @@ export default function SearchOverlay({
           // failure must never look like local absence.
           if (err && err.name !== "AbortError") {
             setResults([]);
+            setSearchMeta(null);
             setStatus("error");
           }
         });
@@ -192,7 +207,7 @@ export default function SearchOverlay({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [query]);
+  }, [query, coords]);
 
   // Focus the input when overlay opens; also read any ALREADY-granted location
   // fix (no prompt) so place results can show distance. If there's no cached
@@ -263,7 +278,7 @@ export default function SearchOverlay({
         e.preventDefault();
         setActiveIdx((i) => Math.max(0, i - 1));
       } else if (e.key === "Enter") {
-        // Only hijack Enter while the COMBOBOX INPUT owns focus. If the
+        // Only hijack Enter while the SEARCH INPUT owns focus. If the
         // user has Tabbed to the Clear button, the backdrop, or a result
         // link, native activation must win — preventDefault here would
         // cancel it and navigate to results[activeIdx] instead.
@@ -357,18 +372,11 @@ export default function SearchOverlay({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search places, events, towns…"
             aria-label="Search"
-            // Combobox wiring: DOM focus stays here while ArrowUp/Down move
-            // aria-activedescendant across the options, so a screen reader
-            // announces the active result (it was visual-only before).
-            role="combobox"
-            aria-expanded={results.length > 0}
-            // Conditional: a dangling aria-controls to an unrendered listbox
-            // is an aria-valid-attr-value violation.
+            // Results are real links, not ARIA listbox options. Keeping the
+            // input a native search field avoids the invalid pattern of a
+            // focusable link nested inside role=option while retaining the
+            // fast Arrow/Enter shortcut for sighted keyboard users.
             aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
-            aria-autocomplete="list"
-            aria-activedescendant={
-              query.trim() && results.length > 0 ? `search-opt-${activeIdx}` : undefined
-            }
             className="flex-1 bg-transparent text-base outline-none placeholder:text-[var(--app-ink-3)]"
             style={{ color: "var(--app-ink)" }}
             autoComplete="off"
@@ -443,11 +451,11 @@ export default function SearchOverlay({
                           <p className="mt-0.5 text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             {d.phone && (
-                              <a href={`tel:${d.phone}`} className="tactile-interactive inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-meta font-semibold text-white" style={{ background: "var(--app-cool)" }}>
+                              <a href={`tel:${d.phone}`} className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 py-1 text-meta font-semibold text-white" style={{ background: "var(--app-cool)" }}>
                                 <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
                               </a>
                             )}
-                            <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                            <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
                               Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                             </a>
                             <span className="ml-auto text-caption uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
@@ -486,6 +494,26 @@ export default function SearchOverlay({
               )}
             </div>
           )}
+          {searchMeta?.qualifiers.constrained && status === "done" && (
+            <p
+              className="border-b px-4 py-2 text-[11px] font-medium"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            >
+              {[
+                searchMeta.qualifiers.categoryLabel,
+                searchMeta.qualifiers.openNow ? "Confirmed open" : null,
+                searchMeta.qualifiers.nearMe
+                  ? searchMeta.nearMeApplied
+                    ? `Nearest first${searchMeta.contextLabel ? ` · ${searchMeta.contextLabel}` : ""}`
+                    : searchMeta.fallbackReason === "outside-county"
+                      ? "Location is outside Frederick County · not distance-ranked"
+                      : "Location unavailable · not distance-ranked"
+                  : searchMeta.contextLabel && searchMeta.qualifiers.categoryLabel
+                    ? searchMeta.contextLabel
+                    : null,
+              ].filter(Boolean).join(" · ")}
+            </p>
+          )}
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
@@ -518,7 +546,7 @@ export default function SearchOverlay({
             // keep the API's relevance ordering. The flat `activeIdx`
             // is preserved across groups via the `idx` recorded in each
             // bucket, so arrow-key nav still walks the full result list.
-            <ul ref={listRef} id="search-results" role="listbox" className="py-1">
+            <ul ref={listRef} id="search-results" aria-label="Search results" className="py-1">
               {groupByTypePreservingOrder(results).map((group, gi) => {
                 const color = COLOR_BY_TYPE[group.type];
                 return (
@@ -535,7 +563,7 @@ export default function SearchOverlay({
                     >
                       {HEADING_BY_TYPE[group.type]} · {group.items.length}
                     </div>
-                    <ul role="group" aria-label={HEADING_BY_TYPE[group.type]}>
+                    <ul aria-label={HEADING_BY_TYPE[group.type]}>
                       {group.items.map(({ r, idx }) => {
                         const Icon = ICON_BY_TYPE[r.type];
                         const active = idx === activeIdx;
@@ -544,8 +572,6 @@ export default function SearchOverlay({
                           <li
                             key={r.id}
                             id={`search-opt-${idx}`}
-                            role="option"
-                            aria-selected={active}
                             data-idx={idx}
                           >
                             <Link

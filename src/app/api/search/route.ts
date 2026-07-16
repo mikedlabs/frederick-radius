@@ -1,6 +1,9 @@
-import { NextResponse } from "next/server";
-import { searchIndex } from "@/lib/search/index";
+import { NextResponse, type NextRequest } from "next/server";
+import { qualifiedSearchIndex } from "@/lib/search/index";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { approxLocation } from "@/lib/ip-geo";
+import { roundCoord } from "@/lib/walkTime";
+import { resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 /**
  * GET /api/search?q=<query>&limit=<n>
@@ -19,10 +22,9 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
  * keeping freshness honest. Empty / overlong queries return an empty
  * list and cache aggressively.
  */
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const q = (url.searchParams.get("q") ?? "").trim();
-  const limitRaw = Number(url.searchParams.get("limit") ?? 12);
+export async function GET(request: NextRequest) {
+  const q = (request.nextUrl.searchParams.get("q") ?? "").trim();
+  const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? 12);
   const limit = Number.isFinite(limitRaw)
     ? Math.max(1, Math.min(20, Math.floor(limitRaw)))
     : 12;
@@ -49,16 +51,37 @@ export async function GET(request: Request) {
   const events = await assembleUnifiedEvents(new Date())
     .then((u) => u.publicEvents)
     .catch(() => undefined);
-  const results = searchIndex(q, limit, events);
+  const latRaw = request.nextUrl.searchParams.get("lat");
+  const lngRaw = request.nextUrl.searchParams.get("lng");
+  const lat = latRaw ? Number(latRaw) : NaN;
+  const lng = lngRaw ? Number(lngRaw) : NaN;
+  const deviceOrigin =
+    Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+      ? { lat: roundCoord(lat), lng: roundCoord(lng) }
+      : null;
+  const approx = await approxLocation();
+  const context = resolveDecisionContext({
+    scopeRaw: request.cookies.get(SCOPE_COOKIE)?.value ?? null,
+    homeMuniRaw: request.cookies.get("fr_home_muni")?.value ?? null,
+    deviceOrigin,
+    approximateOrigin: approx.origin,
+    approximateStatus: approx.status,
+  });
+  const { results, meta } = qualifiedSearchIndex(q, limit, events, {
+    origin: context.origin,
+    municipality: context.filterMunicipality,
+    contextLabel: context.label,
+    fallbackReason: context.fallbackReason,
+  });
 
   return NextResponse.json(
-    { results },
+    { results, meta },
     {
       headers: {
-        // Short s-maxage because the underlying index can change daily
-        // (events, hours). The longer SWR window keeps repeat queries
-        // fast while the edge revalidates in the background.
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        // Scope, device coordinates, and IP approximation can all affect a
+        // qualified result. Never let one visitor's "near me" ranking leak
+        // through a shared edge cache to another visitor.
+        "Cache-Control": "private, no-store",
       },
     },
   );

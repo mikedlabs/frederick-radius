@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import CLIENT_PLACES from "@/data/places-client.json";
 
 /**
  * /trust — the plain-English explanation of where the data comes
  * from, what the trust badges mean, and what we deliberately don't
  * do. Linked from the SourceBadge tooltips and the FreshnessChip
- * tooltips so a stranger who sees "Curated" or "Confirmed 3 days
+ * explanations so a stranger who sees "Radius reviewed" or "Checked 3 days
  * ago" can tap through and understand what the words actually mean.
  *
  * Sits inside the (app) route group so it carries the same chrome
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default function TrustPage() {
+  const placeCount = new Intl.NumberFormat("en-US").format(CLIENT_PLACES.length);
   return (
     <div className="relative space-y-6">
       <PageBloom variant="cool" />
@@ -66,10 +68,11 @@ export default function TrustPage() {
           style={{ color: "var(--app-ink-2)" }}
         >
           <li>
-            <strong style={{ color: "var(--app-ink)" }}>Our hand-picked set.</strong>{" "}
-            1,700+ Frederick County places we vetted by hand. The Saturday-only
-            bakery, the trail nobody talks about, the brewery people drive
-            across the county for.
+            <strong style={{ color: "var(--app-ink)" }}>The place index.</strong>{" "}
+            {placeCount} current place records assembled from business,
+            government, community, and mapping sources. Automated quality checks
+            and review rules screen the index; we do not claim every listing was
+            individually vetted by hand.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Live event feeds.</strong>{" "}
@@ -80,20 +83,21 @@ export default function TrustPage() {
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Google Places.</strong>{" "}
-            Fills the gaps our hand-picked notes don&apos;t cover: verified
-            hours, phone numbers, ratings, and photos. Always labeled, never
-            passed off as our own verification.
+            Adds business status, posted hours, phone numbers, ratings, and
+            photos. A source match is labeled &ldquo;Checked at source&rdquo;; it is
+            not the same thing as owner verification.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Owner-claimed listings.</strong>{" "}
-            Businesses that have claimed their page and maintain their own
-            hours, specials, and details.
+            An &ldquo;Owner verified&rdquo; label is reserved for a business with an
+            approved, active ownership claim. A claim does not make third-party
+            ratings, reviews, or older details owner-supplied.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>OpenStreetMap.</strong>{" "}
-            Used only for amenities (restrooms, water fountains, EV charging,
-            bike parking) where the public-utility data is reliable. Anything
-            from OpenStreetMap is labeled as unverified.
+            Used for amenities such as restrooms, water fountains, EV charging,
+            and bike parking. It is community-maintained mapping data and is
+            labeled by source; confirm anything important before relying on it.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Resident submissions.</strong>{" "}
@@ -169,17 +173,16 @@ export default function TrustPage() {
           className="font-serif text-[20px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          What &ldquo;Confirmed&rdquo; means.
+          What &ldquo;Checked at source&rdquo; means.
         </h2>
         <p
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          A small chip on every place tells you when we last spot-checked
-          the basics. &ldquo;Confirmed 3 days ago&rdquo; means recent. &ldquo;Last confirmed
-          March 2025&rdquo; means stale, and we mark it that way. Confirmed is
-          weaker than verified by design. We&apos;d rather under-claim than
-          pretend.
+          A small chip tells you when we last checked the available source for
+          the basics. &ldquo;Checked at source · 3d ago&rdquo; is recent; &ldquo;Last checked
+          Mar 2025&rdquo; is stale. It does not say that the owner supplied or approved
+          the listing. We reserve &ldquo;Owner verified&rdquo; for an approved active claim.
         </p>
       </section>
 
@@ -259,22 +262,28 @@ const BADGES: Array<{
   body: string;
 }> = [
   {
-    label: "Hand-picked",
+    label: "Radius reviewed",
     color: "var(--app-brand-press)",
     icon: Sparkles,
-    body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
+    body: "Selected or edited in Frederick Radius. Current facts may still combine multiple sources and can change.",
   },
   {
-    label: "Confirmed",
+    label: "Checked at source",
     color: "var(--app-positive)",
     icon: CheckCircle2,
-    body: "Operational and current: the basics (hours, category, rating) confirmed and enriched, with a confirmed-on date. This is NOT owner-managed; once a business claims its listing it earns the stronger “Verified”.",
+    body: "Basic details were matched or checked against the named source, with a checked-on date where available. This is not owner verification.",
   },
   {
-    label: "Community",
+    label: "Owner verified",
+    color: "var(--app-positive)",
+    icon: CheckCircle2,
+    body: "Reserved for a business with an approved, active ownership claim. It applies to owner-managed details, not third-party ratings or reviews.",
+  },
+  {
+    label: "Community source",
     color: "var(--app-cool)",
     icon: Users,
-    body: "Submitted by a local or pulled from a public community feed. Reliable but not directly verified by us.",
+    body: "Submitted by a local or assembled from a public community or mapping source. Check important details with the linked source.",
   },
   {
     label: "Official source",

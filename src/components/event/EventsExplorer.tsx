@@ -17,10 +17,18 @@ import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import { type Daypart } from "@/lib/daypart";
 import { parseViewState, toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { pickLeadEvent } from "@/lib/events/lead-rank";
-import { featuredEventSlugs } from "@/lib/events/featured";
+import type { EventSourceHealth } from "@/lib/loaders/unifiedEvents";
 import { getEventsTown, setEventsTown } from "@/lib/personalize";
-import { getScope, scopeTownSlug } from "@/lib/scope";
+import {
+  getScope,
+  parseScope,
+  scopeToParam,
+  scopeTownSlug,
+  setScope,
+  subscribeScopeChange,
+  SCOPE_PARAM,
+  type Scope,
+} from "@/lib/scope";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -62,6 +70,7 @@ type Props = {
   categories: { slug: string; name: string }[];
   towns: { slug: string; name: string }[];
   summary: EventBrowseSummary;
+  sourceHealth: EventSourceHealth;
   /** Server-computed boundaries (avoids client TZ math + hydration drift). */
   nowISO: string;
   next24ISO: string;
@@ -73,6 +82,7 @@ type BrowseResponse = {
   events: EventWithMeta[];
   liveSlugs: string[];
   generatedAt: string;
+  sourceHealth?: EventSourceHealth;
 };
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
@@ -111,6 +121,7 @@ export default function EventsExplorer({
   categories,
   towns,
   summary,
+  sourceHealth,
   nowISO,
   next24ISO,
   weekendStartISO,
@@ -132,12 +143,11 @@ export default function EventsExplorer({
   const [cat, setCat] = useState<string | null>(null);
   const [time, setTime] = useState<TimeKey>("all");
   const [town, setTown] = useState<string | null>(null);
+  const [activeScope, setActiveScope] = useState<Scope | null>(null);
   const [intent, setIntent] = useState<IntentId | null>(null);
   const [sub, setSub] = useState<string | null>(null);
   const [day, setDay] = useState<string | null>(null);
-  // Owner-featured slugs (featured-events.json), resolved once against the
-  // page clock; pickLeadEvent consults the set before its heuristic.
-  const featured = useMemo(() => featuredEventSlugs(new Date(nowISO)), [nowISO]);
+  const [currentSourceHealth, setCurrentSourceHealth] = useState(sourceHealth);
   const [q, setQ] = useState("");
   const [view, setView] = useState<ViewKey>("list");
   const [freeOnly, setFreeOnly] = useState(false);
@@ -186,22 +196,25 @@ export default function EventsExplorer({
         ? lens
         : whenToTime(parsed.when),
     );
-    if (parsed.municipality && MUNICIPALITY_BY_SLUG[parsed.municipality]) {
-      setTown(parsed.municipality);
-    } else {
-      const scope = getScope();
-      const scopeTown = scopeTownSlug(scope);
-      const remembered = getEventsTown();
-      setTown(
-        scopeTown && MUNICIPALITY_BY_SLUG[scopeTown]
-          ? scopeTown
-          : scope === "county"
-            ? null
-            : remembered && MUNICIPALITY_BY_SLUG[remembered]
-              ? remembered
-              : null,
-      );
-    }
+    // Canonical ?in= wins, then legacy ?m= (upgraded on the next URL write),
+    // then the shared scope. A remembered Events-only town is the final
+    // backwards-compatible fallback. Crucially, explicit near-me/county
+    // scopes clear the remembered town instead of silently pinning it.
+    const explicitScope = parseScope(params.get(SCOPE_PARAM));
+    const legacyTown = parsed.municipality && MUNICIPALITY_BY_SLUG[parsed.municipality]
+      ? parsed.municipality
+      : null;
+    const storedScope = getScope();
+    const remembered = getEventsTown();
+    const resolvedScope = explicitScope
+      ?? (legacyTown ? `town:${legacyTown}` as Scope : null)
+      ?? storedScope
+      ?? (remembered && MUNICIPALITY_BY_SLUG[remembered]
+        ? `town:${remembered}` as Scope
+        : null);
+    setActiveScope(resolvedScope);
+    setTown(scopeTownSlug(resolvedScope));
+    if (explicitScope || legacyTown) setScope(resolvedScope);
     setIntent(INTENT_IDS.includes(intentParam as IntentId) ? intentParam as IntentId : null);
     setSub(params.get("sub"));
     setDay(dayParam && /^\d{4}-\d{2}-\d{2}$/.test(dayParam) ? dayParam : null);
@@ -225,11 +238,23 @@ export default function EventsExplorer({
       setUrlReady(true);
     });
     window.addEventListener("popstate", applyBrowserState);
+    const unsubscribeScope = subscribeScopeChange((nextScope) => {
+      setActiveScope(nextScope);
+      setTown(scopeTownSlug(nextScope));
+    });
     return () => {
       active = false;
       window.removeEventListener("popstate", applyBrowserState);
+      unsubscribeScope();
     };
   }, [applyBrowserState]);
+
+  const chooseTown = useCallback((nextTown: string | null) => {
+    const nextScope: Scope = nextTown ? `town:${nextTown}` : "county";
+    setActiveScope(nextScope);
+    setTown(nextTown);
+    setScope(nextScope);
+  }, []);
 
   useEffect(() => {
     if (urlReady) setEventsTown(town);
@@ -250,6 +275,7 @@ export default function EventsExplorer({
         if (!Array.isArray(payload.events)) throw new Error("Events response was incomplete");
         setEventPool(payload.events);
         setCurrentLiveSlugs(payload.liveSlugs);
+        if (payload.sourceHealth) setCurrentSourceHealth(payload.sourceHealth);
         setDataComplete(true);
       })
       .catch(() => {
@@ -407,10 +433,9 @@ export default function EventsExplorer({
   const viewState = useMemo<ViewState>(
     () => ({
       cats: cat ? [cat] : undefined,
-      municipality: town ?? undefined,
       when: timeToWhen(time),
     }),
-    [cat, town, time],
+    [cat, time],
   );
 
   // Mirror the complete shareable filter state into the URL. This uses the
@@ -421,11 +446,12 @@ export default function EventsExplorer({
     if (!urlReady) return;
     const sp = new URLSearchParams(window.location.search);
     for (const key of [
-      "cats", "m", "when", "d", "lens", "tod", "intent", "sub",
+      "cats", "m", SCOPE_PARAM, "when", "d", "lens", "tod", "intent", "sub",
       "free", "happy", "kids", "lgbtq", "recurring", "sort",
     ]) sp.delete(key);
     const structural = new URLSearchParams(toQuery(viewState));
     for (const [k, v] of structural) sp.set(k, v);
+    if (activeScope) sp.set(SCOPE_PARAM, scopeToParam(activeScope));
     if (day) sp.set("d", day);
     if (time !== "all") sp.set("lens", time);
     if (tod) sp.set("tod", tod);
@@ -440,7 +466,7 @@ export default function EventsExplorer({
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, recurringOnly, sort, urlReady]);
+  }, [viewState, activeScope, day, time, tod, intent, sub, freeOnly, happyOnly, kidsOnly, lgbtqOnly, recurringOnly, sort, urlReady]);
 
   // The bounded preview is sufficient for the default list. Every operation
   // that promises a complete answer promotes the cached continuation exactly
@@ -456,7 +482,7 @@ export default function EventsExplorer({
     setCat(null);
     setIntent(null);
     setSub(null);
-    setTown(null);
+    chooseTown(null);
     setDay(null);
     setTime("all");
     setQ("");
@@ -486,7 +512,7 @@ export default function EventsExplorer({
   // Resolve the town name from the canonical municipality vocab, not just the
   // event-derived towns list — a town with zero matching events would
   // otherwise render as its raw slug ("burkittsville") in the zero state.
-  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => setTown(null) });
+  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? MUNICIPALITY_BY_SLUG[town]?.name ?? town, drop: () => chooseTown(null) });
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 
@@ -521,7 +547,7 @@ export default function EventsExplorer({
         day={day}
         setDay={setDay}
         town={town}
-        setTown={setTown}
+        setTown={chooseTown}
         q={q}
         setQ={setQ}
         freeOnly={freeOnly}
@@ -541,6 +567,20 @@ export default function EventsExplorer({
         sort={sort}
         setSort={setSort}
       />
+
+      {currentSourceHealth.degraded && (
+        <p
+          role="status"
+          className="rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
+            background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          Some live calendars didn&rsquo;t answer. This board is showing the events that loaded successfully.
+        </p>
+      )}
 
       {loadingAll && (
         <p
@@ -717,14 +757,10 @@ export default function EventsExplorer({
             // makes every window legible at a glance; "Show N more" still
             // reveals the long tail on demand.
             const PEEK = 5;
-            // EDITORIAL lead, not raw chronology: the window's one big card
-            // used to be whatever started soonest, so a toddler storytime
-            // could headline over the Keys game or a festival five rows down
-            // (the "feed dump vs a friend's shortlist" gap). pickLeadEvent
-            // floats a real draw (then imagery, then soonest); the rest of
-            // the window keeps its chronological order below. An owner-
-            // featured slug (featured-events.json) beats the heuristic.
-            const lead = pickLeadEvent(g.events, featured) ?? g.events[0];
+            // "Soonest" is a literal contract: the first card and every row
+            // beneath it must stay chronological. Editorial promotion belongs
+            // in a separately named Recommended view, never inside this sort.
+            const lead = g.events[0];
             // Feature (photo) treatment for a group's lead ONLY when a real
             // venue photo exists — one photograph per horizon window down
             // the browse spine (image audit: the page read as a wall of text
@@ -737,7 +773,7 @@ export default function EventsExplorer({
             // policy's "photoless leads keep the glance row" rule now holds
             // everywhere (EventCard also enforces it at the card seam).
             const leadIsFeature = Boolean(lead.hero_image);
-            const rest = g.events.filter((e) => e !== lead);
+            const rest = g.events.slice(1);
             const groupCount = !dataComplete && !anyFilter
               ? summary.horizonCounts[g.key]
               : g.events.length;

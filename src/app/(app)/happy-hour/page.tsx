@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/happy-hour" },
   title: "Happy hour in Frederick County",
   description:
-    "What's on for happy hour around Frederick County right now. Verified schedules confirmed at the source, with the deal, where to park, and the fine print locals know.",
+    "What's on for happy hour around Frederick County right now. Source-checked schedules, with the deal, where to park, and the fine print locals know.",
 };
 
 export const revalidate = 600;
@@ -90,11 +90,11 @@ export default function HappyHourPage() {
               Happy hour
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              The deal, where to park, and what locals know. Verified means confirmed at the source.
+              The deal, where to park, and what locals know. Each schedule was checked at its source.
             </p>
             <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
           </div>
-          <FieldStamp id="hh" top="VERIFIED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
+          <FieldStamp id="hh" top="CHECKED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
         </div>
       </header>
 

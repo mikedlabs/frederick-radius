@@ -85,5 +85,30 @@ describe("GET /api/place/[slug]/enrich", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     expect(mocks.getPlaceDetails).toHaveBeenCalledWith("ChIJtest");
+    expect((await response.json()).hours).toEqual(["Monday: 9:00 AM – 5:00 PM"]);
+  });
+
+  it("does not reintroduce an unreviewed all-week 24/7 claim", async () => {
+    mocks.getPlaceDetails.mockResolvedValue({
+      photo_names: [],
+      weekday_hours: [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours",
+      ],
+      business_status: "OPERATIONAL",
+      has_hours: true,
+      google_place_id: "ChIJtest",
+      photo_attributions: [],
+    });
+
+    const response = await GET(request(), context);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).hours).toEqual([]);
   });
 });

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function CompassPage() {
   return (
     <div className="relative">
-      <PageBloom variant="warm-cool" />
+      <PageBloom variant="warm" />
       <CompassHub />
     </div>
   );

@@ -45,7 +45,9 @@ function SourceTag({ item }: { item: CivicPressItem }) {
 
 export function PoliceBreakingStrip({ item, now }: { item: CivicPressItem; now: number }) {
   const ms = now - new Date(item.publishedAt).getTime();
-  const fresh = Number.isFinite(ms) && ms >= 0 && ms < 24 * 3600 * 1000;
+  // "Breaking" should mean genuinely current, not merely posted sometime
+  // yesterday. Older releases still stay prominent, but read as "Latest."
+  const fresh = Number.isFinite(ms) && ms >= 0 && ms < 6 * 3600 * 1000;
   return (
     <a
       href={item.url}

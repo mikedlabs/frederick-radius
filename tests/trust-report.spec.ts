@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
-import { PLACES } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 
 /**
  * The trust report turns the Section 8 gates into nightly numbers. These
@@ -17,7 +17,7 @@ describe("computePlaceTrustReport", () => {
   });
 
   it("counts the whole catalog", () => {
-    expect(report.places).toBe(PLACES.length);
+    expect(report.places).toBe(publicPlaces().length);
   });
 
   it("the confidence distribution covers the ladder and sums to the catalog", () => {
@@ -26,7 +26,7 @@ describe("computePlaceTrustReport", () => {
     expect(partner).toBeGreaterThan(0);
     expect(verified).toBeGreaterThan(0);
     expect(scraped).toBeGreaterThan(0);
-    expect(curated + partner + verified + scraped).toBe(PLACES.length);
+    expect(curated + partner + verified + scraped).toBe(publicPlaces().length);
   });
 
   it("never reports more stale assertions than total assertions", () => {

@@ -1710,36 +1710,6 @@
       }
     ]
   },
-  "the-alley-wagon": {
-    "insider": [
-      {
-        "text": "The Alley Wagon is run by Brewer's Alley (Frederick County's original brewpub), which also contract-bottles for itself out of this Monocacy facility, so the kitchen is built around pairing food with the Rockwell/Monocacy beers on tap.",
-        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "The taproom is closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM (some listings to 10 PM), Fri-Sat 12-9/10 PM, Sun 12-8 PM. The Alley Wagon food truck only runs Wed/Thu, so come midweek if the truck is the draw.",
-        "source_url": "https://monocacybrewing.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "The Alley Wagon is a permanently-stationed food truck by Brewer's Alley serving brewpub fare at Monocacy Brewing: a 1/4 lb burger with fries, bone-in wings (Buffalo, BBQ, or Old Bay), boneless wings, and a petite-tender steak sandwich on pizza bread.",
-        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Food-truck service runs on a recurring Wednesday and Thursday schedule, 4-9 PM, at the brewery (1781 N Market St). Days/times come from the brewery's event calendar feed, not a static official page, so confirm before relying on it.",
-        "source_url": "https://www.meetdaisy.co/calendars/monocacy-brewing-company/events/wed-thurs-food-truck-the-alley-wagon",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
   "the-banyan-frederick": {
     "parking": {
       "text": "No onsite parking. The venue sits in downtown Frederick, where there are five centrally located public parking garages open 24/7 at about $1 per hour with low daily maximums and free Sunday-morning parking. A 500-space garage is planned to be built directly next to The Banyan in the coming years.",
@@ -1879,30 +1849,6 @@
         "text": "Karaoke nights are a regular fixture at the venue.",
         "source_url": "https://www.karaokeatlas.com/venue/the-upper-deck-sports-bar-and-grill-mt-airy",
         "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "top-secret-tap-room-thurmont": {
-    "insider": [
-      {
-        "text": "Rotating local taps: the official site says taps are 'constantly changing with a new beer coming up almost every week,' featuring breweries from around Maryland and Pennsylvania.",
-        "source_url": "https://www.tstaproom.com/drinks",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Housed in a historic 1934 building on the former Fort Ritchie base (a one-time Maryland National Guard / WWII military site), now restored as part of the Ritchie revival.",
-        "source_url": "https://www.tstaproom.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Trivia Night every Thursday, 6:00-8:00 PM (Geeks Who Drink). Winner gets free beer and bragging rights, plus an occasional special prize.",
-        "source_url": "https://www.tstaproom.com/event-details/trivia-night-2025-04-24-18-00",
-        "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ]

@@ -42,6 +42,24 @@ describe("matchMeal — honest category gate, never a service claim", () => {
     expect(matchMeal(MEALS.breakfast, place("bar"))).toBe(false);
   });
 
+  it("does not call sushi, pizza, or ice cream a breakfast answer", () => {
+    expect(matchMeal(MEALS.breakfast, { category: "restaurant", name: "SNOWFOX Sushi", primary_type: "sushi_restaurant" })).toBe(false);
+    expect(matchMeal(MEALS.breakfast, { category: "restaurant", name: "Rocky's Pizza", primary_type: "pizza_restaurant" })).toBe(false);
+    expect(matchMeal(MEALS.breakfast, { category: "restaurant", name: "Moo Cow Creamery", primary_type: "ice_cream_shop" })).toBe(false);
+  });
+
+  it("does not call a candy or chocolate shop lunch", () => {
+    expect(matchMeal(MEALS.lunch, { category: "restaurant", name: "Zoe's Chocolate", primary_type: "chocolate_shop" })).toBe(false);
+  });
+
+  it("honors a corrected secondary category", () => {
+    expect(matchMeal(MEALS.breakfast, {
+      category: "market",
+      subcategories: ["coffee"],
+      name: "Market Cafe",
+    })).toBe(true);
+  });
+
   it("late night keeps a bar (a late-bite answer at 11pm)", () => {
     expect(matchMeal(MEALS.late, place("bar"))).toBe(true);
   });

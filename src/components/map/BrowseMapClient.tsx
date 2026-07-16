@@ -181,8 +181,9 @@ export default function BrowseMapClient({
       }
     }
     if (scopeCenter) return [scopeCenter.lng, scopeCenter.lat];
-    return undefined;
+    return [-77.41, 39.46];
   })();
+  const initialZoom = atParam ? 14 : scopeCenter ? 13.4 : scope === "nearme" ? 14 : 9.6;
 
   const intent =
     intentParam && intentParam in INTENT_BY_KEY
@@ -278,13 +279,17 @@ export default function BrowseMapClient({
       // A TOWN scope wins over the intent-recenter, though: the user picked
       // that lens deliberately, so its centroid (initialCenter) holds.
       recenterToKnownLocation={
-        (Boolean(intent) || scope === "nearme") && !scopeCenter
+        !atParam &&
+        scope !== "county" &&
+        (Boolean(intent) || scope === "nearme") &&
+        !scopeCenter
       }
       // Show the county by default — never an empty map. The curated
       // places ride a CLUSTERED source, so "all ~1,700" reads as tidy
       // numbered bubbles; the dock REFINES rather than gates.
       pinpointDefault={false}
       initialCenter={initialCenter}
+      initialZoom={initialZoom}
       initialAmenityGroups={initialAmenityGroups}
       // The map dock (MapDock) — the one instrument that replaced the
       // intent banner, sub strip, Open-now pill, and Layers drawer. The

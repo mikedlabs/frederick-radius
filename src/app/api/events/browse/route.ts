@@ -17,12 +17,12 @@ export const revalidate = 300;
 export async function GET() {
   const now = new Date();
   const liveSlugs = eventsLive(now).map((event) => event.slug);
-  const { publicEvents } = await assembleUnifiedEvents(now);
+  const { publicEvents, sourceHealth } = await assembleUnifiedEvents(now);
   const bounds = buildHorizonBounds(now, new Set(liveSlugs));
   const events = prepareEventsForBrowse(publicEvents, bounds);
 
   return NextResponse.json(
-    { events, liveSlugs, generatedAt: now.toISOString() },
+    { events, liveSlugs, generatedAt: now.toISOString(), sourceHealth },
     {
       headers: {
         "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900",

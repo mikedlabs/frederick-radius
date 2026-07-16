@@ -193,3 +193,51 @@ export const TOWN_WEBSITE_BY_SLUG: Record<string, TownWebsite> =
 
 /** Verified rows only — safe to surface as asserted civic links. */
 export const VERIFIED_TOWN_WEBSITES = TOWN_WEBSITES.filter((t) => t.verified);
+
+export type TownCivicResource = {
+  town: TownWebsite;
+  label: string;
+  url: string;
+};
+
+const TOWN_RESOURCE_ROUTES: Array<{
+  pattern: RegExp;
+  key: keyof CivicLinks;
+  label: string;
+}> = [
+  { pattern: /\b(?:trash|garbage|recycl\w*|refuse|yard waste)\b/i, key: "trashRecycling", label: "Trash & recycling" },
+  { pattern: /\b(?:water|sewer|utility billing|utility bill)\b/i, key: "utilityBilling", label: "Utility billing" },
+  { pattern: /\b(?:pay|payment|bill pay)\b/i, key: "billPay", label: "Online bill pay" },
+  { pattern: /\b(?:permits?|zoning|building inspection)\b/i, key: "permits", label: "Permits & planning" },
+  { pattern: /\b(?:parks?|recreation|rec programs?)\b/i, key: "parksRec", label: "Parks & recreation" },
+  { pattern: /\b(?:police|non-emergency)\b/i, key: "police", label: "Police" },
+  { pattern: /\b(?:code|ordinance|municipal law)\b/i, key: "codes", label: "Municipal code" },
+  { pattern: /\b(?:form|application)\b/i, key: "forms", label: "Forms" },
+  { pattern: /\b(?:report|concern|pothole)\b/i, key: "reportIssue", label: "Report an issue" },
+  { pattern: /\b(?:event|calendar|meeting)\b/i, key: "events", label: "Official calendar" },
+  { pattern: /\b(?:government|town hall|city hall|mayor|council|clerk)\b/i, key: "government", label: "Municipal government" },
+];
+
+/** Resolve a civic service to the correct verified municipal website. */
+export function findTownCivicResource(
+  query: string,
+  contextMunicipality?: string | null,
+): TownCivicResource | null {
+  const lq = query.toLowerCase().trim();
+  const route = TOWN_RESOURCE_ROUTES.find((candidate) => candidate.pattern.test(lq));
+  if (!route) return null;
+
+  const named = TOWN_WEBSITES.find((town) => {
+    const townName = town.name.toLowerCase().replace(/^(?:city|town|village) of /, "");
+    const isNamed = lq.includes(townName) || lq.includes(town.slug.replace(/-/g, " "));
+    return isNamed && !(town.slug === "frederick" && /\bfrederick county\b/.test(lq));
+  });
+  const contextual = !/\b(?:frederick\s+)?county\b/.test(lq)
+    ? TOWN_WEBSITE_BY_SLUG[contextMunicipality ?? ""]
+    : undefined;
+  const town = named ?? contextual;
+  if (!town?.verified || !town.homepage) return null;
+
+  const url = town.links?.[route.key] ?? (route.key === "government" ? town.homepage : null);
+  return url ? { town, label: route.label, url } : null;
+}

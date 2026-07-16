@@ -77,7 +77,7 @@ export default async function BetaCodesAdmin() {
       back={{ href: "/admin", label: "Back to Admin" }}
       eyebrow="Beta access"
       title="Beta codes"
-      intro="Give each tester their own code. Usage is attributed to the code in analytics, and you can revoke one person without touching anyone else. The shared password still works as your master key."
+      intro="Give each tester their own code. Revocation blocks new and renewed sessions for that code; an existing session can remain open for up to 12 hours. The shared password still works as your master key."
     >
       {dbError && (
         <div className="mt-4">
@@ -188,8 +188,11 @@ export default async function BetaCodesAdmin() {
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Codes are validated against the database at redeem time, then carried in a
         signed cookie the edge middleware verifies with no further DB hit. Revoking
-        a code stops new unlocks; an already-unlocked device keeps its 30-day cookie
-        until it expires or the master password is rotated.
+        a code stops new or renewed sessions; an already-unlocked device keeps its
+        session for at most 12 hours. For planned signing-key rotation, set the old
+        value as <code>BETA_CODE_SECRET_PREVIOUS</code> for a 12-hour grace period.
+        For emergency invalidation, rotate <code>BETA_CODE_SECRET</code> without a
+        previous value and redeploy.
       </p>
     </AdminShell>
   );

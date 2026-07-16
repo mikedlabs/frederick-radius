@@ -36,14 +36,20 @@ import {
 import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
-import { CRAVINGS, CRAVING_BY_KEY } from "@/data/cravings";
+import {
+  CRAVINGS,
+  CRAVING_BY_KEY,
+  matchesCraving,
+  matchesCravingFacet,
+} from "@/data/cravings";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import { haptic } from "@/lib/haptics";
+import { setScope, subscribeScopeChange, scopeTownSlug, type Scope } from "@/lib/scope";
 
 /**
  * RightNow — the one-tap craving answer.
@@ -54,9 +60,8 @@ import { haptic } from "@/lib/haptics";
  * noun, get the closest open answer, go.
  *
  * Distance is honest: we only print "min walk / distance" when we actually
- * have the user's location. With no fix we still rank by proximity to
- * Downtown (the sensible default) but never claim a distance we can't stand
- * behind — we say so and offer the location button instead.
+ * have the user's location. Without a valid town, device, or in-county IP
+ * origin, results stay county-wide rather than silently ranking from Downtown.
  */
 
 // Keyed by the `icon` strings in src/data/cravings.ts. Every craving icon must
@@ -121,8 +126,10 @@ export default function RightNow({
   initialCraving = null,
   initialFacet = null,
   initialTown = null,
+  initialScope = null,
   approxOrigin = null,
   approxCity = null,
+  approxStatus = "missing",
 }: {
   places: PlaceCardData[];
   /** Preselected craving from a deep link (?c=coffee) — skips the picker
@@ -134,11 +141,16 @@ export default function RightNow({
   /** Preselected town scope from a deep link (?c=coffee&town=brunswick) — set
    *  when the visitor has a home town, so answers default to it. */
   initialTown?: string | null;
+  /** Shared browsing lens. County is a deliberate no-origin mode; near-me
+   * may use device/IP; a town remains a hard municipality filter. */
+  initialScope?: Scope | null;
   /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
    *  print a distance). Null when out of area → Downtown default. */
   approxOrigin?: { lng: number; lat: number } | null;
   /** City label for the coarse location ("near Thurmont"). */
   approxCity?: string | null;
+  /** Why edge-IP geo could not seed ranking, for honest fallback copy. */
+  approxStatus?: "available" | "missing" | "outside-county";
 }) {
   const { state, request } = useGeolocation();
   const [cravingKey, setCravingKey] = useState<string | null>(
@@ -162,6 +174,26 @@ export default function RightNow({
   const [townKey, setTownKey] = useState<string | null>(
     initialTown && MUNICIPALITY_BY_SLUG[initialTown] ? initialTown : null,
   );
+  const [scope, setScopeState] = useState<Scope | null>(initialScope);
+
+  useEffect(() => subscribeScopeChange((nextScope) => {
+    setScopeState(nextScope);
+    setTownKey(scopeTownSlug(nextScope));
+  }), []);
+
+  function chooseTown(nextTown: string | null) {
+    const nextScope: Scope = nextTown ? `town:${nextTown}` : "county";
+    setTownKey(nextTown);
+    setScopeState(nextScope);
+    setScope(nextScope);
+  }
+
+  function activateMyLocation() {
+    setTownKey(null);
+    setScopeState("nearme");
+    setScope("nearme");
+    request();
+  }
   // Sort: nearest-first (default) or top-rated-first. Open places always lead
   // either way — you can't walk into a closed one.
   const [sort, setSort] = useState<"nearest" | "rated">("nearest");
@@ -176,25 +208,32 @@ export default function RightNow({
     if (askedOnArrival.current) return;
     if (
       initialCraving &&
+      !initialTown &&
+      scope !== "county" &&
       (CRAVING_BY_KEY[initialCraving] || isMealKey(initialCraving)) &&
       state.status === "idle"
     ) {
       askedOnArrival.current = true;
+      // The scope event updates local scope/town state through the subscription
+      // above; the device request owns its own async geolocation state.
+      setScope("nearme");
       request();
     }
-  }, [initialCraving, state.status, request]);
+  }, [initialCraving, initialTown, scope, state.status, request]);
 
-  const hasFix = state.status === "granted";
-  // Origin precedence: a precise device fix → the coarse edge-IP seed → Downtown.
-  // The IP seed only improves the fallback RANKING; printed distances stay gated
-  // on `hasFix` so we never claim a precision we don't have.
-  const origin = useMemo(
-    () =>
-      state.status === "granted"
-        ? { lng: state.position.lng, lat: state.position.lat }
-        : (approxOrigin ?? FREDERICK_CENTER),
-    [state, approxOrigin],
-  );
+  // A town-scoped distance is distance from the town centroid, not the user.
+  // Never print it as if it came from the device.
+  const hasFix = state.status === "granted" && !townKey && scope !== "county";
+  // A selected town is a deliberate lens and therefore outranks a device
+  // fix. Sorting Thurmont results from a Frederick phone location made the
+  // town scope technically filtered but locally wrong.
+  const origin = useMemo(() => {
+    if (townKey) return MUNICIPALITY_BY_SLUG[townKey]?.centroid ?? null;
+    if (scope === "county") return null;
+    return state.status === "granted"
+      ? { lng: state.position.lng, lat: state.position.lat }
+      : approxOrigin;
+  }, [state, approxOrigin, townKey, scope]);
 
   // The selection is either a noun craving or a time-aware meal occasion
   // (breakfast/lunch/dinner/brunch/late, arrived at via the /today meal tile).
@@ -209,7 +248,11 @@ export default function RightNow({
   const cravingMatchedAll = useMemo(() => {
     const m = cravingKey ? mealForKey(cravingKey) : null;
     const c = cravingKey && !m ? CRAVING_BY_KEY[cravingKey] : null;
-    const matchFn = m ? (p: PlaceCardData) => matchMeal(m, p) : c ? c.match : null;
+    const matchFn = m
+      ? (p: PlaceCardData) => matchMeal(m, p)
+      : c
+        ? (p: PlaceCardData) => matchesCraving(c, p)
+        : null;
     return matchFn ? places.filter(matchFn) : [];
   }, [cravingKey, places]);
 
@@ -243,13 +286,13 @@ export default function RightNow({
       if (!facetKey) return true;
       if (craving?.cuisineFacets) return cuisinesOf(p).includes(facetKey);
       const f = craving?.facets?.find((x) => x.key === facetKey);
-      return f ? f.match(p) : true;
+      return f ? matchesCravingFacet(f, p) : true;
     };
     return cravingMatchedAll
       .filter(passFacet)
       .filter((p) => !townKey || p.municipality === townKey)
       .map((p) => {
-        const dist = haversineMeters(origin, p.geom);
+        const dist = origin ? haversineMeters(origin, p.geom) : Infinity;
         // Always-available cravings (lodging) count as open regardless of
         // verified hours — a hotel you can book any night must never be hidden
         // by the open-now gate just because its front-desk hours aren't posted.
@@ -303,29 +346,24 @@ export default function RightNow({
     setCravingKey(key);
     setFacetKey(null); // a fresh craving starts unfiltered
     setClosingSoonOnly(false); // and not stuck on a previous craving's urgency filter
-    setTownKey(null); // and back to everywhere
-    // The tapped craving is a PLACE in the journey, so it gets a URL and a
-    // history entry: the system Back button returns to the picker instead of
-    // ejecting to the previous page (journey audit — tap Coffee, press Back,
-    // land on /today with both picker and answer lost), a refresh keeps the
-    // answer, and the answer is shareable. Native pushState is the App
-    // Router-sanctioned shallow update; the popstate listener below walks it.
-    window.history.pushState(null, "", `/nearby?c=${encodeURIComponent(key)}`);
+    // Give the selection a real URL/history entry while preserving the active
+    // location scope. Back returns to the picker; refresh/share keeps the pick.
+    const params = new URLSearchParams(window.location.search);
+    params.set("c", key);
+    params.delete("facet");
+    window.history.pushState(null, "", `/nearby?${params.toString()}`);
     // First craving with no location yet → ask, so the answer can be
     // "nearest to YOU" rather than nearest to downtown. One prompt, then
     // it's cached for the session.
-    if (state.status === "idle") request();
+    if (state.status === "idle" && scope !== "county") activateMyLocation();
   }
 
-  // Back/forward walks the in-page states the pushState above created:
-  // re-derive craving + facet from the URL the browser landed on. (Deep-link
-  // arrivals never pushed, so Back leaves the page naturally from there.)
   useEffect(() => {
     const onPop = () => {
-      const sp = new URL(window.location.href).searchParams;
-      const c = sp.get("c");
-      setCravingKey(c && (CRAVING_BY_KEY[c] || isMealKey(c)) ? c : null);
-      setFacetKey(sp.get("facet"));
+      const params = new URL(window.location.href).searchParams;
+      const next = params.get("c");
+      setCravingKey(next && (CRAVING_BY_KEY[next] || isMealKey(next)) ? next : null);
+      setFacetKey(params.get("facet"));
       setClosingSoonOnly(false);
     };
     window.addEventListener("popstate", onPop);
@@ -348,10 +386,6 @@ export default function RightNow({
           </p>
         </header>
 
-        {/* Compact rows, not square cards: the picker is a SPEED tool, and
-            the old icon-over-word tiles spent ~112px each on one word — the
-            full menu took three screens to scan. Label beside icon reads in
-            one fixation; the whole menu now fits in about one. */}
         <ul className="grid grid-cols-2 gap-2">
           {CRAVINGS.map((c) => {
             const Icon = ICONS[c.icon] ?? Utensils;
@@ -395,7 +429,20 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const sortLabel = sort === "rated" ? "top rated first" : "nearest first";
+  const sortLabel = sort === "rated"
+    ? "top rated first"
+    : origin
+      ? "nearest first"
+      : "best matches";
+  const areaLabel = townName
+    ? `in ${townName}`
+    : hasFix
+      ? "near you"
+      : approxOrigin
+        ? approxCity
+          ? `approximately near ${approxCity}`
+          : "approximately within Frederick County"
+        : "across Frederick County";
   return (
     <div className="space-y-4">
       <header className="space-y-2">
@@ -423,8 +470,7 @@ export default function RightNow({
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {headingNoun}{" "}
-              {townName ? `in ${townName}` : `near ${hasFix ? "you" : (approxCity ?? "Downtown")}`}
+              {headingNoun} {areaLabel}
             </h1>
             {/* Meals frame the count on the CLOCK fact ("open for dinner now")
                 — never a service claim. Nouns keep the plain "open now". */}
@@ -439,7 +485,7 @@ export default function RightNow({
                     ? openCount > 0
                       ? `${openCount} open now · ${sortLabel}`
                       : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
-                    : `${openCount} open · ${matched.length} nearby · ${sortLabel}`}
+                    : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
             </p>
           </div>
         </div>
@@ -467,14 +513,14 @@ export default function RightNow({
         {townsWithResults.length > 1 && (
           <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex w-max items-center gap-1.5">
-              <FacetChip label="All towns" active={townKey === null} color="var(--app-ink-2)" onClick={() => setTownKey(null)} />
+              <FacetChip label="All towns" active={townKey === null} color="var(--app-ink-2)" onClick={() => chooseTown(null)} />
               {townsWithResults.map((m) => (
                 <FacetChip
                   key={m.slug}
                   label={m.name}
                   active={townKey === m.slug}
                   color="var(--app-ink-2)"
-                  onClick={() => setTownKey(m.slug)}
+                  onClick={() => chooseTown(m.slug)}
                 />
               ))}
             </div>
@@ -573,14 +619,16 @@ export default function RightNow({
       {!hasFix && !townKey && (
         <button
           type="button"
-          onClick={request}
+          onClick={activateMyLocation}
           className="tactile tactile-interactive flex w-full items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3.5 py-2.5 text-left"
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
           <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
           <span className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {state.status === "denied" || state.status === "unavailable"
-              ? `Showing ${approxCity ? `${approxCity} (approximate)` : "Downtown Frederick"}. Turn on location for what's nearest to you.`
+              ? approxStatus === "outside-county"
+                ? "Your network location is outside Frederick County, so these are county-wide. Turn on location for nearest-first results."
+                : `Showing ${approxCity ? `${approxCity} (approximate)` : "county-wide matches"}. Turn on location for what's nearest to you.`
               : "Use my location to see what's nearest to where you're standing."}
           </span>
         </button>
@@ -607,7 +655,7 @@ export default function RightNow({
           {townName ? (
             <button
               type="button"
-              onClick={() => setTownKey(null)}
+              onClick={() => chooseTown(null)}
               className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
               style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
             >

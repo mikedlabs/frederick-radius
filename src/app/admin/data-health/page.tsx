@@ -123,7 +123,7 @@ export default async function DataHealth() {
     ["Scraped copy", `${SCORES.counts.scraped}`, `${((SCORES.counts.scraped / PLACES.length) * 100).toFixed(1)}% of records`],
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
     ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE === "1" ? "on" : "off", "default off = today's production"],
-    ["HOURS_GATE", process.env.HOURS_GATE === "1" ? "on" : "off", "default off"],
+    ["HOURS_GATE", process.env.HOURS_GATE !== "0" ? "on" : "off", "default on"],
     ["RADIUS_EVENTS_BY_TOWN", process.env.RADIUS_EVENTS_BY_TOWN === "1" ? "on" : "off", "default off = today's production"],
   ];
 

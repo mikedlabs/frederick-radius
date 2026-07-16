@@ -22,7 +22,7 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
-import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
+import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
@@ -62,16 +62,6 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
-}
-
-/** "5:42 PM" → minutes-from-midnight, for picking the soonest MARC departure
- *  across stations (the board hands back display clock labels, not epochs). */
-function clockToMin(s: string): number {
-  const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!m) return Number.POSITIVE_INFINITY;
-  let h = Number(m[1]) % 12;
-  if (/pm/i.test(m[3])) h += 12;
-  return h * 60 + Number(m[2]);
 }
 
 /** AirNow's local observation hour (0-23) → "2 PM", so the AQI reads as a
@@ -506,7 +496,7 @@ export default async function PulsePage() {
       return d ? [{ label: d.live && d.predicted ? d.predicted : d.scheduled, dep: d }] : [];
     }),
   );
-  marcCandidates.sort((a, b) => clockToMin(a.label) - clockToMin(b.label));
+  marcCandidates.sort((a, b) => marcClockMinutes(a.label) - marcClockMinutes(b.label));
   const marcNext = marcCandidates[0] ?? null;
 
   // Air quality — the worst pollutant leads (AQI reports the max across
@@ -523,7 +513,7 @@ export default async function PulsePage() {
         ? "var(--app-warning)"
         : aqiWorst.category.id === 2
           ? "var(--app-accent)"
-          : "var(--app-positive)";
+          : "var(--app-cool)";
   const aqiBody = aqiWorst ? (
     <div className="space-y-3">
       <div
@@ -645,7 +635,7 @@ export default async function PulsePage() {
       label: "Power out",
       iconName: "Zap",
       countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "Clear",
-      accent: outagesActive ? "var(--app-danger)" : "var(--app-positive)",
+      accent: outagesActive ? "var(--app-danger)" : "var(--app-cool)",
       active: outagesActive,
       attention: situationActive.power,
       kind: "gauge",
@@ -691,7 +681,7 @@ export default async function PulsePage() {
       label: "Fire & rescue",
       iconName: "Siren",
       countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
-      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
+      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: safety.length > 0,
       attention: situationActive.safety,
       kind: "status",
@@ -708,24 +698,26 @@ export default async function PulsePage() {
       label: "Traffic",
       iconName: "Construction",
       countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
-      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: traffic.length > 0,
       attention: situationActive.traffic,
       kind: "status",
       sourceLabel: "MDOT CHART",
       peek:
         traffic.length > 0
-          ? `${traffic[0].road}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
+          ? `${traffic[0].road || traffic[0].location}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
           : "roads moving",
       body: traffic.length > 0
         ? traffic.slice(0, 12).map((i) => (
             <Row
               key={i.id}
               tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
-              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
+              title={`${i.road || i.location}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
               body={i.description}
               meta={[
-                i.location,
+                i.location.trim().toLocaleLowerCase() !== i.description.trim().toLocaleLowerCase()
+                  ? i.location
+                  : undefined,
                 i.lanes_affected,
                 i.expected_end
                   ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
@@ -740,7 +732,7 @@ export default async function PulsePage() {
       label: "Schools",
       iconName: "School",
       countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "Clear",
-      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: schoolAlerts.length > 0,
       attention: situationActive.schools,
       kind: "status",
@@ -800,7 +792,7 @@ export default async function PulsePage() {
       label: "Weather alerts",
       iconName: "CloudAlert",
       countLabel: activeAlerts.length > 0 ? activeAlerts[0].event : "None",
-      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
+      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: activeAlerts.length > 0,
       attention: situationActive.alerts,
       kind: "status",
@@ -1175,7 +1167,7 @@ export default async function PulsePage() {
 
   return (
     <div className="relative space-y-6 pb-4">
-      <PageBloom variant={allClear ? "warm-cool" : "single"} />
+      <PageBloom variant="cool" />
 
       {/* The briefing owns hierarchy and interaction; detail remains in sourced
           drawers so the first screen stays useful at a glance. */}
@@ -1186,27 +1178,17 @@ export default async function PulsePage() {
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
       />
 
-      {/* ── Where the buses are — the live TransIT map, behind one tap. The map
-          (mapbox + a 300px canvas) is the heaviest thing on the page; on a
-          scan-first board it stays collapsed so it never renders as a tall
-          empty placeholder. Tapping mounts the route network + live vehicle
-          badges + the arrivals board, and only then does mapbox download. */}
+      {/* The live bus map stays behind intent because it is the heaviest client
+          surface on Pulse. It is part of getting around, not a second dashboard. */}
       <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
         <div className="flex items-center justify-between gap-3">
-          <p id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-            Buses, live
-          </p>
-          <span className="font-mono text-[10.5px] tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-            tap a bus · free
-          </span>
+          <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-cool)" }} />
+            Live bus map
+          </h2>
+          <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>TransIT · free</span>
         </div>
         <BusesReveal />
-        <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
-          every 15 seconds. Tap a route to trace its path and follow just its
-          buses. The county bus is free.
-        </p>
       </section>
       {/* Footer — disclaimer + sources at a glance */}
       <footer

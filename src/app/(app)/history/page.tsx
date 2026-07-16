@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Landmark, Calendar, Sparkles, Users, ExternalLink, ArrowRight } from "lucide-react";
-import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
+import { HISTORY, historyTopics, type HistoryEntry, type HistoryImage } from "@/data/history";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -11,6 +11,7 @@ import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
 import { ACCENTS } from "@/data/categories";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
+import ArchiveDoorway from "@/components/archive/ArchiveDoorway";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/history" },
@@ -307,6 +308,8 @@ export default async function HistoryPage({
       </>
       )}
 
+      <ArchiveDoorway />
+
       {/* History on the ground — reciprocal cross-link to /markers (which
           links back here for the stories). Gives the orphaned markers page a
           real doorway from its most natural neighbor. */}
@@ -414,6 +417,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
           </span>
         )}
       </div>
+      {entry.image && <HistoryImageAttribution image={entry.image} />}
       <div className="space-y-1.5 p-3.5">
         <h3
           className="font-serif text-[17px] font-semibold leading-tight tracking-tight"
@@ -528,17 +532,22 @@ function HistoryArticle({
               blocks into a picture wall. Era-gradient cards (no image) keep
               their accent bloom, so the grid still feels like one family. */}
           {entry.image && (
-            <div className="relative mb-3 h-28 w-full overflow-hidden rounded-[var(--app-radius-md)]">
-              <Image
-                src={entry.image.src}
-                alt={entry.image.alt ?? ""}
-                fill
-                sizes="(max-width: 768px) 100vw, 320px"
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                style={{ objectFit: "cover" }}
-              />
-            </div>
+            <>
+              <div className="relative h-28 w-full overflow-hidden rounded-t-[var(--app-radius-md)]">
+                <Image
+                  src={entry.image.src}
+                  alt={entry.image.alt ?? ""}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 320px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  style={{ objectFit: "cover" }}
+                />
+              </div>
+              <div className="mb-3 overflow-hidden rounded-b-[var(--app-radius-md)]">
+                <HistoryImageAttribution image={entry.image} />
+              </div>
+            </>
           )}
           <div className="flex items-center gap-2">
             <span
@@ -608,5 +617,24 @@ function HistoryArticle({
         </div>
       </article>
     </li>
+  );
+}
+
+function HistoryImageAttribution({ image }: { image: HistoryImage }) {
+  return (
+    <p
+      className="px-3 py-1.5 text-[9.5px] leading-snug"
+      style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
+    >
+      Photo: {" "}
+      <a href={image.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+        {image.creator}
+      </a>{" "}
+      · {" "}
+      <a href={image.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+        {image.license.label}
+      </a>{" "}
+      · {image.modifications}
+    </p>
   );
 }

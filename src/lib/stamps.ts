@@ -102,7 +102,9 @@ export function deriveStamps(input: StampInput): StampState[] {
   const visitedSet = new Set(input.visited);
 
   const counts: Record<string, number> = {
-    "first-mark": input.saved.length,
+    // The copy says \"Save your first place\", so an event/beer save must not
+    // award this stamp while place progress still reads 0 of 12.
+    "first-mark": savedPlaces.length,
     "the-dozen": savedPlaces.length,
     "boots-on": input.visited.length,
     "ten-boots": input.visited.length,

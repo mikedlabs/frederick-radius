@@ -57,6 +57,14 @@ export type UnifiedEvents = {
   unified: EventWithMeta[];
   /** isPublicEvent-filtered: what discovery surfaces may count + show. */
   publicEvents: EventWithMeta[];
+  /** Honest partial-data signal. A provider timeout/rejection never takes the
+   * board down, but the UI must not present that partial set as complete. */
+  sourceHealth: EventSourceHealth;
+};
+
+export type EventSourceHealth = {
+  degraded: boolean;
+  unavailable: string[];
 };
 
 /**
@@ -68,12 +76,24 @@ export type UnifiedEvents = {
  * and /today (the "infinite skeleton" launch bug). Racing every feed against a
  * timer means the worst case is a missing source, never a dead board.
  */
-function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+function withTimeout<T>(
+  p: Promise<T>,
+  ms: number,
+  fallback: T,
+  onFailure?: () => void,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
+    timer = setTimeout(() => {
+      onFailure?.();
+      resolve(fallback);
+    }, ms);
   });
-  return Promise.race([Promise.resolve(p).catch(() => fallback), timeout]).finally(
+  const guarded = Promise.resolve(p).catch(() => {
+    onFailure?.();
+    return fallback;
+  });
+  return Promise.race([guarded, timeout]).finally(
     () => clearTimeout(timer),
   );
 }
@@ -85,38 +105,42 @@ const FEED_MS = 8000;
 // App code must keep calling assembleUnifiedEvents.
 export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
+  const unavailable = new Set<string>();
+  const markUnavailable = (source: string) => () => unavailable.add(source);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
+  const [liveResult, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
     withTimeout(getLiveEvents(60), FEED_MS, {
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
       sources_succeeded: [] as string[],
       sources_failed: [] as string[],
-    }),
-    withTimeout(fetchTicketmasterMusic(), FEED_MS, []),
-    withTimeout(fetchTicketmasterSports(), FEED_MS, []),
-    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), FEED_MS, []),
+    }, markUnavailable("municipal calendars")),
+    withTimeout(fetchTicketmasterMusic(), FEED_MS, [], markUnavailable("Ticketmaster music")),
+    withTimeout(fetchTicketmasterSports(), FEED_MS, [], markUnavailable("Ticketmaster sports")),
+    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), FEED_MS, [], markUnavailable("Bandsintown")),
     // SeatGeek area discovery (Phase 4 item 3): inert without
     // SEATGEEK_CLIENT_ID, fail-soft like the others.
-    withTimeout(fetchSeatGeek(), FEED_MS, []),
+    withTimeout(fetchSeatGeek(), FEED_MS, [], markUnavailable("SeatGeek")),
     // Eventbrite organizer registry (Phase 4 item 4): inert without
     // EVENTBRITE_TOKEN or an empty registry.
-    withTimeout(fetchEventbrite(), FEED_MS, []),
+    withTimeout(fetchEventbrite(), FEED_MS, [], markUnavailable("Eventbrite")),
     // Visit Frederick destination-marketing events RSS (keyless Simpleview
     // feed). Partner-confidence county listings; fail-soft to [].
-    withTimeout(fetchVisitFrederick(), FEED_MS, []),
+    withTimeout(fetchVisitFrederick(), FEED_MS, [], markUnavailable("Visit Frederick")),
     // Frederick Keys home games from the keyless MLB Stats API. Dedupes against
     // Ticketmaster on the clean slug; fail-soft to [].
-    withTimeout(fetchFrederickKeys(), FEED_MS, []),
+    withTimeout(fetchFrederickKeys(), FEED_MS, [], markUnavailable("Frederick Keys")),
     // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
-    withTimeout(fetchSquarespaceVenueEvents(60), FEED_MS, []),
+    withTimeout(fetchSquarespaceVenueEvents(60), FEED_MS, [], markUnavailable("venue calendars")),
     // Cron-ingested PUBLIC draws (FCPL library + FCVFRA fire-company carnivals
     // /bingo) lifted into the rails so the gap-town events that have no other
     // feed read as real "what's on", not a tucked civic row. County CivicEngage
     // is excluded by the adapter (it already arrives via the live county iCal).
-    withTimeout(getIngestedSeries(), FEED_MS, []),
+    withTimeout(getIngestedSeries(), FEED_MS, [], markUnavailable("ingested calendars")),
   ]);
+  const liveEventsRaw = liveResult.events;
+  for (const source of liveResult.sources_failed) unavailable.add(source);
 
   // Live/county + music + sports feeds, curated duplicates dropped.
   const liveCards = dedupeLiveAgainstCurated(
@@ -180,7 +204,14 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // out of "What's on", cards badge it, the detail banner reads it.
   const unified = applyEventNotices(withVenueThumbs(positioned), now);
 
-  return { unified, publicEvents: unified.filter(isPublicEvent) };
+  return {
+    unified,
+    publicEvents: unified.filter(isPublicEvent),
+    sourceHealth: {
+      degraded: unavailable.size > 0,
+      unavailable: [...unavailable],
+    },
+  };
 }
 
 /**
@@ -237,7 +268,7 @@ const cachedAssemble = unstable_cache(
   // v18: venue-feed events with clearly non-music titles (yoga/trivia/
   // bingo/paint/run club) no longer get the blanket "music" category —
   // the cached rows' category/category_name change.
-  ["unified-events-v22", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v23", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.

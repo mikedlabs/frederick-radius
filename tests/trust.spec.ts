@@ -3,14 +3,14 @@ import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/t
 import type { OpenStatus } from "@/lib/hours";
 
 describe("eventTrust", () => {
-  it("a confirmed live-feed event reads 'Confirmed', never 'Verified'", () => {
+  it("a checked live-feed event reads 'Checked at source', never 'Verified'", () => {
     // "Verified" is reserved for owner-managed records; a checked live-feed
     // row is "Confirmed". The basis must not echo the label (the old rule
     // produced the duplicated "Verified · Verified by Frederick Radius").
     const t = eventTrust({ source: "manual", is_verified: true });
     expect(t.level).toBe("official");
-    expect(t.label).toBe("Confirmed");
-    expect(t.basis).toMatch(/Confirmed by Frederick Radius/);
+    expect(t.label).toBe("Checked at source");
+    expect(t.basis).toMatch(/Checked by Frederick Radius/);
   });
 
   it("a named partner source wins over is_verified (reads 'Official')", () => {
@@ -20,14 +20,14 @@ describe("eventTrust", () => {
     expect(t.label).toBe("Official");
   });
 
-  it("seed is hand-picked/verified-level with editorial basis", () => {
+  it("seed is reviewed/verified-level with editorial basis", () => {
     const t = eventTrust({ source: "seed", is_verified: false });
     expect(t.level).toBe("verified");
     // Editorial: "Hand-picked" lands warmer than "Curated" (which
     // reads as Pinterest-corporate). Basis is "Picked by Frederick
     // Radius" — first-person, local-paper voice.
-    expect(t.label).toBe("Hand-picked");
-    expect(t.basis).toMatch(/Picked by Frederick Radius/);
+    expect(t.label).toBe("Radius reviewed");
+    expect(t.basis).toMatch(/reviewed by Frederick Radius/);
   });
 
   it("partner feeds are 'official' with a named source", () => {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { gte } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
+import { getDb, getSql } from "@/lib/db/client";
 import { usage_counters } from "@/lib/db/schema";
 import {
   AdminShell,
@@ -43,14 +43,15 @@ const UPSTREAMS: Array<{
   note: string;
 }> = [
   { key: "google_photo", label: "Google place photos", per1000: 7, note: "Places Photo SKU. The blob mirror bills each photo once ever; these counts are real Google fetches." },
-  { key: "anthropic_ask", label: "Ask (Claude answers)", per1000: 10, note: "Roughly a cent per answer; varies with tokens." },
+  { key: "anthropic_ask", label: "Ask Radius AI", per1000: 10, note: "Counts submitted AI answers, not every internal tool step. AI Gateway is the source of truth for model and embedding spend." },
   { key: "mapbox_isochrone", label: "Mapbox isochrone", per1000: 2, note: "After the free tier. Platform caching means real hits run lower than this count." },
   { key: "mapbox_static", label: "Mapbox static maps", per1000: 1, note: "After the 50k/month free tier; cached for 30 days per location." },
 ];
 
 const BILLING_LINKS: Array<{ label: string; href: string }> = [
   { label: "Google Cloud billing", href: "https://console.cloud.google.com/billing" },
-  { label: "Anthropic usage", href: "https://console.anthropic.com/settings/usage" },
+  { label: "Vercel AI Gateway usage", href: "https://vercel.com/dashboard/ai" },
+  { label: "Anthropic fallback usage", href: "https://console.anthropic.com/settings/usage" },
   { label: "Mapbox statistics", href: "https://account.mapbox.com/statistics" },
   { label: "Vercel usage", href: "https://vercel.com/dashboard/usage" },
 ];
@@ -80,7 +81,7 @@ export default async function CostsAdmin() {
   const db = getDb();
   let rows: Array<{ day: string; upstream: string; count: number }> = [];
   let dbError = false;
-  // eslint-disable-next-line react-hooks/purity -- force-dynamic server page; the whole point is a fresh per-request window
+  let searchDocumentCount = 0;
   const nowMs = Date.now();
   if (db) {
     try {
@@ -91,6 +92,17 @@ export default async function CostsAdmin() {
         .where(gte(usage_counters.day, dayKeyEastern(since)));
     } catch {
       dbError = true;
+    }
+  }
+  const rawSql = getSql();
+  if (rawSql) {
+    try {
+      const [row] = await rawSql<Array<{ count: number | string }>>`
+        select count(*) as count from public.radius_search_documents
+      `;
+      searchDocumentCount = Number(row?.count) || 0;
+    } catch {
+      // Migration not applied yet. The checklist below reports it as missing.
     }
   }
 
@@ -106,7 +118,9 @@ export default async function CostsAdmin() {
     { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
     { label: "Photo blob mirror", ok: Boolean(process.env.BLOB_READ_WRITE_TOKEN), why: "Mirrors each Google photo once so repeat views never re-bill Google." },
     { label: "Google Places key", ok: Boolean(process.env.GOOGLE_PLACES_API_KEY), why: "Set a hard budget cap + alerts in the Google Cloud console." },
-    { label: "Anthropic key", ok: Boolean(process.env.ANTHROPIC_API_KEY), why: "Set a usage limit on the key in the Anthropic console." },
+    { label: "AI Gateway", ok: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN), why: "Routes the agent through one budgeted, observable model layer. Set a team spend limit in Vercel." },
+    { label: "Agent step limit", ok: true, why: "Radius stops the decision loop after five model steps and keeps simple questions off the model path." },
+    { label: "Hybrid search index", ok: searchDocumentCount > 0, why: searchDocumentCount > 0 ? `${searchDocumentCount.toLocaleString()} local records are available to meaning + exact-match retrieval.` : "Apply migration 0025, then run npm run build:radius-search once." },
   ];
 
   return (

@@ -1,5 +1,6 @@
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { roundCoord } from "@/lib/walkTime";
+import { getScope, scopeToParam } from "@/lib/scope";
 
 /**
  * Client-side want-answer cache + prefetch.
@@ -31,6 +32,7 @@ const cache = new Map<string, Entry>();
 
 function buildUrl(cKey: string, facet: string | null): { url: string; key: string } {
   const fix = readCachedPosition();
+  const scope = getScope();
   // Never put an exact device fix into a URL, CDN key, access log, or error
   // trace. A ~100m snap preserves useful neighborhood ranking while keeping
   // the browser request itself coarse (the server rounds again defensively).
@@ -40,9 +42,11 @@ function buildUrl(cKey: string, facet: string | null): { url: string; key: strin
   const geo = approximateFix
     ? `&lat=${approximateFix.lat}&lng=${approximateFix.lng}`
     : "";
-  const url = `/api/want?c=${encodeURIComponent(cKey)}${facet ? `&facet=${encodeURIComponent(facet)}` : ""}${geo}`;
-  // Geo rides in the key so a moved position doesn't serve a stale ranking.
-  const key = `${cKey}|${facet ?? ""}|${approximateFix ? `${approximateFix.lat},${approximateFix.lng}` : ""}`;
+  const scopeQuery = scope ? `&scope=${encodeURIComponent(scopeToParam(scope))}` : "";
+  const url = `/api/want?c=${encodeURIComponent(cKey)}${facet ? `&facet=${encodeURIComponent(facet)}` : ""}${scopeQuery}${geo}`;
+  // Geo + scope ride in the key so a moved position OR a newly selected town
+  // cannot reuse an answer ranked for the previous context.
+  const key = `${cKey}|${facet ?? ""}|${scope ?? ""}|${approximateFix ? `${approximateFix.lat},${approximateFix.lng}` : ""}`;
   return { url, key };
 }
 

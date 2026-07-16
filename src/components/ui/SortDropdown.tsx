@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
 
 /**
@@ -60,6 +60,8 @@ export default function SortDropdown<K extends string = string>({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const choicesId = useId();
   const current = options.find((o) => o.key === value) ?? options[0];
 
   // Outside-click + Escape closes the menu. Bound only while open
@@ -72,7 +74,10 @@ export default function SortDropdown<K extends string = string>({
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -85,10 +90,11 @@ export default function SortDropdown<K extends string = string>({
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
         className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
@@ -118,7 +124,8 @@ export default function SortDropdown<K extends string = string>({
 
       {open && (
         <div
-          role="menu"
+          id={choicesId}
+          role="group"
           aria-label={label}
           className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
             align === "right" ? "right-0" : "left-0"
@@ -131,11 +138,11 @@ export default function SortDropdown<K extends string = string>({
               <button
                 key={opt.key}
                 type="button"
-                role="menuitemradio"
-                aria-checked={active}
+                aria-pressed={active}
                 onClick={() => {
                   onChange(opt.key);
                   setOpen(false);
+                  triggerRef.current?.focus();
                 }}
                 className="flex min-h-[44px] w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{

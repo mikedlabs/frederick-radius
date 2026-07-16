@@ -2,9 +2,9 @@
  * Rolling hours refresh (data brief, Phase 1, section 4.3).
  *
  * Walks the Google-backed catalog on a 7 day cycle: each run handles the
- * slice of slugs whose hash lands on today's cycle day, which works out
- * to roughly 190 Place Details calls per day for the partner and curated
- * set. Field mask scoped to hours and business status only, so every
+ * slice of slugs whose hash lands on today's cycle day. Every canonical
+ * record with a Google place ID participates, including the discovered
+ * tail. Field mask scoped to hours and business status only, so every
  * call stays on the cheapest applicable SKU.
  *
  * Results upsert into the place_hours_refresh table. The loader does not
@@ -19,27 +19,26 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { PLACES } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 import { getDb } from "@/lib/db/client";
 import { placeHoursRefresh } from "@/lib/db/schema";
 import {
   getPlaceDetails,
   googlePlacesConfigured,
 } from "@/lib/integrations/google-places";
+import {
+  HOURS_REFRESH_CYCLE_DAYS,
+  selectHoursRefreshTargets,
+} from "@/lib/hours-refresh-targets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const BATCH_CAP = 200;
-const CYCLE_DAYS = 7;
-
-/** Stable slug hash so each place lands on the same cycle day. */
-function cycleDayOf(slug: string): number {
-  let h = 5381;
-  for (let i = 0; i < slug.length; i++) h = ((h * 33) ^ slug.charCodeAt(i)) | 0;
-  return Math.abs(h) % CYCLE_DAYS;
-}
+// Canonical public targets are deduplicated by Google ID before bucketing.
+// Keep headroom so a deterministic slice can never strand the tail forever.
+const BATCH_CAP = 400;
+const CONCURRENCY = 5;
 
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
@@ -65,42 +64,53 @@ export async function GET(request: Request) {
     );
   }
 
-  // Today's slice of the cycle. The discovery tail is excluded: scraped
-  // rows render "Hours not posted" by policy, so refreshing them would
-  // spend quota asserting nothing.
-  const today = Math.floor(Date.now() / 86400000) % CYCLE_DAYS;
-  const targets = PLACES.filter(
-    (p) => p.google_place_id && p.source !== "discovered" && cycleDayOf(p.slug) === today,
-  ).slice(0, BATCH_CAP);
+  // Today's slice of the cycle. Source tier is deliberately irrelevant: if a
+  // public record has a Google place ID, the same truth/freshness policy
+  // applies to it. The cap still provides a hard upper bound on paid calls.
+  const today = Math.floor(Date.now() / 86400000) % HOURS_REFRESH_CYCLE_DAYS;
+  const targets = selectHoursRefreshTargets(publicPlaces(), today, BATCH_CAP);
 
   const refreshedAt = new Date();
   let written = 0;
   const failures: string[] = [];
 
-  for (const p of targets) {
-    const details = await getPlaceDetails(p.google_place_id as string, "hours");
-    if (!details) {
-      failures.push(p.slug);
-      continue;
-    }
-    await db
-      .insert(placeHoursRefresh)
-      .values({
-        slug: p.slug,
-        placeId: p.google_place_id as string,
-        weekdayHours: details.weekday_hours ?? null,
-        businessStatus: details.business_status ?? null,
-        refreshedAt,
-      })
-      .onConflictDoUpdate({
-        target: placeHoursRefresh.slug,
-        set: {
-          weekdayHours: details.weekday_hours ?? null,
-          businessStatus: details.business_status ?? null,
-          refreshedAt,
-        },
-      });
-    written++;
+  // A five-wide pool keeps a 300-second function from timing out on the full
+  // discovered-inclusive slice without creating a burst large enough to be
+  // rude to Google or the database.
+  for (let i = 0; i < targets.length; i += CONCURRENCY) {
+    const batch = targets.slice(i, i + CONCURRENCY);
+    const outcomes = await Promise.all(
+      batch.map(async (p) => {
+        try {
+          const details = await getPlaceDetails(p.google_place_id as string, "hours");
+          if (!details) return false;
+          await db
+            .insert(placeHoursRefresh)
+            .values({
+              slug: p.slug,
+              placeId: p.google_place_id as string,
+              weekdayHours: details.weekday_hours ?? null,
+              businessStatus: details.business_status ?? null,
+              refreshedAt,
+            })
+            .onConflictDoUpdate({
+              target: placeHoursRefresh.slug,
+              set: {
+                weekdayHours: details.weekday_hours ?? null,
+                businessStatus: details.business_status ?? null,
+                refreshedAt,
+              },
+            });
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+    );
+    outcomes.forEach((ok, index) => {
+      if (ok) written++;
+      else failures.push(batch[index].slug);
+    });
   }
 
   return NextResponse.json({

@@ -95,21 +95,53 @@ export const CIVIC_ACTIONS: CivicAction[] = [
 export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
   CIVIC_ACTIONS.filter((a) => a.verb === verb);
 
-/** Naive match for the Ask: label + keyword contains. */
-/** Words that appear in half the action labels AND nearly every question —
- *  scoring them let "how do I register to vote in frederick county" match a
- *  generic county entry ahead of Voter registration (ask audit, Jul 2026). */
-const CIVIC_STOP = new Set(["frederick", "county", "maryland", "city", "how", "who", "what", "the", "for"]);
+const CIVIC_INTENT =
+  /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
 
+const CIVIC_STOP = new Set([
+  "a", "an", "and", "can", "city", "county", "do", "for", "frederick", "get", "handle", "handles", "how", "i",
+  "information", "maryland", "of", "official", "online", "or", "the", "to",
+  "what", "where", "who", "with",
+]);
+
+function tokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !CIVIC_STOP.has(token));
+}
+
+/**
+ * Match an official action only when the query actually reads like a civic
+ * task. Tokens are compared as whole words, so conversational words such as
+ * "get" can never match the middle of "budget".
+ */
 export function matchCivicAction(query: string): CivicAction | null {
-  const q = query.toLowerCase();
+  if (!CIVIC_INTENT.test(query)) return null;
+  const queryTokens = new Set(tokens(query));
+  const explicitVerbs = new Set<CivicVerb>(
+    (["contact", "find", "pay", "register", "report", "request", "view"] as CivicVerb[])
+      .filter((verb) => queryTokens.has(verb)),
+  );
   let best: CivicAction | null = null, bestScore = 0;
   for (const a of CIVIC_ACTIONS) {
-    const hay = [a.label, ...(a.keywords ?? [])].join(" ").toLowerCase();
-    let score = 0;
-    for (const term of q.split(/\s+/)) {
-      if (term.length > 2 && !CIVIC_STOP.has(term) && hay.includes(term)) score++;
+    if (a.id === "food-license" && !/\b(?:(?:food|restaurant|vendor)\s+(?:license|permit)|(?:license|permit)\s+(?:for\s+)?(?:food|restaurant|vendor)|health inspection)\b/i.test(query)) {
+      continue;
     }
+    // An explicit action verb is a contract. "Find a trash can" must not
+    // silently become "report missed recycling" just because both contain
+    // the word trash.
+    if (explicitVerbs.size > 0 && !explicitVerbs.has(a.verb)) continue;
+    const actionTokens = new Set(tokens([a.label, ...(a.keywords ?? [])].join(" ")));
+    let subjectScore = 0;
+    for (const term of queryTokens) if (actionTokens.has(term)) subjectScore += 2;
+    for (const phrase of a.keywords ?? []) {
+      if (phrase.includes(" ") && query.toLowerCase().includes(phrase.toLowerCase())) subjectScore += 4;
+    }
+    // A generic verb such as "find" is never enough evidence by itself.
+    if (subjectScore === 0) continue;
+    const score = subjectScore + (queryTokens.has(a.verb) ? 3 : 0);
     if (score > bestScore) { bestScore = score; best = a; }
   }
   return bestScore > 0 ? best : null;

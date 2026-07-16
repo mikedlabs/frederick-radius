@@ -230,6 +230,7 @@ function PlaceCell({ row }: { row: IndexRow }) {
         <Image
           src={row.photo}
           alt=""
+          unoptimized={row.photo.startsWith("/api/place-photo")}
           width={88}
           height={88}
           sizes="44px"

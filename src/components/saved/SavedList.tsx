@@ -1056,15 +1056,9 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           store type in the shared saved system; self-hides when empty. */}
       <MyTaps />
 
-      {/* The almanac colophon: every teaser demoted to one quiet ledger —
-          the coming points layer, share, sync, and the notifications nudge
-          each get one ruled line, no boxes, no hype. */}
+      {/* Quiet utility colophon: sharing and cross-device sync only. */}
       <footer className="sv-colophon" aria-label="About this page">
         <div className="inner">
-          <div className="sv-colophon-row">
-            <span className="k">Radius Points, for the field checks you contribute</span>
-            <span className="v">Coming soon</span>
-          </div>
           {shareUrl && (
             <div className="sv-colophon-row">
               <span className="k">Share this list with a friend</span>

@@ -16,21 +16,23 @@
  * I live" preference (map center, Radius origin); scope is the transient
  * "what I'm browsing right now" lens. Setting scope never touches home.
  *
- * The review listed a separate `downtown` scope, but the municipality data
- * already names the `frederick` town "Downtown Frederick" — so downtown is
- * just `town:frederick`, and a fourth value would only duplicate it.
+ * Frederick is represented by `town:frederick`. Downtown remains a useful
+ * neighborhood concept, but the municipality lens covers the whole city and
+ * must never imply that its bounding box is downtown-only.
  *
  * Pure core (parse/resolve/label) has no clock, no DOM, no storage — it is
  * safe to import in a server component. Only get/set touch the browser.
  */
-import type { LngLat } from "@/lib/geo";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 export type Scope = "nearme" | "county" | `town:${string}`;
 
 export const SCOPE_COOKIE = "fr_scope";
 /** Canonical URL param — a shared link like /events?in=brunswick carries scope. */
 export const SCOPE_PARAM = "in";
+/** Same-document signal used to keep client surfaces in sync immediately. */
+export const SCOPE_CHANGE_EVENT = "fr:scope-change";
 
 const STORAGE_KEY = "fr:scope:v1";
 
@@ -95,6 +97,164 @@ export function effectiveOriginSlug(
   return homeMuniRaw && MUNICIPALITY_BY_SLUG[homeMuniRaw] ? homeMuniRaw : null;
 }
 
+export type DecisionOriginSource =
+  | "town"
+  | "device"
+  | "home"
+  | "ip"
+  | "county"
+  | "none";
+
+/** The canonical answer to "where should this recommendation rank from?".
+ * Town scope is both an origin AND a hard municipality filter; a device fix
+ * is precise enough for distances; home/IP/town are ranking-only. */
+export type DecisionContext = {
+  origin: LngLat | null;
+  filterMunicipality: string | null;
+  source: DecisionOriginSource;
+  label: string;
+  canShowDistance: boolean;
+  fallbackReason: "outside-county" | "location-unavailable" | null;
+};
+
+type ResolveDecisionContextInput = {
+  scopeRaw?: string | null;
+  homeMuniRaw?: string | null;
+  deviceOrigin?: LngLat | null;
+  approximateOrigin?: LngLat | null;
+  approximateStatus?: "available" | "missing" | "outside-county";
+};
+
+function validDeviceOrigin(origin: LngLat | null | undefined): origin is LngLat {
+  return Boolean(
+    origin &&
+      Number.isFinite(origin.lat) &&
+      Number.isFinite(origin.lng) &&
+      Math.abs(origin.lat) <= 90 &&
+      Math.abs(origin.lng) <= 180,
+  );
+}
+
+function nearestTownLabel(origin: LngLat): string {
+  let best = MUNICIPALITIES[0];
+  let bestD = Infinity;
+  for (const muni of MUNICIPALITIES) {
+    const dx = muni.centroid.lng - origin.lng;
+    const dy = muni.centroid.lat - origin.lat;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) {
+      best = muni;
+      bestD = d;
+    }
+  }
+  return best?.name ?? "Frederick County";
+}
+
+/**
+ * Resolve scope + origins once, then hand the same context to every ranking
+ * path. Precedence is deliberate:
+ *   explicit town > explicit county > device > home > in-county IP > county.
+ * A selected town therefore cannot be silently displaced by a cached device
+ * fix or an edge IP centroid. IP is accepted only inside the real county
+ * polygon; an out-of-county carrier/VPN result becomes an explicitly labeled
+ * county-wide fallback.
+ */
+export function resolveDecisionContext({
+  scopeRaw,
+  homeMuniRaw,
+  deviceOrigin,
+  approximateOrigin,
+  approximateStatus = approximateOrigin ? "available" : "missing",
+}: ResolveDecisionContextInput): DecisionContext {
+  const scope = parseScope(scopeRaw);
+  const town = scopeTownSlug(scope);
+  if (town) {
+    const muni = MUNICIPALITY_BY_SLUG[town];
+    return {
+      origin: muni.centroid,
+      filterMunicipality: town,
+      source: "town",
+      label: muni.name,
+      canShowDistance: false,
+      fallbackReason: null,
+    };
+  }
+  if (scope === "county") {
+    return {
+      origin: null,
+      filterMunicipality: null,
+      source: "county",
+      label: "Whole county",
+      canShowDistance: false,
+      fallbackReason: null,
+    };
+  }
+  if (validDeviceOrigin(deviceOrigin)) {
+    return {
+      origin: deviceOrigin,
+      filterMunicipality: null,
+      source: "device",
+      label: "Near you",
+      canShowDistance: true,
+      fallbackReason: null,
+    };
+  }
+
+  const home = homeMuniRaw && MUNICIPALITY_BY_SLUG[homeMuniRaw]
+    ? MUNICIPALITY_BY_SLUG[homeMuniRaw]
+    : null;
+
+  // A deliberate Near me scope prefers a real in-county IP approximation
+  // over the long-term home town. Without an explicit Near me scope, home is
+  // the stable fallback before a network-derived guess.
+  if (
+    scope === "nearme" &&
+    approximateOrigin &&
+    isInFrederickCountyArea(approximateOrigin.lng, approximateOrigin.lat)
+  ) {
+    return {
+      origin: approximateOrigin,
+      filterMunicipality: null,
+      source: "ip",
+      label: `Approximately near ${nearestTownLabel(approximateOrigin)}`,
+      canShowDistance: false,
+      fallbackReason: null,
+    };
+  }
+  if (home) {
+    return {
+      origin: home.centroid,
+      filterMunicipality: null,
+      source: "home",
+      label: `Ranked from ${home.name}`,
+      canShowDistance: false,
+      fallbackReason: null,
+    };
+  }
+  if (
+    approximateOrigin &&
+    isInFrederickCountyArea(approximateOrigin.lng, approximateOrigin.lat)
+  ) {
+    return {
+      origin: approximateOrigin,
+      filterMunicipality: null,
+      source: "ip",
+      label: `Approximately near ${nearestTownLabel(approximateOrigin)}`,
+      canShowDistance: false,
+      fallbackReason: null,
+    };
+  }
+  return {
+    origin: null,
+    filterMunicipality: null,
+    source: "none",
+    label: "Whole county",
+    canShowDistance: false,
+    fallbackReason:
+      approximateStatus === "outside-county" ? "outside-county" : "location-unavailable",
+  };
+}
+
 function safeStorage(): Storage | null {
   try {
     return typeof window !== "undefined" ? window.localStorage : null;
@@ -115,6 +275,27 @@ export function getScope(): Scope | null {
 }
 
 /**
+ * Subscribe to scope changes from this page and from other tabs. Components
+ * should use this instead of polling localStorage or only re-reading on open.
+ */
+export function subscribeScopeChange(listener: (scope: Scope | null) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const onScopeChange = (event: Event) => {
+    const detail = (event as CustomEvent<{ scope?: Scope | null }>).detail;
+    listener(detail && "scope" in detail ? parseScope(detail.scope) : getScope());
+  };
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY) listener(parseScope(event.newValue));
+  };
+  window.addEventListener(SCOPE_CHANGE_EVENT, onScopeChange);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener(SCOPE_CHANGE_EVENT, onScopeChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+/**
  * Set (or clear) the browsing scope. Mirrors to the `fr_scope` cookie so
  * server components re-render with it on the next router.refresh(). Same
  * SameSite=lax, 1-year cookie contract as setHomeMuni. Client-only.
@@ -129,14 +310,20 @@ export function setScope(scope: Scope | null): void {
       // localStorage may be full or disabled. Fail silent.
     }
   }
-  if (typeof document === "undefined") return;
-  try {
-    if (scope === null) {
-      document.cookie = `${SCOPE_COOKIE}=; path=/; max-age=0; samesite=lax`;
-    } else {
-      document.cookie = `${SCOPE_COOKIE}=${encodeURIComponent(scope)}; path=/; max-age=31536000; samesite=lax`;
+  if (typeof document !== "undefined") {
+    try {
+      if (scope === null) {
+        document.cookie = `${SCOPE_COOKIE}=; path=/; max-age=0; samesite=lax`;
+      } else {
+        document.cookie = `${SCOPE_COOKIE}=${encodeURIComponent(scope)}; path=/; max-age=31536000; samesite=lax`;
+      }
+    } catch {
+      // document.cookie can throw on locked-down setups. Fail silent.
     }
-  } catch {
-    // document.cookie can throw on locked-down setups. Fail silent.
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<{ scope: Scope | null }>(SCOPE_CHANGE_EVENT, { detail: { scope } }),
+    );
   }
 }

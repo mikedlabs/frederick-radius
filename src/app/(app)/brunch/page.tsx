@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/brunch" },
   title: "Brunch in Frederick County",
   description:
-    "Where to get brunch around Frederick County: a verified list of every spot with a real weekend brunch, confirmed at the source, with the days and hours.",
+    "Where to get brunch around Frederick County: a source-checked list of spots with a real weekend brunch, with days and hours.",
 };
 
 export const revalidate = 3600;
@@ -47,12 +47,12 @@ export default function BrunchPage() {
               Brunch
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Every spot in the county with a real brunch, confirmed at the source.
-              Verified means we checked the venue&rsquo;s own menu, not a listing.
+              Every spot in the county with a real brunch, checked at the source.
+              We use the venue&rsquo;s own menu, not a directory listing.
             </p>
             <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
           </div>
-          <FieldStamp id="brunch" top="VERIFIED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
+          <FieldStamp id="brunch" top="CHECKED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
         </div>
       </header>
 
@@ -92,7 +92,7 @@ export default function BrunchPage() {
                             className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em]"
                             style={{ background: "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}
                           >
-                            Verified
+                            Checked at source
                           </span>
                         )}
                       </div>

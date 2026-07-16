@@ -24,7 +24,7 @@ export default function TermsPage() {
           The rules, in plain language.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Effective July 14, 2026
+          Effective July 15, 2026
         </p>
       </header>
 
@@ -79,6 +79,12 @@ export default function TermsPage() {
             Do not share, sell, automate, probe, or misuse access credentials. We
             may limit, suspend, or revoke access to protect the app, its users, or
             its data sources.
+          </p>
+          <p>
+            The beta gate manages early access; it is not a confidentiality or
+            security boundary. Do not submit or rely on confidential material.
+            When you share a link, common messaging and social preview services
+            may fetch that page to generate its title, description, and image.
           </p>
         </div>
 

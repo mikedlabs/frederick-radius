@@ -11,9 +11,9 @@ import RAW from "./beers.json" with { type: "json" };
  * resolves to a real place in the catalog (validated at build), so a beer can
  * always link to its brewery's page and the beer-day plan.
  *
- * Source: brewery sites + Untappd, gathered July 2026. 17 currently-open
- * Frederick County breweries. Out-of-county (Flood Zone, Stone Silo) and
- * closed (Idiom, Jug Bridge, Flying Dog) breweries are intentionally absent.
+ * Source: brewery sites + Untappd, gathered July 2026. These 17 brewery guides
+ * are an editorial snapshot, not an operating-status directory. The UI asks
+ * visitors to verify access, hours, and availability with each brewery.
  */
 
 export type StyleFamily =
@@ -180,7 +180,7 @@ export const BEER_HISTORY = {
     { year: "1996", title: "Brewer's Alley revives the name", detail: "Brewer's Alley opened as Frederick's first modern brewpub in the 1769 market house on North Market Street, reviving the old name and anchoring downtown's return to brewing." },
     { year: "2006", title: "The Flying Dog years", detail: "Flying Dog moved its production to Frederick and became one of Maryland's largest breweries, until it was sold and left for New York in 2023." },
     { year: "2012", title: "Farm breweries arrive", detail: "Milkhouse and Frey's brought farm brewing to the county, pouring in old barns on working farms in Mount Airy." },
-    { year: "Today", title: "A beer destination", detail: "Around seventeen breweries now pour across the county, from the downtown Carroll Creek cluster to the farm breweries in the hills. Frederick hosts the Maryland Craft Beer Festival." },
+    { year: "Today", title: "A beer destination", detail: "The Radius guide follows brewery brands from the Carroll Creek cluster to farm-country destinations in the hills. Frederick also hosts the Maryland Craft Beer Festival." },
   ],
   funFacts: [
     "Frederick's historic brewing district was literally called Brewer's Alley, and breweries ran there for about 153 years before the 1901 fire.",

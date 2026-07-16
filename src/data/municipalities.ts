@@ -32,7 +32,10 @@ export type Municipality = {
 export const MUNICIPALITIES: Municipality[] = [
   {
     slug: "frederick",
-    name: "Downtown Frederick",
+    // This scope covers the full municipality, including west-side shopping
+    // centers. Calling it "Downtown" made distant results look incorrectly
+    // scoped; true downtown discovery is handled by location/radius context.
+    name: "Frederick",
     type: "city",
     population: 78_171,
     centroid: { lng: -77.4105, lat: 39.4143 },

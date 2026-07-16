@@ -45,7 +45,7 @@ const CRAVING_TERMS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["shops", ["shop", "shops", "shopping", "boutique", "boutiques", "antiques", "bookstore"]],
   ["stay", ["hotel", "hotels", "motel", "bed and breakfast", "b&b", "lodging", "place to stay", "where to stay", "overnight"]],
   ["drinks", ["drinks", "bar", "bars", "pub", "pubs", "cocktail", "cocktails", "happy hour"]],
-  ["food", ["food", "eat", "restaurant", "restaurants", "dinner", "lunch", "brunch", "hungry", "pizza", "pizzeria", "taco", "tacos", "burger", "burgers", "sushi", "sandwich", "bbq"]],
+  ["food", ["food", "eat", "eaten", "ate", "restaurant", "restaurants", "dinner", "lunch", "brunch", "hungry", "pizza", "pizzeria", "taco", "tacos", "burger", "burgers", "sushi", "sandwich", "bbq"]],
 ];
 
 function hasTerm(q: string, term: string): boolean {
@@ -54,7 +54,7 @@ function hasTerm(q: string, term: string): boolean {
 }
 
 /** "open" / "open now" intent, minus the "open mic" false friend. */
-function wantsOpenNow(q: string): boolean {
+export function queryWantsOpenNow(q: string): boolean {
   return /\bopen\b/.test(q) && !/open\s?mic/.test(q);
 }
 
@@ -70,13 +70,13 @@ export function primaryAnswerFor(query: string): PrimaryAnswer | null {
         key,
         label: craving.label,
         href: `/nearby?c=${key}`,
-        kicker: "Open picks, nearest when you share your location",
+        kicker: "Open picks; nearest when location is available",
       };
     }
   }
 
   // No specific craving, but the user asked what's open — answer that directly.
-  if (wantsOpenNow(q)) {
+  if (queryWantsOpenNow(q)) {
     return { key: "open-now", label: "Open right now", href: "/open-now", kicker: "Everything open across the county" };
   }
   return null;

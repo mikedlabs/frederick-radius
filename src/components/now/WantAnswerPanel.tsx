@@ -47,6 +47,9 @@ type WantAnswer = {
   notable: WantRow[];
   total: number;
   browseHref: string;
+  contextLabel: string;
+  contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
+  fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
 export default function WantAnswerPanel({
@@ -162,6 +165,17 @@ export default function WantAnswerPanel({
         </button>
       </div>
 
+      {answer && (
+        <p className="px-4 pt-0.5 font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+          {answer.contextLabel}
+          {answer.fallbackReason === "outside-county"
+            ? " · network location was outside Frederick County"
+            : answer.fallbackReason === "location-unavailable"
+              ? " · location unavailable"
+              : ""}
+        </p>
+      )}
+
       {failed ? (
         <p className="px-4 pb-4 pt-2 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
           Couldn&rsquo;t load this one. <Link href={`/nearby?c=${cKey}`} className="underline underline-offset-2" style={{ color: "var(--app-cool)" }}>Open the full list</Link> instead.
@@ -237,7 +251,7 @@ export default function WantAnswerPanel({
           ) : answer.notable.length > 0 ? (
             <div className="px-4 pb-1">
               <p className="pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Nothing&rsquo;s open right now. Here&rsquo;s what&rsquo;s around the county.
+                Nothing&rsquo;s confirmed open right now. Here are the strongest matches for {answer.contextLabel.toLowerCase()}.
               </p>
               <ul className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
                 {answer.notable.map((r) => (
@@ -365,7 +379,7 @@ export default function WantAnswerPanel({
             className="flex items-center justify-between border-t px-4 py-3 text-[13px] font-semibold"
             style={{ borderColor: "var(--app-border)", color: `color-mix(in srgb, ${accent} 70%, var(--app-ink))` }}
           >
-            {answer.total > 0 ? `All ${answer.total} in the county` : "Browse the full list"}
+            {answer.total > 0 ? `All ${answer.total} results · ${answer.contextLabel}` : "Browse the full list"}
             <ArrowRight aria-hidden className="h-4 w-4" strokeWidth={2.2} />
           </Link>
         </>

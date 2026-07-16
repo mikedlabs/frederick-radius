@@ -73,6 +73,7 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   dog_waste: "dog-waste",
   dog_water: "dog-water",
   outlet: "outlet",
+  bike_repair: "bike-repair",
   other: "other",
 };
 
@@ -106,12 +107,6 @@ export const AMENITY_GROUPS: {
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
   { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
-  // Pools — added May 2026 as a registered map filter. The "pool"
-  // amenity category is wired into the loader's AmenityKind union
-  // and filter UI; point data is empty until verified city/county/Y
-  // pool addresses + coords are collected. Layer appears in the
-  // filter row immediately so the affordance is discoverable.
-  { key: "pool", label: "Pools", glyph: "\u{1F3CA}", cats: ["pool"], comingSoon: true },
   // River gauges — USGS sites surfaced as a map layer so the
   // "Rivers & creeks" data isn't trapped on /rivers alone. Tap a
   // gauge pin to jump to /rivers for live readings + trend.

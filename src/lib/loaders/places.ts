@@ -8,6 +8,8 @@ import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
@@ -26,7 +28,7 @@ import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { cleanFeedText, cleanBlurbFragment } from "@/lib/format/text";
-import { isJunkBlurb } from "@/lib/format/blurbSanity";
+import { isJunkBlurb, stripRepeatedNamePrefix } from "@/lib/format/blurbSanity";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
@@ -524,7 +526,19 @@ function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source">
 function boundaryBlurb(raw: string | undefined, name: string): string {
   if (!raw?.trim()) return "";
   const cleaned = cleanBlurbFragment(cleanFeedText(raw));
-  return cleaned && !isJunkBlurb(cleaned, name) ? cleaned : "";
+  if (!cleaned || isJunkBlurb(cleaned, name)) return "";
+
+  // A few imports repeated the business name twice before the actual copy.
+  // Remove only complete, exact name prefixes, with a small hard limit, then
+  // judge the remainder again so an address exposed by the cleanup does not
+  // become a card description.
+  let concise = cleaned;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = stripRepeatedNamePrefix(concise, name);
+    if (next === concise) break;
+    concise = next;
+  }
+  return concise && !isJunkBlurb(concise) ? concise : "";
 }
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
@@ -567,11 +581,12 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   // suspect. Every surface (map, radius distance, nearby) inherits
   // this via the one canonical loader.
   const geom =
-    typeof e.lat === "number" &&
+    OV_PATCH?.[p.slug]?.geom ??
+    (typeof e.lat === "number" &&
     typeof e.lng === "number" &&
     haversineMeters(p.geom, { lng: e.lng, lat: e.lat }) <= 2000
       ? { lng: e.lng, lat: e.lat }
-      : p.geom;
+      : p.geom);
   // Category correction precedence:
   //   1. An explicit human category patch (places-overrides.json) is the
   //      FINAL word — per the overrides contract, patches win over every
@@ -762,7 +777,13 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   const hours = refreshedHours ?? enriched.hours;
   const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
   const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
-  if (refresh?.business_status === "CLOSED_PERMANENTLY") {
+  const mayAssertHours =
+    mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
+    mayPublishVisitabilityHours(p.slug, hours, now);
+  const manualStatus = manualPlaceStatusOverride(p.slug);
+  if (manualStatus) {
+    enriched.is_operational = manualStatus.status;
+  } else if (refresh?.business_status === "CLOSED_PERMANENTLY") {
     enriched.is_operational = "closed_permanently";
   }
   return {
@@ -773,14 +794,25 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // run, so this is a no-op today and lights up the amenity facets once the
     // data lands. All three feed the category-page facet filters.
     tags: [...new Set([...deriveTags(enriched.category, enriched.tags), ...amenityTags(p.slug)])],
-    hours,
-    hours_verified: hoursVerified,
+    // Stale schedules are not merely marked unverified: hide them from every
+    // downstream consumer so no direct hours renderer can accidentally turn an
+    // old schedule into a current promise.
+    hours: mayAssertHours ? hours : undefined,
+    hours_verified: mayAssertHours,
+    // The detail page historically fell back to Google's display strings when
+    // structured hours were suppressed. Clear both representations at this
+    // canonical boundary so an unreviewed 24/7 or stale schedule cannot leak
+    // back onto a place page as seven raw "Open 24 hours" rows.
+    google_hours: mayAssertHours ? enriched.google_hours : undefined,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
     hours_updated_at: hoursVerifiedAt,
-    // The one decision point of the hours policy: open and closed
-    // states render only from verified hours, and once enforcement is
-    // on, only from hours verified inside the freshness window.
-    open_status: getOpenStatus(hours, { verified: mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) }, now),
+    // The one decision point of the hours policy: open and closed states render
+    // only from recently verified hours.
+    open_status: getOpenStatus(
+      mayAssertHours ? hours : undefined,
+      { verified: mayAssertHours },
+      now,
+    ),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
     field_notes: hasFieldNotes(p.slug),
     // Standing happy-hour figure only (e.g. "25% OFF") — never a day-specific
@@ -836,10 +868,14 @@ export function slimForList(p: PlaceCardData): PlaceCardData {
   return rest as PlaceCardData;
 }
 
-/** Share of places that carry verified hours, for the Open-now gate. */
+/** Share of places that can actually assert an open/closed state for the
+ * current build. Counting provenance alone kept Open-now visible even when a
+ * strict freshness pass had removed every materialized schedule. */
 export function hoursCoverage(places: PlaceCardData[]): number {
   if (!places.length) return 0;
-  return places.filter((p) => p.hours_source).length / places.length;
+  return places.filter(
+    (p) => p.hours_verified && p.hours && Object.keys(p.hours).length > 0,
+  ).length / places.length;
 }
 
 // Default ON by owner directive (2026-05-16: "ship everything"). At
@@ -863,11 +899,8 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
   if (!p) return null;
   const decorated = decoratePlace(p, origin, now);
 
-  const nearby_places = BASE_PLACES
+  const nearby_places = publicPlaces()
     .filter((x) => x.slug !== p.slug)
-    .filter(isOperational)
-    .filter(isDiscoverable)
-    .filter(isSubstantive)
     .map((x) => decoratePlace(x, p.geom, now))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 6);
@@ -1006,6 +1039,10 @@ function visitorScore(p: PlaceCardData, now: Date): number {
  * Radius page regressed by consuming the raw PLACES array directly.
  */
 export function isOperational(p: Place): boolean {
+  // A slug-keyed human safety override wins over Google until a person
+  // reviews/removes it. This is deliberately exact (not a name denylist), so a
+  // temporary storm closure cannot suppress an unrelated same-name place.
+  if (manualPlaceStatusOverride(p.slug)) return false;
   if (isKnownClosed(p.name)) return false; // manual override of last resort
   // Google enrichment is the SOURCE OF TRUTH for closure. DFP-scraped
   // records hardcode is_operational: "operational" at load time so the
@@ -1166,7 +1203,15 @@ export function publicPlacesByMunicipality(slug: string): Place[] {
  */
 export function publicPlaceBySlug(slug: string): Place | undefined {
   const p = BASE_BY_SLUG[slug];
-  return p && isOperational(p) ? p : undefined;
+  if (!p) return undefined;
+  return !SUPPRESSED_JUNK_SLUGS.has(p.slug) &&
+    isOperational(p) &&
+    isDiscoverable(p) &&
+    isSubstantive(p) &&
+    isValidCoord(p.geom) &&
+    isInSeason(p)
+    ? p
+    : undefined;
 }
 
 /** Back-compat alias. Prefer publicPlaces() in new code. */
@@ -1181,10 +1226,7 @@ export function radiusPlaces(): Place[] {
  * state. Closed places are still excluded.
  */
 export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): PlaceCardData[] {
-  return BASE_PLACES
-    .filter(isOperational)
-    .filter(isDiscoverable)
-    .filter(isSubstantive)
+  return publicPlaces()
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
     .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
@@ -1280,10 +1322,7 @@ export function openNowHighlights(
   limit: number,
   now: Date = new Date(),
 ): { count: number; names: string[] } {
-  const open = BASE_PLACES
-    .filter(isOperational)
-    .filter(isDiscoverable)
-    .filter(isSubstantive)
+  const open = publicPlaces()
     .filter(isRecommendable)
     .map((p) => decoratePlace(p, undefined, now))
     .filter((p) => isOpenNow(p.open_status));
@@ -1306,10 +1345,7 @@ export function openNowHighlights(
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
-  let results = BASE_PLACES
-    .filter(isOperational)
-    .filter(isDiscoverable)
-    .filter(isSubstantive)
+  let results = publicPlaces()
     .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
@@ -1376,10 +1412,7 @@ export function getCuratedPicks(
 }
 
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {
-  return BASE_PLACES
-    .filter(isOperational)
-    .filter(isDiscoverable)
-    .filter(isSubstantive)
+  return publicPlaces()
     .map((p) => decoratePlace(p, origin, now))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));

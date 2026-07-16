@@ -171,7 +171,7 @@ async function EventsBoard({
   // about "this weekend" again. All sources inside it are fail-soft; the
   // civic ingest below keeps the same .catch guards. Feed failures must
   // never block or break /events.
-  const [{ unified, publicEvents }, ingestedSeries, ingestedSummary] =
+  const [{ unified, publicEvents, sourceHealth }, ingestedSeries, ingestedSummary] =
     await Promise.all([
       eventsPromise,
       getIngestedSeries().catch(() => []),
@@ -280,6 +280,7 @@ async function EventsBoard({
           categories={categories}
           towns={towns}
           summary={browseSummary}
+          sourceHealth={sourceHealth}
           nowISO={now.toISOString()}
           next24ISO={todayEnd.toISOString()}
           weekendStartISO={friday.toISOString()}

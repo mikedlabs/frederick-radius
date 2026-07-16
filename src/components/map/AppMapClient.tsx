@@ -76,6 +76,7 @@ export default function AppMapClient({
   recenterToKnownLocation = false,
   pinpointDefault = false,
   initialCenter,
+  initialZoom,
   initialAmenityGroups,
   dock,
   activeSlugs = null,
@@ -129,6 +130,8 @@ export default function AppMapClient({
    *  trail row) instead of the county default. Forwarded to AppMap, whose
    *  initialZoom (14) frames it. Undefined -> AppMap's county default. */
   initialCenter?: [number, number];
+  /** Scope-aware opening zoom (county overview vs town/street framing). */
+  initialZoom?: number;
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
@@ -166,6 +169,7 @@ export default function AppMapClient({
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}
           initialCenter={initialCenter}
+          initialZoom={initialZoom}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
           activeSlugs={activeSlugs}
@@ -176,7 +180,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }
@@ -271,4 +275,3 @@ export function eventsNearVisiblePlaces(
   }
   return out;
 }
-

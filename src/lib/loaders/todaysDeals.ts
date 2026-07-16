@@ -51,6 +51,45 @@ function readsAsOffer(t: string): boolean {
   return OFFER_RE.test(t);
 }
 
+const MONEY_RE = /\$\s*\d|\d\s*%/i;
+const STRONG_VALUE_RE =
+  /\b(?:\d{1,3}\s*%\s*off|half[-\s]?(?:off|price)|bogo|buy\s+one\s+get\s+one|discount(?:ed)?|all[-\s]?you[-\s]?can[-\s]?eat|ayce|bottomless|happy\s*hour|kids?\s+eat\s+for)\b|\$\s*\d+(?:\.\d{1,2})?\s*off\b/i;
+const DAY_PREFIX_RE =
+  /^\s*(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nes|nesday)?|thur?(?:s|sday)?|fri(?:day)?|sat(?:urday)?)\b/i;
+const DEAL_FOOD_RE =
+  /\b(?:appetizers?|beer|bottles?|burgers?|cocktails?|crabs?|drafts?|drinks?|entrees?|food|margaritas?|meals?|oysters?|pasta|pizza|ribs?|shrimp|tacos?|wings?|wine)\b/i;
+const FREE_VALUE_RE =
+  /\b(?:get|receive|your\s+next|treat(?:s|ed)?\s+you\s+to)\b.{0,45}\bfree\b|\bfree\s+(?:appetizer|beer|cocktail|dessert|drink|entree|food|ice\s*cream|meal|pizza|taco|wine)\b/i;
+
+/**
+ * A usable deal must contain a concrete customer benefit, not merely a price,
+ * an event, normal menu availability, or a membership perk. Field Notes uses
+ * one broad `deals` bucket, so this boundary is deliberately stricter than the
+ * ingestion label. It keeps the Deals page from turning into another directory.
+ */
+export function isActionableDeal(text: string): boolean {
+  const t = text.trim();
+  if (!t || /\b(?:members?\s+only|wine\s+club\s+members?|club\s+membership)\b/i.test(t)) {
+    return false;
+  }
+  if (STRONG_VALUE_RE.test(t)) return true;
+  if (!/\b(?:winner|prize|lawn\s+games?|no\s+cover)\b/i.test(t) && FREE_VALUE_RE.test(t)) {
+    return true;
+  }
+  if (/\b(?:winner|prize|lawn\s+games?|no\s+cover)\b/i.test(t)) return false;
+
+  // A named weekday plus a real price is a conventional daily special. A
+  // price mentioned later in an ordinary tour/menu description is not.
+  if (DAY_PREFIX_RE.test(t) && MONEY_RE.test(t)) return true;
+
+  // "Pizza Night: $10..." and "Tuesday taco specials" are useful even when
+  // their source does not use the words discount/off.
+  if (/\b(?:specials?|deal|night)\b/i.test(t) && DEAL_FOOD_RE.test(t)) {
+    return MONEY_RE.test(t) || DAY_PREFIX_RE.test(t) || /\b(?:every|weekly)\b/i.test(t);
+  }
+  return false;
+}
+
 /**
  * Isolate TODAY's part of a multi-day deal. Many deals bundle a week of
  * specials in one string ("...Tuesday $4 pints; Wednesday crab discount;
@@ -74,9 +113,12 @@ function todayClause(raw: string, dow: number): string {
  */
 function publicOffer(text: string): string {
   const parts = text.split(/;|\.\s+/).map((s) => s.trim()).filter(Boolean);
-  const kept = parts.filter((p) => !/\b(staff|industry|employee)\b/i.test(p));
+  const kept = parts
+    .filter((p) => !/\b(staff|industry|employees?)\b/i.test(p))
+    .map((p) => p.replace(/[\s,;:]+$/g, "").trim())
+    .filter(Boolean);
   const out = kept.join("; ").trim();
-  return out.length >= 4 ? out : text;
+  return out.length >= 4 ? out : "";
 }
 
 function easternDow(now: Date): number {
@@ -332,7 +374,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       // actually reads as an offer — so a row never shows another day's price or
       // a non-deal ("Live music Thursday") in a list titled "verified specials".
       const today = publicOffer(todayClause(raw, dow));
-      if (!readsAsOffer(today)) continue;
+      if (!readsAsOffer(today) || !isActionableDeal(today)) continue;
       const hours = extractHours(today);
       const fn = fieldNotesFor(slug);
       // The offer leads with the WHAT; the day prefix + the hours are pulled
@@ -406,7 +448,8 @@ export function allDeals(): DealRow[] {
     for (const d of entry.deals) {
       const conf = (d.confidence ?? "").toLowerCase();
       if (!OK[conf] || !d.last_verified) continue;
-      const raw = stripProvenance((d.text || "").trim());
+      const raw = publicOffer(stripProvenance((d.text || "").trim()));
+      if (!readsAsOffer(raw) || !isActionableDeal(raw)) continue;
       rows.push({
         slug,
         name: place.name,

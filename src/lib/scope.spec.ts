@@ -6,6 +6,7 @@ import {
   scopeCentroid,
   scopeLabel,
   effectiveOriginSlug,
+  resolveDecisionContext,
 } from "./scope";
 
 describe("parseScope", () => {
@@ -57,7 +58,7 @@ describe("scope helpers", () => {
   it("scopeLabel reads the muni name for towns", () => {
     expect(scopeLabel("nearme")).toBe("Near me");
     expect(scopeLabel("county")).toBe("Whole county");
-    expect(scopeLabel("town:frederick")).toBe("Downtown Frederick");
+    expect(scopeLabel("town:frederick")).toBe("Frederick");
     expect(scopeLabel(null)).toBe("Frederick County");
   });
 });
@@ -80,5 +81,41 @@ describe("effectiveOriginSlug (server rank resolution)", () => {
     expect(effectiveOriginSlug(null, "middletown")).toBe("middletown");
     expect(effectiveOriginSlug(null, "atlantis")).toBeNull();
     expect(effectiveOriginSlug(null, null)).toBeNull();
+  });
+});
+
+describe("resolveDecisionContext", () => {
+  it("lets an explicit town outrank a device fix and IP fallback", () => {
+    const ctx = resolveDecisionContext({
+      scopeRaw: "town:thurmont",
+      deviceOrigin: { lng: -77.41, lat: 39.41 },
+      approximateOrigin: { lng: -77.63, lat: 39.31 },
+    });
+    expect(ctx.source).toBe("town");
+    expect(ctx.filterMunicipality).toBe("thurmont");
+    expect(ctx.label).toBe("Thurmont");
+    expect(ctx.canShowDistance).toBe(false);
+  });
+
+  it("makes whole-county scope independent of device/IP location", () => {
+    const ctx = resolveDecisionContext({
+      scopeRaw: "county",
+      deviceOrigin: { lng: -77.41, lat: 39.41 },
+    });
+    expect(ctx).toMatchObject({ source: "county", origin: null, label: "Whole county" });
+  });
+
+  it("allows distance copy only for a real device fix", () => {
+    const ctx = resolveDecisionContext({ deviceOrigin: { lng: -77.41, lat: 39.41 } });
+    expect(ctx).toMatchObject({ source: "device", canShowDistance: true, label: "Near you" });
+  });
+
+  it("labels a rejected out-of-county network fallback", () => {
+    const ctx = resolveDecisionContext({ approximateStatus: "outside-county" });
+    expect(ctx).toMatchObject({
+      source: "none",
+      label: "Whole county",
+      fallbackReason: "outside-county",
+    });
   });
 });

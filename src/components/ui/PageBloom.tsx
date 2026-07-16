@@ -19,6 +19,7 @@ import type { CSSProperties } from "react";
  *
  * The `variant` prop shifts the wash composition:
  *   • warm-cool  — the daily-landing default (brand + cool + almanac gold)
+ *   • warm       — quiet editorial pages (brand + gold + warm ink)
  *   • cool       — civic / data routes (cool-leaning)
  *   • single     — quieter pages (section accent + a warm lift)
  */
@@ -27,7 +28,7 @@ export default function PageBloom({
   className = "",
   style,
 }: {
-  variant?: "warm-cool" | "cool" | "single";
+  variant?: "warm-cool" | "warm" | "cool" | "single";
   className?: string;
   style?: CSSProperties;
 }) {
@@ -40,6 +41,10 @@ export default function PageBloom({
       "radial-gradient(120% 90% at 15% -5%, color-mix(in srgb, var(--app-brand) 10%, transparent), transparent 60%)," +
       "radial-gradient(120% 90% at 92% 8%, color-mix(in srgb, var(--app-cool) 9%, transparent), transparent 58%)," +
       "radial-gradient(140% 100% at 55% 108%, color-mix(in srgb, var(--app-accent) 8%, transparent), transparent 62%)",
+    warm:
+      "radial-gradient(120% 90% at 10% -8%, color-mix(in srgb, var(--app-brand) 7%, transparent), transparent 61%)," +
+      "radial-gradient(130% 95% at 96% 12%, color-mix(in srgb, var(--app-accent) 6%, transparent), transparent 63%)," +
+      "radial-gradient(140% 100% at 54% 110%, color-mix(in srgb, var(--app-ink) 3%, transparent), transparent 65%)",
     cool:
       "radial-gradient(120% 90% at 12% -5%, color-mix(in srgb, var(--app-cool) 11%, transparent), transparent 60%)," +
       "radial-gradient(120% 90% at 90% 10%, color-mix(in srgb, var(--app-cool-2) 9%, transparent), transparent 58%)," +

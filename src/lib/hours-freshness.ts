@@ -7,19 +7,18 @@
  * posted" pattern (the unverified state, which the card components
  * already translate into honest silence or "Likely open").
  *
- * Enforcement ships behind a flag because flipping it before the rolling
- * refresh cron has populated fresh rows would degrade every open and
- * closed state in the app at once. The sequence is: deploy the cron,
- * let a full 7 day cycle complete, then set HOURS_FRESHNESS_ENFORCED=1.
- * Until then the policy is in code, tested, and inert.
+ * Enforcement is staged behind HOURS_FRESHNESS_ENFORCED until the rolling
+ * refresh snapshot has enough coverage to keep the Open-now experience useful.
+ * Turning the rule on before materializing that snapshot would convert every
+ * place to unknown at once. The refresh job supplies recent verification
+ * timestamps; once coverage is ready, set the flag and the same read boundary
+ * becomes strict without another code change.
  */
 
 export const HOURS_MAX_AGE_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Whether enforcement is on. Reads the env per call so tests and the
- *  flag flip need no rebuild semantics beyond the deploy itself. */
 export function hoursFreshnessEnforced(): boolean {
   return process.env.HOURS_FRESHNESS_ENFORCED === "1";
 }
@@ -37,13 +36,17 @@ export function isHoursFresh(
   if (!verifiedAtIso) return false;
   const t = Date.parse(verifiedAtIso);
   if (Number.isNaN(t)) return false;
-  return now.getTime() - t <= maxAgeDays * DAY_MS;
+  const age = now.getTime() - t;
+  // A future verification time is usually clock or source corruption. Allow a
+  // tiny skew for distributed systems, but never let a bad future date remain
+  // "fresh" indefinitely.
+  if (age < -5 * 60 * 1000) return false;
+  return age <= maxAgeDays * DAY_MS;
 }
 
 /**
- * The single decision the loader asks: may this row assert an open or
- * closed state? Verified hours are required always; freshness is
- * required only once enforcement is on.
+ * The single decision every read path asks: may this row assert an open or
+ * closed state? Both explicit verification and a fresh timestamp are required.
  */
 export function mayAssertOpenState(
   hoursVerified: boolean | undefined,

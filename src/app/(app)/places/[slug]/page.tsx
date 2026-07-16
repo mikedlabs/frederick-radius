@@ -18,6 +18,7 @@ import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
 import NearbyContext from "@/components/places/NearbyContext";
+import NearbyArchiveContext from "@/components/archive/NearbyArchiveContext";
 import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import CourseInfoStrip from "@/components/place/CourseInfoStrip";
 import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
@@ -480,6 +481,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
       </section>
+
+      <NearbyArchiveContext lat={place.geom.lat} lng={place.geom.lng} excludeName={place.name} />
 
       {/* The text-pill amenities section that used to live here was
           replaced by the Waze-style icon row directly under the

@@ -15,37 +15,74 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { saved_events } from "@/lib/db/schema";
+import { push_subscriptions, saved_events } from "@/lib/db/schema";
+import { parseSavedRegistryInput } from "@/lib/saved-security";
+import {
+  isRateLimited,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const noStore = { "Cache-Control": "no-store" };
+const MAX_SAVED_BODY_BYTES = 4 * 1024;
 
-function parse(body: { slug?: unknown; endpoint?: unknown }) {
-  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
-  const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() : "";
-  // Bounds: slugs are short; push endpoints are URLs (Apple/FCM endpoints can be
-  // ~500 chars, so allow generous headroom) and must look like a URL.
-  const okSlug = slug.length > 0 && slug.length <= 160;
-  const okEndpoint =
-    endpoint.length > 0 && endpoint.length <= 1024 && /^https:\/\//.test(endpoint);
-  return { slug, endpoint, ok: okSlug && okEndpoint };
+async function readInput(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return { response: NextResponse.json({ error: "forbidden-origin" }, { status: 403, headers: noStore }) };
+  }
+  if (await isRateLimited(req, "saved-events", 120, 60 * 60)) {
+    return {
+      response: NextResponse.json(
+        { error: "rate-limited" },
+        { status: 429, headers: { ...noStore, "Retry-After": "3600" } },
+      ),
+    };
+  }
+  if (req.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") {
+    return { response: NextResponse.json({ error: "unsupported-media-type" }, { status: 415, headers: noStore }) };
+  }
+  const raw = await readJsonBodyWithLimit(req, MAX_SAVED_BODY_BYTES);
+  if (!raw.ok) {
+    return {
+      response: NextResponse.json(
+        { error: raw.error },
+        { status: raw.error === "body-too-large" ? 413 : 400, headers: noStore },
+      ),
+    };
+  }
+  const input = parseSavedRegistryInput(raw.value);
+  if (!input) {
+    return { response: NextResponse.json({ error: "invalid-input" }, { status: 400, headers: noStore }) };
+  }
+  return { input };
+}
+
+async function subscriptionExists(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  endpoint: string,
+): Promise<boolean> {
+  const row = await db
+    .select({ endpoint: push_subscriptions.endpoint })
+    .from(push_subscriptions)
+    .where(eq(push_subscriptions.endpoint, endpoint))
+    .limit(1);
+  return row.length === 1;
 }
 
 export async function POST(req: NextRequest) {
-  let body: { slug?: unknown; endpoint?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore });
-  }
-  const { slug, endpoint, ok } = parse(body);
-  if (!ok) return NextResponse.json({ error: "invalid-input" }, { status: 400, headers: noStore });
+  const parsed = await readInput(req);
+  if ("response" in parsed) return parsed.response;
+  const { slug, endpoint } = parsed.input;
 
   const db = getDb();
   if (!db) return NextResponse.json({ ok: false, db: false }, { headers: noStore });
   try {
+    if (!(await subscriptionExists(db, endpoint))) {
+      return NextResponse.json({ error: "subscription-not-found" }, { status: 404, headers: noStore });
+    }
     await db
       .insert(saved_events)
       .values({ endpoint, event_slug: slug })
@@ -59,18 +96,16 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  let body: { slug?: unknown; endpoint?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400, headers: noStore });
-  }
-  const { slug, endpoint, ok } = parse(body);
-  if (!ok) return NextResponse.json({ error: "invalid-input" }, { status: 400, headers: noStore });
+  const parsed = await readInput(req);
+  if ("response" in parsed) return parsed.response;
+  const { slug, endpoint } = parsed.input;
 
   const db = getDb();
   if (!db) return NextResponse.json({ ok: false, db: false }, { headers: noStore });
   try {
+    if (!(await subscriptionExists(db, endpoint))) {
+      return NextResponse.json({ error: "subscription-not-found" }, { status: 404, headers: noStore });
+    }
     await db
       .delete(saved_events)
       .where(and(eq(saved_events.endpoint, endpoint), eq(saved_events.event_slug, slug)));

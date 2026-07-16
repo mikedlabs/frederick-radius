@@ -16,7 +16,7 @@ export type AmenityKind =
   // same Amenity shape + map layer as the static OSM amenities; the
   // points come from the field_amenities table, not amenities.json.
   | "trash" | "recycling" | "water" | "bench"
-  | "dog_waste" | "dog_water" | "outlet" | "other";
+  | "dog_waste" | "dog_water" | "outlet" | "bike_repair" | "other";
 
 export type Amenity = {
   id: string;
@@ -41,6 +41,12 @@ export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[
   { kind: "bike_parking", label: "Bike parking", blurb: "Racks and covered bike parking" },
   { kind: "picnic", label: "Picnic spots", blurb: "Tables and picnic sites" },
   { kind: "playground", label: "Playgrounds", blurb: "County-wide, for the kids" },
+  { kind: "water", label: "Drinking water", blurb: "Explicitly tagged potable water and bottle-fill points" },
+  { kind: "trash", label: "Trash cans", blurb: "Public waste baskets mapped around parks and streets" },
+  { kind: "recycling", label: "Recycling", blurb: "Public drop-offs and collection containers" },
+  { kind: "bench", label: "Benches", blurb: "Places to sit along streets, parks, and trails" },
+  { kind: "dog_waste", label: "Dog-waste stations", blurb: "Dog-bag and dog-waste bins" },
+  { kind: "bike_repair", label: "Bike repair", blurb: "Public fix-it stations and pumps" },
   // Pools — scaffolding for public swimming pools (city, county
   // recreation, Y branches). The kind is registered so the map's
   // amenity layer + filter UI can carry it; the actual point data
@@ -148,9 +154,12 @@ export function dedupeAmenities(
       let best = group[cluster[0]];
       for (const c of cluster) {
         const cand = group[c];
+        const candField = cand.id.startsWith("field:");
+        const bestField = best.id.startsWith("field:");
         if (
-          cand.name.length > best.name.length ||
-          (cand.name.length === best.name.length && cand.id < best.id)
+          (candField && !bestField) ||
+          (candField === bestField && cand.name.length > best.name.length) ||
+          (candField === bestField && cand.name.length === best.name.length && cand.id < best.id)
         ) {
           best = cand;
         }

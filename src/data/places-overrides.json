@@ -18,6 +18,7 @@
     "jraymonds-steakhouse": "wye-oak-tavern-frederick",
     "mirage-cafe-grill-restaurant": "bloom-asian-haus",
     "fountain-rock": "brewers-alley-frederick",
+    "lucky-corner-vietnamese-cuisine": "tin-corner",
     "deannadashhairstudio": "dash-hair-studio",
     "worthington-antiques": "emporium-antiques",
     "bbt-arena": "ronald-j-volpe-athletic-center",
@@ -49,7 +50,14 @@
     "downtown-hotel-at-carroll-creek",
     "all-american-lawn-landscape-llc-walkersville",
     "hgm-lawncare-and-services-llc-myersville",
-    "richly-dunn-furniture-repair-and-refinishing-mount-airy"
+    "richly-dunn-furniture-repair-and-refinishing-mount-airy",
+    "bad-hair-day",
+    "hill-house-bed-and-breakfast",
+    "serenity-tearoom-fine-dining",
+    "the-alley-wagon",
+    "top-secret-tap-room-thurmont",
+    "caudles-free-library-woodsboro",
+    "catoctin-creek-llc-myersville"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -72,6 +80,11 @@
     "rockwell-brewery-frederick-2"
   ],
   "patch": {
+    "urbana-library-farmers-market-new-market": {
+      "city": "Urbana",
+      "municipality": "urbana",
+      "category": "market"
+    },
     "musket-ridge-golf-club-myersville": {
       "category": "golf"
     },
@@ -143,9 +156,6 @@
     },
     "linganore-winecellars-mount-airy": {
       "category": "winery"
-    },
-    "caudles-free-library-woodsboro": {
-      "category": "library"
     },
     "baskin-robbins-brunswick": {
       "category": "ice-cream"
@@ -223,10 +233,12 @@
       "category": "ice-cream"
     },
     "candy-kitchen-6": {
-      "name": "Candy Kitchen"
+      "name": "Candy Kitchen",
+      "category": "ice-cream"
     },
     "zoes-chocolate-company": {
-      "name": "Zoe's Chocolate Company"
+      "name": "Zoe's Chocolate Company",
+      "category": "ice-cream"
     },
     "gateway-candyland-thurmont": {
       "category": "ice-cream"
@@ -419,9 +431,6 @@
       "clearEnrichment": true,
       "clearGoogle": true
     },
-    "hill-house-bed-and-breakfast": {
-      "clearGoogle": true
-    },
     "red-winged-blackbird-records": {
       "clearEnrichment": true,
       "clearGoogle": true
@@ -449,16 +458,20 @@
       "clearGoogle": true,
       "clearPhoto": true
     },
-    "serenity-tearoom-fine-dining": {
-      "clearGoogle": true,
-      "clearPhoto": true
-    },
     "ananda-shala-yoga": {
       "clearEnrichment": true,
       "clearGoogle": true
     },
-    "the-alley-wagon": {
-      "clearGoogle": true
+    "jkw-beauty": {
+      "address": "8 N East St",
+      "category": "wellness",
+      "short_blurb": "Appointment-based studio for hair, makeup, beauty lessons, and custom spray tans.",
+      "website": "https://jkwbeauty.com/"
+    },
+    "tin-corner": {
+      "category": "restaurant",
+      "short_blurb": "Vietnamese restaurant on North Market Street serving pho, rice dishes, noodles, and house specialties.",
+      "website": "https://tincornerfrederick.com/"
     },
     "post-office-4": {
       "category": "services"
@@ -497,7 +510,12 @@
       "category": "services"
     },
     "best-kept-secret-hair-salon": {
-      "category": "services"
+      "category": "services",
+      "address": "2060 Yellow Springs Rd Ste 105",
+      "geom": {
+        "lng": -77.4365616,
+        "lat": 39.4413109
+      }
     },
     "brooks-behavioral-health-services-llc": {
       "category": "wellness"
@@ -605,7 +623,15 @@
       "category": "wellness"
     },
     "quince-orchard-psychotherapy": {
-      "category": "wellness"
+      "name": "Orchard Mental Health Group",
+      "address": "10 N Jefferson St Unit 202",
+      "website": "https://orchardmentalhealth.com/",
+      "geom": {
+        "lng": -77.4207553,
+        "lat": 39.4132905
+      },
+      "category": "wellness",
+      "short_blurb": "Therapy, psychological testing, and medication management near downtown Frederick."
     },
     "red-canyon-physical-therapy": {
       "category": "wellness"
@@ -656,7 +682,7 @@
       "category": "services"
     },
     "verbena-salon-spa": {
-      "category": "services"
+      "category": "wellness"
     },
     "vital-sources-psychological-services": {
       "category": "wellness"

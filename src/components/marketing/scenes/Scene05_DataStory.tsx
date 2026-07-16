@@ -95,7 +95,7 @@ export default function Scene05_DataStory() {
                                 <p className="mt-1 text-sm text-gray-500">Sequence, not a performance forecast</p>
                             </div>
                             <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-200">
-                                Private beta
+                                Early-access beta
                             </span>
                         </div>
 

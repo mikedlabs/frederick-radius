@@ -126,6 +126,24 @@ export function isAmenityCategory(slug: string): boolean {
 }
 
 /**
+ * Taxonomy labels that describe real Radius content but are not place
+ * directories. Route them to the surface that can actually answer the intent
+ * instead of rendering an indexed zero-result page.
+ */
+export const CATEGORY_ROUTE_OVERRIDES: Readonly<Record<string, string>> = {
+  "food-truck": "/food-trucks",
+  "public-art": "/map?mode=browse&layers=art",
+  sports: "/events?intent=sports",
+  community: "/events?intent=community",
+  hardware: "/category/services",
+  voting: "/contacts",
+};
+
+export function categoryRouteOverride(slug: string): string | undefined {
+  return CATEGORY_ROUTE_OVERRIDES[slug];
+}
+
+/**
  * Resolve a category slug to its editorial kind, inheriting from the
  * parent when the leaf doesn't set it (so "government" → civic's
  * "utility" even though only "civic" is tagged). Unknown / blank slugs

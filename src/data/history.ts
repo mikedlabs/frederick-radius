@@ -18,6 +18,23 @@
 
 export type HistoryKind = "moment" | "fact" | "person";
 
+export type HistoryImage = {
+  src: string;
+  alt?: string;
+  creator: string;
+  source_url: string;
+  license: { label: string; url: string };
+  modifications: string;
+};
+
+const CC_BY_SA_4 = { label: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" };
+const CC_BY_SA_3 = { label: "CC BY-SA 3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" };
+const CC_BY_SA_2 = { label: "CC BY-SA 2.0", url: "https://creativecommons.org/licenses/by-sa/2.0/" };
+const CC_BY_2 = { label: "CC BY 2.0", url: "https://creativecommons.org/licenses/by/2.0/" };
+const CC0 = { label: "CC0 1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/" };
+const PUBLIC_DOMAIN = { label: "Public domain (U.S. government work)", url: "https://creativecommons.org/publicdomain/mark/1.0/" };
+const DISPLAY_MODIFICATIONS = "Resized and converted for display; cards may crop the image responsively.";
+
 export type HistoryEntry = {
   slug: string;
   title: string;
@@ -30,9 +47,10 @@ export type HistoryEntry = {
   body: string;
   /** Optional photo for the entry. Public-domain or licensed imagery
    *  only (NPS / Library of Congress / Wikimedia Commons), with
-   *  `credit` set for attribution. Absent on most entries; the deck
+   *  creator, source, license, and modification metadata set for attribution.
+   *  Absent on most entries; the deck
    *  falls back to its era-gradient treatment when there is no image. */
-  image?: { src: string; alt?: string; credit?: string };
+  image?: HistoryImage;
   /** Where in the county this happened, for the map-related view. */
   place?: string;
   /** Optional point on the map. */
@@ -51,7 +69,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/frederick-county-established.jpg",
       alt: "Frederick City Hall, the 1862 Italianate brick building that served as the Frederick County Courthouse",
-      credit: "Acroterion, CC BY-SA 4.0",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Frederick_City_Hall_MD4.jpg",
+      license: CC_BY_SA_4,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Frederick County is born",
     year: 1748,
@@ -65,7 +86,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/hessian-barracks.jpg",
       alt: "The Hessian Barracks, a long two-story 1777 fieldstone military barracks with white wooden balconies, in Frederick, MD",
-      credit: "Acroterion, CC BY-SA 4.0",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Hessian_Barracks_MD1.jpg",
+      license: CC_BY_SA_4,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "The Hessian Barracks go up",
     year: 1777,
@@ -80,7 +104,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/mount-st-marys-founded.jpg",
       alt: "The stone Gothic Chapel of the Immaculate Conception on the Mount St. Mary's University campus near Emmitsburg, MD",
-      credit: "Steven C. Berger, CC BY-SA 3.0",
+      creator: "Steven C. Berger",
+      source_url: "https://commons.wikimedia.org/wiki/File:UNIV_CHAPEL.jpg",
+      license: CC_BY_SA_3,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Mount St. Mary's opens",
     year: 1808,
@@ -97,7 +124,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/barbara-fritchie-flag.jpg",
       alt: "Exterior of the Barbara Fritchie House, a brick historic house museum with a white picket fence in downtown Frederick, MD",
-      credit: "Preservation Maryland, CC BY-SA 2.0",
+      creator: "Preservation Maryland",
+      source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House,_exterior_(30378964054).jpg",
+      license: CC_BY_SA_2,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Barbara Fritchie's flag",
     year: 1862,
@@ -126,7 +156,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/ransom-of-frederick.jpg",
       alt: "A row of colorful historic storefronts along North Market Street in downtown Frederick, MD",
-      credit: "Acroterion, CC BY-SA 4.0",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:209-225_N._Market_St._Frederick_MD1.jpg",
+      license: CC_BY_SA_4,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "The $200,000 Ransom",
     year: 1864,
@@ -141,7 +174,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/camp-david-established.jpg",
       alt: "A forest road winding through Catoctin Mountain Park, Thurmont, MD, with autumn foliage",
-      credit: "National Park Service, public domain",
+      creator: "National Park Service",
+      source_url: "https://commons.wikimedia.org/wiki/File:Fall_Color_in_Catoctin_(2951ec76-1dd8-b71c-0796-bd497c8c4b7e).jpg",
+      license: PUBLIC_DOMAIN,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Camp David is created",
     year: 1942,
@@ -158,7 +194,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/carroll-creek-park.jpg",
       alt: "Carroll Creek Linear Park, with lily pads on the creek, a brick promenade, and a stone arch bridge in the distance",
-      credit: "Art Anderson, CC BY-SA 3.0",
+      creator: "Art Anderson",
+      source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Community_Bridge_-_panoramio.jpg",
+      license: CC_BY_SA_3,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Carroll Creek is reborn",
     year: 1976,
@@ -205,7 +244,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/clustered-spires.jpg",
       alt: "The clustered church spires and steeples of downtown Frederick, MD, viewed across fall foliage",
-      credit: "Acroterion, CC BY-SA 4.0",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:Frederick_clustered_spires_MD1.jpg",
+      license: CC_BY_SA_4,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "The Clustered Spires",
     kind: "fact",
@@ -218,7 +260,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/schifferstadt.jpg",
       alt: "Schifferstadt, a 1758 German colonial stone farmhouse with one wing painted red, in Frederick, MD",
-      credit: "Pete Giove-Fourwinds, CC BY-SA 3.0",
+      creator: "Pete Giove-Fourwinds",
+      source_url: "https://commons.wikimedia.org/wiki/File:Schifferstadt_House_and_Architectural_Museum.JPG",
+      license: CC_BY_SA_3,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Schifferstadt: oldest house in town",
     kind: "fact",
@@ -232,7 +277,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/co-canal.jpg",
       alt: "The stone walls of Lock 30 on the Chesapeake & Ohio Canal at Brunswick, MD, surrounded by greenery",
-      credit: "Deanlaw, CC BY-SA 3.0",
+      creator: "Deanlaw",
+      source_url: "https://commons.wikimedia.org/wiki/File:C%26O_Canal_Lock_30_West_Side_Brunswick_Maryland.jpg",
+      license: CC_BY_SA_3,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "The C&O Canal",
     kind: "fact",
@@ -248,7 +296,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/new-market-antiques.jpg",
       alt: "The historic Main Street of New Market, MD, with a brick storefront building and picket fences along the road",
-      credit: "Acroterion, CC BY-SA 4.0",
+      creator: "Acroterion",
+      source_url: "https://commons.wikimedia.org/wiki/File:New_Market_HD_MD1.jpg",
+      license: CC_BY_SA_4,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Antiques Capital of Maryland",
     kind: "fact",
@@ -262,7 +313,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/brunswick-railroad.jpg",
       alt: "The Brunswick, MD rail yard with multiple tracks, CSX locomotives, and freight cars",
-      credit: "David Wilson, CC BY 2.0",
+      creator: "David Wilson",
+      source_url: "https://commons.wikimedia.org/wiki/File:20120730_70_CSX_Brunswick,_Maryland_(9106278817).jpg",
+      license: CC_BY_2,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Brunswick: a railroad town",
     kind: "fact",
@@ -276,7 +330,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/national-pike.jpg",
       alt: "The historic single-arch stone Casselman River Bridge, built for the National Road, in Maryland",
-      credit: "Cbaile19, CC0 1.0",
+      creator: "Cbaile19",
+      source_url: "https://commons.wikimedia.org/wiki/File:Casselman_River_Bridge,_2014-03-18,_01.jpg",
+      license: CC0,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "The National Pike",
     kind: "fact",
@@ -288,7 +345,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/catoctin-mountain-park.jpg",
       alt: "The Chimney Rock vista at Catoctin Mountain Park, MD, with boulders overlooking a forested mountain valley",
-      credit: "Vegemighty, CC0 1.0",
+      creator: "Vegemighty",
+      source_url: "https://commons.wikimedia.org/wiki/File:Chimney_rock_catoctin.JPG",
+      license: CC0,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "Catoctin Mountain Park",
     kind: "fact",
@@ -304,7 +364,10 @@ export const HISTORY: HistoryEntry[] = [
     image: {
       src: "/history-photos/nci-frederick.jpg",
       alt: "The U.S. Army Fort Detrick Nallin Farm Gate entrance sign in Frederick, MD",
-      credit: "Clem Gaines / U.S. Army, public domain",
+      creator: "Clem Gaines / U.S. Army",
+      source_url: "https://commons.wikimedia.org/wiki/File:Fort_Detrick_Nallin_Farm_Gate.jpg",
+      license: PUBLIC_DOMAIN,
+      modifications: DISPLAY_MODIFICATIONS,
     },
     title: "NCI Frederick: cancer research",
     kind: "fact",

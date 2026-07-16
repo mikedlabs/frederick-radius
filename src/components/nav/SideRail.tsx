@@ -47,7 +47,11 @@ export default function SideRail() {
     function measure() {
       const strip = stripRef.current;
       const cell = tabRefs.current[activeIdx];
-      if (!strip || !cell) return;
+      if (!strip) return;
+      if (!cell) {
+        setPill((current) => current.height === 0 ? current : { top: 0, height: 0 });
+        return;
+      }
       const sBox = strip.getBoundingClientRect();
       const cBox = cell.getBoundingClientRect();
       // 56px chip behind icon — fits the 12px-of-padding glass pill
@@ -156,7 +160,7 @@ export default function SideRail() {
                   onClick={(e) => handleActivate(e)}
                   className={tabClass}
                   style={tabStyle}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={isRealActive ? "page" : undefined}
                 >
                   <Icon
                     className="transition-transform duration-200"

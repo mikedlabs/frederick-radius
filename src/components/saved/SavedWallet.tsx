@@ -14,10 +14,6 @@
  * hours, town, kind, saved date) prints in ink on paper, plus the actions.
  * Field-guide plates carried their caption on the label, not on the plate.
  *
- * Two designed promises ride the stub, both plainly "coming soon", never
- * fake numbers or dead buttons: a gold-ruled Radius Points slot under the
- * plate seal, and a disabled Notify bell in the action row.
- *
  * Cards wear the BUSINESS's own brand hue (place-hues.json, extracted from
  * its Google photo at build time) when we have one, else the category's
  * wallet ground — always as a DARKENED gradient so cream text clears AA.
@@ -31,7 +27,6 @@
 import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import placeHues from "@/data/place-hues.json";
@@ -291,13 +286,6 @@ function Card({
           </dl>
           <div className="sw-rail">
             <span className="sw-plateseal">Pl. {plate(index)}</span>
-            {/* Radius Points — a designed promise, not a fake score: the
-                gold-ruled slot where this place's points will print. */}
-            <span className="sw-pts" aria-label="Radius Points, coming soon">
-              <b aria-hidden>PTS</b>
-              <span aria-hidden>{dash}</span>
-              <i aria-hidden>soon</i>
-            </span>
           </div>
         </div>
         <div className="sw-actions">
@@ -317,18 +305,6 @@ function Card({
           >
             Directions
           </a>
-          {/* Notify me — the per-place nudge lands here. Disabled on purpose:
-              a quiet bell with a mono tag, a promise rather than a dead end. */}
-          <button
-            type="button"
-            disabled
-            aria-label="Notify me about this place. Coming soon"
-            className="sw-notify"
-          >
-            <Bell className="h-[13px] w-[13px]" strokeWidth={2.25} aria-hidden />
-            Notify
-            <i aria-hidden>soon</i>
-          </button>
         </div>
       </div>
     </div>

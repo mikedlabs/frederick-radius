@@ -72,6 +72,7 @@ export default function PhotoMosaic({
             <Image
               src={p.google_photo_url}
               alt=""
+              unoptimized={p.google_photo_url.startsWith("/api/place-photo")}
               fill
               sizes="(max-width: 720px) 33vw, 240px"
               placeholder="blur"

@@ -32,10 +32,18 @@ test("clean prose passes, reviewed and empty handled", () => {
   console.log("clean, reviewed, none handled");
 });
 
-test("dataset scraped share matches the audit", () => {
-  const counts = (SCORES as { counts: Record<string, number> }).counts;
-  const total = PLACES.length;
-  const share = counts.scraped / total;
-  assert.ok(share > 0.6 && share < 0.85, `scraped share ${(share * 100).toFixed(1)}% in audited range`);
-  console.log(`dataset: ${counts.scraped}/${total} scraped (${(share * 100).toFixed(1)}%)`);
+test("committed copy scorecard matches the current dataset", () => {
+  const committed = (SCORES as { counts: Record<string, number> }).counts;
+  const actual: Record<string, number> = {
+    none: 0,
+    scraped: 0,
+    auto_clean: 0,
+    reviewed: 0,
+  };
+  for (const place of PLACES) {
+    actual[classifyDescription(place.name, place.description ?? place.short_blurb)]++;
+  }
+  assert.deepEqual(committed, actual, "run npm run copy:scores after place or copy changes");
+  const share = actual.scraped / PLACES.length;
+  console.log(`dataset: ${actual.scraped}/${PLACES.length} scraped (${(share * 100).toFixed(1)}%)`);
 });

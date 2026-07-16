@@ -1,7 +1,6 @@
-import { PLACES } from "@/data/places";
-import { decoratePlace } from "@/lib/loaders/places";
+import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 import { PROVENANCE_FIELDS, type SourceConfidence } from "@/lib/provenance";
-import { isHoursFresh } from "@/lib/hours-freshness";
+import { hoursFreshnessEnforced, isHoursFresh } from "@/lib/hours-freshness";
 
 /**
  * Trust report (data brief, Section 8 gates, made measurable).
@@ -17,8 +16,8 @@ import { isHoursFresh } from "@/lib/hours-freshness";
  *   - stale or missing open assertions: rows that currently render an
  *     open or closed state whose hours verification is outside the
  *     freshness window. This is the brief's "0" gate and the exact set
- *     that would blank when HOURS_FRESHNESS_ENFORCED flips on, so the
- *     number is also the blast radius of that flip.
+ *     freshness window. The loader suppresses those states, so anything in
+ *     this bucket is a policy regression.
  *
  * Pure and synchronous: it decorates the static catalog with an injected
  * clock, so it is unit testable and adds no network to the cron.
@@ -44,6 +43,7 @@ export type TrustReport = {
 const ASSERTING_STATES = new Set(["open", "closing-soon", "closed"]);
 
 export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
+  const publicCatalog = publicPlaces();
   const confidence: Record<SourceConfidence, number> = {
     curated: 0,
     partner: 0,
@@ -56,7 +56,7 @@ export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
   let stale = 0;
   const staleSample: string[] = [];
 
-  for (const raw of PLACES) {
+  for (const raw of publicCatalog) {
     const row = decoratePlace(raw, undefined, now) as unknown as Record<string, unknown>;
 
     const complete = PROVENANCE_FIELDS.every((f) => f in row && row[f] !== undefined);
@@ -78,7 +78,7 @@ export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
     }
   }
 
-  const total = PLACES.length;
+  const total = publicCatalog.length;
   return {
     places: total,
     provenance: {
@@ -92,10 +92,10 @@ export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
       asserting,
       stale_or_missing: stale,
       stale_sample: staleSample,
-      // Reported, not yet enforced: the gate trips only once the freshness
-      // policy is on. Until then this is an advisory count of the flip's
-      // blast radius. See HOURS_FRESHNESS_ENFORCED.
-      below_gate: false,
+      // During staged rollout stale timestamps are visible as advisory debt,
+      // not a failed production promise. Once strict enforcement is enabled,
+      // any stale assertion is a true boundary regression.
+      below_gate: hoursFreshnessEnforced() && stale > 0,
     },
   };
 }

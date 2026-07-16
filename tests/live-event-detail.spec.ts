@@ -15,6 +15,32 @@ vi.mock("@/lib/integrations/ical-live", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/integrations/ical-live")>();
   return { ...actual, getCachedLiveEvents: vi.fn() };
 });
+vi.mock("@/lib/integrations/ticketmaster", () => ({
+  fetchTicketmasterMusic: vi.fn(async () => []),
+  fetchTicketmasterSports: vi.fn(async () => []),
+}));
+vi.mock("@/lib/integrations/bandsintown", () => ({
+  fetchBandsintownForArtists: vi.fn(async () => []),
+}));
+vi.mock("@/lib/integrations/visitfrederick", () => ({
+  fetchVisitFrederick: vi.fn(async () => []),
+}));
+vi.mock("@/lib/integrations/frederickKeys", () => ({
+  fetchFrederickKeys: vi.fn(async () => []),
+}));
+vi.mock("@/lib/integrations/squarespace-live", () => ({
+  fetchSquarespaceVenueEvents: vi.fn(async () => []),
+}));
+vi.mock("@/lib/loaders/venueEvents", () => ({
+  venueEventsAsCards: vi.fn(() => []),
+  venueEventsToCards: vi.fn(() => []),
+}));
+vi.mock("@/lib/integrations/mapboxGeocode", () => ({
+  upgradeEventGeom: vi.fn(async (event) => event),
+}));
+vi.mock("@/lib/loaders/eventThumb", () => ({
+  withVenueThumb: vi.fn((event) => event),
+}));
 
 import { getCachedLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
 import { liveToCardEvent, getLiveCardEventBySlug, liveCleanSlug } from "@/lib/loaders/liveEvents";
@@ -141,5 +167,5 @@ describe("getLiveCardEventBySlug", () => {
     });
     const stale = liveToCardEvent(sample()).slug; // different start than the feed event
     expect(await getLiveCardEventBySlug(stale)).toBeNull();
-  }, 15000); // raised from the 5s default: flakes under full-suite contention (passes in isolation)
+  });
 });

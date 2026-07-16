@@ -401,7 +401,13 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             When pane). Same lens/tod/day state the pane edits; Tomorrow
             is a day pick riding the existing ?d= plumbing. Rides with
             the masthead so the collapsed dock keeps its footprint. */}
-        <div className="eb-whenribbon" role="group" aria-label="When" aria-hidden={collapsed}>
+        <div
+          className="eb-whenribbon"
+          role="group"
+          aria-label="When"
+          aria-hidden={collapsed}
+          inert={collapsed}
+        >
           {WHEN_PRESETS.map((p, i) => (
             <Fragment key={p.key}>
               <EbChip

@@ -81,13 +81,19 @@ export function civicContacts(rec: MunicipalCivic): CivicContact[] {
  */
 export function findMunicipalCivic(
   query: string,
-): { town: string; rec: MunicipalCivic; contacts: CivicContact[] } | null {
+  contextMunicipality?: string | null,
+): { town: string; rec: MunicipalCivic; contacts: CivicContact[]; matchedIntent: boolean } | null {
   const lq = query.toLowerCase().trim();
   if (lq.length < 3) return null;
 
-  const muni = MUNICIPALITIES.find(
-    (m) => lq.includes(m.name.toLowerCase()) || lq.includes(m.slug.replace(/-/g, " ")),
-  );
+  const namedMuni = MUNICIPALITIES.find((m) => {
+    const named = lq.includes(m.name.toLowerCase()) || lq.includes(m.slug.replace(/-/g, " "));
+    return named && !(m.slug === "frederick" && /\bfrederick county\b/.test(lq));
+  });
+  const contextualMuni = !/\b(?:frederick\s+)?county\b/.test(lq)
+    ? MUNICIPALITIES.find((m) => m.slug === contextMunicipality)
+    : undefined;
+  const muni = namedMuni ?? contextualMuni;
   if (!muni) return null;
   const rec = municipalCivicFor(muni.slug);
   if (!rec) return null;
@@ -104,11 +110,11 @@ export function findMunicipalCivic(
   for (const { terms, field } of intentMap) {
     if (terms.some((t) => lq.includes(t))) {
       const c = pick(field);
-      if (c) return { town: rec.name, rec, contacts: [c] };
+      if (c) return { town: rec.name, rec, contacts: [c], matchedIntent: true };
     }
   }
   // Town named but no specific intent → lead with the hall + whatever exists.
-  return { town: rec.name, rec, contacts: civicContacts(rec).slice(0, 2) };
+  return { town: rec.name, rec, contacts: civicContacts(rec).slice(0, 2), matchedIntent: false };
 }
 
 /** Relative-freshness label for an answer's provenance line. */

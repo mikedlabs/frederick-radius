@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 // Enforcing baseline CSP. Next currently needs inline boot scripts and the app
 // uses inline style props, so those two allowances remain explicit. Every
 // other executable/network origin is constrained to the services the product
@@ -14,7 +16,7 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://plausible.io",
+  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://plausible.io`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -24,6 +26,7 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
   [
     "connect-src 'self'",
+    ...(!isProduction ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
     "https://api.mapbox.com",
     "https://events.mapbox.com",
     "https://*.tiles.mapbox.com",
@@ -34,10 +37,17 @@ const contentSecurityPolicy = [
     "https://*.ingest.us.sentry.io",
     "https://vitals.vercel-insights.com",
   ].join(" "),
-  "upgrade-insecure-requests",
+  // Keep production subresources on HTTPS. Omitting this in local development
+  // matters: otherwise Chromium upgrades relative localhost CSS/font requests
+  // to HTTPS and the app appears completely unstyled during browser QA.
+  ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Browser QA commonly opens the local app through 127.0.0.1 while Next
+  // advertises localhost. Treat both as the same trusted development origin
+  // so HMR and client hydration are testable without weakening production.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   turbopack: {
     root: path.resolve(__dirname),
   },
@@ -145,6 +155,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      // Library of Congress curated archive imagery. The app stores only
+      // reviewed item metadata locally, then requests an explicit, pre-sized
+      // IIIF/JPEG rendition from LOC's image CDN. No user request triggers a
+      // search of the LOC catalog at runtime.
+      { protocol: "https", hostname: "tile.loc.gov" },
+      { protocol: "https", hostname: "www.loc.gov" },
       // Google Places photo CDN. The app normally proxies these via
       // /api/place-photo to keep the API key off the client, but the
       // allowlist is here for defensive parity in case any future
@@ -178,7 +194,9 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          ...(isProduction
+            ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+            : []),
           // Stop MIME sniffing (defends against content-type confusion).
           { key: "X-Content-Type-Options", value: "nosniff" },
           // Don't leak full URLs (which can carry query params) to other sites.

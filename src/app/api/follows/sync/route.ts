@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { follows, user_profiles } from "@/lib/db/schema";
 import { getServerUserId } from "@/lib/auth";
+import {
+  hasJsonContentType,
+  isSameOriginMutationRequest,
+  readJsonBodyWithLimit,
+} from "@/lib/origin-check";
 
 /**
  * /api/follows/sync — one-shot bulk import of localStorage follows.
@@ -16,6 +21,19 @@ import { getServerUserId } from "@/lib/auth";
  * pre-signin localStorage follows from explicit post-signin ones.
  */
 export async function POST(req: NextRequest) {
+  if (!isSameOriginMutationRequest(req)) {
+    return NextResponse.json({ error: "forbidden-origin" }, { status: 403 });
+  }
+  if (!hasJsonContentType(req)) {
+    return NextResponse.json({ error: "content-type" }, { status: 415 });
+  }
+  const parsedBody = await readJsonBodyWithLimit(req, 64 * 1_024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.error === "body-too-large" ? 413 : 400 },
+    );
+  }
   const userId = await getServerUserId();
   if (!userId) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -25,12 +43,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "database-unavailable" }, { status: 503 });
   }
 
-  let body: { slugs?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const body = parsedBody.value && typeof parsedBody.value === "object"
+    ? parsedBody.value as { slugs?: unknown }
+    : {};
   if (!Array.isArray(body.slugs)) {
     return NextResponse.json({ error: "slugs-must-be-array" }, { status: 400 });
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isJunkBlurb } from "./blurbSanity";
+import { isJunkBlurb, stripRepeatedNamePrefix } from "./blurbSanity";
 
 /**
  * Every junk case below is a SHIPPED offender, verbatim from
@@ -94,6 +94,15 @@ describe("isJunkBlurb — scrape debris is dropped", () => {
     expect(isJunkBlurb("Brooks Behavioral Health Services, LLC Details", "Brooks Behavioral Health Services LLC")).toBe(true);
   });
 
+  it("kills synthetic directory filler that does not help someone choose", () => {
+    expect(isJunkBlurb("Restaurants in Thurmont.", "Some Restaurant")).toBe(true);
+    expect(isJunkBlurb("Wellness in Downtown Frederick.", "Some Studio")).toBe(true);
+    expect(isJunkBlurb("Local shop in downtown Frederick.", "Some Shop")).toBe(true);
+    expect(isJunkBlurb("Park in Frederick County.", "Some Park")).toBe(true);
+    expect(isJunkBlurb("Book Stores in Downtown Frederick.", "Some Shop")).toBe(true);
+    expect(isJunkBlurb("Yoga & Fitness in Downtown Frederick.", "Some Studio")).toBe(true);
+  });
+
   it("kills address blocks cut mid-email and stripped contact lines", () => {
     expect(isJunkBlurb("228 North Market Street Frederick, MD 21701 hello@7thsister", "7th Sister")).toBe(true);
     expect(isJunkBlurb("Market Street | Frederick, MD 21701 service@scgarage", "Second Chances Garage")).toBe(true);
@@ -148,5 +157,23 @@ describe("isJunkBlurb — real blurbs always survive", () => {
   it("keeps short real blurbs and sentences ending at the name", () => {
     expect(isJunkBlurb("Island vibes on Market Street.", "Caribbean Grill")).toBe(false);
     expect(isJunkBlurb("Be still", "24-7 Prayer Room - Frederick")).toBe(false);
+  });
+});
+
+describe("stripRepeatedNamePrefix", () => {
+  it("keeps the useful sentence after a repeated full place name", () => {
+    expect(
+      stripRepeatedNamePrefix(
+        "The Flying Barrel Come by the shop for all your homebrewing and wine making needs",
+        "The Flying Barrel",
+      ),
+    ).toBe("Come by the shop for all your homebrewing and wine making needs");
+  });
+
+  it("handles punctuation differences without stripping ordinary prose", () => {
+    expect(stripRepeatedNamePrefix("Bill & Earl's Friendly neighborhood service.", "Bill and Earls"))
+      .toBe("Friendly neighborhood service.");
+    expect(stripRepeatedNamePrefix("Island vibes on Market Street.", "Caribbean Grill"))
+      .toBe("Island vibes on Market Street.");
   });
 });

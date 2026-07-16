@@ -7,7 +7,7 @@ import { MapPin, Navigation, Loader2, AlertCircle, Check, ChevronDown, ArrowUpRi
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { haptic } from "@/lib/haptics";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { getScope, setScope, scopeTownSlug, scopeLabel, type Scope } from "@/lib/scope";
+import { getScope, setScope, scopeTownSlug, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 
 /**
  * TopBar location chip — the browsing-scope selector (UX-02).
@@ -35,13 +35,13 @@ export default function LocationChip() {
   const [scope, setScopeState] = useState<Scope | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Hydrate the current scope post-mount (localStorage is client-only, so an
-  // SSR read would mismatch). Re-read whenever the menu opens so a scope set
-  // on another tab/surface shows correctly.
+  // Hydrate post-mount, then follow changes made by Map, Events, or another
+  // tab. The label is the global scope readout, not menu-local state.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount storage read
     setScopeState(getScope());
-  }, [open]);
+    return subscribeScopeChange(setScopeState);
+  }, []);
 
   const applyScope = (next: Scope | null) => {
     haptic("light");
@@ -119,8 +119,8 @@ export default function LocationChip() {
           haptic("light");
           setOpen((v) => !v);
         }}
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls="location-scope-choices"
         className="tap-44 inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2 py-1 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
@@ -135,7 +135,8 @@ export default function LocationChip() {
 
       {open && (
         <div
-          role="menu"
+          id="location-scope-choices"
+          role="group"
           aria-label="Set what you're browsing"
           className="absolute right-0 top-full z-[var(--z-dropdown)] mt-1.5 w-[230px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
           style={{ borderColor: "var(--app-border)" }}
@@ -149,8 +150,7 @@ export default function LocationChip() {
               if (state.status !== "granted") request();
               applyScope("nearme");
             }}
-            role="menuitemradio"
-            aria-checked={scope === "nearme"}
+            aria-pressed={scope === "nearme"}
             className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ color: scope === "nearme" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
@@ -163,8 +163,7 @@ export default function LocationChip() {
           <button
             type="button"
             onClick={() => applyScope("county")}
-            role="menuitemradio"
-            aria-checked={scope === "county"}
+            aria-pressed={scope === "county"}
             className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ color: scope === "county" ? "var(--app-brand)" : "var(--app-ink-2)" }}
           >
@@ -186,8 +185,7 @@ export default function LocationChip() {
                   <button
                     type="button"
                     onClick={() => applyScope(`town:${m.slug}`)}
-                    role="menuitemradio"
-                    aria-checked={isActive}
+                    aria-pressed={isActive}
                     className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-[12px] transition hover:bg-[var(--app-bg-sunken)]"
                     style={{ color: isActive ? "var(--app-brand)" : "var(--app-ink-2)" }}
                   >
@@ -218,7 +216,6 @@ export default function LocationChip() {
                 href={`/m/${scopeTown}`}
                 prefetch={false}
                 onClick={() => setOpen(false)}
-                role="menuitem"
                 className="flex min-h-[44px] items-center gap-2 px-3 py-2 text-[12px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
                 style={{ color: "var(--app-brand-press)" }}
               >

@@ -109,33 +109,41 @@ export default function HistoryDeck({
             entries with a curated image get one; the rest lean on the
             era gradient below, so the card never looks empty. */}
         {fact.image && (
-          <div className="relative -mx-5 -mt-5 mb-4 h-40 overflow-hidden">
-            {/* WebP source first, JPEG fallback. The .webp siblings are
-                emitted by `npm run optimize:images`. Modern browsers
-                pick the smaller .webp (~30% smaller on this set); older
-                ones fall back to the JPEG without a flash. */}
-            <picture>
-              <source
-                srcSet={fact.image.src.replace(/\.jpe?g$/i, ".webp")}
-                type="image/webp"
+          <div className="-mx-5 -mt-5 mb-4 overflow-hidden">
+            <div className="relative h-40 overflow-hidden">
+              {/* WebP source first, JPEG fallback. The .webp siblings are
+                  emitted by `npm run optimize:images`. Modern browsers
+                  pick the smaller .webp (~30% smaller on this set); older
+                  ones fall back to the JPEG without a flash. */}
+              <picture>
+                <source
+                  srcSet={fact.image.src.replace(/\.jpe?g$/i, ".webp")}
+                  type="image/webp"
+                />
+                <img
+                  src={fact.image.src}
+                  alt={fact.image.alt ?? ""}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              </picture>
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-2/3"
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }}
               />
-              <img
-                src={fact.image.src}
-                alt={fact.image.alt ?? ""}
-                loading="lazy"
-                className="h-full w-full object-cover"
-              />
-            </picture>
-            <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-2/3"
-              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }}
-            />
-            {fact.image.credit && (
-              <span className="absolute bottom-1 right-2 text-[10px] font-medium text-white/70">
-                {fact.image.credit}
-              </span>
-            )}
+            </div>
+            <p className="px-5 py-1.5 text-[9.5px] leading-snug" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
+              Photo: {" "}
+              <a href={fact.image.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                {fact.image.creator}
+              </a>{" "}
+              · {" "}
+              <a href={fact.image.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                {fact.image.license.label}
+              </a>{" "}
+              · {fact.image.modifications}
+            </p>
           </div>
         )}
 
