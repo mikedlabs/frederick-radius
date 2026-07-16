@@ -7,6 +7,9 @@ import BeerHero from "@/components/beer/BeerHero";
 import BeerPassport from "@/components/beer/BeerPassport";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import MyTaps from "@/components/beer/MyTaps";
+import PouringNow from "@/components/beer/PouringNow";
+import TaproomMap from "@/components/beer/TaproomMap";
+import TopShelf from "@/components/beer/TopShelf";
 import PageBloom from "@/components/ui/PageBloom";
 import { BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -35,7 +38,21 @@ export default function BeerPage() {
       <PageBloom variant="warm-cool" />
 
       <BeerHero />
+
+      {/* The live layer: which taprooms are open at this minute. Client
+          island on purpose — this page is ISR-cached an hour, and open
+          state must never be served stale. */}
+      <PouringNow />
+
+      {/* The command center: all 17 taprooms on one county map, promoted
+          from the explorer's buried third tab. Mapbox loads on tap. */}
+      <TaproomMap places={breweryCards} />
+
       <BeerTasteFlight />
+
+      {/* The Untappd layer, always visible: the county's highest-rated
+          pours lead into the full 174-beer explorer below. */}
+      <TopShelf breweryCards={breweryCards} />
 
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
