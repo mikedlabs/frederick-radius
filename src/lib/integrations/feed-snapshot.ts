@@ -297,7 +297,17 @@ export type Anomaly = {
     // These make rot a red line on the same alert channel.
     | "snapshot_expired"
     | "verification_stale"
-    | "live_source_failed";
+    | "live_source_failed"
+    // End-to-end tripwires (src/lib/quality/tripwires.ts): the July 2026
+    // failure classes that degraded POLITELY and stayed invisible — every
+    // thumbnail app-wide fell back to the initials tile (rotated Google
+    // photo names), /transit rendered zero routes (upstream schema change),
+    // and the FCPL ingest died mid-run for two months. Each becomes a
+    // sampled daily check on the same alert channel.
+    | "photo_rot"
+    | "transit_empty"
+    | "events_empty"
+    | "ask_degraded";
   detail: string;
 };
 
