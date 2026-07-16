@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -156,6 +156,43 @@ describe("wantsParking / wantsWeather", () => {
     expect(wantsWeather("what's the forecast tomorrow")).toBe(true);
     expect(wantsWeather("is it going to be sunny")).toBe(true);
     expect(wantsWeather("what should we do this weekend")).toBe(false);
+  });
+});
+
+describe("wantIntentOf", () => {
+  it("'good breakfast spot downtown' routes to the breakfast machinery, scoped downtown (the prod miss)", () => {
+    expect(wantIntentOf("good breakfast spot downtown", WED_6PM)).toEqual({
+      key: "breakfast",
+      cuisine: null,
+      area: { kind: "downtown" },
+    });
+  });
+  it("a named cuisine is a food ask; a meal word scopes it", () => {
+    expect(wantIntentOf("any good thai food?", WED_6PM)).toEqual({ key: "food", cuisine: "thai", area: null });
+    expect(wantIntentOf("tacos for dinner", WED_6PM)).toEqual({ key: "dinner", cuisine: "mexican", area: null });
+  });
+  it("craving nouns resolve; town qualifiers scope them", () => {
+    expect(wantIntentOf("coffee in brunswick", WED_6PM)).toEqual({
+      key: "coffee",
+      cuisine: null,
+      area: { kind: "town", slug: "brunswick" },
+    });
+    expect(wantIntentOf("ice cream in mt airy", WED_6PM)).toEqual({
+      key: "ice-cream",
+      cuisine: null,
+      area: { kind: "town", slug: "mount-airy" },
+    });
+  });
+  it("'where should we eat' hears the meal it currently is", () => {
+    expect(wantIntentOf("where should we eat", WED_6PM)?.key).toBe("dinner");
+    expect(wantIntentOf("where should we eat", new Date("2026-07-15T08:00:00-04:00"))?.key).toBe("breakfast");
+  });
+  it("never false-positives on the other grounders' questions", () => {
+    expect(wantIntentOf("Music tonight", WED_6PM)).toBeNull();
+    expect(wantIntentOf("where can I park downtown", WED_6PM)).toBeNull();
+    expect(wantIntentOf("best parks for kids", WED_6PM)).toBeNull();
+    expect(wantIntentOf("will it rain this weekend", WED_6PM)).toBeNull();
+    expect(wantIntentOf("how do I report a pothole", WED_6PM)).toBeNull();
   });
 });
 

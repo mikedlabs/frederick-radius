@@ -91,6 +91,18 @@ export type WantCandidate = {
   deal_hook?: string;
 };
 
+/** The slice of a place a `refine` predicate can read — the narrowing seam
+ *  Ask Frederick uses for cuisine ("thai") and area ("downtown") filters.
+ *  `category` is the corrected want_match_category, same as the matcher sees. */
+export type WantRefinable = {
+  name: string;
+  category: string;
+  municipality?: string;
+  geom: { lng: number; lat: number };
+  short_blurb?: string;
+  primary_type?: string;
+};
+
 const WALK_METERS_PER_MIN = 75; // ~2.8 mph, the app's walking assumption
 const WALKABLE_MAX_MIN = 20;
 
@@ -268,7 +280,12 @@ export function buildWantAnswer(
   facetKey: string | null,
   origin: { lng: number; lat: number } | null,
   now: Date = new Date(),
-  opts?: { approximateOrigin?: boolean },
+  opts?: {
+    approximateOrigin?: boolean;
+    /** Extra narrowing over the matched set (cuisine, area) — Ask Frederick's
+     *  seam. Runs after the want matcher, so it only ever subtracts. */
+    refine?: (p: WantRefinable) => boolean;
+  },
 ): WantAnswer | null {
   const want = resolveWant(cKey, facetKey);
   if (!want) return null;
@@ -280,6 +297,18 @@ export function buildWantAnswer(
         name: p.name,
         subcategories: p.want_match_subcategories,
       }),
+    )
+    .filter(
+      (p) =>
+        !opts?.refine ||
+        opts.refine({
+          name: p.name,
+          category: p.want_match_category,
+          municipality: p.municipality,
+          geom: p.geom,
+          short_blurb: p.short_blurb,
+          primary_type: (p as { primary_type?: string }).primary_type,
+        }),
     )
     .map((p) => ({
       ...p,

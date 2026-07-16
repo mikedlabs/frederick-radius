@@ -55,6 +55,13 @@ const QUESTIONS = [
     must: [{ re: /rain|shower|storm|sunny|clear|cloud|°|degrees/i, why: "the live NWS forecast is routed in now" }],
   },
   { q: "best coffee in frederick" },
+  {
+    // Tier 2 want-intent planner: "breakfast" is a meal, not a keyword — no
+    // place is NAMED breakfast, so this failed with a shrug before the
+    // buildWantAnswer routing. The answer must engage the meal, not deflect.
+    q: "good breakfast spot downtown",
+    must: [{ re: /breakfast|brunch|coffee|caf[eé]|bak(ery|ed)|diner/i, why: "the ranked breakfast picks are routed in now" }],
+  },
 ];
 
 import { readFileSync } from "node:fs";

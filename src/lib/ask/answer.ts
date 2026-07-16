@@ -4,11 +4,14 @@ import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import { getOpenStatus, isOpenNow, formatHoursLine } from "@/lib/hours";
 import { PARKING_GARAGES, PARKING_RATE_SCHEDULE, PARKING_OFFICE } from "@/data/parking-garages";
 import { getNwsForecast } from "@/lib/integrations/nws";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import { buildWantAnswer, type WantRow } from "@/lib/want-answer";
+import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import type { Place } from "@/data/places";
 
@@ -54,6 +57,7 @@ Rules you must follow:
 - Place lines may carry a LIVE open state ("Open until 9pm", "Closed · Opens Thu 8am") computed for the current time — trust it. A line with no open state means the hours are unconfirmed: say so rather than guessing. For "open now" questions, recommend only places marked Open.
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map — do not guess.
 - LOCAL NOTE fields are this guide's own verified field research (parking tricks, insider details, happy hours). Weave the relevant one into your answer — it's the detail a local friend would add.
+- A RANKED PICKS block, when present, is this guide's own ranked answer for that exact craving, strongest first with live open state. Recommend from it, in its order, before anything in the numbered search list.
 - DOWNTOWN PARKING and WEATHER blocks, when present, are verified/live data. Answer from them directly.
 - Keep it tight: 2–4 sentences, then name your top 1–3 specific picks from the data.
 - Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler.
@@ -211,6 +215,66 @@ function localNoteFor(slug: string): string {
   return ` — LOCAL NOTE: ${compact}`;
 }
 
+/** "Downtown" is the same 1-mile core /map uses (mode-scope.ts). */
+const DOWNTOWN_RADIUS_M = 1609;
+
+/**
+ * The Tier 2 planner's grounding: a meal/cuisine/craving question routed
+ * through the SAME machinery the /today "I want…" strip runs (buildWantAnswer),
+ * so "good breakfast spot downtown" gets the guide's ranked, live-open-state
+ * answer instead of keyword-search noise — no place is NAMED "breakfast", so
+ * search alone could never find one.
+ */
+function wantContextBlock(
+  intent: WantIntent,
+  now: Date,
+): { block: string; picks: WantRow[]; label: string } | null {
+  const town = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
+  // Origin seeds the ORDERING only (downtown core / the town's centroid);
+  // approximateOrigin makes the hero the strongest PLACE among the near-open
+  // set, never the fluke nearest (the Chick-fil-A lesson, PR #1123).
+  const wa = buildWantAnswer(intent.key, null, town ? town.centroid : FREDERICK_CENTER, now, {
+    approximateOrigin: true,
+    refine: (p) => {
+      if (intent.cuisine && !cuisinesOf(p).includes(intent.cuisine)) return false;
+      if (intent.area?.kind === "downtown" && haversineMeters(FREDERICK_CENTER, p.geom) > DOWNTOWN_RADIUS_M) return false;
+      if (town && p.municipality !== town.slug) return false;
+      return true;
+    },
+  });
+  if (!wa) return null;
+
+  const areaText =
+    intent.area?.kind === "downtown" ? " in downtown Frederick" : town ? ` in ${town.name}` : "";
+  const what = intent.cuisine
+    ? `${cuisineLabel(intent.cuisine)}${wa.label !== "Food" ? ` for ${wa.label.toLowerCase()}` : ""}`
+    : wa.label;
+  // Zero matches is itself an answer — say it so the model can be plainly
+  // honest ("the guide has no Thai in Brunswick") instead of hedging.
+  if (wa.total === 0) {
+    return {
+      block: `RANKED PICKS — ${what}${areaText}: (no matching places in the catalog)\n`,
+      picks: [],
+      label: wa.label,
+    };
+  }
+
+  const line = (r: WantRow) =>
+    `- ${r.name}${r.where ? ` (${r.where})` : ""} — ${r.fact}${r.detail ? ` — ${r.detail}` : ""}${r.deal ? ` — ${r.deal}` : ""}${r.tip ? ` — LOCAL NOTE: ${r.tip}` : ""}`;
+  const open = [wa.hero, ...wa.also].filter((r): r is WantRow => r != null).slice(0, 5);
+  const later = wa.later.slice(0, 3);
+  const notable = open.length === 0 && later.length === 0 ? wa.notable.slice(0, 4) : [];
+  const parts: string[] = [];
+  if (open.length > 0) parts.push(`Open now:\n${open.map(line).join("\n")}`);
+  if (later.length > 0) parts.push(`Opens later today:\n${later.map(line).join("\n")}`);
+  if (notable.length > 0) parts.push(`Notable (hours not posted):\n${notable.map(line).join("\n")}`);
+  return {
+    block: `RANKED PICKS — ${what}${areaText} (this guide's own list, strongest first, open state live):\n${parts.join("\n")}\n`,
+    picks: [...open, ...later, ...notable],
+    label: wa.label,
+  };
+}
+
 export async function askFrederick(query: string, now: Date = new Date()): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { configured: hasKey(), answer: null, sources: [] };
@@ -235,6 +299,23 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   const weatherBlock = wantsWeather(q) ? await weatherContextBlock() : "";
   if (weatherBlock) {
     sources.push({ slug: "pulse-weather", name: "Hourly & 7-day forecast", category: "civic", city: "", href: "/pulse?open=weather" });
+  }
+
+  // Want-intent grounding (Tier 2): a meal/cuisine/craving question routes
+  // through the ranked open-now machinery /today runs, so the model answers
+  // "good breakfast spot downtown" from the guide's own list.
+  const intent = wantIntentOf(q, now);
+  const want = intent ? wantContextBlock(intent, now) : null;
+  const wantBlock = want ? `${want.block}\n` : "";
+  const wantSlugs = new Set((want?.picks ?? []).map((r) => r.slug));
+  for (const r of (want?.picks ?? []).slice(0, 3)) {
+    sources.push({
+      slug: r.slug,
+      name: r.name,
+      category: want!.label.toLowerCase(),
+      city: r.where ?? "",
+      href: `/places/${r.slug}`,
+    });
   }
 
   const anchor = timeAnchorOf(q);
@@ -293,6 +374,9 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
     if (lines.length >= 14) break;
     if (h.type === "place") {
       const p = h.place;
+      // Already carried (better) by the ranked-picks block — a duplicate
+      // search line would just dilute the block the model is told to prefer.
+      if (wantSlugs.has(p.slug)) continue;
       const where = (p as { city?: string; municipality?: string }).city || (p as { municipality?: string }).municipality || "";
       const blurb = (p.short_blurb || "").slice(0, 90);
       // Live open state, computed for `now` from the same verified hours the
@@ -336,7 +420,7 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
       : "(no matching places or events were found in the Frederick catalog)";
   // The clock line is HOUR-granular (see clockLine) so this prompt — which
   // is also the answer-cache key — stays stable within the hour.
-  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${parkingBlock}${weatherBlock}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
+  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${parkingBlock}${weatherBlock}${wantBlock}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
 
   // Cached on a hit (identical question + identical data); a miss or a cached
   // failure (sentinel throw) falls back to null without poisoning the cache.
