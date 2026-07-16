@@ -8,6 +8,8 @@ import {
   Pizza,
   Cookie,
   Beer,
+  Martini,
+  Grape,
   Trees,
   ShoppingBag,
   ShoppingCart,
@@ -63,6 +65,8 @@ import { haptic } from "@/lib/haptics";
 // for any future craving whose icon lands here unmapped.
 const ICONS: Record<string, LucideIcon> = {
   Coffee,
+  Martini,
+  Grape,
   IceCream,
   Utensils,
   Pizza,
@@ -322,7 +326,11 @@ export default function RightNow({
           </p>
         </header>
 
-        <ul className="grid grid-cols-2 gap-3">
+        {/* Compact rows, not square cards: the picker is a SPEED tool, and
+            the old icon-over-word tiles spent ~112px each on one word — the
+            full menu took three screens to scan. Label beside icon reads in
+            one fixation; the whole menu now fits in about one. */}
+        <ul className="grid grid-cols-2 gap-2">
           {CRAVINGS.map((c) => {
             const Icon = ICONS[c.icon] ?? Utensils;
             return (
@@ -330,21 +338,21 @@ export default function RightNow({
                 <button
                   type="button"
                   onClick={() => pick(c.key)}
-                  className="tactile tactile-interactive flex w-full flex-col items-start gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 text-left"
+                  className="tactile tactile-interactive flex min-h-[56px] w-full items-center gap-2.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-2.5 text-left"
                   style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
                 >
                   <span
                     aria-hidden
-                    className="grid h-12 w-12 place-items-center rounded-[var(--app-radius-md)]"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
                     style={{
                       background: `color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid))`,
                       boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c.color} 20%, transparent)`,
                     }}
                   >
-                    <Icon className="h-6 w-6" strokeWidth={1.9} style={{ color: c.color }} />
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} style={{ color: c.color }} />
                   </span>
                   <span
-                    className="text-[16px] font-semibold tracking-tight"
+                    className="min-w-0 flex-1 truncate text-[13.5px] font-semibold tracking-tight"
                     style={{ color: "var(--app-ink)" }}
                   >
                     {c.label}

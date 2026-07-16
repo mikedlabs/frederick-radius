@@ -50,7 +50,9 @@ export type Craving = {
     | "Tractor"
     | "Film"
     | "Waves"
-    | "Scissors";
+    | "Scissors"
+    | "Martini"
+    | "Grape";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -154,7 +156,9 @@ export const CRAVINGS: Craving[] = [
   {
     key: "drinks",
     label: "Drinks",
-    icon: "Beer",
+    // Martini, not Beer: Drinks (bars/cocktails/distilleries) shared the
+    // beer mug with the Breweries tile — two different doors, one icon.
+    icon: "Martini",
     color: "var(--app-positive)",
     match: (p) => p.category === "bar" || p.category === "brewery" || p.category === "distillery",
     facets: [
@@ -173,7 +177,9 @@ export const CRAVINGS: Craving[] = [
     // fallback for any straggler still mis-filed under brewery.
     key: "wineries",
     label: "Wineries",
-    icon: "Wine",
+    // Grape, not Wine: Wineries shared the glass with the Wine & liquor
+    // shop tile.
+    icon: "Grape",
     color: "var(--app-brand-press)",
     match: (p) => p.category === "winery" || WINERY.test(p.name),
   },
@@ -351,7 +357,9 @@ export const CRAVINGS: Craving[] = [
     // Public pools + swimming — a summer staple, scattered across wellness /
     // playground; name-matched across categories, pool halls excluded.
     key: "pools",
-    label: "Pools & swimming",
+    // "Pools & swimming" clipped to "Pools & swimmi…" in the compact
+    // picker cell; one word says the same thing.
+    label: "Pools",
     icon: "Waves",
     color: "var(--app-cool)",
     match: (p) => POOL.test(p.name) && !POOL_JUNK.test(p.name),
