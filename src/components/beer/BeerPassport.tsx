@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
@@ -165,8 +166,18 @@ function progressLine(count: number): string {
 /**
  * A manual, device-only brewery passport. A tap records a visit; it never
  * reads location and never implies the visit happened automatically.
+ *
+ * Stamps are PHOTO MEDALLIONS (owner ask, Jul 2026: identity in the
+ * circles): each circle carries the taproom's real venue photo from the
+ * guide's own pipeline — we hold no brewery logo assets and Untappd's
+ * can't be hotlinked — desaturated until stamped, full color plus the
+ * check once visited. Monogram initials remain the no-photo fallback.
  */
-export default function BeerPassport() {
+export default function BeerPassport({
+  photoBySlug = {},
+}: {
+  photoBySlug?: Record<string, string | null>;
+}) {
   const visited = useSyncExternalStore(subscribe, readVisited, readServerSnapshot);
   const visitedSet = new Set(visited);
   const percent = Math.round((visited.length / BREWERIES.length) * 100);
@@ -247,6 +258,7 @@ export default function BeerPassport() {
           {BREWERIES.map((brewery, index) => {
             const isVisited = visitedSet.has(brewery.slug);
             const family = FAMILY_BY_KEY[dominantFamily(brewery)];
+            const photo = photoBySlug[brewery.slug] ?? null;
             return (
               <li key={brewery.slug} className="min-w-0 text-center">
                 <button
@@ -258,34 +270,53 @@ export default function BeerPassport() {
                       : `Mark ${brewery.name} as visited`
                   }
                   onClick={() => toggleVisited(brewery.slug)}
-                  className="tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16"
+                  className="tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center overflow-visible rounded-full border-2 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16"
                   style={{
                     borderColor: isVisited ? family.deep : "var(--app-border-strong)",
+                    borderStyle: isVisited ? "solid" : "dashed",
                     background: isVisited
                       ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
                       : "var(--app-bg-sunken)",
                     color: isVisited ? "white" : "var(--app-ink-3)",
                     boxShadow: isVisited
-                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent), inset 0 0 0 3px color-mix(in srgb, white 18%, transparent)`
+                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent)`
                       : "inset 0 0 0 3px var(--app-bg-elevated)",
                   }}
                 >
+                  {photo ? (
+                    <span aria-hidden className="absolute inset-0 overflow-hidden rounded-full">
+                      {/* The taproom's real photo — desaturated until stamped,
+                          like an unfilled passport page. Proxy photos skip
+                          /_next/image (PlacePhoto convention). */}
+                      <Image
+                        src={photo}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-cover transition-[filter] duration-300"
+                        style={isVisited ? undefined : { filter: "grayscale(0.85) opacity(0.85)" }}
+                        unoptimized={photo.startsWith("/api/place-photo")}
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="font-serif text-[20px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6 sm:text-[22px]"
+                    >
+                      {monogramOf(brewery.name)}
+                    </span>
+                  )}
                   <span
                     aria-hidden
-                    className="absolute left-1.5 top-1 font-mono text-[8px] font-bold tabular-nums opacity-70"
+                    className="absolute left-1 top-0.5 z-10 grid h-4 min-w-4 place-items-center rounded-full px-0.5 font-mono text-[8px] font-bold tabular-nums"
+                    style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "var(--app-edge)" }}
                   >
                     {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    aria-hidden
-                    className="font-serif text-[20px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6 sm:text-[22px]"
-                  >
-                    {monogramOf(brewery.name)}
                   </span>
                   {isVisited && (
                     <span
                       aria-hidden
-                      className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2"
+                      className="absolute -bottom-0.5 -right-0.5 z-10 grid h-5 w-5 place-items-center rounded-full border-2"
                       style={{ background: "var(--app-positive)", borderColor: "var(--app-bg-elevated)", color: "white" }}
                     >
                       <Check className="h-3 w-3" strokeWidth={3} />

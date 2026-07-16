@@ -57,7 +57,9 @@ export default function BeerPage() {
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
 
-      <BeerPassport />
+      <BeerPassport
+        photoBySlug={Object.fromEntries(breweryCards.map((c) => [c.slug, c.google_photo_url ?? null]))}
+      />
       <BeerGuides />
       <BeerExplorerLauncher breweryCards={breweryCards} />
 
