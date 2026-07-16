@@ -96,13 +96,20 @@ export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
   CIVIC_ACTIONS.filter((a) => a.verb === verb);
 
 /** Naive match for the Ask: label + keyword contains. */
+/** Words that appear in half the action labels AND nearly every question —
+ *  scoring them let "how do I register to vote in frederick county" match a
+ *  generic county entry ahead of Voter registration (ask audit, Jul 2026). */
+const CIVIC_STOP = new Set(["frederick", "county", "maryland", "city", "how", "who", "what", "the", "for"]);
+
 export function matchCivicAction(query: string): CivicAction | null {
   const q = query.toLowerCase();
   let best: CivicAction | null = null, bestScore = 0;
   for (const a of CIVIC_ACTIONS) {
     const hay = [a.label, ...(a.keywords ?? [])].join(" ").toLowerCase();
     let score = 0;
-    for (const term of q.split(/\s+/)) if (term.length > 2 && hay.includes(term)) score++;
+    for (const term of q.split(/\s+/)) {
+      if (term.length > 2 && !CIVIC_STOP.has(term) && hay.includes(term)) score++;
+    }
     if (score > bestScore) { bestScore = score; best = a; }
   }
   return bestScore > 0 ? best : null;

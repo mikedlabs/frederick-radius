@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, stripInlineMarkdown, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -140,6 +140,31 @@ describe("rankForSources", () => {
   it("no meaningful tokens → chronological order untouched", () => {
     const picked = [ev({ slug: "a" }), ev({ slug: "b" })];
     expect(rankForSources(picked, "now?").map((e) => e.slug)).toEqual(["a", "b"]);
+  });
+});
+
+describe("filterCitedSources", () => {
+  const answer = "Alley Nights at Brewer's Alley has live music, and Alive @ Five kicks off at Carroll Creek.";
+  const sources = [
+    { name: "Voter registration", category: "civic" },
+    { name: "Alley Nights", category: "event" },
+    { name: "Alive @ Five · La Unica", category: "event" },
+    { name: "Keeney and Basford Funeral Homes", category: "funeral" },
+    { name: "County budget", category: "event" },
+  ];
+  it("drops uncited search noise, keeps cited cards and civic links (the funeral-home audit find)", () => {
+    expect(filterCitedSources(sources, answer).map((s) => s.name)).toEqual([
+      "Voter registration",
+      "Alley Nights",
+      "Alive @ Five · La Unica",
+    ]);
+  });
+  it("keeps the top two as related when the answer names nothing", () => {
+    const out = filterCitedSources(sources, "Nothing matches this prose at all.");
+    expect(out.map((s) => s.name)).toEqual(["Voter registration", "Alley Nights", "Alive @ Five · La Unica"]);
+  });
+  it("null answer passes sources through untouched", () => {
+    expect(filterCitedSources(sources, null)).toEqual(sources);
   });
 });
 
