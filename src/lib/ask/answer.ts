@@ -4,7 +4,7 @@ import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, stripInlineMarkdown } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown } from "@/lib/ask/context";
 import { getOpenStatus, isOpenNow, formatHoursLine } from "@/lib/hours";
 import type { Place } from "@/data/places";
 
@@ -249,8 +249,11 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
               ? " — hours not confirmed"
               : ""
             : ` — ${formatHoursLine(status)}`;
+      // Phone rides along: the model honestly says "call to confirm" for
+      // hours-less places (the double-decker tour), and the number we hold
+      // is what makes that advice actionable.
       lines.push(
-        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${openBit}${blurb ? ` — ${blurb}` : ""}`,
+        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${openBit}${p.phone ? ` — ${p.phone}` : ""}${blurb ? ` — ${blurb}` : ""}`,
       );
       if (sources.length < 6)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
@@ -282,5 +285,8 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   } catch {
     answer = null;
   }
-  return { configured: answer !== null || hasKey(), answer, sources };
+  // The cards under the answer are CITATIONS, not the raw retrieval — a
+  // funeral home rendered under "anything fun tomorrow night" when sources
+  // were the unfiltered search hits.
+  return { configured: answer !== null || hasKey(), answer, sources: filterCitedSources(sources, answer) };
 }

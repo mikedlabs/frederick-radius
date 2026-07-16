@@ -252,6 +252,33 @@ export function rankForSources(picked: AskEvent[], query: string): AskEvent[] {
 }
 
 /**
+ * Keep only the source cards the ANSWER actually cites. The raw search hits
+ * are fuzzy-match noise ("Keeney and Basford Funeral Homes" rendered under
+ * "anything fun tomorrow night" — ask audit, Jul 2026), and the cards are
+ * the answer's trust anchors: a card should be a citation, not a search
+ * dump. Civic/department cards always stay (they're authoritative links the
+ * model is told to cite). If the answer names none of the rest, the top two
+ * survive as "related" so the UI never renders an answer with zero doors.
+ */
+export function filterCitedSources<S extends { name: string; category: string }>(
+  sources: S[],
+  answer: string | null,
+): S[] {
+  if (!answer) return sources;
+  const answerToks = new Set(answer.toLowerCase().split(/[^a-z0-9]+/));
+  const cited = (name: string) => {
+    const toks = name.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+    if (toks.length === 0) return false;
+    const hits = toks.filter((t) => answerToks.has(t)).length;
+    return hits / toks.length >= 0.6;
+  };
+  const civic = sources.filter((s) => s.category === "civic");
+  const rest = sources.filter((s) => s.category !== "civic");
+  const kept = rest.filter((s) => cited(s.name));
+  return [...civic, ...(kept.length > 0 ? kept : rest.slice(0, 2))];
+}
+
+/**
  * Belt-and-braces markdown strip for MODEL prose. The system prompt bans
  * markdown, but Haiku still italicizes for emphasis under pressure — and
  * the Ask surfaces render plain text, so *tonight* reached users with
