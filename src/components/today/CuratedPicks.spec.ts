@@ -26,4 +26,19 @@ describe("orderPicks", () => {
     expect(orderPicks(false)).toHaveLength(4);
     expect(orderPicks(null)).toHaveLength(4);
   });
+
+  // Return-visit loop: consecutive days lead with different plans, without
+  // breaking the weather override.
+  it("rotates the lead day over day", () => {
+    const today = orderPicks(null, 100).map((p) => p.slug);
+    const tomorrow = orderPicks(null, 101).map((p) => p.slug);
+    expect(today[0]).not.toBe(tomorrow[0]);
+    // Same set, different order — rotation never adds or drops a plan.
+    expect([...today].sort()).toEqual([...tomorrow].sort());
+  });
+  it("rain still claims the front slot on every rotation", () => {
+    for (const day of [100, 101, 102, 103]) {
+      expect(orderPicks(true, day)[0].slug).toBe("rainy-day-frederick");
+    }
+  });
 });

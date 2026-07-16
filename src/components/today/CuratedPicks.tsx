@@ -3,6 +3,7 @@ import { Wine, Baby, CloudRain, Sparkles, ArrowRight, CalendarCheck, Footprints,
 import { COLLECTION_BY_SLUG } from "@/data/collections";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { easternDayKey } from "@/lib/worth-a-look";
 
 /**
  * CuratedPicks — the "want a plan, not just a thing" rail on /today.
@@ -43,15 +44,20 @@ const CLEAR_DAY_SWAP: { slug: string; Icon: LucideIcon } = {
  * forecast (null) keeps the evergreen order rather than guessing. Pure and
  * exported so the rule lives under unit tests.
  */
-export function orderPicks(rainAhead: boolean | null): { slug: string; Icon: LucideIcon }[] {
+export function orderPicks(rainAhead: boolean | null, dayIndex = 0): { slug: string; Icon: LucideIcon }[] {
+  // Daily lead rotation (return-visit audit, Jul 2026): the same four tiles
+  // in the same order every morning read as a static banner by day three.
+  // Rotate the base order by the Eastern day index so tomorrow leads with a
+  // different plan; the weather rules below still claim the front slot.
+  const base = PICKS.map((_, i) => PICKS[(i + dayIndex) % PICKS.length]);
   if (rainAhead === true) {
-    const rainy = PICKS.find((p) => p.slug === "rainy-day-frederick")!;
-    return [rainy, ...PICKS.filter((p) => p.slug !== "rainy-day-frederick")];
+    const rainy = base.find((p) => p.slug === "rainy-day-frederick")!;
+    return [rainy, ...base.filter((p) => p.slug !== "rainy-day-frederick")];
   }
   if (rainAhead === false) {
-    return PICKS.map((p) => (p.slug === "rainy-day-frederick" ? CLEAR_DAY_SWAP : p));
+    return base.map((p) => (p.slug === "rainy-day-frederick" ? CLEAR_DAY_SWAP : p));
   }
-  return PICKS;
+  return base;
 }
 
 export default async function CuratedPicks() {
@@ -63,7 +69,10 @@ export default async function CuratedPicks() {
       ? next12.some((h) => (h.probabilityOfPrecipitation ?? 0) >= 40)
       : null;
 
-  const picks = orderPicks(rainAhead)
+  // Same days-since-epoch index WorthALook rotates on, from the Eastern day.
+  const [y, m, d] = easternDayKey().split("-").map(Number);
+  const dayIndex = Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
+  const picks = orderPicks(rainAhead, dayIndex)
     .map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] }))
     .filter((p) => p.c && p.c.places.length > 0);
   if (picks.length === 0) return null;

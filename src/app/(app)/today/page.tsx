@@ -39,6 +39,7 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
+import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
 import TasteNudge from "@/components/today/TasteNudge";
 import CuratedPicks from "@/components/today/CuratedPicks";
@@ -384,6 +385,14 @@ export default async function HomePage() {
           a first-timer or anyone with no open saves never sees a box. */}
       <FromYourSaved />
 
+      {/* ── LOOKING AHEAD — the weekend teaser on Thu/Fri mornings (the hours
+          a resident actually decides the weekend; TomorrowPreview owns the
+          late-night slot). Self-hides every other daypart and when the
+          weekend calendar is still thin. Part of the return-visit loop. */}
+      <Suspense fallback={null}>
+        <WeekendPreview now={now} eventsPromise={eventsPromise} />
+      </Suspense>
+
       {/* ── ON NOW — the live layer (farmers markets, happy hours, today's
           verified specials, tonight's parking play) gathered under ONE header
           instead of four free-floating beats, and REORDERED BY DAYPART so the
@@ -423,6 +432,15 @@ export default async function HomePage() {
           swimming is a resident utility, not the headline, so it follows the
           draws instead of leading them. */}
       <PoolsToday now={now} />
+
+      {/* ── WORTH A LOOK — the daily discovery rail, PROMOTED out of the
+          collapsed briefing (return-visit audit, Jul 2026): it is the one
+          module deliberately rotated every morning, and it sat behind the
+          page's only fold — the returning visitor never saw the thing built
+          for them. Six typographic tiles, new lineup each Eastern day. */}
+      <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
+        <WorthALook />
+      </Suspense>
 
       {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
           places (their dominant craving), linking into /nearby for it. Client +
@@ -586,10 +604,9 @@ export default async function HomePage() {
       <div className="space-y-4">
         <FoodTruckToday />
         <PartnerAppsRow />
-        <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-          <WorthALook />
-        </Suspense>
-        {/* Local news moved to /pulse (the civic dashboard that owns it) and
+        {/* WorthALook moved UP into the visible flow (return-visit audit) —
+            a daily rotation behind the page's only fold defeated itself.
+            Local news moved to /pulse (the civic dashboard that owns it) and
             the From Above drone-book doorway moved off the front door — both
             are "check when curious," not "find something to do today." */}
       </div>
