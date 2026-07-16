@@ -67,7 +67,7 @@ export default function ShippingPage() {
         ODbL), refreshed on deploy. Hours vary and holidays close counters, so
         check before a late run. Know a drop-off or locker we&rsquo;re
         missing?{" "}
-        <Link href="/submit/place" className="font-semibold hover:underline" style={{ color: "var(--app-brand)" }}>
+        <Link href="/submit/place" className="font-semibold hover:underline" style={{ color: "var(--app-brand-press)" }}>
           Tell us
         </Link>
         .

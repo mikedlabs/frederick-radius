@@ -36,10 +36,12 @@ import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { curatedFreshnessAnomalies, liveSourceAnomalies } from "@/lib/quality/curated-freshness";
 import { pruneExpiredReports } from "@/lib/loaders/communityReports";
 import { findRlsAnomalies, findStaleIngestSources } from "@/lib/quality/db-health";
+import { runTripwires } from "@/lib/quality/tripwires";
+import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300; // tripwires add live fetches + one canary model call
 
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
@@ -131,12 +133,45 @@ export async function GET(request: Request) {
   ];
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies];
+  // End-to-end tripwires: the politely-degrading failure classes (photo
+  // rot, transit zero-routes, dead event assembly, degraded ask). See
+  // src/lib/quality/tripwires.ts for the July 2026 history behind each.
+  const tripwires = await runTripwires().catch((err) => {
+    console.error("[cron/data-health] tripwires failed:", err);
+    return { anomalies: [], checks: [] as Array<{ name: string; green: boolean }> };
+  });
+
+  const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies, ...tripwires.anomalies];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
   }
 
+  // THE ONE NUMBER. Every gate above collapsed to "N of M green" — the
+  // owner-readable answer to "is the app quietly broken?", persisted as an
+  // ingest_runs row so the admin board (and any later surface) can read the
+  // latest headline without recomputing.
+  const gates: Array<{ name: string; green: boolean }> = [
+    { name: "hours-coverage", green: coverage >= 60 },
+    { name: "provenance", green: !trust.provenance.below_gate },
+    { name: "coord-divergence", green: coordFlags.length === 0 },
+    { name: "feed-anomalies", green: anomalies.length === 0 },
+    { name: "curated-freshness", green: freshnessAnomalies.length === 0 },
+    { name: "db-health", green: dbAnomalies.length === 0 },
+    ...tripwires.checks,
+  ];
+  const red = gates.filter((g) => !g.green);
+  const headline = `${gates.length - red.length}/${gates.length} green${red.length > 0 ? ` · red: ${red.map((g) => g.name).join(", ")}` : ""}`;
+  const runId = await startIngestRun("tripwires");
+  await finishIngestRun(runId, {
+    status: red.length === 0 ? "ok" : "error",
+    records_in: gates.length,
+    records_upserted: gates.length - red.length,
+    records_failed: red.length,
+    error: red.length > 0 ? headline : null,
+  });
+
   return NextResponse.json({
+    summary: { headline, gates },
     computed_at: new Date().toISOString(),
     places: PLACES.length,
     dedup: { clusters, folded },

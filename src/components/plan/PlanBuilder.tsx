@@ -471,7 +471,10 @@ export default function PlanBuilder({
                     aria-pressed={vibe === v.value}
                     className="vibe-card group relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 text-left transition active:scale-[0.985] disabled:opacity-70"
                     style={{
-                      background: `linear-gradient(155deg, ${v.color} 0%, color-mix(in srgb, ${v.color} 65%, var(--app-bedrock)) 100%)`,
+                      // Deepened toward bedrock across the whole wash: the raw
+                      // mood color put 12px white text at ~2.7:1 (AA fail on
+                      // every mid-tone card). Same hue, ink it can sit on.
+                      background: `linear-gradient(155deg, color-mix(in srgb, ${v.color} 86%, var(--app-bedrock)) 0%, color-mix(in srgb, ${v.color} 52%, var(--app-bedrock)) 100%)`,
                       boxShadow: `0 12px 28px -10px ${v.color}, var(--app-elev-1)`,
                     }}
                   >
@@ -487,7 +490,7 @@ export default function PlanBuilder({
                         <span className="block font-serif text-[20px] font-semibold leading-tight tracking-tight text-white">
                           {v.label}
                         </span>
-                        <span className="mt-0.5 block text-[12px] leading-snug text-white/80">
+                        <span className="mt-0.5 block text-[12px] leading-snug text-white/95">
                           {v.tagline}
                         </span>
                       </span>

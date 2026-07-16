@@ -223,6 +223,18 @@ function hitToResult(h: SearchHit): SearchResult {
       href: `/category/${c.slug}`,
     };
   }
+  if (h.type === "page") {
+    // App guides/tools ride the existing "action" presentation (arrow
+    // icon, Actions group) — to the user they're the same thing: a door.
+    const g = h.page;
+    return {
+      type: "action",
+      id: `page:${g.href}`,
+      title: g.title,
+      subtitle: g.blurb,
+      href: g.href,
+    };
+  }
   const m = h.municipality;
   return {
     type: "municipality",
@@ -247,7 +259,12 @@ export function searchIndex(
   // the overlay alongside the market places themselves.
   const layers = matchLayers(query).slice(0, 1);
   const head = [...actions, ...layers];
-  const hits = search(query, Math.max(1, limit - head.length), eventPool).map(hitToResult);
+  const headHrefs = new Set(head.map((a) => a.href));
+  // Registry pages and quick actions overlap on purpose (both are doors);
+  // never render the same door twice.
+  const hits = search(query, Math.max(1, limit - head.length), eventPool)
+    .map(hitToResult)
+    .filter((r) => !headHrefs.has(r.href));
   return [...head, ...hits];
 }
 

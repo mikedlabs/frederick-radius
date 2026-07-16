@@ -116,7 +116,10 @@ export const WANTS: WantCategory[] = [
   },
   {
     key: "unwind",
-    label: "Wellness & stay",
+    // Short enough to never truncate in the accordion's two-column cells:
+    // ~10 chars fit at 402px ("Wellness & stay" clipped to "Wellness & …",
+    // a permanent ellipsis in primary nav). Matches the hero title.
+    label: "Wind down",
     icon: "Heart",
     color: "var(--app-brand-2)",
     subs: [

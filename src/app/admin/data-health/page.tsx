@@ -106,6 +106,13 @@ export default async function DataHealth() {
   const trust = computePlaceTrustReport();
   const conf = trust.confidence;
 
+  // THE ONE NUMBER — the nightly cron collapses every gate (catalog gates +
+  // the end-to-end tripwires: photo rot, transit zero-routes, empty event
+  // assembly, degraded ask) into one "N/M green" ingest_runs row under
+  // source "tripwires". Read it back here so the answer to "is the app
+  // quietly broken?" leads the board.
+  const tripwire = ingestRuns.find((r) => r.source === "tripwires");
+
   const rows: Array<[string, string, string]> = [
     ["Provenance coverage", `${trust.provenance.coverage_pct}%`, "target 100%, every row carries the seven fields"],
     ["Confidence ladder", `${conf.curated} / ${conf.partner} / ${conf.verified} / ${conf.scraped}`, "curated / partner / verified / scraped"],
@@ -131,6 +138,49 @@ export default async function DataHealth() {
         </>
       }
     >
+      {/* ── Tripwires — the one number. Written nightly by the data-health
+          cron; red means a politely-degrading failure class (photo rot,
+          transit zero-routes, dead event assembly, degraded ask) or a
+          catalog gate tripped. ──────────────────────────────────────── */}
+      <Section
+        title="Tripwires"
+        aside={
+          tripwire ? (
+            <StatusPill tone={tripwire.status === "ok" && !tripwire.stale ? "positive" : "warning"}>
+              {`${tripwire.recordsUpserted}/${tripwire.recordsIn} green`}
+            </StatusPill>
+          ) : undefined
+        }
+        description="Nightly end-to-end checks against the failure classes that degrade politely: sampled place photos, transit route count, today's event assembly, and a canary ask, alongside the catalog gates (hours coverage, provenance, coordinates, feeds, freshness, database)."
+      >
+        {!tripwire ? (
+          <EmptyState>
+            No tripwire run recorded yet. The first row lands with the next nightly
+            data-health cron (or no database in this environment).
+          </EmptyState>
+        ) : tripwire.status === "ok" && !tripwire.stale ? (
+          <EmptyState tone="positive">
+            All {tripwire.recordsIn} gates green · checked{" "}
+            {tripwire.startedAt ? new Date(tripwire.startedAt).toLocaleString() : "recently"}.
+          </EmptyState>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {tripwire.status !== "ok" && (
+              <Callout tone="warning" title="Red gates">
+                {tripwire.error ?? `${tripwire.recordsFailed} of ${tripwire.recordsIn} gates red.`}
+              </Callout>
+            )}
+            {tripwire.stale && (
+              <Callout tone="warning" title="Run is stale">
+                Last tripwire run{" "}
+                {tripwire.startedAt ? new Date(tripwire.startedAt).toLocaleString() : "unknown"}. The
+                data-health cron itself may have stopped firing.
+              </Callout>
+            )}
+          </div>
+        )}
+      </Section>
+
       {/* ── Live feed connectivity — the "is it collecting data?" board.
           Keyed feeds go green when their env var is set in the
           deployment, amber ("needs key") until then; keyless feeds are

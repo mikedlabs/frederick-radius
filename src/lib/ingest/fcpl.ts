@@ -159,13 +159,24 @@ export function fcplMapOne(raw: FcplRaw, now: Date): FcplMapped | null {
   return { event, municipality, category };
 }
 
-/** Map the whole feed, dropping non-public / past / unparseable rows. */
-export function fcplMapFeed(feed: unknown, now: Date): FcplMapped[] {
+/** How far ahead one nightly run ingests. The feed is unbounded (2,520
+ *  future rows measured Jul 2026, up 45% from the 1,736 the route was sized
+ *  for) and the run died growing into its 300s budget — silently, for two
+ *  months (Fandom Fest, added to the feed May 12, never arrived; the owner
+ *  found the gap holding the branch's paper flyer). 60 days ≈ 900 rows,
+ *  covers every surfaced horizon, and the DAILY re-run rolls the window
+ *  forward, so nothing is ever permanently missed. */
+export const FCPL_HORIZON_DAYS = 60;
+
+/** Map the whole feed, dropping non-public / past / unparseable rows and
+ *  rows beyond the ingest horizon. */
+export function fcplMapFeed(feed: unknown, now: Date, horizonDays: number = FCPL_HORIZON_DAYS): FcplMapped[] {
   if (!Array.isArray(feed)) return [];
+  const horizonMs = now.getTime() + horizonDays * 24 * 60 * 60 * 1000;
   const out: FcplMapped[] = [];
   for (const raw of feed) {
     const mapped = fcplMapOne(raw as FcplRaw, now);
-    if (mapped) out.push(mapped);
+    if (mapped && Date.parse(mapped.event.startsAtUtc) <= horizonMs) out.push(mapped);
   }
   return out;
 }

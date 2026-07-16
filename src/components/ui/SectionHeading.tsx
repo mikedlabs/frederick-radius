@@ -32,6 +32,10 @@ export default function SectionHeading({
   accent?: string;
 }) {
   const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
+  // The tick is decorative and keeps the true accent; the CTA is 12px TEXT
+  // and must hold 4.5:1 — the raw brand red (3.7:1 on cream) fails, so the
+  // text color is the accent pulled 40% toward ink (axe-verified, Jul 2026).
+  const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
   return (
     <header className="flex items-end justify-between gap-3">
       <h2
@@ -59,7 +63,7 @@ export default function SectionHeading({
             type="button"
             onClick={onCtaClick}
             className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96]"
-            style={{ color: tickColor }}
+            style={{ color: ctaColor }}
           >
             {cta}
           </button>
@@ -68,7 +72,7 @@ export default function SectionHeading({
             <Link
               href={href}
               className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight"
-              style={{ color: tickColor }}
+              style={{ color: ctaColor }}
             >
               {cta}
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

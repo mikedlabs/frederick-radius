@@ -1833,6 +1833,61 @@ export const PLACES: Place[] = [
     is_verified: false, is_operational: "operational",
     feature_score: 6.5, source: "manual", updated_at: "2026-06-18",
   },
+
+  // ──── Tours & rides ───────────────────────────────────────────────────
+  {
+    slug: "maryland-double-deckers",
+    name: "Maryland Double Deckers",
+    category: "tours",
+    tags: ["ticketed", "outdoor"],
+    short_blurb:
+      "Frederick's yellow vintage London double-decker, running history, brewery, and family tours from downtown.",
+    description:
+      "An open-top London bus that rolls through downtown on scheduled public tours: local history runs, an African American heritage tour with AARCH, Brew with a View brewery hops, Pages & Pastries bookstore-and-bakery stops, and family routes. Also hires out for weddings and private events. Tours sell out, so book ahead.",
+    address: "125 E All Saints St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    // Same address block as the East All Saints garage (dataset-verified coords).
+    geom: { lng: -77.4073, lat: 39.4118 },
+    phone: "301-202-1738",
+    website: "https://marylanddoubledeckers.com",
+    price_band: 2,
+    // No standing hours on purpose: it runs on a tour schedule, not a
+    // storefront clock. Hours would be a fabrication.
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 7.5,
+    source: "seed",
+    updated_at: "2026-07-15",
+  },
+  {
+    slug: "ghost-tours-of-historic-frederick",
+    name: "Ghost Tours of Historic Frederick",
+    category: "tours",
+    tags: ["ticketed", "outdoor", "seasonal"],
+    short_blurb:
+      "Maryland's longest-running ghost tour: 90 candlelit minutes through the historic district, April through December.",
+    description:
+      "Maryland Heritage Tours' candlelight walk has run for more than 25 years: about 90 minutes and an easy 1.2 miles through downtown's documented hauntings, meeting in front of Brewer's Alley at 124 N Market St. Select weekends April through December, with cemetery history and Civil War tours in the same family. Group size is limited, so reserve ahead.",
+    address: "124 N Market St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    // Meets in front of Brewer's Alley — coords from our own record there.
+    geom: { lng: -77.4105, lat: 39.4161 },
+    phone: "301-668-8922",
+    website: "https://marylandghosttours.com",
+    price_band: 2,
+    // Tour schedule, not storefront hours — none on purpose.
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 7.0,
+    source: "seed",
+    updated_at: "2026-07-15",
+  },
 ];
 
 /**

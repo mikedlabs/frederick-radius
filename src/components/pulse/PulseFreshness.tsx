@@ -32,8 +32,11 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
         ? `${Math.floor(sec / 60)}m ago`
         : `${Math.floor(sec / 3600)}h ago`;
 
+  // Inherit the surrounding ink: this renders inside the DARK hero eyebrow,
+  // where the old hardcoded --app-ink-3 (a light-ground gray) made the one
+  // line proving the page is live nearly invisible.
   return (
-    <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+    <span className="tabular-nums">
       · updated {label}
     </span>
   );

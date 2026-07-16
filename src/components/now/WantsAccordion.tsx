@@ -46,7 +46,6 @@ import {
   PawPrint,
   Church,
   Pill,
-  ChevronRight,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -313,7 +312,9 @@ export default function WantsAccordion({
               {meal.label} · now
             </span>
           )}
-          <span className="mt-0.5 block truncate font-serif text-[20px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {/* Two lines before ellipsis: this is the page's ONE primary action,
+              and "Restaurants open …" (360px) is not an answer. */}
+          <span className="mt-0.5 line-clamp-2 font-serif text-[20px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             {hero.title}
           </span>
           <span className="mt-0.5 block truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
@@ -379,14 +380,17 @@ export default function WantsAccordion({
 
       {/* The rest — quiet two-column list; tap to promote to the hero. */}
       <div className="grid grid-cols-2 gap-2 pt-0.5">
-        {rest.map((cat) => {
+        {rest.map((cat, i) => {
           const ink = cat.color;
+          // An odd count leaves a lone tile beside an empty cell; the last
+          // one takes the full row instead (a hole reads as a loading bug).
+          const spansRow = rest.length % 2 === 1 && i === rest.length - 1;
           return (
             <button
               key={cat.key}
               type="button"
               onClick={() => promote(cat.key)}
-              className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 text-left"
+              className={`tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 text-left${spansRow ? " col-span-2" : ""}`}
               style={{
                 border: "1px solid var(--app-border)",
                 background: "var(--app-bg-elevated)",
@@ -404,10 +408,13 @@ export default function WantsAccordion({
               >
                 {renderIcon(cat.icon, "h-[18px] w-[18px]")}
               </span>
+              {/* No chevron: at 360px its 24px (glyph + gap) is exactly the
+                  difference between "Community" and "Commu…". The tile is a
+                  whole-surface control (cards carry no arrow, AFFORDANCES §4);
+                  promotion is instant and in place, not a navigation. */}
               <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 {cat.label}
               </span>
-              <ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-30" style={{ color: "var(--app-ink-3)" }} />
             </button>
           );
         })}

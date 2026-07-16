@@ -7,8 +7,9 @@ import { fieldNotesFor, verifiedLabel, type FNSourced } from "@/lib/loaders/fiel
  *
  * Icon-led, not label-led: each line is anchored by a small tinted glyph
  * (happy hour / deal / parking / insider) instead of a mono label column, so
- * the card reads as a few scannable facts rather than a wall of text. Long
- * parking/insider notes are clamped. Every source is collapsed into ONE
+ * the card reads as a few scannable facts rather than a wall of text. Notes render in FULL —
+ * a hand-curated tip cut mid-word ("the same block as Caf…") threw away
+ * the exact payoff the card exists for; curation bounds the length, not CSS. Every source is collapsed into ONE
  * footer line ("verified 1d ago · via x.com") next to the certification seal,
  * instead of a link after every row. Self-hides when a place has no notes.
  */
@@ -27,13 +28,11 @@ function Row({
   tint,
   lead,
   children,
-  clamp,
 }: {
   icon: LucideIcon;
   tint: string;
   lead?: string;
   children: React.ReactNode;
-  clamp?: boolean;
 }) {
   return (
     <li className="flex gap-3">
@@ -44,7 +43,7 @@ function Row({
       >
         <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
       </span>
-      <span className={`min-w-0 flex-1 text-[13.5px] leading-snug ${clamp ? "line-clamp-2" : ""}`} style={{ color: "var(--app-ink-2)" }}>
+      <span className="min-w-0 flex-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
         {lead && <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{lead} </span>}
         {children}
       </span>
@@ -92,12 +91,12 @@ export default function FieldNotesCard({ slug }: { slug: string }) {
           </Row>
         ))}
         {fn.parking && (
-          <Row icon={Car} tint="var(--app-cool)" lead="Park" clamp>
+          <Row icon={Car} tint="var(--app-cool)" lead="Park">
             {fn.parking.text}
           </Row>
         )}
         {(fn.insider ?? []).slice(0, 2).map((n, i) => (
-          <Row key={`ins-${i}`} icon={Lightbulb} tint="var(--app-brand-2)" clamp>
+          <Row key={`ins-${i}`} icon={Lightbulb} tint="var(--app-brand-2)">
             {n.text}
           </Row>
         ))}

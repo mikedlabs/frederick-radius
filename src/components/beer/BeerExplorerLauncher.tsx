@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowRight, ChevronUp, Search } from "lucide-react";
+import { ChevronUp, Search, SlidersHorizontal } from "lucide-react";
+import { ALL_BEERS } from "@/data/beers";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 const EXPLORER_ID = "beer-explorer-panel";
@@ -30,17 +31,30 @@ const LazyBeerFinder = dynamic(() => import("./BeerFinder"), {
  */
 export default function BeerExplorerLauncher({
   breweryCards,
-  beerCount,
 }: {
   breweryCards: PlaceCardData[];
-  beerCount: number;
 }) {
-  const [open, setOpen] = useState(false);
-  const [hasOpened, setHasOpened] = useState(false);
+  // Open by default (owner call, Jul 2026: "make it easier to see all the
+  // different beers"): the 174-beer ledger is the page's depth, not an
+  // appendix. The finder still code-splits via LazyBeerFinder, and the
+  // Collapse control keeps the folded state one tap away.
+  const [open, setOpen] = useState(true);
+  const [hasOpened, setHasOpened] = useState(true);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const wasOpen = useRef(false);
+  const beerCount = ALL_BEERS.length;
+
+  const mounted = useRef(false);
   useEffect(() => {
+    // Focus management is for USER toggles only. With the explorer open by
+    // default, running this on mount stole focus (and drew a ring) on a
+    // heading mid-page before the user did anything.
+    if (!mounted.current) {
+      mounted.current = true;
+      wasOpen.current = open;
+      return;
+    }
     if (open) headingRef.current?.focus();
     else if (wasOpen.current) triggerRef.current?.focus();
     wasOpen.current = open;
@@ -50,11 +64,12 @@ export default function BeerExplorerLauncher({
     <section
       id="all-beer"
       aria-labelledby={open ? "beer-explorer-heading" : "all-beer-heading"}
-      className="scroll-mt-24 overflow-hidden rounded-[28px] border"
+      className="scroll-mt-24 overflow-hidden rounded-[var(--app-radius-xl)] border"
       style={{
-        borderColor: open ? "var(--app-border-strong)" : "rgba(226, 194, 144, 0.24)",
-        background: open ? "var(--app-bg-elevated)" : "var(--beer-ink)",
-        boxShadow: open ? "var(--app-shadow-1)" : "0 22px 58px rgba(20,28,23,.18)",
+        borderColor: "var(--app-border-strong)",
+        background:
+          "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 58%, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)) 100%)",
+        boxShadow: "var(--app-shadow-1), var(--app-hi)",
       }}
     >
       <div id={EXPLORER_ID} hidden={!open} className="space-y-5 p-4 sm:p-5">
@@ -95,20 +110,33 @@ export default function BeerExplorerLauncher({
         </div>
       </div>
 
-      <div hidden={open} className="grid gap-7 p-6 sm:grid-cols-[1fr_auto] sm:items-end sm:p-9">
-        <div>
-            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.17em] text-white/42">
-              The complete index
+      <div hidden={open} className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+        <div className="flex gap-3.5">
+          <span
+            aria-hidden
+            className="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-accent) 18%, transparent)",
+              color: "var(--app-accent-press)",
+            }}
+          >
+            <SlidersHorizontal className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div>
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+              Looking for something specific?
             </p>
             <h2
               id="all-beer-heading"
-              className="mt-3 max-w-[11ch] font-serif text-[clamp(2.1rem,5vw,3.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-[#f7f0e4]"
+              className="mt-1 font-serif text-[22px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
             >
-              Know exactly what you want?
+              The complete beer explorer
             </h2>
-            <p className="mt-3 max-w-xl text-[12px] leading-relaxed text-white/52">
-              Open the full index only when you need it. Search all {beerCount} beers by name, style, brewery, town, strength, or distance.
+            <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              Search all {beerCount} beers by name, style, brewery, or town.
             </p>
+          </div>
         </div>
 
         <button
@@ -120,12 +148,11 @@ export default function BeerExplorerLauncher({
           }}
           aria-controls={EXPLORER_ID}
           aria-expanded="false"
-          className="tap-44-y group inline-flex w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-[13px] font-semibold sm:w-auto"
-          style={{ background: "#f4efe4", color: "var(--beer-ink)" }}
+          className="tactile tactile-interactive tap-44-y inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold text-white sm:w-auto"
+          style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-shadow-1)" }}
         >
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Open the full index
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.8} aria-hidden />
+          Search all {beerCount} beers
         </button>
       </div>
     </section>

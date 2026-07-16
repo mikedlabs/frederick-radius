@@ -64,7 +64,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "frederick-without-a-plan",
     title: "Frederick without a plan",
     blurb:
-      "An unscripted downtown afternoon. Start with coffee, walk the creek, end with a beer. The path bends; the answer is yes.",
+      "An unscripted downtown afternoon. Start with coffee, walk the creek, end with a beer. Every stop is a short walk from the last.",
     accent: "var(--app-brand)",
     places: [
       "dublin-roasters-frederick",

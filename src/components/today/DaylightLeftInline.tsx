@@ -26,7 +26,9 @@ export default function DaylightLeftInline() {
   if (!(sun.sunrise && sun.sunset && now >= sun.sunrise && now < sun.sunset)) return null;
   const mins = Math.round((sun.sunset.getTime() - now.getTime()) / 60_000);
   if (mins < 20) return null;
-  const left = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  // Non-breaking space inside the duration: the header wraps at word
+  // boundaries, and "7h / 35m" split across lines read as two figures.
+  const left = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h\u00A0${mins % 60}m`;
   return (
     <span suppressHydrationWarning>
       {"  ·  "}

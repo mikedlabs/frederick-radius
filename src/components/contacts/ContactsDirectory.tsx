@@ -45,6 +45,17 @@ const ACCENT: Record<string, string> = {
   state: "var(--app-brand-2)",
 };
 
+/** Call-pill backgrounds carry WHITE 12px text, so every value must hold
+ *  4.5:1 under it. The Signal vermilion (#E14328, 3.5:1) fails — the city
+ *  pill uses its text-safe press variant; the accent bar keeps the true
+ *  brand red (decorative, exempt). Axe-verified, Jul 2026. */
+const PILL_BG: Record<string, string> = {
+  emergency: "var(--app-danger)",
+  city: "var(--app-brand-press)",
+  county: "var(--app-cool)",
+  state: "var(--app-brand-2)",
+};
+
 /** The nine most-common asks, each routed to a verified department slug. */
 type Intent = { label: string; iconName: string; accent: string; slug: string; hint: string };
 const INTENTS: Intent[] = [
@@ -200,8 +211,11 @@ export default function ContactsDirectory({
                           {intent.hint}
                         </span>
                         {dept.phone && (
-                          <span className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold tabular-nums" style={{ color: intent.accent }}>
-                            <Phone className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                          /* Ink, not the accent: 10.5px in the light accents
+                             fails AA contrast; the tile's icon carries the
+                             color, the number carries the information. */
+                          <span className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                            <Phone className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden style={{ color: intent.accent }} />
                             {formatPhone(dept.phone)}
                           </span>
                         )}
@@ -296,7 +310,7 @@ function DeptRow({ d }: { d: DepartmentContact }) {
             href={`tel:${d.phone}`}
             aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`}
             className="tactile-interactive inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-white active:scale-[0.97]"
-            style={{ background: accent }}
+            style={{ background: PILL_BG[d.jurisdiction] ?? "var(--app-brand-press)" }}
           >
             <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden />
             Call

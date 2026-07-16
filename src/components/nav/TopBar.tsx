@@ -276,17 +276,16 @@ export default function TopBar() {
             onMouseEnter={() => router.prefetch("/compass")}
             onFocus={() => router.prefetch("/compass")}
             onPointerDown={() => router.prefetch("/compass")}
-            aria-label="Explore guides and tools"
+            aria-label="Compass: every guide, map, and tool in one place"
             aria-current={pathname === "/compass" ? "page" : undefined}
-            title="Explore guides and tools"
-            className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+            title="Every guide, map, and tool in one place"
+            className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
             }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="text-[12px] font-medium leading-none sm:hidden">Explore</span>
             <span className="hidden text-[14px] font-medium leading-none sm:inline">Compass</span>
           </Link>
         </div>

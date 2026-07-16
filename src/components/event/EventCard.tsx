@@ -29,6 +29,7 @@ export default function EventCard({
   event,
   variant = "glance",
   live = false,
+  hideDate = false,
   whyItMatters,
   priorityImage = true,
 }: {
@@ -54,6 +55,13 @@ export default function EventCard({
   /** Live right now — renders a small pulsing dot in the compact row so
    *  "happening now" reads even in the dense listing. */
   live?: boolean;
+  /**
+   * The surface's own header already names the day ("Also today",
+   * "Earlier today"), so the utility row prints only the clock — repeating
+   * "Tue Jul 15" on every row of a today-only list is dead ink that steals
+   * width from the title. Utility variant only; other variants ignore it.
+   */
+  hideDate?: boolean;
   /**
    * One honest "why it matters" line for the HERO (feature) card,
    * derived upstream from the event's real description — never
@@ -149,8 +157,9 @@ export default function EventCard({
           {statusText && (
             <span className="font-semibold" style={{ color: statusBg }}>{statusText} · </span>
           )}
-          {date.weekday} {date.month} {date.day}
-          {date.time ? ` · ${date.time}` : ""}
+          {hideDate
+            ? date.time
+            : `${date.weekday} ${date.month} ${date.day}${date.time ? ` · ${date.time}` : ""}`}
         </span>
       </article>
     );
@@ -367,7 +376,7 @@ export default function EventCard({
     const tabBg = `color-mix(in srgb, ${accent} 68%, var(--app-ink))`;
     const reasons = eventReasons(event);
     return (
-      <div className="relative pt-[14px]">
+      <div className="relative flex h-full flex-col pt-[14px]">
         <span
           className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]"
           style={{ background: tabBg, boxShadow: "var(--app-edge)", color: "var(--app-on-brand)" }}
@@ -375,10 +384,12 @@ export default function EventCard({
           {live ? "Live now" : categoryLabel}
         </span>
         {/* Compact horizontal layout — date block beside the content, no empty
-            header band, no bottom-pinned reasons. The card hugs its content
-            (no h-full stretch) so a rail of these wastes no vertical space. */}
+            header band, no bottom-pinned reasons. h-full/flex-1: in a flex
+            rail the wrapper stretches to the tallest sibling anyway, so the
+            card fills it — otherwise a two-line neighbor leaves this tile
+            floating over a blank band. */}
         <article
-          className="tactile tactile-interactive group relative flex gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5"
+          className="tactile tactile-interactive group relative flex flex-1 gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5"
           style={{
             borderColor: "var(--app-border)",
             boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",

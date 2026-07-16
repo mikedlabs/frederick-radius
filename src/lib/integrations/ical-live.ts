@@ -181,12 +181,12 @@ const FEEDS: FeedSpec[] = [
   // and the adjust_range/current_date params do NOT narrow it), so it blows the
   // 8s FEED_FETCH_TIMEOUT 100% of the time — it timed out on every render and
   // delivered nothing (the "~200 events" estimate that wired it in was wrong; I
-  // didn't measure the response time). The library is still the #1 county-wide
-  // content target, but it belongs on the DAILY CRON-INGEST path (like DFP via
-  // /api/ingest/all — no per-request timeout), parsing the lc_calendar JSON
-  // (frederick.librarycalendar.com/events/feed/json) into the ingested store.
-  // That's the follow-up; live-fetching it here was a false promise. The "fcpl"
-  // source key is kept (above) so the cron path can reuse it.
+  // didn't measure the response time). It now rides the DAILY CRON-INGEST path
+  // instead: /api/ingest/fcpl (9:15 UTC) parses the lc_calendar JSON
+  // (frederick.librarycalendar.com/events/feed/json) into the ingested store,
+  // horizon-capped + time-budgeted after the feed outgrew the run budget and
+  // the cron died silently for two months (Jul 2026). The "fcpl" source key
+  // above is the one that cron path uses.
   {
     // City of Frederick — official all-calendar (CivicPlus RSS, fetch-verified).
     // Biggest civic + rec volume for the city itself.

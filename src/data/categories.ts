@@ -50,6 +50,7 @@ export const CATEGORIES: Category[] = [
   { slug: "theater", name: "Theaters", parent: "arts", icon: "Theater", color: "#5B1E55", display_order: 33, blurb: "Stage, film, and live performance venues." },
   { slug: "music", name: "Live music", parent: "arts", icon: "Music", color: "#7E2C6F", display_order: 34, blurb: "Venues, regular nights, and outdoor stages." },
   { slug: "public-art", name: "Public art", parent: "arts", icon: "Palette", color: "#9B3F8A", display_order: 35, blurb: "Murals, sculptures, and installations out in the open." },
+  { slug: "tours", name: "Tours & rides", parent: "arts", icon: "BusFront", color: "#7E2C6F", display_order: 36, blurb: "Guided ways to see the county: the double-decker bus, heritage rail rides, and walking tours." },
 
   { slug: "family", name: "Family", icon: "Baby", color: "#C0871F", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks.", see_also: ["playground"] },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#20506A", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },

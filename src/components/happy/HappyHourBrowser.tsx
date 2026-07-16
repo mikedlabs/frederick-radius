@@ -88,7 +88,9 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
     >
       {/* Chapter / on-now accent rail. */}
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: rail }} />
-      <Link href={`/places/${r.slug}`} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
+      {/* Stretched link needs its own name — the card text is OUTSIDE the
+          anchor, so without a label a screen reader announces nothing. */}
+      <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
       <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
         {r.photo ? <Image src={r.photo} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
       </div>

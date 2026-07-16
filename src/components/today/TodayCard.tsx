@@ -3,10 +3,8 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
-import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
-import { AlertTriangle } from "lucide-react";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -79,25 +77,17 @@ function fmtTime(d: Date | null): string | null {
   }).format(d);
 }
 
-function alertExpiry(iso?: string): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
 export default async function TodayCard() {
   const now = new Date();
   const band = bandFor(easternHour(now));
+  const dateStr = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(now);
 
-  const [forecast, activeAlerts] = await Promise.all([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    getNwsAlerts().catch(() => []),
-  ]);
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
@@ -124,8 +114,6 @@ export default async function TodayCard() {
           shortForecast: cur.shortForecast,
           precipNow: cur.probabilityOfPrecipitation ?? 0,
           hourly: forecast.hourly,
-          forecastHigh: high,
-          activeAlerts: activeAlerts.map(({ event, severity }) => ({ event, severity })),
           now,
         }).line
       : null;
@@ -135,7 +123,6 @@ export default async function TodayCard() {
   const variant: SkyVariant | null = condition
     ? iconForShortForecast(condition, isDay)
     : null;
-  const leadAlert = activeAlerts[0] ?? null;
 
   // Secondary stats — high + next sun event. The big temperature carries
   // "now," so it's dropped from this line to avoid saying it twice.
@@ -154,13 +141,15 @@ export default async function TodayCard() {
           itself (no separate band below). Date is server-rendered; the clock
           ticks client-side. */}
       <div className="flex items-center justify-between gap-3 text-meta font-semibold uppercase tracking-[0.14em]">
-        <span>Right now</span>
+        <span suppressHydrationWarning>{dateStr}</span>
         <LiveClock className="font-mono tabular-nums" />
       </div>
       {/* The hook — greeting + a confident weather mood, in the display face.
           The 3-second "I get it" line, now a tighter lead above one compact
           weather row (was a 28px headline stacked over a 64px number). */}
-      <h2 className="mt-1 font-serif text-[17px] font-semibold leading-snug tracking-tight sm:mt-1.5 sm:text-[20px]">
+      {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
+          otherwise strands its last word at narrow widths. */}
+      <h2 className="mt-1.5 font-serif text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
         {GREETING[band]}
         {mood ? ` ${mood}` : ""}
       </h2>
@@ -168,12 +157,12 @@ export default async function TodayCard() {
       {/* One compact weather row: the animated glyph + the temperature + the
           high/sunset stats, side by side, so the header stays short. */}
       {(variant || tempNow != null || stats.length > 0) && (
-        <div className="mt-1.5 flex items-center gap-3 sm:mt-2">
+        <div className="mt-2 flex items-center gap-3">
           {variant && (
             <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
           )}
           {tempNow != null && (
-            <span className="font-serif text-[38px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
+            <span className="font-serif text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
               {tempNow}&deg;
             </span>
           )}
@@ -187,16 +176,6 @@ export default async function TodayCard() {
           )}
         </div>
       )}
-
-      {leadAlert ? (
-        <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-black/60 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm sm:mt-3">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{leadAlert.event}</span>
-          {alertExpiry(leadAlert.ends_at) ? (
-            <span className="shrink-0 opacity-80">until {alertExpiry(leadAlert.ends_at)}</span>
-          ) : null}
-        </div>
-      ) : null}
 
       {/* Tonight's headline event moved OUT of this card (owner call,
           2026-07-10): it now renders as its own solo card directly below the
