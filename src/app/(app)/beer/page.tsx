@@ -61,7 +61,7 @@ export default function BeerPage() {
         <Link
           href="/trust"
           className="tap-44-y inline-flex shrink-0 items-center gap-1.5 self-start text-[11px] font-semibold sm:self-auto"
-          style={{ color: "var(--app-brand-press)" }}
+          style={{ color: "var(--app-ink-2)" }}
         >
           How Radius checks data
           <ArrowRight className="h-3 w-3" strokeWidth={2.4} aria-hidden />

@@ -146,7 +146,9 @@ function coverTab(it: Item): { label: string; tone: "live" | "lastcall" | "soon"
 
 function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
   const tab = coverTab(it);
-  const tabColor = tab.tone === "lastcall" ? "var(--app-brand)" : tab.tone === "live" ? "var(--app-brand)" : "var(--app-accent)";
+  // Press variants, not the raw tokens: this badge carries WHITE 10px text,
+  // and neither the brand red nor the gold holds 4.5:1 under white.
+  const tabColor = tab.tone === "lastcall" || tab.tone === "live" ? "var(--app-brand-press)" : "var(--app-accent-press)";
   return (
     <Link
       href={`/places/${it.r.slug}`}
