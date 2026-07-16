@@ -4,8 +4,12 @@ import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather } from "@/lib/ask/context";
 import { getOpenStatus, isOpenNow, formatHoursLine } from "@/lib/hours";
+import { PARKING_GARAGES, PARKING_RATE_SCHEDULE, PARKING_OFFICE } from "@/data/parking-garages";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import type { Place } from "@/data/places";
 
 /**
@@ -49,6 +53,8 @@ Rules you must follow:
 - The CURRENT DATE & TIME is always provided. Use it: "tonight", "today", and "this weekend" questions are answered directly from the EVENTS block. Never say you don't know today's date.
 - Place lines may carry a LIVE open state ("Open until 9pm", "Closed · Opens Thu 8am") computed for the current time — trust it. A line with no open state means the hours are unconfirmed: say so rather than guessing. For "open now" questions, recommend only places marked Open.
 - If the data doesn't answer the question, say so plainly in one sentence and suggest searching or checking the map — do not guess.
+- LOCAL NOTE fields are this guide's own verified field research (parking tricks, insider details, happy hours). Weave the relevant one into your answer — it's the detail a local friend would add.
+- DOWNTOWN PARKING and WEATHER blocks, when present, are verified/live data. Answer from them directly.
 - Keep it tight: 2–4 sentences, then name your top 1–3 specific picks from the data.
 - Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler.
 - PLAIN TEXT ONLY. No markdown of any kind: no asterisks, underscores, backticks, bullet lists, headers, or [text](url) links. Write prose.`;
@@ -165,6 +171,46 @@ const cachedCallModel = unstable_cache(
   { revalidate: 3600, tags: ["ask"] },
 );
 
+/** The verified downtown-parking block: the five city garages plus the one
+ *  uniform rate schedule. Pure data, so parking questions stop getting the
+ *  honest shrug ("the data covers parks, not parking" — ask audit). */
+function parkingContextBlock(): string {
+  const garages = PARKING_GARAGES.map((g) => `- ${g.name} — ${g.address} — ${g.hours}`).join("\n");
+  return `DOWNTOWN PARKING (City of Frederick, rates verified):\nAll five city garages: ${PARKING_RATE_SCHEDULE.summary}.\n${garages}\n- Parking office: ${PARKING_OFFICE.phone}.\n\n`;
+}
+
+/** Live NWS forecast, as up to four daily periods. Fail-soft: weather is
+ *  context, never a reason to fail the answer. */
+async function weatherContextBlock(): Promise<string> {
+  try {
+    const fc = await getNwsForecast(FREDERICK_CENTER);
+    const days = (fc?.daily ?? []).filter((p) => p.name).slice(0, 4);
+    if (days.length === 0) return "";
+    const lines = days.map((p) => {
+      const pop = p.probabilityOfPrecipitation;
+      return `- ${p.name}: ${p.temperature}°${p.temperatureUnit}, ${p.shortForecast}${pop ? `, ${pop}% chance of rain` : ""}`;
+    });
+    return `WEATHER (live National Weather Service forecast for Frederick):\n${lines.join("\n")}\n\n`;
+  } catch {
+    return "";
+  }
+}
+
+/** One LOCAL NOTE per place — the field-notes moat, compact. Insider detail
+ *  first (the thing you can't Google), then the parking trick, then the
+ *  happy hour. */
+function localNoteFor(slug: string): string {
+  const fn = fieldNotesFor(slug);
+  if (!fn) return "";
+  const tip =
+    fn.insider?.[0]?.text ??
+    fn.parking?.text ??
+    (fn.happy_hour ? `Happy hour ${fn.happy_hour.schedule}${fn.happy_hour.details ? ` (${fn.happy_hour.details})` : ""}` : "");
+  if (!tip) return "";
+  const compact = tip.length > 160 ? `${tip.slice(0, 157)}…` : tip;
+  return ` — LOCAL NOTE: ${compact}`;
+}
+
 export async function askFrederick(query: string, now: Date = new Date()): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { configured: hasKey(), answer: null, sources: [] };
@@ -179,6 +225,18 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   // model the same unified event set /today renders, bucketed to the asked
   // window, with clock times. (The live failure this closes: "I don't have
   // today's date in the data", screenshotted on Reddit.)
+  // Dataset grounders beyond events: verified parking and live weather,
+  // included only when the question asks (they'd be noise elsewhere, and
+  // the weather line varies too much to sit in every cache key).
+  const parkingBlock = wantsParking(q) ? parkingContextBlock() : "";
+  if (parkingBlock) {
+    sources.push({ slug: "parking-guide", name: "Parking guide", category: "civic", city: "", href: "/parking" });
+  }
+  const weatherBlock = wantsWeather(q) ? await weatherContextBlock() : "";
+  if (weatherBlock) {
+    sources.push({ slug: "pulse-weather", name: "Hourly & 7-day forecast", category: "civic", city: "", href: "/pulse?open=weather" });
+  }
+
   const anchor = timeAnchorOf(q);
   let eventsBlock = "";
   if (anchor) {
@@ -251,9 +309,12 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
             : ` — ${formatHoursLine(status)}`;
       // Phone rides along: the model honestly says "call to confirm" for
       // hours-less places (the double-decker tour), and the number we hold
-      // is what makes that advice actionable.
+      // is what makes that advice actionable. The LOCAL NOTE (verified field
+      // research) replaces the generic blurb when we have one — insider
+      // detail beats ad copy.
+      const note = localNoteFor(p.slug);
       lines.push(
-        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${openBit}${p.phone ? ` — ${p.phone}` : ""}${blurb ? ` — ${blurb}` : ""}`,
+        `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${openBit}${p.phone ? ` — ${p.phone}` : ""}${note || (blurb ? ` — ${blurb}` : "")}`,
       );
       if (sources.length < 6)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
@@ -275,7 +336,7 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
       : "(no matching places or events were found in the Frederick catalog)";
   // The clock line is HOUR-granular (see clockLine) so this prompt — which
   // is also the answer-cache key — stays stable within the hour.
-  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
+  const userContent = `The user asked: "${q}"\n\nCURRENT DATE & TIME in Frederick County: ${clockLine(now)} (Eastern).\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${parkingBlock}${weatherBlock}${eventsBlock}${dataBlock}\n\nAnswer using only this data.`;
 
   // Cached on a hit (identical question + identical data); a miss or a cached
   // failure (sentinel throw) falls back to null without poisoning the cache.
