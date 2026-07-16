@@ -349,7 +349,7 @@ export default async function AmenitiesPage() {
         <Link
           href="/submit/place"
           className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
-          style={{ background: "var(--app-brand)" }}
+          style={{ background: "var(--app-brand-press)" }}
         >
           Submit an amenity
         </Link>

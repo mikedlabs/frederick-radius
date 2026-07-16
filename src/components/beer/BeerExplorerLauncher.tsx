@@ -136,7 +136,7 @@ export default function BeerExplorerLauncher({
           aria-controls={EXPLORER_ID}
           aria-expanded="false"
           className="tactile tactile-interactive tap-44-y inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold text-white sm:w-auto"
-          style={{ background: "var(--app-brand)", boxShadow: "var(--app-shadow-1)" }}
+          style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-shadow-1)" }}
         >
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Search all {beerCount} beers

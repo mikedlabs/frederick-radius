@@ -65,7 +65,7 @@ function FacilityCard({ f, big }: { f: PetCareFacility; big?: boolean }) {
         <a
           href={telHref(f.phone)}
           className={`inline-flex items-center gap-2 rounded-[var(--app-radius-md)] font-semibold text-white ${big ? "px-4 py-3 text-[16px]" : "px-3.5 py-2.5 text-[14px]"}`}
-          style={{ background: "var(--app-brand)", minHeight: 44 }}
+          style={{ background: "var(--app-brand-press)", minHeight: 44 }}
         >
           <Phone className={big ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2.25} aria-hidden />
           Call {f.phone}
