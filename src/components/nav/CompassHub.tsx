@@ -25,7 +25,6 @@ import {
   Package,
   ParkingCircle,
   Plane,
-  Search,
   Settings,
   ShieldCheck,
   Store,
@@ -242,15 +241,8 @@ export default function CompassHub() {
     onPointerDown: () => warm(href),
   });
 
-  const openSearch = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    // /search remains the no-JS destination. In the hydrated app, the global
-    // overlay is faster and keeps people in context.
-    event.preventDefault();
-    window.dispatchEvent(new Event("fr:open-search"));
-  };
-
   return (
-    <div className="space-y-9">
+    <div className="space-y-7">
       {/* Field-guide plate masthead — the wayfinding hub now speaks the same
           paper-cream plate language as every sibling surface (eyebrow +
           serif title + brand rule) instead of a one-off dark gradient hero.
@@ -274,108 +266,34 @@ export default function CompassHub() {
           map, calendar, or local tool.
         </p>
         <span aria-hidden className="mt-3 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
-        <Link
-          href="/search"
-          prefetch={false}
-          onClick={openSearch}
-          className="tactile-interactive mt-4 flex min-h-12 w-full max-w-[34rem] items-center gap-3 rounded-[14px] border px-4 text-left"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-elevated-solid)",
-            color: "var(--app-ink)",
-            boxShadow: "var(--app-elev-1), var(--app-hi)",
-          }}
-        >
-          <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-[14px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-            Search places, events, towns…
-          </span>
-          <span className="hidden rounded-md border px-1.5 py-0.5 font-mono text-[9px] sm:inline" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            ⌘K
-          </span>
-        </Link>
       </header>
 
-      <section aria-labelledby="compass-start">
-        <SectionHeading
-          id="compass-start"
-          eyebrow="Start here"
-          title="What do you need?"
-          description="The four fastest ways into the county."
-        />
-        <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
-          {START_HERE.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                prefetch={false}
-                {...intentProps(item.href)}
-                className="tactile tactile-interactive group flex min-h-[134px] h-full flex-col rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 sm:min-h-[142px] sm:p-4"
-                style={{
-                  borderColor: "var(--app-border)",
-                  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                }}
-              >
-                <span
-                  aria-hidden
-                  className="grid h-9 w-9 place-items-center rounded-full"
-                  style={{
-                    color: item.color,
-                    background: `color-mix(in srgb, ${item.color} 13%, transparent)`,
-                  }}
-                >
-                  <item.icon className="h-[17px] w-[17px]" strokeWidth={2.1} />
-                </span>
-                <span className="mt-3 block font-serif text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  {item.label}
-                </span>
-                <span className="mt-1 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                  {item.description}
-                </span>
-                <ArrowRight className="mt-auto h-3.5 w-3.5 self-end transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} style={{ color: item.color }} aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <section aria-labelledby="compass-start" className="space-y-3">
+        <SectionHeading id="compass-start" numeral="I" title="Right now" />
+        <LedgerList items={START_HERE} intentProps={intentProps} />
       </section>
 
-      <section aria-labelledby="compass-yours">
-        <SectionHeading id="compass-yours" eyebrow="Your Frederick" title="Pick up where you left off." />
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
-          <PersonalLink
-            href={home ? `/m/${home.slug}` : "/settings"}
-            label={home ? home.name : "Choose your home town"}
-            description={home ? "Your local guide" : "Tune nearby results"}
-            icon={MapPin}
-            color="var(--app-brand)"
-            {...intentProps(home ? `/m/${home.slug}` : "/settings")}
-          />
-          <PersonalLink
-            href="/my-radius"
-            label="Saved"
-            description="Places and events you kept"
-            icon={Bookmark}
-            color="var(--app-brand-2)"
-            {...intentProps("/my-radius")}
-          />
-          <PersonalLink
-            href="/settings"
-            label="Tune Compass"
-            description="Home, interests, and alerts"
-            icon={Settings}
-            color="var(--app-cool)"
-            {...intentProps("/settings")}
-          />
-        </div>
+      <section aria-labelledby="compass-yours" className="space-y-3">
+        <SectionHeading id="compass-yours" numeral="II" title="Yours" />
+        <LedgerList
+          cols={3}
+          intentProps={intentProps}
+          items={[
+            {
+              href: home ? `/m/${home.slug}` : "/settings",
+              label: home ? home.name : "Choose your home town",
+              description: home ? "Your local guide" : "Tune nearby results",
+              icon: MapPin,
+              color: "var(--app-brand)",
+            },
+            { href: "/my-radius", label: "Saved", description: "Places and events you kept", icon: Bookmark, color: "var(--app-brand-2)" },
+            { href: "/settings", label: "Tune Compass", description: "Home, interests, and alerts", icon: Settings, color: "var(--app-cool)" },
+          ]}
+        />
       </section>
 
       <section aria-labelledby="compass-discover">
-        <SectionHeading
-          id="compass-discover"
-          eyebrow="Explore the county"
-          title="Go beyond the directory."
-          description="Edited ways into Frederick's places and stories."
-        />
+        <SectionHeading id="compass-discover" numeral="III" title="The guides" />
         <ul className="mt-3 grid grid-cols-2 gap-2.5">
           {DISCOVER.map((item, index) => (
             <li key={item.href}>
@@ -386,100 +304,27 @@ export default function CompassHub() {
       </section>
 
       <section aria-labelledby="compass-practical">
-        <SectionHeading
-          id="compass-practical"
-          eyebrow="Practical Frederick"
-          title="Get something done."
-          description="Useful local answers without hunting through agency sites."
-        />
-        <ul
-          className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] sm:grid sm:grid-cols-2"
-          style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
-        >
-          {PRACTICAL.map((item) => (
-            <li
-              key={item.href}
-              className="border-b last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-child(odd)]:border-r"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <Link
-                href={item.href}
-                prefetch={false}
-                {...intentProps(item.href)}
-                className="tactile-interactive group flex min-h-[76px] items-center gap-3 px-3.5 py-3"
-              >
-                <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 11%, transparent)` }}>
-                  <item.icon className="h-[17px] w-[17px]" strokeWidth={2} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{item.label}</span>
-                  <span className="mt-1 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5 group-hover:opacity-70" strokeWidth={2.25} aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading id="compass-practical" numeral="IV" title="Get something done" />
+        <div className="mt-3">
+          <LedgerList items={PRACTICAL} intentProps={intentProps} />
+        </div>
       </section>
 
       <section aria-labelledby="compass-curious">
-        <SectionHeading id="compass-curious" eyebrow="Curiosities" title="See Frederick differently." />
-        <ul className="mt-3 grid gap-2.5 sm:grid-cols-3">
-          {CURIOSITIES.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                prefetch={false}
-                {...intentProps(item.href)}
-                className="tactile tactile-interactive group relative block h-full min-h-[132px] overflow-hidden rounded-[var(--app-radius-lg)] border p-4"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: `linear-gradient(145deg, color-mix(in srgb, ${item.color} 13%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
-                  boxShadow: "var(--app-elev-1), var(--app-hi)",
-                }}
-              >
-                <item.icon className="absolute -bottom-3 -right-3 h-20 w-20 opacity-[0.07]" strokeWidth={1.1} style={{ color: item.color }} aria-hidden />
-                <item.icon className="h-5 w-5" strokeWidth={1.9} style={{ color: item.color }} aria-hidden />
-                <span className="mt-5 block font-serif text-[17px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{item.label}</span>
-                <span className="mt-1 block max-w-[16rem] text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading id="compass-curious" numeral="V" title="Curiosities" />
+        <div className="mt-3">
+          <LedgerList items={CURIOSITIES} intentProps={intentProps} />
+        </div>
       </section>
 
-      <section
-        aria-labelledby="compass-contribute"
-        className="rounded-[var(--app-radius-lg)] border p-4 sm:p-5"
-        style={{
-          borderColor: "color-mix(in srgb, var(--app-brand-2) 28%, var(--app-border))",
-          background: "color-mix(in srgb, var(--app-brand-2) 6%, var(--app-bg-elevated-solid))",
-          boxShadow: "var(--app-hi)",
-        }}
-      >
+      <section aria-labelledby="compass-contribute" className="space-y-3">
         <SectionHeading
           id="compass-contribute"
-          eyebrow="Made with Frederick"
-          title="Help make the guide better."
+          numeral="VI"
+          title="Help make the guide better"
           description="Add what is missing or keep a local listing accurate."
         />
-        <ul className="mt-4 grid grid-cols-2 gap-2">
-          {CONTRIBUTE.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                prefetch={false}
-                {...intentProps(item.href)}
-                className="tactile-interactive flex min-h-[86px] h-full flex-col rounded-[13px] border bg-[var(--app-bg-elevated)] p-3"
-                style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-hi)" }}
-              >
-                <item.icon className="h-[17px] w-[17px]" strokeWidth={2} style={{ color: item.color }} aria-hidden />
-                <span className="mt-2 text-[12.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{item.label}</span>
-                <span className="mt-1 text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <LedgerList items={CONTRIBUTE} intentProps={intentProps} />
       </section>
 
       <nav aria-label="About Frederick Radius" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t pt-5 text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
@@ -491,53 +336,80 @@ export default function CompassHub() {
   );
 }
 
+/** A printed-index section heading: roman numeral, serif title, and the
+ *  fg-rule running to the edge — a table of contents, not a stack of hero
+ *  headers. Replaced the eyebrow + 28px title + description block that made
+ *  every section spend ~90px before showing a single destination. */
 function SectionHeading({
   id,
-  eyebrow,
+  numeral,
   title,
   description,
 }: {
   id: string;
-  eyebrow: string;
+  numeral: string;
   title: string;
   description?: string;
 }) {
   return (
     <div>
-      <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>{eyebrow}</p>
-      <h2 id={id} className="mt-1 font-serif text-[25px] font-semibold leading-[1.05] tracking-tight sm:text-[28px]" style={{ color: "var(--app-ink)" }}>
-        {title}
-      </h2>
-      {description ? <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{description}</p> : null}
+      <div className="flex items-center gap-2.5 px-0.5">
+        <span aria-hidden className="font-mono text-[11px] font-bold tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
+          {numeral}.
+        </span>
+        <h2 id={id} className="font-serif text-[21px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {title}
+        </h2>
+        <div className="fg-rule flex-1" />
+      </div>
+      {description ? <p className="mt-1.5 px-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{description}</p> : null}
     </div>
   );
 }
 
-function PersonalLink({
-  href,
-  label,
-  description,
-  icon: Icon,
-  color,
-  ...events
-}: CompassItem & Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">) {
+/** The index's ONE list grammar: a hairline-divided ledger of destinations.
+ *  Every section that isn't the signature numbered guide-cards uses this,
+ *  replacing four competing card styles with one dense, calm column. */
+function LedgerList({
+  items,
+  cols = 2,
+  intentProps,
+}: {
+  items: CompassItem[];
+  cols?: 2 | 3;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+}) {
+  const liClass =
+    cols === 3
+      ? "border-b last:border-b-0 sm:[&:nth-last-child(-n+3)]:border-b-0 sm:[&:not(:nth-child(3n))]:border-r"
+      : "border-b last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-child(odd)]:border-r";
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      {...events}
-      className="tactile-interactive group flex min-h-[72px] items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
+    <ul
+      className={`overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] sm:grid ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
       style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
     >
-      <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}>
-        <Icon className="h-4 w-4" strokeWidth={2.1} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{label}</span>
-        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{description}</span>
-      </span>
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
-    </Link>
+      {/* href alone can repeat ("Choose your home town" and "Tune Compass"
+          both land on /settings until a home is set) — key on the pair. */}
+      {items.map((item) => (
+        <li key={`${item.href}|${item.label}`} className={liClass} style={{ borderColor: "var(--app-border)" }}>
+          <Link
+            href={item.href}
+            prefetch={false}
+            {...intentProps(item.href)}
+            className="tactile-interactive group flex min-h-[68px] items-center gap-3 px-3.5 py-3"
+          >
+            <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 11%, transparent)` }}>
+              <item.icon className="h-[17px] w-[17px]" strokeWidth={2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{item.label}</span>
+              <span className="mt-1 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5 group-hover:opacity-70" strokeWidth={2.25} aria-hidden />
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -562,14 +434,14 @@ function EditorialCard({
       href={item.href}
       prefetch={false}
       {...intentProps}
-      className="tactile tactile-interactive group relative block min-h-[174px] overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 sm:min-h-[150px] sm:p-4"
+      className="tactile tactile-interactive group relative block min-h-[138px] overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 sm:min-h-[150px] sm:p-4"
       style={style}
     >
       <span className="font-mono text-[9px] font-semibold tracking-[0.14em]" style={{ color: item.color }} aria-hidden>
         {String(index + 1).padStart(2, "0")}
       </span>
       <item.icon className="absolute right-3 top-3 h-5 w-5 opacity-60 sm:h-6 sm:w-6" strokeWidth={1.55} style={{ color: item.color }} aria-hidden />
-      <span className="mt-7 block font-serif text-[17px] font-semibold leading-tight tracking-tight sm:text-[19px]" style={{ color: "var(--app-ink)" }}>{item.label}</span>
+      <span className="mt-5 block font-serif text-[17px] font-semibold leading-tight tracking-tight sm:text-[19px]" style={{ color: "var(--app-ink)" }}>{item.label}</span>
       <span className="mt-1.5 block max-w-[20rem] text-[11.5px] leading-snug sm:pr-3 sm:text-[12px] sm:leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{item.description}</span>
       <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] origin-left scale-x-[0.24] transition-transform duration-300 group-hover:scale-x-100" style={{ background: item.color }} />
     </Link>

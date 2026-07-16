@@ -496,10 +496,19 @@ export default function PulseBoard({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-8">
         <section aria-labelledby="pulse-move-heading" className="space-y-3">
-          <GroupHeading id="pulse-move-heading" eyebrow="Plan your day" title="Getting around" note="tap for detail" />
+          <GroupHeading id="pulse-move-heading" eyebrow="Plan your day" title="Getting around" />
           {gettingAround.length > 0 ? (
             <div className="grid grid-cols-2 gap-2.5">
-              {gettingAround.map((tile) => <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
+              {/* An odd count leaves a lone tile beside an empty cell; the
+                  last one takes the full row (same rule as /today's grid). */}
+              {gettingAround.map((tile, i) => (
+                <div
+                  key={tile.key}
+                  className={`flex${gettingAround.length % 2 === 1 && i === gettingAround.length - 1 ? " col-span-2" : ""}`}
+                >
+                  <SignalCard tile={tile} onOpen={() => openTile(tile.key)} />
+                </div>
+              ))}
             </div>
           ) : (
             <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>Transportation feeds are briefly quiet.</p>
@@ -518,7 +527,7 @@ export default function PulseBoard({
 
       {localUpdates.length > 0 && (
         <section aria-labelledby="pulse-updates-heading" className="space-y-3">
-          <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" note="secondary signals" />
+          <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" />
           <div className="rounded-[var(--app-radius-lg)] border px-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
             <ul>{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
             {localUpdates.length > 4 && (
