@@ -77,6 +77,14 @@ describe("isSameOriginMutationRequest", () => {
         }),
       ),
     ).toBe(false);
+    expect(
+      isSameOriginMutationRequest(
+        mutationRequest("http://localhost:3000/api/feedback", {
+          origin: "http://127.0.0.1:3000",
+          referer: "http://127.0.0.1:3000/today",
+        }),
+      ),
+    ).toBe(true);
   });
 });
 

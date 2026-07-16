@@ -57,4 +57,31 @@ describe("search qualifiers", () => {
     expect(parsed.openNow).toBe(true);
     expect(parsed.cleanedQuery).not.toMatch(/downtown/i);
   });
+
+  it("removes booking instructions and requires actual steak evidence", () => {
+    const parsed = parseSearchQualifiers("i want a steak dinner tonight use open table to make a rev for 7:30pm tonight");
+    expect(parsed).toMatchObject({
+      compoundIntent: "steak-dinner",
+      categoryLabel: "a steak dinner",
+      cleanedQuery: "a steak dinner",
+    });
+    expect(matchesSearchQualifiers({
+      category: "restaurant",
+      name: "Avery's Maryland Grille",
+      short_blurb: "Local seafood and steak.",
+      open_status: { state: "unknown" },
+    }, parsed)).toBe(true);
+    expect(matchesSearchQualifiers({
+      category: "restaurant",
+      name: "A Generic Bistro",
+      short_blurb: "Dinner and cocktails.",
+      open_status: { state: "unknown" },
+    }, parsed)).toBe(false);
+    expect(matchesSearchQualifiers({
+      category: "civic",
+      name: "Property zoning",
+      short_blurb: "Official county information.",
+      open_status: { state: "unknown" },
+    }, parsed)).toBe(false);
+  });
 });

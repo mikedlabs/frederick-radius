@@ -513,7 +513,7 @@ export default async function PulsePage() {
         ? "var(--app-warning)"
         : aqiWorst.category.id === 2
           ? "var(--app-accent)"
-          : "var(--app-positive)";
+          : "var(--app-cool)";
   const aqiBody = aqiWorst ? (
     <div className="space-y-3">
       <div
@@ -635,7 +635,7 @@ export default async function PulsePage() {
       label: "Power out",
       iconName: "Zap",
       countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "Clear",
-      accent: outagesActive ? "var(--app-danger)" : "var(--app-positive)",
+      accent: outagesActive ? "var(--app-danger)" : "var(--app-cool)",
       active: outagesActive,
       attention: situationActive.power,
       kind: "gauge",
@@ -681,7 +681,7 @@ export default async function PulsePage() {
       label: "Fire & rescue",
       iconName: "Siren",
       countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
-      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
+      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: safety.length > 0,
       attention: situationActive.safety,
       kind: "status",
@@ -698,7 +698,7 @@ export default async function PulsePage() {
       label: "Traffic",
       iconName: "Construction",
       countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
-      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: traffic.length > 0,
       attention: situationActive.traffic,
       kind: "status",
@@ -732,7 +732,7 @@ export default async function PulsePage() {
       label: "Schools",
       iconName: "School",
       countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "Clear",
-      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: schoolAlerts.length > 0,
       attention: situationActive.schools,
       kind: "status",
@@ -792,7 +792,7 @@ export default async function PulsePage() {
       label: "Weather alerts",
       iconName: "CloudAlert",
       countLabel: activeAlerts.length > 0 ? activeAlerts[0].event : "None",
-      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-positive)",
+      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: activeAlerts.length > 0,
       attention: situationActive.alerts,
       kind: "status",
@@ -1167,7 +1167,7 @@ export default async function PulsePage() {
 
   return (
     <div className="relative space-y-6 pb-4">
-      <PageBloom variant={allClear ? "warm-cool" : "single"} />
+      <PageBloom variant="cool" />
 
       {/* The briefing owns hierarchy and interaction; detail remains in sourced
           drawers so the first screen stays useful at a glance. */}
@@ -1183,7 +1183,7 @@ export default async function PulsePage() {
       <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
         <div className="flex items-center justify-between gap-3">
           <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
+            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-cool)" }} />
             Live bus map
           </h2>
           <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>TransIT · free</span>

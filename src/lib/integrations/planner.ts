@@ -21,6 +21,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { isChainName } from "@/lib/category-ranking";
+import { getOpenStatus } from "@/lib/hours";
 
 export type PlanInputs = {
   audience: "solo" | "date" | "family" | "friends" | "visitor";
@@ -29,6 +31,17 @@ export type PlanInputs = {
   /** ISO string so the spec is serializable. Defaults to now. */
   start_at?: string;
   start_near?: LngLat;
+  /** Optional Ask Radius constraints. Older shared plans omit these and
+   *  continue to reconstruct exactly as before. */
+  max_distance_m?: number;
+  local_only?: boolean;
+  budget?: "free" | "value";
+  /** Favor stops with verified parking guidance and keep the outing compact. */
+  parking_priority?: boolean;
+  /** Optional cap for people who want fewer transitions or less walking. */
+  max_stops?: number;
+  /** A place explicitly named by Ask Radius ("make a plan around this"). */
+  anchor_slug?: string;
   /**
    * Optional integer that nudges candidate ranking deterministically.
    * Same inputs with a different seed yield a *different but valid*
@@ -156,6 +169,16 @@ function tagBonus(p: Place, vibe: PlanInputs["vibe"], audience: PlanInputs["audi
   return vibeHits * 0.5 + audHits * 0.5;
 }
 
+function audienceCategoryScore(cat: string, audience: PlanInputs["audience"], slot: Slot): number {
+  if (audience === "date" && slot === "evening") {
+    if (["restaurant", "bar", "brewery", "theater", "music"].includes(cat)) return 1.4;
+    if (["market", "coffee", "bakery"].includes(cat)) return -2.2;
+  }
+  if (audience === "family" && ["bar", "brewery"].includes(cat)) return -4;
+  if (audience === "visitor" && ["museum", "gallery", "park"].includes(cat)) return 0.8;
+  return 0;
+}
+
 type Scored = { d: PlaceCardData; score: number; distance: number };
 
 /**
@@ -183,9 +206,30 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
   const allowCategory = (cat: string) =>
     isDestinationCategory(cat) || (input.vibe === "active" && cat === "wellness");
   return clientPlaces()
-    .filter((p) => isRecommendable(p) && allowCategory(p.category))
+    .filter((p) => {
+      if (!isRecommendable(p) || !allowCategory(p.category)) return false;
+      // A date-night request should not start at a daytime errand/snack stop
+      // merely because it is close and highly rated. Keep the evening set to
+      // destinations that can carry an actual night out.
+      if (
+        input.audience === "date" &&
+        slot === "evening" &&
+        ["market", "coffee", "bakery"].includes(p.category)
+      ) return false;
+      if (input.local_only && isChainName(p.name)) return false;
+      if (input.budget === "free" && !(p.tags ?? []).includes("free")) return false;
+      if (input.budget === "value" && p.price_band != null && p.price_band > 2) return false;
+      return true;
+    })
     .map((p) => {
-      const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
+      // Score hours at the requested PLAN start, not at page-render time.
+      // A 7 AM request for "date night" must not promote a cafe because it is
+      // open now, then send the user there after it closes.
+      const d: PlaceCardData = {
+        ...p,
+        distance_m: haversineMeters(origin, p.geom),
+        open_status: getOpenStatus(p.hours, { verified: p.hours_verified }, now),
+      };
       const distance = d.distance_m ?? haversineMeters(origin, p.geom);
       const base = categoryScore(p.category, input.vibe, slot);
       const rating = d.google_rating ? (d.google_rating - 3.5) * 1.2 : 0;
@@ -197,23 +241,49 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
         : ((hashStr(`${p.slug}:${seed}`) % 1000) / 1000 - 0.5) * 1.2;
       const score =
         (base +
+          (input.anchor_slug === p.slug ? 100 : 0) +
           d.feature_score * 0.6 +
           rating +
           openWeight(d.open_status.state) +
           tagBonus(p, input.vibe, input.audience) +
+          audienceCategoryScore(p.category, input.audience, slot) +
+          (input.parking_priority ? (fieldNotesFor(p.slug)?.parking?.text ? 2.4 : -0.4) : 0) +
           jitter) /
         Math.log(Math.max(2, distance / 250)); // gentle distance dampener
       return { d, score, distance };
     })
-    .filter((c) => c.distance < 20_000 && c.score > 0)
+    .filter((c) => {
+      if (c.distance >= (input.max_distance_m ?? 20_000) || c.score <= 0) return false;
+      if (c.d.open_status.state === "closed") return false;
+      // A time-specific plan should not route someone to a place whose hours
+      // Radius cannot confirm for that window.
+      if (
+        input.start_at &&
+        (c.d.open_status.state === "unknown" || c.d.open_status.state === "unverified")
+      ) return false;
+      if (
+        input.audience === "date" &&
+        slot === "evening" &&
+        (c.d.open_status.state === "unknown" || c.d.open_status.state === "unverified")
+      ) return false;
+      return true;
+    })
     .sort((a, b) => b.score - a.score);
 }
 
 /** Greedy nearest neighbour ordering so the stops form a sane route. */
-function routeOrder(picks: Scored[], origin: LngLat): Scored[] {
+function routeOrder(picks: Scored[], origin: LngLat, anchorSlug?: string): Scored[] {
   const remaining = [...picks];
   const ordered: Scored[] = [];
   let from = origin;
+  if (anchorSlug) {
+    const anchorIndex = remaining.findIndex((pick) => pick.d.slug === anchorSlug);
+    if (anchorIndex >= 0) {
+      const anchor = remaining.splice(anchorIndex, 1)[0];
+      ordered.push(anchor);
+      from = anchor.d.geom;
+    }
+  }
   while (remaining.length > 0) {
     let best = 0;
     let bestD = Infinity;
@@ -236,8 +306,8 @@ function whyFor(d: PlaceCardData, input: PlanInputs): string {
   const dist = formatDistance(d.distance_m ?? 0);
   const rating = d.google_rating ? `${d.google_rating.toFixed(1)} on Google, ` : "";
   const openBit =
-    d.open_status.state === "open" ? "open now"
-    : d.open_status.state === "closing-soon" ? "open but closing soon"
+    d.open_status.state === "open" ? "hours line up"
+    : d.open_status.state === "closing-soon" ? "closes near the end of this stop"
     : d.open_status.state === "closed" ? "check hours, may be closed"
     : "hours not confirmed";
   const fit: Record<PlanInputs["audience"], string> = {
@@ -277,6 +347,16 @@ function schedule(
     const cat = o.place?.category ?? "event";
     const dur = o.event ? 90 : durationFor(cat);
     const at = new Date(cursor).toISOString();
+    const scheduledState = o.place
+      ? getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(cursor)).state
+      : null;
+    const openState: PlanStop["open"] = o.event
+      ? o.openState
+      : scheduledState === "open" || scheduledState === "closing-soon"
+        ? "open"
+        : scheduledState === "closed"
+          ? "closed"
+          : "unknown";
     cursor += (dur + TRAVEL_MIN) * 60_000;
     const notes = o.place ? fieldNotesFor(o.place.slug) : null;
     const tip = notes?.parking?.text ?? notes?.insider?.[0]?.text;
@@ -285,7 +365,7 @@ function schedule(
       at,
       duration_min: dur,
       why: o.why,
-      open: o.openState,
+      open: openState,
       place: o.place,
       event: o.event,
       photo_url: o.photo_url ?? o.event?.hero_image,
@@ -298,19 +378,27 @@ export function buildPlan(input: PlanInputs): Plan {
   const { origin, now } = resolve(input);
   const candidates = scoredCandidates(input, origin, now);
 
-  const stopCount = stopCountFor(input.duration_hours);
+  const stopCount = Math.min(stopCountFor(input.duration_hours), input.max_stops ?? Infinity);
+  const timeBudget = input.duration_hours * 60 + 20;
   const seen = new Set<string>();
   const picks: Scored[] = [];
+  let planned = 0;
   for (const c of candidates) {
     if (picks.length >= stopCount) break;
     if (seen.has(c.d.slug)) continue;
     // Diversity: no two stops of the same category.
     if (picks.some((x) => x.d.category === c.d.category)) continue;
+    const nextMinutes = planned + durationFor(c.d.category) + (picks.length > 0 ? TRAVEL_MIN : 0);
+    // Respect the requested window once we have a usable two-stop outing.
+    // A "3 hour" plan that silently schedules four hours breaks the contract
+    // more than returning a focused two-stop route does.
+    if (picks.length >= 2 && nextMinutes > timeBudget) continue;
     seen.add(c.d.slug);
     picks.push(c);
+    planned = nextMinutes;
   }
 
-  const routed = routeOrder(picks, origin);
+  const routed = routeOrder(picks, origin, input.anchor_slug);
 
   // A real event inside the window earns a slot.
   const windowEnd = new Date(now.getTime() + input.duration_hours * 3_600_000);
@@ -329,7 +417,7 @@ export function buildPlan(input: PlanInputs): Plan {
     why: whyFor(c.d, input),
   }));
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [...items];
-  if (event) {
+  if (event && ordered.length < stopCount) {
     ordered.push({
       event,
       openState: "open",

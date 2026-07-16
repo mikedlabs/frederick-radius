@@ -1,6 +1,7 @@
-"use client";
-
 import AskFrederick from "@/components/ask/AskFrederick";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import { todayPrompts } from "@/lib/today-prompts";
 
 /**
  * TodayAsk — the ask box on /today (UX-01 phase 1).
@@ -13,20 +14,38 @@ import AskFrederick from "@/components/ask/AskFrederick";
  * box's own "Ask Radius" eyebrow stays hidden because this heading
  * already labels it.
  */
-export default function TodayAsk() {
+function easternHour(now: Date): number {
+  return Number(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    hour12: false,
+  }).format(now));
+}
+
+export default async function TodayAsk() {
+  const now = new Date();
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  const current = forecast?.hourly[0];
+  const quickAsks = todayPrompts({
+    hour: easternHour(now),
+    temperature: current?.temperature,
+    shortForecast: current?.shortForecast,
+    precipitation: current?.probabilityOfPrecipitation,
+  });
+
   return (
-    <section aria-labelledby="today-ask-head" className="space-y-2.5">
+    <section id="ask-radius" aria-labelledby="today-ask-head" className="scroll-mt-24 space-y-2.5">
       <h2
         id="today-ask-head"
         className="text-[18px] font-semibold leading-tight tracking-tight"
         style={{ color: "var(--app-ink)" }}
       >
-        What are you looking for?
+        Ask Radius.
       </h2>
       <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-        A place, a plan, or a local service. Results come from Radius data.
+        Ask for a place, an event, or a plan.
       </p>
-      <AskFrederick hideLabel />
+      <AskFrederick hideLabel quickAsks={quickAsks} />
     </section>
   );
 }

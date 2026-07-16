@@ -111,3 +111,77 @@ describe("qualifiedSearch — natural category plurals", () => {
     }
   });
 });
+
+describe("qualifiedSearch — Ask uses place context by default", () => {
+  it("answers a downtown breakfast-sandwich request with downtown matches, not Brunswick", () => {
+    const { hits, meta } = qualifiedSearch(
+      "Where can I get a breakfast sandwich?",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        contextLabel: "Near you",
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers).toMatchObject({
+      compoundIntent: "breakfast-sandwich",
+      categoryLabel: "a breakfast sandwich",
+    });
+    expect(meta.contextLabel).toBe("Near you");
+    expect(places[0]?.slug).toBe("beans-bagels-frederick");
+    expect(places[0]?.distance_m).toBeLessThan(250);
+    expect(places.slice(0, 3).some((place) => place.municipality === "brunswick")).toBe(false);
+    expect(places.slice(0, 3).some((place) => place.category === "pizza")).toBe(false);
+  });
+
+  it("does not let reservation language or proximity invent steak matches", () => {
+    const { hits, meta } = qualifiedSearch(
+      "i want a steak dinner tonight use open table to make a rev for 7:30pm tonight",
+      12,
+      undefined,
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers.cleanedQuery).toBe("a steak dinner");
+    expect(places.map((place) => place.slug)).toEqual(["averys-maryland-grille-frederick"]);
+    expect(places.every((place) => place.category === "restaurant")).toBe(true);
+  });
+});
+
+describe("qualifiedSearch — county regions are real geographic constraints", () => {
+  const query = "I've eaten pretty much all of DTF, central and eastern Frederick. But you don't hear about the other parts of the county. Curious if there are good spots in the northern or western portion of the county?";
+
+  it("returns dining places from north and west, never central Frederick", () => {
+    const { hits, meta } = qualifiedSearch(query, 20, undefined, {
+      origin: { lng: -77.4105, lat: 39.4143 },
+      municipality: "frederick",
+      contextLabel: "Downtown Frederick",
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+    const municipalities = new Set(places.map((place) => place.municipality));
+
+    expect(meta.qualifiers).toMatchObject({ categoryKey: "food", regions: ["north", "west"] });
+    expect(meta.contextLabel).toBe("North + West Frederick County");
+    expect(places.length).toBeGreaterThan(0);
+    expect(municipalities.has("frederick")).toBe(false);
+    expect([...municipalities].some((town) => ["thurmont", "emmitsburg", "woodsboro", "walkersville"].includes(town))).toBe(true);
+    expect([...municipalities].some((town) => ["middletown", "myersville", "brunswick", "burkittsville", "rosemont"].includes(town))).toBe(true);
+    expect(places.every((place) => ["restaurant", "food-truck", "pizza"].includes(place.category))).toBe(true);
+  });
+
+  it("removes direction words before ranking so North Frederick names cannot hijack the answer", () => {
+    const { hits } = qualifiedSearch("Take me somewhere worth the drive north or west of Frederick", 12, undefined, {
+      origin: { lng: -77.4105, lat: 39.4143 },
+    });
+    const names = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
+    expect(names).not.toContain("North Frederick Elementary School Pta");
+    expect(names.every((name) => !/elementary school pta/i.test(name))).toBe(true);
+  });
+});

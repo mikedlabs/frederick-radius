@@ -7,11 +7,15 @@ import { fuzzyNameScore, FUZZY_THRESHOLD } from "@/lib/search/fuzzy";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
+import { countyRegionSummary, municipalityMatchesRegions, regionForMunicipality, type CountyRegion } from "@/data/county-regions";
 import { isUpcomingEvent } from "@/lib/events/visible";
 import { FREDERICK_CENTER, haversineMeters, type LngLat } from "@/lib/geo";
+import { isChainName } from "@/lib/category-ranking";
 import {
   matchesSearchQualifiers,
   parseSearchQualifiers,
+  BREAKFAST_FOOD_EVIDENCE_RE,
+  SANDWICH_EVIDENCE_RE,
   type SearchQualifiers,
 } from "@/lib/search/qualifiers";
 
@@ -74,9 +78,27 @@ type Intent = {
   downCats: Set<string>;
   downTags: Set<string>;
   downName?: RegExp;
+  /** Multi-part evidence required by a compound request. A breakfast
+   * sandwich needs BOTH morning-food evidence and sandwich/bagel evidence;
+   * matching only one half must not beat a place that answers the full job. */
+  evidenceGroups?: RegExp[];
+  /** Soft-demote national chains when equally relevant local answers exist. */
+  chainPenalty?: number;
 };
 
 const INTENTS: Intent[] = [
+  {
+    triggers: ["breakfast sandwich", "breakfast sandwiches", "egg sandwich", "egg sandwiches", "bagel sandwich", "bagel sandwiches"],
+    boostCats: new Set(["coffee", "bakery", "restaurant", "cafe"]),
+    boostTags: new Set(["breakfast", "brunch", "coffee", "cafe"]),
+    downCats: new Set(["pizza", "bar", "brewery", "lodging", "shopping", "services"]),
+    downTags: new Set(["nightlife", "dinner"]),
+    evidenceGroups: [
+      BREAKFAST_FOOD_EVIDENCE_RE,
+      SANDWICH_EVIDENCE_RE,
+    ],
+    chainPenalty: 3,
+  },
   {
     triggers: ["kid", "kids", "family", "children", "child", "kid-friendly", "toddler"],
     boostCats: new Set(["park", "playground", "trail", "museum", "library", "market"]),
@@ -126,6 +148,7 @@ function intentScore(
   cat: string,
   tags: readonly string[],
   name: string,
+  evidenceText: string,
   intent: Intent,
 ): number {
   let v = 0;
@@ -136,6 +159,16 @@ function intentScore(
     if (intent.boostTags.has(tag)) v += 3;
     if (intent.downTags.has(tag)) v -= 4;
   }
+  if (intent.evidenceGroups?.length) {
+    const matched = intent.evidenceGroups.filter((rx) => rx.test(evidenceText)).length;
+    // Each supported half earns a small lift; satisfying the complete
+    // compound request earns the decisive bonus. Missing every half is a
+    // strong relevance failure even if the broad category happens to match.
+    v += matched * 4;
+    if (matched === intent.evidenceGroups.length) v += 6;
+    else v -= (intent.evidenceGroups.length - matched) * 4;
+  }
+  if (intent.chainPenalty && isChainName(name)) v -= intent.chainPenalty;
   return v;
 }
 
@@ -234,6 +267,7 @@ export type SearchOptions = {
   rankPlacesByDistance?: boolean;
   rankEventsByDistance?: boolean;
   eventMunicipality?: string | null;
+  eventFilter?: (event: Event) => boolean;
 };
 
 export function search(
@@ -261,7 +295,15 @@ export function search(
       (p.tags ?? []).reduce((acc, t) => acc + fieldScore(t, terms), 0);
     // Intent can SURFACE a relevant place with no keyword match (boost),
     // and SINK a mismatch that only caught a stray token (downrank).
-    const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, intent) : 0;
+    const evidenceText = [
+      p.name,
+      p.short_blurb,
+      p.description ?? "",
+      p.primary_type ?? "",
+      ...(p.subcategories ?? []),
+      ...(p.tags ?? []),
+    ].join(" ");
+    const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, evidenceText, intent) : 0;
     // Event intent ("live music"): genuine venues stay in play, but a
     // place whose only claim was an incidental name token (the candle
     // shop "Liveyoung") steps aside for the actual events below.
@@ -276,6 +318,7 @@ export function search(
 
   if (!options.onlyPlaces) for (const e of eventPool) {
     if (options.eventMunicipality && e.municipality !== options.eventMunicipality) continue;
+    if (options.eventFilter && !options.eventFilter(e)) continue;
     const s =
       fieldScore(e.title, terms) * 4 +
       fieldScore(e.description, terms) * 1 +
@@ -332,8 +375,20 @@ export function search(
 
   hits.sort((a, b) => {
     if (options.rankPlacesByDistance && a.type === "place" && b.type === "place") {
-      const distance = (a.place.distance_m ?? Infinity) - (b.place.distance_m ?? Infinity);
-      if (distance !== 0) return distance;
+      const adjusted = (hit: Extract<SearchHit, { type: "place" }>) => {
+        const distance = hit.place.distance_m;
+        if (distance == null || !Number.isFinite(distance)) return hit.score;
+        // Relevance still leads; proximity is a meaningful lift plus a
+        // progressive far-away penalty. This avoids both failure modes:
+        // pure text ranking that crowns a Brunswick keyword match downtown,
+        // and pure nearest-first ranking that calls a nearby pizza shop a
+        // breakfast-sandwich answer because its blurb mentions sandwiches.
+        const proximityLift = 5 / (1 + distance / 1_500);
+        const farPenalty = Math.max(0, distance - 8_000) / 2_500;
+        return hit.score + proximityLift - farPenalty;
+      };
+      const score = adjusted(b) - adjusted(a);
+      if (score !== 0) return score;
     }
     if (options.rankEventsByDistance && a.type === "event" && b.type === "event") {
       const distance = (a.event.distance_m ?? Infinity) - (b.event.distance_m ?? Infinity);
@@ -358,6 +413,31 @@ export type QualifiedSearchMeta = {
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
+function balanceRegionalHits(hits: SearchHit[], regions: readonly CountyRegion[], limit: number): SearchHit[] {
+  if (regions.length < 2) return hits.slice(0, limit);
+  const queues = new Map(regions.map((region) => [region, [] as SearchHit[]]));
+  const remainder: SearchHit[] = [];
+  for (const hit of hits) {
+    const municipality = hit.type === "place"
+      ? hit.place.municipality
+      : hit.type === "event"
+        ? hit.event.municipality
+        : null;
+    const queue = regionForMunicipality(municipality);
+    if (queue && queues.has(queue)) queues.get(queue)?.push(hit);
+    else remainder.push(hit);
+  }
+  const balanced: SearchHit[] = [];
+  while (balanced.length < limit && [...queues.values()].some((queue) => queue.length > 0)) {
+    for (const region of regions) {
+      const next = queues.get(region)?.shift();
+      if (next) balanced.push(next);
+      if (balanced.length === limit) break;
+    }
+  }
+  return [...balanced, ...remainder].slice(0, limit);
+}
+
 /** Execute, rather than merely recognize, category/open/near language. */
 export function qualifiedSearch(
   query: string,
@@ -367,25 +447,29 @@ export function qualifiedSearch(
 ): { hits: SearchHit[]; meta: QualifiedSearchMeta } {
   const qualifiers = parseSearchQualifiers(query);
   if (!qualifiers.constrained) {
+    const rankingOrigin = context.origin ?? null;
     return {
-      hits: search(query, limit, eventPool),
+      hits: search(query, limit, eventPool, {
+        origin: rankingOrigin,
+        rankPlacesByDistance: Boolean(rankingOrigin),
+        rankEventsByDistance: Boolean(rankingOrigin),
+      }),
       meta: {
         qualifiers,
-        contextLabel: null,
+        contextLabel: rankingOrigin ? context.contextLabel ?? null : null,
         nearMeApplied: false,
-        fallbackReason: null,
+        fallbackReason: context.fallbackReason ?? null,
       },
     };
   }
 
   const nearMeApplied = qualifiers.nearMe && Boolean(context.origin);
   const downtownApplied = qualifiers.downtown;
+  const regionalScope = qualifiers.regions.length > 0;
   const rankingOrigin = downtownApplied
     ? FREDERICK_CENTER
-    : nearMeApplied
-      ? context.origin ?? null
-      : null;
-  const municipality = downtownApplied ? "frederick" : context.municipality;
+    : context.origin ?? null;
+  const municipality = regionalScope ? null : downtownApplied ? "frederick" : context.municipality;
   const downtownRadiusMeters = 1_600;
   const effectiveQuery = qualifiers.cleanedQuery;
   // Location language alone must not turn an event-intent query into a
@@ -394,28 +478,44 @@ export function qualifiedSearch(
   const preserveMixedEventResults = Boolean(
     detectEventIntent(query) && !qualifiers.categoryKey && !qualifiers.openNow,
   );
-  const includeMatchingPlaces = qualifiers.categoryKey
-    ? qualifiers.includeAllCategoryMatches || effectiveQuery.length === 0
+  const includeMatchingPlaces = qualifiers.compoundIntent
+    ? true
+    : qualifiers.categoryKey
+    ? qualifiers.includeAllCategoryMatches || regionalScope || effectiveQuery.length === 0
     : qualifiers.openNow ||
       (qualifiers.nearMe && !preserveMixedEventResults) ||
       effectiveQuery.length === 0;
-  const hits = search(effectiveQuery, limit, eventPool, {
+  // Pull a wider candidate set for multi-region requests, then interleave the
+  // requested regions. Otherwise a data-rich town can consume the result cap
+  // before a smaller town gets a fair chance to appear.
+  const candidateLimit = regionalScope && qualifiers.regions.length > 1 ? Math.max(limit * 4, 60) : limit;
+  const candidates = search(effectiveQuery, candidateLimit, eventPool, {
     onlyPlaces: !preserveMixedEventResults,
     includeMatchingPlaces,
     origin: rankingOrigin,
     rankPlacesByDistance: Boolean(rankingOrigin),
     rankEventsByDistance: Boolean(rankingOrigin),
     eventMunicipality: municipality,
+    eventFilter: regionalScope
+      ? (event) => municipalityMatchesRegions(event.municipality, qualifiers.regions)
+      : undefined,
     placeFilter: (place) =>
       matchesSearchQualifiers(place, qualifiers, municipality) &&
       (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
   });
+  const hits = regionalScope
+    ? balanceRegionalHits(candidates, qualifiers.regions, limit)
+    : candidates;
 
   return {
     hits,
     meta: {
       qualifiers,
-      contextLabel: downtownApplied ? "Downtown Frederick" : context.contextLabel ?? null,
+      contextLabel: regionalScope
+        ? countyRegionSummary(qualifiers.regions)
+        : downtownApplied
+          ? "Downtown Frederick"
+          : context.contextLabel ?? null,
       nearMeApplied: nearMeApplied || downtownApplied,
       fallbackReason: context.fallbackReason ?? null,
     },

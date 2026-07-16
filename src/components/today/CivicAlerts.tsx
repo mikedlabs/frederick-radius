@@ -120,8 +120,11 @@ const STYLES = {
  * Other alert types (parking, road closures, transit) plug in here the
  * moment a real feed exists — absent until then, never faked.
  */
-export default async function CivicAlerts() {
-  const [nws, nps] = await Promise.all([getNwsAlerts(), getNpsAlerts()]);
+export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
+  const [nws, nps] = await Promise.all([
+    includeWeather ? getNwsAlerts() : Promise.resolve([]),
+    getNpsAlerts(),
+  ]);
   const alerts = normalize(nws, nps);
   // Owner event notices (event-notices.json) — "Alive @ Five is cancelled
   // tonight" is exactly the news this slot exists for. They render as their

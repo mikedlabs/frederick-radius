@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const body = parsedBody.value && typeof parsedBody.value === "object"
-    ? parsedBody.value as { query?: unknown; scope?: unknown; lat?: unknown; lng?: unknown }
+    ? parsedBody.value as { query?: unknown; scope?: unknown; lat?: unknown; lng?: unknown; taste?: unknown }
     : {};
   const query = typeof body.query === "string" ? body.query.slice(0, 300) : "";
   if (!query.trim()) {
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     municipality: context.filterMunicipality,
     contextLabel: context.label,
     fallbackReason: context.fallbackReason,
-  });
+  }, { taste: body.taste });
   if (result.usedModel) meterUsage("anthropic_ask");
   return NextResponse.json(result);
 }

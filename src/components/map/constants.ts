@@ -73,6 +73,7 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   dog_waste: "dog-waste",
   dog_water: "dog-water",
   outlet: "outlet",
+  bike_repair: "bike-repair",
   other: "other",
 };
 

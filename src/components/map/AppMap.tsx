@@ -877,6 +877,17 @@ export default function AppMap({
   // so the default map is exactly as uncluttered as before.
   const amenityGeoJson = useMemo(() => {
     if (activeAmenityCats.size === 0) return EMPTY_FC;
+    // The deterministic amenity snapshot and the live Overpass response can
+    // contain the exact same OSM object. Prefer the snapshot so a refreshed
+    // water/trash/bench point never renders twice when Overpass is healthy.
+    const curatedOsmIds = new Set(
+      amenities.flatMap((amenity) => {
+        const match = amenity.id.match(/-(n|w|r)-(\d+)$/);
+        if (!match) return [];
+        const type = match[1] === "n" ? "node" : match[1] === "w" ? "way" : "relation";
+        return [`${type}/${match[2]}`];
+      }),
+    );
     // Merge server-fetched Mapillary trash detections in with OSM
     // amenities — same OsmPlace shape, category_slug "trash", so they
     // ride the existing "Trash" toggle with no special-casing.
@@ -885,7 +896,8 @@ export default function AppMap({
         (p) =>
           isAmenity(p) &&
           activeAmenityCats.has(p.category_slug) &&
-          !isKnownClosed(p.name)
+          !isKnownClosed(p.name) &&
+          !curatedOsmIds.has(p.osm_id)
       )
       .map((p) => ({
         type: "Feature" as const,

@@ -19,6 +19,7 @@ import {
   Footprints,
   ArrowLeft,
   ChevronRight,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { amenitiesByKind, type AmenityKind } from "@/lib/loaders/amenities";
@@ -103,6 +104,12 @@ const LIVE_ICONS = {
   playground: Baby,
   pool: Waves,
   river_gauge: Waves,
+  water: Droplets,
+  trash: Trash2,
+  recycling: Recycle,
+  bench: Armchair,
+  dog_waste: PawPrint,
+  bike_repair: Wrench,
 } as const;
 
 export default async function AmenitiesPage() {
@@ -232,8 +239,8 @@ export default async function AmenitiesPage() {
           className="pt-1 text-[11px] leading-relaxed"
           style={{ color: "var(--app-ink-3)" }}
         >
-          From OpenStreetMap (© OpenStreetMap contributors, ODbL). Refreshed
-          on each deploy via the amenities build script.
+          From OpenStreetMap (© OpenStreetMap contributors, ODbL). Stored as a
+          reviewed snapshot so the essentials still load when the live map feed does not.
         </p>
       </section>
 

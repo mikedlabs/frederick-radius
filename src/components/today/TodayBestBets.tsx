@@ -4,31 +4,42 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarDays } from "lucide-react";
+import type { TodayEventResponse } from "@/lib/today-events";
 
-type TodayEvent = {
-  slug: string;
-  title: string;
-  venue: string;
-  municipality: string;
-  time: string;
-  image: string | null;
-  free: boolean;
-};
+function EventArt({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[10px] bg-[var(--app-bg-sunken)]" aria-hidden>
+        <CalendarDays className="h-5 w-5" style={{ color: "var(--app-brand)" }} />
+      </span>
+    );
+  }
+  return (
+    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]">
+      <Image src={src} alt="" fill sizes="56px" className="object-cover" unoptimized onError={() => setFailed(true)} />
+    </span>
+  );
+}
 
-type TodayEventResponse = { events: TodayEvent[]; partial: boolean };
-
-export default function TodayBestBets() {
-  const [data, setData] = useState<TodayEventResponse | null>(null);
+export default function TodayBestBets({ initial }: { initial: TodayEventResponse }) {
+  const [data, setData] = useState<TodayEventResponse | null>(initial.events.length > 0 ? initial : null);
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => setSlow(true), 2_500);
+    const timer = window.setTimeout(() => setSlow(true), 1_800);
     fetch("/api/today/events", { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-      .then((next: TodayEventResponse) => setData(next))
+      .then((next: TodayEventResponse) => {
+        // A degraded live assembly should never erase a trustworthy static
+        // card that was already visible in the server response.
+        setData((current) => next.events.length > 0 ? next : (current ?? next));
+      })
       .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setData({ events: [], partial: true });
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setData((current) => current ?? { events: [], partial: true });
+        }
       })
       .finally(() => window.clearTimeout(timer));
     return () => {
@@ -57,17 +68,9 @@ export default function TodayBestBets() {
           {data.events.map((event, index) => (
             <li key={event.slug} className="border-b last:border-b-0" style={{ borderColor: "var(--app-border)" }}>
               <Link href={`/events/${event.slug}`} prefetch={false} className="group flex min-h-[82px] items-center gap-3 p-3">
-                {event.image ? (
-                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]">
-                    <Image src={event.image} alt="" fill sizes="56px" className="object-cover" />
-                  </span>
-                ) : (
-                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[10px] bg-[var(--app-bg-sunken)]" aria-hidden>
-                    <CalendarDays className="h-5 w-5" style={{ color: "var(--app-brand)" }} />
-                  </span>
-                )}
+                <EventArt src={event.image} />
                 <span className="min-w-0 flex-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>{event.time}{event.free ? " · Free" : ""}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>{event.moment} · {event.time}{event.free ? " · Free" : ""}</span>
                   <span className="mt-0.5 line-clamp-2 block text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{event.title}</span>
                   <span className="mt-1 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{event.venue}</span>
                 </span>

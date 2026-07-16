@@ -112,8 +112,8 @@ export default function BusesReveal() {
             aria-hidden
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
             style={{
-              background: "color-mix(in srgb, var(--app-positive) 14%, transparent)",
-              color: "var(--app-positive)",
+              background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
+              color: "var(--app-cool)",
             }}
           >
             <Bus className="h-4 w-4" strokeWidth={2.25} />

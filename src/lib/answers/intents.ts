@@ -63,6 +63,66 @@ export const QUICK_INTENTS: QuickIntent[] = [
     status: "parking",
   },
   {
+    key: "restrooms",
+    terms: ["restroom", "bathroom", "public toilet"],
+    title: "Public restrooms",
+    sub: "Mapped facilities nearest you",
+    chip: "Restrooms",
+    href: "/map?amenity=restroom",
+    icon: "pin",
+    status: "civic",
+  },
+  {
+    key: "drinking-water",
+    terms: ["drinking water", "water fountain", "bottle fill", "bottle refill"],
+    title: "Drinking water",
+    sub: "Mapped potable water and bottle-fill points",
+    chip: "Drinking water",
+    href: "/map?amenity=water",
+    icon: "pin",
+    status: "civic",
+  },
+  {
+    key: "street-utilities",
+    terms: ["trash can", "waste basket", "dog bag", "dog waste", "public bench", "place to sit"],
+    title: "Street essentials",
+    sub: "Trash, dog stations, benches, and more",
+    chip: "Amenities",
+    href: "/amenities",
+    icon: "pin",
+    status: "civic",
+  },
+  {
+    key: "shipping",
+    terms: ["post office", "blue mailbox", "collection box", "ups store", "fedex", "ship a package"],
+    title: "Post & shipping",
+    sub: "Post offices, counters, and blue mailboxes",
+    chip: "Shipping",
+    href: "/shipping",
+    icon: "pin",
+    status: "civic",
+  },
+  {
+    key: "brunch",
+    terms: ["brunch"],
+    title: "Verified brunch",
+    sub: "Venue-confirmed days and service windows",
+    chip: "Brunch",
+    href: "/brunch",
+    icon: "pin",
+    status: "open-now",
+  },
+  {
+    key: "food-trucks",
+    terms: ["food truck", "food trucks"],
+    title: "Food trucks & carts",
+    sub: "Local roster, home bases, and current feeds",
+    chip: "Food trucks",
+    href: "/food-trucks",
+    icon: "pin",
+    status: "open-now",
+  },
+  {
     key: "events",
     terms: ["event", "events", "happening", "calendar"],
     title: "Events",
@@ -90,7 +150,11 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
   // synthesized from the ONE query->answer mapping (primaryAnswerFor) so search
   // and the overlay never drift. Bare "open now" stays owned by the intent
   // below, which routes to its established map-open view.
-  const answer = primaryAnswerFor(query);
+  // Specialty guides carry verified schedules or honest live-location
+  // limitations that the broad food craving route cannot express. Let those
+  // purpose-built answers lead instead of prepending generic /nearby food.
+  const specialty = /\bbrunch\b|\bfood trucks?\b/i.test(query);
+  const answer = specialty ? null : primaryAnswerFor(query);
   if (answer && answer.key !== "open-now") {
     seen.add(answer.href);
     out.push({
@@ -103,6 +167,17 @@ export function findQuickAnswers(query: string, limit = 2): QuickIntent[] {
       icon: "pin",
       status: "open-now",
     });
+  }
+
+  if (specialty) {
+    const direct = QUICK_INTENTS.find((intent) =>
+      (intent.key === "brunch" || intent.key === "food-trucks") &&
+      intent.terms.some((term) => lq.includes(term)),
+    );
+    if (direct) {
+      seen.add(direct.href);
+      out.push(direct);
+    }
   }
 
   for (const intent of QUICK_INTENTS) {

@@ -7,20 +7,15 @@ import {
   ArrowRight,
   Bookmark,
   CalendarCheck,
-  CalendarDays,
   ChevronRight,
   CirclePlus,
-  Clock3,
-  Compass,
   HandHeart,
   History,
   Landmark,
   Map,
   MapPin,
   Navigation,
-  Search,
   Settings,
-  ShieldCheck,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -29,13 +24,6 @@ import { getHomeMuni } from "@/lib/personalize";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 
 type Item = { href: string; label: string; note: string; icon: LucideIcon };
-
-const START: Item[] = [
-  { href: "/open-now", label: "Open now", note: "Food, coffee, shops", icon: Clock3 },
-  { href: "/nearby", label: "Near me", note: "Ranked from your location", icon: Navigation },
-  { href: "/events?lens=weekend", label: "This weekend", note: "The calendar, narrowed", icon: CalendarDays },
-  { href: "/plan", label: "Make a plan", note: "Build a few good hours", icon: CalendarCheck },
-];
 
 const EXPLORE: Item[] = [
   { href: "/collections", label: "Collections", note: "Edited shortlists", icon: Sparkles },
@@ -73,65 +61,41 @@ export default function CompassHub() {
     onFocus: () => router.prefetch(href),
   });
 
-  const openSearch = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    window.dispatchEvent(new Event("fr:open-search"));
-  };
-
   return (
-    <main className="space-y-7 pb-5">
-      <header className="px-0.5">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          <Compass className="h-4 w-4" aria-hidden /> Compass
-        </div>
-        <h1 className="mt-2 max-w-[26rem] font-serif text-[36px] font-semibold leading-[0.96] tracking-[-0.035em] sm:text-[44px]" style={{ color: "var(--app-ink)" }}>
-          Where do you want to go?
+    <main className="space-y-10 pb-5 sm:space-y-12">
+      <header className="border-b pb-7 sm:pb-9" style={{ borderColor: "var(--app-border-strong)" }}>
+        <h1 className="max-w-[38rem] font-serif text-[39px] font-semibold leading-[0.94] tracking-[-0.045em] sm:text-[52px]" style={{ color: "var(--app-ink)" }}>
+          Browse Frederick County.
         </h1>
-        <p className="mt-2 text-[13.5px]" style={{ color: "var(--app-ink-2)" }}>One starting point for every guide, map, and local tool.</p>
-
-        <Link
-          href="/search"
-          prefetch={false}
-          onClick={openSearch}
-          className="mt-4 flex min-h-12 items-center gap-3 rounded-[14px] border bg-[var(--app-bg-elevated-solid)] px-4"
-          style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
-        >
-          <Search className="h-[18px] w-[18px]" style={{ color: "var(--app-brand)" }} aria-hidden />
-          <span className="flex-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>Search Frederick Radius</span>
-          <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>⌘K</span>
-        </Link>
+        <p className="mt-4 max-w-[34rem] text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Town guides, local tools, history, and collections in one place.
+        </p>
       </header>
 
-      <section aria-labelledby="compass-start-heading">
-        <h2 id="compass-start-heading" className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Start here</h2>
-        <div className="mt-3 grid grid-cols-2 gap-2.5">
-          {START.map((item) => (
-            <Link key={item.href} href={item.href} prefetch={false} {...warm(item.href)} className="group min-h-[116px] rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
-              <item.icon className="h-[18px] w-[18px]" style={{ color: "var(--app-brand)" }} aria-hidden />
-              <span className="mt-4 flex items-center gap-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.label}<ArrowRight className="h-3.5 w-3.5 opacity-35 transition-transform group-hover:translate-x-0.5" aria-hidden /></span>
-              <span className="mt-1 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.note}</span>
-            </Link>
-          ))}
+      <section aria-labelledby="compass-yours-heading" className="grid overflow-hidden rounded-[20px] border bg-[var(--app-bg-elevated)] sm:grid-cols-[0.72fr_1.28fr]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
+        <div className="border-b p-5 sm:border-b-0 sm:border-r sm:p-6" style={{ borderColor: "var(--app-border)" }}>
+          <h2 id="compass-yours-heading" className="font-serif text-[25px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>Your Frederick</h2>
+          <p className="mt-1.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>Saved places and your home town.</p>
         </div>
-      </section>
-
-      <section aria-labelledby="compass-yours-heading">
-        <h2 id="compass-yours-heading" className="sr-only">Your Frederick</h2>
-        <div className="divide-y rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
-          <SimpleRow href="/my-radius" label="Saved places and events" note="Pick up where you left off" icon={<Bookmark className="h-[18px] w-[18px]" aria-hidden />} />
+        <div className="divide-y px-5" style={{ borderColor: "var(--app-border)" }}>
+          <SimpleRow href="/my-radius" label="Saved places and events" note="Your personal short list" icon={<Bookmark className="h-[18px] w-[18px]" aria-hidden />} />
           <SimpleRow href={home ? `/m/${home.slug}` : "/settings"} label={home ? home.name : "Choose your home town"} note={home ? "Open your town guide" : "Tune nearby results"} icon={<MapPin className="h-[18px] w-[18px]" aria-hidden />} />
         </div>
       </section>
 
-      <Directory title="Explore Frederick" items={EXPLORE} warm={warm} />
-      <Directory title="Practical tools" items={PRACTICAL} warm={warm} />
+      <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
+        <Directory title="Explore" items={EXPLORE} warm={warm} />
+        <Directory title="Practical" items={PRACTICAL} warm={warm} />
+      </div>
 
-      <details className="group rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)" }}>
-        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-          Add or correct something
+      <details className="group border-y" style={{ borderColor: "var(--app-border-strong)" }}>
+        <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          <CirclePlus className="h-[18px] w-[18px]" style={{ color: "var(--app-brand)" }} aria-hidden />
+          Help improve Frederick Radius
+          <span className="hidden text-[11px] font-normal sm:inline" style={{ color: "var(--app-ink-3)" }}>Add a place, event, or field note</span>
           <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
         </summary>
-        <div className="grid grid-cols-2 gap-2 border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+        <div className="grid grid-cols-2 gap-2 border-t py-3 sm:grid-cols-4" style={{ borderColor: "var(--app-border)" }}>
           <SmallLink href="/report" label="Mark a spot" icon={<MapPin className="h-4 w-4" />} />
           <SmallLink href="/submit/event" label="Add an event" icon={<CirclePlus className="h-4 w-4" />} />
           <SmallLink href="/submit/place" label="Add a place" icon={<CirclePlus className="h-4 w-4" />} />
@@ -139,26 +103,18 @@ export default function CompassHub() {
         </div>
       </details>
 
-      <nav aria-label="About Frederick Radius" className="flex flex-wrap justify-center gap-x-5 gap-y-2 border-t pt-5 text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        <Link href="/about">About</Link>
-        <Link href="/trust" className="inline-flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Trust & data</Link>
-        <Link href="/terms">Terms & privacy</Link>
-      </nav>
     </main>
   );
 }
 
 function Directory({ title, items, warm }: { title: string; items: Item[]; warm: (href: string) => { onMouseEnter: () => void; onFocus: () => void } }) {
   return (
-    <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
-      <summary className="flex min-h-16 cursor-pointer list-none items-center text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
-        {title}<span className="ml-2 text-[11px] font-normal" style={{ color: "var(--app-ink-3)" }}>{items.length}</span>
-        <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
-      </summary>
-      <ul className="pb-3">
+    <section>
+      <h2 className="font-serif text-[27px] font-semibold tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>{title}</h2>
+      <ul className="mt-3 border-t" style={{ borderColor: "var(--app-border-strong)" }}>
         {items.map((item) => (
-          <li key={item.href}>
-            <Link href={item.href} prefetch={false} {...warm(item.href)} className="group flex min-h-[58px] items-center gap-3">
+          <li key={item.href} className="border-b" style={{ borderColor: "var(--app-border)" }}>
+            <Link href={item.href} prefetch={false} {...warm(item.href)} className="group flex min-h-[64px] items-center gap-3 py-2">
               <item.icon className="h-4 w-4 shrink-0" style={{ color: "var(--app-brand)" }} aria-hidden />
               <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.label}</span><span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.note}</span></span>
               <ArrowRight className="h-3.5 w-3.5 opacity-30 transition-transform group-hover:translate-x-0.5" aria-hidden />
@@ -166,12 +122,12 @@ function Directory({ title, items, warm }: { title: string; items: Item[]; warm:
           </li>
         ))}
       </ul>
-    </details>
+    </section>
   );
 }
 
 function SimpleRow({ href, label, note, icon }: { href: string; label: string; note: string; icon: ReactNode }) {
-  return <Link href={href} prefetch={false} className="group flex min-h-[64px] items-center gap-3"><span style={{ color: "var(--app-brand)" }}>{icon}</span><span className="min-w-0 flex-1"><span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{label}</span><span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>{note}</span></span><ArrowRight className="h-4 w-4 opacity-30 transition-transform group-hover:translate-x-0.5" aria-hidden /></Link>;
+  return <Link href={href} prefetch={false} className="group flex min-h-[72px] items-center gap-3"><span style={{ color: "var(--app-brand)" }}>{icon}</span><span className="min-w-0 flex-1"><span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{label}</span><span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>{note}</span></span><ArrowRight className="h-4 w-4 opacity-30 transition-transform group-hover:translate-x-0.5" aria-hidden /></Link>;
 }
 
 function SmallLink({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {

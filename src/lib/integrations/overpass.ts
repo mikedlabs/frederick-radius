@@ -65,6 +65,7 @@ const QUERY = (bbox: [number, number, number, number]) => `
 
   // Public-infrastructure amenities (these don't "close" — stable infrastructure)
   node["amenity"~"^(toilets|drinking_water|waste_basket|dog_waste_bin|recycling|water_point|shower|bench|picnic_table|bicycle_parking|bicycle_repair_station|defibrillator|shelter|bbq|fountain|public_bookcase|telephone|atm)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  node["drinking_water"="yes"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   // Public/free WiFi access points
   node["internet_access"~"^(wlan|yes|free)$"]["internet_access:fee"!~"yes"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 
@@ -84,7 +85,7 @@ out center tags;
   .replace(/\/\/[^\n]*/g, "")
   .replace(/\n\s*/g, " ");
 
-function mapTagToCategory(tags: Record<string, string>): { category_slug: string; osm_tag: string } | null {
+export function mapTagToCategory(tags: Record<string, string>): { category_slug: string; osm_tag: string } | null {
   const a = tags.amenity, s = tags.shop, t = tags.tourism, l = tags.leisure, o = tags.office;
   if (a === "restaurant" || a === "fast_food" || a === "food_court") return { category_slug: "restaurant", osm_tag: "amenity=" + a };
   if (a === "cafe" || a === "ice_cream") return { category_slug: "coffee", osm_tag: "amenity=" + a };
@@ -114,7 +115,8 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   // Public-infrastructure amenities (stable — don't go stale)
   if (a === "toilets") return { category_slug: "restroom", osm_tag: "amenity=toilets" };
   if (a === "charging_station") return { category_slug: "ev-charging", osm_tag: "amenity=charging_station" };
-  if (a === "drinking_water" || a === "water_point" || a === "fountain") return { category_slug: "water", osm_tag: "amenity=" + a };
+  if ((a === "drinking_water" || a === "water_point" || tags.drinking_water === "yes") && tags.natural !== "spring" && tags.access !== "customers") return { category_slug: "water", osm_tag: a ? "amenity=" + a : "drinking_water=yes" };
+  if (a === "waste_basket" && tags.waste === "dog_excrement") return { category_slug: "dog-waste", osm_tag: "amenity=waste_basket,waste=dog_excrement" };
   if (a === "waste_basket") return { category_slug: "trash", osm_tag: "amenity=waste_basket" };
   if (a === "recycling") return { category_slug: "recycling", osm_tag: "amenity=recycling" };
   if (a === "dog_waste_bin") return { category_slug: "dog-waste", osm_tag: "amenity=dog_waste_bin" };

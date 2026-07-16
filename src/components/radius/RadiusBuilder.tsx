@@ -199,7 +199,7 @@ type GeoStatus =
   | "unavailable"
   | "out-of-county";
 
-// Local label + glyph table for the 6 curated amenity kinds, in
+// Local label + glyph table for the curated amenity kinds, in
 // most-asked-for order. Kept here (not imported from the loader) so
 // this client component stays loader-free; the points themselves
 // arrive as a server prop. Glyphs match the map's amenity language.
@@ -210,6 +210,12 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
   { kind: "bike_parking", label: "Bike parking", glyph: "\u{1F6B2}" },
   { kind: "picnic", label: "Picnic spots", glyph: "\u{1FA91}" },
   { kind: "playground", label: "Playgrounds", glyph: "\u{1F6DD}" },
+  { kind: "water", label: "Drinking water", glyph: "\u{1F4A7}" },
+  { kind: "trash", label: "Trash cans", glyph: "\u{1F5D1}" },
+  { kind: "recycling", label: "Recycling", glyph: "\u{267B}\u{FE0F}" },
+  { kind: "bench", label: "Benches", glyph: "\u{1FA91}" },
+  { kind: "dog_waste", label: "Dog stations", glyph: "\u{1F43E}" },
+  { kind: "bike_repair", label: "Bike repair", glyph: "\u{1F6E0}\u{FE0F}" },
 ];
 
 /** Slim upcoming-event shape the reach view filters by location. Kept

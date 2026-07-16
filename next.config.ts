@@ -16,7 +16,7 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://plausible.io",
+  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://plausible.io`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -26,6 +26,7 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
   [
     "connect-src 'self'",
+    ...(!isProduction ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
     "https://api.mapbox.com",
     "https://events.mapbox.com",
     "https://*.tiles.mapbox.com",
@@ -43,6 +44,10 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Browser QA commonly opens the local app through 127.0.0.1 while Next
+  // advertises localhost. Treat both as the same trusted development origin
+  // so HMR and client hydration are testable without weakening production.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   turbopack: {
     root: path.resolve(__dirname),
   },

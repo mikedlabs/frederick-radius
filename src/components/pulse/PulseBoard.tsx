@@ -11,7 +11,6 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
-  Check,
   ChevronDown,
   Clock,
   CloudAlert,
@@ -70,7 +69,7 @@ const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
   danger: "var(--app-danger)",
   warning: "var(--app-warning)",
   cool: "var(--app-cool)",
-  positive: "var(--app-positive)",
+  positive: "var(--app-cool)",
 };
 
 export type PulseHero = {
@@ -132,43 +131,48 @@ function GroupHeading({
   );
 }
 
-function HeroFacts({ chips, onOpen, inverse }: { chips: PulseHeroChip[]; onOpen: (key: string) => void; inverse: boolean }) {
-  if (chips.length === 0) return null;
+function StatusSummary({ chips, steady, onOpen }: { chips: PulseHeroChip[]; steady: PulseTile[]; onOpen: (key: string) => void }) {
+  if (chips.length === 0 && steady.length === 0) return null;
   return (
-    <ul className="grid gap-1.5 sm:grid-cols-2">
-      {chips.slice(0, 4).map((chip, index) => {
-        const color = CHIP_TONE[chip.tone];
-        const content = (
-          <>
-            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
-            <span className="min-w-0 flex-1 truncate">{chip.label}</span>
-            {chip.key && <ArrowRight aria-hidden className="h-3 w-3 shrink-0 opacity-50" />}
-          </>
-        );
-        return (
-          <li key={`${chip.key ?? "fact"}-${index}`}>
-            {chip.key ? (
-              <button
-                type="button"
-                onClick={() => onOpen(chip.key!)}
-                className="flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[11.5px] font-medium"
-                style={{
-                  borderColor: inverse ? "rgba(255,255,255,0.18)" : "var(--app-border)",
-                  background: inverse ? "rgba(255,255,255,0.08)" : "var(--app-bg-sunken)",
-                  color: "inherit",
-                }}
-              >
-                {content}
-              </button>
-            ) : (
-              <span className="flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-[11.5px] font-medium" style={{ borderColor: inverse ? "rgba(255,255,255,0.18)" : "var(--app-border)", background: inverse ? "rgba(255,255,255,0.08)" : "var(--app-bg-sunken)" }}>
-                {content}
-              </span>
-            )}
+    <section aria-labelledby="pulse-glance-heading" className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
+      <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
+        <h2 id="pulse-glance-heading" className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>Checked now</h2>
+        <span className="inline-flex items-center gap-1.5 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-cool)" }} /> Live
+        </span>
+      </div>
+      <ul className="divide-y px-4" style={{ borderColor: "var(--app-border)" }}>
+        {chips.slice(0, 4).map((chip, index) => {
+          const color = CHIP_TONE[chip.tone];
+          return (
+            <li key={`${chip.key ?? "fact"}-${index}`}>
+              {chip.key ? (
+                <button type="button" onClick={() => onOpen(chip.key!)} className="group flex min-h-11 w-full items-center gap-2.5 text-left text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+                  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+                  <span className="min-w-0 flex-1 truncate">{chip.label}</span>
+                  <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              ) : (
+                <span className="flex min-h-11 items-center gap-2.5 text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+                  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+                  <span className="min-w-0 flex-1 truncate">{chip.label}</span>
+                </span>
+              )}
+            </li>
+          );
+        })}
+        {steady.map((tile) => (
+          <li key={tile.key}>
+            <button type="button" onClick={() => onOpen(tile.key)} className="group flex min-h-11 w-full items-center gap-2.5 text-left text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+              <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+              <span className="min-w-0 flex-1 truncate">{tile.label}</span>
+              <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{tile.countLabel}</span>
+              <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5" />
+            </button>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -195,7 +199,7 @@ function AttentionCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }
           <span className="mt-0.5 block font-serif text-[19px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{tile.countLabel}</span>
           {tile.peek && <span className="mt-1 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{tile.peek}</span>}
           <span className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: tile.accent }}>
-            What this means <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            View details <ArrowRight aria-hidden className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </span>
         </span>
       </span>
@@ -210,11 +214,10 @@ function WeatherCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) 
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      className="group flex min-h-[126px] w-full items-center justify-between gap-4 overflow-hidden rounded-[var(--app-radius-lg)] border p-4 text-left transition active:scale-[0.995]"
+      className="group flex min-h-[118px] w-full items-center justify-between gap-4 overflow-hidden border-b p-4 text-left transition last:border-b-0 active:bg-[var(--app-bg-sunken)]"
       style={{
-        borderColor: "color-mix(in srgb, var(--app-cool) 32%, var(--app-border))",
+        borderColor: "var(--app-border)",
         background: "radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--app-cool) 20%, transparent), transparent 48%), var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
       }}
     >
       <span className="min-w-0">
@@ -240,40 +243,19 @@ function SignalCard({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
       onClick={onOpen}
       aria-haspopup="dialog"
       aria-label={`${tile.label}: ${tile.countLabel}. Open details.`}
-      className="group flex min-h-[92px] w-full flex-col rounded-[var(--app-radius-md)] border p-3.5 text-left transition active:scale-[0.99]"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+      className="group flex min-h-[72px] w-full items-center gap-3 border-b px-4 py-3 text-left transition last:border-b-0 active:bg-[var(--app-bg-sunken)]"
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span className="flex items-center gap-2">
-        {createElement(iconFor(tile), { "aria-hidden": true, className: "h-4 w-4 shrink-0", strokeWidth: 2, style: { color: tile.accent } })}
-        <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>{tile.label}</span>
-        <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5" />
+      <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 9%, transparent)` }}>
+        {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
       </span>
-      <span className="mt-2 block text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>{reading}</span>
-      {tile.peek && <span className="mt-auto line-clamp-2 pt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{tile.peek}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
+        {tile.peek ? <span className="mt-0.5 block truncate text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{tile.peek}</span> : null}
+      </span>
+      <span className="max-w-[42%] shrink-0 text-right text-[12px] font-semibold leading-snug" style={{ color: "var(--app-ink-2)" }}>{reading}</span>
+      <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-30 transition group-hover:translate-x-0.5" />
     </button>
-  );
-}
-
-function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
-  if (tiles.length === 0) return null;
-  return (
-    <section aria-labelledby="pulse-systems-heading" className="rounded-[var(--app-radius-lg)] border px-4 py-3.5" style={{ borderColor: "color-mix(in srgb, var(--app-positive) 30%, var(--app-border))", background: "color-mix(in srgb, var(--app-positive) 5%, var(--app-bg-elevated))" }}>
-      <div className="flex items-center gap-2">
-        <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive)" }} />
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
-        <span className="ml-auto text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>checked live</span>
-      </div>
-      <ul className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-        {tiles.map((tile) => (
-          <li key={tile.key}>
-            <button type="button" onClick={() => onOpen(tile.key)} className="flex min-h-11 w-full items-center gap-1.5 text-left text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-              <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
-              <span className="truncate">{tile.label}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -352,56 +334,56 @@ export default function PulseBoard({
 
   const degraded = hero.degraded ?? false;
   const active = !hero.allClear && !degraded;
-  const heroColor = hero.allClear ? "var(--app-positive)" : degraded ? "var(--app-warning)" : "var(--app-danger)";
+  const heroColor = hero.allClear ? "var(--app-cool)" : degraded ? "var(--app-warning)" : "var(--app-danger)";
   const HeroIcon = hero.allClear ? ShieldCheck : degraded ? AlertTriangle : Siren;
-  const inverseHero = !hero.allClear;
 
   return (
     <>
-      <header
-        className="relative overflow-hidden rounded-[24px] border px-5 pb-5 pt-5 sm:px-7 sm:pb-6 sm:pt-6"
-        style={{
-          borderColor: active ? "color-mix(in srgb, var(--app-danger) 62%, black)" : degraded ? "color-mix(in srgb, var(--app-warning) 55%, var(--app-border))" : "color-mix(in srgb, var(--app-positive) 30%, var(--app-border))",
-          background: active
-            ? "radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--app-danger) 42%, transparent), transparent 42%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 78%, var(--app-bedrock)))"
-            : degraded
-              ? "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated-solid))"
-              : "color-mix(in srgb, var(--app-positive) 5%, var(--app-bg-elevated-solid))",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          color: inverseHero ? "var(--app-ink-inverse)" : "var(--app-ink)",
-        }}
-      >
-        {inverseHero ? <div aria-hidden className="absolute -right-8 -top-8 grid h-36 w-36 place-items-center rounded-full border opacity-[0.12]" style={{ borderColor: "currentColor" }}>
-          <div className="grid h-20 w-20 place-items-center rounded-full border" style={{ borderColor: "currentColor" }}>
-            <HeroIcon className="h-9 w-9" strokeWidth={1.25} />
-          </div>
-        </div> : null}
-        <div className="relative max-w-[36rem]">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] opacity-75">
-            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
-            County pulse
-            <PulseFreshness renderedAt={hero.renderedAt} />
-          </div>
-          <h1 className="mt-3 max-w-[30rem] font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.035em] text-balance sm:text-[42px]">
-            {hero.line}
-          </h1>
-          <p className="mt-3 max-w-[32rem] text-[13.5px] leading-relaxed opacity-80 sm:text-[14px]">{hero.sub}</p>
-          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11.5px] font-medium opacity-70"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
-          {lead && (
-            <div className="mt-4">
-              <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[12.5px] font-semibold transition active:scale-[0.99]" style={{ background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "0 10px 24px -16px rgba(0,0,0,0.75)" }}>
-                {hero.actionLabel ?? "See what this means"}
-                <ArrowRight aria-hidden className="h-4 w-4" />
-              </button>
+      <section aria-label="Current county briefing" className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)] lg:gap-5">
+        <header
+          className="relative overflow-hidden rounded-[var(--app-radius-lg)] border px-5 py-5 sm:px-7 sm:py-7"
+          style={{
+            borderColor: active ? "color-mix(in srgb, var(--app-danger) 42%, var(--app-border))" : degraded ? "color-mix(in srgb, var(--app-warning) 42%, var(--app-border))" : "color-mix(in srgb, var(--app-cool) 24%, var(--app-border))",
+            borderLeftWidth: 4,
+            borderLeftColor: heroColor,
+            background: active
+              ? "linear-gradient(135deg, color-mix(in srgb, var(--app-danger) 7%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))"
+              : degraded
+                ? "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated-solid))"
+                : "linear-gradient(135deg, color-mix(in srgb, var(--app-cool) 6%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            color: "var(--app-ink)",
+          }}
+        >
+          <div className="relative max-w-[38rem]">
+            <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${heroColor} 10%, transparent)` }}>
+                  <HeroIcon className="h-3.5 w-3.5" strokeWidth={1.8} style={{ color: heroColor }} />
+                </span>
+                Frederick County
+              </span>
+              <PulseFreshness renderedAt={hero.renderedAt} />
             </div>
-          )}
-          <p className="mt-4 flex items-center gap-1.5 border-t pt-3 text-[10.5px] opacity-60" style={{ borderColor: inverseHero ? "rgba(255,255,255,0.16)" : "var(--app-border)" }}>
-            <Clock aria-hidden className="h-3 w-3" /> Refreshed {hero.refreshedClock} · automatic every couple of minutes
-          </p>
-        </div>
-      </header>
+            <h1 className="mt-4 max-w-[34rem] font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.035em] text-balance sm:text-[42px]">{hero.line}</h1>
+            <p className="mt-3 max-w-[35rem] text-[13.5px] leading-relaxed sm:text-[14px]" style={{ color: "var(--app-ink-2)" }}>{hero.sub}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {hero.leadMeta ? <p className="flex w-fit items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--app-ink-3)" }}><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p> : null}
+              {lead ? (
+                <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-[12px] font-semibold transition active:scale-[0.99]" style={{ background: heroColor, color: "var(--app-on-brand)" }}>
+                  {hero.actionLabel ?? "See what this means"}
+                  <ArrowRight aria-hidden className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-5 flex items-center gap-1.5 border-t pt-3 text-[10px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+              <Clock aria-hidden className="h-3 w-3" /> Refreshed {hero.refreshedClock} · automatic every couple of minutes
+            </p>
+          </div>
+        </header>
 
-      <HeroFacts chips={chips} onOpen={openTile} inverse={false} />
+        <StatusSummary chips={chips} steady={steady} onOpen={openTile} />
+      </section>
 
       {breaking}
 
@@ -414,29 +396,30 @@ export default function PulseBoard({
         </section>
       )}
 
-      <SystemsLedger tiles={steady} onOpen={openTile} />
-
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-8">
-        <section aria-labelledby="pulse-move-heading" className="space-y-3">
-          <GroupHeading id="pulse-move-heading" title="Getting around" note="live sources" />
-          {gettingAround.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {gettingAround.map((tile) => <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
+      <section aria-labelledby="pulse-live-board-heading" className="space-y-4">
+        <GroupHeading id="pulse-live-board-heading" title="Around Frederick now" note="official live sources" />
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <section aria-labelledby="pulse-conditions-heading" className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
+            <div className="border-b px-4 py-3.5" style={{ borderColor: "var(--app-border)" }}>
+              <h3 id="pulse-conditions-heading" className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Outside</h3>
+              <p className="mt-0.5 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Weather, air, and water</p>
             </div>
-          ) : (
-            <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>Transportation feeds are briefly quiet.</p>
-          )}
-        </section>
-
-        <section aria-labelledby="pulse-conditions-heading" className="space-y-3">
-          <GroupHeading id="pulse-conditions-heading" title="Around the county" />
-          <div className="space-y-2.5">
             {conditions.map((tile) => tile.kind === "feature"
               ? <WeatherCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
               : <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
-          </div>
-        </section>
-      </div>
+          </section>
+
+          <section aria-labelledby="pulse-move-heading" className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}>
+            <div className="border-b px-4 py-3.5" style={{ borderColor: "var(--app-border)" }}>
+              <h3 id="pulse-move-heading" className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Getting around</h3>
+              <p className="mt-0.5 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Roads, rail, and nearby airports</p>
+            </div>
+            {gettingAround.length > 0 ? gettingAround.map((tile) => <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />) : (
+              <p className="px-4 py-6 text-[13px]" style={{ color: "var(--app-ink-3)" }}>Transportation feeds are briefly quiet.</p>
+            )}
+          </section>
+        </div>
+      </section>
 
       {localUpdates.length > 0 && (
         <details className="group rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)" }}>

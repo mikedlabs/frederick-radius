@@ -148,9 +148,14 @@ function sanbornRecord(
   sheetCount: number,
 ): LocSanbornRecord {
   const resourceId = `g3844fm.g3844fm_g03603${editionYear}`;
+  // LOC's resource page uses the dotted collection-qualified id above, but
+  // its IIIF service path takes the underlying filename without that prefix.
+  // Reusing resourceId here produced `...:g3844fm:g3844fm.g3844fm_...` and a
+  // 404 for every Sanborn preview.
+  const iiifResource = `g3844fm_g03603${editionYear}`;
   const iiifBaseUrl =
     `https://tile.loc.gov/image-services/iiif/` +
-    `service:gmd:gmd384m:g3844m:g3844fm:${resourceId}:03603_${editionYear}-0001`;
+    `service:gmd:gmd384m:g3844m:g3844fm:${iiifResource}:03603_${editionYear}-0001`;
 
   return {
     id: `loc-sanborn-frederick-${editionYear}`,

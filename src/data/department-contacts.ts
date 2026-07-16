@@ -86,18 +86,81 @@ export const ALL_DEPARTMENTS: DepartmentContact[] = [
   ...CITY_DEPARTMENTS,
 ];
 
-/** Naive intent match for the Ask: query term in the department name. */
-export function matchDepartment(query: string): DepartmentContact | null {
+const DEPARTMENT_ALIASES: Record<string, string[]> = {
+  "animal-control": ["animal", "dog", "cat", "stray", "leash"],
+  "budget": ["budget"],
+  "county-council": ["council", "representative"],
+  "fire-rescue": ["fire", "rescue", "ems"],
+  "health": ["health", "clinic", "vaccine"],
+  "parks-recreation": ["park", "parks", "recreation", "sports league"],
+  "planning-permitting": ["permit", "permits", "building", "zoning", "inspection"],
+  "public-works": ["pothole", "road", "street", "snow", "sidewalk", "storm drain"],
+  "solid-waste": ["trash", "garbage", "recycling", "refuse", "yard waste", "landfill"],
+  "transit": ["bus", "transit", "paratransit"],
+  "water-sewer": ["water", "sewer", "utility"],
+  "city-aldermen": ["city council", "aldermen", "representative"],
+  "city-code-enforcement": ["code", "nuisance", "violation", "blight"],
+  "city-finance": ["city budget", "city tax"],
+  "city-parks-rec": ["park", "parks", "recreation"],
+  "city-permits": ["permit", "permits", "building", "zoning", "inspection"],
+  "city-police": ["police", "crime", "non emergency"],
+  "city-public-works": ["pothole", "road", "street", "snow", "sidewalk", "storm drain"],
+  "city-utility-billing": ["water", "sewer", "utility", "bill", "billing"],
+};
+
+const DEPARTMENT_STOP = new Set([
+  "about", "city", "county", "department", "for", "frederick", "how", "maryland",
+  "number", "office", "official", "phone", "the", "to", "what", "where", "who",
+]);
+
+function departmentTokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .filter((term) => term.length > 2 && !DEPARTMENT_STOP.has(term));
+}
+
+export type DepartmentMatchContext = {
+  municipality?: string | null;
+};
+
+/**
+ * Match the right office and jurisdiction. Shared names such as Public Works,
+ * Parks, Planning, and Utilities must not silently default to whichever row
+ * happens to appear first in the data.
+ */
+export function matchDepartment(
+  query: string,
+  context: DepartmentMatchContext = {},
+): DepartmentContact | null {
   const q = query.toLowerCase();
+  const queryTokens = new Set(departmentTokens(q));
+  const explicitCounty = /\b(?:frederick\s+)?county\b/.test(q);
+  const explicitCity = /\bcity of frederick\b|\bfrederick city\b|\bcity\s+(?:office|government|department|council|permit|trash|water|public works|parks?)\b/.test(q);
   let best: DepartmentContact | null = null, bestScore = 0;
   for (const d of ALL_DEPARTMENTS) {
     if (!d.phone && !d.address) continue; // nothing to offer
-    const hay = d.name.toLowerCase().replace(/&/g, "and");
+    const aliases = DEPARTMENT_ALIASES[d.slug] ?? [];
+    const nameTokens = new Set(departmentTokens(`${d.name} ${aliases.join(" ")}`));
     let score = 0;
-    for (const term of q.split(/\s+/)) if (term.length > 3 && hay.includes(term)) score += term.length;
+    for (const term of queryTokens) if (nameTokens.has(term)) score += term.length;
+    for (const alias of aliases) if (q.includes(alias)) score += alias.includes(" ") ? 8 : 3;
+    if (score === 0) continue;
+
+    if (explicitCounty) score += d.jurisdiction === "county" ? 40 : -40;
+    else if (explicitCity) score += d.jurisdiction === "city" ? 40 : -40;
+    else if (context.municipality === "frederick") score += d.jurisdiction === "city" ? 8 : 0;
+    else if (context.municipality) score += d.jurisdiction === "county" ? 5 : -20;
+
     if (score > bestScore) { bestScore = score; best = d; }
   }
   return bestScore > 0 ? best : null;
+}
+
+export function departmentJurisdictionLabel(department: DepartmentContact): string {
+  return department.jurisdiction === "city" ? "City of Frederick" : "Frederick County";
 }
 
 export const MAIN_COUNTY_LINE = {

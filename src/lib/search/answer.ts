@@ -45,7 +45,7 @@ const CRAVING_TERMS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["shops", ["shop", "shops", "shopping", "boutique", "boutiques", "antiques", "bookstore"]],
   ["stay", ["hotel", "hotels", "motel", "bed and breakfast", "b&b", "lodging", "place to stay", "where to stay", "overnight"]],
   ["drinks", ["drinks", "bar", "bars", "pub", "pubs", "cocktail", "cocktails", "happy hour"]],
-  ["food", ["food", "eat", "restaurant", "restaurants", "dinner", "lunch", "brunch", "hungry", "pizza", "pizzeria", "taco", "tacos", "burger", "burgers", "sushi", "sandwich", "bbq"]],
+  ["food", ["food", "eat", "eaten", "ate", "restaurant", "restaurants", "dinner", "lunch", "brunch", "hungry", "pizza", "pizzeria", "taco", "tacos", "burger", "burgers", "sushi", "sandwich", "bbq"]],
 ];
 
 function hasTerm(q: string, term: string): boolean {
