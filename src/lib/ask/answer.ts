@@ -9,7 +9,7 @@ import { getOpenStatus, isOpenNow, formatHoursLine } from "@/lib/hours";
 import { PARKING_GARAGES, PARKING_RATE_SCHEDULE, PARKING_OFFICE } from "@/data/parking-garages";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
-import { buildWantAnswer, type WantRow } from "@/lib/want-answer";
+import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
@@ -230,18 +230,38 @@ function wantContextBlock(
   now: Date,
 ): { block: string; picks: WantRow[]; label: string } | null {
   const town = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
+  const baseRefine = (p: WantRefinable) => {
+    if (intent.cuisine && !cuisinesOf(p).includes(intent.cuisine)) return false;
+    if (intent.area?.kind === "downtown" && haversineMeters(FREDERICK_CENTER, p.geom) > DOWNTOWN_RADIUS_M) return false;
+    if (town && p.municipality !== town.slug) return false;
+    return true;
+  };
+  // An explicit breakfast/brunch ASK still means breakfast FOOD whatever the
+  // clock says. The meal's category gate is honest for the time-band tile
+  // ("open during breakfast IS breakfast") but too loose here: at 1 PM the
+  // nearest open Thai spot led the block (seen live). Gate the broad
+  // restaurant bucket to places whose own signals say breakfast — breakfast/
+  // brunch Google types, pancake/waffle names, delis, diners — and let
+  // coffee/bakery/food-truck pass untouched. If the gate empties a small
+  // town's set, fall back to the ungated meal answer rather than a false
+  // "none in the catalog".
+  const BREAKFAST_SIGNAL = new Set(["breakfast", "bakery", "coffee", "deli"]);
+  const breakfasty = (p: WantRefinable) =>
+    p.category !== "restaurant" ||
+    /\bdiner\b/i.test(p.name) ||
+    cuisinesOf(p).some((s) => BREAKFAST_SIGNAL.has(s));
+  const gateBreakfast = !intent.cuisine && (intent.key === "breakfast" || intent.key === "brunch");
   // Origin seeds the ORDERING only (downtown core / the town's centroid);
   // approximateOrigin makes the hero the strongest PLACE among the near-open
   // set, never the fluke nearest (the Chick-fil-A lesson, PR #1123).
-  const wa = buildWantAnswer(intent.key, null, town ? town.centroid : FREDERICK_CENTER, now, {
+  const origin = town ? town.centroid : FREDERICK_CENTER;
+  let wa = buildWantAnswer(intent.key, null, origin, now, {
     approximateOrigin: true,
-    refine: (p) => {
-      if (intent.cuisine && !cuisinesOf(p).includes(intent.cuisine)) return false;
-      if (intent.area?.kind === "downtown" && haversineMeters(FREDERICK_CENTER, p.geom) > DOWNTOWN_RADIUS_M) return false;
-      if (town && p.municipality !== town.slug) return false;
-      return true;
-    },
+    refine: gateBreakfast ? (p) => baseRefine(p) && breakfasty(p) : baseRefine,
   });
+  if (gateBreakfast && (!wa || wa.total === 0)) {
+    wa = buildWantAnswer(intent.key, null, origin, now, { approximateOrigin: true, refine: baseRefine });
+  }
   if (!wa) return null;
 
   const areaText =
@@ -337,7 +357,13 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   // vote, report a pothole, pay a bill, permits…), surface the county's
   // AUTHORITATIVE link so the model cites a real action, never an invented
   // one. Listed first so it leads the answer when relevant.
-  const civic = matchCivicAction(q);
+  // One live-caught false join: "where should I park" is CAR parking, but
+  // the civic/department matchers hear the bare verb "park" and answer with
+  // Parks & Recreation. When the parking grounder owns the question, the
+  // parks cards are noise — unless the question really says parks/rec.
+  const asksParksRec = /\b(parks|recreation|rec center)\b/i.test(q);
+  let civic = matchCivicAction(q);
+  if (civic?.id === "parks-rec-centers" && parkingBlock && !asksParksRec) civic = null;
   if (civic) {
     sources.push({ slug: civic.id, name: civic.label, category: "civic", city: "", href: civic.url });
   }
@@ -347,7 +373,8 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
 
   // Department grounding: "number for animal control / parks & rec" →
   // the real phone + address, never invented.
-  const dept = matchDepartment(q);
+  let dept = matchDepartment(q);
+  if (dept && /parks/i.test(dept.name) && parkingBlock && !asksParksRec) dept = null;
   if (dept) {
     sources.push({ slug: `dept-${dept.slug}`, name: dept.name, category: "civic", city: "", href: dept.url });
   }
