@@ -95,14 +95,38 @@ export const CIVIC_ACTIONS: CivicAction[] = [
 export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
   CIVIC_ACTIONS.filter((a) => a.verb === verb);
 
-/** Naive match for the Ask: label + keyword contains. */
+const CIVIC_INTENT =
+  /\b(?:county|city|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
+
+const CIVIC_STOP = new Set([
+  "a", "an", "and", "for", "how", "i", "information", "of", "online",
+  "or", "the", "to", "where", "with",
+]);
+
+function tokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !CIVIC_STOP.has(token));
+}
+
+/**
+ * Match an official action only when the query actually reads like a civic
+ * task. Tokens are compared as whole words, so conversational words such as
+ * "get" can never match the middle of "budget".
+ */
 export function matchCivicAction(query: string): CivicAction | null {
-  const q = query.toLowerCase();
+  if (!CIVIC_INTENT.test(query)) return null;
+  const queryTokens = new Set(tokens(query));
   let best: CivicAction | null = null, bestScore = 0;
   for (const a of CIVIC_ACTIONS) {
-    const hay = [a.label, ...(a.keywords ?? [])].join(" ").toLowerCase();
-    let score = 0;
-    for (const term of q.split(/\s+/)) if (term.length > 2 && hay.includes(term)) score++;
+    const actionTokens = new Set(tokens([a.label, ...(a.keywords ?? [])].join(" ")));
+    let score = a.verb && queryTokens.has(a.verb) ? 3 : 0;
+    for (const term of queryTokens) if (actionTokens.has(term)) score += 2;
+    for (const phrase of a.keywords ?? []) {
+      if (phrase.includes(" ") && query.toLowerCase().includes(phrase.toLowerCase())) score += 4;
+    }
     if (score > bestScore) { bestScore = score; best = a; }
   }
   return bestScore > 0 ? best : null;

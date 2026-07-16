@@ -50,4 +50,11 @@ describe("search qualifiers", () => {
     expect(parsed.openNow).toBe(false);
     expect(parsed.categoryKey).toBeNull();
   });
+
+  it("treats downtown Frederick as an explicit location constraint", () => {
+    const parsed = parseSearchQualifiers("coffee open now near downtown Frederick");
+    expect(parsed.downtown).toBe(true);
+    expect(parsed.openNow).toBe(true);
+    expect(parsed.cleanedQuery).not.toMatch(/downtown/i);
+  });
 });

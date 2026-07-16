@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 // Enforcing baseline CSP. Next currently needs inline boot scripts and the app
 // uses inline style props, so those two allowances remain explicit. Every
 // other executable/network origin is constrained to the services the product
@@ -34,7 +36,10 @@ const contentSecurityPolicy = [
     "https://*.ingest.us.sentry.io",
     "https://vitals.vercel-insights.com",
   ].join(" "),
-  "upgrade-insecure-requests",
+  // Keep production subresources on HTTPS. Omitting this in local development
+  // matters: otherwise Chromium upgrades relative localhost CSS/font requests
+  // to HTTPS and the app appears completely unstyled during browser QA.
+  ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -184,7 +189,9 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: contentSecurityPolicy },
           // Force HTTPS for two years; reversible (no `preload`, so we
           // never get pinned on a browser preload list we can't undo).
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          ...(isProduction
+            ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
+            : []),
           // Stop MIME sniffing (defends against content-type confusion).
           { key: "X-Content-Type-Options", value: "nosniff" },
           // Don't leak full URLs (which can carry query params) to other sites.

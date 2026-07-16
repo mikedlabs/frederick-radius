@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
     approximateOrigin: approx.origin,
     approximateStatus: approx.status,
   });
-  meterUsage("anthropic_ask");
   const result = await askFrederick(query, {
     origin: context.origin,
     municipality: context.filterMunicipality,
     contextLabel: context.label,
     fallbackReason: context.fallbackReason,
   });
+  if (result.usedModel) meterUsage("anthropic_ask");
   return NextResponse.json(result);
 }

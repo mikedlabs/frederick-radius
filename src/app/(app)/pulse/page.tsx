@@ -1178,27 +1178,17 @@ export default async function PulsePage() {
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
       />
 
-      {/* ── Where the buses are — the live TransIT map, behind one tap. The map
-          (mapbox + a 300px canvas) is the heaviest thing on the page; on a
-          scan-first board it stays collapsed so it never renders as a tall
-          empty placeholder. Tapping mounts the route network + live vehicle
-          badges + the arrivals board, and only then does mapbox download. */}
+      {/* The live bus map stays behind intent because it is the heaviest client
+          surface on Pulse. It is part of getting around, not a second dashboard. */}
       <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
         <div className="flex items-center justify-between gap-3">
-          <p id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+          <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-            Buses, live
-          </p>
-          <span className="font-mono text-[10.5px] tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-            tap a bus · free
-          </span>
+            Live bus map
+          </h2>
+          <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>TransIT · free</span>
         </div>
         <BusesReveal />
-        <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
-          every 15 seconds. Tap a route to trace its path and follow just its
-          buses. The county bus is free.
-        </p>
       </section>
       {/* Footer — disclaimer + sources at a glance */}
       <footer

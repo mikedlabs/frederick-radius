@@ -15,14 +15,17 @@ import AskFrederick from "@/components/ask/AskFrederick";
  */
 export default function TodayAsk() {
   return (
-    <section aria-labelledby="today-ask-head" className="mt-4 space-y-2.5">
+    <section aria-labelledby="today-ask-head" className="space-y-2.5">
       <h2
         id="today-ask-head"
-        className="font-serif text-[18px] font-semibold leading-none tracking-tight"
+        className="text-[18px] font-semibold leading-tight tracking-tight"
         style={{ color: "var(--app-ink)" }}
       >
-        Ask Radius anything.
+        What are you looking for?
       </h2>
+      <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+        A place, a plan, or a local service. Results come from Radius data.
+      </p>
       <AskFrederick hideLabel />
     </section>
   );

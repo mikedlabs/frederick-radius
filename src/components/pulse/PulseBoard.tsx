@@ -25,7 +25,6 @@ import {
   Shield,
   ShieldCheck,
   Siren,
-  Sparkles,
   TrafficCone,
   TrainFront,
   Waves,
@@ -60,7 +59,6 @@ const CONDITIONS = new Set(["weather", "air", "rivers"]);
 const GETTING_AROUND = new Set(["traffic", "roadwork", "train", "airports"]);
 const STEADY_SYSTEMS = new Set(["power", "safety", "schools", "alerts"]);
 const LOCAL_UPDATES = new Set(["fixit", "trout", "airspace", "news", "police", "scanner"]);
-const SNAPSHOT_KEY = "fr.pulse.snapshot.v2";
 
 export type PulseHeroChip = {
   tone: "danger" | "warning" | "cool" | "positive";
@@ -104,11 +102,6 @@ export type PulseTile = {
   body: ReactNode;
 };
 
-type Snapshot = {
-  at: number;
-  active: Record<string, string>;
-};
-
 function iconFor(tile: PulseTile) {
   return ICONS[tile.iconName] ?? AlertTriangle;
 }
@@ -120,41 +113,26 @@ function updateOpenParam(key: string | null, mode: "push" | "replace") {
   window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", url);
 }
 
-function timeSince(at: number): string {
-  const mins = Math.max(1, Math.floor((Date.now() - at) / 60_000));
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
 function GroupHeading({
   id,
-  eyebrow,
   title,
   note,
 }: {
   id: string;
-  eyebrow: string;
   title: string;
   note?: string;
 }) {
   return (
-    <div>
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-ink-3)" }}>
-        {eyebrow}
-      </p>
-      <div className="mt-0.5 flex items-end justify-between gap-3">
-        <h2 id={id} className="font-serif text-[23px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+    <div className="flex items-end justify-between gap-3">
+        <h2 id={id} className="text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
         {note && <span className="pb-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>{note}</span>}
-      </div>
     </div>
   );
 }
 
-function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: string) => void }) {
+function HeroFacts({ chips, onOpen, inverse }: { chips: PulseHeroChip[]; onOpen: (key: string) => void; inverse: boolean }) {
   if (chips.length === 0) return null;
   return (
     <ul className="grid gap-1.5 sm:grid-cols-2">
@@ -174,12 +152,16 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
                 type="button"
                 onClick={() => onOpen(chip.key!)}
                 className="flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[11.5px] font-medium"
-                style={{ borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)", color: "inherit" }}
+                style={{
+                  borderColor: inverse ? "rgba(255,255,255,0.18)" : "var(--app-border)",
+                  background: inverse ? "rgba(255,255,255,0.08)" : "var(--app-bg-sunken)",
+                  color: "inherit",
+                }}
               >
                 {content}
               </button>
             ) : (
-              <span className="flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-[11.5px] font-medium" style={{ borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)" }}>
+              <span className="flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-[11.5px] font-medium" style={{ borderColor: inverse ? "rgba(255,255,255,0.18)" : "var(--app-border)", background: inverse ? "rgba(255,255,255,0.08)" : "var(--app-bg-sunken)" }}>
                 {content}
               </span>
             )}
@@ -187,66 +169,6 @@ function HeroFacts({ chips, onOpen }: { chips: PulseHeroChip[]; onOpen: (key: st
         );
       })}
     </ul>
-  );
-}
-
-function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
-  const [message, setMessage] = useState("Checking what changed…");
-
-  useEffect(() => {
-    // Storage is external state. Read it after paint so hydration remains
-    // deterministic and the first briefing render is never delayed by it.
-    const timer = window.setTimeout(() => {
-      const current = Object.fromEntries(
-        tiles.filter((tile) => tile.attention).map((tile) => [tile.key, tile.countLabel]),
-      );
-      let previous: Snapshot | null = null;
-      try {
-        previous = JSON.parse(window.localStorage.getItem(SNAPSHOT_KEY) ?? "null") as Snapshot | null;
-      } catch {
-        previous = null;
-      }
-
-      if (!previous?.at) {
-        setMessage("First check on this device. We’ll remember today’s snapshot for next time.");
-      } else {
-        const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
-        const cleared = Object.keys(previous.active).filter((key) => !(key in current));
-        if (added.length > 0) {
-          const labels = added
-            .map((key) => tiles.find((tile) => tile.key === key)?.label)
-            .filter(Boolean)
-            .slice(0, 2)
-            .join(" and ");
-          setMessage(`${labels} ${added.length === 1 ? "has" : "have"} changed since ${timeSince(previous.at)}.`);
-        } else if (cleared.length > 0) {
-          const labels = cleared
-            .map((key) => tiles.find((tile) => tile.key === key)?.label ?? key)
-            .slice(0, 2)
-            .join(" and ");
-          setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
-        } else {
-          setMessage(`No new urgent changes since ${timeSince(previous.at)}.`);
-        }
-      }
-
-      try {
-        window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ at: Date.now(), active: current } satisfies Snapshot));
-      } catch {
-        // Pulse remains fully useful when storage is blocked.
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [tiles]);
-
-  return (
-    <div className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3.5 py-3" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
-      <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
-        <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{message}</p>
-      </div>
-    </div>
   );
 }
 
@@ -385,7 +307,6 @@ export default function PulseBoard({
   breaking?: ReactNode;
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  const [showAllUpdates, setShowAllUpdates] = useState(false);
   const pushedOpen = useRef(false);
 
   const current = tiles.find((tile) => tile.key === open) ?? null;
@@ -396,7 +317,6 @@ export default function PulseBoard({
   const gettingAround = tiles.filter((tile) => GETTING_AROUND.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
   const steady = tiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
   const localUpdates = tiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
-  const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
 
   const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
@@ -434,25 +354,28 @@ export default function PulseBoard({
   const active = !hero.allClear && !degraded;
   const heroColor = hero.allClear ? "var(--app-positive)" : degraded ? "var(--app-warning)" : "var(--app-danger)";
   const HeroIcon = hero.allClear ? ShieldCheck : degraded ? AlertTriangle : Siren;
+  const inverseHero = !hero.allClear;
 
   return (
     <>
       <header
         className="relative overflow-hidden rounded-[24px] border px-5 pb-5 pt-5 sm:px-7 sm:pb-6 sm:pt-6"
         style={{
-          borderColor: active ? "color-mix(in srgb, var(--app-danger) 62%, black)" : "color-mix(in srgb, var(--app-brand-2) 68%, black)",
+          borderColor: active ? "color-mix(in srgb, var(--app-danger) 62%, black)" : degraded ? "color-mix(in srgb, var(--app-warning) 55%, var(--app-border))" : "color-mix(in srgb, var(--app-positive) 30%, var(--app-border))",
           background: active
             ? "radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--app-danger) 42%, transparent), transparent 42%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 78%, var(--app-bedrock)))"
-            : "radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--app-positive) 35%, transparent), transparent 42%), linear-gradient(145deg, var(--app-brand-2), color-mix(in srgb, var(--app-brand-2) 78%, var(--app-bedrock)))",
-          boxShadow: "var(--app-elev-2), var(--app-edge)",
-          color: "var(--app-ink-inverse)",
+            : degraded
+              ? "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated-solid))"
+              : "color-mix(in srgb, var(--app-positive) 5%, var(--app-bg-elevated-solid))",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          color: inverseHero ? "var(--app-ink-inverse)" : "var(--app-ink)",
         }}
       >
-        <div aria-hidden className="absolute -right-8 -top-8 grid h-36 w-36 place-items-center rounded-full border opacity-[0.12]" style={{ borderColor: "currentColor" }}>
+        {inverseHero ? <div aria-hidden className="absolute -right-8 -top-8 grid h-36 w-36 place-items-center rounded-full border opacity-[0.12]" style={{ borderColor: "currentColor" }}>
           <div className="grid h-20 w-20 place-items-center rounded-full border" style={{ borderColor: "currentColor" }}>
             <HeroIcon className="h-9 w-9" strokeWidth={1.25} />
           </div>
-        </div>
+        </div> : null}
         <div className="relative max-w-[36rem]">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] opacity-75">
             <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
@@ -472,20 +395,19 @@ export default function PulseBoard({
               </button>
             </div>
           )}
-          <div className="mt-4"><HeroFacts chips={chips} onOpen={openTile} /></div>
-          <p className="mt-4 flex items-center gap-1.5 border-t pt-3 text-[10.5px] opacity-60" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
+          <p className="mt-4 flex items-center gap-1.5 border-t pt-3 text-[10.5px] opacity-60" style={{ borderColor: inverseHero ? "rgba(255,255,255,0.16)" : "var(--app-border)" }}>
             <Clock aria-hidden className="h-3 w-3" /> Refreshed {hero.refreshedClock} · automatic every couple of minutes
           </p>
         </div>
       </header>
 
-      {breaking}
+      <HeroFacts chips={chips} onOpen={openTile} inverse={false} />
 
-      <SinceLastLook tiles={tiles} />
+      {breaking}
 
       {attention.length > 0 && (
         <section aria-labelledby="pulse-attention-heading" className="space-y-3">
-          <GroupHeading id="pulse-attention-heading" eyebrow="Needs attention" title="Also happening now" note={`${attention.length} live`} />
+          <GroupHeading id="pulse-attention-heading" title="Also happening now" note={`${attention.length} live`} />
           <div className="space-y-2.5">
             {attention.map((tile) => <AttentionCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
           </div>
@@ -496,7 +418,7 @@ export default function PulseBoard({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:gap-8">
         <section aria-labelledby="pulse-move-heading" className="space-y-3">
-          <GroupHeading id="pulse-move-heading" eyebrow="Plan your day" title="Getting around" note="tap for detail" />
+          <GroupHeading id="pulse-move-heading" title="Getting around" note="live sources" />
           {gettingAround.length > 0 ? (
             <div className="grid grid-cols-2 gap-2.5">
               {gettingAround.map((tile) => <SignalCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
@@ -507,7 +429,7 @@ export default function PulseBoard({
         </section>
 
         <section aria-labelledby="pulse-conditions-heading" className="space-y-3">
-          <GroupHeading id="pulse-conditions-heading" eyebrow="Outside right now" title="County conditions" />
+          <GroupHeading id="pulse-conditions-heading" title="Around the county" />
           <div className="space-y-2.5">
             {conditions.map((tile) => tile.kind === "feature"
               ? <WeatherCard key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
@@ -517,18 +439,13 @@ export default function PulseBoard({
       </div>
 
       {localUpdates.length > 0 && (
-        <section aria-labelledby="pulse-updates-heading" className="space-y-3">
-          <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" note="secondary signals" />
-          <div className="rounded-[var(--app-radius-lg)] border px-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-edge)" }}>
-            <ul>{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
-            {localUpdates.length > 4 && (
-              <button type="button" onClick={() => setShowAllUpdates((value) => !value)} className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-                {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more local signals`}
-                <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
-              </button>
-            )}
-          </div>
-        </section>
+        <details className="group rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]" style={{ borderColor: "var(--app-border)" }}>
+          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            More live sources <span className="text-[10.5px] font-normal" style={{ color: "var(--app-ink-3)" }}>{localUpdates.length}</span>
+            <ChevronDown aria-hidden className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="border-t px-4" style={{ borderColor: "var(--app-border)" }}>{localUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+        </details>
       )}
 
       <BottomDrawer

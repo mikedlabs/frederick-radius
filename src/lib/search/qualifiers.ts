@@ -16,6 +16,7 @@ export type SearchQualifiers = {
   categoryLabel: string | null;
   openNow: boolean;
   nearMe: boolean;
+  downtown: boolean;
   /** Query after removing only operational/location language. Category words
    * remain so a specific request such as "pizza" still narrows broad Food. */
   cleanedQuery: string;
@@ -26,12 +27,14 @@ export type SearchQualifiers = {
 };
 
 const NEAR_ME_RE = /\b(?:near\s+me|nearby|closest|nearest|close\s+to\s+me|around\s+me|walking\s+distance)\b/i;
+const DOWNTOWN_RE = /\b(?:near\s+|around\s+|in\s+)?downtown(?:\s+frederick)?\b/i;
 const MUSIC_EVENT_RE = /\b(?:live\s+music|concerts?|karaoke|open[- ]?mic)\b/i;
 
 export function parseSearchQualifiers(query: string): SearchQualifiers {
   const q = query.toLowerCase().trim();
   const openNow = queryWantsOpenNow(q);
   const nearMe = NEAR_ME_RE.test(q);
+  const downtown = DOWNTOWN_RE.test(q);
   const answer = primaryAnswerFor(q);
 
   // "Live music" is an event request, not a place-category constraint. Keep
@@ -50,6 +53,7 @@ export function parseSearchQualifiers(query: string): SearchQualifiers {
       .replace(/\bopen\s+late\b/gi, " ");
   }
   if (nearMe) cleanedQuery = cleanedQuery.replace(new RegExp(NEAR_ME_RE.source, "gi"), " ");
+  if (downtown) cleanedQuery = cleanedQuery.replace(new RegExp(DOWNTOWN_RE.source, "gi"), " ");
   // Our category vocabulary is singular. Preserve natural plural queries
   // while normalizing the few nouns whose plural is not a substring match in
   // the useful direction ("restaurants" must match category "restaurant").
@@ -72,9 +76,10 @@ export function parseSearchQualifiers(query: string): SearchQualifiers {
     categoryLabel: category?.label ?? null,
     openNow,
     nearMe,
+    downtown,
     cleanedQuery,
     includeAllCategoryMatches,
-    constrained: Boolean(category || openNow || nearMe),
+    constrained: Boolean(category || openNow || nearMe || downtown),
   };
 }
 

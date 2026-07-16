@@ -8,7 +8,7 @@ import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
 import { isUpcomingEvent } from "@/lib/events/visible";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import { FREDERICK_CENTER, haversineMeters, type LngLat } from "@/lib/geo";
 import {
   matchesSearchQualifiers,
   parseSearchQualifiers,
@@ -379,6 +379,14 @@ export function qualifiedSearch(
   }
 
   const nearMeApplied = qualifiers.nearMe && Boolean(context.origin);
+  const downtownApplied = qualifiers.downtown;
+  const rankingOrigin = downtownApplied
+    ? FREDERICK_CENTER
+    : nearMeApplied
+      ? context.origin ?? null
+      : null;
+  const municipality = downtownApplied ? "frederick" : context.municipality;
+  const downtownRadiusMeters = 1_600;
   const effectiveQuery = qualifiers.cleanedQuery;
   // Location language alone must not turn an event-intent query into a
   // place-only search. "Live music near me" should still return concerts;
@@ -394,20 +402,21 @@ export function qualifiedSearch(
   const hits = search(effectiveQuery, limit, eventPool, {
     onlyPlaces: !preserveMixedEventResults,
     includeMatchingPlaces,
-    origin: nearMeApplied ? context.origin : null,
-    rankPlacesByDistance: nearMeApplied,
-    rankEventsByDistance: nearMeApplied,
-    eventMunicipality: context.municipality,
+    origin: rankingOrigin,
+    rankPlacesByDistance: Boolean(rankingOrigin),
+    rankEventsByDistance: Boolean(rankingOrigin),
+    eventMunicipality: municipality,
     placeFilter: (place) =>
-      matchesSearchQualifiers(place, qualifiers, context.municipality),
+      matchesSearchQualifiers(place, qualifiers, municipality) &&
+      (!downtownApplied || haversineMeters(FREDERICK_CENTER, place.geom) <= downtownRadiusMeters),
   });
 
   return {
     hits,
     meta: {
       qualifiers,
-      contextLabel: context.contextLabel ?? null,
-      nearMeApplied,
+      contextLabel: downtownApplied ? "Downtown Frederick" : context.contextLabel ?? null,
+      nearMeApplied: nearMeApplied || downtownApplied,
       fallbackReason: context.fallbackReason ?? null,
     },
   };

@@ -34,9 +34,12 @@ export type AskSource = {
   href: string;
 };
 export type AskResult = {
+  status: "answered" | "matches" | "empty";
   configured: boolean;
+  usedModel: boolean;
   answer: string | null;
   sources: AskSource[];
+  context?: string | null;
 };
 
 const SYSTEM = `You are the Frederick Radius concierge — a sharp, warm local guide to Frederick County, Maryland.
@@ -176,7 +179,7 @@ export async function askFrederick(
   context: QualifiedSearchContext = {},
 ): Promise<AskResult> {
   const q = (query || "").trim();
-  if (!q) return { configured: hasKey(), answer: null, sources: [] };
+  if (!q) return { status: "empty", configured: hasKey(), usedModel: false, answer: null, sources: [] };
 
   // Event questions need the same live, deduplicated calendar as /events and
   // /search. Bound a cold miss so Ask still fails soft to curated seeds rather
@@ -187,7 +190,7 @@ export async function askFrederick(
         new Promise<undefined>((resolve) => setTimeout(resolve, 1_500)),
       ])
     : undefined;
-  const retrieval = qualifiedSearch(q, 18, eventPool, context);
+  const retrieval = qualifiedSearch(q, 12, eventPool, context);
   const hits = retrieval.hits;
   const lines: string[] = [];
   const sources: AskSource[] = [];
@@ -230,7 +233,7 @@ export async function askFrederick(
       lines.push(
         `${lines.length + 1}. ${p.name} — ${p.category}${where ? `, ${where}` : ""}${blurb ? ` — ${blurb}` : ""}`,
       );
-      if (sources.length < 6)
+      if (sources.length < 3)
         sources.push({ slug: p.slug, name: p.name, category: p.category, city: where, href: `/places/${p.slug}` });
     } else if (h.type === "event") {
       const e = h.event as {
@@ -245,7 +248,7 @@ export async function askFrederick(
         ? new Date(e.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" })
         : "";
       lines.push(`${lines.length + 1}. EVENT: ${e.title}${when ? ` (${when})` : ""}${e.venue_name ? ` @ ${e.venue_name}` : ""}`);
-      if (sources.length < 6) {
+      if (sources.length < 3) {
         sources.push({
           slug: e.slug,
           name: e.title,
@@ -276,6 +279,38 @@ export async function askFrederick(
   ].filter(Boolean).join("\n");
   const userContent = `The user asked: "${q}"\n\n${constraintLines ? `RETRIEVAL RULES:\n${constraintLines}\n\n` : ""}FREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
 
+  // Common jobs should feel like search, not a chatbot. They already have a
+  // deterministic answer in the retrieved data, so return immediately and
+  // reserve the model for genuinely open-ended language. This removes paid
+  // latency from open-now, downtown, nearby, event, and civic requests.
+  const direct = Boolean(
+    civic ||
+      dept ||
+      retrieval.meta.qualifiers.constrained ||
+      isEventSearchIntent(q),
+  );
+  if (direct) {
+    const answer = deterministicAnswer({
+      civic: civic?.label,
+      department: dept?.name,
+      count: sources.length,
+      category: retrieval.meta.qualifiers.categoryLabel,
+      openNow: retrieval.meta.qualifiers.openNow,
+      downtown: retrieval.meta.qualifiers.downtown,
+      nearMe: retrieval.meta.qualifiers.nearMe,
+      nearMeApplied: retrieval.meta.nearMeApplied,
+      eventIntent: isEventSearchIntent(q),
+    });
+    return {
+      status: sources.length > 0 ? "matches" : "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer,
+      sources,
+      context: retrieval.meta.contextLabel,
+    };
+  }
+
   // Cached on a hit (identical question + identical data); a miss or a cached
   // failure (sentinel throw) falls back to null without poisoning the cache.
   let answer: string | null;
@@ -284,5 +319,49 @@ export async function askFrederick(
   } catch {
     answer = null;
   }
-  return { configured: answer !== null || hasKey(), answer, sources };
+  return {
+    status: answer ? "answered" : sources.length > 0 ? "matches" : "empty",
+    configured: hasKey(),
+    usedModel: Boolean(answer),
+    answer: answer ?? deterministicAnswer({ count: sources.length }),
+    sources,
+    context: retrieval.meta.contextLabel,
+  };
+}
+
+function deterministicAnswer({
+  civic,
+  department,
+  count,
+  category,
+  openNow,
+  downtown,
+  nearMe,
+  nearMeApplied,
+  eventIntent,
+}: {
+  civic?: string;
+  department?: string;
+  count: number;
+  category?: string | null;
+  openNow?: boolean;
+  downtown?: boolean;
+  nearMe?: boolean;
+  nearMeApplied?: boolean;
+  eventIntent?: boolean;
+}): string {
+  if (civic) return `Use this official Frederick resource for ${civic.toLowerCase()}.`;
+  if (department) return `Here is the official contact for ${department}.`;
+  if (count === 0) return "I couldn’t find a reliable match in Radius yet. Try a shorter search or open the full map.";
+  if (nearMe && !nearMeApplied) {
+    return "I don’t have your location, so these are strong countywide matches, not a nearest-place claim.";
+  }
+  if (downtown) {
+    return `Here ${count === 1 ? "is" : "are"} ${count} strong ${openNow ? "open-now " : ""}match${count === 1 ? "" : "es"} near downtown Frederick.`;
+  }
+  if (eventIntent) return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
+  if (category) {
+    return `Here ${count === 1 ? "is" : "are"} ${count} strong ${category.toLowerCase()} match${count === 1 ? "" : "es"}${openNow ? " with verified open hours" : ""}.`;
+  }
+  return `Here ${count === 1 ? "is" : "are"} the ${count} strongest match${count === 1 ? "" : "es"} in Radius.`;
 }
