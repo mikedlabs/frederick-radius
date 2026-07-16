@@ -34,14 +34,27 @@ export default function BeerExplorerLauncher({
 }: {
   breweryCards: PlaceCardData[];
 }) {
-  const [open, setOpen] = useState(false);
-  const [hasOpened, setHasOpened] = useState(false);
+  // Open by default (owner call, Jul 2026: "make it easier to see all the
+  // different beers"): the 174-beer ledger is the page's depth, not an
+  // appendix. The finder still code-splits via LazyBeerFinder, and the
+  // Collapse control keeps the folded state one tap away.
+  const [open, setOpen] = useState(true);
+  const [hasOpened, setHasOpened] = useState(true);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const wasOpen = useRef(false);
   const beerCount = ALL_BEERS.length;
 
+  const mounted = useRef(false);
   useEffect(() => {
+    // Focus management is for USER toggles only. With the explorer open by
+    // default, running this on mount stole focus (and drew a ring) on a
+    // heading mid-page before the user did anything.
+    if (!mounted.current) {
+      mounted.current = true;
+      wasOpen.current = open;
+      return;
+    }
     if (open) headingRef.current?.focus();
     else if (wasOpen.current) triggerRef.current?.focus();
     wasOpen.current = open;

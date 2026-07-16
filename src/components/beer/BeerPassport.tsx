@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Beer, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import {
   BREWERIES,
@@ -144,6 +144,16 @@ function dominantFamily(brewery: Brewery): StyleFamily {
   return best;
 }
 
+/** Passport-stamp monogram: the first letters of the brewery's two lead
+ *  words ("Olde Mother" → OM). Seventeen identical beer-mug clones read
+ *  as template filler; a monogram gives each stamp the identity a real
+ *  passport stamp has. */
+const MONOGRAM_SKIP = new Set(["the", "at", "and", "of"]);
+function monogramOf(name: string): string {
+  const words = name.split(/\s+/).filter((w) => !MONOGRAM_SKIP.has(w.toLowerCase()));
+  return words.slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join("");
+}
+
 function progressLine(count: number): string {
   if (count === BREWERIES.length) return "County complete. That is one well-used field guide.";
   if (count >= 12) return "Nearly the whole county.";
@@ -266,10 +276,20 @@ export default function BeerPassport() {
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  {isVisited ? (
-                    <Check className="h-6 w-6" strokeWidth={2.6} aria-hidden />
-                  ) : (
-                    <Beer className="h-5 w-5 transition-transform group-hover:-rotate-6" strokeWidth={1.8} aria-hidden />
+                  <span
+                    aria-hidden
+                    className="font-serif text-[20px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6 sm:text-[22px]"
+                  >
+                    {monogramOf(brewery.name)}
+                  </span>
+                  {isVisited && (
+                    <span
+                      aria-hidden
+                      className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2"
+                      style={{ background: "var(--app-positive)", borderColor: "var(--app-bg-elevated)", color: "white" }}
+                    >
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
                   )}
                 </button>
                 <Link

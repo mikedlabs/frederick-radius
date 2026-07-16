@@ -292,6 +292,9 @@ function PourCard({
             <span className="block truncate">{beer.breweryName}</span>
             <span className="block truncate text-[10px] font-normal" style={{ color: "var(--app-ink-3)" }}>
               {beer.style}
+              {beer.rating != null && (
+                <span style={{ color: "var(--app-accent-press)" }}> · ★ {beer.rating.toFixed(2)} Untappd</span>
+              )}
             </span>
           </Link>
           <button

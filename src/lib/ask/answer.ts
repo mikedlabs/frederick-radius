@@ -309,15 +309,21 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
   // model the same unified event set /today renders, bucketed to the asked
   // window, with clock times. (The live failure this closes: "I don't have
   // today's date in the data", screenshotted on Reddit.)
-  // Dataset grounders beyond events: verified parking and live weather,
-  // included only when the question asks (they'd be noise elsewhere, and
-  // the weather line varies too much to sit in every cache key).
+  // Dataset grounders beyond events: verified parking rides only when the
+  // question asks. Weather rides when asked — and (Tier 3) on ANY
+  // time-anchored plan, because "what should we do Saturday" has a
+  // different right answer under a thunderstorm than under sun; a local
+  // friend would say so unprompted. The daily NWS periods change a few
+  // times a day, an acceptable cache-key cost for weather-aware plans.
+  // The weather source CARD still appears only when weather was asked —
+  // an unasked join informs the prose, it doesn't earn a citation slot.
+  const anchor = timeAnchorOf(q);
   const parkingBlock = wantsParking(q) ? parkingContextBlock() : "";
   if (parkingBlock) {
     sources.push({ slug: "parking-guide", name: "Parking guide", category: "civic", city: "", href: "/parking" });
   }
-  const weatherBlock = wantsWeather(q) ? await weatherContextBlock() : "";
-  if (weatherBlock) {
+  const weatherBlock = wantsWeather(q) || anchor ? await weatherContextBlock() : "";
+  if (weatherBlock && wantsWeather(q)) {
     sources.push({ slug: "pulse-weather", name: "Hourly & 7-day forecast", category: "civic", city: "", href: "/pulse?open=weather" });
   }
 
@@ -338,7 +344,6 @@ export async function askFrederick(query: string, now: Date = new Date()): Promi
     });
   }
 
-  const anchor = timeAnchorOf(q);
   let eventsBlock = "";
   if (anchor) {
     try {
