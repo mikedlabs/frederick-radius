@@ -25,6 +25,7 @@ import {
   Package,
   ParkingCircle,
   Plane,
+  Sigma,
   Settings,
   ShieldCheck,
   Store,
@@ -189,6 +190,13 @@ const CURIOSITIES: CompassItem[] = [
     description: "See the aircraft crossing Frederick right now.",
     icon: Plane,
     color: "var(--app-cool)",
+  },
+  {
+    href: "/numbers",
+    label: "The county, counted",
+    description: "Every figure in the guide, computed from the live dataset.",
+    icon: Sigma,
+    color: "var(--app-brand-2)",
   },
 ];
 
