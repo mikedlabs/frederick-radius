@@ -219,6 +219,21 @@ describe("filterCitedSources", () => {
   it("null answer passes sources through untouched", () => {
     expect(filterCitedSources(sources, null)).toEqual(sources);
   });
+  it("uncited civic cards cap at two; cited civic always stays (the voter-answer pile-up)", () => {
+    const civicPile = [
+      { name: "Voter registration", category: "civic" },
+      { name: "County staff directory", category: "civic" },
+      { name: "Meeting agendas", category: "civic" },
+      { name: "County budget office", category: "civic" },
+    ];
+    const out = filterCitedSources(civicPile, "Register to vote through the county's voter registration page.");
+    // Cited (voter registration) + the first two uncited grounders.
+    expect(out.map((s) => s.name)).toEqual([
+      "Voter registration",
+      "County staff directory",
+      "Meeting agendas",
+    ]);
+  });
 });
 
 describe("stripInlineMarkdown", () => {

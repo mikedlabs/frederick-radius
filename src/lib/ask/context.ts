@@ -383,8 +383,14 @@ export function filterCitedSources<S extends { name: string; category: string }>
   };
   const civic = sources.filter((s) => s.category === "civic");
   const rest = sources.filter((s) => s.category !== "civic");
+  // Civic links are authoritative, but "always keep all" buried a voter
+  // answer under six cards (ask audit). Cited civic cards always stay;
+  // uncited ones keep at most two slots (the deliberate grounders like
+  // the parking guide, whose names the prose rarely repeats verbatim).
+  const uncitedCivicKept = new Set(civic.filter((s) => !cited(s.name)).slice(0, 2));
+  const civicKept = civic.filter((s) => cited(s.name) || uncitedCivicKept.has(s));
   const kept = rest.filter((s) => cited(s.name));
-  return [...civic, ...(kept.length > 0 ? kept : rest.slice(0, 2))];
+  return [...civicKept, ...(kept.length > 0 ? kept : rest.slice(0, 2))];
 }
 
 /**
