@@ -1,6 +1,9 @@
 import { buildHorizonBounds, groupByHorizon, isRangeListing } from "@/lib/eventHorizon";
 import { eventDateBlock } from "@/lib/events/format";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
+import { currentMeal } from "@/lib/meal";
+import { CUISINES } from "@/lib/cuisine";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import type { Event } from "@/data/events";
 
 /**
@@ -94,6 +97,98 @@ export function wantsParking(query: string): boolean {
  *  already covers "what should we do saturday". */
 export function wantsWeather(query: string): boolean {
   return /\b(weather|forecast|rain(?:ing|y)?|umbrella|sunny|snow(?:ing)?|storm(?:s|y)?|temperature|humid(?:ity)?|hot out|cold out|heat advisory)\b/i.test(query);
+}
+
+/**
+ * Want intent — the Tier 2 planner, deterministic on purpose (no second
+ * model call, no latency, unit-testable). Keyword search alone can never
+ * answer "good breakfast spot downtown": no place is NAMED "breakfast",
+ * the knowledge lives in the meal/craving/cuisine machinery /today already
+ * runs. This resolver maps the question to that machinery's vocabulary so
+ * askFrederick can feed the model the same ranked, live-open-state answer
+ * the "I want…" strip gives — instead of fuzzy-match noise.
+ */
+export type WantIntent = {
+  /** A buildWantAnswer key: meal ("breakfast"), craving ("coffee"), or "cat:<slug>". */
+  key: string;
+  /** Cuisine slug narrowing a food ask ("thai", "pizza"), when the question names one. */
+  cuisine: string | null;
+  /** Geographic qualifier: downtown Frederick (the 1-mile core) or a named town. */
+  area: { kind: "downtown" } | { kind: "town"; slug: string } | null;
+};
+
+/** Cuisines safe to hear in a QUERY. The broader CUISINES list includes
+ *  regexes tuned for place NAMES ("grill" → american, "tavern" → bar) that
+ *  would false-positive on questions; only the specific styles ride here. */
+const QUERY_CUISINES = new Set([
+  "italian", "mexican", "thai", "chinese", "japanese", "korean", "vietnamese",
+  "indian", "mediterranean", "spanish", "latin", "bbq", "seafood",
+  "steakhouse", "pizza", "burgers", "deli", "vegetarian",
+]);
+
+/** Query-side craving matchers — tight, noun-anchored, first match wins.
+ *  Deliberately narrower than the CRAVINGS tile set: only the wants a
+ *  person actually types into an ask box, and nothing that collides with
+ *  other grounders ("parks" belongs to search, "park" to wantsParking). */
+const CRAVING_QUERY: Array<{ key: string; re: RegExp }> = [
+  { key: "coffee", re: /\b(coffee|latte|espresso|cappuccino|caf[eé]s?)\b/i },
+  { key: "ice-cream", re: /\b(ice ?cream|gelato|frozen (custard|yogurt)|froyo|milkshakes?|soft serve)\b/i },
+  { key: "cat:bakery", re: /\b(baker(y|ies)|donuts?|doughnuts?|pastr(y|ies)|croissants?|cupcakes?|bagels?)\b/i },
+  { key: "breweries", re: /\b(beers?|brewer(y|ies)|taprooms?|brewpubs?)\b/i },
+  { key: "wineries", re: /\b(winer(y|ies)|vineyards?|wine tasting|cider(y|ies))\b/i },
+  { key: "drinks", re: /\b(drinks?|cocktails?|happy hour|bars?|nightcap)\b/i },
+  { key: "movies", re: /\b(movies?|cinemas?|film showing)\b/i },
+];
+
+const FOODISH = /\b(food|eat|eats|bite|snack|hungry|grub|meal)\b/i;
+/** "Where should we eat" with no meal named → the meal it currently is. */
+const FOOD_GENERIC =
+  /\b(hungry|grab a bite|bite to eat|somewhere to eat|(good )?places? to eat|where (should|can|do) (i|we) eat|restaurants?|good eats)\b/i;
+
+function areaOf(q: string): WantIntent["area"] {
+  if (/\bdowntown\b/.test(q)) return { kind: "downtown" };
+  for (const m of MUNICIPALITIES) {
+    // "in frederick" claims the whole county, not a filter — skip it. (The
+    // city's places dominate the catalog anyway; downtown is the real ask.)
+    if (m.slug === "frederick") continue;
+    const pattern =
+      m.slug === "mount-airy"
+        ? /\b(mount|mt\.?) ?airy\b/
+        : new RegExp(`\\b${m.slug.replace(/-/g, "[ -]")}\\b`);
+    if (pattern.test(q)) return { kind: "town", slug: m.slug };
+  }
+  return null;
+}
+
+export function wantIntentOf(query: string, now: Date): WantIntent | null {
+  const q = query.toLowerCase();
+  const area = areaOf(q);
+  // Most-specific first, mirroring CUISINES order (thai beats a generic).
+  // The regexes are tuned for place NAMES, where plurals are rare — but a
+  // question says "tacos"/"burritos", so a de-pluralized copy is tested too
+  // (both, since stripping the s would break "tapas").
+  const deplural = q.replace(/([a-z])s\b/g, "$1");
+  const cuisine =
+    CUISINES.find((c) => QUERY_CUISINES.has(c.slug) && (c.re.test(q) || c.re.test(deplural)))?.slug ?? null;
+  const meal = /\bbrunch\b/.test(q)
+    ? "brunch"
+    : /\bbreakfast\b/.test(q)
+      ? "breakfast"
+      : /\blunch\b/.test(q)
+        ? "lunch"
+        : /\b(dinner|supper)\b/.test(q)
+          ? "dinner"
+          : /\blate[- ]?night\b/.test(q) && FOODISH.test(q)
+            ? "late"
+            : null;
+  // A named cuisine is a food ask even without a meal word ("tacos tonight");
+  // when a meal IS named, it scopes the categories ("thai for dinner").
+  if (cuisine) return { key: meal ?? "food", cuisine, area };
+  if (meal) return { key: meal, cuisine: null, area };
+  const craving = CRAVING_QUERY.find((c) => c.re.test(q));
+  if (craving) return { key: craving.key, cuisine: null, area };
+  if (FOOD_GENERIC.test(q)) return { key: currentMeal(now).key, cuisine: null, area };
+  return null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
