@@ -8,6 +8,8 @@
  *   - Phone numbers only populated where verified from an official .gov
  *     page or a directory entry. Unverified phones are deliberately
  *     omitted (not faked) — the user calls the office via the website.
+ *     Fourteen numbers backfilled Jul 2026 from the department-contacts.ts
+ *     sweep (each confirmed against the department's own page, 2026-06).
  *   - 911 / 988 / Poison Control are national lines, no source needed.
  *
  * Voice
@@ -104,6 +106,7 @@ const CITY: DepartmentContact[] = [
     name: "Frederick Police",
     about: "City police, non-emergency. For active emergencies call 911.",
     website: "https://www.cityoffrederickmd.gov/99/Frederick-Police-Department",
+    phone: "3016002101",
   },
   {
     slug: "city-emergency-management",
@@ -140,6 +143,7 @@ const CITY: DepartmentContact[] = [
     name: "Code Enforcement",
     about: "Property maintenance, abandoned vehicles, zoning complaints.",
     website: "https://www.cityoffrederickmd.gov/157/Code-Enforcement",
+    phone: "3016003825",
   },
   {
     slug: "city-building-permits",
@@ -154,6 +158,7 @@ const CITY: DepartmentContact[] = [
     name: "Planning",
     about: "Land use, historic preservation, comp plan.",
     website: "https://www.cityoffrederickmd.gov/221/Planning",
+    phone: "3016001499",
   },
   {
     slug: "city-housing-human-services",
@@ -168,6 +173,7 @@ const CITY: DepartmentContact[] = [
     name: "Sustainability",
     about: "Climate plan, energy, water conservation, green programs.",
     website: "https://www.cityoffrederickmd.gov/891/Sustainability",
+    phone: "3016002843",
   },
   {
     slug: "city-urban-forestry",
@@ -198,6 +204,7 @@ const CITY: DepartmentContact[] = [
     name: "Public Affairs",
     about: "Press inquiries, public records, city communications.",
     website: "https://www.cityoffrederickmd.gov/277/Public-Affairs",
+    phone: "3016001380",
   },
 ];
 
@@ -225,6 +232,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Sheriff's Office",
     about: "County police, non-emergency. For active emergencies call 911.",
     website: "https://www.frederickcosheriff.com/",
+    phone: "3016001046",
   },
   {
     slug: "county-fire-rescue",
@@ -239,6 +247,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Emergency Management",
     about: "Countywide alerts, severe weather, disaster response.",
     website: "https://frederickcountymd.gov/2001/Emergency-Management",
+    phone: "3016006790",
   },
   {
     slug: "county-animal-control",
@@ -246,6 +255,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Animal Control",
     about: "Stray, injured, or dangerous animals. Adoption and licensing.",
     website: "https://www.frederickcountymd.gov/15/Animal-Control",
+    phone: "3016001546",
   },
   {
     slug: "county-health",
@@ -253,6 +263,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Health Department",
     about: "Vaccines, public health programs, food and water safety.",
     website: "https://health.frederickcountymd.gov/",
+    phone: "3016001029",
   },
   {
     slug: "county-solid-waste",
@@ -274,6 +285,7 @@ const COUNTY: DepartmentContact[] = [
     name: "TransIT Services",
     about: "County buses, routes, schedules, paratransit.",
     website: "https://frederickcountymd.gov/105/Transit-Services",
+    phone: "3016002065",
   },
   {
     slug: "county-parks-rec",
@@ -296,6 +308,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Family Services",
     about: "Programs for kids and families, child care, supportive services.",
     website: "https://frederickcountymd.gov/16/Family-Services",
+    phone: "3016001200",
   },
   {
     slug: "county-planning-permitting",
@@ -311,6 +324,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Public Works",
     about: "County roads, drainage, signs, snow removal outside city limits.",
     website: "https://frederickcountymd.gov/19/Public-Works",
+    phone: "3016001129",
   },
   {
     slug: "county-housing",
@@ -318,6 +332,7 @@ const COUNTY: DepartmentContact[] = [
     name: "Housing",
     about: "Housing assistance, fair-housing complaints, rental programs.",
     website: "https://frederickcountymd.gov/6366/Housing",
+    phone: "3016001061",
   },
   {
     slug: "county-courts",
@@ -332,6 +347,7 @@ const COUNTY: DepartmentContact[] = [
     name: "County Council",
     about: "Legislative body, meeting agendas, public comment.",
     website: "https://frederickcountymd.gov/591/County-Council",
+    phone: "3016001135",
   },
 ];
 
