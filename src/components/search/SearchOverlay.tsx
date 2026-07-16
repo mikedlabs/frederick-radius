@@ -10,6 +10,7 @@ import { readCachedPosition } from "@/hooks/useGeolocation";
 import { haversineMeters, formatDistance } from "@/lib/geo";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
 import { findQuickAnswers } from "@/lib/answers/intents";
+import { searchCivicActions } from "@/lib/search/civic";
 import type { IntentIcon } from "@/lib/answers/types";
 
 /**
@@ -306,11 +307,17 @@ export default function SearchOverlay({
   if (!open) return null;
 
   // Direct answers for the current query — quick-route intents
-  // (open-now, events, transit, parking) + buried-gov departments.
-  // Cheap synchronous lookups; no fetch.
+  // (open-now, events, transit, parking) + buried-gov departments +
+  // the county's own How-Do-I actions (voter registration, FixIT,
+  // marriage licenses, burn permits…). Cheap synchronous lookups; no fetch.
   const quickAnswers = findQuickAnswers(query);
   const govAnswers = findDepartments(query);
-  const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0;
+  const civicAnswers = searchCivicActions(query, 2).filter(
+    // A department card already carries richer detail (phone, about) —
+    // don't double up when an action points at the same page.
+    (c) => !govAnswers.some((d) => d.website === c.href),
+  );
+  const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0 || civicAnswers.length > 0;
 
   return (
     <div
@@ -453,6 +460,30 @@ export default function SearchOverlay({
                   </li>
                 ))}
               </ul>
+              {civicAnswers.length > 0 && (
+                <ul className="mt-1.5 space-y-1.5">
+                  {civicAnswers.map((c) => (
+                    <li key={c.id}>
+                      <a
+                        href={c.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
+                        style={{ borderColor: "var(--app-border)" }}
+                      >
+                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", color: "var(--app-brand-2)" }}>
+                          <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
+                          <span className="block text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{c.subtitle}</span>
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           {!query.trim() ? (

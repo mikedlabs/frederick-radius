@@ -8,13 +8,15 @@ import { fuzzyNameScore, FUZZY_THRESHOLD } from "@/lib/search/fuzzy";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
+import { APP_PAGES, type AppPage } from "@/data/app-pages";
 import { isUpcomingEvent } from "@/lib/events/visible";
 
 export type SearchHit =
   | { type: "place"; place: Place; score: number }
   | { type: "event"; event: Event; score: number }
   | { type: "municipality"; municipality: Municipality; score: number }
-  | { type: "category"; category: Category; score: number };
+  | { type: "category"; category: Category; score: number }
+  | { type: "page"; page: AppPage; score: number };
 
 // Stop words: articles/prepositions PLUS the conversational filler that
 // natural-language Ask queries carry ("i need a hotel", "looking for coffee").
@@ -202,6 +204,20 @@ function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
  * (fresh-eyes audit, Jul 2026). EventWithMeta extends Event, so unified
  * rows pass through unchanged.
  */
+/** Pre-tokenized page registry — the app's own guides/tools as search
+ *  hits ("public restroom" → Amenities, "post office" → Shipping).
+ *  Multi-word keywords match ONLY as typed phrases — splitting "water
+ *  level" into words made "water bill" surface River levels. Words keep
+ *  2-char tokens ("ev" charging) since keywords are curated. */
+const PAGE_INDEX = APP_PAGES.map((page) => ({
+  page,
+  words: new Set(
+    [...page.title.toLowerCase().split(/[^a-z0-9]+/), ...page.keywords.filter((k) => !k.includes(" ")).map((k) => k.toLowerCase())]
+      .filter((w) => w.length >= 2),
+  ),
+  phrases: page.keywords.filter((k) => k.includes(" ")).map((k) => k.toLowerCase()),
+}));
+
 export function search(query: string, limit = 30, eventPool: readonly Event[] = EVENTS): SearchHit[] {
   const terms = normalize(query);
   if (terms.length === 0) return [];
@@ -250,6 +266,23 @@ export function search(query: string, limit = 30, eventPool: readonly Event[] = 
   for (const c of CATEGORIES) {
     const s = fieldScore(c.name, terms) * 3 + fieldScore(c.blurb, terms) * 1;
     if (s > 0) hits.push({ type: "category", category: c, score: s });
+  }
+
+  // The app's own guides/tools: an exact keyword word scores high enough
+  // (14) to lead its noun — "brunch" finds the brunch GUIDE above the
+  // places whose blurbs mention brunch — and a typed multi-word keyword
+  // ("happy hour", "post office") gets a phrase bonus. Threshold = one
+  // real word hit, so stray tokens never surface an unrelated page.
+  {
+    const ql = query.toLowerCase();
+    for (const { page, words, phrases } of PAGE_INDEX) {
+      let s = 0;
+      for (const t of terms) if (words.has(t)) s += 14;
+      // A typed multi-word keyword ("ev charging", "post office") is the
+      // strongest signal — full weight, since its words don't score solo.
+      if (phrases.some((p) => ql.includes(p))) s += 14;
+      if (s >= 14) hits.push({ type: "page", page, score: s });
+    }
   }
 
   // The typo net — fallback only. When exact/substring ranking strands the
