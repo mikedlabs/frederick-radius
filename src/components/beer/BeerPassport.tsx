@@ -10,6 +10,14 @@ import {
   type Brewery,
   type StyleFamily,
 } from "@/data/beers";
+import MARKS_RAW from "@/data/brewery-marks.json" with { type: "json" };
+
+/** Brewery logo marks — each brewery's OWN published site icon, fetched
+ *  from its website, reviewed by hand (generic platform favicons and
+ *  photo-crops excluded), and committed with source provenance. Eight of
+ *  seventeen ship one; the rest fall back to the venue photo, then the
+ *  monogram. */
+const MARKS = MARKS_RAW as Record<string, { file: string; source: string; fetched: string }>;
 
 const STORAGE_KEY = "fr:beer-passport:v1";
 const VALID_SLUGS = new Set(BREWERIES.map((brewery) => brewery.slug));
@@ -258,7 +266,8 @@ export default function BeerPassport({
           {BREWERIES.map((brewery, index) => {
             const isVisited = visitedSet.has(brewery.slug);
             const family = FAMILY_BY_KEY[dominantFamily(brewery)];
-            const photo = photoBySlug[brewery.slug] ?? null;
+            const mark = MARKS[brewery.slug]?.file ?? null;
+            const photo = mark ? null : photoBySlug[brewery.slug] ?? null;
             return (
               <li key={brewery.slug} className="min-w-0 text-center">
                 <button
@@ -274,16 +283,31 @@ export default function BeerPassport({
                   style={{
                     borderColor: isVisited ? family.deep : "var(--app-border-strong)",
                     borderStyle: isVisited ? "solid" : "dashed",
-                    background: isVisited
-                      ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
-                      : "var(--app-bg-sunken)",
+                    background: mark
+                      ? "#fff"
+                      : isVisited
+                        ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
+                        : "var(--app-bg-sunken)",
                     color: isVisited ? "white" : "var(--app-ink-3)",
                     boxShadow: isVisited
                       ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent)`
                       : "inset 0 0 0 3px var(--app-bg-elevated)",
                   }}
                 >
-                  {photo ? (
+                  {mark ? (
+                    <span aria-hidden className="absolute inset-[13%] overflow-hidden">
+                      {/* The brewery's own logo mark on a white stamp disc —
+                          dimmed until stamped, full color once visited. */}
+                      <Image
+                        src={mark}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-contain transition-[filter] duration-300"
+                        style={isVisited ? undefined : { filter: "grayscale(0.7) opacity(0.8)" }}
+                      />
+                    </span>
+                  ) : photo ? (
                     <span aria-hidden className="absolute inset-0 overflow-hidden rounded-full">
                       {/* The taproom's real photo — desaturated until stamped,
                           like an unfilled passport page. Proxy photos skip

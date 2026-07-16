@@ -144,6 +144,9 @@ const nextConfig: NextConfig = {
       { pathname: "/images/**", search: "" },
       { pathname: "/from-above/**", search: "" },
       { pathname: "/history-photos/**", search: "" },
+      // Brewery logo marks (the breweries' own site icons, committed with
+      // provenance in src/data/brewery-marks.json) — the /beer passport.
+      { pathname: "/brewery-marks/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
