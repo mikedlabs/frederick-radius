@@ -304,11 +304,33 @@ export default function RightNow({
     setFacetKey(null); // a fresh craving starts unfiltered
     setClosingSoonOnly(false); // and not stuck on a previous craving's urgency filter
     setTownKey(null); // and back to everywhere
+    // The tapped craving is a PLACE in the journey, so it gets a URL and a
+    // history entry: the system Back button returns to the picker instead of
+    // ejecting to the previous page (journey audit — tap Coffee, press Back,
+    // land on /today with both picker and answer lost), a refresh keeps the
+    // answer, and the answer is shareable. Native pushState is the App
+    // Router-sanctioned shallow update; the popstate listener below walks it.
+    window.history.pushState(null, "", `/nearby?c=${encodeURIComponent(key)}`);
     // First craving with no location yet → ask, so the answer can be
     // "nearest to YOU" rather than nearest to downtown. One prompt, then
     // it's cached for the session.
     if (state.status === "idle") request();
   }
+
+  // Back/forward walks the in-page states the pushState above created:
+  // re-derive craving + facet from the URL the browser landed on. (Deep-link
+  // arrivals never pushed, so Back leaves the page naturally from there.)
+  useEffect(() => {
+    const onPop = () => {
+      const sp = new URL(window.location.href).searchParams;
+      const c = sp.get("c");
+      setCravingKey(c && (CRAVING_BY_KEY[c] || isMealKey(c)) ? c : null);
+      setFacetKey(sp.get("facet"));
+      setClosingSoonOnly(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // ── Craving picker (the front door) ──
   if (!active) {
