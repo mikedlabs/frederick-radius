@@ -242,6 +242,9 @@ export default function MapDock(props: MapDockProps) {
 
   const [pane, setPane] = useState<Pane | null>(null);
   const [amenExpanded, setAmenExpanded] = useState(() => props.amenityGroups.size > 0);
+  // The tray's Key grid is collapsed by default so the overlay stays a
+  // low strip; one small chip reveals it.
+  const [keyOpen, setKeyOpen] = useState(false);
   const [whereSel, setWhereSel] = useState<WhereSel>({ kind: "county" });
   // Focus management for the top-sheet pane (mirrors the /events dock):
   // focus lands inside the pane on open, and the trigger is restored on close.
@@ -291,7 +294,7 @@ export default function MapDock(props: MapDockProps) {
   }
 
   useEffect(() => {
-    onPaneOpenChange(pane !== null);
+    onPaneOpenChange(pane !== null && pane !== "layers");
   }, [pane, onPaneOpenChange]);
 
   // Focus into the pane when it opens (first focusable), so the drawer is
@@ -523,7 +526,10 @@ export default function MapDock(props: MapDockProps) {
       closePane();
       return;
     }
-    const host = pane === "layers" ? sheetRef.current : paneRef.current;
+    // The layers TRAY is non-modal (the map stays visible and usable), so
+    // no Tab trap there — Escape above still closes it.
+    if (pane === "layers") return;
+    const host = paneRef.current;
     if (e.key !== "Tab" || !host) return;
     const nodes = Array.from(
       host.querySelectorAll<HTMLElement>(FOCUSABLE),
@@ -552,7 +558,7 @@ export default function MapDock(props: MapDockProps) {
     <>
       {/* Scrim — dims the map; a tap closes the open pane. */}
       <div
-        className={`dock-scrim${pane ? " on" : ""}`}
+        className={`dock-scrim${pane && pane !== "layers" ? " on" : ""}`}
         onClick={closePane}
         aria-hidden
       />
@@ -890,13 +896,18 @@ export default function MapDock(props: MapDockProps) {
           ("Base map", "Aerial +2") so it's the readout the caption seg
           used to be; tapping opens the bottom sheet. Hidden in list view
           and while its own sheet is up. ── */}
-      {!props.listView && pane !== "layers" && (
+      {!props.listView && (
         <button
           type="button"
           className="dock-lfab tap-44"
-          aria-haspopup="dialog"
-          aria-expanded={false}
-          onClick={() => { haptic("light"); setPane("layers"); }}
+          data-on={pane === "layers" || undefined}
+          aria-expanded={pane === "layers"}
+          aria-controls="dock-ltray"
+          onClick={() => {
+            haptic("light");
+            if (pane === "layers") closePane();
+            else setPane("layers");
+          }}
         >
           <LayersIcon className="h-4 w-4" strokeWidth={2.2} aria-hidden />
           <span className="dock-lfab-v" style={{ color: layersColor }}>
@@ -906,21 +917,16 @@ export default function MapDock(props: MapDockProps) {
         </button>
       )}
       <div
-        className={`dock-lsheet${pane === "layers" ? " open" : ""}`}
-        role="dialog"
+        id="dock-ltray"
+        className={`dock-ltray${pane === "layers" ? " open" : ""}`}
+        role="group"
         aria-label="Map layers"
         aria-hidden={pane !== "layers"}
         inert={pane !== "layers"}
         ref={sheetRef}
         onKeyDown={onPaneKeyDown}
       >
-        <div className="dock-pane-scroll">
-          <div className="dock-pane-head">
-            <span className="dock-pane-title font-serif">Map layers</span>
-            <button type="button" className="dock-done" onClick={closePane}>
-              Done
-            </button>
-          </div>
+        <div className="dock-ltray-scroll">
 
               <div>
                 <Sect>Map layers</Sect>
@@ -1084,9 +1090,19 @@ export default function MapDock(props: MapDockProps) {
                   </>
                 )}
 
-                {/* The key — a field guide has a legend. Read-only: what
-                    each pin color means, in the What pane's own order. */}
-                <Sect>Key</Sect>
+                {/* The key — a field guide has a legend. Collapsed by
+                    default so the tray stays low; read-only. */}
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  data-on={keyOpen || undefined}
+                  aria-expanded={keyOpen}
+                  onClick={() => setKeyOpen((v) => !v)}
+                >
+                  Key
+                  <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{keyOpen ? "▲" : "▼"}</span>
+                </button>
+                {keyOpen && (
                 <div
                   className="grid grid-cols-2 gap-x-3 gap-y-1 px-1 pb-1"
                   role="list"
@@ -1108,6 +1124,7 @@ export default function MapDock(props: MapDockProps) {
                     </span>
                   ))}
                 </div>
+                )}
               </div>
         </div>
       </div>
