@@ -7,6 +7,7 @@ import { cleanVenueName } from "@/lib/events/normalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "@/components/event/EventCard";
+import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import PageBloom from "@/components/ui/PageBloom";
 
 /**
@@ -112,7 +113,10 @@ export default async function LiveMusicPage() {
   const nothingAnywhere = tonight.length === 0 && ahead.length === 0;
 
   return (
-    <div className="relative mx-auto max-w-md space-y-6 py-6">
+    // Lean-surface sheet boundary: a tap on any show opens the event
+    // sheet on demand (skeleton + single-event fetch) instead of a page
+    // navigation per maybe. Anchors stay real.
+    <EventSheetBoundary fetchMissing className="relative mx-auto max-w-md space-y-6 py-6">
       <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -281,6 +285,6 @@ export default async function LiveMusicPage() {
           </p>
         </>
       )}
-    </div>
+    </EventSheetBoundary>
   );
 }

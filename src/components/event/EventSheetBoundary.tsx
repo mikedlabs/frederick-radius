@@ -20,15 +20,23 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  * contract beats ours.
  */
 export default function EventSheetBoundary({
-  events,
+  events = [],
+  fetchMissing = false,
   children,
   className,
 }: {
-  events: EventWithMeta[];
+  /** Events already on the client — instant sheet opens (the board). */
+  events?: EventWithMeta[];
+  /**
+   * Lean-surface mode (/today, /live-music): slugs outside `events`
+   * open on a skeleton and fetch the one tapped event, instead of the
+   * surface shipping its whole corpus to the client just in case.
+   */
+  fetchMissing?: boolean;
   children: ReactNode;
   className?: string;
 }) {
-  const { openEventSheet } = useEventSheet();
+  const { openEventSheet, openEventSheetBySlug } = useEventSheet();
   const bySlug = useMemo(() => new Map(events.map((e) => [e.slug, e])), [events]);
 
   const onClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -41,11 +49,13 @@ export default function EventSheetBoundary({
     const slug = (anchor.getAttribute("href") ?? "")
       .replace("/events/", "")
       .split(/[?#]/)[0];
+    if (!slug) return;
     const event = bySlug.get(slug);
-    if (!event) return;
+    if (!event && !fetchMissing) return;
     e.preventDefault();
     e.stopPropagation();
-    openEventSheet(event);
+    if (event) openEventSheet(event);
+    else openEventSheetBySlug(slug);
   };
 
   return (
