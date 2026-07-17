@@ -73,7 +73,7 @@ export default function BeerTasteFlight({ photos }: { photos: BreweryPhotoMap })
           const selected = taste.key === pathKey;
           return (
             <button key={taste.key} type="button" aria-pressed={selected} onClick={() => setPathKey(taste.key)} className="min-h-[96px] w-[72vw] max-w-[230px] shrink-0 snap-start rounded-[var(--app-radius-md)] border px-3 py-3 text-left sm:w-auto sm:max-w-none sm:rounded-none sm:border-0 sm:border-r sm:last:border-r-0" style={{ borderColor: "var(--app-border)", background: selected ? "var(--app-ink)" : "var(--app-bg-elevated)", color: selected ? "var(--app-bg)" : "var(--app-ink)" }}>
-              <span className="flex justify-between gap-2 font-mono text-[9px] opacity-50"><span>0{index + 1}</span><span>{STATS[taste.key].beers} pours</span></span>
+              <span className="flex justify-between gap-2 font-mono text-[9px] opacity-70"><span>0{index + 1}</span><span>{STATS[taste.key].beers} pours</span></span>
               <span className="mt-2 block text-[13px] font-semibold">{taste.label}</span>
               <span className="mt-1 block line-clamp-2 text-[10px] leading-snug opacity-65">{taste.description}</span>
             </button>

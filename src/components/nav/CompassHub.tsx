@@ -275,7 +275,7 @@ export default function CompassHub() {
         >
           One way into every Frederick guide, map, calendar, and useful local tool.
         </p>
-        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-white/36">
+        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-white/62">
           <span className="h-px w-10 bg-[#e14328]" aria-hidden />
           Start with the job
         </div>

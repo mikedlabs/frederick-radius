@@ -152,11 +152,11 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
         </div>
         <div className="flex items-end justify-between gap-8 border-t border-white/10 pt-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
           <div>
-            <p className="font-mono text-[8px] uppercase tracking-[0.15em] text-white/35">On the rail</p>
+            <p className="font-mono text-[8px] uppercase tracking-[0.15em] text-white/62">On the rail</p>
             <p className="mt-1 font-serif text-[34px] leading-none">{visible.length}</p>
           </div>
           <div>
-            <p className="font-mono text-[8px] uppercase tracking-[0.15em] text-white/35">Open signal</p>
+            <p className="font-mono text-[8px] uppercase tracking-[0.15em] text-white/62">Open signal</p>
             <p className="mt-1 font-serif text-[34px] leading-none">{openRows.length || "–"}</p>
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                 className="relative min-h-12 min-w-11 shrink-0 py-1 text-[11px] font-semibold text-white/48 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 style={{ color: selected ? "#f3d496" : undefined }}
               >
-                {option.label} <span className="font-mono text-[8px] opacity-50">{option.key === "open" && disabled ? "…" : count}</span>
+                {option.label} <span className="font-mono text-[8px] opacity-80">{option.key === "open" && disabled ? "…" : count}</span>
                 {selected ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#e3b65d]" aria-hidden /> : null}
               </button>
             );
@@ -233,7 +233,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                 );
               })}
             </div>
-            <p className="pointer-events-none absolute bottom-3 right-4 flex items-center gap-1 font-mono text-[7px] uppercase tracking-[0.12em] text-white/25 sm:hidden">
+            <p className="pointer-events-none absolute bottom-3 right-4 flex items-center gap-1 font-mono text-[7px] uppercase tracking-[0.12em] text-white/62 sm:hidden">
               Slide the rail <ChevronRight className="h-3 w-3" aria-hidden />
             </p>
           </div>
@@ -303,8 +303,8 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
 
               <div className="border-t border-white/16 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.17em] text-white/42">Three to know</p>
-                  {place?.google_rating ? <span className="font-mono text-[9px] text-white/42">Google {place.google_rating.toFixed(1)}</span> : null}
+                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.17em] text-white/62">Three to know</p>
+                  {place?.google_rating ? <span className="font-mono text-[9px] text-white/62">Google {place.google_rating.toFixed(1)}</span> : null}
                 </div>
                 <ol className="mt-3 divide-y divide-white/14">
                   {pours.map((beer, index) => {
@@ -321,7 +321,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                     );
                   })}
                 </ol>
-                <p className="mt-5 flex gap-2 text-[9px] leading-relaxed text-white/38">
+                <p className="mt-5 flex gap-2 text-[9px] leading-relaxed text-white/62">
                   <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
                   <span>Features checked {BREWERY_SOURCE_CHECKED_AT}. Signature beers are a guide, not a live tap claim.</span>
                 </p>

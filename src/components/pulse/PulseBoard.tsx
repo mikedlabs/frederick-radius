@@ -374,7 +374,7 @@ export default function PulseBoard({
             {hero.line}
           </h1>
           <p className="mt-3 max-w-[36rem] text-[13px] leading-relaxed text-white/62">{hero.sub}</p>
-          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11px] font-medium text-white/42"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
+          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11px] font-medium text-white/62"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
           {lead && (
             <div className="mt-3">
               <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-1.5 border-b text-[12px] font-semibold text-white transition active:opacity-70" style={{ borderColor: heroColor }}>
@@ -386,7 +386,7 @@ export default function PulseBoard({
             </div>
           </div>
           <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} dark /></div>
-          <p className="mt-2 flex items-center gap-1.5 text-[9px] text-white/35"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
+          <p className="mt-2 flex items-center gap-1.5 text-[9px] text-white/62"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
         </div>
       </header>
 
