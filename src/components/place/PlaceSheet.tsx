@@ -518,7 +518,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
           <Link
             href={`/places/${place.slug}`}
-            onClick={() => haptic("light")}
+            onClick={() => { haptic("light"); onClose(); }}
             className="inline-flex items-center gap-1 font-medium"
             style={{ color: "var(--app-brand-press)" }}
           >

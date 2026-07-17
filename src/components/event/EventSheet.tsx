@@ -287,12 +287,37 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             <EventActions event={event} className="ml-auto" />
           </div>
 
+          {/* Make a night of it — the workflow tap (app-like pass): the show
+           *  is the anchor, dinner is the question. One link lands on the
+           *  map with the venue's peek open and the Eat & drink lens on,
+           *  which also surfaces the nearest garage line. Only for events
+           *  at a KNOWN venue; a guessed point gets no plan built on it. */}
+          {event.venue_place_slug && !isCancelled && (
+            <div className="mt-4 rounded-[var(--app-radius-md)] border border-dashed p-3" style={{ borderColor: "var(--app-border)" }}>
+              <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                Make a night of it
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                See food, drinks, and parking around {event.venue_name || "the venue"} on the map.
+              </p>
+              <Link
+                href={`/map?open=${encodeURIComponent(event.venue_place_slug)}&intent=eat-drink`}
+                onClick={() => { haptic("light"); onClose(); }}
+                className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                Eat &amp; drink nearby
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              </Link>
+            </div>
+          )}
+
           {/* Footer — the committed tap: the real page, with getting-there,
            *  pairings, and provenance. */}
           <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
             <Link
               href={`/events/${event.slug}`}
-              onClick={() => haptic("light")}
+              onClick={() => { haptic("light"); onClose(); }}
               className="inline-flex items-center gap-1 font-medium"
               style={{ color: "var(--app-brand-press)" }}
             >
