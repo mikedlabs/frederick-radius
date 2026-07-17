@@ -47,8 +47,53 @@ type TmEvent = {
     status?: { code?: string };
   };
   priceRanges?: Array<{ min?: number }>;
+  images?: Array<{ url?: string; width?: number; ratio?: string }>;
   _embedded?: { venues?: TmVenue[] };
 };
+
+/** "From $28" / "From $28.50" — only when the feed publishes a real floor
+ *  above zero (zero means free and is_free already owns that). */
+export function ticketFloorText(min: number | undefined): string | undefined {
+  if (typeof min !== "number" || !Number.isFinite(min) || min <= 0) return undefined;
+  return `From $${Number.isInteger(min) ? min : min.toFixed(2)}`;
+}
+
+/**
+ * Hosts next.config.ts allowlists for event hero images. The adapters
+ * emit hero_image ONLY for these, so an unexpected CDN in a feed
+ * response silently drops the image rather than crashing next/image
+ * (an off-list host throws at render). Keep in sync with next.config.
+ */
+export const EVENT_IMAGE_HOSTS: ReadonlySet<string> = new Set([
+  "s1.ticketm.net",
+  "seatgeek.com",
+]);
+
+export function allowedEventImage(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && EVENT_IMAGE_HOSTS.has(u.hostname) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best card image from Ticketmaster's size ladder: prefer 16:9 near the
+ *  card's ~640px render width, fall back to the widest image of any ratio.
+ *  Only allowlisted hosts survive. Undefined when nothing usable. */
+export function pickTmImage(images: TmEvent["images"]): string | undefined {
+  const usable = (images ?? []).filter(
+    (i) => allowedEventImage(i?.url) && (i.width ?? 0) >= 300,
+  );
+  if (usable.length === 0) return undefined;
+  const wide = usable.filter((i) => i.ratio === "16_9");
+  const pool = wide.length > 0 ? wide : usable;
+  const scored = [...pool].sort(
+    (a, b) => Math.abs((a.width ?? 0) - 640) - Math.abs((b.width ?? 0) - 640),
+  );
+  return scored[0]?.url;
+}
 
 /**
  * Lifecycle status for a Ticketmaster row. The structured
@@ -126,6 +171,8 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
       source_label: "Ticketmaster",
       url: ev.url ?? "",
       is_free: typeof minPrice === "number" && minPrice === 0,
+      price_text: ticketFloorText(minPrice),
+      hero_image: pickTmImage(ev.images),
       status,
       last_verified_at: new Date().toISOString(),
     });

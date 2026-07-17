@@ -20,6 +20,7 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { allowedEventImage, ticketFloorText } from "@/lib/integrations/ticketmaster";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
@@ -50,6 +51,7 @@ type SgEvent = {
   venue?: SgVenue;
   stats?: { lowest_price?: number | null };
   taxonomies?: Array<{ name?: string }>;
+  performers?: Array<{ image?: string | null }>;
 };
 
 function inCounty(lat: number, lng: number): boolean {
@@ -126,6 +128,8 @@ export function normalizeSeatGeek(raw: unknown): LiveEvent[] {
       // A lowest_price of exactly 0 is free; null or absent means the
       // price is unknown, not free, so only an explicit 0 sets the flag.
       is_free: typeof lowest === "number" && lowest === 0,
+      price_text: ticketFloorText(lowest ?? undefined),
+      hero_image: allowedEventImage(ev.performers?.find((p) => p?.image)?.image),
       status: "scheduled" as const,
       last_verified_at: new Date().toISOString(),
     });
