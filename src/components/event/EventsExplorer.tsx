@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
+import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
@@ -516,8 +517,12 @@ export default function EventsExplorer({
   if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
   if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
 
+  // Sheet boundary: a plain tap on any event link below opens the
+  // EventSheet in place (essentials without a page navigation; the
+  // full page stays one tap away and every anchor stays real).
+  // Modified clicks and unknown slugs fall through to navigation.
   return (
-    <div className="space-y-3">
+    <EventSheetBoundary events={eventPool} className="space-y-3">
       {/* The masthead-dock — the almanac nameplate (collapses on scroll) +
           the pinned What · When · Where caption bar (each word a tab into a
           top-sheet pane) + the mono count line and the "how you look"
@@ -911,6 +916,6 @@ export default function EventsExplorer({
         </div>
       )}
       </div>
-    </div>
+    </EventSheetBoundary>
   );
 }

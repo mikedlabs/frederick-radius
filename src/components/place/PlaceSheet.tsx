@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion, type PanInfo } from "framer-motion";
-import { ExternalLink, Phone, Globe, Navigation, X, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
 import Image from "next/image";
 import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { haptic } from "@/lib/haptics";
-import { useFocusTrap } from "@/hooks/useFocusTrap";
+import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -31,8 +30,10 @@ import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 /**
- * Bottom-sheet detail view for a place. Slides up with spring physics,
- * dragable via the handle at top, swipe-down to dismiss past 100px.
+ * Bottom-sheet detail view for a place. The presence/drag/focus/exit
+ * machinery lives in the shared BottomSheet shell (app-like pass,
+ * phase 2) so every sheet in the app behaves identically; this file
+ * owns only the place CONTENT.
  *
  * Trigger: PlaceCardLink or any consumer calls openPlaceSheet(place)
  * via the context provided by PlaceSheetProvider.
@@ -43,107 +44,10 @@ type Props = {
 };
 
 export default function PlaceSheet({ place, onClose }: Props) {
-  const reduce = useReducedMotion();
-  const y = useMotionValue(0);
-  const backdropOpacity = useTransform(y, [0, 300], [0.45, 0]);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  // Remember what was focused before opening so we can restore it on close —
-  // a baseline dialog expectation (the sheet had aria-modal but never managed
-  // focus, leaving keyboard/SR users stranded behind it).
-  const lastFocused = useRef<HTMLElement | null>(null);
-  const [open, setOpen] = useState(false);
-
-  // Keep Tab within the sheet while it's open — it already focuses itself on
-  // open and restores focus on close, but Tab could still walk out to the
-  // obscured page (2026-07 shell-hardening P7).
-  useFocusTrap(sheetRef, open && Boolean(place));
-
-  useEffect(() => {
-    if (place) {
-      lastFocused.current = (document.activeElement as HTMLElement | null) ?? null;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming place prop to drive the open animation
-      setOpen(true);
-      haptic("light");
-    }
-  }, [place]);
-
-  // Move focus into the sheet on open; restore it to the trigger on close.
-  useEffect(() => {
-    if (open) {
-      sheetRef.current?.focus();
-    } else if (lastFocused.current) {
-      lastFocused.current.focus?.();
-      lastFocused.current = null;
-    }
-  }, [open]);
-
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
-
-  // ESC dismisses — a baseline keyboard-accessibility expectation
-  // for any modal/dialog. Audit feedback: the sheet felt locked;
-  // hardware-key escape is one more way out.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.y > 120 || info.velocity.y > 500) {
-      haptic("light");
-      setOpen(false);
-      setTimeout(onClose, 220);
-    } else {
-      y.set(0);
-    }
-  };
-
   return (
-    <AnimatePresence onExitComplete={onClose}>
-      {open && place && (
-        <div className="fixed inset-0 z-[var(--z-overlay)]" aria-modal="true" role="dialog" aria-label={place.name}>
-          {/* Backdrop */}
-          <motion.button
-            type="button"
-            aria-label="Close"
-            onClick={() => { haptic("light"); setOpen(false); }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={reduce ? { duration: 0 } : { duration: 0.18 }}
-            className="absolute inset-0 bg-black"
-            style={{ opacity: backdropOpacity }}
-          />
-
-          {/* Sheet */}
-          <motion.div
-            ref={sheetRef}
-            tabIndex={-1}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }}
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 600 }}
-            dragElastic={{ top: 0, bottom: 0.55 }}
-            onDragEnd={handleDragEnd}
-            style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
-          >
-            <PlaceSheetContent place={place} onClose={() => setOpen(false)} />
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <BottomSheet present={Boolean(place)} onClose={onClose} ariaLabel={place?.name ?? "Place details"}>
+      {(dismiss) => place && <PlaceSheetContent place={place} onClose={dismiss} />}
+    </BottomSheet>
   );
 }
 
@@ -214,30 +118,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
   return (
     <>
-      {/* Drag handle + explicit close.
-       *  Audit feedback: the sheet felt "locked" because the small X
-       *  in the header row was easy to miss. A labeled "Close" button
-       *  here at the top with an explicit X icon makes it obvious that
-       *  this thing dismisses. Tap target matches iOS sheet minimum
-       *  (44pt). Drag handle stays for swipe-down dismiss. */}
-      <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
-        <button
-          type="button"
-          onClick={() => { haptic("light"); onClose(); }}
-          aria-label="Close and return to the map"
-          className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Close
-        </button>
-        <span
-          aria-hidden
-          className="block h-1 w-10 rounded-full"
-          style={{ background: "var(--app-border)" }}
-        />
-        <span className="w-[64px]" aria-hidden />
-      </div>
+      <SheetHandle onClose={onClose} closeLabel="Close and return to the map" />
 
       {/* Scrollable content. The outer motion.div is flex-col with
        *  max-h-[85dvh] + overflow-hidden, so this inner panel is

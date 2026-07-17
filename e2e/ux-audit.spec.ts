@@ -89,8 +89,19 @@ test.describe("UX gate: render health + WCAG A/AA", () => {
       await page.waitForTimeout(2500);
       const body = await page.textContent("body");
       expect(body, `${route} should not render the error boundary`).not.toContain(ERROR_BOUNDARY_TEXT);
-      const height = await page.evaluate(() => document.body.scrollHeight);
-      expect(height, `${route} should render real content, not a blank shell`).toBeGreaterThan(900);
+      // Blank-shell check. Height alone can't tell an HONEST short page
+      // from an empty shell (both fit the 844px viewport): the search
+      // route may legitimately answer with a single strong result, so it
+      // asserts real result content instead of pixels.
+      if (route.startsWith("/search")) {
+        expect(
+          await page.locator("a[href^='/places/'], a[href^='/events/'], a[href^='http']").count(),
+          `${route} should render at least one real result`,
+        ).toBeGreaterThan(0);
+      } else {
+        const height = await page.evaluate(() => document.body.scrollHeight);
+        expect(height, `${route} should render real content, not a blank shell`).toBeGreaterThan(900);
+      }
 
       // ── Accessibility: WCAG 2.0/2.1 A + AA, pinned at zero ──
       await page.addScriptTag({ path: AXE_PATH });
