@@ -56,6 +56,7 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import GoldenHourCard from "@/components/today/GoldenHourCard";
 import EventWalkTime from "@/components/today/EventWalkTime";
+import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 
 /**
  * Now — the daily briefing.
@@ -155,7 +156,11 @@ export default async function HomePage() {
   const eventsPromise = assembleUnifiedEvents(now);
 
   return (
-    <div className="relative">
+    // Sheet boundary in lean-surface mode: today's rails deliberately keep
+    // the event corpus out of the client payload, so a tap on any event
+    // link opens the sheet on a skeleton and fetches just that event.
+    // Real anchors, SEO, and modified clicks all pass through untouched.
+    <EventSheetBoundary fetchMissing className="relative">
       <PageBloom />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
@@ -521,7 +526,7 @@ export default async function HomePage() {
         </div>{/* /RIGHT column */}
       </div>{/* /responsive split */}
       </CollapsibleSection>
-    </div>
+    </EventSheetBoundary>
   );
 }
 

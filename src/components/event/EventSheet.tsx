@@ -29,14 +29,48 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  */
 type Props = {
   event: EventWithMeta | null;
+  /** Open on a skeleton while the on-demand fetch is in flight. */
+  pending?: boolean;
   onClose: () => void;
 };
 
-export default function EventSheet({ event, onClose }: Props) {
+export default function EventSheet({ event, pending = false, onClose }: Props) {
   return (
-    <BottomSheet present={Boolean(event)} onClose={onClose} ariaLabel={event?.title ?? "Event details"}>
-      {(dismiss) => event && <EventSheetContent event={event} onClose={dismiss} />}
+    <BottomSheet
+      present={Boolean(event) || pending}
+      onClose={onClose}
+      ariaLabel={event?.title ?? "Event details"}
+    >
+      {(dismiss) =>
+        event ? (
+          <EventSheetContent event={event} onClose={dismiss} />
+        ) : (
+          <EventSheetSkeleton onClose={dismiss} />
+        )
+      }
     </BottomSheet>
+  );
+}
+
+/** Calm placeholder while the tapped event loads (on-demand path). */
+function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <SheetHandle onClose={onClose} closeLabel="Close" />
+      <div
+        className="px-5 pb-[max(env(safe-area-inset-bottom,0px)+88px,88px)] pt-4"
+        role="status"
+        aria-label="Loading event"
+      >
+        <div className="h-3 w-24 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <div className="mt-3 h-6 w-4/5 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <div className="mt-2 h-6 w-3/5 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <div className="mt-5 h-4 w-40 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <div className="mt-3 h-3 w-full rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <div className="mt-2 h-3 w-11/12 rounded-full" style={{ background: "var(--app-bg-sunken)" }} />
+        <span className="sr-only">Loading…</span>
+      </div>
+    </>
   );
 }
 
