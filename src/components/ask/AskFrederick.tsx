@@ -21,7 +21,7 @@ import type { AskAction, AskPlanPreview, AskResult, AskSource } from "@/lib/ask/
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { useSavedList } from "@/hooks/useSaved";
 import { getInterests } from "@/lib/personalize";
-import { getScope, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, scopeInSentence, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { contextualizeAskQuery } from "@/lib/ask/followup";
 import type { TodayPrompt } from "@/lib/today-prompts";
 
@@ -268,7 +268,7 @@ export default function AskFrederick({ hideLabel = false, quickAsks = QUICK_ASKS
       ) : null}
 
       <p className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-        <MapPin className="h-3 w-3" aria-hidden /> Searching {contextLabel}
+        <MapPin className="h-3 w-3" aria-hidden /> Searching {scopeInSentence(contextLabel)}
       </p>
 
       <form

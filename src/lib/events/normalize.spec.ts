@@ -13,6 +13,8 @@ import {
   collapseRecurringEvents,
   dedupeCrossSourceShows,
   titleIsJustVenue,
+  isFacilityBooking,
+  stripFacilityPrefix,
 } from "./normalize";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -448,5 +450,50 @@ describe("titleIsJustVenue", () => {
     expect(titleIsJustVenue("JoJo's Restaurant & Tap House", null)).toBe(false);
     expect(titleIsJustVenue("JoJo's Restaurant & Tap House", "")).toBe(false);
     expect(titleIsJustVenue("", "JoJo's Restaurant & Tap House")).toBe(false);
+  });
+});
+
+describe("isFacilityBooking", () => {
+  it("drops pavilion rentals, private bookings, and program blocks", () => {
+    for (const t of [
+      "East End Park Pavilion - B.S. Rental",
+      "Large Pavilion A - Wachter Celebration of Life",
+      "Large Pavilion B - Rocky Ridge 4-H Club",
+      "Small Pavilion - TOT - Summer Park Program",
+      "Large Pavilion A - Thurmont Church of the Brethren Sunday Service",
+    ]) {
+      expect(isFacilityBooking(t)).toBe(true);
+    }
+  });
+
+  it("keeps a public draw hosted at a facility", () => {
+    expect(isFacilityBooking("Large Pavilion A - Main Street Farmers Market")).toBe(false);
+    expect(isFacilityBooking("Baker Park Bandshell - Summer Concert Series")).toBe(false);
+  });
+
+  it("never fires on ordinary hyphenated titles", () => {
+    expect(isFacilityBooking("Frederick Arts Council - Annual Members Show")).toBe(false);
+    expect(isFacilityBooking("Alive @ Five at Carroll Creek")).toBe(false);
+  });
+});
+
+describe("stripFacilityPrefix", () => {
+  it("strips the ledger prefix from a kept public event", () => {
+    expect(stripFacilityPrefix("Large Pavilion A - Main Street Farmers Market")).toBe(
+      "Main Street Farmers Market",
+    );
+  });
+
+  it("is identity for ordinary titles and presenter splits", () => {
+    expect(stripFacilityPrefix("Frederick Arts Council - Annual Members Show")).toBe(
+      "Frederick Arts Council - Annual Members Show",
+    );
+    expect(stripFacilityPrefix("Alive @ Five at Carroll Creek")).toBe(
+      "Alive @ Five at Carroll Creek",
+    );
+  });
+
+  it("refuses a strip that would leave a scrap behind", () => {
+    expect(stripFacilityPrefix("Large Pavilion A - B.S.")).toBe("Large Pavilion A - B.S.");
   });
 });
