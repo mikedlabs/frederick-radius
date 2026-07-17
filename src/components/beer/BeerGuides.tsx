@@ -127,7 +127,7 @@ export default function BeerGuides({ photos }: { photos: BreweryPhotoMap }) {
         })}
       </div>
 
-      <div className="mt-5 flex flex-col gap-2 text-[10px] leading-relaxed text-white/38 sm:flex-row sm:justify-between">
+      <div className="mt-5 flex flex-col gap-2 text-[10px] leading-relaxed text-white/62 sm:flex-row sm:justify-between">
         <p className="flex max-w-[32rem] gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /><span>Signature beers, not a live tap list. Verify availability with the brewery.</span></p>
         <p className="flex max-w-[28rem] gap-2"><CarFront className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /><span>For multi-stop outings, use a designated driver or rideshare.</span></p>
       </div>

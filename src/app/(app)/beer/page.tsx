@@ -77,7 +77,7 @@ export default function BeerPage() {
         <div className="max-w-[42rem]">
           <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]"><Database className="h-3.5 w-3.5" strokeWidth={1.9} aria-hidden />Before the next round</p>
           <p className="mt-3 max-w-[13ch] font-serif text-[32px] font-semibold leading-[0.9] tracking-[-0.035em]">Drink curious. Check the tap.</p>
-          <p className="mt-4 text-[10px] leading-relaxed text-white/42">July 2026 signature-pour snapshot. Brewery sites and Untappd inform the guide; availability and hours can change.</p>
+          <p className="mt-4 text-[10px] leading-relaxed text-white/62">July 2026 signature-pour snapshot. Brewery sites and Untappd inform the guide; availability and hours can change.</p>
         </div>
         <Link
           href="/trust"

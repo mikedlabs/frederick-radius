@@ -446,7 +446,7 @@ export default function HappyHourGuide({
           )}
 
           <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-brand-press)" items={liveRest} nowMin={nowMin} />
-          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent)" items={laterRest} nowMin={nowMin} />
+          <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent-press)" items={laterRest} nowMin={nowMin} />
           <IndexSection label="More this week" count={otherRest.length} tone="var(--app-ink-2)" items={otherRest} nowMin={nowMin} />
 
           {/* Schedule varies — verified spots whose hours don't parse to a day. */}
