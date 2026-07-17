@@ -78,7 +78,7 @@ export default function WeeklyCard({
         onClick={toggle}
         aria-expanded={mounted ? expanded : false}
         aria-controls="weekly-content"
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:scale-[0.998]"
+        className="min-h-11 flex w-full items-center gap-3 px-4 py-3 text-left transition active:scale-[0.998]"
       >
         <span
           className="text-[11px] font-bold uppercase tracking-[0.14em]"

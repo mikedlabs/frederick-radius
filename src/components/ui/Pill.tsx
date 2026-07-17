@@ -154,7 +154,7 @@ export default function Pill({
   const hit =
     "relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-['']";
   const base =
-    `inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad} ${hit}`;
+    `tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad} ${hit}`;
   // Inactive elevation: a free-standing pill gets the tactile chip
   // treatment; a `bare` pill (inside a shared container) stays flat.
   const inactiveCls = active || bare ? "" : "tactile tactile-interactive";

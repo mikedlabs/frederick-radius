@@ -333,9 +333,9 @@ export default function CompassHub() {
       </section>
 
       <nav aria-label="About Frederick Radius" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t pt-5 text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        <Link href="/about" prefetch={false} {...intentProps("/about")} className="hover:underline">About</Link>
-        <Link href="/trust" prefetch={false} {...intentProps("/trust")} className="inline-flex items-center gap-1 hover:underline"><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Trust & data</Link>
-        <Link href="/terms" prefetch={false} {...intentProps("/terms")} className="hover:underline">Terms & privacy</Link>
+        <Link href="/about" prefetch={false} {...intentProps("/about")} className="tap-44 hover:underline">About</Link>
+        <Link href="/trust" prefetch={false} {...intentProps("/trust")} className="tap-44 inline-flex items-center gap-1 hover:underline"><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Trust & data</Link>
+        <Link href="/terms" prefetch={false} {...intentProps("/terms")} className="tap-44 hover:underline">Terms & privacy</Link>
       </nav>
     </div>
   );

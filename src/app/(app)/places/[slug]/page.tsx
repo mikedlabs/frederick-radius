@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AlertCircle, Apple, ArrowRight, Car, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone } from "lucide-react";
+import { AlertCircle, Apple, ArrowRight, Car, ChevronDown, ExternalLink, Globe, Instagram, MapPin, Navigation, Phone } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -177,6 +177,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: place.municipality_name,
   }));
+  const firstVenueEvents = eventsAtThisVenue.slice(0, 3);
+  const moreVenueEvents = eventsAtThisVenue.slice(3);
+  const firstNearbyPlaces = place.nearby_places.slice(0, 3);
+  const moreNearbyPlaces = place.nearby_places.slice(3, 5);
+  // /nearby only understands the curated municipality set. For places in an
+  // unincorporated community (Jefferson, Ijamsville, etc.), center the map on
+  // the actual record instead of silently broadening to a county-wide list.
+  const exploreAreaHref = town
+    ? `/nearby?town=${encodeURIComponent(place.municipality)}`
+    : `/map?at=${place.geom.lat.toFixed(5)},${place.geom.lng.toFixed(5)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -204,27 +214,27 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   return (
     // pb under lg leaves room so the last content clears the sticky
     // MobileActionBar (which floats ~76px above the nav pill).
-    <div className="space-y-6 reveal-up pb-28 lg:pb-0">
+    <div className="space-y-5 reveal-up pb-28 sm:space-y-6 lg:pb-0">
       {/* Records this slug into the device-local recent-places list
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
       <PlaceVisitTracker slug={place.slug} />
-      {/* Breadcrumbs stay visually small, but each link carries an
-          expanded (invisible) hit area to the 44px WCAG 2.5.5 target —
-          py-3.5/-my-3.5 grows the TAP zone without moving the layout. */}
+      {/* Breadcrumbs stay visually small, but each link has a real 44px
+          minimum target. Negative block margins keep that tap area from
+          adding empty space above the identity card. */}
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/places" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Places</Link></li>
+          <li><Link href="/places" className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">Places</Link></li>
           {town && (
             <>
               <li aria-hidden>·</li>
-              <li><Link href={`/m/${place.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{town.name}</Link></li>
+              <li><Link href={`/m/${place.municipality}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{town.name}</Link></li>
             </>
           )}
           {cat && (
             <>
               <li aria-hidden>·</li>
-              <li><Link href={`/category/${place.category}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{cat.name}</Link></li>
+              <li><Link href={`/category/${place.category}`} className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">{cat.name}</Link></li>
             </>
           )}
         </ol>
@@ -235,7 +245,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           slug={place.slug}
           name={place.name}
           category={place.category}
-          blurb={desc ?? undefined}
           aspectRatio="16/10"
           size="hero"
           priority
@@ -309,56 +318,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {desc}
             </p>
           )}
-          {/* "What people say" — the distilled signal from public
-              reviews: known_for chips + customers_loved items. Renders
-              nothing when neither array is populated. Sits above the
-              raw review snippet so the SCANNABLE answer comes before
-              the paragraph quote. */}
-          <KnownForCard
-            knownFor={place.known_for}
-            customersLoved={place.customers_loved}
-          />
-          {/* Park amenity rollup (shelters/fields/playgrounds/trails) from
-              the county GIS — renders only for parks that have it. */}
-          <ParkAmenitiesStrip slug={place.slug} />
-          {/* Golf course facts (holes/par/access/designer) from curated
-              course-info.json — renders only for golf courses. */}
-          <CourseInfoStrip slug={place.slug} />
-          {/* "Good to know" — surfaces the audience facet (kid/teen-friendly,
-              wheelchair accessible, good for groups) + key feature tags
-              (rainy-day, seasonal) that were shadow data. Self-hides when none. */}
-          <PlaceAudienceTags tags={place.tags} />
-          {/* Verified Field Notes (the moat) take precedence — happy hour /
-              deals / parking / insider, each agent-confirmed at a cited
-              source, with the FieldStamp seal. Falls back to the legacy
-              business-info "Good to know" card when a place has no Field
-              Notes yet. Both render nothing when empty. */}
-          {hasFieldNotes(place.slug) ? (
-            <FieldNotesCard slug={place.slug} />
-          ) : (
-            <BusinessExtrasCard info={businessInfoFor(place.slug)} />
-          )}
-          {place.review_snippet && (
-            <figure
-              className="border-l-2 pl-3"
-              style={{ borderColor: "color-mix(in srgb, var(--app-cool) 45%, transparent)" }}
-            >
-              <blockquote className="text-[13px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                &ldquo;{place.review_snippet}&rdquo;
-              </blockquote>
-              <GoogleReviewAttribution
-                author={place.review_author}
-                authorUri={place.review_author_uri}
-                reviewGoogleMapsUri={place.review_google_maps_uri}
-                placeGoogleMapsUri={place.google_maps_uri}
-              />
-            </figure>
-          )}
-          {/* Personal margin tooling comes LAST in the card — a first-time
-              visitor came for the facts above; notes and lists are for the
-              return visit. While both are empty they collapse to one quiet
-              "Add a note or list" line (PlaceMarginTools). */}
-          <PlaceMarginTools slug={place.slug} />
         </div>
       </header>
 
@@ -380,8 +339,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       )}
 
       <div className="hidden grid-cols-2 gap-2 lg:grid">
-        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
-        <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
+        <ActionButton href={googleUrl} icon={Navigation} label="Directions" external primary />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
         {/* On a food place the website IS the menu answer (we hold no menu
             data), so the label says where the answer lives. */}
@@ -393,12 +351,48 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             external
           />
         )}
+        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
       </div>
 
       {/* Personal "been here" marker — demoted below the directional/contact
           grid; it's a quiet device-local note, not a primary action. */}
       <div className="flex">
         <BeenHereToggle placeSlug={place.slug} label={place.name} />
+      </div>
+
+      {/* Secondary visit context is outside the identity hero and follows
+          closure + action controls, so the first screen answers whether the
+          place is visitable and what the user can do next. */}
+      <div className="space-y-3">
+        <KnownForCard
+          knownFor={place.known_for}
+          customersLoved={place.customers_loved}
+        />
+        <ParkAmenitiesStrip slug={place.slug} />
+        <CourseInfoStrip slug={place.slug} />
+        <PlaceAudienceTags tags={place.tags} />
+        {hasFieldNotes(place.slug) ? (
+          <FieldNotesCard slug={place.slug} />
+        ) : (
+          <BusinessExtrasCard info={businessInfoFor(place.slug)} />
+        )}
+        {place.review_snippet && (
+          <figure
+            className="border-l-2 pl-3"
+            style={{ borderColor: "color-mix(in srgb, var(--app-cool) 45%, transparent)" }}
+          >
+            <blockquote className="text-[13px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              &ldquo;{place.review_snippet}&rdquo;
+            </blockquote>
+            <GoogleReviewAttribution
+              author={place.review_author}
+              authorUri={place.review_author_uri}
+              reviewGoogleMapsUri={place.review_google_maps_uri}
+              placeGoogleMapsUri={place.google_maps_uri}
+            />
+          </figure>
+        )}
+        <PlaceMarginTools slug={place.slug} />
       </div>
 
       {/* Waze-style amenity icon row. Lives right after the primary
@@ -473,7 +467,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             genuinely covers this spot (downtown Frederick). Self-hides
             elsewhere so it never fakes an aerial of a place we don't have. */}
         <AerialBeat lat={place.geom.lat} lng={place.geom.lng} label={place.city || "Frederick"} />
-        <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] tactile bg-[var(--app-bg-elevated)] p-3 text-sm">
+        <div className="flex items-start gap-2 border-b py-3 text-sm" style={{ borderColor: "var(--app-border)" }}>
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <div>
             <p style={{ color: "var(--app-ink)" }}>{place.address}</p>
@@ -491,30 +485,64 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {eventsAtThisVenue.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
-            Upcoming at {place.name}
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
+              Upcoming here
+            </h2>
+            <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {eventsAtThisVenue.length} event{eventsAtThisVenue.length === 1 ? "" : "s"}
+            </span>
+          </div>
           {/* grid-cols-1 base: without an explicit column below lg the single
               implicit track sizes to max-content and pushed the detail page
               past the viewport at 320/375/768px (audit FR-004). min-w-0 lets
               each card shrink instead of forcing overflow. */}
           <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-            {eventsAtThisVenue.map((e) => (
-              <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} /></li>
+            {firstVenueEvents.map((e) => (
+              <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} variant="glance" /></li>
             ))}
           </ul>
+          {moreVenueEvents.length > 0 ? (
+            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                Show {moreVenueEvents.length} more
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              </summary>
+              <ul className="grid grid-cols-1 gap-2 pt-2 lg:grid-cols-2">
+                {moreVenueEvents.map((e) => (
+                  <li key={`${e.slug}-${e.starts_at}`} className="min-w-0"><EventCard event={e} variant="glance" /></li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       )}
 
       <section className="space-y-3">
-        <h2 className="text-title" style={{ color: "var(--app-ink)" }}>
-          Near here
-        </h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-title" style={{ color: "var(--app-ink)" }}>Nearby</h2>
+          <Link href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+            Explore area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
+          </Link>
+        </div>
         <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          {place.nearby_places.slice(0, 5).map((p) => (
-            <li key={p.slug} className="min-w-0"><PlaceCard place={p} /></li>
+          {firstNearbyPlaces.map((p) => (
+            <li key={p.slug} className="min-w-0"><PlaceCard place={p} variant="row" /></li>
           ))}
         </ul>
+        {moreNearbyPlaces.length > 0 ? (
+          <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+            <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+              Show {moreNearbyPlaces.length} more nearby
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+            </summary>
+            <ul className="grid grid-cols-1 gap-2 pt-2 lg:grid-cols-2">
+              {moreNearbyPlaces.map((p) => (
+                <li key={p.slug} className="min-w-0"><PlaceCard place={p} variant="row" /></li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </section>
 
       {/* "Around here" — nearest Wikipedia articles (the what-am-I-looking-at
@@ -532,14 +560,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               was the "source twice" duplicate (July 2026 review). */}
           Updated {place.updated_at}
         </p>
-        <div className="flex flex-wrap gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {cat && (
-            <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand-press)" }}>
+            <Link href={`/category/${place.category}`} className="tap-44 inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
               More {cat.name.toLowerCase()} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           )}
           <a
             href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
+            className="tap-44 inline-flex items-center"
             style={{ color: "var(--app-ink-3)" }}
           >
             Report incorrect info
@@ -616,17 +645,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 }
 
 function ActionButton({
-  href, icon: Icon, label, external,
-}: { href: string; icon: typeof Phone; label: string; external?: boolean }) {
+  href, icon: Icon, label, external, primary = false,
+}: { href: string; icon: typeof Phone; label: string; external?: boolean; primary?: boolean }) {
   const Comp = external ? "a" : Link;
   return (
     <Comp
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] py-3 text-xs font-medium"
-      style={{ color: "var(--app-ink)" }}
+      className="tap-44 tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border py-3 text-xs font-semibold"
+      style={primary
+        ? { background: "var(--app-brand-press)", borderColor: "var(--app-brand-press)", color: "var(--app-on-brand)" }
+        : { background: "var(--app-bg-elevated)", borderColor: "var(--app-border)", color: "var(--app-ink)" }}
     >
-      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand-press)" }} />
+      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }} />
       {label}
     </Comp>
   );

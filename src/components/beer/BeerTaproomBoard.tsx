@@ -176,7 +176,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                 disabled={disabled}
                 aria-pressed={selected}
                 onClick={() => setFilter(option.key)}
-                className="relative min-h-12 shrink-0 py-1 text-[11px] font-semibold text-white/48 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                className="relative min-h-12 min-w-11 shrink-0 py-1 text-[11px] font-semibold text-white/48 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 style={{ color: selected ? "#f3d496" : undefined }}
               >
                 {option.label} <span className="font-mono text-[8px] opacity-50">{option.key === "open" && disabled ? "…" : count}</span>
@@ -313,7 +313,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                   <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
                   <span>Features checked {BREWERY_SOURCE_CHECKED_AT}. Signature beers are a guide, not a live tap claim.</span>
                 </p>
-                <a href={experience.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-10 items-center gap-1 text-[9px] font-semibold text-white/52 hover:text-white/80">
+                <a href={experience.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center gap-1 text-[9px] font-semibold text-white/52 hover:text-white/80">
                   Check the brewery source <ArrowUpRight className="h-3 w-3" aria-hidden />
                 </a>
               </div>

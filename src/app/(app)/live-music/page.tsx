@@ -54,7 +54,7 @@ export default async function LiveMusicPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="tap-44-y inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -93,18 +93,23 @@ export default async function LiveMusicPage() {
       </header>
 
       {shows.length > 0 ? (
-        <ul className="space-y-2.5">
-          {shows.map((e) => {
-            const s = Date.parse(e.starts_at);
-            const en = e.ends_at ? Date.parse(e.ends_at) : NaN;
-            const live = s <= nowMs && Number.isFinite(en) && nowMs <= en;
-            return (
-              <li key={e.slug}>
-                <EventCard event={e} variant="glance" live={live} />
-              </li>
-            );
-          })}
-        </ul>
+        <section className="space-y-2.5" aria-labelledby="tonight-lineup">
+          <h2 id="tonight-lineup" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            Tonight&rsquo;s lineup
+          </h2>
+          <ul className="space-y-2.5">
+            {shows.map((e) => {
+              const s = Date.parse(e.starts_at);
+              const en = e.ends_at ? Date.parse(e.ends_at) : NaN;
+              const live = s <= nowMs && Number.isFinite(en) && nowMs <= en;
+              return (
+                <li key={e.slug}>
+                  <EventCard event={e} variant="glance" live={live} />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ) : (
         <div
           className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center"
@@ -119,10 +124,10 @@ export default async function LiveMusicPage() {
             doesn&rsquo;t always mean a quiet night.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold">
-            <Link href="/nearby?c=music" style={{ color: "var(--app-brand-press)" }}>
+            <Link href="/nearby?c=music" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
               See where the stages are <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
-            <Link href="/events" style={{ color: "var(--app-ink-3)" }}>
+            <Link href="/events" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-ink-3)" }}>
               The full board
             </Link>
           </div>

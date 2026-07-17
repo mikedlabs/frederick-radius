@@ -354,7 +354,7 @@ export default function HappyHourGuide({
               type="button"
               aria-selected={mode === m}
               onClick={() => setMode(m)}
-              className="tactile-interactive rounded-full px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition"
+              className="tactile-interactive tap-44-y rounded-full px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition"
               style={mode === m ? { background: "var(--app-ink)", color: "var(--app-bg)" } : { color: "var(--app-ink-3)" }}
             >
               {m === "now" ? "Now" : "All week"}

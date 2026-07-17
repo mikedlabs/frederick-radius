@@ -49,9 +49,27 @@ export default function TrustPage() {
         </p>
       </header>
 
+      <nav aria-label="Trust page sections" className="-mx-1 flex flex-wrap gap-1.5 px-1">
+        {[
+          ["Sources", "#sources"],
+          ["Badge meanings", "#badges"],
+          ["Send a correction", "#corrections"],
+        ].map(([label, href]) => (
+          <a
+            key={href}
+            href={href}
+            className="tap-44-y rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
       {/* Where the data comes from */}
       <section
-        className="rounded-[var(--app-radius-lg)] border p-5 space-y-3"
+        id="sources"
+        className="scroll-mt-24 rounded-[var(--app-radius-lg)] border p-5 space-y-3"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
@@ -115,7 +133,7 @@ export default function TrustPage() {
       </section>
 
       {/* What the badges mean */}
-      <section className="space-y-3">
+      <section id="badges" className="scroll-mt-24 space-y-3">
         <h2
           className="font-serif text-[20px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
@@ -216,7 +234,8 @@ export default function TrustPage() {
 
       {/* Found something wrong */}
       <section
-        className="rounded-[var(--app-radius-lg)] border p-5"
+        id="corrections"
+        className="scroll-mt-24 rounded-[var(--app-radius-lg)] border p-5"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",

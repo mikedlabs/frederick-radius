@@ -4,6 +4,7 @@ import { Croissant, ExternalLink, Clock } from "lucide-react";
 import { brunchSpots, type BrunchSpot } from "@/lib/loaders/brunch";
 import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/brunch" },
@@ -62,12 +63,16 @@ export default function BrunchPage() {
         </p>
       ) : (
         <div className="space-y-6">
-          {towns.map((town) => (
-            <section key={town} className="space-y-2">
-              <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                {town}
-                <span className="ml-1.5 font-normal tabular-nums" style={{ color: "var(--app-ink-3)" }}>· {byTown[town].length}</span>
-              </h2>
+          {towns.map((town, index) => (
+            <CollapsibleSection
+              key={town}
+              title={town}
+              count={byTown[town].length}
+              countLabel={byTown[town].length === 1 ? "spot" : "spots"}
+              headingLevel={2}
+              storageKey={`fr.brunch.${town.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+              defaultOpen={index === 0}
+            >
               <ul className="space-y-2">
                 {byTown[town].map((s) => {
                   const Title = (
@@ -83,7 +88,7 @@ export default function BrunchPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         {s.slug ? (
-                          <Link href={`/places/${s.slug}`} className="hover:underline">{Title}</Link>
+                          <Link href={`/places/${s.slug}`} className="tap-44-y inline-flex hover:underline">{Title}</Link>
                         ) : (
                           Title
                         )}
@@ -107,7 +112,7 @@ export default function BrunchPage() {
                         href={s.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-[11px]"
+                        className="tap-44-y mt-2 inline-flex items-center gap-1 text-[11px]"
                         style={{ color: "var(--app-ink-3)" }}
                       >
                         Source
@@ -117,7 +122,7 @@ export default function BrunchPage() {
                   );
                 })}
               </ul>
-            </section>
+            </CollapsibleSection>
           ))}
         </div>
       )}

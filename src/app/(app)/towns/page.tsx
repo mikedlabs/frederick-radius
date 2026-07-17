@@ -28,8 +28,7 @@ export default async function TownsPage() {
           Pick a place to start.
         </h1>
         <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          The county&rsquo;s twelve municipalities, plus Urbana. Each card is a real
-          starting point: how much is worth your time there, and what&rsquo;s on this week.
+          Choose a town to see its places, this week&rsquo;s events and what it&rsquo;s best for.
         </p>
       </header>
 

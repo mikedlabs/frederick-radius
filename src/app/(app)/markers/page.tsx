@@ -95,7 +95,7 @@ export default async function MarkersPage() {
           {markers.length > 0 && <MarkersExplorer markers={markers} />}
 
           {register.length > 0 && (
-            <CollapsibleSection title="On the National Register" count={register.length} storageKey="markers-register" defaultOpen={false}>
+            <CollapsibleSection title="On the National Register" count={register.length} headingLevel={2} storageKey="markers-register" defaultOpen={false}>
               <RowList>
                 {register.map((s) => (
                   <Row

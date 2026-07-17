@@ -85,7 +85,7 @@ export default async function SettingsPage() {
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                className="tactile tactile-interactive tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "var(--app-bg-sunken)",

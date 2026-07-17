@@ -102,7 +102,7 @@ export default function PlaceIndex({
                 haptic("light");
                 setSort(s.key);
               }}
-              className="tap-44-y"
+              className="tap-44"
               style={{
                 color: sort === s.key ? "var(--app-ink)" : "var(--app-ink-3)",
                 fontWeight: sort === s.key ? 700 : 500,

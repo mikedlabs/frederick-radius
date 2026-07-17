@@ -43,7 +43,7 @@ export default function KnownForCard({
   return (
     <section
       aria-labelledby="known-for-heading"
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+      className="border-y py-4"
       style={{ borderColor: "var(--app-border)" }}
     >
       <header className="flex items-center gap-2">

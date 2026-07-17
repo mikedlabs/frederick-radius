@@ -43,7 +43,7 @@ export default function AppFooter() {
               <Link
                 href={l.href}
                 prefetch={false}
-                className="inline-flex min-h-11 items-center hover:underline"
+                className="tap-44 inline-flex min-h-11 items-center hover:underline"
               >
                 {l.label}
               </Link>
@@ -52,7 +52,7 @@ export default function AppFooter() {
           <li>
             <a
               href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction"
-              className="inline-flex min-h-11 items-center hover:underline"
+              className="tap-44 inline-flex min-h-11 items-center hover:underline"
             >
               Suggest a correction
             </a>

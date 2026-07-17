@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Waves, Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
+import { Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
 import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import PageBloom from "@/components/ui/PageBloom";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/rivers" },
@@ -120,16 +121,15 @@ export default async function RiversPage() {
             className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            {totalGauges > 0
-              ? `${totalGauges} ${totalGauges === 1 ? "gauge" : "gauges"} reporting across the county`
-              : "Connecting to the USGS feed…"}
+            How high is the water?
           </h1>
           <p
             className="text-[14px] leading-relaxed"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Real-time creek and river height (feet) and streamflow (cubic
-            feet per second). Each gauge reports every 15 minutes.
+            {totalGauges > 0
+              ? `${totalGauges} live ${totalGauges === 1 ? "gauge" : "gauges"} across Frederick County, with height, flow and 24-hour direction.`
+              : "Connecting to the USGS feed…"}
           </p>
           <p
             className="flex items-center gap-1.5 pt-0.5 text-[11px] tabular-nums"
@@ -156,24 +156,20 @@ export default async function RiversPage() {
           color: "var(--app-ink-2)",
         }}
       >
-        <strong className="font-semibold" style={{ color: "var(--app-ink)" }}>
-          Flood stages are the NWS&rsquo;s own.
-        </strong>{" "}
-        For the six county gauges that are National Weather Service forecast
-        points, we compare the live USGS reading to the NWS flood thresholds
-        (action, flood, moderate, major) and label where it stands. The other
-        gauges show the reading and 24-hour trend only. Crest forecasts and
-        official watch / warning calls remain{" "}
-        <a
-          href="https://water.weather.gov/ahps/region.php?state=md"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold underline-offset-2 hover:underline"
-          style={{ color: "var(--app-cool)" }}
-        >
-          NWS&rsquo;s
-        </a>
-        .
+        <p>
+          Flood labels use official NWS thresholds where available. Forecasts,
+          watches and warnings always remain with{" "}
+          <a
+            href="https://water.weather.gov/ahps/region.php?state=md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline-offset-2 hover:underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            NWS&rsquo;s
+          </a>
+          .
+        </p>
       </aside>
 
       {sites.length === 0 ? (
@@ -185,23 +181,17 @@ export default async function RiversPage() {
           15 minutes.
         </p>
       ) : (
-        groups.map(({ river, sites: list }) => (
-          <section key={river} className="space-y-3">
-            <header className="flex items-baseline gap-2 px-1">
-              <Waves className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-              <h2
-                className="font-serif text-[20px] font-semibold tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {river}
-              </h2>
-              <span
-                className="text-[12px]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {list.length} {list.length === 1 ? "gauge" : "gauges"}
-              </span>
-            </header>
+        groups.map(({ river, sites: list }, index) => (
+          <CollapsibleSection
+            key={river}
+            title={river}
+            count={list.length}
+            countLabel={list.length === 1 ? "gauge" : "gauges"}
+            headingLevel={2}
+            storageKey={`fr.rivers.${river.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+            defaultOpen={index === 0}
+            className="space-y-3"
+          >
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((site) => {
                 const dir = readingTrend(site.gageHistory) ?? readingTrend(site.streamflowHistory);
@@ -294,7 +284,7 @@ export default async function RiversPage() {
                 );
               })}
             </ul>
-          </section>
+          </CollapsibleSection>
         ))
       )}
 
@@ -308,7 +298,7 @@ export default async function RiversPage() {
         }}
       >
         <p className="leading-relaxed">
-          Source: U.S. Geological Survey Instantaneous Values service (
+          Live readings from the U.S. Geological Survey (
           <a
             href="https://waterservices.usgs.gov/"
             target="_blank"
@@ -318,15 +308,15 @@ export default async function RiversPage() {
           >
             waterservices.usgs.gov
           </a>
-          ). County code 24021, parameters 00065 (gage height) + 00060
-          (streamflow). Refreshed every 15 minutes.
+          ); flood thresholds from the National Weather Service. Refreshed
+          every 15 minutes.
         </p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <a
             href="https://water.weather.gov/ahps/region.php?state=md"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+            className="tap-44-y inline-flex items-center gap-1 underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             <Droplets className="h-3 w-3" strokeWidth={2} aria-hidden />
@@ -336,7 +326,7 @@ export default async function RiversPage() {
             href={`https://www.google.com/maps/search/USGS+gauge+Frederick+County+MD`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+            className="tap-44-y inline-flex items-center gap-1 underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             <MapPin className="h-3 w-3" strokeWidth={2} aria-hidden />

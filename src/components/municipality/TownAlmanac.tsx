@@ -65,17 +65,17 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
   return (
     <section
       aria-label={`Cliff notes on ${townName}`}
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+      className="border-y py-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <div className="flex items-center gap-2">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
-          Cliff notes
+          Town notes
         </span>
         <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
         {cn.last_verified && (
           <span className="font-mono text-[9.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-positive)" }}>
-            verified
+            Checked {cn.last_verified}
           </span>
         )}
       </div>
@@ -86,8 +86,13 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
         </p>
       )}
 
-      {(cn.insights?.length || cn.fun_facts?.length || cn.faq?.length) && (
-        <div className="mt-3.5 space-y-3.5">
+      {(cn.insights?.length || cn.fun_facts?.length || cn.faq?.length) ? (
+        <details className="group mt-3 border-t" style={{ borderColor: "var(--app-border)" }}>
+          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+            More about {townName}
+            <span aria-hidden className="font-mono text-[16px] leading-none transition-transform group-open:rotate-45" style={{ color: "var(--app-ink-3)" }}>+</span>
+          </summary>
+          <div className="space-y-3.5 pt-2">
           {cn.insights && cn.insights.length > 0 && (
             <div>
               <Label>Local insight</Label>
@@ -128,8 +133,9 @@ export default function TownAlmanac({ slug, townName }: { slug: string; townName
               </ul>
             </div>
           )}
-        </div>
-      )}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

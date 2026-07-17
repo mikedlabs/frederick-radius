@@ -41,12 +41,15 @@ function FacilityCard({ f, big }: { f: PetCareFacility; big?: boolean }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3
-            className={`font-serif font-semibold leading-tight tracking-tight ${big ? "text-[19px]" : "text-[16px]"}`}
-            style={{ color: "var(--app-ink)" }}
-          >
-            {f.name}
-          </h3>
+          {big ? (
+            <h2 className="font-serif text-[19px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {f.name}
+            </h2>
+          ) : (
+            <h3 className="font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {f.name}
+            </h3>
+          )}
           <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
             {f.hours}
           </p>
@@ -97,7 +100,7 @@ export default function EmergencyVetPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/contacts"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="tap-44-y inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />

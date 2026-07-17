@@ -94,14 +94,20 @@ export default function BeerGuides() {
 
               <ol className="relative mt-auto pt-7" aria-label={`${guide.title} brewery stops`}>
                 {stops.map(({ brewery, beer }, stopIndex) => (
-                  <li key={brewery.slug} className="relative grid grid-cols-[42px_1fr_auto] items-center gap-3 border-t border-white/14 py-3">
+                  <li key={brewery.slug} className="relative border-t border-white/14">
                     {stopIndex < stops.length - 1 ? <span className="absolute -bottom-3 left-[20px] top-[54px] w-px bg-[#e3b65d]/45" aria-hidden /> : null}
-                    <BreweryLogo brewerySlug={brewery.slug} breweryName={brewery.name} decorative sizes="42px" className="relative z-10 h-[42px] w-[42px] bg-[#f8f4eb] object-contain p-1 shadow-[0_8px_16px_rgba(0,0,0,.24)]" />
-                    <div className="min-w-0">
-                      <Link href={`/places/${brewery.slug}`} className="block truncate text-[11px] font-semibold text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]">{brewery.name}</Link>
-                      <p className="mt-0.5 truncate text-[9px] text-white/48">{beer.name}{beer.abv != null ? ` · ${beer.abv.toFixed(1)}%` : ""}</p>
-                    </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-white/42" aria-hidden />
+                    <Link
+                      href={`/places/${brewery.slug}`}
+                      aria-label={`Open the guide for ${brewery.name}`}
+                      className="group grid min-h-11 grid-cols-[42px_1fr_auto] items-center gap-3 py-3 outline-none hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    >
+                      <BreweryLogo brewerySlug={brewery.slug} breweryName={brewery.name} decorative sizes="42px" className="relative z-10 h-[42px] w-[42px] bg-[#f8f4eb] object-contain p-1 shadow-[0_8px_16px_rgba(0,0,0,.24)]" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11px] font-semibold text-white group-hover:underline">{brewery.name}</span>
+                        <span className="mt-0.5 block truncate text-[9px] text-white/48">{beer.name}{beer.abv != null ? ` · ${beer.abv.toFixed(1)}%` : ""}</span>
+                      </span>
+                      <ArrowUpRight className="h-3.5 w-3.5 text-white/42" aria-hidden />
+                    </Link>
                   </li>
                 ))}
               </ol>

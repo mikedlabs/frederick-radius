@@ -62,7 +62,7 @@ export default function SectionHeading({
           <button
             type="button"
             onClick={onCtaClick}
-            className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96]"
+            className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96]"
             style={{ color: ctaColor }}
           >
             {cta}
@@ -71,7 +71,7 @@ export default function SectionHeading({
           href && (
             <Link
               href={href}
-              className="inline-flex shrink-0 items-center gap-1 pb-0.5 text-xs font-semibold tracking-tight"
+              className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight"
               style={{ color: ctaColor }}
             >
               {cta}

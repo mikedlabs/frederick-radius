@@ -60,7 +60,7 @@ export default function BeerTasteFlight() {
         </div>
         <div role="group" aria-label="Choose beer strength" className="flex border-b" style={{ borderColor: "var(--app-border-strong)" }}>
           {STRENGTHS.map((option) => (
-            <button key={option.key} type="button" aria-pressed={option.key === strength} onClick={() => setStrength(option.key)} className="min-h-10 px-3 text-[11px] font-semibold" style={{ color: option.key === strength ? "var(--app-ink)" : "var(--app-ink-3)", borderBottom: option.key === strength ? "2px solid var(--app-ink)" : "2px solid transparent" }}>{option.label}</button>
+            <button key={option.key} type="button" aria-pressed={option.key === strength} onClick={() => setStrength(option.key)} className="min-h-11 px-3 text-[11px] font-semibold" style={{ color: option.key === strength ? "var(--app-ink)" : "var(--app-ink-3)", borderBottom: option.key === strength ? "2px solid var(--app-ink)" : "2px solid transparent" }}>{option.label}</button>
           ))}
         </div>
       </header>
@@ -88,7 +88,7 @@ export default function BeerTasteFlight() {
           <p className="text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>Your {path.shortLabel.toLowerCase()} flight</p>
           <p className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{flight.length} signature pours · {flight.length} breweries</p>
         </div>
-        <button type="button" onClick={saveFlight} disabled={flight.length === 0 || allSaved} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }}>
+        <button type="button" onClick={saveFlight} disabled={flight.length === 0 || allSaved} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }}>
           {allSaved ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Bookmark className="h-3.5 w-3.5" aria-hidden />}{allSaved ? "Saved" : "Save flight"}
         </button>
       </div>
@@ -98,7 +98,7 @@ export default function BeerTasteFlight() {
           {flight.map((beer, index) => <PourCard key={beerKey(beer)} beer={beer} index={index} saved={savedKeys.has(beerKey(beer))} pathKey={pathKey} />)}
         </ol>
       ) : (
-        <div className="mt-3 border-y py-6 text-center" style={{ borderColor: "var(--app-border)" }}><p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>No pours fit that strength.</p><button type="button" onClick={() => setStrength("any")} className="mt-2 text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Show any ABV</button></div>
+        <div className="mt-3 border-y py-6 text-center" style={{ borderColor: "var(--app-border)" }}><p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>No pours fit that strength.</p><button type="button" onClick={() => setStrength("any")} className="mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Show any ABV</button></div>
       )}
       <p className="mt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Signature-pour snapshot, not a live tap list. Check availability with the brewery.</p>
     </section>
@@ -122,7 +122,7 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
 
       <div className="relative flex items-start justify-between gap-3">
         <span className="font-serif text-[36px] leading-none text-white/35">0{index + 1}</span>
-        <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="grid h-10 w-10 place-items-center border border-white/25 bg-black/10 text-white backdrop-blur-sm disabled:opacity-60">
+        <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="grid h-11 w-11 place-items-center border border-white/25 bg-black/10 text-white backdrop-blur-sm disabled:opacity-60">
           {saved ? <Check className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
         </button>
       </div>
@@ -134,11 +134,11 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
 
         <div className="mt-5 flex items-center gap-2 border-t border-white/16 pt-3">
           <BreweryLogo brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} decorative sizes="32px" className="h-8 w-8 bg-white object-contain p-0.5" />
-          <Link href={`/places/${beer.brewerySlug}`} className="min-w-0 flex-1 text-[10.5px] font-semibold hover:underline">
+          <Link href={`/places/${beer.brewerySlug}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-[10.5px] font-semibold hover:underline">
             <span className="block truncate">{beer.breweryName}</span>
             <span className="block truncate font-normal text-white/50">{beer.style}{beer.rating != null ? ` · ★ ${beer.rating.toFixed(2)}` : ""}</span>
           </Link>
-          {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" aria-label={`Check ${beer.name} on Untappd`} className="grid h-9 w-9 shrink-0 place-items-center border border-white/20 text-white/70 transition hover:text-white"><ArrowUpRight className="h-3.5 w-3.5" aria-hidden /></a> : null}
+          {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" aria-label={`Check ${beer.name} on Untappd`} className="grid h-11 w-11 shrink-0 place-items-center border border-white/20 text-white/70 transition hover:text-white"><ArrowUpRight className="h-3.5 w-3.5" aria-hidden /></a> : null}
         </div>
       </div>
     </li>

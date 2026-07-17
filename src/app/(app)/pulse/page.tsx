@@ -1166,7 +1166,7 @@ export default async function PulsePage() {
   const heroChipsCapped = heroChips.slice(0, 4);
 
   return (
-    <div className="relative space-y-6 pb-4">
+    <div className="relative min-w-0 space-y-6 pb-4">
       <PageBloom variant="cool" />
 
       {/* The briefing owns hierarchy and interaction; detail remains in sourced
@@ -1180,8 +1180,8 @@ export default async function PulsePage() {
 
       {/* The live bus map stays behind intent because it is the heaviest client
           surface on Pulse. It is part of getting around, not a second dashboard. */}
-      <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
-        <div className="flex items-center justify-between gap-3">
+      <section aria-labelledby="transit-map-eyebrow" className="min-w-0 space-y-2.5">
+        <div className="flex min-w-0 items-center justify-between gap-3">
           <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-cool)" }} />
             Live bus map
@@ -1192,7 +1192,7 @@ export default async function PulsePage() {
       </section>
       {/* Footer — disclaimer + sources at a glance */}
       <footer
-        className="border-t px-1 pt-4 text-[11px]"
+        className="min-w-0 border-t px-1 pt-4 text-[11px]"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-3)",
@@ -1203,11 +1203,11 @@ export default async function PulsePage() {
           emergency broadcasts.
         </p>
         <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
-          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
             <ChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             Sources &amp; data trail
           </summary>
-          <div className="grid grid-cols-1 gap-1.5 pb-1 pt-2 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-x-4 pb-1 pt-1 sm:grid-cols-2">
             <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
             <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
             <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
@@ -1302,24 +1302,25 @@ function SourceLine({
   href: string;
 }) {
   return (
-    <p className="flex items-center gap-1.5">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Open ${label} source: ${source} (opens in a new tab)`}
+      className="flex min-h-11 min-w-0 w-full items-center gap-1.5 rounded-sm px-1 underline-offset-2 transition hover:bg-[var(--app-bg-sunken)] focus-visible:underline"
+      style={{ color: "var(--app-ink-3)" }}
+    >
       <span
-        className="font-semibold uppercase tracking-[0.06em]"
+        className="shrink-0 font-semibold uppercase tracking-[0.06em]"
         style={{ color: "var(--app-ink-2)" }}
       >
         {label}
       </span>
       <span>·</span>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
-        style={{ color: "var(--app-cool)" }}
-      >
+      <span className="min-w-0 truncate" style={{ color: "var(--app-cool)" }}>
         {source}
-        <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
-      </a>
-    </p>
+      </span>
+      <ExternalLink className="ml-auto h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
+    </a>
   );
 }

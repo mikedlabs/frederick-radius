@@ -41,9 +41,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/open-now" },
   title: "Open now",
   description:
-    "What's open right now across Frederick County, verified against live hours, ranked from your town.",
+    "What's open right now across Frederick County, based on verified posted hours and ranked from your town.",
   openGraph: { title: "Open now", description:
-    "What's open right now across Frederick County, verified against live hours, ranked from your town." },
+    "What's open right now across Frederick County, based on verified posted hours and ranked from your town." },
 };
 
 export default async function OpenNowPage() {
@@ -192,7 +192,7 @@ export default async function OpenNowPage() {
   const likelySections: IndexSection[] = [
     {
       key: "likely",
-      label: "Likely open · hours unverified",
+      label: "Posted hours not verified",
       rows: likely.slice(0, 12).map((p) => toRow(p, false)),
     },
   ];
@@ -216,10 +216,10 @@ export default async function OpenNowPage() {
           className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Open right now
+          Open now
         </h1>
-        <p className="mt-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {verified.length} verified against live hours
+        <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+          {verified.length} places open from verified posted hours
         </p>
       </header>
 
@@ -236,8 +236,8 @@ export default async function OpenNowPage() {
         <PlaceIndex sections={sections} />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-          Nothing is verified open at this hour. The likely-open list below is
-          built from places with reliable posted hours, so check before you go.
+          Nothing is confirmed open at this hour. Places with unverified posted
+          hours appear below; check before you go.
         </p>
       )}
 
@@ -247,10 +247,9 @@ export default async function OpenNowPage() {
           map second. This is the ONE door into the heavy surface. */}
       <Link
         href="/map?mode=browse&open=now"
-        className="tactile tactile-interactive group flex items-center gap-3 rounded-full px-4 py-3"
+        className="tactile-interactive group flex min-h-[52px] items-center gap-3 border-y px-1 py-2.5"
         style={{
-          background: "var(--app-bg-elevated-solid)",
-          boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
+          borderColor: "var(--app-border)",
         }}
       >
         <MapIcon
@@ -260,7 +259,7 @@ export default async function OpenNowPage() {
           aria-hidden
         />
         <span className="min-w-0 flex-1 text-[14px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-          See these on the map
+          View open places on the map
         </span>
         <ArrowRight
           className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"

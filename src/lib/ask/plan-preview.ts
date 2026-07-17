@@ -8,14 +8,18 @@ function categoryName(slug: string): string {
   return CATEGORY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ");
 }
 
-function planStart(intent: AskIntent): string | undefined {
+function planStart(intent: AskIntent, query: string): string | undefined {
   const explicitWindow = ("morning afternoon tonight".split(" ") as string[]).includes(intent.timeNeed ?? "");
   // An undated "date night" is not a request to leave this instant. Late at
   // night, using `now` filtered the user's named anchor as closed and quietly
-  // replaced it. Give undated date plans the next useful evening window;
-  // explicit "tonight" requests still keep their live-clock semantics.
-  const defaultDateNight = !explicitWindow && intent.audience === "date";
-  if (!explicitWindow && !defaultDateNight) return undefined;
+  // replaced it. The same is true of "plan an evening": the phrase defines
+  // the outing window even when it does not mean *this* evening. Give both
+  // requests the next useful evening window; explicit "tonight" requests
+  // still keep their live-clock semantics.
+  const defaultEvening = !explicitWindow && (
+    intent.audience === "date" || /\b(?:an |the )?evening(?: out)?\b/i.test(query)
+  );
+  if (!explicitWindow && !defaultEvening) return undefined;
   const now = new Date();
   const clock = intent.timeNeed === "morning"
     ? { start: 9, end: 12 }
@@ -35,10 +39,10 @@ function planStart(intent: AskIntent): string | undefined {
     }).formatToParts(now).map((part) => [part.type, part.value]),
   );
   const hour = Number(parts.hour);
-  if (hour >= clock.start && hour < clock.end && !(defaultDateNight && hour >= 20)) {
+  if (hour >= clock.start && hour < clock.end && !(defaultEvening && hour >= 20)) {
     return now.toISOString();
   }
-  if (hour >= clock.end || (defaultDateNight && hour >= 20)) {
+  if (hour >= clock.end || (defaultEvening && hour >= 20)) {
     date = new Date(now.getTime() + 86_400_000);
     parts = Object.fromEntries(
       new Intl.DateTimeFormat("en-US", {
@@ -71,7 +75,7 @@ export function buildAskPlanPreview(
     audience: intent.audience,
     vibe: intent.vibe,
     duration_hours: intent.durationHours,
-    start_at: planStart(intent),
+    start_at: planStart(intent, query),
     start_near: context.origin ?? undefined,
     max_distance_m: intent.travelMode === "walk" ? 2_400 : undefined,
     local_only: intent.localOnly || undefined,

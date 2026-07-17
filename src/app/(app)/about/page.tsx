@@ -159,6 +159,19 @@ export default async function AboutPage() {
         </h1>
       </header>
 
+      {/* The first useful action stays with the promise instead of making a
+          visitor read the whole origin story before they can try the app. */}
+      <div>
+        <Link
+          href="/today"
+          className="tactile tactile-lift tactile-glow-brand inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
+          style={{ background: "var(--app-brand)" }}
+        >
+          See what&apos;s useful right now
+          <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </div>
+
       {/* The pitch — four paragraphs, no more. Read top to bottom in
           about 30 seconds. The italic tagline uses Newsreader's
           italic (the display serif) on Public Sans body — Instrument
@@ -192,19 +205,6 @@ export default async function AboutPage() {
           , a downtown Frederick resident.
         </p>
       </section>
-
-      {/* The CTA — single primary button. The whole point of this
-          page is to push the visitor to actually use the app. */}
-      <div className="pt-2">
-        <Link
-          href="/today"
-          className="tactile tactile-lift tactile-glow-brand inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
-          style={{ background: "var(--app-brand)" }}
-        >
-          See what&apos;s useful right now
-          <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </Link>
-      </div>
 
       {/* Common requests — action tiles for the visitor who wants
           to participate. Submit a place, send a correction, email
@@ -540,7 +540,7 @@ export default async function AboutPage() {
       >
         <p className="inline-flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-cool)" }} />
-          <Link href="/trust" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
+          <Link href="/trust" className="tap-44-y inline-flex items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
             How we verify everything we publish <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </p>
@@ -564,7 +564,7 @@ export default async function AboutPage() {
                     href={a.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline-offset-2 hover:underline"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center underline-offset-2 hover:underline"
                     style={{ color: "var(--app-cool)" }}
                   >
                     {platformLabel[a.platform]}

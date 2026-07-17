@@ -297,7 +297,7 @@ export default function BeerPassport() {
                 </button>
                 <Link
                   href={`/places/${brewery.slug}`}
-                  className="mt-1.5 block text-[10px] font-semibold leading-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  className="mt-1.5 flex min-h-11 items-start justify-center pt-1.5 text-[10px] font-semibold leading-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                   style={{ color: isVisited ? "#211811" : "rgba(33,24,17,.68)" }}
                   title={brewery.name}
                   aria-label={`Open the guide page for ${brewery.name}`}

@@ -42,7 +42,7 @@ export default async function NearbyContext({
                 href={p.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-serif text-[15px] font-semibold leading-snug hover:underline"
+                className="tap-44-y inline-flex items-center font-serif text-[15px] font-semibold leading-snug hover:underline"
                 style={{ color: "var(--app-ink)" }}
               >
                 {p.title}

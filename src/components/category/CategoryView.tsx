@@ -1,4 +1,6 @@
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { rankPlaces } from "@/lib/loaders/places";
@@ -10,8 +12,6 @@ import {
 } from "@/lib/category-ranking";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
-import PageBloom from "@/components/ui/PageBloom";
-import CategoryIcon from "@/components/place/CategoryIcon";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
 import ScopeBar from "@/components/nav/ScopeBar";
@@ -71,42 +71,28 @@ export default function CategoryView({
   const municipalities = MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }));
 
   return (
-    <div className="relative space-y-6">
-      <PageBloom variant="single" />
+    <div className="relative space-y-5 sm:space-y-6">
+      <nav aria-label="Breadcrumb">
+        <Link
+          href="/places"
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          All places
+        </Link>
+      </nav>
 
-      {/* Typographic category hero — same as the default category page. A
-          calm cream plate tinted by the category's own ink with its engraved
-          glyph as a faint watermark, instead of a generic county aerial that
-          read as irrelevant behind a specific category (e.g. a pool photo
-          behind "Coffee"). */}
-      <header
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{
-          borderColor: `color-mix(in srgb, ${category.color} 30%, var(--app-border))`,
-          background: `linear-gradient(135deg, color-mix(in srgb, ${category.color} 14%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
-          boxShadow: "var(--app-elev-1), var(--app-hi)",
-        }}
-      >
-        <CategoryIcon
-          slug={category.slug}
-          className="pointer-events-none absolute -bottom-7 -right-5 h-40 w-40 sm:h-48 sm:w-48"
-          style={{ color: `color-mix(in srgb, ${category.color} 15%, transparent)` }}
-        />
-        <div className="relative p-5 sm:p-6">
-          <p
-            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
-            style={{ color: `color-mix(in srgb, ${category.color} 72%, var(--app-ink))` }}
-          >
-            <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: category.color }} />
-            Category · Frederick County
-          </p>
-          <h1 className="mt-2 font-serif text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]" style={{ color: "var(--app-ink)" }}>
-            {category.name}
-          </h1>
-          <p className="mt-1.5 max-w-[46ch] font-serif text-[14px] italic leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
-            {category.blurb}
-          </p>
-        </div>
+      <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
+        <p className="eyebrow" style={{ color: `color-mix(in srgb, ${category.color} 72%, var(--app-ink))` }}>
+          Frederick County guide
+        </p>
+        <h1 className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
+          {category.name}
+        </h1>
+        <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+          {category.blurb}
+        </p>
       </header>
 
       {/* Where the page ranks from — always shown, always changeable, writes
@@ -125,7 +111,7 @@ export default function CategoryView({
           other sections and every other listing surface — no oversized
           fixed-width tiles breaking the rhythm on the way to a place. */}
       <CategorySection
-        title="Worth your time"
+        title="Start here"
         color={category.color}
         places={best}
       />
@@ -145,6 +131,7 @@ export default function CategoryView({
       {county.length > 0 && (
         <CollapsibleSection
           title="Show across the county"
+          headingLevel={2}
           count={county.length}
           countLabel="towns"
           storageKey={`fr.category.${category.slug}.county`}
@@ -170,7 +157,8 @@ export default function CategoryView({
       )}
 
       <CollapsibleSection
-        title="Browse everything"
+        title={`All ${category.name.toLowerCase()}`}
+        headingLevel={2}
         count={all.length}
         countLabel="places"
         storageKey={`fr.category.${category.slug}.full`}

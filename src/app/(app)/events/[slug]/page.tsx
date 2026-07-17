@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { AlertTriangle, ArrowRight, Ban, Calendar, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
@@ -56,6 +56,54 @@ import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 import { noticeForEvent } from "@/lib/events/notices";
+
+function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
+  if (text.length <= limit) return { preview: text, rest: "" };
+  const sentenceEnd = text.lastIndexOf(". ", limit);
+  const wordEnd = text.lastIndexOf(" ", limit);
+  const cut = sentenceEnd >= Math.floor(limit * 0.55) ? sentenceEnd + 1 : Math.max(wordEnd, limit);
+  return { preview: text.slice(0, cut).trim(), rest: text.slice(cut).trim() };
+}
+
+function SeriesDateRow({
+  event,
+  nowMs,
+}: {
+  event: EventWithMeta;
+  nowMs: number;
+}) {
+  const date = eventDateBlock(event);
+  const label = seriesOccurrenceLabel(event) ?? event.title;
+  const isPast = new Date(event.ends_at).getTime() < nowMs;
+  const tag = /Opening Night/i.test(event.title)
+    ? "Opening night"
+    : /Season Finale/i.test(event.title)
+      ? "Season finale"
+      : null;
+
+  return (
+    <Link
+      href={`/events/${event.slug}`}
+      className="tap-44 flex items-center gap-3 border-b py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+      style={{ borderColor: "var(--app-border)", opacity: isPast ? 0.55 : 1 }}
+    >
+      <span className="w-11 shrink-0 text-center" aria-hidden>
+        <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-ink-2)" }}>{date.month}</span>
+        <span className="block font-serif text-lg font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+        <span className="block text-[10px]" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold" style={{ color: "var(--app-ink)" }}>{label}</span>
+        <span className="block truncate text-xs" style={{ color: "var(--app-ink-3)" }}>
+          {date.time} · {event.venue_name}
+          {tag ? ` · ${tag}` : ""}
+          {isPast ? " · Past" : ""}
+        </span>
+      </span>
+      <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+    </Link>
+  );
+}
 
 export const revalidate = 300;
 // NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
@@ -137,6 +185,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   const cat = CATEGORY_BY_SLUG[event.category];
   const desc = (event.description ?? "").trim();
+  const description = splitDescription(desc);
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
   const icsUrl = `/api/events/${event.slug}/ics`;
 
@@ -260,11 +309,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     sameVenueUpcoming.length >= 2 && eventVenueName
       ? { title: `More at ${eventVenueName}`, items: sameVenueUpcoming }
       : { title: "More upcoming events", items: upcomingPool.slice(0, 6) };
+  const firstLineupDates = lineup.slice(0, 4);
+  const moreLineupDates = lineup.slice(4, 30);
+  const firstUpcoming = moreUpcoming.items.slice(0, 3);
+  const remainingUpcoming = moreUpcoming.items.slice(3);
 
   return (
     // pb under lg leaves room so the last content clears the sticky
     // MobileActionBar (which floats ~76px above the nav pill).
-    <div className="space-y-6 pb-28 lg:pb-0">
+    <div className="space-y-5 pb-28 sm:space-y-6 lg:pb-0">
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -375,14 +428,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         ) : (
           <div
-            className="relative h-56 overflow-hidden sm:h-60"
+            className="relative h-44 overflow-hidden sm:h-48"
             style={{
               background: `linear-gradient(135deg, ${cat?.color ?? "#E14328"}40, ${cat?.color ?? "#E14328"}0F 60%, var(--app-bg-elevated))`,
             }}
           >
             {/* Watermark calendar — quietly anchors the right side. */}
             <Calendar
-              className="pointer-events-none absolute -right-4 -top-2 h-44 w-44 opacity-15"
+              className="pointer-events-none absolute -right-3 -top-3 h-32 w-32 opacity-15"
               strokeWidth={1}
               style={{ color: cat?.color ?? "var(--app-brand)" }}
               aria-hidden
@@ -436,9 +489,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
           <TrustChip signal={eventTrust(event)} detail />
           {desc && (
-            <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {desc}
-            </p>
+            <div className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <p>{description.preview}</p>
+              {description.rest ? (
+                <details className="group mt-1">
+                  <summary className="tap-44 inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                    Read full description
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+                  </summary>
+                  <p className="pb-1">{description.rest}</p>
+                </details>
+              ) : null}
+            </div>
           )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
             {eventVenueName && (
@@ -604,7 +666,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             Good to know
           </h2>
           <ul
-            className="divide-y rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3"
+            className="divide-y border-y"
             style={{ borderColor: "var(--app-border)" }}
           >
             {event.info.admission && (
@@ -676,87 +738,39 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </section>
       )}
 
-      {lineup.length > 1 && (
+      {lineup.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
               <Music className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-              Full lineup
+              More dates
             </h2>
             <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{lineup.length} dates</span>
           </div>
           {event.recurrence_text && (
             <p className="-mt-1 text-xs" style={{ color: "var(--app-ink-3)" }}>{event.recurrence_text}</p>
           )}
-          <ul className="space-y-1.5">
-            {lineup.slice(0, 30).map((s) => {
-              const db = eventDateBlock(s);
-              const label = seriesOccurrenceLabel(s) ?? s.title;
-              const isCurrent = s.slug === event.slug;
-              const isPast = new Date(s.ends_at).getTime() < nowMs;
-              const tag = /Opening Night/i.test(s.title)
-                ? "Opening night"
-                : /Season Finale/i.test(s.title)
-                ? "Season finale"
-                : null;
-              const Inner = (
-                <div
-                  className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 transition"
-                  style={{
-                    borderColor: isCurrent ? (cat?.color ?? "var(--app-brand)") : "var(--app-border)",
-                    background: isCurrent ? `${cat?.color ?? "#E14328"}14` : "var(--app-bg-elevated)",
-                    opacity: isPast && !isCurrent ? 0.5 : 1,
-                  }}
-                >
-                  <div
-                    className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
-                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-                    aria-hidden
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-ink-2)" }}>{db.month}</span>
-                    <span className="font-serif text-base font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{db.day}</span>
-                    <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
-                      {label}
-                    </p>
-                    <p className="flex flex-wrap items-center gap-x-2 text-xs" style={{ color: "var(--app-ink-3)" }}>
-                      <span>{db.time} · {s.venue_name}</span>
-                      {tag && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
-                          {tag}
-                        </span>
-                      )}
-                      {isCurrent && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: cat?.color ?? "var(--app-brand)" }}>
-                          You&apos;re here
-                        </span>
-                      )}
-                      {isPast && !isCurrent && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
-                          Past
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  {!isCurrent && (
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                  )}
-                </div>
-              );
-              return (
-                <li key={s.slug}>
-                  {isCurrent ? Inner : <Link href={`/events/${s.slug}`}>{Inner}</Link>}
-                </li>
-              );
-            })}
+          <ul>
+            {firstLineupDates.map((seriesEvent) => (
+              <li key={seriesEvent.slug}><SeriesDateRow event={seriesEvent} nowMs={nowMs} /></li>
+            ))}
           </ul>
-          {lineup.length > 30 && (
-            <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-              + {lineup.length - 30} more dates
-            </p>
-          )}
+          {moreLineupDates.length > 0 ? (
+            <details className="group">
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                Show {moreLineupDates.length} more dates
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              </summary>
+              <ul>
+                {moreLineupDates.map((seriesEvent) => (
+                  <li key={seriesEvent.slug}><SeriesDateRow event={seriesEvent} nowMs={nowMs} /></li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+          {lineup.length > 30 ? (
+            <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>Showing the next 30 of {lineup.length} dates.</p>
+          ) : null}
         </section>
       )}
 
@@ -776,14 +790,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </h2>
             <Link
               href="/events"
-              className="text-[12px] font-semibold"
+              className="tap-44 inline-flex items-center text-[12px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
               See all <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           <ul className="space-y-2">
-            {moreUpcoming.items.map((e) => (
+            {firstUpcoming.map((e) => (
               <li key={`${e.slug}-${e.starts_at}`}>
                 {/* glance, not row: the unified pool arrives venue-thumb
                     decorated, so the section reads as a visual shelf now
@@ -792,34 +806,48 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               </li>
             ))}
           </ul>
+          {remainingUpcoming.length > 0 ? (
+            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                Show {remainingUpcoming.length} more
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              </summary>
+              <ul className="space-y-2 pt-2">
+                {remainingUpcoming.map((e) => (
+                  <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} variant="glance" /></li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       )}
 
-      {nearbyFood.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Eat & drink before
-          </h2>
-          <ul className="space-y-2">
-            {nearbyFood.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {nearbyParking.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Parking nearby
-          </h2>
-          <ul className="space-y-2">
-            {nearbyParking.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} compact /></li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {(nearbyFood.length > 0 || nearbyParking.length > 0) ? (
+        <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
+          <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 py-2 text-[14px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink)" }}>
+            More food &amp; parking nearby
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          </summary>
+          <div className="space-y-5 pb-4 pt-2">
+            {nearbyFood.length > 0 ? (
+              <section className="space-y-2.5">
+                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Eat &amp; drink before</h2>
+                <ul className="space-y-2">
+                  {nearbyFood.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
+                </ul>
+              </section>
+            ) : null}
+            {nearbyParking.length > 0 ? (
+              <section className="space-y-2.5">
+                <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Parking nearby</h2>
+                <ul className="space-y-2">
+                  {nearbyParking.map((p) => <li key={p.slug}><PlaceCard place={p} variant="row" /></li>)}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
 
       <script
         type="application/ld+json"

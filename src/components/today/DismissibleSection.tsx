@@ -98,7 +98,7 @@ export default function DismissibleSection({
               {href && (
                 <Link
                   href={href}
-                  className="inline-flex items-center gap-1 text-xs font-medium tracking-tight"
+                  className="tap-44-y inline-flex items-center gap-1 text-xs font-medium tracking-tight"
                   style={{ color: "var(--app-brand-press)" }}
                 >
                   {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />

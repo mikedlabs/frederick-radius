@@ -166,7 +166,7 @@ export default function TransitMap({
             type="button"
             onClick={() => setRoute(null)}
             aria-pressed={route === null}
-            className="tap-44 shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            className="min-h-11 min-w-11 shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
             style={{
               borderColor: "var(--app-border)",
               background: route === null ? "var(--app-ink)" : "var(--app-bg-elevated)",
@@ -184,7 +184,7 @@ export default function TransitMap({
                 onClick={() => setRoute(on ? null : r.id)}
                 aria-pressed={on}
                 aria-label={`Highlight ${r.name}`}
-                className="tap-44 shrink-0 rounded-full px-2.5 py-1.5 font-mono text-[12px] font-bold tabular-nums transition"
+                className="min-h-11 min-w-11 shrink-0 rounded-full px-2.5 py-1.5 font-mono text-[12px] font-bold tabular-nums transition"
                 style={{
                   background: r.color,
                   color: readableOn(r.color),

@@ -333,11 +333,11 @@ export default function EventCard({
           <Link
             href={`/events/${event.slug}`}
             prefetch={false}
-            className={`block font-serif text-[21px] font-semibold leading-[1.08] tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+            className={`flex min-h-11 items-end font-serif text-[21px] font-semibold leading-[1.08] tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: titleColor }}
           >
             <span className="absolute inset-0" aria-hidden />
-            {event.title}
+            <span className="line-clamp-2">{event.title}</span>
           </Link>
           <p className="mt-1 truncate text-[13px]" style={{ color: subColor }}>
             {date.weekday && <span className="font-mono tabular-nums">{date.weekday} {date.month} {date.day}</span>}

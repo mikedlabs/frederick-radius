@@ -342,7 +342,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
             </p>
             <div className="inline-flex rounded-full border p-0.5 text-[12px]" style={{ borderColor: "var(--app-border)" }}>
               {([["az", "A–Z"], ["rating", "Rating"], ["abv", "Strongest"]] as const).map(([k, l]) => (
-                <button key={k} type="button" onClick={() => setSortAndStore(k)} aria-pressed={sort === k} className="tap-44-y rounded-full px-2.5 py-1 font-semibold" style={{ background: sort === k ? "var(--app-bg-elevated)" : "transparent", color: sort === k ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: sort === k ? "var(--app-edge)" : "none" }}>{l}</button>
+                <button key={k} type="button" onClick={() => setSortAndStore(k)} aria-pressed={sort === k} className="tap-44 rounded-full px-2.5 py-1 font-semibold" style={{ background: sort === k ? "var(--app-bg-elevated)" : "transparent", color: sort === k ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: sort === k ? "var(--app-edge)" : "none" }}>{l}</button>
               ))}
             </div>
           </div>
@@ -571,18 +571,24 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
 
 function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brewery: Brewery; card: PlaceCardData; open: boolean; dist?: number }) {
   return (
-    <li className="flex items-center gap-3 border-b p-2.5" style={{ borderColor: "var(--app-border)", background: "transparent" }}>
-      <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
-      <BreweryPhoto url={card.google_photo_url} size={44} family={brewery.beers[0]?.family} />
-      <div className="min-w-0 flex-1">
-        <Link href={`/places/${brewery.slug}`} className="block truncate text-[14px] font-semibold hover:underline" style={{ color: "var(--app-ink)" }}>{brewery.name}</Link>
-        <p className="flex flex-wrap items-center gap-x-2 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          <GoogleRating card={card} />
-          <span>· {prettyTown(brewery.town)}</span>
-          {dist != null && <span className="font-mono">· {miles(dist)}</span>}
-          {open && <span style={{ color: "var(--app-positive, #1E6B3A)" }}>· hours say open</span>}
-        </p>
-      </div>
+    <li className="border-b" style={{ borderColor: "var(--app-border)", background: "transparent" }}>
+      <Link
+        href={`/places/${brewery.slug}`}
+        aria-label={`View ${brewery.name} details`}
+        className="group flex min-h-11 items-center gap-3 rounded-sm p-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
+      >
+        <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
+        <BreweryPhoto url={card.google_photo_url} size={44} family={brewery.beers[0]?.family} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-semibold group-hover:underline" style={{ color: "var(--app-ink)" }}>{brewery.name}</span>
+          <span className="flex flex-wrap items-center gap-x-2 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            <GoogleRating card={card} />
+            <span>· {prettyTown(brewery.town)}</span>
+            {dist != null && <span className="font-mono">· {miles(dist)}</span>}
+            {open && <span style={{ color: "var(--app-positive, #1E6B3A)" }}>· hours say open</span>}
+          </span>
+        </span>
+      </Link>
     </li>
   );
 }

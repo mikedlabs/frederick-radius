@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bus, Search, X } from "lucide-react";
+import { Bus, ChevronDown, Search, X } from "lucide-react";
 
 /**
  * TransitRouteFinder — the "All routes" list with a search box.
@@ -17,6 +17,7 @@ export type RouteRow = { name: string; destinations: string[]; variationCount: n
 
 export default function TransitRouteFinder({ routes }: { routes: readonly RouteRow[] }) {
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const q = query.trim().toLowerCase();
 
   const shown = useMemo(() => {
@@ -25,6 +26,8 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
       (r) => r.name.toLowerCase().includes(q) || r.destinations.some((d) => d.toLowerCase().includes(q)),
     );
   }, [routes, q]);
+  const visible = q || expanded ? shown : shown.slice(0, 8);
+  const hiddenCount = shown.length - visible.length;
 
   return (
     <section className="space-y-3">
@@ -62,7 +65,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {shown.map((r) => (
+          {visible.map((r) => (
             <li key={r.name}>
               <article
                 className="relative h-full overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
@@ -89,6 +92,29 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
             </li>
           ))}
         </ul>
+      )}
+
+      {!q && hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="tap-44-y mx-auto flex items-center gap-1.5 text-[13px] font-semibold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Show {hiddenCount} more routes
+          <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </button>
+      )}
+      {!q && expanded && shown.length > 8 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="tap-44-y mx-auto flex items-center gap-1.5 text-[13px] font-semibold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Show fewer routes
+          <ChevronDown className="h-3.5 w-3.5 rotate-180" strokeWidth={2.25} aria-hidden />
+        </button>
       )}
     </section>
   );

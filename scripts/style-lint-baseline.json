@@ -1,10 +1,8 @@
 {
   "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-07-14T23:36:44.207Z",
-  "count": 6,
+  "generated": "2026-07-17T13:35:01.699Z",
+  "count": 4,
   "entries": [
-    "src/components/marketing/scenes/Scene03_NoiseToSignal.tsx|ecosystem|…One ecosystem for",
-    "src/components/marketing/scenes/Scene07_Ecosystem.tsx|ecosystem|…r personas. One unified ecosystem.",
     "src/data/events.ts|craft|Massive juried craft and art show in Thurmon…",
     "src/data/places.ts|craft|Brunswick's craft brewery in a restored f…",
     "src/data/places.ts|craft|Downtown craft brewery in a 1909 fireh…",

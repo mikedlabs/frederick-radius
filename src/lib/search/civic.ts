@@ -11,7 +11,11 @@
  *
  * Pure and tiny (~50 rows), safe on every keystroke, client or server.
  */
-import { CIVIC_ACTIONS, CIVIC_VERB_LABEL } from "@/data/civic-actions";
+import {
+  CIVIC_ACTIONS,
+  CIVIC_VERB_LABEL,
+  civicActionFitsQuery,
+} from "@/data/civic-actions";
 
 export type CivicActionResult = {
   id: string;
@@ -36,6 +40,7 @@ function wordsOf(s: string): string[] {
 }
 
 type Entry = {
+  actionId: string;
   id: string;
   title: string;
   subtitle: string;
@@ -50,17 +55,23 @@ const ENTRIES: Entry[] = CIVIC_ACTIONS.map((a): Entry => {
   // ("Libraries (FCPL)") stand alone, and a label that already leads
   // with its verb ("Report a concern…") is never doubled.
   const verb = CIVIC_VERB_LABEL[a.verb];
-  const alreadyVerbed = a.label.toLowerCase().startsWith(a.verb);
+  const alreadyVerbed = a.label.toLowerCase().startsWith(a.verb)
+    || (a.verb === "register" && /\bregistration\b/i.test(a.label));
   const title =
     a.verb === "contact" || a.verb === "find" || alreadyVerbed
       ? a.label
       : `${verb} ${a.label.charAt(0).toLowerCase()}${a.label.slice(1)}`;
   return {
+    actionId: a.id,
     id: `civic:${a.id}`,
     title,
     subtitle: `Official link · ${new URL(a.url).hostname.replace(/^www\./, "")}`,
     href: a.url,
-    words: new Set([...wordsOf(a.label), ...(a.keywords ?? []).flatMap(wordsOf)]),
+    words: new Set([
+      ...wordsOf(a.verb),
+      ...wordsOf(a.label),
+      ...(a.keywords ?? []).flatMap(wordsOf),
+    ]),
     phrases: (a.keywords ?? []).map((k) => k.toLowerCase()),
     titleLower: a.label.toLowerCase(),
   };
@@ -79,6 +90,7 @@ export function searchCivicActions(query: string, limit = 3): CivicActionResult[
 
   const scored: CivicActionResult[] = [];
   for (const e of ENTRIES) {
+    if (!civicActionFitsQuery(e.actionId, q)) continue;
     let score = 0;
     for (const t of terms) {
       if (e.words.has(t)) score += 4;
@@ -94,4 +106,54 @@ export function searchCivicActions(query: string, limit = 3): CivicActionResult[
   }
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, limit);
+}
+
+/**
+ * Whether an official civic match is strong enough to replace the ordinary
+ * local-result list rather than merely sit above it.
+ *
+ * A two-term civic match is strong evidence ("voter registration", "bus
+ * schedule"). A handful of resident tasks are also unambiguous as a single
+ * phrase ("pothole", "animal control"). Weak one-word overlaps keep their
+ * local places and guides; the separate department-display policy then
+ * requires explicit task language before adding any official fallback.
+ */
+const UNAMBIGUOUS_CIVIC_TASK =
+  /\b(?:potholes?|animal control|voter registration|register to vote|marriage licen[cs]e|public records?|foia|mpia|jury duty|property zoning|zoning (?:map|lookup)|road closures?|missed (?:trash|garbage|recycling)|recycling (?:pickup|collection|bin)|water bill|sewer bill|property tax|burn permit)\b/i;
+
+export function isHighConfidenceCivicIntent(
+  query: string,
+  answers: readonly CivicActionResult[],
+): boolean {
+  // Never hide ordinary search results unless the page has an authoritative
+  // action ready to replace them. A regex-only intent without an answer would
+  // otherwise turn a useful query into an empty official-answer section.
+  return answers.length > 0 && (
+    answers.some((answer) => answer.score >= 8) || UNAMBIGUOUS_CIVIC_TASK.test(query)
+  );
+}
+
+/**
+ * Department cards are a fallback for a clearly civic request, not a second
+ * search index. `findDepartments()` deliberately uses broad hints so Ask can
+ * route phrases such as "dog at large" or "water outage", but those same
+ * hints are too loose for the public search page: "dog friendly restaurant",
+ * "health food", "water park", and "bus station" all contain a department
+ * word while plainly asking for a local place.
+ *
+ * A complete task from the county's How-Do-I corpus owns the answer on its
+ * own. Showing a generic department underneath it is usually less specific
+ * and can be actively confusing (Food Control followed by Building and
+ * Permits was the live example). Otherwise, require task language before a
+ * department is allowed into the result stream.
+ */
+const EXPLICIT_DEPARTMENT_INTENT =
+  /\b(?:government|county office|city office|department|agency|official|who (?:do|should) i call|phone number|contact|report|request|apply|complaint|permit|licen[cs]e|vote|voting|election|ballot|potholes?|public works|road (?:closure|maintenance|repair)|street (?:repair|light|sign)|sidewalk|snow plow|trash (?:pickup|collection|schedule)|garbage (?:pickup|collection|schedule)|recycl(?:e|ing) (?:pickup|collection|schedule|bin)|missed (?:trash|garbage|recycling)|water (?:bill|service|outage|leak)|sewer (?:bill|service|backup)|utility bill|property tax|tax bill|zoning|code enforcement|ordinance|public records?|foia|mpia|jury duty|animal control|stray (?:dog|cat|animal)|lost pet|dangerous animal|dog licen[cs]e|parking (?:ticket|meter|permit)|bus (?:route|schedule)|transit (?:route|schedule|service)|police|crime report|fire department|fire and rescue|ems|health department|vaccine|vaccination|senior services|aging services)\b/i;
+
+export function shouldShowDepartmentAnswers(
+  query: string,
+  directAnswers: readonly CivicActionResult[],
+): boolean {
+  if (isHighConfidenceCivicIntent(query, directAnswers)) return false;
+  return EXPLICIT_DEPARTMENT_INTENT.test(query);
 }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 const COUNTY_TRANSIT_URL = "https://frederickcountymd.gov/105/Transit-Services";
+const COUNTY_TRANSIT_PHONE = "301-600-2065";
 
 // Common requests — intent-led entry tiles, same pattern as /contacts
 // and /parking. Routes users by what they're trying to DO (catch the
@@ -90,10 +91,10 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "Lost something on the bus",
-    hint: "Call the TransIT office. Items held at the maintenance facility",
+    hint: `Call TransIT: ${COUNTY_TRANSIT_PHONE}`,
     icon: Search,
     accent: "var(--app-ink-2)",
-    href: "/contacts",
+    href: `tel:${COUNTY_TRANSIT_PHONE.replace(/[^0-9]/g, "")}`,
   },
 ];
 import {
@@ -166,7 +167,8 @@ function relativeAge(iso: string | null): string | null {
   if (weeks < 5) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
   const months = Math.floor(days / 30);
   if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
-  const years = Math.floor(days / 365);
+  if (days < 365) return "12 months ago";
+  const years = Math.max(1, Math.floor(days / 365));
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
 
@@ -219,9 +221,8 @@ export default async function TransitPage() {
           className="text-[15px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Frederick County TransIT runs the local bus network. Every
-          route drawn here is a real one, in service today. Stops and
-          schedules live on the county&apos;s site for now.
+          See the moving network, catch the next MARC train, or jump straight
+          to schedules, fares and accessible service.
         </p>
         {/* Live "N buses moving now" from the GTFS-realtime feed. */}
         <div className="pt-1"><LiveTransitPill /></div>
@@ -244,11 +245,11 @@ export default async function TransitPage() {
         >
           Common requests
         </h2>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ul className="shelf-rail shelf-grid-sm -mx-4 gap-2 px-4 pb-2 sm:mx-0 sm:grid-cols-4 sm:px-0">
           {TRANSIT_INTENTS.map((intent) => {
             const Icon = intent.icon;
             return (
-              <li key={intent.label}>
+              <li key={intent.label} className="w-[10rem] shrink-0 snap-start sm:w-auto">
                 <a
                   href={intent.href}
                   target={intent.external ? "_blank" : undefined}
@@ -376,7 +377,7 @@ export default async function TransitPage() {
             href="https://frederickcountymd.gov/105/Transit-Services"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1"
+            className="tap-44-y inline-flex items-center gap-1"
             style={{ color: "var(--app-cool)" }}
           >
             <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -384,7 +385,7 @@ export default async function TransitPage() {
           </a>
           <Link
             href="/contacts"
-            className="inline-flex items-center gap-1"
+            className="tap-44-y inline-flex items-center gap-1"
             style={{ color: "var(--app-cool)" }}
           >
             <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />

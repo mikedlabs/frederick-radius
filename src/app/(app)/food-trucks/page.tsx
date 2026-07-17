@@ -56,7 +56,7 @@ function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
   const homeBase = resolveHomeBase(truck.homeBase);
   return (
     <li
-      className="tactile flex h-full flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5"
+      className="tactile flex h-full w-[min(82vw,20rem)] shrink-0 snap-start flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 sm:w-auto"
       style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
     >
       <div className="flex items-start gap-3">
@@ -103,29 +103,29 @@ function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
         )
       )}
 
-      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
-        {truck.website && <LinkChip href={truck.website} label="Website" Icon={Globe} />}
-        {truck.instagram && <LinkChip href={truck.instagram} label="Instagram" Icon={Instagram} />}
-        {truck.facebook && <LinkChip href={truck.facebook} label="Facebook" Icon={Facebook} />}
+      {feed && (
+        <a
+          href={feed}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44 mt-auto inline-flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] px-3 py-2.5 text-[12px] font-semibold"
+          style={{ background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, color: accent }}
+        >
+          Today&rsquo;s location
+          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </a>
+      )}
+
+      <div className={`flex flex-wrap items-center gap-1.5 ${feed ? "pt-1.5" : "mt-auto pt-3"}`}>
+        {truck.website && truck.website !== feed && <LinkChip href={truck.website} label="Website" Icon={Globe} />}
+        {truck.instagram && truck.instagram !== feed && <LinkChip href={truck.instagram} label="Instagram" Icon={Instagram} />}
+        {truck.facebook && truck.facebook !== feed && <LinkChip href={truck.facebook} label="Facebook" Icon={Facebook} />}
         {!truck.website && !truck.instagram && !truck.facebook && !truck.homeBase && (
           <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
             Catch them at events around the county.
           </span>
         )}
       </div>
-
-      {feed && (
-        <a
-          href={feed}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="tap-44 mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
-          style={{ color: accent }}
-        >
-          Where they are today
-          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </a>
-      )}
     </li>
   );
 }
@@ -153,14 +153,14 @@ export default function FoodTrucksPage() {
       <header className="space-y-2">
         <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
           <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: FOOD_ACCENT }} />
-          Frederick County
+          Frederick County · {FOOD_TRUCKS.length} mobile vendors
         </p>
-        <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight sm:text-[34px]" style={{ color: "var(--app-ink)" }}>
-          Food trucks & carts
+        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+          The truck board.
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The county&rsquo;s trucks rotate: a brewery lot one night, a festival the next. Here&rsquo;s who&rsquo;s
-          rolling, with a link to each vendor&rsquo;s feed for today&rsquo;s spot.
+          A local roster built around one question: where did they park today?
+          Swipe the board, then open a vendor&rsquo;s latest location post.
         </p>
       </header>
 
@@ -172,15 +172,14 @@ export default function FoodTrucksPage() {
       >
         <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
         <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          Trucks post their daily location on their own feeds. Tap
-          {" "}<span className="font-semibold">Where they are today</span> on any card to check. Live
-          in-app locations are coming as trucks opt in.
+          Locations move daily. <span className="font-semibold">Today&rsquo;s location</span>{" "}opens the
+          vendor&rsquo;s own feed; Radius only shows a live pin when a vendor opts in.
         </p>
       </div>
 
       <section className="space-y-3">
         <SectionHeading title="Food trucks" count={food.length} accent={FOOD_ACCENT} />
-        <ul className="grid gap-2.5 sm:grid-cols-2">
+        <ul className="shelf-rail shelf-grid-sm -mx-4 gap-3 px-4 pb-2 sm:mx-0 sm:grid-cols-2 sm:px-0">
           {food.map((t) => (
             <TruckCard key={t.slug} truck={t} accent={FOOD_ACCENT} />
           ))}
@@ -190,7 +189,7 @@ export default function FoodTrucksPage() {
       {treats.length > 0 && (
         <section className="space-y-3">
           <SectionHeading title="Ice cream & treats on wheels" count={treats.length} accent={TREATS_ACCENT} />
-          <ul className="grid gap-2.5 sm:grid-cols-2">
+            <ul className="shelf-rail shelf-grid-sm -mx-4 gap-3 px-4 pb-2 sm:mx-0 sm:grid-cols-2 sm:px-0">
             {treats.map((t) => (
               <TruckCard key={t.slug} truck={t} accent={TREATS_ACCENT} />
             ))}
@@ -199,7 +198,7 @@ export default function FoodTrucksPage() {
       )}
 
       <p className="text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Run a truck and want on the map? Frederick Radius is adding live truck beacons. Reach out to get listed.
+        Run a truck? Reach out to get listed or opt in to a live location pin.
       </p>
     </div>
   );

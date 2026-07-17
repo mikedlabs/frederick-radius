@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import { COLLECTION_BY_SLUG, COLLECTIONS } from "@/data/collections";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isLgbtqEvent } from "@/lib/events/lgbtq";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
-import PageBloom from "@/components/ui/PageBloom";
 
 /**
  * /collections/[slug] — one curated list, rendered.
@@ -100,77 +99,52 @@ export default async function CollectionPage({
       .slice(0, 8);
   }
 
-  return (
-    <div className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
+  const firstPlaces = places.slice(0, 5);
+  const morePlaces = places.slice(5);
+  const firstCommunityEvents = communityEvents.slice(0, 3);
+  const moreCommunityEvents = communityEvents.slice(3);
 
-      <nav aria-label="Breadcrumb" className="text-xs">
+  return (
+    <div className="relative space-y-5 sm:space-y-6">
+      <nav aria-label="Breadcrumb">
         <Link
           href="/collections"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
+          style={{ color: "var(--app-ink-2)" }}
         >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           All collections
         </Link>
       </nav>
 
-      {/* Hero — accent stripe + serif title + blurb. Same visual
-          language as the index card so the user recognizes the
-          collection at first glance. */}
-      <header
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `radial-gradient(80% 110% at 0% 0%, color-mix(in srgb, ${collection.accent} 14%, transparent), transparent 60%)`,
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute inset-y-0 left-0 w-1"
-          style={{ background: collection.accent }}
-        />
-        <div className="relative space-y-2 pl-2">
-          <p
-            className="eyebrow"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            A collection
-          </p>
-          <h1
-            className="font-serif text-[28px] font-semibold leading-[1.05] tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {collection.title}
-          </h1>
-          <p
-            className="text-[14px] leading-relaxed text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {collection.blurb}
-          </p>
-        </div>
+      <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
+        <p className="eyebrow" style={{ color: collection.accent }}>Local field guide</p>
+        <h1
+          className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {collection.title}
+        </h1>
+        <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed text-pretty sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+          {collection.blurb}
+        </p>
+        <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          {places.length} place{places.length === 1 ? "" : "s"} · curated order
+        </p>
       </header>
 
       {slug === "beer-around-frederick" && (
         <Link
           href="/beer"
-          className="flex items-center justify-between gap-3 rounded-[var(--app-radius-lg)] border p-4 transition hover:bg-[var(--app-bg-sunken)]"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+          className="tap-44 flex items-center justify-between gap-3 border-y py-3.5 transition hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-border)" }}
         >
           <span>
             <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
               Looking for a specific beer?
             </span>
             <span className="block text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-              Search every beer and brewery, filter by style, or open the map.
+              Search beers, breweries, styles, and the map.
             </span>
           </span>
           <span className="shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
@@ -189,13 +163,34 @@ export default async function CollectionPage({
           This collection is being updated. Check back soon.
         </p>
       ) : (
-        <ul className="space-y-3" aria-label={`${collection.title}, ${places.length} places`}>
-          {places.map((p) => (
-            <li key={p.slug}>
-              <PlaceCard place={p} />
-            </li>
-          ))}
-        </ul>
+        <section className="space-y-3" aria-labelledby="collection-places-heading">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="collection-places-heading" className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              In this guide
+            </h2>
+            <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{places.length} places</span>
+          </div>
+          <ul className="space-y-2" aria-label={`${collection.title}, first ${firstPlaces.length} places`}>
+            {firstPlaces.map((p) => (
+              <li key={p.slug}>
+                <PlaceCard place={p} variant="row" />
+              </li>
+            ))}
+          </ul>
+          {morePlaces.length > 0 ? (
+            <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                Show {morePlaces.length} more
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} aria-hidden />
+              </summary>
+              <ul className="space-y-2 pt-2" aria-label={`${collection.title}, more places`}>
+                {morePlaces.map((p) => (
+                  <li key={p.slug}><PlaceCard place={p} variant="row" /></li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </section>
       )}
 
       {slug === "lgbtq-frederick" && (
@@ -215,40 +210,49 @@ export default async function CollectionPage({
               See the board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
-          {communityEvents.length > 0 ? (
-            <ul className="space-y-2.5">
-              {communityEvents.map((e) => (
+          {firstCommunityEvents.length > 0 ? (
+            <>
+              <ul className="space-y-2.5">
+              {firstCommunityEvents.map((e) => (
                 <li key={`${e.slug}-${e.starts_at}`}>
                   <EventCard event={e} variant="glance" />
                 </li>
               ))}
-            </ul>
+              </ul>
+              {moreCommunityEvents.length > 0 ? (
+                <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+                  <summary className="tap-44 flex cursor-pointer list-none items-center justify-between text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                    Show {moreCommunityEvents.length} more events
+                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden />
+                  </summary>
+                  <ul className="space-y-2 pt-2">
+                    {moreCommunityEvents.map((e) => (
+                      <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} variant="glance" /></li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </>
           ) : (
             <p
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Nothing on the wire right now. The Frederick Center posts its
-              programming at thefrederickcenter.org, and new events land here
-              as they publish.
+              No upcoming community events are in the guide right now.
             </p>
           )}
         </section>
       )}
 
-      <footer
-        className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
-        Picked by a Frederick resident. Not paid placement. Have a place
-        that belongs here?{" "}
-        <a
+      <footer className="border-t pt-4 text-[11.5px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+        Curated locally. No paid placement. Missing a place?{" "}
+        <Link
           href="/submit/place"
-          className="underline"
+          className="tap-44 inline-flex min-h-11 items-center font-semibold underline"
           style={{ color: "var(--app-cool)" }}
         >
-          Tell us.
-        </a>
+          Tell us
+        </Link>
       </footer>
     </div>
   );

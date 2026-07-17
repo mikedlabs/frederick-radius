@@ -54,7 +54,7 @@ export default function MunicipalEvents({
 
       {/* Search */}
       <div
-        className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-2"
+        className="flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
         style={{ borderColor: "var(--app-border)" }}
       >
         <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -63,12 +63,12 @@ export default function MunicipalEvents({
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search story time, market, council…"
           aria-label="Search municipal events"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--app-ink-3)]"
+          className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--app-ink-3)]"
           style={{ color: "var(--app-ink)" }}
           autoComplete="off"
         />
         {q && (
-          <button type="button" onClick={() => setQ("")} aria-label="Clear" className="shrink-0">
+          <button type="button" onClick={() => setQ("")} aria-label="Clear search" className="-mr-3 grid h-11 w-11 shrink-0 place-items-center rounded-full">
             <X className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           </button>
         )}
@@ -111,7 +111,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-[0.97]"
+      className="inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-[0.97]"
       style={{
         background: active ? c : "var(--app-bg-elevated)",
         color: active ? "white" : "var(--app-ink-2)",

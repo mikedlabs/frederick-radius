@@ -509,6 +509,26 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .shelf-rail::-webkit-scrollbar { display: none; }
 .shelf-rail > * { scroll-snap-align: start; }
+/* A shelf can become a conventional grid once the viewport has room. These
+   unlayered overrides intentionally sit beside .shelf-rail; Tailwind's
+   layered responsive display/overflow utilities cannot override an
+   unlayered component rule reliably. */
+@media (min-width: 640px) {
+  .shelf-grid-sm {
+    display: grid;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+@media (min-width: 768px) {
+  .shelf-grid-md {
+    display: grid;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .shelf-rail { scroll-behavior: auto; }
 }
@@ -3710,17 +3730,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
 }
 .eb-lensseg button {
-  width: 34px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   color: var(--app-ink-3);
   position: relative;
-}
-.eb-lensseg button::before {
-  content: "";
-  position: absolute;
-  inset: -7px 0;
 }
 .eb-lensseg button + button {
   border-left: 1px solid var(--app-border);
