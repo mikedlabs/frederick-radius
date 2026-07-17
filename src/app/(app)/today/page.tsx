@@ -3,12 +3,9 @@ import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayAsk from "@/components/today/TodayAsk";
-import EventCountdown from "@/components/today/EventCountdown";
-import { ArrowRight, ChevronRight, Ticket } from "lucide-react";
-import ShareTodayButton from "@/components/today/ShareTodayButton";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
-import OnNowStrip from "@/components/today/OnNowStrip";
 import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -36,7 +33,6 @@ import HourlySummary from "@/components/today/HourlySummary";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
-import BetaIntroCard from "@/components/today/BetaIntroCard";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -49,15 +45,12 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 
 import { eventDateBlock } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { liveMusicTonight } from "@/lib/events/live-music";
-import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isValidCoord } from "@/lib/geo";
-import { isEventToday, isEventEnded, isEventLiveNow, eventWhenLabel } from "@/lib/eventWhenLabel";
+import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { pickTonightEvent } from "@/lib/today/tonight";
-import { daypart, sectionOrder, type TodaySection } from "@/lib/daypart";
+import { isSameTodayListing, pickTonightEvent } from "@/lib/today/tonight";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
@@ -168,11 +161,6 @@ export default async function HomePage() {
 
   return (
     <div className="relative">
-      {/* Document-outline anchor. The visible weekday/date in TodayCard is an
-          editorial orientation line, not the page title, so the page carried
-          no <h1>; this sr-only heading gives screen readers + crawlers a clean
-          single top-level heading without changing the layout. */}
-      <h1 className="sr-only">What&rsquo;s worth your time in Frederick County right now</h1>
       <PageBloom />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
@@ -209,12 +197,12 @@ export default async function HomePage() {
           make it look like a title). Serif line + a short brand rule; the
           "Around here" tagline eyebrow was dropped per owner (2026-07-13). Sits
           below an active civic alert (alerts still lead) and above the weather.
-          The sr-only h1 stays the semantic heading; this is the display title. */}
-      <header className="mb-4 px-0.5">
-        <p className="font-serif text-[26px] font-semibold leading-[1.06] tracking-tight sm:text-[30px]" style={{ color: "var(--app-ink)" }}>
-          Your field guide to Frederick&nbsp;County.
-        </p>
-        <span aria-hidden className="mt-2.5 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
+          This is also the real document h1: the visible and accessible page
+          title should be the same sentence. */}
+      <header className="mb-3 px-0.5">
+        <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
+          Today in Frederick
+        </h1>
       </header>
 
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
@@ -250,51 +238,27 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
+      <MastheadNotes now={now} />
+
       {/* ── ASK — the core promise, finally on the front door (UX-01 p1).
           AskFrederick → /api/ask was fully built but had zero importers;
           the July 2026 review called it the killer finding. Under the sky
           hero so "what's my day look like" still leads, then the open
           question, then tonight's answer. */}
-      <TodayAsk />
+      <div
+        className="mt-4 rounded-[var(--app-radius-lg)] border px-3 py-3.5"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      >
+        <TodayAsk action={<LocationPrime />} />
 
-      {/* ── TONIGHT, SOLO — the headline event used to sit as a frosted pill
-          INSIDE the weather card; owner call (2026-07-10): it reads better as
-          its own card directly below the weather, in the standard elevated
-          card language. Self-hides when nothing qualifies. */}
-      <Suspense fallback={null}>
-        <TonightSolo eventsPromise={eventsPromise} now={now} />
-      </Suspense>
-
-      {/* ── MASTHEAD CAPTION ─────────────────────────────────────────────
-          County context + the day's almanac notes, capped by the share rule.
-          The former town selector was removed: Today is a countywide briefing,
-          so a page-level picker falsely implied that every section was scoped. */}
-      <header className="mt-2 px-0.5">
-        <p className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink-2)" }}>
-          Frederick County, today.
-        </p>
-        <MastheadNotes now={now} />
-        {/* The cap rule now carries the day's one share affordance: the link
-            previews as the daily almanac card (generateMetadata above), so
-            "Share today" drops an engraved sun/moon/events plate into the
-            group chat. Quiet by design — it caps the plate, it doesn't sell. */}
-        <div className="mt-3 flex items-center gap-3">
-          <div className="fg-rule min-w-0 flex-1" aria-hidden />
-          <ShareTodayButton />
+      {/* ── RIGHT NOW — the fast lane. Put the page's two direct ways to ask
+          for something together: free-form Ask Radius, then one-tap intents.
+          On mobile this removes an event card, almanac caption, share row, and
+          live strip from the path to "I want coffee / food / a park." */}
+        <div className="mt-2.5" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+          <CravingStrip />
         </div>
-      </header>
-
-      {/* ── ON NOW, NEAR YOU — a compact live strip in the gap the copy-heavy
-          "Market season" seasonal band used to fill (owner call, 2026-07-08:
-          the band read as brochure prose). Two or three TAPPABLE chips of what
-          is genuinely on THIS MINUTE — a live event, a place open now (a happy
-          hour pouring), today's farmers market if one is actually open — each
-          linking to its surface. Honest + self-hiding: shows only what's real,
-          and the whole strip disappears (no empty box) when nothing qualifies.
-          Streams on the shared events promise. */}
-      <Suspense fallback={null}>
-        <OnNowStrip now={now} eventsPromise={eventsPromise} />
-      </Suspense>
+      </div>
 
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
@@ -313,22 +277,6 @@ export default async function HomePage() {
           whole section + its buildTodayAnswers scaffolding came out. /today
           now leads straight into the CravingStrip fast lane below. */}
 
-      {/* ── RIGHT NOW — the fast lane. "I want ___ right now" one-tap craving
-          tiles into the nearest open one, plus a labeled "Getting around" row
-          (Parking / MARC / Transit) so utilities don't read as cravings. The
-          location consent now rides on the right of the "I want…" bar (one row,
-          opposite the prompt) instead of a separate banner above it. */}
-      <div className="mt-4" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-        <CravingStrip
-          locationSlot={<LocationPrime />}
-          contextSlot={
-            <Suspense fallback={null}>
-              <RightNowSlot eventsPromise={eventsPromise} now={now} />
-            </Suspense>
-          }
-        />
-      </div>
-
       {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
           the day; once it's past ~9 PM (the "late" daypart, strictly on the
           Eastern clock) it leads the editorial spine with tomorrow's top draw +
@@ -346,35 +294,27 @@ export default async function HomePage() {
           tap away via "See all"). Both always render — daypart only picks which
           comes first, so the page BEHAVES like a local instead of saying so.
           What's-on streams inside its own Suspense boundary. */}
-      {sectionOrder(daypart(now)).map((section: TodaySection) =>
-        section === "curated" ? (
-          // Suspense so the rail's NWS read (weather-aware ordering) streams
-          // in like every other weather consumer on this page — a cold
-          // forecast fetch must never hold the first paint hostage.
-          <Suspense
-            key="curated"
-            fallback={
-              <section className="mt-6" aria-label="Plan the moment">
-                <Skeleton.Block height={140} round="var(--app-radius-lg)" />
-              </section>
-            }
-          >
-            <CuratedPicks />
-          </Suspense>
-        ) : (
-          <div key="whats-on" id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-            <Suspense
-              fallback={
-                <section className="mt-6 space-y-3" aria-label="What's on">
-                  <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-                </section>
-              }
-            >
-              <WhatsOn eventsPromise={eventsPromise} now={now} />
-            </Suspense>
-          </div>
-        ),
-      )}
+      <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense
+          fallback={
+            <section className="mt-5 space-y-3" aria-label="Events today">
+              <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+            </section>
+          }
+        >
+          <WhatsOn eventsPromise={eventsPromise} now={now} />
+        </Suspense>
+      </div>
+
+      <Suspense
+        fallback={
+          <section className="mt-5" aria-label="Need an idea?">
+            <Skeleton.Block height={120} round="var(--app-radius-lg)" />
+          </section>
+        }
+      >
+        <CuratedPicks />
+      </Suspense>
 
       {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
           the live layer): a returning user's own saved places that are open
@@ -407,14 +347,7 @@ export default async function HomePage() {
 
       <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
-          {/* marketTeaserAbove: the OnNowStrip up top is the canonical market
-              teaser — it chips today's market whenever marketsOpenToday finds
-              one, which is exactly when the band's MarketsTodayBeat line would
-              render. Telling the band the strip has it means the market fact
-              lives ONCE on /today (the July audit caught it rendering three
-              times) while /today keeps the richer /category/market door via
-              the chip itself. */}
-          <OnNowBand now={now} eventsPromise={eventsPromise} marketTeaserAbove />
+          <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </div>
 
@@ -462,19 +395,16 @@ export default async function HomePage() {
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
-      {/* First-visit "New here?" intro — sits at the END of the primary
-          content (was interrupting the answers → best-move flow up top).
-          Dismissible; renders only until the cookie is set, so it never
-          weighs on a returning visitor. */}
-      <div className="mt-6">
-        <BetaIntroCard />
-      </div>
-
       {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
           default so the first screen is just the ask + the answers. Depth
           is one tap away, not the opening wall. Reversible: flip
           defaultOpen, or lift any module back above to taste. */}
-      <CollapsibleSection title="The full briefing" storageKey="fr.today.briefing" defaultOpen={false}>
+      <CollapsibleSection
+        title="More weather & local tools"
+        storageKey="fr.today.briefing"
+        defaultOpen={false}
+        className="mt-5 border-t pt-2"
+      >
       <div className="mt-2 flex flex-col gap-4">
         {/* ── LEFT column: the weather block. Leads on mobile (weather
             at the top, per the premium-refresh direction) and sits in
@@ -619,85 +549,6 @@ function eventTown(ev: { municipality_name?: string }): string | null {
   return t === "Downtown Frederick" ? "Frederick" : t;
 }
 
-/** Tonight's headline event as its OWN card directly below the weather hero
- *  (owner call: out of the weather card, solo). Today-only AND not-yet-ended:
- *  the picker enforces the "next 24 hours" contract; renders nothing when no
- *  event qualifies, so the page never shows an empty shell. */
-async function TonightSolo({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const ev = pickTonightEvent(now, publicEvents);
-  if (!ev) return null;
-  return (
-    <Link
-      href={`/events/${ev.slug}`}
-      prefetch={false}
-      className="tactile-interactive group relative z-10 mt-2.5 flex items-center gap-3 rounded-[var(--app-radius-md)] px-3 py-2.5"
-      style={{
-        backgroundColor: "var(--app-bg-elevated-solid)",
-        backgroundImage: "var(--app-paper-light)",
-        boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
-      }}
-    >
-      <span
-        aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
-        style={{
-          background: "color-mix(in srgb, var(--app-brand-2) 14%, var(--app-bg-elevated))",
-          boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi)",
-          color: "color-mix(in srgb, var(--app-brand-2) 80%, var(--app-ink))",
-        }}
-      >
-        <Ticket className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        {/* When: the relative day plus the actual clock time ("Tonight ·
-            7:00 PM"), so the card answers "when" concretely, not just
-            "tonight". The countdown rides after for live/soon events. */}
-        <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
-          {eventWhenLabel(ev.starts_at, now)}
-          {!ev.is_all_day && ` · ${eventDateBlock(ev).time}`}
-          <EventCountdown startsAt={ev.starts_at} endsAt={ev.ends_at ?? ev.starts_at} />
-        </span>
-        {/* Two lines before ellipsis: tonight's ONE headline is the last
-            title on the page that should read "Curious Iguana Presents: …". */}
-        <span className="line-clamp-2 font-serif text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {ev.title}
-        </span>
-        {/* Where: the venue and the town, so "Sky Stage · Frederick" tells
-            you the place and which corner of the county it's in. Either
-            part can be missing; show what we have. */}
-        {(ev.venue_name || eventTown(ev)) && (
-          <span className="block truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {[ev.venue_name, eventTown(ev)].filter(Boolean).join(" · ")}
-          </span>
-        )}
-      </span>
-      <ChevronRight
-        aria-hidden
-        className="h-4 w-4 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5"
-        strokeWidth={2}
-        style={{ color: "var(--app-ink-3)" }}
-      />
-    </Link>
-  );
-}
-
-/** The contextual "right now" band: who's on stage tonight, as a quiet
- *  sub-label ("7:00 PM · Olde Mother"), never a count headline. Self-hides. */
-async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const liveTonight = liveMusicTonight(publicEvents, now);
-  const soonestShow = liveTonight[0];
-  const soonest = soonestShow
-    ? {
-        title: soonestShow.title,
-        venue: soonestShow.venue_name ?? null,
-        time: eventDateBlock(soonestShow).time,
-      }
-    : undefined;
-  return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
-}
-
 /** A walk time is only honest for a venue we KNOW the position of — the loader
  *  stamps "venue_match" / "exact_address" on those (and lists "area"/"unknown"
  *  ones without a distance). Gate the tile's walk figure on that + a valid
@@ -826,7 +677,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // feature two screens later). When there's no teaser there's no feature
   // card either, same as before.
   const withoutTeaser = featuredEvent
-    ? todaysEvents.filter((e) => e.slug !== featuredEvent.slug)
+    ? todaysEvents.filter((e) => !isSameTodayListing(e, featuredEvent))
     : todaysEvents;
   const feature = featuredEvent ? withoutTeaser[0] : undefined;
   const upcomingRest = feature ? withoutTeaser.slice(1) : withoutTeaser;
@@ -842,7 +693,10 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     ...upcomingRest.map((e) => ({ e, quiet: false })),
     ...alsoToday.map((e) => ({ e, quiet: true })),
   ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
-  const PROGRAM_MAX = 18;
+  // The front page is a briefing, not the calendar. Eight rows show the shape
+  // of the day without making every visitor scroll through the full feed; the
+  // explicit remainder link preserves complete access.
+  const PROGRAM_MAX = 3;
   const shown = program.slice(0, PROGRAM_MAX);
   const programOverflow = program.length - shown.length;
   const partOf = (row: (typeof program)[number]): string => {
@@ -860,14 +714,13 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   const tonightCount = ahead.filter((e) => !e.is_all_day && easternStartHour(e.starts_at) >= 17).length;
 
   return (
-    <section className="mt-6 space-y-3" aria-label="What's on">
+    <section className="mt-5 space-y-3" aria-label="Events today">
       <DismissibleSection
         id="upcoming"
-        title="Today"
+        title="Events today"
         href="/events"
         cta="See all"
-        eyebrow="What's on"
-        plateNo="Pl. I"
+        flat
         meta={
           todayAll.length > 0
             ? `${todayAll.length} ${todayAll.length === 1 ? "event" : "events"} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""}`

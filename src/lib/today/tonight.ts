@@ -15,14 +15,26 @@
  * If nothing qualifies, it returns null: honest beats padded.
  */
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { pickLeadEvent } from "@/lib/events/lead-rank";
-import { isEventToday, isEventEnded } from "@/lib/eventWhenLabel";
+import { eventLeadTier, pickLeadEvent } from "@/lib/events/lead-rank";
+import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 
 // Event titles that look like internal/admin business — board meetings,
 // hearings, classes, rehearsals. Public meetings live on /events under their
 // own section; they never carry a "tonight" hero.
 export const NON_PUBLIC_EVENT =
   /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
+
+/** Feed-safe identity for the same occurrence when providers mint different
+ * slugs but agree on title and roughly the same start time. */
+export function isSameTodayListing(
+  a: Pick<EventWithMeta, "slug" | "title" | "starts_at">,
+  b: Pick<EventWithMeta, "slug" | "title" | "starts_at">,
+): boolean {
+  if (a.slug === b.slug) return true;
+  const titleKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return titleKey(a.title) === titleKey(b.title)
+    && Math.abs(Date.parse(a.starts_at) - Date.parse(b.starts_at)) <= 60 * 60 * 1000;
+}
 
 export function pickTonightEvent(now: Date, pool: EventWithMeta[]): EventWithMeta | null {
   const tonight = pool.filter(
@@ -31,6 +43,15 @@ export function pickTonightEvent(now: Date, pool: EventWithMeta[]): EventWithMet
       !isEventEnded(e, now) &&
       !NON_PUBLIC_EVENT.test(e.title ?? ""),
   );
+  // "Right now" beats "photographs well." The generic lead comparator uses
+  // imagery as a useful tie-breaker, but that allowed an image-backed trivia
+  // listing later tonight to displace a marquee event already underway. When
+  // a real draw is live, it is the most useful lead on a page called Today.
+  const liveDraws = tonight.filter(
+    (e) => isEventLiveNow(e, now) && eventLeadTier(e) === 0,
+  );
+  if (liveDraws.length > 0) return pickLeadEvent(liveDraws);
+
   // Lead-rank, not raw chronology: a photo-led draw, then any real draw, then a
   // routine recurring program (storytime/class) last — so the cron-ingested
   // library calendar can't put a storytime in the hero ahead of tonight's

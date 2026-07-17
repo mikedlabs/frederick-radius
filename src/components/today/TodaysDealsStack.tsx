@@ -9,7 +9,7 @@ import { todayDealAvailability } from "@/lib/today/dealAvailability";
  * Today's specials as a direct, scan-first ledger. Offer, venue, and timing
  * stay visible without expanding anything; the whole row opens the place.
  */
-const MAX_ROWS = 4;
+const MAX_ROWS = 3;
 
 const STATUS_COLOR = {
   now: "var(--app-positive)",
@@ -22,10 +22,12 @@ export default function TodaysDealsStack({
   deals,
   weekday,
   now,
+  embedded = false,
 }: {
   deals: TodaysDeal[];
   weekday: string;
   now: Date;
+  embedded?: boolean;
 }) {
   const shown = deals
     .map((deal, index) => ({
@@ -40,13 +42,12 @@ export default function TodaysDealsStack({
     <section aria-labelledby="today-specials-heading" className="space-y-3">
       <div className="flex items-end justify-between gap-3 px-0.5">
         <div>
-          <p className="fg-eyebrow">Local field notes</p>
           <h3
             id="today-specials-heading"
-            className="mt-1 font-serif text-[20px] font-semibold leading-tight tracking-[-0.01em]"
+            className={`${embedded ? "text-[17px]" : "text-[20px]"} font-serif font-semibold leading-tight tracking-[-0.01em]`}
             style={{ color: "var(--app-ink)" }}
           >
-            Specials today
+            Specials
           </h3>
         </div>
         <span
@@ -57,7 +58,7 @@ export default function TodaysDealsStack({
           }}
         >
           <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-          Checked at source
+          Verified
         </span>
       </div>
 

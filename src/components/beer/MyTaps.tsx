@@ -4,6 +4,7 @@ import { Bookmark, X } from "lucide-react";
 import { useMemo } from "react";
 import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
+import { BeerGlassArt } from "./BeerGlassArt";
 
 const prettyTown = (slug: string) =>
   slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -31,62 +32,63 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
   return (
     <section
       aria-label="My taps"
-      className="space-y-3 overflow-hidden rounded-[var(--app-radius-lg)] border p-4"
+      className="-mx-4 space-y-5 overflow-hidden border-y border-white/10 px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
       style={{
-        borderColor: "rgba(226, 194, 144, 0.22)",
-        background: "var(--beer-ink)",
-        boxShadow: "0 18px 44px rgba(20,28,23,.16)",
+        background: "#15130f",
+        boxShadow: "0 24px 52px -34px rgba(20,14,8,.7)",
       }}
     >
       {heading && (
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Bookmark className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--beer-copper-light)" }} aria-hidden />
-            <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-on-brand)" }}>
+          <div>
+            <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]"><Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />Your bar tab</p>
+            <h2 className="mt-2 font-serif text-[34px] font-semibold leading-none tracking-[-0.04em] text-[#f7f0e4]">
               Your saved pours
             </h2>
           </div>
-          <span className="rounded-full border border-white/20 px-2.5 py-1 font-mono text-[11px] tabular-nums text-white/75">
+          <span className="border border-white/20 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-white/65">
             {beers.length} {beers.length === 1 ? "pour" : "pours"}
           </span>
         </div>
       )}
-      <ul className="-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-1">
-        {beers.map(({ beer, key }) => (
-          <TapRow key={key} beer={beer} savedKey={key} />
+      <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
+        {beers.map(({ beer, key }, index) => (
+          <TapRow key={key} beer={beer} savedKey={key} index={index} />
         ))}
       </ul>
     </section>
   );
 }
 
-function TapRow({ beer, savedKey }: { beer: BeerWithBrewery; savedKey: string }) {
+function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: string; index: number }) {
   const remove = useToggleSave("beer", savedKey);
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
-      className="flex min-w-[245px] max-w-[290px] snap-start items-center gap-3 rounded-[var(--app-radius-md)] border p-3"
-      style={{ borderColor: "rgba(255,255,255,.14)", background: "var(--app-bg-elevated-solid)" }}
+      className="relative flex min-h-[210px] w-[76vw] max-w-[290px] shrink-0 snap-center flex-col overflow-hidden border border-white/14 p-4 text-white"
+      style={{ background: `linear-gradient(145deg, ${fam.base}, ${fam.deep} 68%, #1c1510)` }}
     >
-      <span aria-hidden className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: fam.base }} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+      <BeerGlassArt family={beer.family} variant={index % 2 ? "tulip" : "pint"} className="pointer-events-none absolute -right-7 -top-7 h-[155px] w-auto opacity-20" ink="#fff8eb" />
+      <div className="relative flex items-start justify-between gap-3">
+        <span className="font-serif text-[32px] leading-none text-white/34">{String(index + 1).padStart(2, "0")}</span>
+        <button
+          type="button"
+          onClick={remove}
+          aria-label={`Remove ${beer.name} from My taps`}
+          className="grid h-10 w-10 shrink-0 place-items-center border border-white/24 bg-black/10 text-white/72"
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </button>
+      </div>
+      <div className="relative mt-auto min-w-0">
+        <p className="font-mono text-[8px] font-bold uppercase tracking-[0.14em] text-white/54">{beer.style}{beer.abv != null && ` · ${beer.abv.toFixed(1)}%`}</p>
+        <p className="mt-1 max-w-[9ch] font-serif text-[28px] font-semibold leading-[0.9] tracking-[-0.03em]">
           {beer.name}
         </p>
-        <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          {beer.style}
-          {beer.abv != null && ` · ${beer.abv.toFixed(1)}%`} · {beer.breweryName}, {prettyTown(beer.town)}
+        <p className="mt-3 truncate text-[10px] text-white/56">
+          {beer.breweryName} · {prettyTown(beer.town)}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={remove}
-        aria-label={`Remove ${beer.name} from My taps`}
-        className="tap-44 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
-        style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink-3)" }}
-      >
-        <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      </button>
     </li>
   );
 }

@@ -18,8 +18,8 @@ test.describe("Ask Radius", () => {
     await page.getByLabel("Ask Frederick Radius").fill("Plan a walkable 3 hour date night");
     await page.getByRole("button", { name: "Ask Radius" }).click();
 
-    await expect(page.getByText("Ready-to-run route")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Open, swap stops, and share/ })).toBeVisible();
+    await expect(page.getByText("Your route")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Open and edit route/ })).toBeVisible();
     await expect(page.getByText(/keeping the stops walkable/i)).toBeVisible();
     const stopCount = await page.getByTestId("ask-plan-stops").locator(":scope > li").count();
     expect(stopCount).toBeGreaterThanOrEqual(2);

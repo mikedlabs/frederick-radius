@@ -29,7 +29,7 @@ import {
 const AppMapClient = dynamic(() => import("@/components/map/AppMapClient"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[62vh] min-h-[380px] w-full items-center justify-center rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+    <div className="flex h-[62vh] min-h-[380px] w-full items-center justify-center border" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
       <span className="text-[13px]">Loading map…</span>
     </div>
   ),
@@ -220,7 +220,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
   }
 
   return (
-    <div className="space-y-4">
+    <div className="beer-finder space-y-4">
       {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -233,13 +233,13 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
           }}
           placeholder="Search beers, breweries, styles"
           aria-label="Search beers and breweries"
-          className="w-full rounded-full border py-2.5 pl-9 pr-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          className="w-full rounded-[4px] border py-2.5 pl-9 pr-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
         />
       </div>
 
       {/* Tabs */}
-      <div role="group" aria-label="Browse beer guide" className="inline-flex w-full rounded-full border p-0.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+      <div role="group" aria-label="Browse beer guide" className="inline-flex w-full border-y" style={{ borderColor: "var(--app-border)", background: "transparent" }}>
         {([["beers", "Beers"], ["breweries", "Breweries"], ["map", "Map"], ["best", "Ratings"]] as const).map(([key, label]) => {
           const active = tab === key;
           return (
@@ -251,8 +251,8 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
                 setTab(key);
                 resetVisibleCounts();
               }}
-              className="tap-44-y flex flex-1 items-center justify-center rounded-full px-2 py-1.5 text-[13px] font-semibold transition-colors"
-              style={{ background: active ? "var(--app-bg-elevated)" : "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)", boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none" }}
+              className="tap-44-y flex flex-1 items-center justify-center border-b-2 px-2 py-1.5 text-[13px] font-semibold transition-colors"
+              style={{ borderColor: active ? "var(--app-brand)" : "transparent", background: "transparent", color: active ? "var(--app-ink)" : "var(--app-ink-3)" }}
             >
               {label}
             </button>
@@ -407,7 +407,7 @@ export default function BeerFinder({ breweryCards }: { breweryCards: PlaceCardDa
 
       {tab === "map" && (
         mapPlaces.length > 0 ? (
-          <div className="relative h-[62vh] min-h-[380px] w-full overflow-hidden rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)" }}>
+          <div className="relative h-[62vh] min-h-[380px] w-full overflow-hidden border" style={{ borderColor: "var(--app-border)" }}>
             <AppMapClient places={mapPlaces} fullBleed recenterToKnownLocation={nearMe && !!position} />
           </div>
         ) : <Empty note="No breweries match on the map with those filters." />
@@ -466,7 +466,7 @@ function BreweryPhoto({
   const colors = FAMILY_BY_KEY[family];
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)]"
+      className="relative shrink-0 overflow-hidden rounded-[4px]"
       style={{
         height: size,
         width: size,
@@ -491,7 +491,7 @@ function BeerRow({ beer, openBrewery, dist, rank }: { beer: BeerWithBrewery; ope
   const on = mounted && saved;
   const fam = FAMILY_BY_KEY[beer.family];
   return (
-    <li className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] border p-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+    <li className="flex items-center gap-2.5 border-b p-2.5" style={{ borderColor: "var(--app-border)", background: "transparent" }}>
       {rank != null && (
         <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 20, textAlign: "right" }}>{rank}</span>
       )}
@@ -520,7 +520,7 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
   const beers = activeFams.size ? brewery.beers.filter((b) => activeFams.has(b.family)) : brewery.beers;
   const tags = (card?.tags ?? []).filter((t) => t === "dog-friendly" || t === "food-trucks" || t === "family");
   return (
-    <li className="rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+    <li className="border-b py-4" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex gap-3">
         <BreweryPhoto url={card?.google_photo_url} size={56} family={brewery.beers[0]?.family} />
         <div className="min-w-0 flex-1">
@@ -571,7 +571,7 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
 
 function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brewery: Brewery; card: PlaceCardData; open: boolean; dist?: number }) {
   return (
-    <li className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-2.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+    <li className="flex items-center gap-3 border-b p-2.5" style={{ borderColor: "var(--app-border)", background: "transparent" }}>
       <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
       <BreweryPhoto url={card.google_photo_url} size={44} family={brewery.beers[0]?.family} />
       <div className="min-w-0 flex-1">
@@ -589,7 +589,7 @@ function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brew
 
 function Empty({ note = "Nothing matches those filters. Try clearing a few." }: { note?: string }) {
   return (
-    <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+    <p className="border-y border-dashed px-4 py-8 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
       {note}
     </p>
   );

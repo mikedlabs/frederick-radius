@@ -311,6 +311,31 @@ export default function RightNow({
       });
   }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin]);
 
+  // A town with no verified in-town match should not become a blank page.
+  // Keep the scope honest, then offer the three closest verified alternatives
+  // measured from that town's centroid. This is deliberately separate from
+  // `matched`: the header and count still say there are zero IN the town.
+  const nearbyTownFallback = useMemo(() => {
+    if (!townKey || matched.length > 0 || !origin) return [];
+    const passFacet = (p: PlaceCardData): boolean => {
+      if (!facetKey) return true;
+      if (craving?.cuisineFacets) return cuisinesOf(p).includes(facetKey);
+      const facet = craving?.facets?.find((candidate) => candidate.key === facetKey);
+      return facet ? matchesCravingFacet(facet, p) : true;
+    };
+    return cravingMatchedAll
+      .filter(passFacet)
+      .filter((place) => place.municipality !== townKey)
+      .map((place) => ({
+        place,
+        distance: haversineMeters(origin, place.geom),
+        open: Boolean(craving?.alwaysOpen) || isOpenNow(place.open_status),
+      }))
+      .sort((a, b) => Number(b.open) - Number(a.open) || a.distance - b.distance)
+      .slice(0, 3)
+      .map(({ place, distance }) => ({ place, distance }));
+  }, [cravingMatchedAll, craving, facetKey, townKey, matched.length, origin]);
+
   // Towns that actually have a result for this craving — so the town row only
   // offers places that lead somewhere, never a dead "0 in Myersville" chip.
   const townsWithResults = useMemo(() => {
@@ -485,7 +510,9 @@ export default function RightNow({
                     ? openCount > 0
                       ? `${openCount} open now · ${sortLabel}`
                       : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
-                    : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
+                    : townName
+                      ? `${openCount} open · ${matched.length} in ${townName} · ${sortLabel}`
+                      : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
             </p>
           </div>
         </div>
@@ -634,14 +661,58 @@ export default function RightNow({
         </button>
       )}
 
-      {results.length === 0 ? (
+      {results.length === 0 && townName && matched.length === 0 && nearbyTownFallback.length > 0 ? (
+        <section aria-labelledby="nearby-town-fallback-heading" className="space-y-3">
+          <div
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+          >
+            <h2 id="nearby-town-fallback-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Closest verified options
+            </h2>
+            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              Radius doesn&rsquo;t have a verified {activeNoun} listing in {townName} yet. These are the nearest matches outside town.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => chooseTown(null)}
+                className="tactile-interactive inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Search all towns
+              </button>
+              <Link
+                href="/submit/place"
+                className="tactile-interactive inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Tell us what&rsquo;s missing
+              </Link>
+            </div>
+          </div>
+          <ul className="space-y-2" aria-label={`Closest ${activeNoun} outside ${townName}`}>
+            {nearbyTownFallback.map(({ place, distance }) => (
+              <li key={place.slug}>
+                <p className="mb-1 px-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+                  {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
+                  {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
+                </p>
+                <PlaceCard place={place} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : results.length === 0 ? (
         <div
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
             {townName
-              ? `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
+              ? matched.length === 0
+                ? `Radius doesn't have a verified ${activeNoun} listing in ${townName} yet.`
+                : `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
               : closingSoonOnly
                 ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
                 : openOnly && matched.length > 0
@@ -653,14 +724,25 @@ export default function RightNow({
           {/* Clear the town scope, the closing-soon filter, or (when Open-now hid
               everything but closed matches exist) offer those — never dead-end. */}
           {townName ? (
-            <button
-              type="button"
-              onClick={() => chooseTown(null)}
-              className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-            >
-              Show all towns
-            </button>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => chooseTown(null)}
+                className="tactile-interactive inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Search all towns
+              </button>
+              {matched.length === 0 ? (
+                <Link
+                  href="/submit/place"
+                  className="tactile-interactive inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                  style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+                >
+                  Tell us what&rsquo;s missing
+                </Link>
+              ) : null}
+            </div>
           ) : closingSoonOnly ? (
             <button
               type="button"

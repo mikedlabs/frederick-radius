@@ -97,7 +97,7 @@ export default async function OnNowBand({
   // when nothing is genuinely on now.)
   const blocks: Record<string, ReactNode> = {
     happy: <HappyHourWallet now={now} />,
-    deals: <TodaysDeals now={now} />,
+    deals: <TodaysDeals now={now} embedded />,
     markets: marketTeaserAbove ? null : <MarketsTodayBeat now={now} />,
     parking: parking ? (
       <TonightParkingPlan
@@ -122,7 +122,7 @@ export default async function OnNowBand({
           {anyLive && (
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
           )}
-          {anyLive ? "On now" : "Coming up"}
+          {anyLive ? "Available now" : "Coming up"}
         </h2>
         {/* A quiet live tally, never the headline (brand voice: counts support). */}
         {anyLive && (

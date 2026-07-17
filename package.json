@@ -40,6 +40,7 @@
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
     "audit:categories": "tsx --tsconfig tsconfig.json scripts/category-audit.ts",
     "coverage:scorecard": "tsx --tsconfig tsconfig.json scripts/coverage-scorecard.ts",
+    "coverage:intents": "tsx --tsconfig tsconfig.json scripts/intent-coverage-scorecard.ts",
     "gen:dedup": "tsx --tsconfig tsconfig.json scripts/gen-dedup.ts",
     "data:review": "tsx --tsconfig tsconfig.json scripts/data-review.ts",
     "prune:enrichment": "tsx --tsconfig tsconfig.json scripts/prune-enrichment.ts",

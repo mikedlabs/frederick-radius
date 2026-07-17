@@ -242,30 +242,35 @@ export default function CompassHub() {
   });
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-10">
       {/* Field-guide plate masthead — the wayfinding hub now speaks the same
           paper-cream plate language as every sibling surface (eyebrow +
           serif title + brand rule) instead of a one-off dark gradient hero.
           The compass motif rides as a small eyebrow mark, not a banner. */}
-      <header className="px-0.5">
-        <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
+      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-white/10 bg-[#15130f] px-5 py-8 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
+        <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-[#e14328]/28" aria-hidden>
+          <span className="absolute inset-10 rounded-full border border-white/8" />
+          <span className="absolute inset-[5.2rem] rounded-full border border-[#e14328]/20" />
+          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e14328] shadow-[0_0_0_8px_rgba(225,67,40,.12)]" />
+        </div>
+        <p className="relative font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#ef7b63]">
           <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           Frederick County compass
         </p>
         <h1
-          className="mt-2 max-w-[19rem] font-serif text-[34px] font-semibold leading-[0.98] tracking-[-0.02em] text-balance sm:max-w-[30rem] sm:text-[44px]"
-          style={{ color: "var(--app-ink)" }}
+          className="relative mt-4 max-w-[8ch] font-serif text-[clamp(3.4rem,14vw,6rem)] font-semibold leading-[0.82] tracking-[-0.055em] text-balance"
         >
-          Find your way around Frederick.
+          Find your way.
         </h1>
         <p
-          className="mt-3 max-w-[28rem] text-[13.5px] leading-relaxed sm:text-[14px]"
-          style={{ color: "var(--app-ink-2)" }}
+          className="relative mt-5 max-w-[28rem] text-[13.5px] leading-relaxed text-white/62 sm:text-[15px]"
         >
-          Start with what you need. Compass will get you to the right guide,
-          map, calendar, or local tool.
+          One way into every Frederick guide, map, calendar, and useful local tool.
         </p>
-        <span aria-hidden className="mt-3 block h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
+        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-white/36">
+          <span className="h-px w-10 bg-[#e14328]" aria-hidden />
+          Start with the job
+        </div>
       </header>
 
       <section aria-labelledby="compass-start" className="space-y-3">
@@ -385,8 +390,8 @@ function LedgerList({
       : "border-b last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-child(odd)]:border-r";
   return (
     <ul
-      className={`overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] sm:grid ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
-      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+      className={`border-y sm:grid ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+      style={{ borderColor: "var(--app-border-strong)" }}
     >
       {/* href alone can repeat ("Choose your home town" and "Tune Compass"
           both land on /settings until a home is set) — key on the pair. */}
@@ -396,9 +401,9 @@ function LedgerList({
             href={item.href}
             prefetch={false}
             {...intentProps(item.href)}
-            className="tactile-interactive group flex min-h-[68px] items-center gap-3 px-3.5 py-3"
+            className="tactile-interactive group flex min-h-[68px] items-center gap-3 px-1 py-3 transition hover:bg-black/[0.025] sm:px-3"
           >
-            <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 11%, transparent)` }}>
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 10%, transparent)` }}>
               <item.icon className="h-[17px] w-[17px]" strokeWidth={2} />
             </span>
             <span className="min-w-0 flex-1">
@@ -426,7 +431,7 @@ function EditorialCard({
     "--compass-card-accent": item.color,
     borderColor: "var(--app-border)",
     background: `linear-gradient(158deg, color-mix(in srgb, ${item.color} 10%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid) 66%)`,
-    boxShadow: "var(--app-elev-1), var(--app-hi)",
+    boxShadow: "0 12px 28px -24px rgba(22,20,14,.55)",
   } as CSSProperties;
 
   return (
@@ -434,7 +439,7 @@ function EditorialCard({
       href={item.href}
       prefetch={false}
       {...intentProps}
-      className="tactile tactile-interactive group relative block min-h-[138px] overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 sm:min-h-[150px] sm:p-4"
+      className="tactile-interactive group relative block min-h-[138px] overflow-hidden rounded-[6px] border p-3.5 sm:min-h-[150px] sm:p-4"
       style={style}
     >
       <span className="font-mono text-[9px] font-semibold tracking-[0.14em]" style={{ color: item.color }} aria-hidden>

@@ -9,7 +9,13 @@ function categoryName(slug: string): string {
 }
 
 function planStart(intent: AskIntent): string | undefined {
-  if (!("morning afternoon tonight".split(" ") as string[]).includes(intent.timeNeed ?? "")) return undefined;
+  const explicitWindow = ("morning afternoon tonight".split(" ") as string[]).includes(intent.timeNeed ?? "");
+  // An undated "date night" is not a request to leave this instant. Late at
+  // night, using `now` filtered the user's named anchor as closed and quietly
+  // replaced it. Give undated date plans the next useful evening window;
+  // explicit "tonight" requests still keep their live-clock semantics.
+  const defaultDateNight = !explicitWindow && intent.audience === "date";
+  if (!explicitWindow && !defaultDateNight) return undefined;
   const now = new Date();
   const clock = intent.timeNeed === "morning"
     ? { start: 9, end: 12 }
@@ -29,8 +35,10 @@ function planStart(intent: AskIntent): string | undefined {
     }).formatToParts(now).map((part) => [part.type, part.value]),
   );
   const hour = Number(parts.hour);
-  if (hour >= clock.start && hour < clock.end) return now.toISOString();
-  if (hour >= clock.end) {
+  if (hour >= clock.start && hour < clock.end && !(defaultDateNight && hour >= 20)) {
+    return now.toISOString();
+  }
+  if (hour >= clock.end || (defaultDateNight && hour >= 20)) {
     date = new Date(now.getTime() + 86_400_000);
     parts = Object.fromEntries(
       new Intl.DateTimeFormat("en-US", {

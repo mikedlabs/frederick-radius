@@ -25,7 +25,7 @@ import DealLines from "@/components/happy/DealLines";
  * windows that include right now (Eastern). Server component.
  */
 
-const SHOW_CAP = 5;
+const SHOW_CAP = 3;
 
 function easternParts(now: Date): { day: number; min: number } {
   const p = new Intl.DateTimeFormat("en-US", {
@@ -135,9 +135,9 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     return (
       <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 id="hh-wallet-eyebrow" className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
+          <h3 id="hh-wallet-eyebrow" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
             Happy hour
-          </h2>
+          </h3>
           <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
             All pours <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
@@ -190,12 +190,12 @@ export default function HappyHourWallet({ now }: { now: Date }) {
           ends," so the "now" section reads as the priority. */}
       <div className="flex items-end justify-between gap-3 px-0.5">
         <div className="min-w-0">
-          <h2 id="hh-wallet-eyebrow" className="font-serif text-[19px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h3 id="hh-wallet-eyebrow" className="font-serif text-[17px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
             Happy hour
-          </h2>
+          </h3>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-            On now · {n} {n === 1 ? "pour" : "pours"} pouring
+            {n} {n === 1 ? "pour" : "pours"} pouring now
           </p>
         </div>
         <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>

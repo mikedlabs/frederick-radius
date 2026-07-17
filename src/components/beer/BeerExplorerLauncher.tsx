@@ -16,7 +16,7 @@ const LazyBeerFinder = dynamic(() => import("./BeerFinder"), {
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-32 items-center justify-center rounded-[var(--app-radius-lg)] border border-dashed px-4 py-8 text-[13px]"
+      className="flex min-h-32 items-center justify-center border border-dashed px-4 py-8 text-[13px]"
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
     >
       Loading the beer explorer…
@@ -34,12 +34,10 @@ export default function BeerExplorerLauncher({
 }: {
   breweryCards: PlaceCardData[];
 }) {
-  // Open by default (owner call, Jul 2026: "make it easier to see all the
-  // different beers"): the 174-beer ledger is the page's depth, not an
-  // appendix. The finder still code-splits via LazyBeerFinder, and the
-  // Collapse control keeps the folded state one tap away.
-  const [open, setOpen] = useState(true);
-  const [hasOpened, setHasOpened] = useState(true);
+  // The catalog is depth, not the front door. Opening it on arrival turned the
+  // guide back into a 174-row directory and loaded client code before intent.
+  const [open, setOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const wasOpen = useRef(false);
@@ -64,15 +62,14 @@ export default function BeerExplorerLauncher({
     <section
       id="all-beer"
       aria-labelledby={open ? "beer-explorer-heading" : "all-beer-heading"}
-      className="scroll-mt-24 overflow-hidden rounded-[var(--app-radius-xl)] border"
+      className="-mx-4 scroll-mt-24 overflow-hidden border-y sm:-mx-5 lg:mx-0 lg:rounded-[8px] lg:border"
       style={{
-        borderColor: "var(--app-border-strong)",
-        background:
-          "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 58%, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)) 100%)",
-        boxShadow: "var(--app-shadow-1), var(--app-hi)",
+        borderColor: "rgba(255,255,255,.1)",
+        background: open ? "var(--app-bg-elevated-solid)" : "#15130f",
+        boxShadow: "0 28px 62px -38px rgba(20,14,8,.78)",
       }}
     >
-      <div id={EXPLORER_ID} hidden={!open} className="space-y-5 p-4 sm:p-5">
+      <div id={EXPLORER_ID} hidden={!open} className="space-y-5 p-4 sm:p-7">
         <header className="flex items-start justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--app-border)" }}>
           <div className="min-w-0">
             <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -93,7 +90,7 @@ export default function BeerExplorerLauncher({
             onClick={() => setOpen(false)}
             aria-controls={EXPLORER_ID}
             aria-expanded="true"
-            className="tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            className="tap-44-y inline-flex shrink-0 items-center gap-1.5 border px-3 py-1.5 text-[12px] font-semibold"
             style={{
               borderColor: "var(--app-border-strong)",
               background: "var(--app-bg-elevated-solid)",
@@ -110,30 +107,23 @@ export default function BeerExplorerLauncher({
         </div>
       </div>
 
-      <div hidden={open} className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
-        <div className="flex gap-3.5">
-          <span
-            aria-hidden
-            className="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-accent) 18%, transparent)",
-              color: "var(--app-accent-press)",
-            }}
-          >
-            <SlidersHorizontal className="h-5 w-5" strokeWidth={2} />
+      <div hidden={open} className="relative grid min-h-[330px] gap-7 overflow-hidden p-5 text-[#f7f0e4] sm:grid-cols-[1fr_auto] sm:items-end sm:p-9">
+        <span className="pointer-events-none absolute -right-3 -top-10 font-serif text-[190px] font-semibold leading-none text-white/[0.035]" aria-hidden>{beerCount}</span>
+        <div className="relative flex gap-4">
+          <span aria-hidden className="mt-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center border border-[#e3b65d]/45 text-[#e3b65d]">
+            <SlidersHorizontal className="h-5 w-5" strokeWidth={1.8} />
           </span>
-          <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+          <div className="min-w-0">
+            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">
               Looking for something specific?
             </p>
             <h2
               id="all-beer-heading"
-              className="mt-1 font-serif text-[22px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
+              className="mt-3 max-w-[8ch] font-serif text-[clamp(2.8rem,9vw,5rem)] font-semibold leading-[0.84] tracking-[-0.05em]"
             >
-              The complete beer explorer
+              Every pour, searchable.
             </h2>
-            <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-white/56">
               Search all {beerCount} beers by name, style, brewery, or town.
             </p>
           </div>
@@ -148,8 +138,7 @@ export default function BeerExplorerLauncher({
           }}
           aria-controls={EXPLORER_ID}
           aria-expanded="false"
-          className="tactile tactile-interactive tap-44-y inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold text-white sm:w-auto"
-          style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-shadow-1)" }}
+          className="relative inline-flex min-h-13 w-full items-center justify-center gap-2 border border-[#e3b65d]/55 bg-[#e3b65d] px-5 py-3 text-[13px] font-bold text-[#17130e] transition hover:bg-[#f0ca7c] sm:w-auto"
         >
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Search all {beerCount} beers

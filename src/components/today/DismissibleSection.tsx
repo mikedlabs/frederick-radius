@@ -21,6 +21,7 @@ export default function DismissibleSection({
   meta,
   eyebrow,
   plateNo,
+  flat = false,
   children,
 }: {
   id: string;
@@ -34,17 +35,23 @@ export default function DismissibleSection({
   /** Field-guide plate index (e.g. "No. 03"), shown at the far right of
    *  the header rule. Opt-in. */
   plateNo?: string;
+  /** Use page structure instead of another raised card. */
+  flat?: boolean;
   children: React.ReactNode;
 }) {
   void id;
   return (
     <section
-      className={`relative rounded-[var(--app-radius-lg)] border p-4${eyebrow || plateNo ? " fg-plate" : ""}`}
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-      }}
+      className={flat
+        ? "relative border-t pt-4"
+        : `relative rounded-[var(--app-radius-lg)] border p-4${eyebrow || plateNo ? " fg-plate" : ""}`}
+      style={flat
+        ? { borderColor: "var(--app-border)" }
+        : {
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated)",
+            boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+          }}
     >
       {/* Card-bounded section per the brief: "areas need to be
           defined more." The hairline + inner-shadow treatment marks

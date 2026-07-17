@@ -65,25 +65,26 @@ export default async function CuratedPicks() {
 
   const picks = orderPicks(rainAhead)
     .map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] }))
-    .filter((p) => p.c && p.c.places.length > 0);
+    .filter((p) => p.c && p.c.places.length > 0)
+    .slice(0, 3);
   if (picks.length === 0) return null;
 
   return (
-    <section className="mt-6" aria-labelledby="curated-picks-heading">
+    <section className="mt-5" aria-labelledby="curated-picks-heading">
       <div className="mb-2 flex items-baseline justify-between gap-3 px-0.5">
         <h2
           id="curated-picks-heading"
           className="font-serif text-[17px] font-semibold leading-snug tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Plan the moment
+          Need an idea?
         </h2>
         <Link
           href="/collections"
           className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
-          All collections
+          All ideas
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
         </Link>
       </div>
@@ -98,10 +99,10 @@ export default async function CuratedPicks() {
           <li key={slug} className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
             <Link
               href={`/collections/${slug}`}
-              className="tactile tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
+              className="tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
               style={{
                 borderColor: "var(--app-border)",
-                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                boxShadow: "var(--app-hi)",
               }}
             >
               <div
@@ -144,7 +145,7 @@ export default async function CuratedPicks() {
         <li className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
           <Link
             href="/plan"
-            className="tactile tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-sunken)] p-3.5 transition"
+            className="tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-md)] border border-dashed bg-[var(--app-bg-sunken)] p-3.5 transition"
             style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
           >
             <span

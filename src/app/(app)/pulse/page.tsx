@@ -1192,10 +1192,9 @@ export default async function PulsePage() {
       </section>
       {/* Footer — disclaimer + sources at a glance */}
       <footer
-        className="rounded-[var(--app-radius-md)] border p-4 text-[11px]"
+        className="border-t px-1 pt-4 text-[11px]"
         style={{
           borderColor: "var(--app-border)",
-          background: "var(--app-bg-sunken)",
           color: "var(--app-ink-3)",
         }}
       >

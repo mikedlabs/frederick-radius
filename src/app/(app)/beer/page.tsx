@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowRight, Database } from "lucide-react";
 import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
 import BeerGuides from "@/components/beer/BeerGuides";
 import BeerHero from "@/components/beer/BeerHero";
 import BeerPassport from "@/components/beer/BeerPassport";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
+import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
+import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
 import MyTaps from "@/components/beer/MyTaps";
-import PouringNow from "@/components/beer/PouringNow";
 import TaproomMap from "@/components/beer/TaproomMap";
-import TopShelf from "@/components/beer/TopShelf";
 import PageBloom from "@/components/ui/PageBloom";
 import { BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -34,51 +35,49 @@ export default function BeerPage() {
     .map(slimForList);
 
   return (
-    <div className="relative space-y-12 pb-4">
+    <div className="relative space-y-14 pb-4 sm:space-y-20">
       <PageBloom variant="warm-cool" />
 
       <BeerHero />
 
-      {/* The live layer: which taprooms are open at this minute. Client
-          island on purpose — this page is ISR-cached an hour, and open
-          state must never be served stale. */}
-      <PouringNow />
+      {/* One primary decision surface: all local brewery marks, setting and
+          group filters, verified source links, and a client-fresh hours
+          signal. This replaces the old stack of open-now, link-strip, and
+          photo-scene modules that made the page feel like several apps. */}
+      <BeerTaproomBoard places={breweryCards} />
 
-      {/* The command center: all 17 taprooms on one county map, promoted
-          from the explorer's buried third tab. Mapbox loads on tap. */}
-      <TaproomMap places={breweryCards} />
+      <Suspense fallback={<BeerTaproomEventsFallback />}>
+        <BeerTaproomEvents />
+      </Suspense>
 
       <BeerTasteFlight />
 
-      {/* The Untappd layer, always visible: the county's highest-rated
-          pours lead into the full 174-beer explorer below. */}
-      <TopShelf breweryCards={breweryCards} />
+      <BeerGuides />
+
+      {/* Geography is a decision tool after taste and setting, not the page's
+          opening directory. Mapbox still loads only after a user asks. */}
+      <TaproomMap places={breweryCards} />
 
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps />
 
       <BeerPassport />
-      <BeerGuides />
       <BeerExplorerLauncher breweryCards={breweryCards} />
 
       <footer
-        className="flex flex-col gap-3 rounded-[var(--app-radius-md)] border p-4 sm:flex-row sm:items-center sm:justify-between"
+        className="-mx-4 grid gap-6 border-y border-white/10 bg-[#15130f] px-5 py-8 text-[#f7f0e4] sm:-mx-5 sm:grid-cols-[1fr_auto] sm:items-end sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
         style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-sunken)",
-          color: "var(--app-ink-3)",
+          boxShadow: "0 24px 52px -36px rgba(20,14,8,.72)",
         }}
       >
-        <div className="flex max-w-[42rem] gap-2.5">
-          <Database className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.9} aria-hidden />
-          <p className="text-[11px] leading-relaxed">
-            July 2026 snapshot, not a live tap list. Beer details came from brewery websites and Untappd. Verify availability and hours with the brewery.
-          </p>
+        <div className="max-w-[42rem]">
+          <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]"><Database className="h-3.5 w-3.5" strokeWidth={1.9} aria-hidden />Before the next round</p>
+          <p className="mt-3 max-w-[13ch] font-serif text-[32px] font-semibold leading-[0.9] tracking-[-0.035em]">Drink curious. Check the tap.</p>
+          <p className="mt-4 text-[10px] leading-relaxed text-white/42">July 2026 signature-pour snapshot. Brewery sites and Untappd inform the guide; availability and hours can change.</p>
         </div>
         <Link
           href="/trust"
-          className="tap-44-y inline-flex shrink-0 items-center gap-1.5 self-start text-[11px] font-semibold sm:self-auto"
-          style={{ color: "var(--app-ink-2)" }}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start border-b border-[#e3b65d] text-[11px] font-semibold text-white/72 sm:self-auto"
         >
           How Radius checks data
           <ArrowRight className="h-3 w-3" strokeWidth={2.4} aria-hidden />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   BREWERIES,
   FAMILY_BY_KEY,
@@ -168,53 +168,49 @@ function progressLine(count: number): string {
  */
 export default function BeerPassport() {
   const visited = useSyncExternalStore(subscribe, readVisited, readServerSnapshot);
+  const [showAll, setShowAll] = useState(false);
   const visitedSet = new Set(visited);
   const percent = Math.round((visited.length / BREWERIES.length) * 100);
 
   return (
     <section
       aria-labelledby="beer-passport-heading"
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border p-4 sm:p-5"
+      className="relative -mx-4 overflow-hidden border-y border-white/10 px-4 py-9 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-12 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
       style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        background: "linear-gradient(145deg, #742c20, #2b1915 88%)",
+        boxShadow: "0 28px 60px -38px rgba(43,18,12,.82)",
       }}
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-70"
+        className="pointer-events-none absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(70% 80% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent), transparent 68%)",
+            "radial-gradient(70% 80% at 0% 0%, rgba(255,214,137,.18), transparent 68%), repeating-linear-gradient(90deg, transparent 0 76px, rgba(255,255,255,.018) 77px 78px)",
         }}
       />
 
-      <div className="relative space-y-4">
+      <div className="relative space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Your Frederick passport
-            </p>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2c981]">Your Frederick passport</p>
             <h2
               id="beer-passport-heading"
-              className="font-serif text-[22px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
+              className="mt-2 max-w-[9ch] font-serif text-[clamp(2.8rem,9vw,5rem)] font-semibold leading-[0.86] tracking-[-0.05em]"
             >
-              Taprooms you&rsquo;ve visited
+              Stamp your way across the county.
             </h2>
-            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mt-4 max-w-[34rem] text-[12px] leading-relaxed text-white/58">
               Tap a stamp after a visit. Saved only on this device; no account or location.
             </p>
           </div>
           <div className="shrink-0 text-right" aria-live="polite" aria-atomic="true">
             <p
-              className="font-mono text-[22px] font-bold leading-none tabular-nums"
-              style={{ color: "var(--app-brand-press)" }}
+              className="font-serif text-[34px] font-semibold leading-none tabular-nums text-[#f2c981]"
             >
               {visited.length}/{BREWERIES.length}
             </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/42">
               stamped
             </p>
           </div>
@@ -227,28 +223,35 @@ export default function BeerPassport() {
             aria-valuemin={0}
             aria-valuemax={BREWERIES.length}
             aria-valuenow={visited.length}
-            className="h-1.5 overflow-hidden rounded-full"
-            style={{ background: "var(--app-bg-sunken)" }}
+            className="h-1 overflow-hidden bg-black/24"
           >
             <div
-              className="h-full rounded-full transition-[width] duration-300"
+              className="h-full transition-[width] duration-300"
               style={{
                 width: `${percent}%`,
-                background: "linear-gradient(90deg, var(--app-accent), var(--app-brand))",
+                background: "linear-gradient(90deg, #f2c981, #f07a58)",
               }}
             />
           </div>
-          <p className="mt-1.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-2 text-[10px] text-white/46">
             {progressLine(visited.length)}
           </p>
         </div>
 
-        <ul className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6" aria-label="Brewery passport stamps">
+        <div className="border border-black/20 bg-[#efe4cd] p-4 text-[#211811] shadow-[0_18px_44px_rgba(0,0,0,.24)] sm:p-6">
+        <div className="flex items-center justify-between border-b border-black/15 pb-3 font-mono text-[8px] uppercase tracking-[0.16em] text-black/42">
+          <span>Frederick County · MD</span>
+          <span>Beer passport No. 001</span>
+        </div>
+        <ul className="mt-5 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-6" aria-label="Brewery passport stamps">
           {BREWERIES.map((brewery, index) => {
             const isVisited = visitedSet.has(brewery.slug);
             const family = FAMILY_BY_KEY[dominantFamily(brewery)];
             return (
-              <li key={brewery.slug} className="min-w-0 text-center">
+              <li
+                key={brewery.slug}
+                className={`${index >= 6 && !showAll ? "hidden sm:block" : ""} min-w-0 text-center`}
+              >
                 <button
                   type="button"
                   aria-pressed={isVisited}
@@ -258,16 +261,16 @@ export default function BeerPassport() {
                       : `Mark ${brewery.name} as visited`
                   }
                   onClick={() => toggleVisited(brewery.slug)}
-                  className="tap-44 group relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:h-16 sm:w-16"
+                  className={`tap-44 group relative mx-auto flex h-16 w-16 items-center justify-center border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 ${index % 2 ? "rotate-2" : "-rotate-2"}`}
                   style={{
-                    borderColor: isVisited ? family.deep : "var(--app-border-strong)",
+                    borderColor: isVisited ? family.deep : "rgba(33,24,17,.26)",
                     background: isVisited
                       ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
-                      : "var(--app-bg-sunken)",
-                    color: isVisited ? "white" : "var(--app-ink-3)",
+                      : "rgba(255,255,255,.16)",
+                    color: isVisited ? "white" : "rgba(33,24,17,.48)",
                     boxShadow: isVisited
-                      ? `0 4px 12px color-mix(in srgb, ${family.deep} 24%, transparent), inset 0 0 0 3px color-mix(in srgb, white 18%, transparent)`
-                      : "inset 0 0 0 3px var(--app-bg-elevated)",
+                      ? `0 5px 14px color-mix(in srgb, ${family.deep} 28%, transparent), inset 0 0 0 3px color-mix(in srgb, white 16%, transparent)`
+                      : "inset 0 0 0 3px rgba(255,255,255,.2)",
                   }}
                 >
                   <span
@@ -278,15 +281,15 @@ export default function BeerPassport() {
                   </span>
                   <span
                     aria-hidden
-                    className="font-serif text-[20px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6 sm:text-[22px]"
+                    className="font-serif text-[22px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6"
                   >
                     {monogramOf(brewery.name)}
                   </span>
                   {isVisited && (
                     <span
                       aria-hidden
-                      className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full border-2"
-                      style={{ background: "var(--app-positive)", borderColor: "var(--app-bg-elevated)", color: "white" }}
+                      className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center border-2"
+                      style={{ background: "#1e6b3a", borderColor: "#efe4cd", color: "white" }}
                     >
                       <Check className="h-3 w-3" strokeWidth={3} />
                     </span>
@@ -295,7 +298,7 @@ export default function BeerPassport() {
                 <Link
                   href={`/places/${brewery.slug}`}
                   className="mt-1.5 block text-[10px] font-semibold leading-tight hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                  style={{ color: isVisited ? "var(--app-ink)" : "var(--app-ink-2)" }}
+                  style={{ color: isVisited ? "#211811" : "rgba(33,24,17,.68)" }}
                   title={brewery.name}
                   aria-label={`Open the guide page for ${brewery.name}`}
                 >
@@ -305,6 +308,15 @@ export default function BeerPassport() {
             );
           })}
         </ul>
+        <button
+          type="button"
+          onClick={() => setShowAll((value) => !value)}
+          aria-expanded={showAll}
+          className="tap-44-y mx-auto mt-5 flex items-center justify-center border border-black/20 px-4 py-2 text-[11px] font-semibold text-black/68 sm:hidden"
+        >
+          {showAll ? "Show fewer stamps" : `Show all ${BREWERIES.length} stamps`}
+        </button>
+        </div>
       </div>
     </section>
   );
