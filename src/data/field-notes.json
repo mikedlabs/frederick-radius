@@ -1213,7 +1213,7 @@
     "insider": [
       {
         "text": "Family-operated corner pub on Main Street, open since 1970.",
-        "source_url": "https://ott-house.weeblyte.com/",
+        "source_url": "https://www.facebook.com/theotthousepub/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
@@ -1221,20 +1221,20 @@
     "deals": [
       {
         "text": "Mon-Fri lunchtime food specials for $6.50",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
+        "source_url": "https://www.facebook.com/theotthousepub/",
+        "confidence": "low",
         "last_verified": "2026-06-15"
       },
       {
         "text": "Monday evenings (from 5 PM): $2 Yuengling drafts and discounted wings",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
+        "source_url": "https://www.facebook.com/theotthousepub/",
+        "confidence": "low",
         "last_verified": "2026-06-15"
       },
       {
         "text": "2 Buck Tuesday: $2 drafts, $2.75 rail drinks, $5 select pizzas",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
+        "source_url": "https://www.facebook.com/theotthousepub/",
+        "confidence": "low",
         "last_verified": "2026-06-15"
       }
     ],

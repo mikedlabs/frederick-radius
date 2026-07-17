@@ -1217,7 +1217,7 @@ export const PLACES: Place[] = [
     category: "coffee",
     tags: ["family"],
     short_blurb: "Downtown coffeehouse with live acoustic nights, big tables, and the locals' Monday morning.",
-    address: "100 East St",
+    address: "100 N East St",
     city: "Frederick", state: "MD", postal_code: "21701",
     municipality: "frederick",
     geom: { lng: -77.4087, lat: 39.4145 },
@@ -1233,7 +1233,9 @@ export const PLACES: Place[] = [
     subcategories: ["coffee"],
     tags: ["family"],
     short_blurb: "Hundreds of glass-bottle sodas, cream sodas, and root beers. Cult favorite of kids and dads.",
-    address: "237 N Market St",
+    // 241, not 237: the shop moved up the block into the larger space
+    // (Yelp + Visit Frederick, 2026-07-17 correctness audit).
+    address: "241 N Market St",
     city: "Frederick", state: "MD", postal_code: "21701",
     municipality: "frederick",
     geom: { lng: -77.4108, lat: 39.4175 },
@@ -1374,16 +1376,17 @@ export const PLACES: Place[] = [
     name: "Firestone's Culinary Tavern",
     category: "restaurant",
     subcategories: ["bar"],
-    tags: ["date-night"],
-    short_blurb: "Casual American in an iconic Patrick Street building. Strong burger, Sunday brunch.",
+    // CLOSED June 2024 after 26 years (FNP, 2026-07-17 correctness audit);
+    // the 105 N Market space reopened as Fire & Oak in late 2025. Kept as a
+    // closed record (not deleted) so old links resolve honestly.
+    short_blurb: "Closed in June 2024 after 26 years. The space is now Fire & Oak.",
     address: "105 N Market St",
     city: "Frederick", state: "MD", postal_code: "21701",
     municipality: "frederick",
     geom: { lng: -77.4109, lat: 39.4162 },
-    website: "https://firestonesrestaurant.com",
     price_band: 3,
-    is_verified: false, hours_verified: false, is_operational: "needs_verification",
-    feature_score: 7.7, source: "manual", updated_at: "2026-05-14",
+    is_verified: true, hours_verified: false, is_operational: "closed_permanently",
+    feature_score: 0, source: "manual", updated_at: "2026-07-17",
   },
   {
     slug: "common-market-frederick",
