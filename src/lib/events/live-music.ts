@@ -26,7 +26,8 @@ import { easternParts, easternWallToUtcISO } from "@/lib/tz";
  *  non-music title is excluded from the venue-join path. The explicit
  *  music/concert category path is untouched — a classified show keeps
  *  its word over this heuristic. */
-const NON_MUSIC_TITLE = /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club)\b/i;
+const NON_MUSIC_TITLE =
+  /\b(yoga|trivia|bingo|paint(?:ing)?|run\s+club|book\s+club|comedy|fitness|zumba|cardio|exercise|pilates|barre|workout|poses|learn\s+to)\b/i;
 
 /** Shared with the venue-feed INGEST boundaries (squarespace-live,
  *  venueEvents' category fallback), which used to blanket-stamp every
@@ -79,6 +80,28 @@ export function tonightWindow(now: Date): { startMs: number; endMs: number } {
     startMs: Math.max(now.getTime(), dayAt(0, 17, 0)),
     endMs: dayAt(1, 2, 30),
   };
+}
+
+/**
+ * Upcoming live-music shows AFTER tonight's window, out to `days` days ahead
+ * — the "what music is coming up in the next few weeks?" horizon a reader
+ * asked for directly (Reddit, 2026-07-17). Same honesty ceiling as tonight:
+ * only real dated shows, the feed's own times, soonest first. Callers group
+ * by day for the ledger.
+ */
+export function liveMusicAhead(
+  pool: EventWithMeta[],
+  now: Date,
+  days = 28,
+): EventWithMeta[] {
+  const { endMs } = tonightWindow(now);
+  const horizonMs = endMs + days * 86_400_000;
+  return pool
+    .filter((e) => {
+      const ms = Date.parse(e.starts_at);
+      return Number.isFinite(ms) && ms > endMs && ms <= horizonMs && isLiveMusicEvent(e);
+    })
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
 
 /** Live-music shows on stage tonight, soonest first. Empty when nothing's on

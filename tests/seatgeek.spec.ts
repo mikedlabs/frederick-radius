@@ -55,11 +55,15 @@ describe("normalizeSeatGeek", () => {
     expect(out).toHaveLength(0);
   });
 
-  it("maps theater and comedy taxonomies, defaults the rest to music", () => {
+  it("maps taxonomies; music only when SeatGeek says concert/music, else community", () => {
     expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [{ name: "theater" }] })]))[0].category).toBe("theater");
     expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [{ name: "comedy" }] })]))[0].category).toBe("theater");
     expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [{ name: "sports" }] })]))[0].category).toBe("sports");
-    expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [] })]))[0].category).toBe("music");
+    expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [{ name: "concert" }] })]))[0].category).toBe("music");
+    // The old music fallback stamped SeatGeek's community listings
+    // (rec-center classes) as concerts and they rendered on the
+    // live-music radar (2026-07-17). Unknown taxonomies are community.
+    expect(normalizeSeatGeek(wrap([sgEvent({ taxonomies: [] })]))[0].category).toBe("community");
   });
 
   it("only an explicit zero lowest_price reads as free", () => {
