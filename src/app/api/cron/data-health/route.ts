@@ -37,6 +37,7 @@ import { curatedFreshnessAnomalies, liveSourceAnomalies } from "@/lib/quality/cu
 import { pruneExpiredReports } from "@/lib/loaders/communityReports";
 import { findRlsAnomalies, findStaleIngestSources } from "@/lib/quality/db-health";
 import { runTripwires } from "@/lib/quality/tripwires";
+import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
 
 export const runtime = "nodejs";
@@ -170,8 +171,15 @@ export async function GET(request: Request) {
     error: red.length > 0 ? headline : null,
   });
 
+  // GitHub delivery — the channel the owner already checks. One issue per
+  // incident: opens on the first red morning, gains a daily comment while
+  // red, closes itself on recovery. AWAITED (not void like the Slack post):
+  // delivery is this feature's entire point, and serverless drops floating
+  // promises. Fail-soft inside; "skipped" without GITHUB_ALERTS_TOKEN.
+  const githubDelivery = await deliverDataHealthReport({ headline, gates, anomalies: allAnomalies });
+
   return NextResponse.json({
-    summary: { headline, gates },
+    summary: { headline, gates, github_delivery: githubDelivery },
     computed_at: new Date().toISOString(),
     places: PLACES.length,
     dedup: { clusters, folded },
