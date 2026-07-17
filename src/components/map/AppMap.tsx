@@ -2420,6 +2420,28 @@ export default function AppMap({
               }}
             />
             <Layer
+              // Street-zoom name labels (map polish batch): once you're in
+              // a few blocks, pins read by NAME like a field-guide plate
+              // instead of forcing a tap per dot. text-optional lets the
+              // collision engine drop labels before it drops pins.
+              id="curated-names"
+              type="symbol"
+              filter={["!", ["has", "point_count"]]}
+              minzoom={15.5}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": 10.5,
+                "text-offset": [0, 1.35],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{
+                "text-color": "#3A362B",
+                "text-halo-color": "#EEE6D4",
+                "text-halo-width": 1.1,
+              }}
+            />
+            <Layer
               id="curated-icons"
               type="symbol"
               filter={["!", ["has", "point_count"]]}

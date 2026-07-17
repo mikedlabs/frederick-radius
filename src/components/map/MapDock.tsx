@@ -897,6 +897,31 @@ export default function MapDock(props: MapDockProps) {
                     </div>
                   </>
                 )}
+
+                {/* The key — a field guide has a legend. Read-only: what
+                    each pin color means, in the What pane's own order. */}
+                <Sect>Key</Sect>
+                <div
+                  className="grid grid-cols-2 gap-x-3 gap-y-1 px-1 pb-1"
+                  role="list"
+                  aria-label="Pin color key"
+                >
+                  {INTENTS.map((i) => (
+                    <span
+                      key={i.key}
+                      role="listitem"
+                      className="inline-flex items-center gap-1.5 text-[11.5px]"
+                      style={{ color: "var(--app-ink-2)" }}
+                    >
+                      <span
+                        aria-hidden
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: i.color }}
+                      />
+                      {i.label}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
