@@ -107,6 +107,7 @@ import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import TransitRouteFinder from "@/components/transit/TransitRouteFinder";
 import PageBloom from "@/components/ui/PageBloom";
+import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
@@ -223,6 +224,16 @@ export default async function TransitPage() {
           route drawn here is a real one, in service today. Stops and
           schedules live on the county&apos;s site for now.
         </p>
+        {/* The headline fact, previously invisible: rides cost nothing.
+            Gated on the data flag so if the county ever reinstates fares
+            (the GTFS refresh flips fareFree) the line disappears rather
+            than lies. County FAQ, checked 2026-07-17: "All Transit
+            Services are currently free." */}
+        {(TRANSIT_RAW as { fareFree?: boolean }).fareFree && (
+          <p className="text-[14px] font-semibold" style={{ color: "var(--app-brand-2)" }}>
+            Every ride is free. No fares, no passes, no app.
+          </p>
+        )}
         {/* Live "N buses moving now" from the GTFS-realtime feed. */}
         <div className="pt-1"><LiveTransitPill /></div>
       </header>
