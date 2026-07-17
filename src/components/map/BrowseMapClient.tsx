@@ -16,6 +16,7 @@ import { AMENITY_GROUPS } from "@/components/map/constants";
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
+import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { getScope, parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope";
@@ -238,14 +239,28 @@ export default function BrowseMapClient({
     const pred = eventTimePredicate(mode, now);
     counts[mode] = weekEvents.filter((e) => pred(e.starts_at, e.ends_at)).length;
   }
+  // ?music=tonight — the live-music lens: the event layer collapses to
+  // tonight's confirmed shows (isLiveMusicEvent over the pin's own
+  // category/venue/title — the same filter /live-music uses, so the map
+  // and the radar can never disagree). Forces the tonight window.
+  const musicTonight = sp.get("music") === "tonight";
   const timeModeExplicit = isTimeMode(tParam);
-  const timeMode: TimeMode = timeModeExplicit ? tParam : defaultTimeMode(counts);
+  const timeMode: TimeMode = musicTonight
+    ? "tonight"
+    : timeModeExplicit
+      ? tParam
+      : defaultTimeMode(counts);
 
   const matchTime = eventTimePredicate(timeMode, now);
   const seenCells = new Set<string>();
   const events: EventPin[] = [];
   for (const e of weekEvents) {
     if (!matchTime(e.starts_at, e.ends_at)) continue;
+    if (
+      musicTonight &&
+      !isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title })
+    )
+      continue;
     // One pin per ~11m cell so stacked venue listings don't shingle.
     const cell = `${e.lat.toFixed(4)}:${e.lng.toFixed(4)}`;
     if (seenCells.has(cell)) continue;
@@ -253,6 +268,15 @@ export default function BrowseMapClient({
     events.push(e);
     if (events.length >= 80) break;
   }
+
+  // Count for the dock's Live-music chip: tonight's confirmed shows,
+  // regardless of the active window (offered before you commit).
+  const tonightPred = eventTimePredicate("tonight", now);
+  const musicTonightCount = weekEvents.filter(
+    (e) =>
+      tonightPred(e.starts_at, e.ends_at) &&
+      isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title }),
+  ).length;
 
   // Per-intent counts over the unfiltered pool — the What pane's chips.
   // ~12 single-pass filters over ~1,700 pin records; cheap, and this
@@ -311,6 +335,8 @@ export default function BrowseMapClient({
         openNowCount,
         dealsOn,
         dealsTodayCount,
+        musicTonight,
+        musicTonightCount,
         timeMode,
         timeModeExplicit,
         everythingCount: allPlaces.length,

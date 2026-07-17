@@ -2999,6 +2999,20 @@ export default function AppMap({
                 .filter((e) => e.venue_place_slug && e.venue_place_slug === peekPlace.slug)
                 .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0] ?? null
             }
+            nearestGarage={
+              // The third question after "open?" and "anything on?":
+              // where do I park. Nearest downtown garage within a
+              // 5-6 minute walk, with the live space count when the
+              // feed reports one (2026-07-17 map audit follow-on).
+              parking
+                .map((g) => ({
+                  g,
+                  d: haversineMeters(peekPlace.geom, { lng: g.lng, lat: g.lat }),
+                }))
+                .filter((x) => x.d <= 500)
+                .sort((a, b) => a.d - b.d)
+                .map((x) => ({ name: x.g.name, distM: x.d, available: x.g.available }))[0] ?? null
+            }
             userLoc={userLoc}
             onClose={() => {
               setPeekPlace(null);

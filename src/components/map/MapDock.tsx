@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, List, LocateFixed, Map as MapIcon, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
+import { Clock, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -339,6 +339,14 @@ export default function MapDock(props: MapDockProps) {
       else q.set("deals", "today");
     });
   };
+  const toggleMusicTonight = () => {
+    haptic("light");
+    track("map_dock", { pane: "when", pick: browse.musicTonight ? "music-off" : "music-tonight" });
+    setParams((q) => {
+      if (browse.musicTonight) q.delete("music");
+      else q.set("music", "tonight");
+    });
+  };
   // One tap, the whole "what's good right now near me" question: open
   // places + the live event window + fly to the device fix. Deliberately
   // does NOT stack the deals filter (that would collapse the map to a
@@ -422,6 +430,7 @@ export default function MapDock(props: MapDockProps) {
     scrubHour: props.scrubHour,
     openNow: browse.openNow,
     dealsOn: browse.dealsOn,
+    musicTonight: browse.musicTonight,
     timeMode: browse.timeMode,
   });
   // "County", not "Whole county": the four equal .dock-seg columns clip the
@@ -438,6 +447,7 @@ export default function MapDock(props: MapDockProps) {
     intentActive: Boolean(intent),
     openNow: browse.openNow,
     dealsOn: browse.dealsOn,
+    musicTonight: browse.musicTonight,
     timeModeExplicit: browse.timeModeExplicit,
     scrubActive: props.scrubHour != null,
     lensActive: lensLabels.length > 0,
@@ -647,6 +657,17 @@ export default function MapDock(props: MapDockProps) {
                 </button>
 
                 <Sect>Events</Sect>
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  data-on={browse.musicTonight || undefined}
+                  aria-pressed={browse.musicTonight}
+                  onClick={toggleMusicTonight}
+                >
+                  <Music className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Live music tonight
+                  <span className="dock-opennow-n">{browse.musicTonightCount.toLocaleString("en-US")}</span>
+                </button>
                 <div className="dock-chips">
                   {TIME_WINDOWS.map((w) => (
                     <Chip

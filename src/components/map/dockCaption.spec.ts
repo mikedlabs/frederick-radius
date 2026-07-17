@@ -195,3 +195,10 @@ describe("dockDirty deals view", () => {
     ).toBe(true);
   });
 });
+
+describe("whenCaption live-music lens", () => {
+  it("names the lens and absorbs the forced tonight window", () => {
+    expect(whenCaption({ scrubHour: null, openNow: false, musicTonight: true, timeMode: "tonight" }).text).toBe("Music");
+    expect(whenCaption({ scrubHour: null, openNow: true, musicTonight: true, timeMode: "tonight" }).text).toBe("Open now · Music");
+  });
+});
