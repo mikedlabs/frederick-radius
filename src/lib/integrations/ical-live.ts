@@ -426,6 +426,11 @@ const FEEDS: FeedSpec[] = [
 ];
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
+  // Fitness/recreation classes FIRST (first match wins): a rec-center
+  // description like "a great workout with diverse music" or "utilizing
+  // bands, light weights" otherwise substring-matches the music words, and
+  // "Cardio Sculpt" rendered on the live-music radar (2026-07-17 review).
+  { slug: "community", words: ["cardio", "zumba", "fitness class", "exercise", "workout", "pilates", "barre", "aerobics", "sculpt", "learn to"] },
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
   { slug: "theater", words: ["theater", "play", "stage", "broadway", "show", "comedy", "weinberg"] },
   // Sports is checked early so a game beats the family/outdoors/market

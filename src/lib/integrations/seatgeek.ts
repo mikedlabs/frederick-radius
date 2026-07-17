@@ -77,14 +77,18 @@ function municipalityFor(cityName: string | undefined, geom: LngLat): string {
 }
 
 /** Map a SeatGeek taxonomy to our event category. SeatGeek's top-level
- *  taxonomies (concert, theater, sports, comedy) map cleanly; anything
- *  else falls to music since this adapter queries the concert type. */
+ *  taxonomies (concert, theater, sports, comedy) map cleanly. Anything else
+ *  is "community", NOT music: the old music fallback stamped SeatGeek's
+ *  community listings (rec-center classes like "Cardio Sculpt" and "Senior
+ *  Exercise") as concerts, and they rendered on the live-music radar
+ *  (2026-07-17 screenshot review). Music now requires SeatGeek to say so. */
 function categoryFor(taxonomies: SgEvent["taxonomies"]): string {
   const names = (taxonomies ?? []).map((t) => (t.name ?? "").toLowerCase());
   if (names.some((n) => n.includes("theater") || n.includes("theatre"))) return "theater";
   if (names.some((n) => n.includes("comedy"))) return "theater";
   if (names.some((n) => n.includes("sports"))) return "sports";
-  return "music";
+  if (names.some((n) => n.includes("concert") || n.includes("music"))) return "music";
+  return "community";
 }
 
 /**
