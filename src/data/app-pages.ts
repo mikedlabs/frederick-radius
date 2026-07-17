@@ -48,6 +48,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/numbers", title: "The county, counted", blurb: "Every figure in the guide, computed from the live dataset.", keywords: ["numbers", "stats", "statistics", "how many", "almanac", "counted"] },
 
   // ── Directories & discovery ──
+  { href: "/reserve", title: "Book a table", blurb: "Restaurants with verified reservation links, one tap to book.", keywords: ["reserve", "reservation", "reservations", "book a table", "opentable", "resy"] },
   { href: "/places", title: "Every place, A to Z", blurb: "The full directory, by category, town, or map.", keywords: ["directory", "all places", "a to z", "listings"] },
   { href: "/towns", title: "The twelve towns", blurb: "Pick a town to start: real place counts and what's on this week.", keywords: ["towns", "municipalities", "villages"] },
   { href: "/parks", title: "Parks & open space", blurb: "Every park: type, size, address, who maintains it.", keywords: ["parks", "playground", "playgrounds", "open space", "dog park"] },
