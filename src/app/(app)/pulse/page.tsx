@@ -831,19 +831,32 @@ export default async function PulsePage() {
       key: "alerts",
       label: "Weather alerts",
       iconName: "CloudAlert",
-      countLabel: activeAlerts.length > 0 ? activeAlerts[0].event : "None",
-      accent: activeAlerts.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
+      countLabel: activeAlerts.length > 0
+        ? activeAlerts[0].event
+        : alertResult.available
+          ? "None"
+          : "Unavailable",
+      accent: activeAlerts.length > 0
+        ? "var(--app-danger)"
+        : alertResult.available
+          ? "var(--app-cool)"
+          : "var(--app-warning)",
       active: activeAlerts.length > 0,
       attention: situationActive.alerts,
       kind: "status",
       sourceLabel: "NWS · weather.gov",
-      peek: activeAlerts.length > 0 ? `${activeAlerts.length} active` : "nothing posted",
+      peek: activeAlerts.length > 0
+        ? `${activeAlerts.length} active`
+        : alertResult.available
+          ? "nothing posted"
+          : "feed did not answer",
       body: activeAlerts.length > 0
         ? activeAlerts.slice(0, 6).map((a) => {
+            const priority = pulseAlertPriority(a);
             const tone =
-              a.severity === "Extreme" || a.severity === "Severe"
+              priority <= 5 || a.severity === "Extreme" || a.severity === "Severe"
                 ? "danger"
-                : a.severity === "Moderate"
+                : priority === 6 || a.severity === "Moderate"
                   ? "warning"
                   : "cool";
             return (
@@ -851,7 +864,7 @@ export default async function PulsePage() {
                 <Row
                   tone={tone}
                   title={a.event}
-                  body={alertGuidance(a.event)}
+                  body={alertGuidance(a.event, a.description)}
                   meta={["Frederick County", alertEndLabel(a.ends_at)]}
                 />
                 <a
@@ -867,7 +880,9 @@ export default async function PulsePage() {
               </div>
             );
           })
-        : emptyNote("No weather alerts for Frederick County right now."),
+        : alertResult.available
+          ? emptyNote("No weather alerts for Frederick County right now.")
+          : emptyNote("Weather alerts could not be checked right now. Use weather.gov for the official status."),
     },
     {
       // Rivers is live county data (rising water), not an alert — it stays a
@@ -1201,11 +1216,15 @@ export default async function PulsePage() {
         key: "schools",
       });
     }
-    if (!leadTraffic) addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
-    if (!outagesActive) addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
-    if (!leadSchool) addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
-    if (!leadSafety) addHeroChip({ tone: "positive", label: "Fire & rescue quiet", key: "safety" });
-    if (!leadAlert) addHeroChip({ tone: "positive", label: "No weather alerts", key: "alerts" });
+    if (urgentDegraded) {
+      addHeroChip({ tone: "warning", label: "Some feeds unavailable" });
+    } else {
+      if (!leadTraffic) addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
+      if (!outagesActive) addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
+      if (!leadSchool) addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
+      if (!leadSafety) addHeroChip({ tone: "positive", label: "Fire & rescue quiet", key: "safety" });
+      if (!leadAlert) addHeroChip({ tone: "positive", label: "No weather alerts", key: "alerts" });
+    }
   } else {
     addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
     addHeroChip({ tone: "positive", label: "Power steady", key: "power" });

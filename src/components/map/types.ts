@@ -60,6 +60,10 @@ export type EventPin = {
   starts_at: string;
   ends_at?: string;
   venue_name: string;
+  /** The venue's PLACE slug when the event is hosted at a known place —
+   *  the join key that lets a place's peek card say "live music here
+   *  tonight" (map cross-join, 2026-07-17 audit). */
+  venue_place_slug?: string;
   lng: number;
   lat: number;
   category: string;
@@ -85,6 +89,17 @@ export type BrowseDockInfo = {
   /** How many places in the current intent/sub pool are open now
    *  (computed BEFORE the open filter, so the When pane can offer it). */
   openNowCount: number;
+  /** ?deals=today — places collapsed to those running a verified special
+   *  today (todaysDeals slug set, shipped server-side). */
+  dealsOn: boolean;
+  /** How many places in the current pool run a special today (computed
+   *  BEFORE the deals filter, same convention as openNowCount). */
+  dealsTodayCount: number;
+  /** ?music=tonight — the event layer collapsed to tonight's confirmed
+   *  live-music shows (same filter as /live-music). */
+  musicTonight: boolean;
+  /** Tonight's confirmed show count (offered before you commit). */
+  musicTonightCount: number;
   /** The active event window (explicit ?t=, or the time-aware default). */
   timeMode: TimeMode;
   /** True only when ?t= is explicitly in the URL — the default pick is
@@ -98,6 +113,20 @@ export type BrowseDockInfo = {
   subCounts: Record<string, number>;
   /** Mappable-event counts per window (drives chip counts + default). */
   eventWindowCounts: Partial<Record<TimeMode, number>>;
+};
+
+/** A TransIT bus stop as a map dot (MD Open Data). No schedule data
+ *  exists for stops, so pins carry location + name only — honest. */
+export type TransitStopPin = { name: string; lng: number; lat: number };
+
+/** A MARC station pin with its next scheduled trains (server-computed
+ *  from the committed GTFS schedule at render; shown as clock times so
+ *  ISR staleness cannot lie). */
+export type MarcStationPin = {
+  name: string;
+  lng: number;
+  lat: number;
+  departures: Array<{ clock: string; headsign: string }>;
 };
 
 /** Map selection union. Discriminated by `_kind`. */

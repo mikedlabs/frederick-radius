@@ -38,7 +38,9 @@ const HANDOFFS: Handoff[] = [
     brand: "#FF6900",
   },
   {
-    href: "https://www.opentable.com/c/frederick-md-restaurants",
+    // The /c/frederick-md-restaurants path 404s (checked 2026-07-17);
+    // this is OpenTable's live Frederick listing.
+    href: "https://www.opentable.com/md/frederick-restaurants",
     label: "OpenTable",
     nudge: "Reserve a table tonight",
     icon: Utensils,

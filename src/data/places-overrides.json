@@ -80,6 +80,78 @@
     "rockwell-brewery-frederick-2"
   ],
   "patch": {
+    "wye-oak-tavern-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/wye-oak-tavern-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 211 E Church St."
+        }
+      ]
+    },
+    "the-tasting-room-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/the-tasting-room",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 101 N Market St."
+        }
+      ]
+    },
+    "monocacy-crossing-restaurant-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/monocacy-crossing-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 4424A Urbana Pike."
+        }
+      ]
+    },
+    "showroom-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/showroom-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 882 N East St."
+        }
+      ]
+    },
+    "sabor-de-cuba-restaurant-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/sabor-de-cuba",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 9 E Patrick St."
+        }
+      ]
+    },
+    "firebirds-wood-fired-grill-frederick": {
+      "commerce_links": [
+        {
+          "provider": "opentable",
+          "type": "reservation",
+          "url": "https://www.opentable.com/r/firebirds-wood-fired-grill-frederick",
+          "source": "curated",
+          "last_verified_at": "2026-07-17",
+          "notes": "OpenTable profile checked 2026-07-17: bookable, address matches 5201 Buckeystown Pike."
+        }
+      ]
+    },
     "urbana-library-farmers-market-new-market": {
       "city": "Urbana",
       "municipality": "urbana",
@@ -1027,6 +1099,12 @@
     },
     "db-liquors-walkersville-md-21793-walkersville": {
       "name": "D&B Liquors"
+    },
+    "rockwell-brewery-frederick": {
+      "name": "Rockwell Brewery"
+    },
+    "rockwell-brewery-frederick-2": {
+      "name": "Rockwell Brewery Riverside"
     }
   }
 }

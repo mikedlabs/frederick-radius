@@ -25,6 +25,7 @@ import {
   Package,
   ParkingCircle,
   Plane,
+  Sigma,
   Settings,
   ShieldCheck,
   Store,
@@ -60,7 +61,7 @@ const START_HERE: CompassItem[] = [
   },
   {
     href: "/nearby",
-    label: "Near me",
+    label: "Nearby",
     description: "Good options ranked from where you are",
     icon: Navigation,
     color: "var(--app-cool)",
@@ -136,7 +137,7 @@ const PRACTICAL: CompassItem[] = [
   },
   {
     href: "/contacts",
-    label: "County services",
+    label: "Contacts",
     description: "Permits, trash, taxes, voting, and who to call",
     icon: Landmark,
     color: "var(--app-civic)",
@@ -189,6 +190,13 @@ const CURIOSITIES: CompassItem[] = [
     description: "See the aircraft crossing Frederick right now.",
     icon: Plane,
     color: "var(--app-cool)",
+  },
+  {
+    href: "/numbers",
+    label: "The county, counted",
+    description: "Every figure in the guide, computed from the live dataset.",
+    icon: Sigma,
+    color: "var(--app-brand-2)",
   },
 ];
 
@@ -274,7 +282,7 @@ export default function CompassHub() {
       </header>
 
       <section aria-labelledby="compass-start" className="space-y-3">
-        <SectionHeading id="compass-start" numeral="I" title="Right now" />
+        <SectionHeading id="compass-start" numeral="I" title="Start here" />
         <LedgerList items={START_HERE} intentProps={intentProps} />
       </section>
 

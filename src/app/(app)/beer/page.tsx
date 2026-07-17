@@ -65,7 +65,7 @@ export default function BeerPage() {
       {/* Saved pours appear only after the user has made a choice. */}
       <MyTaps photos={breweryPhotos} />
 
-      <BeerPassport />
+      <BeerPassport photoBySlug={breweryPhotos} />
       <BeerExplorerLauncher breweryCards={breweryCards} />
 
       <footer

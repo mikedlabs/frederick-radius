@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import type { MapPinPlace } from "./types";
+import type { MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
@@ -72,6 +72,8 @@ export default function AppMapClient({
   cemeteries = [],
   parking = [],
   events = [],
+  transitStops = [],
+  marcStations = [],
   fullBleed = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
@@ -117,6 +119,10 @@ export default function AppMapClient({
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
   events?: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
+   *  Forwarded to AppMap; empty on embeds. */
+  transitStops?: TransitStopPin[];
+  marcStations?: MarcStationPin[];
   /** Full-bleed canvas: the map fills the parent, no card border, no
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
@@ -174,6 +180,8 @@ export default function AppMapClient({
           cemeteries={cemeteries}
           parking={parking}
           events={events}
+          transitStops={transitStops}
+          marcStations={marcStations}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}

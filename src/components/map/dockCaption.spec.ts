@@ -167,3 +167,38 @@ describe("dockDirty", () => {
     expect(dockDirty({ ...clean, whereAway: true })).toBe(true);
   });
 });
+
+describe("whenCaption deals view (2026-07-17 map audit)", () => {
+  it("names the deals view in the readout", () => {
+    expect(whenCaption({ scrubHour: null, openNow: false, dealsOn: true, timeMode: "all" }).text).toBe("Deals");
+    expect(whenCaption({ scrubHour: null, openNow: true, dealsOn: true, timeMode: "all" }).text).toBe("Open now · Deals");
+  });
+
+  it("stays quiet when deals is off", () => {
+    expect(whenCaption({ scrubHour: null, openNow: false, timeMode: "all" }).text).toBe("All day");
+  });
+});
+
+describe("dockDirty deals view", () => {
+  it("deals-only state arms the clear-all", () => {
+    expect(
+      dockDirty({
+        intentActive: false,
+        openNow: false,
+        dealsOn: true,
+        timeModeExplicit: false,
+        scrubActive: false,
+        lensActive: false,
+        layerCount: 0,
+        whereAway: false,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("whenCaption live-music lens", () => {
+  it("names the lens and absorbs the forced tonight window", () => {
+    expect(whenCaption({ scrubHour: null, openNow: false, musicTonight: true, timeMode: "tonight" }).text).toBe("Music");
+    expect(whenCaption({ scrubHour: null, openNow: true, musicTonight: true, timeMode: "tonight" }).text).toBe("Open now · Music");
+  });
+});

@@ -24,6 +24,16 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
  * deck or a county permits office is a real place but not what
  * "Worth a look today" should surface.
  */
+/**
+ * National chains are real answers to "coffee near me" but not a curated
+ * daily pick — a "Worth a look today" tile naming Starbucks reads as
+ * filler and undercuts the local-expert voice (2026-07-17 screenshot
+ * review). The ranking demotion list (isChainName) stays small on
+ * purpose; this rail simply excludes the ubiquitous nationals.
+ */
+const CHAIN_TILE_RE =
+  /\b(starbucks|dunkin'?|subway|chipotle|panera|chick-?fil-?a|mcdonald'?s|wendy'?s|burger king|taco bell|domino'?s|papa john'?s|pizza hut|little caesars|five guys|panda express|olive garden|applebee'?s|ihop|denny'?s|cracker barrel|texas roadhouse|outback steakhouse|red robin|buffalo wild wings|chili'?s|kfc|popeyes|dairy queen|sweetfrog|jersey mike'?s|jimmy john'?s|firehouse subs|tropical smoothie|smoothie king|sonic drive|arby'?s|7-?eleven|wawa|sheetz|royal farms)\b/i;
+
 const PHOTOGENIC: ReadonlySet<string> = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "park", "trail", "outdoors", "playground",
@@ -104,6 +114,7 @@ export const getWorthALookToday = unstable_cache(
         isRecommendable(p) &&
         Boolean(p.google_photo_url) &&
         PHOTOGENIC.has(p.category) &&
+        !CHAIN_TILE_RE.test(p.name) &&
         p.open_status?.state !== "closed",
     );
     if (eligible.length === 0) return [];

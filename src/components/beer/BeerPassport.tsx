@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Check } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import {
@@ -9,6 +10,14 @@ import {
   type Brewery,
   type StyleFamily,
 } from "@/data/beers";
+import MARKS_RAW from "@/data/brewery-marks.json" with { type: "json" };
+
+/** Brewery logo marks — each brewery's OWN published site icon, fetched
+ *  from its website, reviewed by hand (generic platform favicons and
+ *  photo-crops excluded), and committed with source provenance. Eight of
+ *  seventeen ship one; the rest fall back to the venue photo, then the
+ *  monogram. */
+const MARKS = MARKS_RAW as Record<string, { file: string; source: string; fetched: string }>;
 
 const STORAGE_KEY = "fr:beer-passport:v1";
 const VALID_SLUGS = new Set(BREWERIES.map((brewery) => brewery.slug));
@@ -165,8 +174,16 @@ function progressLine(count: number): string {
 /**
  * A manual, device-only brewery passport. A tap records a visit; it never
  * reads location and never implies the visit happened automatically.
+ *
+ * Stamps use each brewery's reviewed logo mark when one is available,
+ * then the taproom's venue photo from the guide's own pipeline. Photos
+ * stay desaturated until stamped; monogram initials are the final fallback.
  */
-export default function BeerPassport() {
+export default function BeerPassport({
+  photoBySlug = {},
+}: {
+  photoBySlug?: Record<string, string | null>;
+}) {
   const visited = useSyncExternalStore(subscribe, readVisited, readServerSnapshot);
   const [showAll, setShowAll] = useState(false);
   const visitedSet = new Set(visited);
@@ -247,6 +264,8 @@ export default function BeerPassport() {
           {BREWERIES.map((brewery, index) => {
             const isVisited = visitedSet.has(brewery.slug);
             const family = FAMILY_BY_KEY[dominantFamily(brewery)];
+            const mark = MARKS[brewery.slug]?.file ?? null;
+            const photo = mark ? null : photoBySlug[brewery.slug] ?? null;
             return (
               <li
                 key={brewery.slug}
@@ -261,34 +280,67 @@ export default function BeerPassport() {
                       : `Mark ${brewery.name} as visited`
                   }
                   onClick={() => toggleVisited(brewery.slug)}
-                  className={`tap-44 group relative mx-auto flex h-16 w-16 items-center justify-center border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 ${index % 2 ? "rotate-2" : "-rotate-2"}`}
+                  className={`tap-44 group relative mx-auto flex h-16 w-16 items-center justify-center overflow-visible border-2 border-dashed transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 ${index % 2 ? "rotate-2" : "-rotate-2"}`}
                   style={{
                     borderColor: isVisited ? family.deep : "rgba(33,24,17,.26)",
-                    background: isVisited
-                      ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
-                      : "rgba(255,255,255,.16)",
+                    background: mark
+                      ? "#fff"
+                      : isVisited
+                        ? `linear-gradient(145deg, ${family.deep}, color-mix(in srgb, ${family.deep} 78%, #111))`
+                        : "rgba(255,255,255,.16)",
                     color: isVisited ? "white" : "rgba(33,24,17,.48)",
                     boxShadow: isVisited
                       ? `0 5px 14px color-mix(in srgb, ${family.deep} 28%, transparent), inset 0 0 0 3px color-mix(in srgb, white 16%, transparent)`
                       : "inset 0 0 0 3px rgba(255,255,255,.2)",
                   }}
                 >
+                  {mark ? (
+                    <span aria-hidden className="absolute inset-[13%] overflow-hidden">
+                      {/* The brewery's own logo mark on a white stamp disc —
+                          dimmed until stamped, full color once visited. */}
+                      <Image
+                        src={mark}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-contain transition-[filter] duration-300"
+                        style={isVisited ? undefined : { filter: "grayscale(0.7) opacity(0.8)" }}
+                      />
+                    </span>
+                  ) : photo ? (
+                    <span aria-hidden className="absolute inset-0 overflow-hidden rounded-full">
+                      {/* The taproom's real photo — desaturated until stamped,
+                          like an unfilled passport page. Proxy photos skip
+                          /_next/image (PlacePhoto convention). */}
+                      <Image
+                        src={photo}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-cover transition-[filter] duration-300"
+                        style={isVisited ? undefined : { filter: "grayscale(0.85) opacity(0.85)" }}
+                        unoptimized={photo.startsWith("/api/place-photo")}
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="font-serif text-[20px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6 sm:text-[22px]"
+                    >
+                      {monogramOf(brewery.name)}
+                    </span>
+                  )}
                   <span
                     aria-hidden
-                    className="absolute left-1.5 top-1 font-mono text-[8px] font-bold tabular-nums opacity-70"
+                    className="absolute left-1 top-0.5 z-10 grid h-4 min-w-4 place-items-center rounded-full px-0.5 font-mono text-[8px] font-bold tabular-nums"
+                    style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "var(--app-edge)" }}
                   >
                     {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    aria-hidden
-                    className="font-serif text-[22px] font-semibold leading-none tracking-tight transition-transform group-hover:-rotate-6"
-                  >
-                    {monogramOf(brewery.name)}
                   </span>
                   {isVisited && (
                     <span
                       aria-hidden
-                      className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center border-2"
+                      className="absolute -bottom-1 -right-1 z-10 grid h-5 w-5 place-items-center border-2"
                       style={{ background: "#1e6b3a", borderColor: "#efe4cd", color: "white" }}
                     >
                       <Check className="h-3 w-3" strokeWidth={3} />

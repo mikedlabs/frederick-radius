@@ -8,7 +8,7 @@ import AppMapClient, {
   type MapLineFC,
   type CemeteryPin,
 } from "@/components/map/AppMapClient";
-import type { MapPinPlace } from "@/components/map/types";
+import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
@@ -21,6 +21,7 @@ import {
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
+import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { parseScope, scopeCentroid, setScope, SCOPE_PARAM, type Scope } from "@/lib/scope";
@@ -109,6 +110,7 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 
 export default function BrowseMapClient({
   places: allPlaces,
+  dealSlugsToday,
   civic,
   amenities,
   extraAmenities,
@@ -119,9 +121,13 @@ export default function BrowseMapClient({
   cemeteries,
   parking,
   weekEvents,
+  transitStops,
+  marcStations,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
+  /** Slugs running a verified special today (server-computed, day-gated). */
+  dealSlugsToday: string[];
   civic: CivicPin[];
   amenities: Amenity[];
   extraAmenities: OsmPlace[];
@@ -136,6 +142,9 @@ export default function BrowseMapClient({
   /** Draw-only, geolocated events for the next ~7 days, pre-shaped as
    *  pins server-side. This component windows them per ?t=. */
   weekEvents: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3). */
+  transitStops: TransitStopPin[];
+  marcStations: MarcStationPin[];
 }) {
   const sp = useSearchParams();
   const intentParam = sp.get("intent") ?? undefined;
@@ -227,9 +236,16 @@ export default function BrowseMapClient({
   // (≤ revalidate + the 5-minute decoration bucket) — same as before.
   const openNow = openParam === "now";
   const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
-  const places = openNow
+  const afterOpen = openNow
     ? subFiltered.filter((p) => isOpenNow(p.open_status))
     : subFiltered;
+  // Fourth tier: ?deals=today collapses to places running a verified
+  // special today. Count computed BEFORE the filter (same convention as
+  // openNowCount) so the When pane can offer the view with its size.
+  const dealSet = new Set(dealSlugsToday);
+  const dealsOn = sp.get("deals") === "today";
+  const dealsTodayCount = afterOpen.filter((p) => dealSet.has(p.slug)).length;
+  const places = dealsOn ? afterOpen.filter((p) => dealSet.has(p.slug)) : afterOpen;
 
   // Events as map pins, scoped to the active temporal window (?t=).
   // Per-mode counts drive the time-aware default-window pick
@@ -243,14 +259,28 @@ export default function BrowseMapClient({
     const pred = eventTimePredicate(mode, now);
     counts[mode] = weekEvents.filter((e) => pred(e.starts_at, e.ends_at)).length;
   }
+  // ?music=tonight — the live-music lens: the event layer collapses to
+  // tonight's confirmed shows (isLiveMusicEvent over the pin's own
+  // category/venue/title — the same filter /live-music uses, so the map
+  // and the radar can never disagree). Forces the tonight window.
+  const musicTonight = sp.get("music") === "tonight";
   const timeModeExplicit = isTimeMode(tParam);
-  const timeMode: TimeMode = timeModeExplicit ? tParam : defaultTimeMode(counts);
+  const timeMode: TimeMode = musicTonight
+    ? "tonight"
+    : timeModeExplicit
+      ? tParam
+      : defaultTimeMode(counts);
 
   const matchTime = eventTimePredicate(timeMode, now);
   const seenCells = new Set<string>();
   const events: EventPin[] = [];
   for (const e of weekEvents) {
     if (!matchTime(e.starts_at, e.ends_at)) continue;
+    if (
+      musicTonight &&
+      !isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title })
+    )
+      continue;
     // One pin per ~11m cell so stacked venue listings don't shingle.
     const cell = `${e.lat.toFixed(4)}:${e.lng.toFixed(4)}`;
     if (seenCells.has(cell)) continue;
@@ -258,6 +288,15 @@ export default function BrowseMapClient({
     events.push(e);
     if (events.length >= 80) break;
   }
+
+  // Count for the dock's Live-music chip: tonight's confirmed shows,
+  // regardless of the active window (offered before you commit).
+  const tonightPred = eventTimePredicate("tonight", now);
+  const musicTonightCount = weekEvents.filter(
+    (e) =>
+      tonightPred(e.starts_at, e.ends_at) &&
+      isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title }),
+  ).length;
 
   // Per-intent counts over the unfiltered pool — the What pane's chips.
   // ~12 single-pass filters over ~1,700 pin records; cheap, and this
@@ -270,7 +309,7 @@ export default function BrowseMapClient({
   // set for the pins plus the matched slugs; the map dims the rest and the
   // dock counts only the matches. With no place filter we pass nothing extra
   // and every pin stays at full strength.
-  const anyPlaceFilter = Boolean(intent || activeSub || openNow);
+  const anyPlaceFilter = Boolean(intent || activeSub || openNow || dealsOn);
   const activeSlugs = anyPlaceFilter ? places.map((p) => p.slug) : null;
 
   return (
@@ -287,6 +326,8 @@ export default function BrowseMapClient({
       cemeteries={cemeteries}
       parking={parking}
       events={events}
+      transitStops={transitStops}
+      marcStations={marcStations}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope
@@ -317,6 +358,10 @@ export default function BrowseMapClient({
         subKey: activeSub?.key,
         openNow,
         openNowCount,
+        dealsOn,
+        dealsTodayCount,
+        musicTonight,
+        musicTonightCount,
         timeMode,
         timeModeExplicit,
         everythingCount: allPlaces.length,

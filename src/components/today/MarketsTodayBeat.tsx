@@ -35,6 +35,18 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
           <span key={m.norm}>
             {m.name}
             <span style={{ color: "var(--app-ink-3)" }}> {m.hours}</span>
+            {/* Maryland's own market registry says which markets take SNAP —
+                a fact worth a quiet tag (7 of the county's 9 markets do, and
+                nothing else surfaces it). FMNP-only markets stay untagged:
+                "SNAP" must mean SNAP. */}
+            {/\bsnap\b/i.test(m.benefits ?? "") && (
+              <span
+                className="ml-1 align-[1px] font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--app-brand-2)" }}
+              >
+                SNAP
+              </span>
+            )}
             {i < shown.length - 1 ? <span aria-hidden style={{ color: "var(--app-ink-3)" }}> ·</span> : null}
           </span>
         ))}

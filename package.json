@@ -83,7 +83,8 @@
     "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
     "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts",
     "refresh:hours": "node scripts/pull-hours-refresh.mjs",
-    "pull:overlays": "node scripts/pull-overlays.mjs"
+    "pull:overlays": "node scripts/pull-overlays.mjs",
+    "test:ux": "playwright test e2e/ux-audit.spec.ts --workers=2 --retries=1"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
@@ -141,7 +142,8 @@
     "typescript": "^5",
     "vitest": "^4.1.10",
     "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "axe-core": "^4.12.1"
   },
   "overrides": {
     "postcss": "8.5.14"

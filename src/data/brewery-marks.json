@@ -1,0 +1,42 @@
+{
+  "attaboy-beer-frederick": {
+    "file": "/brewery-marks/attaboy-beer-frederick.png",
+    "source": "https://static.wixstatic.com/media/3ce92d_00e5ffafd4a14216a984d1227d4ca354%7Emv2.jpg/v1/fill/w_180%2Ch_180%2Clg_1%2Cusm_0.66_1.00_0.01/3ce92d_00e5ffafd4a14216a984d1227d4ca354%7Emv2.jpg",
+    "fetched": "2026-07-16"
+  },
+  "brewers-alley-frederick": {
+    "file": "/brewery-marks/brewers-alley-frederick.png",
+    "source": "https://brewers-alley.com/wp-content/uploads/2026/04/cropped-ba-favicon-2026-180x180.png",
+    "fetched": "2026-07-16"
+  },
+  "milkhouse-brewery-mt-airy": {
+    "file": "/brewery-marks/milkhouse-brewery-mt-airy.png",
+    "source": "https://www.milkhousebrewery.com/wp-content/uploads/2017/09/Artboard-1500px-1.png",
+    "fetched": "2026-07-16"
+  },
+  "monocacy-brewing-frederick": {
+    "file": "/brewery-marks/monocacy-brewing-frederick.png",
+    "source": "https://monocacybrewing.com/wp-content/uploads/2026/05/cropped-Untitled-design-3-180x180.png",
+    "fetched": "2026-07-16"
+  },
+  "smoketown-brewing-brunswick": {
+    "file": "/brewery-marks/smoketown-brewing-brunswick.png",
+    "source": "https://static.wixstatic.com/media/b4fb46_9a9d622db48e4dbeab326efe288793b1%7Emv2.png/v1/fill/w_180%2Ch_180%2Clg_1%2Cusm_0.66_1.00_0.01/b4fb46_9a9d622db48e4dbeab326efe288793b1%7Emv2.png",
+    "fetched": "2026-07-16"
+  },
+  "rockwell-brewery-frederick": {
+    "file": "/brewery-marks/rockwell-brewery-frederick.png",
+    "source": "https://images.squarespace-cdn.com/content/v1/583ddb1815d5dbc22734fd0e/a6e8eba0-1eb3-4aba-af07-f2cd7e3be774/favicon.ico",
+    "fetched": "2026-07-16"
+  },
+  "sandbox-brewhouse-frederick": {
+    "file": "/brewery-marks/sandbox-brewhouse-frederick.png",
+    "source": "https://images.squarespace-cdn.com/content/v1/671f0891696546050f847977/fad0693a-7a3f-4aa5-b23e-6ef7b5090c45/favicon.ico?format=100w",
+    "fetched": "2026-07-16"
+  },
+  "liquidity-aleworks-mount-airy": {
+    "file": "/brewery-marks/liquidity-aleworks-mount-airy.png",
+    "source": "https://i0.wp.com/liquidityaleworks.com/wp-content/uploads/2021/10/cropped-LOGO-BLACK-BACKGROUND.png",
+    "fetched": "2026-07-16"
+  }
+}

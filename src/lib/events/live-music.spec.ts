@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isLiveMusicEvent, isNonMusicTitle } from "./live-music";
+import { isLiveMusicEvent, isNonMusicTitle, liveMusicAhead } from "./live-music";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 
 // A real verified music venue from the curated set, so the test exercises
@@ -50,5 +50,48 @@ describe("isLiveMusicEvent", () => {
   it("rejects events at non-music venues without a music category", () => {
     expect(isLiveMusicEvent({ category: "food", venue_place_slug: "some-restaurant", title: "Band Night" })).toBe(false);
     expect(isLiveMusicEvent({ category: "food", venue_place_slug: undefined, title: "Band Night" })).toBe(false);
+  });
+});
+
+describe("liveMusicAhead", () => {
+  // Friday 2026-07-17 18:00 ET = 22:00 UTC (EDT).
+  const now = new Date("2026-07-17T22:00:00.000Z");
+  const show = (slug: string, starts_at: string, category = "music") =>
+    ({ slug, title: `${slug} live`, category, starts_at, venue_place_slug: undefined }) as never;
+
+  it("starts after tonight's window and stops at the horizon, soonest first", () => {
+    const pool = [
+      show("tonight", "2026-07-17T23:30:00.000Z"), // inside tonight's window
+      show("next-week", "2026-07-24T23:00:00.000Z"),
+      show("tomorrow", "2026-07-19T00:00:00.000Z"),
+      show("past-horizon", "2026-09-01T23:00:00.000Z"),
+    ];
+    const out = liveMusicAhead(pool, now, 28).map((e) => e.slug);
+    expect(out).toEqual(["tomorrow", "next-week"]);
+  });
+
+  it("applies the same live-music filter as tonight", () => {
+    const pool = [show("food-thing", "2026-07-24T23:00:00.000Z", "food")];
+    expect(liveMusicAhead(pool, now, 28)).toEqual([]);
+  });
+});
+
+describe("isLiveMusicEvent fitness/class veto (2026-07-17 radar screenshot)", () => {
+  it("rejects fitness classes and comedy on a music venue's calendar", () => {
+    for (const title of [
+      "Dance Fitness with Monique",
+      "Pups and Poses",
+      "Cardio Sculpt",
+      "Senior Exercise",
+      "Learn to Salsa Dance",
+      "Next Stop Comedy",
+    ]) {
+      expect(isLiveMusicEvent({ category: "food", venue_place_slug: VENUE, title })).toBe(false);
+    }
+  });
+
+  it("keeps a real dance party and real shows", () => {
+    expect(isLiveMusicEvent({ category: "music", venue_place_slug: undefined, title: "Salsa Night Dance Party! Carnaval De La Salsa" })).toBe(true);
+    expect(isLiveMusicEvent({ category: "food", venue_place_slug: VENUE, title: "Michelle & Jason Hannon" })).toBe(true);
   });
 });

@@ -186,7 +186,9 @@ import {
   type EventPin,
   type MapLineFC,
   type MapPinPlace,
+  type MarcStationPin,
   type Selected,
+  type TransitStopPin,
 } from "./types";
 import {
   AMENITY_GROUPS,
@@ -346,6 +348,11 @@ type Props = {
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
   events?: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
+   *  Stops are location+name only (no schedule data exists for them);
+   *  MARC pins carry server-computed next trains as clock times. */
+  transitStops?: TransitStopPin[];
+  marcStations?: MarcStationPin[];
   /** Open centered on the user's last-known location when a fresh
    *  cached fix exists (no prompt) — set when arriving via a category
    *  so the map and its list read "from where you're standing." Falls
@@ -395,6 +402,8 @@ export default function AppMap({
   countyBoundary = EMPTY_LINE_FC,
   cemeteries = [],
   parking = [],
+  transitStops = [],
+  marcStations = [],
   events = [],
   initialAmenityGroups,
   dock,
@@ -642,6 +651,14 @@ export default function AppMap({
   // the feed is configured, otherwise the markers stay neutral (no fake count).
   const [showParking, setShowParking] = useState(() => layerPrefs.parking ?? false);
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
+  // MARC station popup (Transit layer, phase 3). Holds the station name;
+  // departures are looked up from the marcStations prop at render.
+  const [marcPeek, setMarcPeek] = useState<string | null>(null);
+  // Current viewport bounds (set on every settled move) — makes the dock's
+  // count line honest to what the EYES see, not the whole county
+  // (viewport-honest count, 2026-07-17 map audit). Null until first settle
+  // (initial render counts everything, which at county zoom is the truth).
+  const [viewBounds, setViewBounds] = useState<{ w: number; e: number; s: number; n: number } | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -830,6 +847,21 @@ export default function AppMap({
     [filteredPlaces, matchSet],
   );
 
+  // Viewport-scoped counts for the dock's count line. O(n) point-in-box
+  // per settled move over ≤1.7k pins — negligible next to the GeoJSON
+  // rebuild the same states already trigger.
+  const inViewPlaces = useMemo(() => {
+    if (!viewBounds) return visiblePlaces;
+    return visiblePlaces.filter(
+      (p) =>
+        p.geom &&
+        p.geom.lng >= viewBounds.w &&
+        p.geom.lng <= viewBounds.e &&
+        p.geom.lat >= viewBounds.s &&
+        p.geom.lat <= viewBounds.n,
+    );
+  }, [visiblePlaces, viewBounds]);
+
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
@@ -840,6 +872,7 @@ export default function AppMap({
     const map = mapRef.current.getMap();
     const b = map.getBounds();
     if (!b) return;
+    setViewBounds({ w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() });
     setEventSlugsInView(
       new Set(
         events
@@ -1188,6 +1221,11 @@ export default function AppMap({
     }
     const layer = feature.layer?.id;
     if (!layer) { setSelectedSlug(null); return; }
+    if (layer === "marc-station-pins") {
+      setMarcPeek(String(feature.properties?.name ?? ""));
+      haptic("light");
+      return;
+    }
     const map = mapRef.current?.getMap();
 
     // Cluster expansion — works for both OSM and curated clusters
@@ -1653,8 +1691,8 @@ export default function AppMap({
   // "Closes within the hour" — the dock's living count line. open_status
   // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
   const closingSoonCount = useMemo(
-    () => visiblePlaces.filter((p) => p.open_status?.state === "closing-soon").length,
-    [visiblePlaces],
+    () => inViewPlaces.filter((p) => p.open_status?.state === "closing-soon").length,
+    [inViewPlaces],
   );
 
   // Season rows for the dock's Aerial nested strip (label + count per
@@ -1893,7 +1931,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -1986,6 +2024,89 @@ export default function AppMap({
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
                 "line-opacity": 0.75,
               }}
+            />
+          </Source>
+          {/* Bus stops + MARC stations (phase 3) — the other half of the
+              Transit layer: where you actually catch the thing. Stops are
+              zoom-gated dots (names at street zoom); MARC stations always
+              draw when the layer is on, and tapping one shows the next
+              scheduled trains. */}
+          <Source
+            id="transit-stops"
+            type="geojson"
+            data={{
+              type: "FeatureCollection",
+              features: showTransit
+                ? transitStops.map((st) => ({
+                    type: "Feature" as const,
+                    geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
+                    properties: { name: st.name },
+                  }))
+                : [],
+            }}
+          >
+            <Layer
+              id="transit-stop-dots"
+              type="circle"
+              minzoom={12.5}
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 12.5, 2, 16, 4.5],
+                "circle-color": "#20506A",
+                "circle-opacity": 0.85,
+                "circle-stroke-width": 1,
+                "circle-stroke-color": "#EEE6D4",
+              }}
+            />
+            <Layer
+              id="transit-stop-names"
+              type="symbol"
+              minzoom={15}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": 10,
+                "text-offset": [0, 1.1],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{ "text-color": "#20506A", "text-halo-color": "#EEE6D4", "text-halo-width": 1 }}
+            />
+          </Source>
+          <Source
+            id="marc-stations"
+            type="geojson"
+            data={{
+              type: "FeatureCollection",
+              features: showTransit
+                ? marcStations.map((st) => ({
+                    type: "Feature" as const,
+                    geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
+                    properties: { name: st.name },
+                  }))
+                : [],
+            }}
+          >
+            <Layer
+              id="marc-station-pins"
+              type="circle"
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 4, 14, 8],
+                "circle-color": "#5A4FCF",
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#EEE6D4",
+              }}
+            />
+            <Layer
+              id="marc-station-names"
+              type="symbol"
+              minzoom={10}
+              layout={{
+                "text-field": ["concat", "MARC · ", ["get", "name"]],
+                "text-size": 11,
+                "text-offset": [0, 1.2],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{ "text-color": "#3F3894", "text-halo-color": "#EEE6D4", "text-halo-width": 1.2 }}
             />
           </Source>
           {/* Live vehicles and route lines are one honest Transit layer. The
@@ -2438,6 +2559,28 @@ export default function AppMap({
                 "circle-color": "#B26B00",
                 "circle-opacity": 0.26,
                 "circle-blur": 0.55,
+              }}
+            />
+            <Layer
+              // Street-zoom name labels (map polish batch): once you're in
+              // a few blocks, pins read by NAME like a field-guide plate
+              // instead of forcing a tap per dot. text-optional lets the
+              // collision engine drop labels before it drops pins.
+              id="curated-names"
+              type="symbol"
+              filter={["!", ["has", "point_count"]]}
+              minzoom={15.5}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": 10.5,
+                "text-offset": [0, 1.35],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{
+                "text-color": "#3A362B",
+                "text-halo-color": "#EEE6D4",
+                "text-halo-width": 1.1,
               }}
             />
             <Layer
@@ -3013,7 +3156,7 @@ export default function AppMap({
         {dock && (
           <MapDock
             browse={dock}
-            placeCount={visiblePlaces.length}
+            placeCount={inViewPlaces.length}
             eventCount={visibleEvents.length}
             closingSoonCount={closingSoonCount}
             q={q}
@@ -3121,10 +3264,32 @@ export default function AppMap({
           />
         )}
 
-        {/* The pin peek card. */}
+        {/* The pin peek card. The cross-join: the soonest event pin hosted
+            AT this place (venue_place_slug) rides along, so tapping a
+            brewery answers "anything on here tonight?" without leaving the
+            map (2026-07-17 map audit #2). */}
         {peekPlace && !parkingPeek && !listView && (
           <MapPeek
             place={peekPlace}
+            hostedEvent={
+              events
+                .filter((e) => e.venue_place_slug && e.venue_place_slug === peekPlace.slug)
+                .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0] ?? null
+            }
+            nearestGarage={
+              // The third question after "open?" and "anything on?":
+              // where do I park. Nearest downtown garage within a
+              // 5-6 minute walk, with the live space count when the
+              // feed reports one (2026-07-17 map audit follow-on).
+              parking
+                .map((g) => ({
+                  g,
+                  d: haversineMeters(peekPlace.geom, { lng: g.lng, lat: g.lat }),
+                }))
+                .filter((x) => x.d <= 500)
+                .sort((a, b) => a.d - b.d)
+                .map((x) => ({ name: x.g.name, distM: x.d, available: x.g.available }))[0] ?? null
+            }
             userLoc={userLoc}
             onClose={() => {
               setPeekPlace(null);
@@ -3139,6 +3304,43 @@ export default function AppMap({
         {parkingPeek && !listView && (
           <MapParkingPeek pin={parkingPeek} onClose={() => setParkingPeek(null)} />
         )}
+
+        {/* MARC station popup — the next scheduled trains, as clock times
+            from the committed GTFS schedule (weekday commuter service;
+            honest empty line when no more trains today). */}
+        {marcPeek && !listView && (() => {
+          const st = marcStations.find((m) => m.name === marcPeek);
+          if (!st) return null;
+          return (
+            <Popup
+              longitude={st.lng}
+              latitude={st.lat}
+              anchor="bottom"
+              onClose={() => setMarcPeek(null)}
+              closeOnClick={false}
+              maxWidth="260px"
+            >
+              <div style={{ fontFamily: "var(--font-inter, inherit)" }}>
+                <p className="font-serif text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                  MARC · {st.name}
+                </p>
+                {st.departures.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5">
+                    {st.departures.map((d, i) => (
+                      <li key={i} className="text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                        <span className="font-mono">{d.clock}</span> to {d.headsign}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    No more trains today. Weekday service only.
+                  </p>
+                )}
+              </div>
+            </Popup>
+          );
+        })()}
 
         {/* Cluster index — "what's in this bubble", as a field-guide index
             page. Tapping a row focuses the pin + opens its sheet; the drawer

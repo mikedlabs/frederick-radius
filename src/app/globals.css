@@ -4400,3 +4400,65 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .beer-tap-badge { transition: none; }
   .beer-event-poster { transition: none; }
 }
+
+/* ── Layers at the map's foot (owner ask, 2026-07-17): a quiet state
+   pill bottom-left that reads the current layer state; tapping opens
+   the bottom sheet. The caption row is back to three segs. ── */
+.dock-lfab {
+  position: fixed;
+  left: 10px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-sticky);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
+  color: var(--app-ink-2);
+  box-shadow: var(--app-elev-1), var(--app-hi);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dock-lfab-v {
+  max-width: 34vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-ltray {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  max-width: 470px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 62px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-sticky);
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
+  box-shadow: var(--app-elev-2, 0 10px 28px rgba(22, 20, 14, 0.16)), var(--app-hi);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.dock-ltray.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.dock-ltray-scroll {
+  max-height: 38vh;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+}
+.dock-lfab[data-on] {
+  background: color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-elevated-solid, var(--app-bg-elevated)));
+  border-color: var(--app-brand-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-ltray {
+    transition: none;
+  }
+}

@@ -98,7 +98,7 @@ export default function BeerGuides({ photos }: { photos: BreweryPhotoMap }) {
               <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(15,11,8,.1) 0%, color-mix(in srgb, ${family.deep} 82%, rgba(15,11,8,.94)) 54%, #15110e 100%)` }} aria-hidden />
               <div className="flex items-start justify-between gap-4">
                 <p className="relative flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.16em] text-white/52"><Route className="h-3.5 w-3.5" aria-hidden />{guide.eyebrow}</p>
-                <span className="relative font-serif text-[44px] leading-none text-white/22">0{guideIndex + 1}</span>
+                <span aria-hidden className="relative font-serif text-[44px] leading-none text-white/50">0{guideIndex + 1}</span>
               </div>
               <h3 id={`beer-day-${guide.slug}`} className="relative mt-12 max-w-[9ch] font-serif text-[32px] font-semibold leading-[0.9] tracking-[-0.035em]">{guide.title}</h3>
               <p className="relative mt-3 text-[12px] leading-relaxed text-white/62">{guide.description}</p>

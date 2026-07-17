@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { MapIcon, ArrowRight } from "lucide-react";
+import { ArrowLeft, MapIcon, ArrowRight } from "lucide-react";
 import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { isOpenNow, formatTime } from "@/lib/hours";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
@@ -201,6 +201,17 @@ export default async function OpenNowPage() {
     <div className="relative space-y-6">
       <PageBloom variant="single" />
       <FreshnessGuard renderedAtIso={now.toISOString()} />
+
+      <nav aria-label="Breadcrumb" className="text-xs">
+        <Link
+          href="/today"
+          className="inline-flex items-center gap-1 hover:underline"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+          Back to Today
+        </Link>
+      </nav>
 
       {/* Masthead — the almanac dateline over the serif headline; the count
           rides the mono support line, never the h1. */}

@@ -20,6 +20,7 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { allowedEventImage, ticketFloorText } from "@/lib/integrations/ticketmaster";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
@@ -50,6 +51,7 @@ type SgEvent = {
   venue?: SgVenue;
   stats?: { lowest_price?: number | null };
   taxonomies?: Array<{ name?: string }>;
+  performers?: Array<{ image?: string | null }>;
 };
 
 function inCounty(lat: number, lng: number): boolean {
@@ -77,14 +79,18 @@ function municipalityFor(cityName: string | undefined, geom: LngLat): string {
 }
 
 /** Map a SeatGeek taxonomy to our event category. SeatGeek's top-level
- *  taxonomies (concert, theater, sports, comedy) map cleanly; anything
- *  else falls to music since this adapter queries the concert type. */
+ *  taxonomies (concert, theater, sports, comedy) map cleanly. Anything else
+ *  is "community", NOT music: the old music fallback stamped SeatGeek's
+ *  community listings (rec-center classes like "Cardio Sculpt" and "Senior
+ *  Exercise") as concerts, and they rendered on the live-music radar
+ *  (2026-07-17 screenshot review). Music now requires SeatGeek to say so. */
 function categoryFor(taxonomies: SgEvent["taxonomies"]): string {
   const names = (taxonomies ?? []).map((t) => (t.name ?? "").toLowerCase());
   if (names.some((n) => n.includes("theater") || n.includes("theatre"))) return "theater";
   if (names.some((n) => n.includes("comedy"))) return "theater";
   if (names.some((n) => n.includes("sports"))) return "sports";
-  return "music";
+  if (names.some((n) => n.includes("concert") || n.includes("music"))) return "music";
+  return "community";
 }
 
 /**
@@ -122,6 +128,8 @@ export function normalizeSeatGeek(raw: unknown): LiveEvent[] {
       // A lowest_price of exactly 0 is free; null or absent means the
       // price is unknown, not free, so only an explicit 0 sets the flag.
       is_free: typeof lowest === "number" && lowest === 0,
+      price_text: ticketFloorText(lowest ?? undefined),
+      hero_image: allowedEventImage(ev.performers?.find((p) => p?.image)?.image),
       status: "scheduled" as const,
       last_verified_at: new Date().toISOString(),
     });

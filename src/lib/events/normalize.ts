@@ -379,6 +379,75 @@ export function cleanVenueName(raw: string | null | undefined): string | null {
 }
 
 /**
+ * A feed "event" whose title says nothing beyond the venue's own name is a
+ * lineup placeholder, not an event — a venue calendar or discovery feed
+ * emitting "JoJo's Restaurant & Tap House" AT JoJo's Restaurant & Tap House
+ * tells the reader only that the restaurant exists (Reddit reader report,
+ * 2026-07-17: it rendered next to a real show and read as filler). True when
+ * the title, loosely normalized, equals the venue name or is fully contained
+ * in it ("JoJo's" at "JoJo's Restaurant & Tap House"). A title with ANY word
+ * of its own ("Live music at JoJo's", "JoJo's Summer Bash") stays.
+ */
+export function titleIsJustVenue(
+  title: string,
+  venue: string | null | undefined,
+): boolean {
+  const v = normLoose(venue ?? "");
+  if (!v) return false;
+  const t = normLoose(title);
+  if (!t) return false;
+  if (t === v) return true;
+  const tokensOf = (s: string): string[] =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+  const venueTokens = new Set(tokensOf(venue ?? ""));
+  const titleTokens = tokensOf(title);
+  return titleTokens.length > 0 && titleTokens.every((w) => venueTokens.has(w));
+}
+
+/**
+ * Municipal calendars double as facility-BOOKING ledgers: Thurmont's feed
+ * publishes "Large Pavilion A - Wachter Celebration of Life" (a private
+ * memorial), "East End Park Pavilion - B.S. Rental", and day-camp blocks
+ * ("Small Pavilion - TOT - Summer Park Program") alongside real events.
+ * A reservation is not a happening — and a private rental rendered as a
+ * public event card is worse than noise (2026-07-17 today-page review).
+ *
+ * True when the title's first " - " segment names a bookable facility AND
+ * the remainder doesn't name a clearly public draw. "Large Pavilion A -
+ * Main Street Farmers Market" stays; the rentals and program blocks drop.
+ */
+const FACILITY_RE =
+  /\b(pavilion|ball ?field|athletic field|multi-?purpose (?:field|room)|diamond|batting cage|tennis court|basketball court|pickleball|meeting room|community room|banquet hall|gazebo|camp ?site)\b/i;
+const PUBLIC_DRAW_RE =
+  /\b(market|festival|fair|carnival|concert|music|movie|parade|firework|egg hunt|bingo|blood drive|open house|story ?time)\b/i;
+export function isFacilityBooking(title: string): boolean {
+  const i = title.indexOf(" - ");
+  if (i <= 0) return false;
+  if (!FACILITY_RE.test(title.slice(0, i))) return false;
+  return !PUBLIC_DRAW_RE.test(title.slice(i + 3));
+}
+
+/**
+ * The kept sibling of isFacilityBooking: a PUBLIC event that survives the
+ * booking guard still carries the ledger's facility prefix ("Large
+ * Pavilion A - Main Street Farmers Market"). Strip it so the event reads
+ * by its real name; the facility is location detail, not the headline.
+ * Identity for every other title.
+ */
+export function stripFacilityPrefix(title: string): string {
+  const i = title.indexOf(" - ");
+  if (i <= 0) return title;
+  if (!FACILITY_RE.test(title.slice(0, i))) return title;
+  const rest = title.slice(i + 3).trim();
+  return rest.length >= 6 ? rest : title;
+}
+
+/**
  * Collapse key for recurring events. Title plus venue plus municipality,
  * with no date component, so a daily or weekly series collapses to ONE
  * entry rather than one per weekday. Mirrors the municipal loader's

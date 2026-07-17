@@ -38,7 +38,14 @@ import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
-import { collapseRecurringEvents, dedupeCrossSourceShows } from "@/lib/events/normalize";
+import {
+  cleanVenueName,
+  collapseRecurringEvents,
+  dedupeCrossSourceShows,
+  isFacilityBooking,
+  stripFacilityPrefix,
+  titleIsJustVenue,
+} from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
@@ -164,10 +171,19 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // duplicates dropped by the same content matcher the live feeds use.
   const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), curatedUpcoming);
 
-  // Time-sanity guard on FEED/EXTRACTED rows only (curated seeds are
-  // hand-authored): a theater curtain at 7 AM is a parsing artifact —
-  // withhold it rather than publish a wrong time (June-9 audit P1-11).
-  const sane = (e: EventWithMeta) => !hasImplausibleStartTime(e);
+  // Three guards on FEED/EXTRACTED rows only (curated seeds are hand-authored):
+  //   1. Time sanity — a theater curtain at 7 AM is a parsing artifact;
+  //      withhold it rather than publish a wrong time (June-9 audit P1-11).
+  //   2. Title says something — a lineup placeholder titled with the venue's
+  //      own name ("JoJo's Restaurant & Tap House" at JoJo's) is not an event
+  //      (Reddit reader report, 2026-07-17).
+  //   3. A facility BOOKING is not a happening — municipal calendars publish
+  //      pavilion rentals and program blocks (even a private memorial) beside
+  //      real events (2026-07-17 today-page review).
+  const sane = (e: EventWithMeta) =>
+    !hasImplausibleStartTime(e) &&
+    !titleIsJustVenue(e.title, e.venue_name) &&
+    !isFacilityBooking(e.title);
 
   // One unified, deduplicated, time-sorted set; second-pass dedup catches
   // curated-vs-curated duplicates, keeping the richer record per cluster.
@@ -186,11 +202,21 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // dedupeCrossSourceShows LAST among the dedupes: it needs the whole merged,
   // time-sorted set (the same show arrives from a venue lineup AND a discovery
   // feed with different titles/slugs, one row a bare noon placeholder).
+  // One venue-name cleaning pass for EVERY surface: cleanVenueName nulls
+  // degenerate scraps a feed leaked into its location field ("MD", a bare
+  // county, metadata dumps) so no card ever renders "at MD ·" copy. Real
+  // names pass through untouched; done before the dedupes so venue-keyed
+  // matching compares cleaned values.
+  const venueCleaned = [...bySlug.values()].map((e) => {
+    const v = cleanVenueName(e.venue_name) ?? "";
+    const t = stripFacilityPrefix(e.title);
+    return v === e.venue_name && t === e.title ? e : { ...e, venue_name: v, title: t };
+  });
   const positioned = await upgradeEventGeoms(
     dedupeCrossSourceShows(
       dedupeKeysHomeGames(
         dedupeCuratedClusters(
-          [...bySlug.values()].sort(
+          venueCleaned.sort(
             (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
           ),
         ),

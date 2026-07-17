@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Bookmark, CornerUpRight, X } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { directionsHref } from "@/lib/map/directionsHref";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import type { MapPinPlace } from "./types";
+import type { EventPin, MapPinPlace } from "./types";
 
 /**
  * MapPeek — the quick-peek card that rises from the bottom when a pin is
@@ -40,11 +41,19 @@ function openLine(p: MapPinPlace): { text: string; tone: string } {
 
 export default function MapPeek({
   place,
+  hostedEvent = null,
+  nearestGarage = null,
   userLoc,
   onClose,
   onDetails,
 }: {
   place: MapPinPlace;
+  /** The soonest upcoming event hosted AT this place (venue join), when
+   *  the active event window holds one. Renders as one quiet line. */
+  hostedEvent?: EventPin | null;
+  /** Nearest downtown garage within a short walk, with the live space
+   *  count when the feed reports one. Null outside garage range. */
+  nearestGarage?: { name: string; distM: number; available: number | null } | null;
   userLoc: LngLat | null;
   onClose: () => void;
   /** Open the full PlaceSheet for the deep read. */
@@ -73,9 +82,7 @@ export default function MapPeek({
     ? `/api/static-map?lng=${place.geom.lng.toFixed(5)}&lat=${place.geom.lat.toFixed(5)}&pin=${pin}&size=320x150`
     : "";
 
-  const directionsHref = place.geom
-    ? `https://www.google.com/maps/dir/?api=1&destination=${place.geom.lat},${place.geom.lng}`
-    : "#";
+  const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
 
   return (
     <div className="map-peek" role="dialog" aria-label={place.name}>
@@ -117,6 +124,41 @@ export default function MapPeek({
               </>
             )}
           </span>
+          {/* Cross-joins (2026-07-17 map audit): the verified deal and the
+              soonest hosted event, each one quiet truncated line. The pin
+              already carries deal_hook; the event rides in via the venue
+              join. Nothing renders when neither exists. */}
+          {place.deal_hook && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-accent-press)", fontWeight: 600 }}
+            >
+              {place.deal_hook}
+            </span>
+          )}
+          {hostedEvent && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-brand-2)", fontWeight: 600 }}
+            >
+              {hostedEvent.title} ·{" "}
+              {new Intl.DateTimeFormat("en-US", {
+                timeZone: "America/New_York",
+                weekday: "short",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(hostedEvent.starts_at))}
+            </span>
+          )}
+          {nearestGarage && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-ink-3)" }}
+            >
+              Park: {nearestGarage.name} · {formatDistance(nearestGarage.distM)}
+              {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
+            </span>
+          )}
         </span>
       </button>
 
@@ -141,7 +183,7 @@ export default function MapPeek({
           {saved ? "Saved" : "Save"}
         </button>
         <a
-          href={directionsHref}
+          href={dirHref}
           target="_blank"
           rel="noopener noreferrer"
           className="map-peek-act map-peek-act-go"

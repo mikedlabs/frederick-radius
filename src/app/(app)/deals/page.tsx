@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Tag } from "lucide-react";
+import { ArrowLeft, Tag } from "lucide-react";
 import { allDeals } from "@/lib/loaders/todaysDeals";
 import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
@@ -8,7 +8,7 @@ import DealsBrowser from "@/components/deals/DealsBrowser";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/deals" },
-  title: "Daily specials in Frederick County",
+  title: "Deals: source-checked daily specials in Frederick County",
   description:
     "Source-checked daily specials around Frederick County: taco Tuesdays, wing nights, crab feasts, and the deals locals plan their week around.",
 };
@@ -40,6 +40,17 @@ export default function DealsPage() {
   return (
     <div className="relative space-y-5">
       <PageBloom variant="warm-cool" />
+
+      <nav aria-label="Breadcrumb" className="text-xs">
+        <Link
+          href="/today"
+          className="inline-flex items-center gap-1 hover:underline"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+          Back to Today
+        </Link>
+      </nav>
 
       <header className="pt-0.5">
         <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />

@@ -101,7 +101,7 @@ export default function PlaceListsCard({ slug }: { slug: string }) {
         </ul>
       )}
       <p className="mt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
-        Saved on this device · filter by list on My Radius
+        Saved on this device · filter by list on the Saved page
       </p>
     </section>
   );

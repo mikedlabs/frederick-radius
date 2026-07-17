@@ -53,6 +53,7 @@ export const WANTS: WantCategory[] = [
       { label: "Bakeries", icon: "Cookie", href: "/category/bakery" },
       { label: "Groceries", icon: "ShoppingCart", href: "/nearby?c=grocery" },
       { label: "Brunch", icon: "Croissant", href: "/brunch" },
+      { label: "Book a table", icon: "CalendarCheck", href: "/reserve" },
     ],
   },
   {
@@ -94,7 +95,7 @@ export const WANTS: WantCategory[] = [
     color: "var(--app-accent)",
     subs: [
       { label: "Family fun", icon: "FerrisWheel", href: "/nearby?c=family" },
-      { label: "Live music", icon: "Music", href: "/nearby?c=music" },
+      { label: "Live music", icon: "Music", href: "/live-music" },
       { label: "Movies", icon: "Film", href: "/nearby?c=movies" },
       { label: "Arts & museums", icon: "Palette", href: "/nearby?c=art" },
       { label: "Markers & landmarks", icon: "Landmark", href: "/markers" },

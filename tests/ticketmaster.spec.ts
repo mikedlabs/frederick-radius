@@ -6,7 +6,7 @@
  * fabricated or unplaceable row can never reach the live-events spine.
  */
 import { describe, it, expect } from "vitest";
-import { normalizeTicketmaster } from "@/lib/integrations/ticketmaster";
+import { normalizeTicketmaster, ticketFloorText, pickTmImage, allowedEventImage } from "@/lib/integrations/ticketmaster";
 
 // A well-formed Discovery event, shaped like the real payload. `over`
 // shallow-overrides top-level keys for the negative cases below.
@@ -101,5 +101,36 @@ describe("normalizeTicketmaster", () => {
     expect(normalizeTicketmaster({})).toEqual([]);
     expect(normalizeTicketmaster(wrap([]))).toEqual([]);
     expect(normalizeTicketmaster({ _embedded: { events: "nope" } })).toEqual([]);
+  });
+});
+
+describe("ticketFloorText + pickTmImage (2026-07-17 unused-data audit)", () => {
+  it("formats a real ticket floor and refuses zero/absent", () => {
+    expect(ticketFloorText(28)).toBe("From $28");
+    expect(ticketFloorText(28.5)).toBe("From $28.50");
+    expect(ticketFloorText(0)).toBeUndefined();
+    expect(ticketFloorText(undefined)).toBeUndefined();
+  });
+
+  it("prefers a 16:9 image near card width, falls back to widest", () => {
+    const tm = (n: string) => `https://s1.ticketm.net/${n}`;
+    expect(
+      pickTmImage([
+        { url: tm("small.jpg"), width: 100, ratio: "16_9" },
+        { url: tm("right.jpg"), width: 640, ratio: "16_9" },
+        { url: tm("huge.jpg"), width: 2048, ratio: "16_9" },
+      ]),
+    ).toBe(tm("right.jpg"));
+    expect(pickTmImage([{ url: tm("square.jpg"), width: 640, ratio: "1_1" }])).toBe(tm("square.jpg"));
+    expect(pickTmImage([])).toBeUndefined();
+    expect(pickTmImage(undefined)).toBeUndefined();
+  });
+
+  it("drops images from hosts next.config does not allowlist (no 500s)", () => {
+    expect(pickTmImage([{ url: "https://evil.example.com/x.jpg", width: 640, ratio: "16_9" }])).toBeUndefined();
+    expect(allowedEventImage("http://s1.ticketm.net/insecure.jpg")).toBeUndefined();
+    expect(allowedEventImage("https://seatgeek.com/images/performers/a.jpg")).toBe(
+      "https://seatgeek.com/images/performers/a.jpg",
+    );
   });
 });

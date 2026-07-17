@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
+import { CalendarCheck,
   Utensils,
   UtensilsCrossed,
   Coffee,
@@ -109,7 +109,7 @@ const ICONS: Record<string, LucideIcon> = {
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
   BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
   Armchair, Building2, Heart, Library, Hotel, Film, Scissors, PawPrint,
-  Church, Pill,
+  Church, Pill, CalendarCheck,
 };
 
 /**

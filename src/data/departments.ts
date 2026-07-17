@@ -121,7 +121,9 @@ const CITY: DepartmentContact[] = [
     name: "Public Works",
     about: "Streets, sidewalks, street trees, flooding, signal outages.",
     website: "https://www.cityoffrederickmd.gov/67/Public-Works",
-    phone: "3016001405",
+    // 24-hour DPW switchboard per the official page (verified 2026-07-17;
+    // the previously-listed 301-600-1405 appears nowhere on it).
+    phone: "3016001440",
   },
   {
     slug: "city-parks-recreation",
@@ -188,7 +190,8 @@ const CITY: DepartmentContact[] = [
     name: "Finance",
     about: "City taxes, billing, business licenses.",
     website: "https://www.cityoffrederickmd.gov/193/Finance",
-    phone: "3016001166",
+    // Official Finance page number (verified 2026-07-17; 301-600-1166 was wrong).
+    phone: "3016001399",
   },
   {
     slug: "city-utility-billing",

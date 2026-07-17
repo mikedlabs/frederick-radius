@@ -18,7 +18,7 @@ import type { AskAction, AskPlanPreview, AskResult, AskSource } from "@/lib/ask/
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { useSavedList } from "@/hooks/useSaved";
 import { getInterests } from "@/lib/personalize";
-import { getScope, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, scopeInSentence, scopeLabel, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { contextualizeAskQuery } from "@/lib/ask/followup";
 import type { TodayPrompt } from "@/lib/today-prompts";
 
@@ -235,6 +235,10 @@ export default function AskFrederick({ hideLabel = false, quickAsks = QUICK_ASKS
         </div>
       ) : null}
 
+      <p className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <MapPin className="h-3 w-3" aria-hidden /> Searching {scopeInSentence(contextLabel)}
+      </p>
+
       <form
         onSubmit={(event) => { event.preventDefault(); void ask(q); }}
         className="flex items-center gap-2 rounded-[14px] border bg-[var(--app-bg-elevated-solid)] py-1 pl-4 pr-1.5"
@@ -261,9 +265,6 @@ export default function AskFrederick({ hideLabel = false, quickAsks = QUICK_ASKS
             </button>
           ))}
         </div>
-        <p className="hidden shrink-0 items-center gap-1 text-[10px] sm:inline-flex" style={{ color: "var(--app-ink-3)" }}>
-          <MapPin className="h-3 w-3" aria-hidden />{contextLabel}
-        </p>
       </div> : null}
 
       <div aria-live="polite">

@@ -144,6 +144,9 @@ const nextConfig: NextConfig = {
       { pathname: "/images/**", search: "" },
       { pathname: "/from-above/**", search: "" },
       { pathname: "/history-photos/**", search: "" },
+      // Brewery logo marks (the breweries' own site icons, committed with
+      // provenance in src/data/brewery-marks.json) — the /beer passport.
+      { pathname: "/brewery-marks/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -151,6 +154,14 @@ const nextConfig: NextConfig = {
       // pk token in the URL by design (same token the GL map ships).
       { protocol: "https", hostname: "api.mapbox.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
+      // Ticketmaster + SeatGeek promo/artist imagery — the ticketed
+      // live-music cards' hero images (2026-07-17 unused-data audit).
+      // The adapters only emit hero_image for these exact hosts
+      // (EVENT_IMAGE_HOSTS), so an off-list CDN URL drops the image
+      // instead of crashing the card (the /beer localPatterns lesson,
+      // remote edition). Keep this list and EVENT_IMAGE_HOSTS in sync.
+      { protocol: "https", hostname: "s1.ticketm.net" },
+      { protocol: "https", hostname: "seatgeek.com" },
       // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
       { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
