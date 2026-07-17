@@ -38,7 +38,7 @@ import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
-import { collapseRecurringEvents, dedupeCrossSourceShows } from "@/lib/events/normalize";
+import { collapseRecurringEvents, dedupeCrossSourceShows, titleIsJustVenue } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
@@ -164,10 +164,14 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // duplicates dropped by the same content matcher the live feeds use.
   const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), curatedUpcoming);
 
-  // Time-sanity guard on FEED/EXTRACTED rows only (curated seeds are
-  // hand-authored): a theater curtain at 7 AM is a parsing artifact —
-  // withhold it rather than publish a wrong time (June-9 audit P1-11).
-  const sane = (e: EventWithMeta) => !hasImplausibleStartTime(e);
+  // Two guards on FEED/EXTRACTED rows only (curated seeds are hand-authored):
+  //   1. Time sanity — a theater curtain at 7 AM is a parsing artifact;
+  //      withhold it rather than publish a wrong time (June-9 audit P1-11).
+  //   2. Title says something — a lineup placeholder titled with the venue's
+  //      own name ("JoJo's Restaurant & Tap House" at JoJo's) is not an event
+  //      (Reddit reader report, 2026-07-17).
+  const sane = (e: EventWithMeta) =>
+    !hasImplausibleStartTime(e) && !titleIsJustVenue(e.title, e.venue_name);
 
   // One unified, deduplicated, time-sorted set; second-pass dedup catches
   // curated-vs-curated duplicates, keeping the richer record per cluster.

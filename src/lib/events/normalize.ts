@@ -379,6 +379,37 @@ export function cleanVenueName(raw: string | null | undefined): string | null {
 }
 
 /**
+ * A feed "event" whose title says nothing beyond the venue's own name is a
+ * lineup placeholder, not an event — a venue calendar or discovery feed
+ * emitting "JoJo's Restaurant & Tap House" AT JoJo's Restaurant & Tap House
+ * tells the reader only that the restaurant exists (Reddit reader report,
+ * 2026-07-17: it rendered next to a real show and read as filler). True when
+ * the title, loosely normalized, equals the venue name or is fully contained
+ * in it ("JoJo's" at "JoJo's Restaurant & Tap House"). A title with ANY word
+ * of its own ("Live music at JoJo's", "JoJo's Summer Bash") stays.
+ */
+export function titleIsJustVenue(
+  title: string,
+  venue: string | null | undefined,
+): boolean {
+  const v = normLoose(venue ?? "");
+  if (!v) return false;
+  const t = normLoose(title);
+  if (!t) return false;
+  if (t === v) return true;
+  const tokensOf = (s: string): string[] =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+  const venueTokens = new Set(tokensOf(venue ?? ""));
+  const titleTokens = tokensOf(title);
+  return titleTokens.length > 0 && titleTokens.every((w) => venueTokens.has(w));
+}
+
+/**
  * Collapse key for recurring events. Title plus venue plus municipality,
  * with no date component, so a daily or weekly series collapses to ONE
  * entry rather than one per weekday. Mirrors the municipal loader's

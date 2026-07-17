@@ -12,6 +12,7 @@ import {
   recurrenceKey,
   collapseRecurringEvents,
   dedupeCrossSourceShows,
+  titleIsJustVenue,
 } from "./normalize";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -425,5 +426,27 @@ describe("cleanTitle — trailing genre-tag pipe suffix", () => {
     expect(cleanTitle("Open Stage | Karaoke")).toBe("Open Stage");
     // A named second act is content, not a tag.
     expect(cleanTitle("Summerfest | Rainbow Rock Band")).toBe("Summerfest | Rainbow Rock Band");
+  });
+});
+
+describe("titleIsJustVenue", () => {
+  it("drops the venue-name-as-title lineup placeholder", () => {
+    expect(titleIsJustVenue("JoJo's Restaurant & Tap House", "JoJo's Restaurant & Tap House")).toBe(true);
+    // A shortened form of the venue name still says nothing new.
+    expect(titleIsJustVenue("JoJo's", "JoJo's Restaurant & Tap House")).toBe(true);
+    // Punctuation/case variance doesn't rescue it.
+    expect(titleIsJustVenue("Jojos Restaurant and Tap House", "JoJo's Restaurant & Tap House")).toBe(false);
+  });
+
+  it("keeps titles that carry any information of their own", () => {
+    expect(titleIsJustVenue("Freddie Long at Monocacy Crossing", "Monocacy Crossing")).toBe(false);
+    expect(titleIsJustVenue("Live music at JoJo's", "JoJo's Restaurant & Tap House")).toBe(false);
+    expect(titleIsJustVenue("JoJo's Summer Bash", "JoJo's Restaurant & Tap House")).toBe(false);
+  });
+
+  it("never fires without a venue or without a title", () => {
+    expect(titleIsJustVenue("JoJo's Restaurant & Tap House", null)).toBe(false);
+    expect(titleIsJustVenue("JoJo's Restaurant & Tap House", "")).toBe(false);
+    expect(titleIsJustVenue("", "JoJo's Restaurant & Tap House")).toBe(false);
   });
 });
