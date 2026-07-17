@@ -4244,35 +4244,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dock-lsheet {
+.dock-ltray {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: var(--z-overlay, 60);
-  max-height: 72vh;
-  overflow: hidden;
-  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
-  border: 1px solid var(--app-border);
-  border-bottom: none;
+  left: 10px;
+  right: 10px;
+  max-width: 470px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 62px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-sticky);
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border-strong, var(--app-border));
   background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
-  box-shadow: 0 -8px 32px rgba(22, 20, 14, 0.18);
-  transform: translateY(102%);
-  transition: transform 200ms ease;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: var(--app-elev-2, 0 10px 28px rgba(22, 20, 14, 0.16)), var(--app-hi);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
-.dock-lsheet.open {
+.dock-ltray.open {
+  opacity: 1;
   transform: translateY(0);
+  pointer-events: auto;
 }
-.dock-lsheet .dock-pane-scroll {
-  max-height: calc(72vh - env(safe-area-inset-bottom, 0px));
+.dock-ltray-scroll {
+  max-height: 38vh;
   overflow-y: auto;
-  /* Clear the floating bottom nav so the Key rows and their tap targets
-     never sit underneath it. */
-  padding-bottom: calc(var(--app-bottomnav-reserve, 0px) + 16px);
+  padding: 10px 12px 12px;
+}
+.dock-lfab[data-on] {
+  background: color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-elevated-solid, var(--app-bg-elevated)));
+  border-color: var(--app-brand-2);
 }
 @media (prefers-reduced-motion: reduce) {
-  .dock-lsheet {
+  .dock-ltray {
     transition: none;
   }
 }
