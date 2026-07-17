@@ -8,6 +8,7 @@ import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import BetaTelemetry from "@/components/beta/BetaTelemetry";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
+import { EventSheetProvider } from "@/components/event/EventSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
@@ -16,6 +17,7 @@ import { Suspense } from "react";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PlaceSheetProvider>
+    <EventSheetProvider>
       <RouteAccent>
         {/* Inner wrapper. NO background here — the body element
             (globals.css) already paints --app-bg, and removing the
@@ -80,6 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               once; it was the weaker, duplicate engine and is retired. */}
         </div>
       </RouteAccent>
+    </EventSheetProvider>
     </PlaceSheetProvider>
   );
 }
