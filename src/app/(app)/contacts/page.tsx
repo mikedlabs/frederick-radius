@@ -6,7 +6,7 @@ import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/contacts" },
-  title: "County & city services",
+  title: "Contacts: county & city services",
   description:
     "Frederick County and City services in one place: who to call and how to do it, from 311, permits, trash, and taxes to voting, plus every department and the emergency lines.",
 };
@@ -49,7 +49,7 @@ export default function ContactsPage() {
           County &amp; city services
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          What do you need?
+          Contacts
         </h1>
         <p
           className="text-[15px] leading-relaxed text-pretty"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Martini } from "lucide-react";
+import { ArrowLeft, Martini } from "lucide-react";
 import { placesWithFieldHappyHour, fieldNotesFor, verifiedLabel } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -76,6 +76,17 @@ export default function HappyHourPage() {
   return (
     <div className="relative space-y-5">
       <PageBloom variant="warm-cool" />
+
+      <nav aria-label="Breadcrumb" className="text-xs">
+        <Link
+          href="/today"
+          className="inline-flex items-center gap-1 hover:underline"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+          Back to Today
+        </Link>
+      </nav>
 
       <header className="pt-0.5">
         <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />
