@@ -53,6 +53,7 @@ const ROUTES = [
   "/plan",
   "/emergency-vet",
   "/numbers",
+  "/reserve",
 ];
 
 // Marker copy of the app's error boundary — a page serving this has
