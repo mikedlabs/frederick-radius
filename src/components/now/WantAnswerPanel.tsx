@@ -52,6 +52,14 @@ type WantAnswer = {
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
 
+/** Scope label in mid-sentence form: "strongest matches {…}". The raw chip
+ *  labels read wrong composed ("matches for whole county" / "for near me"). */
+function matchScopePhrase(label: string): string {
+  if (/^whole county$/i.test(label)) return "across the county";
+  if (/^near me$/i.test(label)) return "near you";
+  return `for ${label}`;
+}
+
 export default function WantAnswerPanel({
   cKey,
   facet,
@@ -251,7 +259,7 @@ export default function WantAnswerPanel({
           ) : answer.notable.length > 0 ? (
             <div className="px-4 pb-1">
               <p className="pb-1 pt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Nothing&rsquo;s confirmed open right now. Here are the strongest matches for {answer.contextLabel.toLowerCase()}.
+                Nothing&rsquo;s confirmed open right now. Here are the strongest matches {matchScopePhrase(answer.contextLabel)}.
               </p>
               <ul className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
                 {answer.notable.map((r) => (

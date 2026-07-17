@@ -39,7 +39,23 @@ export default async function WeekendPreview({
     groupByHorizon(assembled.publicEvents, bounds).find((g) => g.key === "weekend")?.events ?? [];
   if (weekend.length < MIN_TEASE) return null;
 
-  const first = weekend[0];
+  // The tease line names a REAL clock-time happening people would go to.
+  // All-day rows and midnight starts are calendar placeholders — "First up
+  // Saturday 12:00 AM" sold a data artifact as the weekend's opener — and
+  // a 7 AM rec class ("Bootcamp") is true but no invitation (2026-07-17
+  // review). Prefer the first draw-category event; fall back to the first
+  // clock-time row, then the raw first only if the weekend is all
+  // placeholders.
+  const DRAW = new Set([
+    "music", "concert", "market", "theater", "sports", "family", "food",
+    "arts", "gallery", "outdoors", "brewery", "winery", "festival", "movie",
+  ]);
+  const clockTime = (e: (typeof weekend)[number]) =>
+    !e.is_all_day && easternParts(new Date(e.starts_at)).hour !== 0;
+  const first =
+    weekend.find((e) => clockTime(e) && DRAW.has(e.category ?? "")) ??
+    weekend.find(clockTime) ??
+    weekend[0];
   const firstWhen = new Date(first.starts_at).toLocaleString("en-US", {
     timeZone: "America/New_York",
     weekday: "long",

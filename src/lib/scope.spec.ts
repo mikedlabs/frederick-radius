@@ -5,6 +5,7 @@ import {
   scopeToParam,
   scopeCentroid,
   scopeLabel,
+  scopeInSentence,
   effectiveOriginSlug,
   resolveDecisionContext,
 } from "./scope";
@@ -117,5 +118,17 @@ describe("resolveDecisionContext", () => {
       label: "Whole county",
       fallbackReason: "outside-county",
     });
+  });
+});
+
+describe("scopeInSentence", () => {
+  it("converts the chip labels to mid-sentence form", () => {
+    expect(scopeInSentence("Whole county")).toBe("the whole county");
+    expect(scopeInSentence("Near me")).toBe("near you");
+  });
+
+  it("passes town names through untouched", () => {
+    expect(scopeInSentence("Middletown")).toBe("Middletown");
+    expect(scopeInSentence("Frederick County")).toBe("Frederick County");
   });
 });

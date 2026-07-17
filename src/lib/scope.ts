@@ -77,6 +77,18 @@ export function scopeLabel(scope: Scope | null): string {
 }
 
 /**
+ * The label in mid-sentence form, for copy that composes it ("Searching
+ * {…}"). The chip labels read wrong inside a sentence: "Searching Whole
+ * county" / "Searching Near me" (owner report, 2026-07-17). Town names
+ * pass through — "Searching Middletown" already reads naturally.
+ */
+export function scopeInSentence(label: string): string {
+  if (/^whole county$/i.test(label)) return "the whole county";
+  if (/^near me$/i.test(label)) return "near you";
+  return label;
+}
+
+/**
  * The municipality slug a SERVER surface should rank from, given the two raw
  * cookie values it can read. Resolution order:
  *   - an explicit town scope wins (that's the deliberate lens),
