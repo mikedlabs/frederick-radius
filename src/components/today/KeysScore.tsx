@@ -160,7 +160,12 @@ export default function KeysScore() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
           style={
             chip.live
-              ? { background: "var(--app-brand)", color: "#fff" }
+              ? // brand-press, not raw brand: white 10px text on #E14328
+                // sits under WCAG AA (≈3.9:1) — the press variant is the
+                // AA-safe vermilion for exactly this white-on-fill case.
+                // Only renders DURING a live game, which is why the gate
+                // only catches it on game nights.
+                { background: "var(--app-brand-press)", color: "#fff" }
               : { background: "var(--app-ink-tint-6)", color: "var(--app-ink-2)" }
           }
         >
