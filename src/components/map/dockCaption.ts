@@ -123,6 +123,8 @@ export type WhenCaption = {
 export function whenCaption(args: {
   scrubHour: number | null;
   openNow: boolean;
+  /** ?deals=today active — the caption is the readout, so it must name it. */
+  dealsOn?: boolean;
   timeMode: TimeMode;
 }): WhenCaption {
   if (args.scrubHour != null) {
@@ -130,6 +132,7 @@ export function whenCaption(args: {
   }
   const bits: string[] = [];
   if (args.openNow) bits.push("Open now");
+  if (args.dealsOn) bits.push("Deals");
   if (args.timeMode !== "all") bits.push(TIME_WINDOW_LABEL[args.timeMode]);
   if (bits.length === 0) return { text: "All day", mono: false, tone: "quiet" };
   return {
@@ -182,6 +185,8 @@ export function countLine(args: {
 export function dockDirty(args: {
   intentActive: boolean;
   openNow: boolean;
+  /** ?deals=today active (2026-07-17 map deals view). */
+  dealsOn?: boolean;
   timeModeExplicit: boolean;
   scrubActive: boolean;
   lensActive: boolean;
@@ -191,6 +196,7 @@ export function dockDirty(args: {
   return (
     args.intentActive ||
     args.openNow ||
+    Boolean(args.dealsOn) ||
     args.timeModeExplicit ||
     args.scrubActive ||
     args.lensActive ||
