@@ -8,7 +8,7 @@ import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/nearby" },
-  title: "Right now",
+  title: "Nearby",
   description: "Tap what you want: coffee, ice cream, food. Get the nearest one that's open.",
 };
 
