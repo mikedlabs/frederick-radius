@@ -8,7 +8,7 @@ import AppMapClient, {
   type MapLineFC,
   type CemeteryPin,
 } from "@/components/map/AppMapClient";
-import type { MapPinPlace } from "@/components/map/types";
+import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
@@ -116,6 +116,8 @@ export default function BrowseMapClient({
   cemeteries,
   parking,
   weekEvents,
+  transitStops,
+  marcStations,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
@@ -135,6 +137,9 @@ export default function BrowseMapClient({
   /** Draw-only, geolocated events for the next ~7 days, pre-shaped as
    *  pins server-side. This component windows them per ?t=. */
   weekEvents: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3). */
+  transitStops: TransitStopPin[];
+  marcStations: MarcStationPin[];
 }) {
   const sp = useSearchParams();
   const intentParam = sp.get("intent") ?? undefined;
@@ -306,6 +311,8 @@ export default function BrowseMapClient({
       cemeteries={cemeteries}
       parking={parking}
       events={events}
+      transitStops={transitStops}
+      marcStations={marcStations}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope

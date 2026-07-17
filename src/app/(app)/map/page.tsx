@@ -34,6 +34,15 @@ import PageBloom from "@/components/ui/PageBloom";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { todaysDeals } from "@/lib/loaders/todaysDeals";
+import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
+import { MARC_STATIONS } from "@/data/marc-stations";
+import {
+  activeServiceIds,
+  etNowParts,
+  formatMarcClock,
+  nextScheduled,
+} from "@/lib/integrations/marcTrains";
+import type { MarcStationPin, TransitStopPin } from "@/components/map/types";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -606,6 +615,28 @@ async function BrowseMapArea() {
     };
   });
 
+  // Transit stop dots + MARC stations with next trains (map phase 3).
+  // Stops carry NO schedule data (none exists in our set) — location and
+  // name only. MARC departures are computed here from the committed GTFS
+  // schedule and shown as clock times, so ISR staleness cannot lie.
+  const transitStops: TransitStopPin[] = (
+    TRANSIT_RAW as { stops: Array<{ name: string; lat: number; lng: number }> }
+  ).stops.map((st) => ({ name: st.name, lng: st.lng, lat: st.lat }));
+  const marc = etNowParts(now);
+  const marcActive = activeServiceIds(marc.ymd, marc.weekday);
+  const marcStations: MarcStationPin[] = MARC_STATIONS.map((st) => ({
+    name: st.name,
+    lng: st.lng,
+    lat: st.lat,
+    departures: [
+      ...nextScheduled(st.stopIds.eb, marc.minutes, marcActive, 2),
+      ...nextScheduled(st.stopIds.wb, marc.minutes, marcActive, 2),
+    ]
+      .sort((a, b) => a.min - b.min)
+      .slice(0, 3)
+      .map((d) => ({ clock: formatMarcClock(d.t), headsign: d.headsign })),
+  }));
+
   return (
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
       <BrowseMapClient
@@ -624,6 +655,8 @@ async function BrowseMapArea() {
         countyBoundary={countyBoundary}
         cemeteries={cemeteries}
         weekEvents={weekEvents}
+        transitStops={transitStops}
+        marcStations={marcStations}
       />
     </div>
   );
