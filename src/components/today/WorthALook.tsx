@@ -32,16 +32,17 @@ export default async function WorthALook() {
       storageKey="fr:worth-a-look-open:v1"
       defaultOpen
     >
-      <div
-        className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="list"
-      >
+      {/* The <ol> is the list; a role="list" on this scroll wrapper made a
+          list whose only child was another list — an aria-required-children
+          violation that surfaced the day the rail left the collapsed
+          briefing (axe skips hidden content). */}
+      <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <ol className="flex snap-x snap-mandatory gap-2.5" style={{ scrollPadding: "0 16px" }}>
           {picks.map((p) => {
             const cat = CATEGORY_BY_SLUG[p.category];
             const catColor = cat?.color ?? "var(--app-brand)";
             return (
-              <li key={p.slug} role="listitem" className="snap-start">
+              <li key={p.slug} className="snap-start">
                 <Link
                   href={`/places/${p.slug}`}
                   className="tactile tactile-interactive group relative flex h-full w-[152px] flex-col gap-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"

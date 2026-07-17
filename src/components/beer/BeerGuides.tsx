@@ -83,7 +83,10 @@ export default function BeerGuides() {
             <article key={guide.slug} aria-labelledby={`beer-day-${guide.slug}`} className="flex flex-col border-b px-1 py-6 last:border-b-0 sm:px-4 lg:border-b-0 lg:border-r lg:px-6 lg:last:border-r-0" style={{ borderColor: "var(--app-border)" }}>
               <div className="flex items-start justify-between gap-4">
                 <p className="font-mono text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "var(--app-ink-3)" }}>{guide.eyebrow}</p>
-                <span className="font-serif text-[32px] leading-none opacity-20" style={{ color: "var(--beer-ink)" }}>0{guideIndex + 1}</span>
+                {/* Ghost numeral: 50% ink, not 20 — at 32px this is "large
+                    text" (3:1 WCAG floor) and 20% failed it; aria-hidden
+                    doesn't exempt VISIBLE text from the contrast rule. */}
+                <span aria-hidden className="font-serif text-[32px] leading-none opacity-50" style={{ color: "var(--beer-ink)" }}>0{guideIndex + 1}</span>
               </div>
               <h3 id={`beer-day-${guide.slug}`} className="mt-5 max-w-[11ch] font-serif text-[28px] font-semibold leading-[0.98] tracking-[-0.025em]" style={{ color: "var(--beer-ink)" }}>{guide.title}</h3>
               <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{guide.description}</p>

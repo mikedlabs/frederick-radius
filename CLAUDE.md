@@ -98,6 +98,9 @@ draft must read like a person typing in a thread, not composed copy:
 
 - `npx tsc --noEmit` · `npx eslint <changed files>` · `npx vitest run`
   must pass before any commit.
+- `npm run test:ux` (Playwright: render health + axe WCAG A/AA on every
+  key surface, pinned at ZERO violations) before any commit that touches
+  UI. Sandboxes with a preinstalled Chromium: set `PW_CHROMIUM_PATH`.
 - CI `verify` / `style-lint` are pre-existing infra reds (account-level
   Actions limits) — local runs are the gate.
 - After a merge, prod deploys automatically (~3–4 min). Verify the change

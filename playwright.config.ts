@@ -23,7 +23,19 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Sandboxed/CI environments with a preinstalled Chromium that doesn't
+        // match this Playwright version's expected revision can point at it
+        // explicitly (e.g. PW_CHROMIUM_PATH=/opt/pw-browsers/chromium-*/chrome-linux/chrome).
+        // Unset on normal machines, where `npx playwright install chromium` rules.
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH, args: ["--no-sandbox"] } }
+          : {}),
+      },
+    },
   ],
   webServer: {
     command: `npm run dev -- -p ${PORT}`,
