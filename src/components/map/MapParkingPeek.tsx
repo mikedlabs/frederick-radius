@@ -1,6 +1,7 @@
 "use client";
 
 import { CornerUpRight, SquareParking, X } from "lucide-react";
+import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import {
@@ -43,7 +44,7 @@ export default function MapParkingPeek({
   const spaces = parkingSpacesLabel(pin);
   const spacesColor = TONE_COLOR[tone];
 
-  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`;
+  const directionsUrl = directionsHref(pin.lat, pin.lng);
 
   return (
     <div className="map-peek" role="dialog" aria-label={pin.name}>
@@ -93,7 +94,7 @@ export default function MapParkingPeek({
 
       <div className="map-peek-acts">
         <a
-          href={directionsHref}
+          href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="map-peek-act map-peek-act-go"

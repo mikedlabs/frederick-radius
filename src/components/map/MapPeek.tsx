@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bookmark, CornerUpRight, X } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
+import { directionsHref } from "@/lib/map/directionsHref";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
@@ -81,9 +82,7 @@ export default function MapPeek({
     ? `/api/static-map?lng=${place.geom.lng.toFixed(5)}&lat=${place.geom.lat.toFixed(5)}&pin=${pin}&size=320x150`
     : "";
 
-  const directionsHref = place.geom
-    ? `https://www.google.com/maps/dir/?api=1&destination=${place.geom.lat},${place.geom.lng}`
-    : "#";
+  const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
 
   return (
     <div className="map-peek" role="dialog" aria-label={place.name}>
@@ -184,7 +183,7 @@ export default function MapPeek({
           {saved ? "Saved" : "Save"}
         </button>
         <a
-          href={directionsHref}
+          href={dirHref}
           target="_blank"
           rel="noopener noreferrer"
           className="map-peek-act map-peek-act-go"

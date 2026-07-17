@@ -634,7 +634,14 @@ async function BrowseMapArea() {
     ]
       .sort((a, b) => a.min - b.min)
       .slice(0, 3)
-      .map((d) => ({ clock: formatMarcClock(d.t), headsign: d.headsign })),
+      .map((d) => ({
+        clock: formatMarcClock(d.t),
+        // GTFS headsigns arrive shouted ("WASHINGTON UNION STATION");
+        // title-case for the popup line.
+        headsign: d.headsign
+          .toLowerCase()
+          .replace(/\b[a-z]/g, (c) => c.toUpperCase()),
+      })),
   }));
 
   return (
