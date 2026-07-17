@@ -9,6 +9,7 @@ import BetaTelemetry from "@/components/beta/BetaTelemetry";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
+import ScrollMemory from "@/components/nav/ScrollMemory";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import { Suspense } from "react";
 
@@ -42,6 +43,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               streaming render. */}
           <Suspense fallback={null}>
             <ModeParamSync />
+          </Suspense>
+          {/* Back-button scroll continuity: remembers where the user was on
+              every list surface and returns them there after Back/Forward
+              (measured gap: Events and Search both reset to top). Fresh
+              navigations still open at the top. Suspense for the same
+              useSearchParams reason as ModeParamSync. */}
+          <Suspense fallback={null}>
+            <ScrollMemory />
           </Suspense>
           {/* Native-feeling pull-to-refresh — touch-only, fires only
               when scrollY === 0. Reduced-motion users see no spinner. */}
