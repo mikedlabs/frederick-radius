@@ -561,6 +561,11 @@ export default function AppMap({
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
+  // Current viewport bounds (set on every settled move) — makes the dock's
+  // count line honest to what the EYES see, not the whole county
+  // (viewport-honest count, 2026-07-17 map audit). Null until first settle
+  // (initial render counts everything, which at county zoom is the truth).
+  const [viewBounds, setViewBounds] = useState<{ w: number; e: number; s: number; n: number } | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -748,6 +753,21 @@ export default function AppMap({
     [filteredPlaces, matchSet],
   );
 
+  // Viewport-scoped counts for the dock's count line. O(n) point-in-box
+  // per settled move over ≤1.7k pins — negligible next to the GeoJSON
+  // rebuild the same states already trigger.
+  const inViewPlaces = useMemo(() => {
+    if (!viewBounds) return visiblePlaces;
+    return visiblePlaces.filter(
+      (p) =>
+        p.geom &&
+        p.geom.lng >= viewBounds.w &&
+        p.geom.lng <= viewBounds.e &&
+        p.geom.lat >= viewBounds.s &&
+        p.geom.lat <= viewBounds.n,
+    );
+  }, [visiblePlaces, viewBounds]);
+
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
@@ -758,6 +778,7 @@ export default function AppMap({
     const map = mapRef.current.getMap();
     const b = map.getBounds();
     if (!b) return;
+    setViewBounds({ w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() });
     setEventSlugsInView(
       new Set(
         events
@@ -1570,8 +1591,8 @@ export default function AppMap({
   // "Closes within the hour" — the dock's living count line. open_status
   // "closing-soon" is exactly the ≤60-minute window (getOpenStatus).
   const closingSoonCount = useMemo(
-    () => visiblePlaces.filter((p) => p.open_status?.state === "closing-soon").length,
-    [visiblePlaces],
+    () => inViewPlaces.filter((p) => p.open_status?.state === "closing-soon").length,
+    [inViewPlaces],
   );
 
   // Season rows for the dock's Aerial nested strip (label + count per
@@ -3014,7 +3035,7 @@ export default function AppMap({
         {dock && (
           <MapDock
             browse={dock}
-            placeCount={visiblePlaces.length}
+            placeCount={inViewPlaces.length}
             eventCount={visibleEvents.length}
             closingSoonCount={closingSoonCount}
             q={q}
