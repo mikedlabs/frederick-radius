@@ -61,6 +61,29 @@ amenities) — use `PlaceCard variant="row"` for place data with photos.
 Pair with `CollapsibleSection` to collapse long lists by group (largest
 group `defaultOpen`, rest tucked away, choice persisted).
 
+### `BottomSheet` — the shared progressive-detail shell
+`src/components/ui/BottomSheet.tsx` (app-like pass, phase 2). ONE
+dismissal grammar for every sheet: spring up, drag-down / backdrop-tap /
+ESC to dismiss, focus trap + restore, body scroll lock. Content comes in
+via a render prop that receives `dismiss`; pair with the exported
+`SheetHandle` for the labeled Close row.
+
+```tsx
+<BottomSheet present={Boolean(item)} onClose={clear} ariaLabel={item?.name ?? "Details"}>
+  {(dismiss) => item && <MyContent item={item} onClose={dismiss} />}
+</BottomSheet>
+```
+- `PlaceSheet` and `EventSheet` are the two canonical consumers — build
+  the NEXT sheet on this shell, never a new modal stack.
+- Event side: `EventSheetProvider` (mounted in the app layout) +
+  `EventSheetBoundary` wire whole surfaces by event delegation — cards
+  keep their real `/events/[slug]` anchors; a plain left-click opens the
+  sheet, modified clicks and unknown slugs fall through to navigation.
+  `fetchMissing` mode (used by /today, /live-music) opens on a skeleton
+  and fetches `/api/events/[slug]/summary` so lean pages ship zero extra
+  event data. Sheets FRONT-RUN pages; they never replace them (canonical
+  URLs, JSON-LD, and SEO stay on the real pages).
+
 ### Other canonical pieces (already existed — keep using)
 `Surface`/`Card`, `Chip` (tonal display pill, non-interactive),
 `CollapsibleSection` (hide-when-not-needed group wrapper),
