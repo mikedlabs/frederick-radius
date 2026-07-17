@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, List, LocateFixed, Map as MapIcon, NotebookPen, Search as SearchIcon, X } from "lucide-react";
+import { Clock, List, LocateFixed, Map as MapIcon, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -331,6 +331,27 @@ export default function MapDock(props: MapDockProps) {
       else q.set("open", "now");
     });
   };
+  const toggleDealsToday = () => {
+    haptic("light");
+    track("map_dock", { pane: "when", pick: browse.dealsOn ? "deals-off" : "deals-today" });
+    setParams((q) => {
+      if (browse.dealsOn) q.delete("deals");
+      else q.set("deals", "today");
+    });
+  };
+  // One tap, the whole "what's good right now near me" question: open
+  // places + the live event window + fly to the device fix. Deliberately
+  // does NOT stack the deals filter (that would collapse the map to a
+  // handful of pins); deals stay one explicit tap away.
+  const goRightNow = () => {
+    haptic("light");
+    track("map_dock", { pane: "when", pick: "right-now" });
+    setParams((q) => {
+      q.set("open", "now");
+      q.set("t", "now");
+    });
+    props.goNearMe();
+  };
   const pickWindow = (k: string) => {
     haptic("light");
     setParams((q) => {
@@ -400,6 +421,7 @@ export default function MapDock(props: MapDockProps) {
   const when = whenCaption({
     scrubHour: props.scrubHour,
     openNow: browse.openNow,
+    dealsOn: browse.dealsOn,
     timeMode: browse.timeMode,
   });
   // "County", not "Whole county": the four equal .dock-seg columns clip the
@@ -415,6 +437,7 @@ export default function MapDock(props: MapDockProps) {
   const dirty = dockDirty({
     intentActive: Boolean(intent),
     openNow: browse.openNow,
+    dealsOn: browse.dealsOn,
     timeModeExplicit: browse.timeModeExplicit,
     scrubActive: props.scrubHour != null,
     lensActive: lensLabels.length > 0,
@@ -589,6 +612,16 @@ export default function MapDock(props: MapDockProps) {
             {/* ── WHEN ── */}
             {pane === "when" && (
               <div>
+                {/* The one-tap answer to the whole pane: open places, live
+                    events, centered on you. Everything below refines it. */}
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  onClick={goRightNow}
+                >
+                  <Zap className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Right now, near me
+                </button>
                 <Sect>Places</Sect>
                 <button
                   type="button"
@@ -600,6 +633,17 @@ export default function MapDock(props: MapDockProps) {
                   <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
                   Open now
                   <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
+                </button>
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  data-on={browse.dealsOn || undefined}
+                  aria-pressed={browse.dealsOn}
+                  onClick={toggleDealsToday}
+                >
+                  <Tag className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Deals today
+                  <span className="dock-opennow-n">{browse.dealsTodayCount.toLocaleString("en-US")}</span>
                 </button>
 
                 <Sect>Events</Sect>

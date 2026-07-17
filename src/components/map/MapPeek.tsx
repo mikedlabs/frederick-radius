@@ -7,7 +7,7 @@ import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
-import type { MapPinPlace } from "./types";
+import type { EventPin, MapPinPlace } from "./types";
 
 /**
  * MapPeek — the quick-peek card that rises from the bottom when a pin is
@@ -40,11 +40,15 @@ function openLine(p: MapPinPlace): { text: string; tone: string } {
 
 export default function MapPeek({
   place,
+  hostedEvent = null,
   userLoc,
   onClose,
   onDetails,
 }: {
   place: MapPinPlace;
+  /** The soonest upcoming event hosted AT this place (venue join), when
+   *  the active event window holds one. Renders as one quiet line. */
+  hostedEvent?: EventPin | null;
   userLoc: LngLat | null;
   onClose: () => void;
   /** Open the full PlaceSheet for the deep read. */
@@ -117,6 +121,32 @@ export default function MapPeek({
               </>
             )}
           </span>
+          {/* Cross-joins (2026-07-17 map audit): the verified deal and the
+              soonest hosted event, each one quiet truncated line. The pin
+              already carries deal_hook; the event rides in via the venue
+              join. Nothing renders when neither exists. */}
+          {place.deal_hook && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-accent-press)", fontWeight: 600 }}
+            >
+              {place.deal_hook}
+            </span>
+          )}
+          {hostedEvent && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-brand-2)", fontWeight: 600 }}
+            >
+              {hostedEvent.title} ·{" "}
+              {new Intl.DateTimeFormat("en-US", {
+                timeZone: "America/New_York",
+                weekday: "short",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(hostedEvent.starts_at))}
+            </span>
+          )}
         </span>
       </button>
 

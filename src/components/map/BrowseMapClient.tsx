@@ -104,6 +104,7 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 
 export default function BrowseMapClient({
   places: allPlaces,
+  dealSlugsToday,
   civic,
   amenities,
   extraAmenities,
@@ -117,6 +118,8 @@ export default function BrowseMapClient({
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
+  /** Slugs running a verified special today (server-computed, day-gated). */
+  dealSlugsToday: string[];
   civic: CivicPin[];
   amenities: Amenity[];
   extraAmenities: OsmPlace[];
@@ -212,9 +215,16 @@ export default function BrowseMapClient({
   // (≤ revalidate + the 5-minute decoration bucket) — same as before.
   const openNow = openParam === "now";
   const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
-  const places = openNow
+  const afterOpen = openNow
     ? subFiltered.filter((p) => isOpenNow(p.open_status))
     : subFiltered;
+  // Fourth tier: ?deals=today collapses to places running a verified
+  // special today. Count computed BEFORE the filter (same convention as
+  // openNowCount) so the When pane can offer the view with its size.
+  const dealSet = new Set(dealSlugsToday);
+  const dealsOn = sp.get("deals") === "today";
+  const dealsTodayCount = afterOpen.filter((p) => dealSet.has(p.slug)).length;
+  const places = dealsOn ? afterOpen.filter((p) => dealSet.has(p.slug)) : afterOpen;
 
   // Events as map pins, scoped to the active temporal window (?t=).
   // Per-mode counts drive the time-aware default-window pick
@@ -255,7 +265,7 @@ export default function BrowseMapClient({
   // set for the pins plus the matched slugs; the map dims the rest and the
   // dock counts only the matches. With no place filter we pass nothing extra
   // and every pin stays at full strength.
-  const anyPlaceFilter = Boolean(intent || activeSub || openNow);
+  const anyPlaceFilter = Boolean(intent || activeSub || openNow || dealsOn);
   const activeSlugs = anyPlaceFilter ? places.map((p) => p.slug) : null;
 
   return (
@@ -299,6 +309,8 @@ export default function BrowseMapClient({
         subKey: activeSub?.key,
         openNow,
         openNowCount,
+        dealsOn,
+        dealsTodayCount,
         timeMode,
         timeModeExplicit,
         everythingCount: allPlaces.length,

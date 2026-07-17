@@ -60,6 +60,10 @@ export type EventPin = {
   starts_at: string;
   ends_at?: string;
   venue_name: string;
+  /** The venue's PLACE slug when the event is hosted at a known place —
+   *  the join key that lets a place's peek card say "live music here
+   *  tonight" (map cross-join, 2026-07-17 audit). */
+  venue_place_slug?: string;
   lng: number;
   lat: number;
   category: string;
@@ -85,6 +89,12 @@ export type BrowseDockInfo = {
   /** How many places in the current intent/sub pool are open now
    *  (computed BEFORE the open filter, so the When pane can offer it). */
   openNowCount: number;
+  /** ?deals=today — places collapsed to those running a verified special
+   *  today (todaysDeals slug set, shipped server-side). */
+  dealsOn: boolean;
+  /** How many places in the current pool run a special today (computed
+   *  BEFORE the deals filter, same convention as openNowCount). */
+  dealsTodayCount: number;
   /** The active event window (explicit ?t=, or the time-aware default). */
   timeMode: TimeMode;
   /** True only when ?t= is explicitly in the URL — the default pick is

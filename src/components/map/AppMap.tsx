@@ -2987,10 +2987,18 @@ export default function AppMap({
           />
         )}
 
-        {/* The pin peek card. */}
+        {/* The pin peek card. The cross-join: the soonest event pin hosted
+            AT this place (venue_place_slug) rides along, so tapping a
+            brewery answers "anything on here tonight?" without leaving the
+            map (2026-07-17 map audit #2). */}
         {peekPlace && !parkingPeek && !listView && (
           <MapPeek
             place={peekPlace}
+            hostedEvent={
+              events
+                .filter((e) => e.venue_place_slug && e.venue_place_slug === peekPlace.slug)
+                .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))[0] ?? null
+            }
             userLoc={userLoc}
             onClose={() => {
               setPeekPlace(null);
