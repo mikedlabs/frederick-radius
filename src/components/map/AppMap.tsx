@@ -186,7 +186,9 @@ import {
   type EventPin,
   type MapLineFC,
   type MapPinPlace,
+  type MarcStationPin,
   type Selected,
+  type TransitStopPin,
 } from "./types";
 import {
   AMENITY_GROUPS,
@@ -305,6 +307,11 @@ type Props = {
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
   events?: EventPin[];
+  /** Bus-stop dots + MARC stations for the Transit layer (phase 3).
+   *  Stops are location+name only (no schedule data exists for them);
+   *  MARC pins carry server-computed next trains as clock times. */
+  transitStops?: TransitStopPin[];
+  marcStations?: MarcStationPin[];
   /** Open centered on the user's last-known location when a fresh
    *  cached fix exists (no prompt) — set when arriving via a category
    *  so the map and its list read "from where you're standing." Falls
@@ -351,6 +358,8 @@ export default function AppMap({
   countyBoundary = EMPTY_LINE_FC,
   cemeteries = [],
   parking = [],
+  transitStops = [],
+  marcStations = [],
   events = [],
   initialAmenityGroups,
   dock,
@@ -549,6 +558,9 @@ export default function AppMap({
   // the feed is configured, otherwise the markers stay neutral (no fake count).
   const [showParking, setShowParking] = useState(() => layerPrefs.parking ?? false);
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
+  // MARC station popup (Transit layer, phase 3). Holds the station name;
+  // departures are looked up from the marcStations prop at render.
+  const [marcPeek, setMarcPeek] = useState<string | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -1094,6 +1106,11 @@ export default function AppMap({
     }
     const layer = feature.layer?.id;
     if (!layer) { setSelectedSlug(null); return; }
+    if (layer === "marc-station-pins") {
+      setMarcPeek(String(feature.properties?.name ?? ""));
+      haptic("light");
+      return;
+    }
     const map = mapRef.current?.getMap();
 
     // Cluster expansion — works for both OSM and curated clusters
@@ -1772,7 +1789,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -1865,6 +1882,89 @@ export default function AppMap({
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
                 "line-opacity": 0.75,
               }}
+            />
+          </Source>
+          {/* Bus stops + MARC stations (phase 3) — the other half of the
+              Transit layer: where you actually catch the thing. Stops are
+              zoom-gated dots (names at street zoom); MARC stations always
+              draw when the layer is on, and tapping one shows the next
+              scheduled trains. */}
+          <Source
+            id="transit-stops"
+            type="geojson"
+            data={{
+              type: "FeatureCollection",
+              features: showTransit
+                ? transitStops.map((st) => ({
+                    type: "Feature" as const,
+                    geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
+                    properties: { name: st.name },
+                  }))
+                : [],
+            }}
+          >
+            <Layer
+              id="transit-stop-dots"
+              type="circle"
+              minzoom={12.5}
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 12.5, 2, 16, 4.5],
+                "circle-color": "#20506A",
+                "circle-opacity": 0.85,
+                "circle-stroke-width": 1,
+                "circle-stroke-color": "#EEE6D4",
+              }}
+            />
+            <Layer
+              id="transit-stop-names"
+              type="symbol"
+              minzoom={15}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": 10,
+                "text-offset": [0, 1.1],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{ "text-color": "#20506A", "text-halo-color": "#EEE6D4", "text-halo-width": 1 }}
+            />
+          </Source>
+          <Source
+            id="marc-stations"
+            type="geojson"
+            data={{
+              type: "FeatureCollection",
+              features: showTransit
+                ? marcStations.map((st) => ({
+                    type: "Feature" as const,
+                    geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
+                    properties: { name: st.name },
+                  }))
+                : [],
+            }}
+          >
+            <Layer
+              id="marc-station-pins"
+              type="circle"
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 4, 14, 8],
+                "circle-color": "#5A4FCF",
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#EEE6D4",
+              }}
+            />
+            <Layer
+              id="marc-station-names"
+              type="symbol"
+              minzoom={10}
+              layout={{
+                "text-field": ["concat", "MARC · ", ["get", "name"]],
+                "text-size": 11,
+                "text-offset": [0, 1.2],
+                "text-anchor": "top",
+                "text-optional": true,
+              }}
+              paint={{ "text-color": "#3F3894", "text-halo-color": "#EEE6D4", "text-halo-width": 1.2 }}
             />
           </Source>
           {/* Live vehicles and route lines are one honest Transit layer. The
@@ -3027,6 +3127,43 @@ export default function AppMap({
         {parkingPeek && !listView && (
           <MapParkingPeek pin={parkingPeek} onClose={() => setParkingPeek(null)} />
         )}
+
+        {/* MARC station popup — the next scheduled trains, as clock times
+            from the committed GTFS schedule (weekday commuter service;
+            honest empty line when no more trains today). */}
+        {marcPeek && !listView && (() => {
+          const st = marcStations.find((m) => m.name === marcPeek);
+          if (!st) return null;
+          return (
+            <Popup
+              longitude={st.lng}
+              latitude={st.lat}
+              anchor="bottom"
+              onClose={() => setMarcPeek(null)}
+              closeOnClick={false}
+              maxWidth="260px"
+            >
+              <div style={{ fontFamily: "var(--font-inter, inherit)" }}>
+                <p className="font-serif text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                  MARC · {st.name}
+                </p>
+                {st.departures.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5">
+                    {st.departures.map((d, i) => (
+                      <li key={i} className="text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                        <span className="font-mono">{d.clock}</span> to {d.headsign}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    No more trains today. Weekday service only.
+                  </p>
+                )}
+              </div>
+            </Popup>
+          );
+        })()}
 
         {/* Cluster index — "what's in this bubble", as a field-guide index
             page. Tapping a row focuses the pin + opens its sheet; the drawer

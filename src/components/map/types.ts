@@ -115,6 +115,20 @@ export type BrowseDockInfo = {
   eventWindowCounts: Partial<Record<TimeMode, number>>;
 };
 
+/** A TransIT bus stop as a map dot (MD Open Data). No schedule data
+ *  exists for stops, so pins carry location + name only — honest. */
+export type TransitStopPin = { name: string; lng: number; lat: number };
+
+/** A MARC station pin with its next scheduled trains (server-computed
+ *  from the committed GTFS schedule at render; shown as clock times so
+ *  ISR staleness cannot lie). */
+export type MarcStationPin = {
+  name: string;
+  lng: number;
+  lat: number;
+  departures: Array<{ clock: string; headsign: string }>;
+};
+
 /** Map selection union. Discriminated by `_kind`. */
 export type SelectedOsm = OsmPlace & { _kind: "osm" };
 export type SelectedPlace = Place & { _kind: "place" };
