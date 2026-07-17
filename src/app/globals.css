@@ -4217,3 +4217,62 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (prefers-reduced-motion: reduce) {
   .stamp-press { animation: none; opacity: 1; transform: none; }
 }
+
+/* ── Layers at the map's foot (owner ask, 2026-07-17): a quiet state
+   pill bottom-left that reads the current layer state; tapping opens
+   the bottom sheet. The caption row is back to three segs. ── */
+.dock-lfab {
+  position: fixed;
+  left: 10px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-sticky);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-strong, var(--app-border));
+  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
+  color: var(--app-ink-2);
+  box-shadow: var(--app-elev-1), var(--app-hi);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dock-lfab-v {
+  max-width: 34vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-lsheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-overlay, 60);
+  max-height: 72vh;
+  overflow: hidden;
+  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  border: 1px solid var(--app-border);
+  border-bottom: none;
+  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
+  box-shadow: 0 -8px 32px rgba(22, 20, 14, 0.18);
+  transform: translateY(102%);
+  transition: transform 200ms ease;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.dock-lsheet.open {
+  transform: translateY(0);
+}
+.dock-lsheet .dock-pane-scroll {
+  max-height: calc(72vh - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  /* Clear the floating bottom nav so the Key rows and their tap targets
+     never sit underneath it. */
+  padding-bottom: calc(var(--app-bottomnav-reserve, 0px) + 16px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-lsheet {
+    transition: none;
+  }
+}

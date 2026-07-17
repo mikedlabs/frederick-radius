@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
+import { Clock, Layers as LayersIcon, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -246,6 +246,10 @@ export default function MapDock(props: MapDockProps) {
   // Focus management for the top-sheet pane (mirrors the /events dock):
   // focus lands inside the pane on open, and the trigger is restored on close.
   const paneRef = useRef<HTMLDivElement>(null);
+  // The Layers bottom sheet is its own dialog container (the pane row
+  // dropped from four segs to three; Layers now lives at the map's foot
+  // as a toggle-when-needed overlay — owner ask, 2026-07-17).
+  const sheetRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   // Match the readout to the scope that already seeded the map's camera.
@@ -294,7 +298,8 @@ export default function MapDock(props: MapDockProps) {
   // reachable by keyboard the moment it drops down.
   useEffect(() => {
     if (!pane) return;
-    const first = paneRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    const host = pane === "layers" ? sheetRef.current : paneRef.current;
+    const first = host?.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
   }, [pane]);
 
@@ -518,9 +523,10 @@ export default function MapDock(props: MapDockProps) {
       closePane();
       return;
     }
-    if (e.key !== "Tab" || !paneRef.current) return;
+    const host = pane === "layers" ? sheetRef.current : paneRef.current;
+    if (e.key !== "Tab" || !host) return;
     const nodes = Array.from(
-      paneRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+      host.querySelectorAll<HTMLElement>(FOCUSABLE),
     ).filter((n) => n.offsetParent !== null);
     if (nodes.length === 0) return;
     const first = nodes[0];
@@ -551,7 +557,7 @@ export default function MapDock(props: MapDockProps) {
         aria-hidden
       />
 
-      <div className={`dock${pane ? " dock-open" : ""}`}>
+      <div className={`dock${pane && pane !== "layers" ? " dock-open" : ""}`}>
         {/* ── The top-sheet pane — drops DOWN from under the caption bar
             over the scrim-dimmed map. ── */}
         <div
@@ -559,10 +565,12 @@ export default function MapDock(props: MapDockProps) {
           id="dock-pane"
           role="dialog"
           aria-label={paneTitle}
-          aria-hidden={pane === null}
+          aria-hidden={pane === null || pane === "layers"}
           // See EventsBoardDock: inert keeps the collapsed pane's "Done"
-          // button out of tab order + the a11y tree (2026-07 P3).
-          inert={pane === null}
+          // button out of tab order + the a11y tree (2026-07 P3). Layers
+          // renders in its own bottom sheet, so this dropdown stays inert
+          // for it too.
+          inert={pane === null || pane === "layers"}
           ref={paneRef}
           onKeyDown={onPaneKeyDown}
         >
@@ -734,8 +742,186 @@ export default function MapDock(props: MapDockProps) {
               </div>
             )}
 
-            {/* ── LAYERS — the map drapes + the Yours lenses ── */}
-            {pane === "layers" && (
+
+          </div>
+        </div>
+
+        {/* ── The head: search row + caption tab bar + count line, pinned
+            at the top of the map. ── */}
+        <div className="dock-head">
+          {/* Search, folded in as the top row — the map's ONE search. */}
+          <div className="dock-search-wrap">
+            <div className="dock-search" role="search">
+              <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+              <input
+                type="search"
+                value={props.q}
+                onChange={(e) => props.setQ(e.target.value)}
+                placeholder="Search this map"
+                aria-label="Search this map"
+                className="dock-search-input"
+              />
+              {props.q.trim().length > 0 ? (
+                <button
+                  type="button"
+                  className="dock-search-clear tap-44"
+                  onClick={() => props.setQ("")}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : (
+                <span aria-hidden className="dock-search-kbd">Find</span>
+              )}
+            </div>
+            {props.searchMatches.length > 0 && (
+              <ul className="dock-search-results">
+                {props.searchMatches.map((r) => {
+                  const dot =
+                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                    : r.type === "action" ? "var(--app-brand, #E14328)"
+                    : "var(--app-ink-3, #7A828C)";
+                  return (
+                    <li key={r.id}>
+                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
+                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                        <span className="dock-search-result-text">
+                          <span className="dock-search-result-title">{r.title}</span>
+                          <span className="dock-search-result-sub">{r.subtitle}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="dock-readout" role="group" aria-label="Map view controls">
+            <button
+              type="button"
+              aria-expanded={pane === "what"}
+              aria-controls="dock-pane"
+              aria-haspopup="dialog"
+              className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
+              onClick={() => toggle("what")}
+            >
+              <span className="dock-seg-k">What</span>
+              <span className="dock-seg-v" style={{ color: whatColor }}>
+                {what.main}
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-expanded={pane === "when"}
+              aria-controls="dock-pane"
+              aria-haspopup="dialog"
+              className={`dock-seg dock-seg-when${pane === "when" ? " active" : ""}`}
+              onClick={() => toggle("when")}
+            >
+              <span className="dock-seg-k">When</span>
+              <span className={`dock-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
+                {when.text}
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-expanded={pane === "where"}
+              aria-controls="dock-pane"
+              aria-haspopup="dialog"
+              className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
+              onClick={() => toggle("where")}
+            >
+              <span className="dock-seg-k">Where</span>
+              <span className="dock-seg-v" style={{ color: whereColor }}>
+                {whereText}
+              </span>
+            </button>
+            {dirty && (
+              <button
+                type="button"
+                className="dock-clear tap-44"
+                onClick={clearAll}
+                aria-label="Clear all filters"
+              >
+                <X className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+              </button>
+            )}
+          </div>
+
+          {/* The living caption — counts + a spoken state summary — and the
+              map ↔ list toggle. */}
+          <div className="dock-foot">
+            <div className="dock-countline" aria-live="polite">
+              {line}
+              <span className="sr-only">
+                {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="dock-viewtoggle tap-44"
+              aria-pressed={props.listView}
+              onClick={() => {
+                haptic("light");
+                track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
+                props.onToggleList();
+              }}
+            >
+              {props.listView ? (
+                <>
+                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  Map
+                </>
+              ) : (
+                <>
+                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  List
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Layers, at the map's foot: a quiet state pill you toggle when
+          needed (owner ask, 2026-07-17). The pill READS the current state
+          ("Base map", "Aerial +2") so it's the readout the caption seg
+          used to be; tapping opens the bottom sheet. Hidden in list view
+          and while its own sheet is up. ── */}
+      {!props.listView && pane !== "layers" && (
+        <button
+          type="button"
+          className="dock-lfab tap-44"
+          aria-haspopup="dialog"
+          aria-expanded={false}
+          onClick={() => { haptic("light"); setPane("layers"); }}
+        >
+          <LayersIcon className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+          <span className="dock-lfab-v" style={{ color: layersColor }}>
+            {layers.main}
+            {layers.plus && <span className="dock-seg-plus"> {layers.plus}</span>}
+          </span>
+        </button>
+      )}
+      <div
+        className={`dock-lsheet${pane === "layers" ? " open" : ""}`}
+        role="dialog"
+        aria-label="Map layers"
+        aria-hidden={pane !== "layers"}
+        inert={pane !== "layers"}
+        ref={sheetRef}
+        onKeyDown={onPaneKeyDown}
+      >
+        <div className="dock-pane-scroll">
+          <div className="dock-pane-head">
+            <span className="dock-pane-title font-serif">Map layers</span>
+            <button type="button" className="dock-done" onClick={closePane}>
+              Done
+            </button>
+          </div>
+
               <div>
                 <Sect>Map layers</Sect>
                 <div className="dock-chips">
@@ -923,160 +1109,6 @@ export default function MapDock(props: MapDockProps) {
                   ))}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── The head: search row + caption tab bar + count line, pinned
-            at the top of the map. ── */}
-        <div className="dock-head">
-          {/* Search, folded in as the top row — the map's ONE search. */}
-          <div className="dock-search-wrap">
-            <div className="dock-search" role="search">
-              <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
-              <input
-                type="search"
-                value={props.q}
-                onChange={(e) => props.setQ(e.target.value)}
-                placeholder="Search this map"
-                aria-label="Search this map"
-                className="dock-search-input"
-              />
-              {props.q.trim().length > 0 ? (
-                <button
-                  type="button"
-                  className="dock-search-clear tap-44"
-                  onClick={() => props.setQ("")}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                </button>
-              ) : (
-                <span aria-hidden className="dock-search-kbd">Find</span>
-              )}
-            </div>
-            {props.searchMatches.length > 0 && (
-              <ul className="dock-search-results">
-                {props.searchMatches.map((r) => {
-                  const dot =
-                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
-                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
-                    : r.type === "action" ? "var(--app-brand, #E14328)"
-                    : "var(--app-ink-3, #7A828C)";
-                  return (
-                    <li key={r.id}>
-                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
-                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
-                        <span className="dock-search-result-text">
-                          <span className="dock-search-result-title">{r.title}</span>
-                          <span className="dock-search-result-sub">{r.subtitle}</span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="dock-readout" role="group" aria-label="Map view controls">
-            <button
-              type="button"
-              aria-expanded={pane === "what"}
-              aria-controls="dock-pane"
-              aria-haspopup="dialog"
-              className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
-              onClick={() => toggle("what")}
-            >
-              <span className="dock-seg-k">What</span>
-              <span className="dock-seg-v" style={{ color: whatColor }}>
-                {what.main}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-expanded={pane === "when"}
-              aria-controls="dock-pane"
-              aria-haspopup="dialog"
-              className={`dock-seg dock-seg-when${pane === "when" ? " active" : ""}`}
-              onClick={() => toggle("when")}
-            >
-              <span className="dock-seg-k">When</span>
-              <span className={`dock-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
-                {when.text}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-expanded={pane === "where"}
-              aria-controls="dock-pane"
-              aria-haspopup="dialog"
-              className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
-              onClick={() => toggle("where")}
-            >
-              <span className="dock-seg-k">Where</span>
-              <span className="dock-seg-v" style={{ color: whereColor }}>
-                {whereText}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-expanded={pane === "layers"}
-              aria-controls="dock-pane"
-              aria-haspopup="dialog"
-              className={`dock-seg dock-seg-layers${pane === "layers" ? " active" : ""}`}
-              onClick={() => toggle("layers")}
-            >
-              <span className="dock-seg-k">Layers</span>
-              <span className="dock-seg-v" style={{ color: layersColor }}>
-                {layers.main}
-                {layers.plus && <span className="dock-seg-plus"> {layers.plus}</span>}
-              </span>
-            </button>
-            {dirty && (
-              <button
-                type="button"
-                className="dock-clear tap-44"
-                onClick={clearAll}
-                aria-label="Clear all filters"
-              >
-                <X className="h-4 w-4" strokeWidth={2.6} aria-hidden />
-              </button>
-            )}
-          </div>
-
-          {/* The living caption — counts + a spoken state summary — and the
-              map ↔ list toggle. */}
-          <div className="dock-foot">
-            <div className="dock-countline" aria-live="polite">
-              {line}
-              <span className="sr-only">
-                {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="dock-viewtoggle tap-44"
-              aria-pressed={props.listView}
-              onClick={() => {
-                haptic("light");
-                track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
-                props.onToggleList();
-              }}
-            >
-              {props.listView ? (
-                <>
-                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  Map
-                </>
-              ) : (
-                <>
-                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  List
-                </>
-              )}
-            </button>
-          </div>
         </div>
       </div>
     </>
