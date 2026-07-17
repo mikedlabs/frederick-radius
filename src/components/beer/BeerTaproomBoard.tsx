@@ -18,6 +18,7 @@ import {
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { BreweryLogo } from "./BreweryLogo";
+import { BreweryPhoto } from "./BreweryPhoto";
 
 type OpenRow = {
   slug: string;
@@ -244,17 +245,28 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
             style={selectionStyle}
           >
             <div className="beer-tap-detail-glow" aria-hidden />
+            <div className="relative h-[250px] overflow-hidden border-b border-white/12 sm:h-[310px]">
+              <BreweryPhoto
+                brewerySlug={activeSlug}
+                breweryName={brewery.name}
+                src={place?.google_photo_url}
+                decorative
+                sizes="(max-width: 1024px) 100vw, 840px"
+                className="h-full w-full"
+                imageClassName="object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,10,7,.08)_10%,rgba(13,10,7,.28)_48%,rgba(13,10,7,.94)_100%)]" aria-hidden />
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-5 pb-6 sm:px-8 sm:pb-8 lg:px-10">
+                <div className="min-w-0">
+                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#f3d496]">Tap {String(selectedNumber).padStart(2, "0")} · {townName(brewery.town)}</p>
+                  <h3 className="mt-2 max-w-[13ch] font-serif text-[clamp(2.6rem,8vw,5rem)] font-semibold leading-[0.85] tracking-[-0.055em] text-white">{brewery.name}</h3>
+                </div>
+                <BreweryLogo brewerySlug={activeSlug} breweryName={brewery.name} decorative sizes="88px" className="h-[72px] w-[72px] shrink-0 bg-[#f8f4eb] object-contain p-2 shadow-[0_14px_34px_rgba(0,0,0,.34)] sm:h-[88px] sm:w-[88px]" />
+              </div>
+            </div>
             <div className="relative grid gap-8 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1.1fr)_minmax(290px,.9fr)] lg:px-10 lg:py-10">
               <div>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-white/48">Tap {String(selectedNumber).padStart(2, "0")} · {townName(brewery.town)}</p>
-                    <h3 className="mt-2 max-w-[12ch] font-serif text-[clamp(2.6rem,8vw,5rem)] font-semibold leading-[0.85] tracking-[-0.055em]">{brewery.name}</h3>
-                  </div>
-                  <BreweryLogo brewerySlug={activeSlug} breweryName={brewery.name} decorative sizes="88px" className="h-[72px] w-[72px] shrink-0 bg-[#f8f4eb] object-contain p-2 shadow-[0_14px_34px_rgba(0,0,0,.25)] sm:h-[88px] sm:w-[88px]" />
-                </div>
-
-                <p className="mt-5 flex items-start gap-2 text-[11px] text-white/48">
+                <p className="flex items-start gap-2 text-[11px] text-white/48">
                   <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span>{place?.address ?? townName(brewery.town)}</span>
                 </p>

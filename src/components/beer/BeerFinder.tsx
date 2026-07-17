@@ -12,7 +12,7 @@ import { haversineMeters } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import FilterChip from "@/components/ui/FilterChip";
-import { BeerGlassArt } from "@/components/beer/BeerGlassArt";
+import { BreweryLogo } from "@/components/beer/BreweryLogo";
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import {
   BREWERIES,
@@ -456,28 +456,29 @@ function GoogleRating({ card }: { card?: PlaceCardData }) {
 
 function BreweryPhoto({
   url,
+  brewerySlug,
+  breweryName,
   size = 56,
-  family = "lager-pilsner",
 }: {
   url?: string;
+  brewerySlug: string;
+  breweryName: string;
   size?: number;
-  family?: StyleFamily;
 }) {
-  const colors = FAMILY_BY_KEY[family];
   return (
     <div
       className="relative shrink-0 overflow-hidden rounded-[4px]"
       style={{
         height: size,
         width: size,
-        background: url ? "var(--app-bg-sunken)" : `linear-gradient(145deg, ${colors.base}, ${colors.deep})`,
+        background: url ? "var(--app-bg-sunken)" : "linear-gradient(145deg, #2b241b, #11100d)",
         boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)",
       }}
     >
       {url ? (
         <Image src={url} alt="" fill sizes="56px" unoptimized={url.startsWith("/api/place-photo")} className="object-cover" />
       ) : (
-        <BeerGlassArt family={family} variant="pint" ink="#FBF3E2" className="h-full w-full p-1" />
+        <BreweryLogo brewerySlug={brewerySlug} breweryName={breweryName} decorative sizes={`${size}px`} className="h-full w-full bg-[#f7f0e4] object-contain p-1" />
       )}
     </div>
   );
@@ -522,7 +523,7 @@ function BreweryRow({ brewery, open, card, activeFams, dist }: { brewery: Brewer
   return (
     <li className="border-b py-4" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex gap-3">
-        <BreweryPhoto url={card?.google_photo_url} size={56} family={brewery.beers[0]?.family} />
+        <BreweryPhoto url={card?.google_photo_url} brewerySlug={brewery.slug} breweryName={brewery.name} size={56} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
             <Link href={`/places/${brewery.slug}`} className="font-serif text-[17px] font-semibold tracking-tight hover:underline" style={{ color: "var(--app-ink)" }}>
@@ -578,7 +579,7 @@ function TopBreweryRow({ rank, brewery, card, open, dist }: { rank: number; brew
         className="group flex min-h-11 items-center gap-3 rounded-sm p-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       >
         <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums" style={{ color: "var(--app-ink-3)", width: 18, textAlign: "right" }}>{rank}</span>
-        <BreweryPhoto url={card.google_photo_url} size={44} family={brewery.beers[0]?.family} />
+        <BreweryPhoto url={card.google_photo_url} brewerySlug={brewery.slug} breweryName={brewery.name} size={44} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14px] font-semibold group-hover:underline" style={{ color: "var(--app-ink)" }}>{brewery.name}</span>
           <span className="flex flex-wrap items-center gap-x-2 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>

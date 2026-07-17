@@ -11,7 +11,7 @@ import {
   type BeerWithBrewery,
 } from "@/data/beers";
 import { addSaved, useSavedList } from "@/hooks/useSaved";
-import { BeerGlassArt, type BeerGlassVariant } from "./BeerGlassArt";
+import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 import { BreweryLogo } from "./BreweryLogo";
 import {
   buildTasteFlight,
@@ -28,13 +28,11 @@ const STRENGTHS: Array<{ key: BeerStrength; label: string }> = [
   { key: "bold", label: "8%+" },
 ];
 
-const FLIGHT_GLASSES: BeerGlassVariant[] = ["pint", "pilsner", "tulip"];
-
 const STATS = Object.fromEntries(
   TASTE_PATHS.map((path) => [path.key, tastePathStats(ALL_BEERS, path.key)]),
 ) as Record<TastePathKey, { beers: number; breweries: number }>;
 
-export default function BeerTasteFlight() {
+export default function BeerTasteFlight({ photos }: { photos: BreweryPhotoMap }) {
   const [pathKey, setPathKey] = useState<TastePathKey>("hoppy");
   const [strength, setStrength] = useState<BeerStrength>("any");
   const savedList = useSavedList();
@@ -95,7 +93,7 @@ export default function BeerTasteFlight() {
 
       {flight.length > 0 ? (
         <ol className="-mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
-          {flight.map((beer, index) => <PourCard key={beerKey(beer)} beer={beer} index={index} saved={savedKeys.has(beerKey(beer))} pathKey={pathKey} />)}
+          {flight.map((beer, index) => <PourCard key={beerKey(beer)} beer={beer} index={index} saved={savedKeys.has(beerKey(beer))} pathKey={pathKey} photo={photos[beer.brewerySlug]} />)}
         </ol>
       ) : (
         <div className="mt-3 border-y py-6 text-center" style={{ borderColor: "var(--app-border)" }}><p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>No pours fit that strength.</p><button type="button" onClick={() => setStrength("any")} className="mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Show any ABV</button></div>
@@ -105,7 +103,7 @@ export default function BeerTasteFlight() {
   );
 }
 
-function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; index: number; saved: boolean; pathKey: TastePathKey }) {
+function PourCard({ beer, index, saved, pathKey, photo }: { beer: BeerWithBrewery; index: number; saved: boolean; pathKey: TastePathKey; photo?: string | null }) {
   const family = FAMILY_BY_KEY[beer.family];
   const brewery = BREWERY_BY_SLUG[beer.brewerySlug];
   const untappdUrl = beer.untappd ?? brewery?.untappd;
@@ -113,15 +111,27 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
   const visualLabel = pathKey === "old-world" && beer.family === "wheat-hazy" ? "Traditional wheat" : pathKey === "hoppy" && beer.family === "wheat-hazy" ? "Hazy IPA" : family.label;
   return (
     <li
-      className="relative flex min-h-[310px] w-[82vw] max-w-[310px] shrink-0 snap-center flex-col overflow-hidden border border-white/12 p-4 text-white shadow-[0_20px_42px_-24px_rgba(24,16,8,.7)] sm:w-auto sm:max-w-none"
+      className="group relative flex min-h-[330px] w-[82vw] max-w-[310px] shrink-0 snap-center flex-col overflow-hidden border border-white/12 p-4 text-white shadow-[0_20px_42px_-24px_rgba(24,16,8,.7)] sm:w-auto sm:max-w-none"
       style={{ background: `linear-gradient(155deg, ${family.base}, ${family.deep} 62%, #24160f 115%)` }}
     >
-      <div className="pointer-events-none absolute -right-8 -top-4 opacity-22" aria-hidden>
-        <BeerGlassArt family={beer.family} variant={FLIGHT_GLASSES[index] ?? "pint"} className="h-[190px] w-auto" ink="#fff8eb" />
+      <div className="absolute inset-0" aria-hidden>
+        <BreweryPhoto
+          brewerySlug={beer.brewerySlug}
+          breweryName={beer.breweryName}
+          src={photo}
+          decorative
+          sizes="(max-width: 640px) 82vw, 33vw"
+          className="h-full w-full"
+          imageClassName="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
+        />
       </div>
+      <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(12,9,6,.08) 0%, color-mix(in srgb, ${family.deep} 82%, rgba(15,11,8,.94)) 58%, #120e0b 100%)` }} aria-hidden />
 
       <div className="relative flex items-start justify-between gap-3">
-        <span className="font-serif text-[36px] leading-none text-white/35">0{index + 1}</span>
+        <span className="flex items-center gap-2">
+          <BreweryLogo brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} decorative sizes="42px" className="h-10 w-10 bg-[#f7f0e4] object-contain p-1 shadow-[0_10px_24px_rgba(0,0,0,.34)]" />
+          <span className="font-serif text-[30px] leading-none text-white/48">0{index + 1}</span>
+        </span>
         <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="grid h-11 w-11 place-items-center border border-white/25 bg-black/10 text-white backdrop-blur-sm disabled:opacity-60">
           {saved ? <Check className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
         </button>

@@ -1,19 +1,30 @@
 import Link from "next/link";
 import { ArrowDown, CalendarDays, MapPin, Sparkles } from "lucide-react";
-import { ALL_BEERS, BREWERIES } from "@/data/beers";
-import { BeerGlassArt } from "./BeerGlassArt";
+import { ALL_BEERS, BREWERIES, BREWERY_BY_SLUG } from "@/data/beers";
+import { BreweryLogo } from "./BreweryLogo";
+import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 
-/** The beer guide's cover: bold enough to feel like a destination, useful enough to move. */
-export default function BeerHero() {
+const COVER_ROOMS = [
+  "attaboy-beer-frederick",
+  "milkhouse-brewery-mt-airy",
+  "olde-mother-brewing-frederick",
+] as const;
+
+/** The beer guide's photo-led cover: Frederick rooms, not generic beer art. */
+export default function BeerHero({ photos }: { photos: BreweryPhotoMap }) {
+  const rooms = COVER_ROOMS.map((slug) => BREWERY_BY_SLUG[slug]).filter(Boolean);
+  // Lead with a real branded flight so the cover is unmistakably about beer
+  // without repeating the default Attaboy taproom featured immediately below.
+  const leadRoom = rooms[2] ?? rooms[0];
+
   return (
     <header
       aria-labelledby="beer-hero-title"
       className="beer-cover relative -mx-4 -mt-6 overflow-hidden border-y border-white/10 bg-[#11100d] text-[#f7f0e4] sm:-mx-5 lg:mx-0 lg:mt-0 lg:rounded-[10px] lg:border"
     >
       <div className="absolute inset-0 beer-cover-light" aria-hidden />
-      <div className="absolute -right-24 top-5 h-64 w-64 rounded-full bg-[#d7851b]/10 blur-3xl sm:right-0" aria-hidden />
 
-      <div className="relative grid min-h-[520px] grid-rows-[1fr_auto] sm:min-h-[560px] lg:grid-cols-[minmax(0,1.05fr)_minmax(330px,.95fr)] lg:grid-rows-1">
+      <div className="relative grid min-h-[580px] grid-rows-[auto_330px] lg:min-h-[610px] lg:grid-cols-[minmax(0,1.02fr)_minmax(390px,.98fr)] lg:grid-rows-1">
         <div className="z-10 flex flex-col justify-between px-5 pb-8 pt-8 sm:px-9 sm:pb-10 sm:pt-10 lg:px-12 lg:py-12">
           <div>
             <p className="flex items-center gap-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">
@@ -50,20 +61,55 @@ export default function BeerHero() {
           </div>
         </div>
 
-        <div className="relative min-h-[230px] overflow-hidden border-t border-white/10 lg:min-h-0 lg:border-l lg:border-t-0">
-          <div className="absolute inset-x-0 bottom-0 h-px bg-white/16" aria-hidden />
-          <div className="beer-cover-glasses absolute inset-x-[-8%] bottom-[-28px] flex items-end justify-center text-[#f7f0e4] sm:inset-x-[2%] lg:inset-x-[-4%] lg:bottom-[-8px]">
-            <BeerGlassArt family="stout-porter" variant="pint" className="beer-glass beer-glass-delay-2 h-[205px] w-auto -rotate-3 opacity-80 sm:h-[270px] lg:h-[300px]" />
-            <BeerGlassArt family="lager-pilsner" variant="pilsner" className="beer-glass z-10 -ml-8 h-[255px] w-auto opacity-100 sm:h-[330px] lg:h-[385px]" />
-            <BeerGlassArt family="sour-wild" variant="tulip" className="beer-glass beer-glass-delay-1 -ml-9 h-[215px] w-auto rotate-3 opacity-85 sm:h-[285px] lg:h-[325px]" />
-          </div>
-          <div className="absolute right-4 top-4 rotate-2 border border-[#e3b65d]/45 bg-[#171510]/80 px-3 py-2 text-right font-mono uppercase backdrop-blur-sm sm:right-6 sm:top-6">
+        <div className="group relative overflow-hidden border-t border-white/10 bg-[#1b1712] lg:border-l lg:border-t-0">
+          {leadRoom ? (
+            <BreweryPhoto
+              brewerySlug={leadRoom.slug}
+              breweryName={leadRoom.name}
+              src={photos[leadRoom.slug]}
+              decorative
+              priority
+              sizes="(max-width: 1024px) 100vw, 46vw"
+              className="h-full w-full"
+              imageClassName="object-cover transition-transform duration-[1600ms] ease-out group-hover:scale-[1.035]"
+            />
+          ) : null}
+          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,7,5,.05)_10%,rgba(8,7,5,.22)_42%,rgba(8,7,5,.92)_100%)]" />
+          <span aria-hidden className="absolute inset-y-0 left-0 hidden w-1/3 bg-[linear-gradient(90deg,rgba(17,16,13,.75),transparent)] lg:block" />
+
+          <div className="absolute right-4 top-4 rotate-1 border border-[#e3b65d]/45 bg-[#171510]/84 px-3 py-2 text-right font-mono uppercase backdrop-blur-md sm:right-6 sm:top-6">
             <span className="block text-[8px] tracking-[0.16em] text-white/44">County pour book</span>
             <span className="mt-0.5 block text-[12px] font-bold tracking-[0.08em] text-[#f3d496]">{BREWERIES.length} rooms · {ALL_BEERS.length} pours</span>
           </div>
-          <p className="absolute bottom-4 left-5 font-mono text-[8px] uppercase tracking-[0.15em] text-white/38 sm:left-7">
-            Choose well. Verify the tap.
-          </p>
+
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+            <p className="mb-3 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-[#f3d496]">Real rooms across the county</p>
+            <div className="grid grid-cols-3 gap-2">
+              {rooms.map((brewery, index) => (
+                <Link
+                  key={brewery.slug}
+                  href={`/places/${brewery.slug}`}
+                  className="group/room flex min-h-[70px] items-center gap-2 border border-white/18 bg-[#11100d]/78 p-2 text-white backdrop-blur-md transition hover:border-[#e3b65d]/62 hover:bg-[#11100d]/90"
+                >
+                  <BreweryLogo
+                    brewerySlug={brewery.slug}
+                    breweryName={brewery.name}
+                    decorative
+                    sizes="42px"
+                    className="h-10 w-10 shrink-0 bg-[#f7f0e4] object-contain p-1 shadow-[0_10px_20px_rgba(0,0,0,.32)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[6.5px] uppercase tracking-[0.12em] text-white/44">
+                      {index === 0 ? "City" : index === 1 ? "Farm" : "Downtown"}
+                    </span>
+                    <span className="mt-0.5 block line-clamp-2 text-[8px] font-semibold leading-tight group-hover/room:underline sm:text-[9px]">
+                      {brewery.name}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

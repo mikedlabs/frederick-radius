@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, CarFront, MapPin, Route } from "lucide-react";
 import { BreweryLogo } from "./BreweryLogo";
-import { BeerGlassArt } from "./BeerGlassArt";
+import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 import {
   BREWERY_BY_SLUG,
   FAMILY_BY_KEY,
@@ -62,7 +62,7 @@ function isResolvedStop(stop: ResolvedStop | null): stop is ResolvedStop {
 }
 
 /** Three intentionally small outings, not another all-results surface. */
-export default function BeerGuides() {
+export default function BeerGuides({ photos }: { photos: BreweryPhotoMap }) {
   return (
     <section id="beer-days" aria-labelledby="beer-days-heading" className="-mx-4 scroll-mt-24 overflow-hidden border-y border-white/10 bg-[#15130f] px-4 py-9 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-12 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10">
       <header className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
@@ -84,7 +84,18 @@ export default function BeerGuides() {
           const family = FAMILY_BY_KEY[stops[0].beer.family];
           return (
             <article key={guide.slug} aria-labelledby={`beer-day-${guide.slug}`} className="group relative flex min-h-[390px] w-[84vw] max-w-[340px] shrink-0 snap-center flex-col overflow-hidden border border-white/12 p-5 lg:w-auto lg:max-w-none" style={{ background: `linear-gradient(150deg, ${family.deep}, #1b1612 72%)` }}>
-              <BeerGlassArt family={stops[0].beer.family} variant={guideIndex === 1 ? "tulip" : guideIndex === 2 ? "pilsner" : "pint"} className="pointer-events-none absolute -right-10 -top-8 h-[230px] w-auto opacity-[0.13] transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-105" ink="#fff8eb" />
+              <div className="absolute inset-0" aria-hidden>
+                <BreweryPhoto
+                  brewerySlug={stops[0].brewery.slug}
+                  breweryName={stops[0].brewery.name}
+                  src={photos[stops[0].brewery.slug]}
+                  decorative
+                  sizes="(max-width: 1024px) 84vw, 28vw"
+                  className="h-full w-full"
+                  imageClassName="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(15,11,8,.1) 0%, color-mix(in srgb, ${family.deep} 82%, rgba(15,11,8,.94)) 54%, #15110e 100%)` }} aria-hidden />
               <div className="flex items-start justify-between gap-4">
                 <p className="relative flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.16em] text-white/52"><Route className="h-3.5 w-3.5" aria-hidden />{guide.eyebrow}</p>
                 <span className="relative font-serif text-[44px] leading-none text-white/22">0{guideIndex + 1}</span>

@@ -9,6 +9,7 @@ import BeerPassport from "@/components/beer/BeerPassport";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
+import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 import MyTaps from "@/components/beer/MyTaps";
 import TaproomMap from "@/components/beer/TaproomMap";
 import PageBloom from "@/components/ui/PageBloom";
@@ -33,12 +34,15 @@ export default function BeerPage() {
   )
     .filter((place): place is PlaceCardData => Boolean(place))
     .map(slimForList);
+  const breweryPhotos = Object.fromEntries(
+    breweryCards.map((place) => [place.slug, place.google_photo_url ?? null]),
+  ) as BreweryPhotoMap;
 
   return (
     <div className="relative space-y-14 pb-4 sm:space-y-20">
       <PageBloom variant="warm-cool" />
 
-      <BeerHero />
+      <BeerHero photos={breweryPhotos} />
 
       {/* One primary decision surface: all local brewery marks, setting and
           group filters, verified source links, and a client-fresh hours
@@ -50,16 +54,16 @@ export default function BeerPage() {
         <BeerTaproomEvents />
       </Suspense>
 
-      <BeerTasteFlight />
+      <BeerTasteFlight photos={breweryPhotos} />
 
-      <BeerGuides />
+      <BeerGuides photos={breweryPhotos} />
 
       {/* Geography is a decision tool after taste and setting, not the page's
           opening directory. Mapbox still loads only after a user asks. */}
       <TaproomMap places={breweryCards} />
 
       {/* Saved pours appear only after the user has made a choice. */}
-      <MyTaps />
+      <MyTaps photos={breweryPhotos} />
 
       <BeerPassport />
       <BeerExplorerLauncher breweryCards={breweryCards} />

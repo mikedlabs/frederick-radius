@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useState } from "react";
 import { ArrowRight, Map as MapIcon, MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -58,7 +59,15 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           onClick={() => setOpen(true)}
           className="beer-map-gate group relative min-h-[340px] w-full overflow-hidden border border-white/10 bg-[#201c16] p-5 text-left text-[#f7f0e4] shadow-[0_28px_60px_-36px_rgba(23,16,9,.8)] sm:min-h-[380px] sm:p-8"
         >
-          <span className="beer-map-contours absolute inset-0" aria-hidden />
+          <Image
+            src="/images/seasons/summer/083.jpg"
+            alt=""
+            fill
+            sizes="(max-width: 1024px) 100vw, 840px"
+            className="object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.025]"
+          />
+          <span className="absolute inset-0 bg-[linear-gradient(105deg,rgba(18,14,10,.94)_0%,rgba(18,14,10,.72)_48%,rgba(18,14,10,.34)_100%)]" aria-hidden />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_38%,rgba(13,10,7,.78)_100%)]" aria-hidden />
           {[
             [18, 68], [31, 48], [43, 59], [55, 39], [66, 57], [78, 32], [84, 66], [48, 75], [69, 78],
           ].map(([left, top], index) => (

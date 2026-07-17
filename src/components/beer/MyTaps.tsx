@@ -4,7 +4,8 @@ import { Bookmark, X } from "lucide-react";
 import { useMemo } from "react";
 import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
-import { BeerGlassArt } from "./BeerGlassArt";
+import { BreweryLogo } from "./BreweryLogo";
+import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 
 const prettyTown = (slug: string) =>
   slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -14,7 +15,7 @@ const prettyTown = (slug: string) =>
  * (bookmark). Reads the shared saved store, resolves keys back to beers, and
  * self-hides when empty so it is safe to mount on /beer and the Saved page.
  */
-export default function MyTaps({ heading = true }: { heading?: boolean }) {
+export default function MyTaps({ heading = true, photos = {} }: { heading?: boolean; photos?: BreweryPhotoMap }) {
   const mounted = useMounted();
   const list = useSavedList();
 
@@ -53,29 +54,35 @@ export default function MyTaps({ heading = true }: { heading?: boolean }) {
       )}
       <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
         {beers.map(({ beer, key }, index) => (
-          <TapRow key={key} beer={beer} savedKey={key} index={index} />
+          <TapRow key={key} beer={beer} savedKey={key} index={index} photo={photos[beer.brewerySlug]} />
         ))}
       </ul>
     </section>
   );
 }
 
-function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: string; index: number }) {
+function TapRow({ beer, savedKey, index, photo }: { beer: BeerWithBrewery; savedKey: string; index: number; photo?: string | null }) {
   const remove = useToggleSave("beer", savedKey);
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
-      className="relative flex min-h-[210px] w-[76vw] max-w-[290px] shrink-0 snap-center flex-col overflow-hidden border border-white/14 p-4 text-white"
+      className="group relative flex min-h-[230px] w-[76vw] max-w-[290px] shrink-0 snap-center flex-col overflow-hidden border border-white/14 p-4 text-white"
       style={{ background: `linear-gradient(145deg, ${fam.base}, ${fam.deep} 68%, #1c1510)` }}
     >
-      <BeerGlassArt family={beer.family} variant={index % 2 ? "tulip" : "pint"} className="pointer-events-none absolute -right-7 -top-7 h-[155px] w-auto opacity-20" ink="#fff8eb" />
+      <div className="absolute inset-0" aria-hidden>
+        <BreweryPhoto brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} src={photo} decorative sizes="76vw" className="h-full w-full" imageClassName="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
+      </div>
+      <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(12,9,6,.08), color-mix(in srgb, ${fam.deep} 82%, rgba(14,10,8,.95)) 60%, #120e0b)` }} aria-hidden />
       <div className="relative flex items-start justify-between gap-3">
-        <span className="font-serif text-[32px] leading-none text-white/34">{String(index + 1).padStart(2, "0")}</span>
+        <span className="flex items-center gap-2">
+          <BreweryLogo brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} decorative sizes="42px" className="h-10 w-10 bg-[#f7f0e4] object-contain p-1 shadow-[0_10px_22px_rgba(0,0,0,.34)]" />
+          <span className="font-serif text-[30px] leading-none text-white/46">{String(index + 1).padStart(2, "0")}</span>
+        </span>
         <button
           type="button"
           onClick={remove}
           aria-label={`Remove ${beer.name} from My taps`}
-          className="grid h-10 w-10 shrink-0 place-items-center border border-white/24 bg-black/10 text-white/72"
+          className="grid h-11 w-11 shrink-0 place-items-center border border-white/24 bg-black/20 text-white/72 backdrop-blur-sm"
         >
           <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
         </button>
