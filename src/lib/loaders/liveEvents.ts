@@ -98,6 +98,8 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     category: e.category,
     audience: [],
     is_free: e.is_free,
+    price_text: e.price_text,
+    hero_image: e.hero_image,
     organizer: e.organizer,
     status: e.status,
     // The feed's real source, not "manual": the hardcode let every live

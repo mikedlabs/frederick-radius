@@ -63,6 +63,13 @@ export type LiveEvent = {
   source_label: string;
   url: string;
   is_free: boolean;
+  /** Real ticket floor when the source publishes one ("From $28").
+   *  Ticketed feeds (Ticketmaster, SeatGeek) fetch this and previously
+   *  threw it away; EventCard already renders it. Never guessed. */
+  price_text?: string;
+  /** Promo/artist image from ticketed feeds. EventCard already renders
+   *  hero images; only sources that vouch for one set it. */
+  hero_image?: string;
   /** Lifecycle status — scheduled / cancelled / postponed. Derived
    *  from the iCal STATUS property or a title sniff at parse time. */
   status: EventStatus;
