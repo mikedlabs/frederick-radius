@@ -17,13 +17,13 @@ import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
-import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
+import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
-import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
@@ -39,6 +39,7 @@ import PulseBoard, { type PulseTile, type PulseHero, type PulseHeroChip } from "
 import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
+import { pulseAlertPriority, shouldAqiLead } from "@/lib/pulse/signal-priority";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -85,16 +86,35 @@ function nowClock(): string {
 /** Plain, deterministic local guidance for the alert families NWS publishes.
  * This deliberately avoids speculative AI copy: the alert type selects a
  * short action, while the official NWS record remains one tap away. */
-function alertGuidance(event: string): string {
+function alertGuidance(event: string, description = ""): string {
   const name = event.toLowerCase();
+  const copy = `${event} ${description}`;
   if (name.includes("tornado")) return "Move indoors, keep emergency alerts on, and be ready to use a lower interior room.";
   if (name.includes("severe thunderstorm")) return "Outdoor plans may need to move inside. Secure loose items and keep weather alerts on.";
   if (name.includes("flood")) return "Avoid low-water crossings and never drive through flooded roads. Check your route before leaving.";
   if (name.includes("heat")) return "Plan shade and water for time outside, and move strenuous activity to a cooler part of the day.";
   if (name.includes("winter") || name.includes("snow") || name.includes("ice")) return "Allow extra travel time and check road conditions before heading out.";
   if (name.includes("wind")) return "Secure loose outdoor items and use extra care around trees and power lines.";
-  if (name.includes("air quality")) return "Sensitive groups may want to shorten strenuous outdoor activity.";
+  if (/air quality|smoke|ozone/i.test(copy)) {
+    if (/code\s*maroon|hazardous/i.test(copy)) {
+      return "Air is hazardous. Avoid outdoor activity and follow official guidance.";
+    }
+    if (/code\s*purple|very unhealthy/i.test(copy)) {
+      return "Air is very unhealthy for everyone. Avoid strenuous activity outside.";
+    }
+    if (/code\s*red|unhealthy for (?:the )?general population/i.test(copy)) {
+      return "Air is unhealthy. Everyone should avoid prolonged or heavy outdoor activity.";
+    }
+    return "Air may be unhealthy for sensitive groups. Take it easier outside and check the official alert.";
+  }
   return "Keep official alerts on and check the Frederick-specific timing before changing your plans.";
+}
+
+function aqiGuidance(categoryId: number): string {
+  if (categoryId >= 6) return "Air is hazardous. Avoid outdoor activity and follow official guidance.";
+  if (categoryId >= 5) return "Air is very unhealthy for everyone. Avoid strenuous activity outside.";
+  if (categoryId >= 4) return "Air is unhealthy. Everyone should avoid prolonged or heavy outdoor activity.";
+  return "Air is unhealthy for sensitive groups. Take it easier outside.";
 }
 
 function alertEndLabel(iso: string | undefined): string | undefined {
@@ -207,7 +227,7 @@ export default async function PulsePage() {
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
     withTimeoutTracked(getChartIncidentsFrederick(), FEED_MS, [], markDegraded),
     withTimeoutTracked(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }, markDegraded),
     withTimeoutTracked(getFcpsAlerts(), FEED_MS, [], markDegraded),
@@ -215,7 +235,7 @@ export default async function PulsePage() {
     withTimeoutTracked(getPulsePointIncidents(), FEED_MS, [], markDegraded),
     // NWS active alerts for Frederick County, MD. When something's up (severe
     // storm, flood, heat advisory) this rides at the top of the board.
-    withTimeoutTracked(getNwsAlerts(), FEED_MS, [], markDegraded),
+    withTimeoutTracked(getNwsAlertsResult(), FEED_MS, { alerts: [], available: false }, markDegraded),
     // Local headlines from Google News RSS — always-on city signal.
     withTimeout(getLocalHeadlines(), FEED_MS, []),
     // Official City + County press releases (CivicPlus News Flash RSS). The
@@ -270,9 +290,16 @@ export default async function PulsePage() {
   // page still knows about but the weather has moved past.
   // eslint-disable-next-line react-hooks/purity -- per-request expiry filter; hoisting Date.now would defeat the freshness check
   const nowMs = Date.now();
-  const activeAlerts = alerts.filter(
-    (a) => !a.ends_at || Date.parse(a.ends_at) > nowMs,
-  );
+  if (!alertResult.available) urgentDegraded = true;
+  const activeAlerts = alertResult.alerts
+    .filter((a) => !a.ends_at || Date.parse(a.ends_at) > nowMs)
+    .sort((a, b) => pulseAlertPriority(a) - pulseAlertPriority(b));
+  // Missing, empty, or stale AirNow observations are all degraded for an
+  // all-clear. They can never let an old Good reading hide a changed day.
+  const freshAqiObs = (aqiObs ?? []).filter((obs) => isFreshAqiObservation(obs, marcNow));
+  if (aqiObs === null || freshAqiObs.length === 0) urgentDegraded = true;
+  const aqiWorst = pickWorstAqi(freshAqiObs);
+  const aqiActive = aqiWorst ? aqiWorst.category.id >= 3 : false;
 
   // Police-lane press releases. The freshest earns the breaking strip up top
   // (only if recent enough); the rest form the standing blotter in the Police
@@ -292,7 +319,8 @@ export default async function PulsePage() {
     safety.length > 0 ||
     traffic.length > 0 ||
     outagesActive ||
-    schoolAlerts.length > 0;
+    schoolAlerts.length > 0 ||
+    aqiActive;
   // "All clear" requires BOTH nothing active AND every urgent feed answered.
   // If a feed failed and we found nothing, the truthful read is "unknown", not
   // a reassuring all-clear (audit FR-002).
@@ -303,9 +331,10 @@ export default async function PulsePage() {
   const leadTraffic = traffic[0];
   const leadSchool = schoolAlerts[0];
   const leadSafety = safety[0];
+  const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
 
   let heroLine = "Frederick is steady right now.";
-  let heroSub = "No active weather alerts, major road incidents, significant outages, or school changes.";
+  let heroSub = "No active weather or air-quality alerts, major road incidents, significant outages, or school changes.";
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
@@ -313,12 +342,24 @@ export default async function PulsePage() {
   if (heroDegraded) {
     heroLine = "We can’t confirm an all-clear yet.";
     heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Pulse will retry automatically.";
+  } else if (aqiLeads && aqiWorst) {
+    heroLeadKey = "air";
+    heroLine = `Air quality is ${aqiWorst.category.name.toLowerCase()}.`;
+    heroSub = aqiGuidance(aqiWorst.category.id);
+    heroLeadMeta = `AQI ${aqiWorst.aqi} · as of ${aqiClock(aqiWorst.hourObserved)}`;
+    heroActionLabel = "See the air-quality reading";
   } else if (leadAlert) {
     heroLeadKey = "alerts";
     heroLine = `${leadAlert.event} for Frederick County.`;
-    heroSub = alertGuidance(leadAlert.event);
+    heroSub = alertGuidance(leadAlert.event, leadAlert.description);
     heroLeadMeta = alertEndLabel(leadAlert.ends_at);
     heroActionLabel = "Read the Frederick alert";
+  } else if (aqiActive && aqiWorst) {
+    heroLeadKey = "air";
+    heroLine = `Air quality is ${aqiWorst.category.name.toLowerCase()}.`;
+    heroSub = aqiGuidance(aqiWorst.category.id);
+    heroLeadMeta = `AQI ${aqiWorst.aqi} · as of ${aqiClock(aqiWorst.hourObserved)}`;
+    heroActionLabel = "See the air-quality reading";
   } else if (outagesActive) {
     heroLeadKey = "power";
     heroLine = `${outages.total_out.toLocaleString()} customers are without power.`;
@@ -503,8 +544,6 @@ export default async function PulsePage() {
   // parameters). Category 3+ (Unhealthy for Sensitive Groups and worse) tints
   // the tile; Good/Moderate stay a calm cool reading. The category color is
   // AirNow's standard AQI scale (data color, like the flood tones).
-  const aqiWorst = aqiObs ? pickWorstAqi(aqiObs) : null;
-  const aqiActive = aqiWorst ? aqiWorst.category.id >= 3 : false;
   const aqiAccent = !aqiWorst
     ? "var(--app-cool)"
     : aqiWorst.category.id >= 4
@@ -583,6 +622,7 @@ export default async function PulsePage() {
 
   const situationActive: Record<string, boolean> = {
     alerts: activeAlerts.length > 0,
+    air: aqiActive,
     safety: safety.length > 0,
     traffic: traffic.length > 0,
     power: outagesActive,
@@ -623,7 +663,7 @@ export default async function PulsePage() {
           countLabel: `AQI ${aqiWorst.aqi}`,
           accent: aqiAccent,
           active: aqiActive,
-          attention: false,
+          attention: situationActive.air,
           kind: "gauge",
           gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `AQI · ${aqiShort(aqiWorst.category.id)}` },
           sourceLabel: "AirNow · EPA",
@@ -1131,6 +1171,20 @@ export default async function PulsePage() {
     heroChips.push(chip);
   };
   if (!allClear) {
+    if (leadAlert && heroLeadKey !== "alerts" && !/air quality|smoke|ozone/i.test(`${leadAlert.event} ${leadAlert.description}`)) {
+      addHeroChip({
+        tone: pulseAlertPriority(leadAlert) <= 4 ? "danger" : "warning",
+        label: leadAlert.event,
+        key: "alerts",
+      });
+    }
+    if (aqiActive && aqiWorst && !/air quality/i.test(leadAlert?.event ?? "")) {
+      addHeroChip({
+        tone: aqiWorst.category.id >= 4 ? "danger" : "warning",
+        label: `Air ${aqiWorst.category.name.toLowerCase()} · AQI ${aqiWorst.aqi}`,
+        key: "air",
+      });
+    }
     if (outagesActive) {
       addHeroChip({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power" });
     }

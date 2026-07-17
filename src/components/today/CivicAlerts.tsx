@@ -54,13 +54,27 @@ function firstSentence(body: string): string {
   return (m?.[0] ?? s.slice(0, 140)).trim();
 }
 
+/** NWS assigns Air Quality Alert products severity=Unknown, even when the
+ *  product body says Code Purple / very unhealthy. Product-specific health
+ *  language therefore has to outrank the generic severity field. */
+export function nwsDisplaySeverity(a: NwsAlert): UnifiedAlert["severity"] {
+  const copy = `${a.event} ${a.headline} ${a.description}`;
+  if (/air quality|smoke|ozone/i.test(copy)) {
+    if (/code\s*(purple|maroon)|very unhealthy|hazardous/i.test(copy)) return "emergency";
+    if (/code\s*red|unhealthy for (?:the )?general population/i.test(copy)) return "warning";
+    // Code Orange and any other active official air-quality product are still
+    // consequence-bearing health notices, never routine "info."
+    return "advisory";
+  }
+  return a.severity === "Extreme" ? "emergency" :
+    a.severity === "Severe" ? "warning" :
+    a.severity === "Moderate" ? "advisory" : "info";
+}
+
 function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
   const out: UnifiedAlert[] = [];
   for (const a of nws) {
-    const severity =
-      a.severity === "Extreme" ? "emergency" :
-      a.severity === "Severe" ? "warning" :
-      a.severity === "Moderate" ? "advisory" : "info";
+    const severity = nwsDisplaySeverity(a);
     // WeatherHero's inline alert chip was removed — the top
     // CivicAlerts banner is now the single source of truth for the
     // alert. Show every active NWS alert here with the full title +

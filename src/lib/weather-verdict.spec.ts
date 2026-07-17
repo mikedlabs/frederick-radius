@@ -102,4 +102,112 @@ describe("weatherVerdict safety overrides", () => {
     expect(v.line).toMatch(/Flood Watch active/);
     expect(v.line).not.toMatch(/good day|patio|easy day/i);
   });
+
+  it("turns a Code Purple air-quality alert into specific health guidance", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Sunny",
+      activeAlerts: [{
+        event: "Air Quality Alert",
+        severity: "Unknown",
+        description: "A Code Purple Air Quality Alert means conditions are very unhealthy for the general population.",
+      }],
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/very unhealthy air/i);
+    expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
+  });
+
+  it("uses a current unhealthy AQI even when no alert product is present", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Clear",
+      airQuality: { aqi: 168, category: "Unhealthy" },
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/unhealthy air/i);
+    expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
+  });
+
+  it("will not recommend going outside when the official alert feed failed", () => {
+    const v = weatherVerdict(input({ shortForecast: "Clear", alertsAvailable: false }));
+    expect(v.tone).toBe("mixed");
+    expect(v.line).toMatch(/safety data is temporarily unavailable/i);
+    expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
+  });
+
+  it("still fails closed when alerts are down but the AQI reading is good", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Clear",
+      alertsAvailable: false,
+      airQualityAvailable: true,
+      airQuality: { aqi: 42, category: "Good" },
+    }));
+    expect(v.tone).toBe("mixed");
+    expect(v.line).toMatch(/safety data is temporarily unavailable/i);
+    expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
+  });
+
+  it("does not say to get outside before rain when safety feeds are degraded", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Clear",
+      alertsAvailable: false,
+      airQualityAvailable: false,
+      hourly: [{
+        startTime: "2026-07-08T19:00:00.000Z",
+        probabilityOfPrecipitation: 80,
+        shortForecast: "Rain Showers",
+      }],
+    }));
+    expect(v.tone).toBe("mixed");
+    expect(v.line).toMatch(/safety data is temporarily unavailable/i);
+    expect(v.line).not.toMatch(/get out|before then|patio|good day/i);
+  });
+
+  it("fails closed when AirNow is missing or stale", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Sunny",
+      alertsAvailable: true,
+      airQualityAvailable: false,
+    }));
+    expect(v.tone).toBe("mixed");
+    expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
+  });
+
+  it("lets a tornado warning outrank a Code Orange air alert", () => {
+    const v = weatherVerdict(input({
+      activeAlerts: [
+        {
+          event: "Air Quality Alert",
+          severity: "Unknown",
+          description: "Code Orange: unhealthy for sensitive groups.",
+        },
+        {
+          event: "Tornado Warning",
+          severity: "Extreme",
+          description: "Take shelter now.",
+        },
+      ],
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/Tornado Warning active/i);
+  });
+
+  it("uses hazardous guidance at AQI 301 and above", () => {
+    const v = weatherVerdict(input({
+      airQuality: { aqi: 301, category: "Hazardous" },
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/hazardous air/i);
+  });
+
+  it("still surfaces a safety product when the ordinary forecast is unavailable", () => {
+    const v = weatherVerdict(input({
+      weatherAvailable: false,
+      activeAlerts: [{
+        event: "Air Quality Alert",
+        severity: "Unknown",
+        description: "Code Purple. Air is very unhealthy.",
+      }],
+    }));
+    expect(v.line).toMatch(/very unhealthy air/i);
+  });
 });

@@ -77,6 +77,9 @@ export default function AppMapClient({
   pinpointDefault = false,
   initialCenter,
   initialZoom,
+  initialBounds,
+  cameraMinZoom,
+  cameraMaxBounds,
   initialAmenityGroups,
   dock,
   activeSlugs = null,
@@ -132,6 +135,12 @@ export default function AppMapClient({
   initialCenter?: [number, number];
   /** Scope-aware opening zoom (county overview vs town/street framing). */
   initialZoom?: number;
+  /** Optional first-paint extent. The main map uses this for a responsive
+   *  whole-county opening instead of guessing one zoom for every screen. */
+  initialBounds?: [[number, number], [number, number]];
+  /** Browse-only camera constraints; embeds keep AppMap's tighter defaults. */
+  cameraMinZoom?: number;
+  cameraMaxBounds?: [[number, number], [number, number]];
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
@@ -170,6 +179,9 @@ export default function AppMapClient({
           pinpointDefault={pinpointDefault}
           initialCenter={initialCenter}
           initialZoom={initialZoom}
+          initialBounds={initialBounds}
+          cameraMinZoom={cameraMinZoom}
+          cameraMaxBounds={cameraMaxBounds}
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
           activeSlugs={activeSlugs}
@@ -180,7 +192,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppMapClient, {
   type CivicPin,
@@ -12,13 +12,18 @@ import type { MapPinPlace } from "@/components/map/types";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
-import { AMENITY_GROUPS } from "@/components/map/constants";
+import {
+  AMENITY_GROUPS,
+  FREDERICK_BROWSE_MAX_BOUNDS,
+  FREDERICK_BROWSE_MIN_ZOOM,
+  FREDERICK_COUNTY_BOUNDS,
+} from "@/components/map/constants";
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
-import { getScope, parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import { parseScope, scopeCentroid, setScope, SCOPE_PARAM, type Scope } from "@/lib/scope";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
@@ -143,14 +148,14 @@ export default function BrowseMapClient({
   // One clock per mount (see the doc comment above).
   const [now] = useState(() => new Date());
 
-  // The browsing lens (UX-02) this map should open under. A ?in= param on a
-  // shared link wins; otherwise the session's stored scope. Captured once per
-  // mount — the app template remounts on navigation, so a fresh scope arrives
-  // as a new mount, while a mid-session chip change (which router.refresh()es)
-  // won't yank the camera out from under a pan already in progress.
-  const [scope] = useState<Scope | null>(
-    () => parseScope(sp.get(SCOPE_PARAM)) ?? getScope(),
-  );
+  // A clean map entry is always the whole county. A shared link can still ask
+  // for a town or Near me with `?in=`, but a scope saved on another page must
+  // not silently turn the county map into a downtown/town close-up.
+  const explicitScope = parseScope(sp.get(SCOPE_PARAM));
+  const [scope] = useState<Scope>(() => explicitScope ?? "county");
+  useEffect(() => {
+    if (!explicitScope) setScope("county");
+  }, [explicitScope]);
   // A town scope resolves to a fixed centroid; nearme/county don't.
   const scopeCenter = scopeCentroid(scope);
 
@@ -167,11 +172,11 @@ export default function BrowseMapClient({
   //      county; a bad coord falls through),
   //   2. a TOWN scope — open on that town's centroid (this is the static
   //      initial view, so there's no jarring flyTo),
-  //   3. otherwise undefined → the whole-county default. A "near me" scope
+  //   3. otherwise the whole-county default. A "near me" scope
   //      carries no fixed point, so it falls here and is handled by
   //      recenterToKnownLocation below (fly to the device fix after mount).
   // Returns [lng, lat] for Mapbox; the ?at= row emits lat,lng.
-  const initialCenter = ((): [number, number] | undefined => {
+  const parsedAt = ((): [number, number] | null => {
     if (atParam) {
       const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(atParam.trim());
       if (m) {
@@ -180,10 +185,20 @@ export default function BrowseMapClient({
         if (lat >= 38.8 && lat <= 39.9 && lng >= -77.9 && lng <= -76.9) return [lng, lat];
       }
     }
+    return null;
+  })();
+  const initialCenter = ((): [number, number] => {
+    if (parsedAt) return parsedAt;
     if (scopeCenter) return [scopeCenter.lng, scopeCenter.lat];
     return [-77.41, 39.46];
   })();
-  const initialZoom = atParam ? 14 : scopeCenter ? 13.4 : scope === "nearme" ? 14 : 9.6;
+  const initialZoom = parsedAt ? 14 : scopeCenter ? 13.4 : scope === "nearme" ? 14 : 9.6;
+  // Near-me links still need a truthful whole-county fallback when no fresh,
+  // in-county cached fix exists. AppMap lets a valid cached fix outrank these
+  // bounds without auto-prompting for location.
+  const initialBounds = !parsedAt && (scope === "county" || scope === "nearme")
+    ? FREDERICK_COUNTY_BOUNDS
+    : undefined;
 
   const intent =
     intentParam && intentParam in INTENT_BY_KEY
@@ -279,7 +294,7 @@ export default function BrowseMapClient({
       // A TOWN scope wins over the intent-recenter, though: the user picked
       // that lens deliberately, so its centroid (initialCenter) holds.
       recenterToKnownLocation={
-        !atParam &&
+        !parsedAt &&
         scope !== "county" &&
         (Boolean(intent) || scope === "nearme") &&
         !scopeCenter
@@ -290,6 +305,9 @@ export default function BrowseMapClient({
       pinpointDefault={false}
       initialCenter={initialCenter}
       initialZoom={initialZoom}
+      initialBounds={initialBounds}
+      cameraMinZoom={FREDERICK_BROWSE_MIN_ZOOM}
+      cameraMaxBounds={FREDERICK_BROWSE_MAX_BOUNDS}
       initialAmenityGroups={initialAmenityGroups}
       // The map dock (MapDock) — the one instrument that replaced the
       // intent banner, sub strip, Open-now pill, and Layers drawer. The

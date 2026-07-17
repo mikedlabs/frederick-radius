@@ -3,6 +3,8 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { weatherVerdict } from "@/lib/weather-verdict";
+import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
+import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
 
@@ -61,6 +63,13 @@ const GREETING: Record<Band, string> = {
   overnight: "The early hours.",
 };
 
+function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 // The weather read beside the greeting comes from lib/weather-verdict —
 // the SAME engine NowIntel uses — so the hero and the "right now" line
 // can never disagree about one sky in one viewport. (This card used to
@@ -87,11 +96,22 @@ export default async function TodayCard() {
     day: "numeric",
   }).format(now);
 
-  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  // Weather alone cannot authorize "great time to get out." Fetch the official
+  // alert feed and current AQI beside it, with short ceilings so a slow safety
+  // provider never holds the whole hero hostage. A failed alert feed is carried
+  // forward explicitly; the verdict then falls back to neutral copy.
+  const [forecast, alertResult, airObservations] = await Promise.all([
+    getNwsForecast(FREDERICK_CENTER).catch(() => null),
+    within<NwsAlertsResult>(getNwsAlertsResult(), 2_500, { alerts: [], available: false }),
+    within(getAirQuality(FREDERICK_CENTER), 2_500, null),
+  ]);
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
   const high = forecast?.daily?.find((p) => p.isDaytime)?.temperature ?? null;
+  const freshAir = (airObservations ?? []).filter((obs) => isFreshAqiObservation(obs, now));
+  const worstAir = pickWorstAqi(freshAir);
+  const airQualityAvailable = airObservations !== null && freshAir.length > 0;
 
   // The NEXT sun event, not both — sunrise if it hasn't happened yet,
   // otherwise tonight's sunset, otherwise tomorrow's sunrise. (Replaces
@@ -107,16 +127,22 @@ export default async function TodayCard() {
     if (tmrw.sunrise) sun = { label: "Sunrise", time: fmtTime(tmrw.sunrise)! };
   }
 
-  const mood =
-    cur && forecast
-      ? weatherVerdict({
-          temp: cur.temperature,
-          shortForecast: cur.shortForecast,
-          precipNow: cur.probabilityOfPrecipitation ?? 0,
-          hourly: forecast.hourly,
-          now,
-        }).line
-      : null;
+  // Always run the verdict: official alerts/AQI must still surface if the
+  // ordinary forecast fails. Placeholder weather fields cannot produce a
+  // positive read because weatherAvailable explicitly fails closed below.
+  const mood = weatherVerdict({
+    temp: cur?.temperature ?? 70,
+    shortForecast: cur?.shortForecast ?? "",
+    precipNow: cur?.probabilityOfPrecipitation ?? 0,
+    forecastHigh: high,
+    activeAlerts: alertResult.alerts,
+    airQuality: worstAir ? { aqi: worstAir.aqi, category: worstAir.category.name } : null,
+    alertsAvailable: alertResult.available,
+    airQualityAvailable,
+    weatherAvailable: Boolean(cur && forecast),
+    hourly: forecast?.hourly ?? [],
+    now,
+  }).line;
 
   // Daytime by real sun times (the glyph's sun/moon depends on it).
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;

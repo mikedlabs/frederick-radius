@@ -12,7 +12,7 @@ import type { LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
-import { getScope, parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM } from "@/lib/scope";
+import { parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
 import { track } from "@/lib/track";
 import {
   TIME_WINDOWS,
@@ -37,11 +37,6 @@ type WhereSel =
   | { kind: "nearme" }
   | { kind: "town"; slug: string; name: string };
 
-/** Whole-county framing for the "Whole county" chip + clear-all. */
-const COUNTY_VIEW: { center: [number, number]; zoom: number } = {
-  center: [-77.41, 39.46],
-  zoom: 9.6,
-};
 const TOWN_ZOOM = 13.4;
 
 /**
@@ -127,6 +122,7 @@ export type MapDockProps = {
   geoMsg: string | null;
   goNearMe: () => void;
   flyTo: (center: [number, number], zoom: number) => void;
+  fitCounty: () => void;
 
   // ── Map ↔ list toggle ──
   listView: boolean;
@@ -251,10 +247,16 @@ export default function MapDock(props: MapDockProps) {
   // Match the readout to the scope that already seeded the map's camera.
   // localStorage is client-only, so this intentionally runs after hydration.
   useEffect(() => {
-    const scope = parseScope(sp.get(SCOPE_PARAM)) ?? getScope();
-    const applyReadout = (nextScope: ReturnType<typeof getScope>) => {
+    // A clean /map entry always starts at the county. Only an explicit `?in=`
+    // deep link narrows the initial readout; a town saved elsewhere in the app
+    // must not make the map silently open zoomed in.
+    const scope: Scope = parseScope(sp.get(SCOPE_PARAM)) ?? "county";
+    const applyReadout = (nextScope: Scope | null) => {
       if (nextScope === "nearme") {
-        setWhereSel({ kind: "nearme" });
+        // A requested Near me lens is not a location fix. Until a valid cached
+        // or freshly granted coordinate exists, keep the truthful County label
+        // while the camera shows the county fallback.
+        setWhereSel(props.userLoc ? { kind: "nearme" } : { kind: "county" });
         return;
       }
       const slug = scopeTownSlug(nextScope);
@@ -271,7 +273,7 @@ export default function MapDock(props: MapDockProps) {
       const slug = scopeTownSlug(nextScope);
       const town = slug ? MUNICIPALITIES.find((m) => m.slug === slug) : null;
       if (town) props.flyTo([town.centroid.lng, town.centroid.lat], TOWN_ZOOM);
-      else props.flyTo(COUNTY_VIEW.center, COUNTY_VIEW.zoom);
+      else props.fitCounty();
     });
   // One-shot initialization: camera moves append ?c= and must not reset a
   // deliberate Where choice by rerunning this effect.
@@ -345,11 +347,13 @@ export default function MapDock(props: MapDockProps) {
     haptic("light");
     setWhereSel({ kind: "town", slug, name });
     setScope(`town:${slug}`);
+    setParams((q) => q.set(SCOPE_PARAM, slug));
   };
   const goCounty = () => {
     haptic("light");
     setWhereSel({ kind: "county" });
     setScope("county");
+    setParams((q) => q.delete(SCOPE_PARAM));
   };
   // Explicit near-me tap (not the automatic fix-landed relabel, which must
   // not clobber a chosen town scope on every map mount): set the lens, then
@@ -357,6 +361,7 @@ export default function MapDock(props: MapDockProps) {
   const pickNearMe = () => {
     setWhereSel({ kind: "nearme" });
     setScope("nearme");
+    setParams((q) => q.set(SCOPE_PARAM, "nearme"));
   };
 
   // ── Derived caption state ──
@@ -518,7 +523,7 @@ export default function MapDock(props: MapDockProps) {
         aria-hidden
       />
 
-      <div className={`dock${pane ? " dock-open" : ""}`}>
+      <div className={`dock${pane ? " dock-open" : ""}`} data-map-dock>
         {/* ── The top-sheet pane — drops DOWN from under the caption bar
             over the scrim-dimmed map. ── */}
         <div

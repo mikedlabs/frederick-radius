@@ -242,9 +242,27 @@ export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
   [-77.09, 39.78],
 ];
 
-// Zoom clamp (6.2): minZoom 9 keeps the whole county in view at the
-// widest, maxZoom 19 is street level. Below 9 the county would float in a
-// sea of out-of-area map; above 19 Mapbox has no more tiles.
+/** Tight county extent used as a camera FIT target. This is deliberately
+ * separate from validation bounds and from the looser browse-map pan leash. */
+export const FREDERICK_COUNTY_BOUNDS: [[number, number], [number, number]] = [
+  [-77.70, 39.20],
+  [-77.08, 39.74],
+];
+
+/** The browse map needs breathing room around the county. Using the tight
+ * county extent as both fit target and maxBounds makes Mapbox zoom back in on
+ * mismatched screen shapes, clipping the very county we asked it to show. */
+export const FREDERICK_BROWSE_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-78.35, 38.75],
+  [-76.45, 40.20],
+];
+
+/** Narrow-phone minimum for the browse map only. Other embedded maps retain
+ * the stronger county-lock minimum below. */
+export const FREDERICK_BROWSE_MIN_ZOOM = 6.8;
+
+// Zoom clamp (6.2): embedded maps remain locally framed at minZoom 9. The
+// main browse map supplies its own responsive lower minimum.
 export const FREDERICK_MIN_ZOOM = 9;
 export const FREDERICK_MAX_ZOOM = 19;
 

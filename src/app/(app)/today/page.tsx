@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import TodayAsk from "@/components/today/TodayAsk";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
-import LocationPrime from "@/components/today/LocationPrime";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
 // clock) now lives in TodayCard inside the SkyHero — without a second
@@ -51,7 +49,6 @@ import { isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, pickTonightEvent } from "@/lib/today/tonight";
-import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -65,14 +62,11 @@ import EventWalkTime from "@/components/today/EventWalkTime";
  * Spine (post-findability pass, top to bottom — matches the render below):
  *
  *   1. SkyHero        → time-of-day sky + date/clock + tonight teaser
- *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
- *   3. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
- *                        right) + cravings grid + a "Getting around" row
- *   4. CivicAlerts    → worst-first heads-up (self-hides)
- *   5. What's on      → every public event in the city/county TODAY (no toggle)
- *   6. OnNowBand      → the live layer (markets · happy hour · specials · parking)
+ *   2. What's on      → every public event in the city/county TODAY (no toggle)
+ *   3. MastheadNotes  → dated local context (self-hides)
+ *   4. OnNowBand      → the live layer (markets · happy hour · specials · parking)
  *                        under one header, reordered by daypart (self-hides)
- *   7. The full briefing + More for today (collapsed)
+ *   5. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
  *  to FIND what you need, not a suggestion engine that tells you an idea you
@@ -149,7 +143,7 @@ export default async function HomePage() {
   const now = new Date();
 
   // ONE unified public event set — created here but intentionally NOT awaited.
-  // The static page chrome (sky, headline, holiday note, the craving grid) must
+  // The static page chrome (sky, headline, and dated local notes) must
   // paint on the first byte; each event-dependent region below awaits THIS one
   // shared promise inside its own <Suspense> boundary, so a cold ISR miss
   // streams the rail in progressively instead of blocking the whole shell on
@@ -238,28 +232,6 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
-      <MastheadNotes now={now} />
-
-      {/* ── ASK — the core promise, finally on the front door (UX-01 p1).
-          AskFrederick → /api/ask was fully built but had zero importers;
-          the July 2026 review called it the killer finding. Under the sky
-          hero so "what's my day look like" still leads, then the open
-          question, then tonight's answer. */}
-      <div
-        className="mt-4 rounded-[var(--app-radius-lg)] border px-3 py-3.5"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-      >
-        <TodayAsk action={<LocationPrime />} />
-
-      {/* ── RIGHT NOW — the fast lane. Put the page's two direct ways to ask
-          for something together: free-form Ask Radius, then one-tap intents.
-          On mobile this removes an event card, almanac caption, share row, and
-          live strip from the path to "I want coffee / food / a park." */}
-        <div className="mt-2.5" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-          <CravingStrip />
-        </div>
-      </div>
-
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
           themselves before seeing any value, and most people never touch a
@@ -272,10 +244,10 @@ export default async function HomePage() {
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
           tonight" card (the open-now and weekend answers were retired
-          earlier, and parking/transit live as CravingStrip tiles). That
+          earlier, and parking/transit have their own nearby tools). That
           tonight card duplicated the SkyHero's own tonight teaser, so the
           whole section + its buildTodayAnswers scaffolding came out. /today
-          now leads straight into the CravingStrip fast lane below. */}
+          now moves from the weather into the day's actual program. */}
 
       {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
           the day; once it's past ~9 PM (the "late" daypart, strictly on the
@@ -315,6 +287,11 @@ export default async function HomePage() {
       >
         <CuratedPicks />
       </Suspense>
+
+      {/* Keep rare dated context without interrupting the primary mobile path.
+          Weather now hands directly to the day's program; holiday, school,
+          creek, and community notes follow the first useful answers. */}
+      <MastheadNotes now={now} />
 
       {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
           the live layer): a returning user's own saved places that are open
@@ -385,7 +362,7 @@ export default async function HomePage() {
 
       {/* WHAT'S ON was relocated ABOVE Happy hour (owner call 2026-06-19):
           today's events are the headline "what's happening" answer, so they now
-          sit right after the I-want grid; the happy-hour / deals moat follows. */}
+          sit right after the weather; the happy-hour / deals moat follows. */}
 
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
@@ -396,7 +373,7 @@ export default async function HomePage() {
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
       {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
-          default so the first screen is just the ask + the answers. Depth
+          default so the first screen is weather + the day's program. Depth
           is one tap away, not the opening wall. Reversible: flip
           defaultOpen, or lift any module back above to taste. */}
       <CollapsibleSection

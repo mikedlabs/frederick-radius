@@ -3224,6 +3224,53 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: #fff;
 }
 
+/* A phone in landscape has only ~235px of map height. Stack the full three-row
+   instrument there and no camera can honestly show the whole county beneath
+   it. Keep every primary filter available in one horizontal strip; only the
+   secondary count/list foot yields until the phone returns to portrait. */
+@media (max-width: 1023.98px) and (max-height: 520px) and (orientation: landscape) {
+  .dock {
+    top: 4px;
+  }
+  .dock-head {
+    display: flex;
+    align-items: stretch;
+  }
+  .dock-search-wrap {
+    flex: 0 1 220px;
+    min-width: 170px;
+  }
+  .dock-search {
+    height: 52px;
+    border-right: 1px solid var(--app-border);
+    border-bottom: 0;
+  }
+  .dock-readout {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .dock-seg {
+    min-height: 52px;
+    padding-block: 5px 4px;
+  }
+  .dock-seg-k {
+    font-size: 7.5px;
+  }
+  .dock-seg-v {
+    font-size: 11px;
+  }
+  .dock-foot {
+    display: none;
+  }
+  .dock-host .mapboxgl-ctrl-bottom-right,
+  .dock-host .mapboxgl-ctrl-bottom-left {
+    bottom: 10px !important;
+  }
+  .dock-host .map-locate-fab {
+    bottom: 10px;
+  }
+}
+
 /* ── Persistent "near me" locate FAB — above the zoom cluster ── */
 .map-locate-fab {
   position: absolute;

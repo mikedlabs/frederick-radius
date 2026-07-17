@@ -30,7 +30,21 @@ export type VerdictInput = {
   activeAlerts?: Array<{
     event: string;
     severity?: "Minor" | "Moderate" | "Severe" | "Extreme" | "Unknown";
+    headline?: string;
+    description?: string;
   }>;
+  /** Worst current AirNow observation when available. AQI 101+ must suppress
+   *  outdoor-positive language even before an alert product is published. */
+  airQuality?: { aqi: number; category?: string } | null;
+  /** Whether the official NWS alert feed answered successfully. `false` is
+   *  different from an available feed with zero alerts. */
+  alertsAvailable?: boolean;
+  /** Whether a fresh AirNow observation was available. Empty, failed, or
+   * stale AQI data must not authorize outdoor-positive language. */
+  airQualityAvailable?: boolean;
+  /** Whether current/hourly forecast data was available. Safety products can
+   * still lead when it is false, but ordinary weather cannot be inferred. */
+  weatherAvailable?: boolean;
   /** Upcoming hours (already time-sorted), for precip-timing. */
   hourly: Array<{
     startTime: string;
@@ -110,6 +124,10 @@ export function weatherVerdict(input: VerdictInput): Verdict {
     now,
     forecastHigh,
     activeAlerts = [],
+    airQuality = null,
+    alertsAvailable = true,
+    airQualityAvailable = true,
+    weatherAvailable = true,
   } = input;
   const hour = easternHour(now);
   // Three time frames, so the words match the clock: overnight (22–05,
@@ -122,17 +140,70 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   // 0. Safety overrides. These run before every descriptive / cheerful
   // branch: a clear current hour is not "a good day to be outside" when an
   // active alert or a dangerous forecast high says otherwise.
-  const heatAlert = activeAlerts.find((a) => HEAT_ALERT.test(a.event));
-  if (heatAlert) {
+  const heatAlert = activeAlerts.find((a) => HEAT_ALERT.test(`${a.event} ${a.headline ?? ""}`));
+  const airAlert = activeAlerts.find((a) => AIR_ALERT.test(`${a.event} ${a.headline ?? ""} ${a.description ?? ""}`));
+  const airCopy = `${airAlert?.event ?? ""} ${airAlert?.headline ?? ""} ${airAlert?.description ?? ""}`;
+  const measuredAqi = airQuality && Number.isFinite(airQuality.aqi) ? airQuality.aqi : null;
+  const hazardousAir = /code\s*maroon|hazardous/i.test(airCopy)
+    || (measuredAqi !== null && measuredAqi >= 301);
+  const veryUnhealthyAir = /code\s*purple|very unhealthy/i.test(airCopy)
+    || (measuredAqi !== null && measuredAqi >= 201);
+  const unhealthyAir = /code\s*red|\bunhealthy\b.*general population/i.test(airCopy)
+    || (measuredAqi !== null && measuredAqi >= 151);
+  const sensitiveAir = Boolean(airAlert)
+    || /code\s*orange|sensitive groups/i.test(airCopy)
+    || (measuredAqi !== null && measuredAqi >= 101);
+
+  // Immediate/severe non-air hazards lead lower-severity air products. A Code
+  // Orange notice must never hide a Tornado or Flash Flood Warning simply
+  // because the air branch happens to run first.
+  const immediateAlert = activeAlerts.find((a) => {
+    const copy = `${a.event} ${a.headline ?? ""} ${a.description ?? ""}`;
+    return !AIR_ALERT.test(copy) && !HEAT_ALERT.test(copy) && (
+      a.severity === "Extreme" ||
+      a.severity === "Severe" ||
+      /\b(tornado|severe thunderstorm|flash flood|hurricane|tropical storm|blizzard|ice storm|extreme wind|snow squall).*\bwarning\b|\bwarning\b/i.test(copy)
+    );
+  });
+  if (immediateAlert) {
     return {
-      line: "Dangerous heat today, limit time outside and stay hydrated.",
+      line: `${immediateAlert.event} active, check conditions before heading out.`,
       tone: "rough",
     };
   }
-  const airAlert = activeAlerts.find((a) => AIR_ALERT.test(a.event));
-  if (airAlert) {
+  if (heatAlert && (hazardousAir || veryUnhealthyAir || unhealthyAir || sensitiveAir)) {
     return {
-      line: "Air quality alert active, take it easy outside.",
+      line: "Dangerous heat and unhealthy air today, limit time and exertion outside.",
+      tone: "rough",
+    };
+  }
+  if (hazardousAir) {
+    return {
+      line: "Hazardous air today, avoid outdoor activity and follow official guidance.",
+      tone: "rough",
+    };
+  }
+  if (veryUnhealthyAir) {
+    return {
+      line: "Very unhealthy air today, avoid strenuous activity outside.",
+      tone: "rough",
+    };
+  }
+  if (unhealthyAir) {
+    return {
+      line: "Unhealthy air today, avoid prolonged or heavy activity outside.",
+      tone: "rough",
+    };
+  }
+  if (sensitiveAir) {
+    return {
+      line: "Air is unhealthy for sensitive groups, take it easier outside.",
+      tone: "rough",
+    };
+  }
+  if (heatAlert) {
+    return {
+      line: "Dangerous heat today, limit time outside and stay hydrated.",
       tone: "rough",
     };
   }
@@ -197,6 +268,17 @@ export function weatherVerdict(input: VerdictInput): Verdict {
           ? "Wet evening, pick somewhere with a roof."
           : "Wet out, an indoor kind of day.",
       tone: "rough",
+    };
+  }
+
+  // Once immediate hazards/current precipitation have been handled, stop
+  // before any action-positive planning copy. A forecast that says showers
+  // later cannot authorize "get out before then" while either safety feed is
+  // unavailable or stale.
+  if (!alertsAvailable || !airQualityAvailable || !weatherAvailable) {
+    return {
+      line: "Live weather or air-safety data is temporarily unavailable; check conditions before heading out.",
+      tone: "mixed",
     };
   }
 
