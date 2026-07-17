@@ -41,6 +41,7 @@ function openLine(p: MapPinPlace): { text: string; tone: string } {
 export default function MapPeek({
   place,
   hostedEvent = null,
+  nearestGarage = null,
   userLoc,
   onClose,
   onDetails,
@@ -49,6 +50,9 @@ export default function MapPeek({
   /** The soonest upcoming event hosted AT this place (venue join), when
    *  the active event window holds one. Renders as one quiet line. */
   hostedEvent?: EventPin | null;
+  /** Nearest downtown garage within a short walk, with the live space
+   *  count when the feed reports one. Null outside garage range. */
+  nearestGarage?: { name: string; distM: number; available: number | null } | null;
   userLoc: LngLat | null;
   onClose: () => void;
   /** Open the full PlaceSheet for the deep read. */
@@ -145,6 +149,15 @@ export default function MapPeek({
                 hour: "numeric",
                 minute: "2-digit",
               }).format(new Date(hostedEvent.starts_at))}
+            </span>
+          )}
+          {nearestGarage && (
+            <span
+              className="map-peek-meta block truncate"
+              style={{ display: "block", color: "var(--app-ink-3)" }}
+            >
+              Park: {nearestGarage.name} · {formatDistance(nearestGarage.distM)}
+              {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
             </span>
           )}
         </span>

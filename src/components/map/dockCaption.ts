@@ -125,6 +125,8 @@ export function whenCaption(args: {
   openNow: boolean;
   /** ?deals=today active — the caption is the readout, so it must name it. */
   dealsOn?: boolean;
+  /** ?music=tonight active — tonight's confirmed shows only. */
+  musicTonight?: boolean;
   timeMode: TimeMode;
 }): WhenCaption {
   if (args.scrubHour != null) {
@@ -133,7 +135,12 @@ export function whenCaption(args: {
   const bits: string[] = [];
   if (args.openNow) bits.push("Open now");
   if (args.dealsOn) bits.push("Deals");
-  if (args.timeMode !== "all") bits.push(TIME_WINDOW_LABEL[args.timeMode]);
+  // Music forces the tonight window; the lens name says both, so the
+  // window label is dropped. "Music", not "Live music": the four equal
+  // .dock-seg columns clip long words (the County-not-Whole-county
+  // convention) — the pane's chip keeps the full label.
+  if (args.musicTonight) bits.push("Music");
+  else if (args.timeMode !== "all") bits.push(TIME_WINDOW_LABEL[args.timeMode]);
   if (bits.length === 0) return { text: "All day", mono: false, tone: "quiet" };
   return {
     text: bits.join(" · "),
@@ -187,6 +194,8 @@ export function dockDirty(args: {
   openNow: boolean;
   /** ?deals=today active (2026-07-17 map deals view). */
   dealsOn?: boolean;
+  /** ?music=tonight active. */
+  musicTonight?: boolean;
   timeModeExplicit: boolean;
   scrubActive: boolean;
   lensActive: boolean;
@@ -197,6 +206,7 @@ export function dockDirty(args: {
     args.intentActive ||
     args.openNow ||
     Boolean(args.dealsOn) ||
+    Boolean(args.musicTonight) ||
     args.timeModeExplicit ||
     args.scrubActive ||
     args.lensActive ||

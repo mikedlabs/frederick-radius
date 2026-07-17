@@ -95,6 +95,11 @@ export type BrowseDockInfo = {
   /** How many places in the current pool run a special today (computed
    *  BEFORE the deals filter, same convention as openNowCount). */
   dealsTodayCount: number;
+  /** ?music=tonight — the event layer collapsed to tonight's confirmed
+   *  live-music shows (same filter as /live-music). */
+  musicTonight: boolean;
+  /** Tonight's confirmed show count (offered before you commit). */
+  musicTonightCount: number;
   /** The active event window (explicit ?t=, or the time-aware default). */
   timeMode: TimeMode;
   /** True only when ?t= is explicitly in the URL — the default pick is
