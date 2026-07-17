@@ -9,7 +9,7 @@ import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 export const metadata: Metadata = {
   alternates: { canonical: "/nearby" },
   title: "Nearby",
-  description: "Tap what you want: coffee, ice cream, food. Get the nearest one that's open.",
+  description: "Find the nearest open coffee, food, drinks, shops, and things to do across Frederick County.",
 };
 
 // open_status is time-sensitive: a cached page would say "open" after close.
@@ -82,6 +82,7 @@ export default async function NowPage({
       initialFacet={facet ?? null}
       initialTown={context.filterMunicipality}
       initialScope={scope}
+      initialOriginSource={context.source}
       approxOrigin={context.origin}
       approxCity={context.source === "home"
         ? context.label.replace(/^Ranked from /, "")

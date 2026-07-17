@@ -53,7 +53,7 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
         {extra > 0 && <span style={{ color: "var(--app-ink-3)" }}>+{extra} more</span>}
         <Link
           href="/category/market"
-          className="font-semibold whitespace-nowrap"
+          className="tap-44-y font-semibold whitespace-nowrap"
           style={{ color: "var(--app-brand-press)" }}
         >
           All markets <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />

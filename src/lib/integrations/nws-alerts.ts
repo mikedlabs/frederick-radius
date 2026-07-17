@@ -54,6 +54,28 @@ type AlertsResp = {
   features?: Array<{ properties: AlertProperties }>;
 };
 
+export type NwsAlertsResult = {
+  alerts: NwsAlert[];
+  /** False means the official feed failed; an empty successful response is
+   *  available=true. Safety copy must be able to tell those states apart. */
+  available: boolean;
+};
+
+/** NWS can keep several revisions of one still-active product in the active
+ * feed. Keep the newest revision per event/area/expiry so Today never shows an
+ * alarming "+8 more" count for eight copies of the same air-quality notice. */
+function dedupeRevisions(alerts: NwsAlert[]): NwsAlert[] {
+  const newest = new Map<string, NwsAlert>();
+  for (const alert of alerts) {
+    const key = `${alert.event.toLowerCase()}|${alert.area.toLowerCase()}|${alert.ends_at}`;
+    const previous = newest.get(key);
+    if (!previous || Date.parse(alert.starts_at) > Date.parse(previous.starts_at)) {
+      newest.set(key, alert);
+    }
+  }
+  return [...newest.values()].sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
+}
+
 /**
  * Does this alert actually affect Frederick County, MD?
  *
@@ -84,7 +106,7 @@ function isForFrederickMD(p: AlertProperties): boolean {
   return false;
 }
 
-export async function getNwsAlerts(): Promise<NwsAlert[]> {
+export async function getNwsAlertsResult(): Promise<NwsAlertsResult> {
   // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
   // (prod runtime errors: connect ETIMEDOUT). The .catch below already
   // fail-softs to [], but without an abort the request can tie up the
@@ -98,10 +120,10 @@ export async function getNwsAlerts(): Promise<NwsAlert[]> {
       signal: ctrl.signal,
       next: { revalidate: 600 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { alerts: [], available: false };
     const data = (await res.json()) as AlertsResp;
     const features = data.features ?? [];
-    return features
+    const alerts = features
       .filter((f) => isForFrederickMD(f.properties))
       .map((f) => ({
         id: f.properties.id,
@@ -116,9 +138,14 @@ export async function getNwsAlerts(): Promise<NwsAlert[]> {
         area: f.properties.areaDesc,
         url: f.properties["@id"],
       }));
+    return { alerts: dedupeRevisions(alerts), available: true };
   } catch {
-    return [];
+    return { alerts: [], available: false };
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function getNwsAlerts(): Promise<NwsAlert[]> {
+  return (await getNwsAlertsResult()).alerts;
 }

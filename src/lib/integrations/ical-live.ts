@@ -1269,6 +1269,70 @@ async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchR
   return fetchIcalFeed(feed, windowDays);
 }
 
+/** Fetch a deliberately small subset of the live-feed registry. Feature pages
+ * can use this instead of paying for the countywide fanout when their scope is
+ * known in advance (for example, /beer only needs brewery-owned calendars). */
+export async function getLiveEventsForSources(
+  sources: readonly LiveEvent["source"][],
+  windowDays = 60,
+): Promise<{
+  events: LiveEvent[];
+  sources_succeeded: string[];
+  sources_failed: string[];
+}> {
+  const wanted = new Set(sources);
+  const results = await Promise.all(
+    FEEDS.filter((feed) => feed.url && wanted.has(feed.source)).map((feed) =>
+      fetchFeed(feed, windowDays).then((result) => ({
+        source: feed.source,
+        evts: result.events,
+        ok: result.ok,
+      })),
+    ),
+  );
+
+  const seen = new Map<string, LiveEvent>();
+  for (const { evts } of results) {
+    for (const event of evts) {
+      const key = liveEventDedupeKey(
+        event.title,
+        new Date(event.starts_at),
+        event.venue_name,
+      );
+      if (!seen.has(key)) seen.set(key, event);
+    }
+  }
+
+  return {
+    events: [...seen.values()]
+      .filter(
+        (event) =>
+          !EVENT_NOISE_FILTER
+          || (!isVenueStatusNonEvent(event.title) && !isNonPublicListing(event.title)),
+      )
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at)),
+    sources_succeeded: results.filter((result) => result.ok).map((result) => result.source),
+    sources_failed: results.filter((result) => !result.ok).map((result) => result.source),
+  };
+}
+
+export function getCachedLiveEventsForSources(
+  sources: readonly LiveEvent["source"][],
+  windowDays = 60,
+): ReturnType<typeof getLiveEventsForSources> {
+  const stableSources = [...new Set(sources)].sort();
+  return unstable_cache(
+    () => getLiveEventsForSources(stableSources, windowDays),
+    [
+      "live-events-by-source-v1",
+      stableSources.join(","),
+      String(windowDays),
+      process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+    ],
+    { revalidate: 300, tags: ["events"] },
+  )();
+}
+
 export async function getLiveEvents(windowDays = 60): Promise<{
   events: LiveEvent[];
   sources_succeeded: string[];

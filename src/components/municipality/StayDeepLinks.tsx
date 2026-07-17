@@ -31,9 +31,11 @@ import IconStamp from "@/components/ui/IconStamp";
 export default function StayDeepLinks({
   townName,
   townSlug,
+  compact = false,
 }: {
   townName: string;
   townSlug: string;
+  compact?: boolean;
 }) {
   // URL builders. Each platform has a slightly different shape:
   //   - Airbnb: free-text town search via path slug
@@ -70,6 +72,35 @@ export default function StayDeepLinks({
       sub: "Hotels + B&Bs · pre-filtered to the area",
     },
   ];
+
+  if (compact) {
+    return (
+      <section aria-labelledby="stay-deeplinks-heading" className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+        <div className="flex items-center gap-2">
+          <BedDouble className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+          <h3 id="stay-deeplinks-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Staying in {townName}?
+          </h3>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {links.map((link) => (
+            <li key={link.label}>
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              >
+                {link.label}
+                <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
 
   return (
     <section

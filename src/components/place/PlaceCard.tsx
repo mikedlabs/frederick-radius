@@ -536,21 +536,24 @@ export default function PlaceCard({
       className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 rounded-[var(--app-radius-lg)] px-2.5 py-2"
       style={{ background: "var(--app-bg-elevated-solid)" }}
     >
-      <div className="self-center">
+      <button
+        type="button"
+        onClick={openDetail}
+        aria-label={`View ${place.name} details`}
+        className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
+      />
+      <div className="pointer-events-none relative z-10 self-center">
         <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={46} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center">
+      <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">
-          <button
-            type="button"
-            onClick={openDetail}
-            aria-label={`View ${place.name} details`}
-            className="line-clamp-1 min-w-0 flex-1 text-left text-[15px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
+          <span
+            aria-hidden
+            className="line-clamp-1 min-w-0 flex-1 text-[15px] font-semibold leading-[1.2] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            <span className="absolute inset-0" aria-hidden />
             {place.name}
-          </button>
+          </span>
           {showSource && <SourceBadge place={place} size="sm" />}
           {place.distance_m !== undefined && (
             <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>

@@ -85,7 +85,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/amenities" },
   title: "Amenities",
   description:
-    "Public restrooms, Wi-Fi, EV charging, bike racks, picnic spots and playgrounds across Frederick County, plus what's coming next.",
+    "Public restrooms, water, Wi-Fi, EV charging, bike racks, benches, dog-bag stations, picnic spots and playgrounds across Frederick County.",
 };
 
 // Static OSM amenities change only on rebuild, but field-collected counts come
@@ -140,7 +140,7 @@ export default async function AmenitiesPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/map"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="tap-44-y inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -156,16 +156,15 @@ export default async function AmenitiesPage() {
           className="font-serif text-[32px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Amenities: what&apos;s here, and what&apos;s coming.
+          Useful things, mapped.
         </h1>
         <p
           className="text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          The county runs on more than restaurants and museums. Restrooms,
-          Wi-Fi, EV stations, benches, the dull-but-useful layer that turns
-          a walk into a trip you actually finish. Here&apos;s what we map
-          today, and what we&apos;re adding next.
+          Restrooms, water, benches, outlets, dog bags, Wi-Fi and the other
+          small things that can save a trip. Open a category to see every
+          mapped point nearby.
         </p>
       </header>
 
@@ -179,10 +178,6 @@ export default async function AmenitiesPage() {
           href="/map"
           cta="Open map"
         />
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Open <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Layers</span> on the
-          map to filter to the kind you need.
-        </p>
         <ul
           className="grid grid-cols-2 gap-2.5"
           aria-label="Live amenity kinds"
@@ -355,7 +350,7 @@ export default async function AmenitiesPage() {
         </p>
         <Link
           href="/submit/place"
-          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+          className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
           style={{ background: "var(--app-brand-press)" }}
         >
           Submit an amenity

@@ -25,6 +25,10 @@ import type { CommerceLink } from "@/lib/commerce/types";
 export type PatchFields = {
   name?: string;
   category?: string;
+  /** Additional real roles a place serves without replacing its primary one.
+   *  Example: a deli can also be a coffee stop, and a cafe can also answer a
+   *  food request. These feed the canonical multi-category intent matcher. */
+  subcategories?: string[];
   short_blurb?: string;
   /** Human-confirmed contact and location corrections. These fields take
    * precedence over stale scrape data and automated coordinate snapping. */
@@ -119,6 +123,7 @@ export function patchRecord<T extends { slug: string }>(
   const out: T = { ...p };
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
+  if (x.subcategories) (out as Record<string, unknown>).subcategories = x.subcategories;
   if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
   if (x.address) (out as Record<string, unknown>).address = x.address;
   if (x.city) (out as Record<string, unknown>).city = x.city;

@@ -183,6 +183,7 @@ export default async function ParksPage() {
               title={g.name}
               count={g.list.length}
               countLabel={g.list.length === 1 ? "park" : "parks"}
+              headingLevel={2}
               storageKey={`fr.parks.${g.slug}`}
               defaultOpen={i === 0}
             >

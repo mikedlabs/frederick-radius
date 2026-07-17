@@ -831,7 +831,7 @@ export default function EventsExplorer({
                           }}
                           aria-expanded={isOpen}
                           disabled={isOpen && loadingAll}
-                          className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
+                          className="tactile tactile-interactive flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
                           style={{
                             borderColor: "var(--app-border)",
                             background: "var(--app-bg-elevated)",

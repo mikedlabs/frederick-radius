@@ -33,6 +33,7 @@ export default function CollapsibleSection({
   count,
   countLabel,
   countAriaOnly = false,
+  headingLevel,
   storageKey,
   defaultOpen = false,
   children,
@@ -47,6 +48,8 @@ export default function CollapsibleSection({
    *  aria-label) but hide it visually — counts are supporting detail, not
    *  a badge competing with the section title. */
   countAriaOnly?: boolean;
+  /** Optional semantic heading for sections whose children contain headings. */
+  headingLevel?: 2 | 3;
   /** localStorage key so the open/closed choice persists per section. */
   storageKey: string;
   defaultOpen?: boolean;
@@ -87,40 +90,42 @@ export default function CollapsibleSection({
       ? `${title} (${count}${countLabel ? ` ${countLabel}` : ""})`
       : title;
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-expanded={mounted ? open : defaultOpen}
+      aria-controls={contentId}
+      className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
+    >
+      <span className="flex items-baseline gap-2">
+        <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{title}</span>
+        {typeof count === "number" && !countAriaOnly && (
+          <span
+            className="text-[10px] font-medium uppercase tracking-[0.1em] tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {count}
+            {countLabel ? ` ${countLabel}` : ""}
+          </span>
+        )}
+      </span>
+      <ChevronDown
+        className="h-4 w-4 shrink-0 transition-transform duration-200"
+        strokeWidth={2.25}
+        aria-hidden
+        style={{
+          color: "var(--app-ink-3)",
+          transform: open ? "rotate(180deg)" : "none",
+          transitionTimingFunction: "var(--app-ease-spring)",
+        }}
+      />
+    </button>
+  );
+
   return (
     <section aria-label={ariaTitle} className={className}>
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={mounted ? open : defaultOpen}
-        aria-controls={contentId}
-        className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
-      >
-        <span className="flex items-baseline gap-2">
-          <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {title}
-          </span>
-          {typeof count === "number" && !countAriaOnly && (
-            <span
-              className="text-[10px] font-medium uppercase tracking-[0.1em] tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {count}
-              {countLabel ? ` ${countLabel}` : ""}
-            </span>
-          )}
-        </span>
-        <ChevronDown
-          className="h-4 w-4 shrink-0 transition-transform duration-200"
-          strokeWidth={2.25}
-          aria-hidden
-          style={{
-            color: "var(--app-ink-3)",
-            transform: open ? "rotate(180deg)" : "none",
-            transitionTimingFunction: "var(--app-ease-spring)",
-          }}
-        />
-      </button>
+      {headingLevel === 2 ? <h2>{trigger}</h2> : headingLevel === 3 ? <h3>{trigger}</h3> : trigger}
       <div id={contentId} hidden={!open} className="pt-1.5">
         {children}
       </div>

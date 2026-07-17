@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
   PARKING_GARAGES,
   PARKING_RATE_SCHEDULE,
@@ -103,11 +104,10 @@ const PARK_INTENTS: ParkIntent[] = [
   },
   {
     label: "Car was towed",
-    hint: "Call the City Parking Department BEFORE the police: most tows are routine",
+    hint: `Call City Parking: ${PARKING_OFFICE.phone}`,
     icon: AlertTriangle,
     accent: "var(--app-warning)",
-    href: CITY_PARKING_URL,
-    external: true,
+    href: `tel:${PARKING_OFFICE.phone.replace(/[^0-9]/g, "")}`,
   },
   {
     label: "Monthly permit",
@@ -207,12 +207,8 @@ export default async function ParkingPage() {
           className="text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Downtown Frederick has five city-owned garages, all open
-          24/7, all on the ParkMobile app. Street parking is metered
-          via numbered ParkMobile zones (the number is on the sign;
-          enter it in the app to pay). Pick the garage closest to
-          where you are headed. Distances downtown are tiny, but the
-          right garage saves a five-minute walk.
+          Five city garages, all open 24/7. Start with where you&rsquo;re
+          headed; Radius will point you to the closest useful deck.
         </p>
       </header>
 
@@ -274,6 +270,9 @@ export default async function ParkingPage() {
         >
           {PARKING_RATE_SCHEDULE.freeWindow}
         </p>
+        <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          Pay with ParkMobile, cash, or a credit card.
+        </p>
       </section>
 
       {/* Common requests — intent-led entry tiles, same pattern as
@@ -292,156 +291,59 @@ export default async function ParkingPage() {
         >
           Common requests
         </h2>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ul className="shelf-rail shelf-grid-sm -mx-4 gap-2 px-4 pb-2 sm:mx-0 sm:grid-cols-4 sm:px-0">
           {PARK_INTENTS.map((intent) => {
             const Icon = intent.icon;
-            return (
-              <li key={intent.label}>
-                <a
-                  href={intent.href}
-                  target={intent.external ? "_blank" : undefined}
-                  rel={intent.external ? "noopener noreferrer" : undefined}
-                  aria-label={`${intent.label}: ${intent.hint}`}
-                  className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    boxShadow:
-                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                  }}
+            const cardClass = "hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition";
+            const cardStyle = {
+              borderColor: "var(--app-border)",
+              boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            };
+            const body = (
+              <>
+                <span
+                  aria-hidden
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                  style={{ background: `color-mix(in srgb, ${intent.accent} 14%, transparent)` }}
                 >
-                  <span
-                    aria-hidden
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${intent.accent} 14%, transparent)`,
-                    }}
+                  <Icon className="h-4 w-4" strokeWidth={2} style={{ color: intent.accent }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                    {intent.label}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                    {intent.hint}
+                  </span>
+                </span>
+              </>
+            );
+            return (
+              <li key={intent.label} className="w-[10rem] shrink-0 snap-start sm:w-auto">
+                {intent.href.startsWith("/") ? (
+                  <Link
+                    href={intent.href}
+                    aria-label={`${intent.label}: ${intent.hint}`}
+                    className={cardClass}
+                    style={cardStyle}
                   >
-                    <Icon
-                      className="h-4 w-4"
-                      strokeWidth={2}
-                      style={{ color: intent.accent }}
-                    />
-                  </span>
-                  <span className="min-w-0">
-                    <span
-                      className="block text-[13px] font-semibold leading-tight"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {intent.label}
-                    </span>
-                    <span
-                      className="mt-0.5 block text-[11px] leading-snug"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {intent.hint}
-                    </span>
-                  </span>
-                </a>
+                    {body}
+                  </Link>
+                ) : (
+                  <a
+                    href={intent.href}
+                    target={intent.external ? "_blank" : undefined}
+                    rel={intent.external ? "noopener noreferrer" : undefined}
+                    aria-label={`${intent.label}: ${intent.hint}`}
+                    className={cardClass}
+                    style={cardStyle}
+                  >
+                    {body}
+                  </a>
+                )}
               </li>
             );
           })}
-        </ul>
-      </section>
-
-      {/* Method tile row — quick glance at HOW the city's parking
-          system works before listing where the garages are. */}
-      <section
-        aria-labelledby="parking-method-heading"
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <h2
-          id="parking-method-heading"
-          className="eyebrow"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          How payment works
-        </h2>
-        <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <li className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-                color: "var(--app-brand)",
-              }}
-            >
-              <Smartphone className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </span>
-            <span>
-              <span
-                className="block text-[13px] font-semibold leading-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                ParkMobile
-              </span>
-              <span
-                className="mt-0.5 block text-[12px] leading-snug"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Every garage + every metered street is in the app. Enter
-                the zone number on the sign and pay.
-              </span>
-            </span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-                color: "var(--app-cool)",
-              }}
-            >
-              <CreditCard className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </span>
-            <span>
-              <span
-                className="block text-[13px] font-semibold leading-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                Pay-at-exit
-              </span>
-              <span
-                className="mt-0.5 block text-[12px] leading-snug"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Garages have a kiosk at the exit lane. Card or contactless
-                tap works.
-              </span>
-            </span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--app-accent) 14%, transparent)",
-                color: "var(--app-accent-press)",
-              }}
-            >
-              <Clock className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </span>
-            <span>
-              <span
-                className="block text-[13px] font-semibold leading-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                Monthly permit
-              </span>
-              <span
-                className="mt-0.5 block text-[12px] leading-snug"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                If you park downtown daily, the City Parking Department
-                sells monthly permits per garage.
-              </span>
-            </span>
-          </li>
         </ul>
       </section>
 
@@ -602,13 +504,12 @@ export default async function ParkingPage() {
           shapefile data we link out for specifics, but the rules
           themselves are documented here so a visitor knows what to
           look for. */}
-      <section className="space-y-3">
-        <h2
-          className="font-serif text-[22px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Street parking
-        </h2>
+      <CollapsibleSection
+        title="Street parking rules"
+        headingLevel={2}
+        storageKey="fr.parking.street-rules"
+        className="space-y-3"
+      >
         <p
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
@@ -662,7 +563,7 @@ export default async function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/179/Snow-Removal"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
+                className="tap-44-y mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 See snow-emergency route map
@@ -712,7 +613,7 @@ export default async function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/172/Street-Sweeping"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
+                className="tap-44-y mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 See street-sweeping schedule
@@ -762,7 +663,7 @@ export default async function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/142/Parking"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
+                className="tap-44-y mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 Residential parking info
@@ -833,23 +734,17 @@ export default async function ParkingPage() {
             route or street-cleaning violation.
           </span>
         </p>
-      </section>
+      </CollapsibleSection>
 
       {/* Accessible parking + the City parking office — the buried-civic
           answers (verified against the City, 2026-06). */}
-      <section
-        aria-labelledby="parking-access-heading"
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-        style={{ borderColor: "var(--app-border)" }}
+      <CollapsibleSection
+        title="Accessible parking & city office"
+        headingLevel={2}
+        storageKey="fr.parking.accessible"
       >
-        <h2
-          id="parking-access-heading"
-          className="eyebrow"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Accessible parking
-        </h2>
-        <ul className="mt-2 space-y-1.5">
+        <div className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" style={{ borderColor: "var(--app-border)" }}>
+        <ul className="space-y-1.5">
           {PARKING_ACCESSIBILITY.map((rule) => (
             <li
               key={rule}
@@ -871,32 +766,30 @@ export default async function ParkingPage() {
           <span>{PARKING_OFFICE.address}</span>
           <a
             href={`tel:${PARKING_OFFICE.phone.replace(/[^0-9]/g, "")}`}
-            className="font-semibold underline-offset-2 hover:underline"
+            className="tap-44-y font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             {PARKING_OFFICE.phone}
           </a>
         </div>
-      </section>
+        </div>
+      </CollapsibleSection>
 
       {/* Printable City maps relevant to parking (downtown parking, snow
           routes, street sweeping, mobility district). */}
-      <section
-        aria-labelledby="parking-maps-heading"
-        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
-        style={{ borderColor: "var(--app-border)" }}
+      <CollapsibleSection
+        title="Printable city maps"
+        headingLevel={2}
+        storageKey="fr.parking.maps"
       >
-        <h2 id="parking-maps-heading" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Printable maps
-        </h2>
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" style={{ borderColor: "var(--app-border)" }}>
           {cityMapsFor("/parking").map((m) => (
             <li key={m.id}>
               <a
                 href={m.blobUrl ?? m.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
+                className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
               >
                 {m.title} (PDF)
@@ -904,7 +797,7 @@ export default async function ParkingPage() {
             </li>
           ))}
         </ul>
-      </section>
+      </CollapsibleSection>
 
       <footer
         className="space-y-2 border-t pt-4 text-[12px]"
@@ -918,19 +811,13 @@ export default async function ParkingPage() {
             href="https://www.cityoffrederickmd.gov/142/Parking"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-0.5 font-semibold underline-offset-2 hover:underline"
+            className="tap-44-y inline-flex items-center gap-0.5 font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             cityoffrederickmd.gov/parking
             <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
           </a>
           .
-        </p>
-        <p>
-          Street parking zone polygons (the numbered ParkMobile zones
-          on every block) are coming once we get the official shapefile
-          from the City. If you work in parking ops and can share, get
-          in touch.
         </p>
       </footer>
     </div>

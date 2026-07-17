@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Tag, ArrowRight, DoorOpen, Phone } from "lucide-react";
+import { MapPin, Calendar, Building2, Tag, ArrowRight, ChevronDown, DoorOpen, Phone } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
-import { searchCivicActions } from "@/lib/search/civic";
+import {
+  isHighConfidenceCivicIntent,
+  searchCivicActions,
+  shouldShowDepartmentAnswers,
+} from "@/lib/search/civic";
 import { CRAVING_BY_KEY } from "@/data/cravings";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SearchInput from "@/components/search/SearchInput";
@@ -100,6 +104,76 @@ function displayFor(hit: SearchHit): Display {
   }
 }
 
+function keyFor(hit: SearchHit): string {
+  return `${hit.type}:${
+    hit.type === "place" ? hit.place.slug
+      : hit.type === "event" ? hit.event.slug
+        : hit.type === "municipality" ? hit.municipality.slug
+          : hit.type === "page" ? hit.page.href
+            : hit.category.slug
+  }`;
+}
+
+function SearchResultRow({
+  hit,
+  dominantType,
+  divided,
+}: {
+  hit: SearchHit;
+  dominantType?: string;
+  divided: boolean;
+}) {
+  const d = displayFor(hit);
+  const Icon = d.Icon;
+  return (
+    <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+      <Link
+        href={d.href}
+        prefetch={false}
+        className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
+      >
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
+        >
+          {d.categorySlug ? (
+            <CategoryIcon
+              slug={d.categorySlug}
+              className="h-4 w-4"
+              strokeWidth={1.8}
+              style={{ color: d.badge.color }}
+            />
+          ) : (
+            <Icon className="h-4 w-4" strokeWidth={2} style={{ color: d.badge.color }} />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+            {d.title}
+          </span>
+          {d.subtitle && (
+            <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              {d.subtitle}
+            </span>
+          )}
+        </span>
+        {hit.type !== dominantType && (
+          <span
+            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
+            style={{
+              background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
+              color: "var(--app-ink-2)",
+            }}
+          >
+            {d.badge.label}
+          </span>
+        )}
+      </Link>
+    </li>
+  );
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -117,22 +191,46 @@ export default async function SearchPage({
   // colored icon already carries the type). Rows of the DOMINANT type drop
   // the pill; only rows of a different kind keep their label — so a
   // homogeneous list shows none at all (typography over badges).
-  const typeCounts = new Map<string, number>();
-  for (const h of hits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
-  const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-
   // Answer-first: a query like "coffee open now near me" leads with a direct
   // answer that jumps to the nearest-open coffee, instead of only floating
   // coffee up a text list the user has to scan. The ranked list stays below.
-  const answer = query ? primaryAnswerFor(query) : null;
+  const inferredAnswer = query ? primaryAnswerFor(query) : null;
   // Civic layer — the overlay has carried this since the North Star build,
   // but the full /search page didn't: "report a pothole" ranked a church
   // (stray token) with no county answer in sight. Departments with their
   // phone numbers + the county's own How-Do-I links lead the list.
-  const govAnswers = query ? findDepartments(query) : [];
-  const civicAnswers = query
-    ? searchCivicActions(query, 2).filter((c) => !govAnswers.some((d) => d.website === c.href))
+  const departmentCandidates = query ? findDepartments(query) : [];
+  const civicCandidates = query ? searchCivicActions(query, 2) : [];
+  const suppressLocalHits = isHighConfidenceCivicIntent(query, civicCandidates);
+  // A one-word overlap is not a trustworthy resident-task answer. Keep the
+  // official action row for complete civic intents; otherwise let a clearly
+  // requested department fallback handle the question without inventing a
+  // second, weak recommendation (for example, a water-bill link for "water
+  // outage" or any government card for "water park").
+  const civicAnswers = suppressLocalHits ? civicCandidates : [];
+  // Department matching is intentionally broad for Ask routing, but the
+  // visible search page only admits it when the query actually reads like a
+  // civic task. This keeps Animal Control out of "dog friendly restaurant"
+  // and similarly weak water/health/transit overlaps. When a specific
+  // official action exists, it stands alone instead of being followed by a
+  // vaguer department card.
+  const govAnswers = shouldShowDepartmentAnswers(query, civicCandidates)
+    ? departmentCandidates
     : [];
+  // A COMPLETE civic task can replace fuzzy local matches. A weak department
+  // overlap cannot: "water park", "health food", "bus station", and "dog
+  // friendly restaurant" still need their valid places and guides.
+  // A complete civic task must lead with its authoritative action. Generic
+  // craving inference sees words like "food" or "liquor" inside license
+  // questions; letting that card render first would route the user to nearby
+  // restaurants or stores instead of the official licensing answer.
+  const answer = suppressLocalHits ? null : inferredAnswer;
+  const rankedHits = suppressLocalHits ? [] : hits;
+  const typeCounts = new Map<string, number>();
+  for (const h of rankedHits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
+  const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const primaryHits = rankedHits.slice(0, 12);
+  const remainingHits = rankedHits.slice(12);
   const answerColor = answer
     ? answer.key === "open-now"
       ? "var(--app-positive)"
@@ -146,7 +244,7 @@ export default async function SearchPage({
           className="font-serif text-[24px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Search
+          Search Frederick
         </h1>
         <SearchInput defaultValue={query} />
       </header>
@@ -157,8 +255,8 @@ export default async function SearchPage({
         <Link
           href={answer.href}
           aria-label={`${answer.label}: ${answer.kicker}`}
-          className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
-          style={{ borderColor: `color-mix(in srgb, ${answerColor} 34%, var(--app-border))`, background: "var(--app-bg-elevated)" }}
+          className="tactile-interactive flex min-h-[64px] items-center gap-3 border-y px-1 py-3"
+          style={{ borderColor: `color-mix(in srgb, ${answerColor} 34%, var(--app-border))` }}
         >
           <span
             aria-hidden
@@ -183,12 +281,42 @@ export default async function SearchPage({
           the ranked list so a civic question is answered before any fuzzy
           place match. Phone numbers render on the card (tel: on mobile). */}
       {(govAnswers.length > 0 || civicAnswers.length > 0) && (
-        <section aria-label="County and city answers" className="space-y-2">
-          {govAnswers.map((d) => (
+        <section
+          aria-label="Official county and city answers"
+          className="overflow-hidden border-y"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          {/* A direct resident task is more useful than a broad department
+              match, so it leads when both exist (for example Food Control
+              before the generic building-permits department). */}
+          {civicAnswers.map((c, index) => (
+            <a
+              key={c.id}
+              href={c.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tactile-interactive flex min-h-[56px] items-center gap-3 px-3.5 py-2.5"
+              style={index > 0
+                ? { borderTop: "1px solid var(--app-border)" }
+                : undefined}
+            >
+              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", color: "var(--app-brand-2)" }}>
+                <Building2 className="h-4 w-4" strokeWidth={2.25} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
+                <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{c.subtitle}</span>
+              </span>
+              <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />
+            </a>
+          ))}
+          {govAnswers.map((d, index) => (
             <div
               key={d.slug}
-              className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5"
-              style={{ borderColor: "var(--app-border)" }}
+              className="p-3.5"
+              style={civicAnswers.length > 0 || index > 0
+                ? { borderTop: "1px solid var(--app-border)" }
+                : undefined}
             >
               <div className="flex items-start gap-3">
                 <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
@@ -214,32 +342,13 @@ export default async function SearchPage({
               </div>
             </div>
           ))}
-          {civicAnswers.map((c) => (
-            <a
-              key={c.id}
-              href={c.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tactile tactile-interactive flex min-h-[52px] items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-            >
-              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", color: "var(--app-brand-2)" }}>
-                <Building2 className="h-4 w-4" strokeWidth={2.25} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{c.title}</span>
-                <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{c.subtitle}</span>
-              </span>
-              <ArrowRight aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} />
-            </a>
-          ))}
         </section>
       )}
 
       {!query && (
         <div className="space-y-3">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Try asking
+            Start with
           </p>
           {/* Answer-style prompts — the same "Ask Radius" register as Today.
               Each one ROUTES to a real surface that actually answers it
@@ -247,24 +356,26 @@ export default async function SearchPage({
               on the map) rather than running a dead text query. Only intents
               with an honest destination are listed — no prompt that leads to
               an empty result. */}
-          <ul className="flex flex-wrap gap-2">
+          <ul
+            className="grid grid-cols-2 overflow-hidden border-y"
+            style={{ borderColor: "var(--app-border)" }}
+          >
             {[
-              { label: "I have 90 minutes downtown", href: "/collections/frederick-without-a-plan" },
-              { label: "A rain plan", href: "/collections/rainy-day-frederick" },
-              { label: "Out with the kids", href: "/collections/kid-energy-burners" },
+              { label: "Open right now", href: "/open-now" },
+              { label: "Coffee nearby", href: "/nearby?c=coffee" },
+              { label: "This weekend", href: "/events?lens=weekend" },
+              { label: "Out with kids", href: "/collections/kid-energy-burners" },
               { label: "Walkable date night", href: "/collections/walkable-date-night" },
-              { label: "Local favorites", href: "/collections/hidden-gems" },
-              { label: "What's on this weekend", href: "/events?lens=weekend" },
-              { label: "Coffee near me", href: "/category/coffee" },
-              { label: "What's open right now", href: "/open-now" },
+              { label: "Rainy-day ideas", href: "/collections/rainy-day-frederick" },
             ].map((p) => (
-              <li key={p.label}>
+              <li key={p.label} className="border-b odd:border-r" style={{ borderColor: "var(--app-border)" }}>
                 <Link
                   href={p.href}
-                  className="tactile tactile-interactive inline-flex items-center rounded-full px-3.5 py-2 text-[13px] font-semibold"
+                  className="tactile-interactive flex min-h-[52px] items-center gap-2 px-3 py-2 text-[13px] font-semibold"
                   style={{ color: "var(--app-ink-2)" }}
                 >
-                  {p.label}
+                  <span className="min-w-0 flex-1">{p.label}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
                 </Link>
               </li>
             ))}
@@ -272,14 +383,12 @@ export default async function SearchPage({
         </div>
       )}
 
-      {query && hits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
-        <div
-          className="space-y-3 rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-        >
-          <p>No results for &ldquo;{query}&rdquo;. Try a category, town, or shorter phrase.</p>
+      {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
+        <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+          <p>No matches for &ldquo;{query}&rdquo;.</p>
+          <p>Try a shorter name, category, or town.</p>
           <p>
-            Looking for a county or city office?{" "}
+            Need a government office?{" "}
             <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
               Every service and who to call
             </Link>
@@ -287,87 +396,33 @@ export default async function SearchPage({
         </div>
       )}
 
-      {hits.length > 0 && (
-        <section className="space-y-2" aria-label={`${hits.length} results for ${query}`}>
-          <p
-            className="eyebrow"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {hits.length} {hits.length === 1 ? "match" : "matches"}
+      {rankedHits.length > 0 && (
+        <section className="space-y-2" aria-label={`${rankedHits.length} results for ${query}`}>
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            {rankedHits.length} {rankedHits.length === 1 ? "match" : "matches"}
+            {remainingHits.length > 0 ? " · best matches first" : ""}
           </p>
           <ul
-            className="reveal-up overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+            className="reveal-up overflow-hidden border-y"
             style={{ borderColor: "var(--app-border)" }}
           >
-            {hits.map((hit, index) => {
-              const d = displayFor(hit);
-              const Icon = d.Icon;
-              const key = `${hit.type}:${
-                hit.type === "place" ? hit.place.slug :
-                hit.type === "event" ? hit.event.slug :
-                hit.type === "municipality" ? hit.municipality.slug :
-                hit.type === "page" ? hit.page.href :
-                hit.category.slug
-              }`;
-              return (
-                <li key={key} style={index > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
-                  <Link
-                    href={d.href}
-                    prefetch={false}
-                    className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
-                  >
-                    <span
-                      aria-hidden
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                      style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
-                    >
-                      {d.categorySlug ? (
-                        <CategoryIcon
-                          slug={d.categorySlug}
-                          className="h-4 w-4"
-                          strokeWidth={1.8}
-                          style={{ color: d.badge.color }}
-                        />
-                      ) : (
-                        <Icon
-                          className="h-4 w-4"
-                          strokeWidth={2}
-                          style={{ color: d.badge.color }}
-                        />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className="block truncate text-[14px] font-semibold leading-tight"
-                        style={{ color: "var(--app-ink)" }}
-                      >
-                        {d.title}
-                      </span>
-                      {d.subtitle && (
-                        <span
-                          className="block truncate text-[12px]"
-                          style={{ color: "var(--app-ink-3)" }}
-                        >
-                          {d.subtitle}
-                        </span>
-                      )}
-                    </span>
-                    {hit.type !== dominantType && (
-                      <span
-                        className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em]"
-                        style={{
-                          background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
-                          color: "var(--app-ink-2)",
-                        }}
-                      >
-                        {d.badge.label}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
+            {primaryHits.map((hit, index) => (
+              <SearchResultRow key={keyFor(hit)} hit={hit} dominantType={dominantType} divided={index > 0} />
+            ))}
           </ul>
+          {remainingHits.length > 0 && (
+            <details className="group border-b" style={{ borderColor: "var(--app-border)" }}>
+              <summary className="tap-44 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-brand-press)" }}>
+                Show {remainingHits.length} more matches
+                <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={2} />
+              </summary>
+              <ul aria-label={`More results for ${query}`}>
+                {remainingHits.map((hit, index) => (
+                  <SearchResultRow key={keyFor(hit)} hit={hit} dominantType={dominantType} divided={index > 0} />
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
       )}
     </div>

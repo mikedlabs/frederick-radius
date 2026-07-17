@@ -308,7 +308,10 @@ export const CRAVINGS: Craving[] = [
     label: "Grocery",
     icon: "ShoppingCart",
     color: "var(--app-positive)",
-    match: (p) => GROCERY.test(p.name),
+    // Curated multi-role markets can carry `grocery` as an additional
+    // category even when their public name is simply "Trout's Market" or
+    // "Jubilee Foods" and does not hit the national-chain name regex.
+    match: (p) => p.category === "grocery" || GROCERY.test(p.name),
   },
   {
     // ~64 places (gallery 31 + museum 20 + theater 13). Spruce token (not

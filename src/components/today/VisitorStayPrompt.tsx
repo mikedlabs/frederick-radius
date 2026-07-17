@@ -16,5 +16,5 @@ import StayDeepLinks from "@/components/municipality/StayDeepLinks";
  * renders on first paint and is fully crawlable.
  */
 export default function VisitorStayPrompt() {
-  return <StayDeepLinks townName="Frederick" townSlug="frederick" />;
+  return <StayDeepLinks townName="Frederick" townSlug="frederick" compact />;
 }

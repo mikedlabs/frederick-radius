@@ -50,7 +50,7 @@ export const CIVIC_ACTIONS: CivicAction[] = [
   { id: "boards-commissions", verb: "find", label: "Boards & commissions", url: "https://www.frederickcountymd.gov/1518/Boards-Commissions" },
 
   // ── Pay ──
-  { id: "pay-bills", verb: "pay", label: "Bills online (taxes, utilities)", url: "https://www.frederickcountymd.gov/1372/Online-Bill-Inquiries-Payments", keywords: ["tax", "water", "sewer", "bill"] },
+  { id: "pay-bills", verb: "pay", label: "Bills online (taxes, utilities)", url: "https://www.frederickcountymd.gov/1372/Online-Bill-Inquiries-Payments", keywords: ["property tax", "water", "sewer", "bill"] },
 
   // ── Register for ──
   { id: "register-vote", verb: "register", label: "Voter registration", url: "https://frederickcountymd.gov/1648/Voter-Registration---RegisterMake-Change", keywords: ["vote", "election", "ballot"] },
@@ -74,7 +74,7 @@ export const CIVIC_ACTIONS: CivicAction[] = [
   { id: "permits", verb: "request", label: "Permits or inspections", url: "https://www.frederickcountymd.gov/7974/Permits-and-Inspections", keywords: ["building", "permit", "zoning"] },
   { id: "birth-death", verb: "request", label: "Birth or death certificates", url: "https://health.frederickcountymd.gov/186/Birth-Death-Certificates" },
   { id: "burn-permit", verb: "request", label: "Burn permit", url: "https://health.frederickcountymd.gov/344/Burn-Permit" },
-  { id: "food-license", verb: "request", label: "Food license", url: "https://health.frederickcountymd.gov/352/Food-Control", keywords: ["restaurant", "vendor"] },
+  { id: "food-license", verb: "request", label: "Food license", url: "https://health.frederickcountymd.gov/352/Food-Control", keywords: ["restaurant", "vendor", "permit", "health inspection"] },
   { id: "liquor-license", verb: "request", label: "Liquor license or inspection", url: "https://frederickcountymd.gov/1291/Liquor-Board" },
   { id: "public-records", verb: "request", label: "Public records (PIA)", url: "https://frederickcountymd.govqa.us/WEBAPP/_rs/supporthome.aspx", keywords: ["foia", "mpia"] },
   { id: "recycling-bin", verb: "request", label: "Replacement recycling bin", url: "https://www.frederickcountymd.gov/6842/Carts-Bins-for-Collecting-Recyclables" },
@@ -94,6 +94,14 @@ export const CIVIC_ACTIONS: CivicAction[] = [
 
 export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
   CIVIC_ACTIONS.filter((a) => a.verb === verb);
+
+const FOOD_CONTROL_INTENT =
+  /\b(?:(?:food|restaurant|vendor)\s+(?:license|permit)|(?:license|permit)\s+(?:for\s+)?(?:food|restaurant|vendor)|health inspection)\b/i;
+
+/** Keep broad discovery phrases such as "health food" out of Food Control. */
+export function civicActionFitsQuery(actionId: string, query: string): boolean {
+  return actionId !== "food-license" || FOOD_CONTROL_INTENT.test(query);
+}
 
 const CIVIC_INTENT =
   /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
@@ -126,9 +134,7 @@ export function matchCivicAction(query: string): CivicAction | null {
   );
   let best: CivicAction | null = null, bestScore = 0;
   for (const a of CIVIC_ACTIONS) {
-    if (a.id === "food-license" && !/\b(?:(?:food|restaurant|vendor)\s+(?:license|permit)|(?:license|permit)\s+(?:for\s+)?(?:food|restaurant|vendor)|health inspection)\b/i.test(query)) {
-      continue;
-    }
+    if (!civicActionFitsQuery(a.id, query)) continue;
     // An explicit action verb is a contract. "Find a trash can" must not
     // silently become "report missed recycling" just because both contain
     // the word trash.

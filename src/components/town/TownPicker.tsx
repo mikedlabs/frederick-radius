@@ -10,12 +10,12 @@ import type { TownStat } from "@/lib/guided/town-stats";
  */
 export default function TownPicker({ stats }: { stats: TownStat[] }) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2">
+    <ul className="grid grid-cols-2 gap-2.5">
       {stats.map((t) => (
         <li key={t.slug}>
           <Link
             href={`/m/${t.slug}`}
-            className="tactile tactile-interactive group relative block overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
+            className="tactile tactile-interactive group relative block h-full overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition sm:p-4"
             style={{
               borderColor: "var(--app-border)",
               boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -23,10 +23,10 @@ export default function TownPicker({ stats }: { stats: TownStat[] }) {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="font-serif text-[19px] leading-tight" style={{ color: "var(--app-ink)" }}>
+                <h2 className="font-serif text-[18px] leading-tight sm:text-[19px]" style={{ color: "var(--app-ink)" }}>
                   {t.name}
-                </h3>
-                <p className="mt-1 text-[13px] leading-snug text-pretty" style={{ color: "var(--app-ink-2)" }}>
+                </h2>
+                <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-pretty sm:text-[13px]" style={{ color: "var(--app-ink-2)" }}>
                   {t.fact}
                 </p>
               </div>
@@ -38,14 +38,14 @@ export default function TownPicker({ stats }: { stats: TownStat[] }) {
               />
             </div>
 
-            <div className="mt-3 flex items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            <div className="mt-3 flex flex-col gap-0.5 text-[11px] sm:flex-row sm:items-center sm:gap-x-2 sm:text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               <span>{t.placeCount} {t.placeCount === 1 ? "place" : "places"}</span>
-              <span aria-hidden>·</span>
-              <span>{t.eventCount > 0 ? `${t.eventCount} ${t.eventCount === 1 ? "event" : "events"} this week` : "No events this week"}</span>
+              <span aria-hidden className="hidden sm:inline">·</span>
+              <span>{t.eventCount > 0 ? `${t.eventCount} ${t.eventCount === 1 ? "event" : "events"} this week` : "Quiet this week"}</span>
             </div>
 
             {t.bestFor.length > 0 && (
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <div className="mt-2.5 hidden flex-wrap gap-1.5 sm:flex">
                 {t.bestFor.map((tag) => (
                   <span
                     key={tag}

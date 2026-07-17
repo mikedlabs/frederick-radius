@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
@@ -9,11 +9,9 @@ import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import Image from "next/image";
-import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import TownStrip from "@/components/municipality/TownStrip";
-import TownLocatorLine from "@/components/municipality/TownLocatorLine";
 import TownAlmanac from "@/components/municipality/TownAlmanac";
 import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
@@ -133,9 +131,9 @@ export default async function MunicipalityPage(
 
   // The lead pick gets the glow; the next handful fill a compact 2-up grid.
   const lead = worthYourTime[0];
-  const grid = worthYourTime.slice(1, 7);
+  const grid = worthYourTime.slice(1, 5);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
+  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 3);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
   // Buried-civic answers for this town (trash/recycling, hall, permits…),
   // null until the extraction agent populates it. The block self-hides.
@@ -154,7 +152,7 @@ export default async function MunicipalityPage(
   };
 
   return (
-    <div className="relative space-y-5">
+    <div className="relative space-y-5 sm:space-y-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
@@ -170,7 +168,16 @@ export default async function MunicipalityPage(
           ),
         }}
       />
-      <PageBloom variant="single" />
+      <nav aria-label="Breadcrumb">
+        <Link
+          href="/towns"
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          All towns
+        </Link>
+      </nav>
 
       {/* 1 — Town hero. CURATED imagery only (Photo Policy, Phase 3): our
           own seasonal county photography, never a random place's Google
@@ -198,7 +205,7 @@ export default async function MunicipalityPage(
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
           {townPhoto && (
-            <p className="absolute bottom-1 right-2 z-10 font-mono text-[9px] tracking-wide text-white/55">
+            <p className="absolute right-2 top-2 z-10 font-mono text-[9px] tracking-wide text-white/70">
               {townPhoto.author} · {townPhoto.license} · Wikimedia
             </p>
           )}
@@ -207,7 +214,7 @@ export default async function MunicipalityPage(
               {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
             </p>
             <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
-              {m.name}, Maryland
+              {m.name}
             </h1>
             <p className="font-serif text-[15px] italic leading-snug text-white/90 sm:text-[16px]">
               {m.hero_blurb}
@@ -216,14 +223,13 @@ export default async function MunicipalityPage(
         </div>
       </header>
 
+      {/* Town switching belongs near the town identity, not near the footer. */}
+      <TownStrip activeSlug={m.slug} />
+
       {/* 2 — Town-scoped search bar removed (owner call): it stacked a second
           search field directly under the global header search. The "All places
           in {town}" link in Worth-your-time below already pre-fills a
           town-scoped browse, so the redundant slab came out. */}
-
-      {/* 3 — Field-guide locator line: mono caps centroid coordinates,
-          echoing the Saved header's plate mark. */}
-      <TownLocatorLine centroid={m.centroid} type={m.type} />
 
       {/* 4 — Worth your time: the LEAD answer — the PLACES lead the page now
           (owner call: open with what's actionable + visual, not the town's
@@ -233,7 +239,7 @@ export default async function MunicipalityPage(
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
             <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Worth your time
+              Start here
             </h2>
             <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
               in {m.name}
@@ -263,7 +269,7 @@ export default async function MunicipalityPage(
               is the canonical "see everything" surface; pre-fill the town. */}
           <Link
             href={`/search?q=${encodeURIComponent(m.name)}`}
-            className="inline-flex items-center gap-1 text-[13px] font-semibold"
+            className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
             style={{ color: "var(--app-brand-press)" }}
           >
             All places in {m.name}
@@ -289,10 +295,7 @@ export default async function MunicipalityPage(
           the aerial archive covers render this; everywhere else self-hides. */}
       <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} label={m.name} maxMeters={1500} />
 
-      {/* 5 — Sibling-town nav as a slim row. */}
-      <TownStrip activeSlug={m.slug} />
-
-      {/* 6 — Upcoming — "what's happening." Kept tight (max 4); empty state
+      {/* Upcoming — "what's happening." Kept tight (max 3); empty state
           surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
@@ -302,7 +305,7 @@ export default async function MunicipalityPage(
             </h2>
             <Link
               href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
-              className="text-[13px] font-semibold"
+              className="tap-44 inline-flex items-center text-[13px] font-semibold"
               style={{ color: "var(--app-brand-press)" }}
             >
               All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
@@ -320,11 +323,11 @@ export default async function MunicipalityPage(
               style={{ borderColor: "var(--app-border)" }}
             >
               <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                Nothing on the calendar for {m.name} yet. It runs on word of mouth.
+                Nothing is listed for {m.name} yet.
               </p>
               <Link
                 href={`/submit/event?m=${m.slug}`}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+                className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
                 style={{ background: "var(--app-brand)" }}
               >
                 Submit an event for {m.name}
@@ -352,7 +355,7 @@ export default async function MunicipalityPage(
       <LivingHere slug={m.slug} townName={m.name} civic={civic} />
 
       {/* 8 — Footer card — the visitor's "where do I sleep?" answer. */}
-      <StayDeepLinks townName={m.name} townSlug={m.slug} />
+      <StayDeepLinks townName={m.name} townSlug={m.slug} compact />
     </div>
   );
 }

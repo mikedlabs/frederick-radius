@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Coffee,
   IceCream,
@@ -49,7 +49,8 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import { haptic } from "@/lib/haptics";
-import { setScope, subscribeScopeChange, scopeTownSlug, type Scope } from "@/lib/scope";
+import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
+import { canUseOriginForRanking, compareRightNowCandidates } from "@/lib/right-now-ranking";
 
 /**
  * RightNow — the one-tap craving answer.
@@ -110,6 +111,20 @@ const WALK_M_PER_MIN = 80;
 // while staying bounded; still sorted open-first then nearest.
 const RESULT_LIMIT = 16;
 
+// Keep the first screen useful instead of presenting all 20 intents at once.
+// The complete vocabulary remains one tap away, but the most common decisions
+// lead: eat, drink, get outside, hear music, shop, or find something for kids.
+const PRIMARY_CRAVING_KEYS = new Set([
+  "food",
+  "coffee",
+  "drinks",
+  "ice-cream",
+  "outside",
+  "music",
+  "shops",
+  "family",
+]);
+
 // Cuisine slugs that have their OWN I-want tab (Coffee, Drinks, Sweets), so the
 // Food cuisine chips stay food-focused instead of echoing the other tabs.
 const FOOD_FACET_EXCLUDE = new Set(["coffee", "bar", "brewery", "dessert"]);
@@ -127,6 +142,7 @@ export default function RightNow({
   initialFacet = null,
   initialTown = null,
   initialScope = null,
+  initialOriginSource = "none",
   approxOrigin = null,
   approxCity = null,
   approxStatus = "missing",
@@ -144,6 +160,9 @@ export default function RightNow({
   /** Shared browsing lens. County is a deliberate no-origin mode; near-me
    * may use device/IP; a town remains a hard municipality filter. */
   initialScope?: Scope | null;
+  /** Source of the server-provided ranking seed. Saved home is deliberate;
+   *  edge IP is coarse and must never trigger strict nearest-first. */
+  initialOriginSource?: DecisionOriginSource;
   /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
    *  print a distance). Null when out of area → Downtown default. */
   approxOrigin?: { lng: number; lat: number } | null;
@@ -175,6 +194,7 @@ export default function RightNow({
     initialTown && MUNICIPALITY_BY_SLUG[initialTown] ? initialTown : null,
   );
   const [scope, setScopeState] = useState<Scope | null>(initialScope);
+  const [showAllCravings, setShowAllCravings] = useState(false);
 
   useEffect(() => subscribeScopeChange((nextScope) => {
     setScopeState(nextScope);
@@ -198,29 +218,6 @@ export default function RightNow({
   // either way — you can't walk into a closed one.
   const [sort, setSort] = useState<"nearest" | "rated">("nearest");
 
-  // Arriving straight to an answer from a Today craving tile (?c=coffee skips
-  // the picker) should still ask for location, exactly like tapping a craving
-  // in the picker does — otherwise the deep-link path silently answers "near
-  // Downtown" and the only way to get "near you" is to spot the secondary
-  // button. Ask once, on arrival, when we haven't asked yet.
-  const askedOnArrival = useRef(false);
-  useEffect(() => {
-    if (askedOnArrival.current) return;
-    if (
-      initialCraving &&
-      !initialTown &&
-      scope !== "county" &&
-      (CRAVING_BY_KEY[initialCraving] || isMealKey(initialCraving)) &&
-      state.status === "idle"
-    ) {
-      askedOnArrival.current = true;
-      // The scope event updates local scope/town state through the subscription
-      // above; the device request owns its own async geolocation state.
-      setScope("nearme");
-      request();
-    }
-  }, [initialCraving, initialTown, scope, state.status, request]);
-
   // A town-scoped distance is distance from the town centroid, not the user.
   // Never print it as if it came from the device.
   const hasFix = state.status === "granted" && !townKey && scope !== "county";
@@ -234,6 +231,18 @@ export default function RightNow({
       ? { lng: state.position.lng, lat: state.position.lat }
       : approxOrigin;
   }, [state, approxOrigin, townKey, scope]);
+  // A device fix or a town the visitor deliberately chose can support a
+  // literal nearest-first sort. The coarse network/IP centroid is useful for
+  // regional framing only; treating it as precise recreated the old
+  // south-Frederick chain-first bug for people standing downtown.
+  const rankingOriginSource: DecisionOriginSource = townKey
+    ? "town"
+    : state.status === "granted"
+      ? "device"
+      : scope === "county"
+        ? "county"
+        : initialOriginSource;
+  const hasRankingOrigin = Boolean(origin) && canUseOriginForRanking(rankingOriginSource);
 
   // The selection is either a noun craving or a time-aware meal occasion
   // (breakfast/lunch/dinner/brunch/late, arrived at via the /today meal tile).
@@ -299,17 +308,33 @@ export default function RightNow({
         const open = Boolean(craving?.alwaysOpen) || isOpenNow(p.open_status);
         return { p, dist, open };
       })
-      .sort((a, b) => {
-        if (a.open !== b.open) return a.open ? -1 : 1; // open first, always
-        if (sort === "rated") {
-          const r = (b.p.google_rating ?? 0) - (a.p.google_rating ?? 0);
-          if (r) return r;
-          const c = (b.p.google_rating_count ?? 0) - (a.p.google_rating_count ?? 0);
-          if (c) return c;
-        }
-        return a.dist - b.dist; // nearest (and the tiebreak for top-rated)
-      });
-  }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin]);
+      .sort((a, b) => compareRightNowCandidates(a, b, sort, hasRankingOrigin));
+  }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin, hasRankingOrigin]);
+
+  // A town with no verified in-town match should not become a blank page.
+  // Keep the scope honest, then offer the three closest verified alternatives
+  // measured from that town's centroid. This is deliberately separate from
+  // `matched`: the header and count still say there are zero IN the town.
+  const nearbyTownFallback = useMemo(() => {
+    if (!townKey || matched.length > 0 || !origin) return [];
+    const passFacet = (p: PlaceCardData): boolean => {
+      if (!facetKey) return true;
+      if (craving?.cuisineFacets) return cuisinesOf(p).includes(facetKey);
+      const facet = craving?.facets?.find((candidate) => candidate.key === facetKey);
+      return facet ? matchesCravingFacet(facet, p) : true;
+    };
+    return cravingMatchedAll
+      .filter(passFacet)
+      .filter((place) => place.municipality !== townKey)
+      .map((place) => ({
+        place,
+        distance: haversineMeters(origin, place.geom),
+        open: Boolean(craving?.alwaysOpen) || isOpenNow(place.open_status),
+      }))
+      .sort((a, b) => Number(b.open) - Number(a.open) || a.distance - b.distance)
+      .slice(0, 3)
+      .map(({ place, distance }) => ({ place, distance }));
+  }, [cravingMatchedAll, craving, facetKey, townKey, matched.length, origin]);
 
   // Towns that actually have a result for this craving — so the town row only
   // offers places that lead somewhere, never a dead "0 in Myersville" chip.
@@ -352,10 +377,6 @@ export default function RightNow({
     params.set("c", key);
     params.delete("facet");
     window.history.pushState(null, "", `/nearby?${params.toString()}`);
-    // First craving with no location yet → ask, so the answer can be
-    // "nearest to YOU" rather than nearest to downtown. One prompt, then
-    // it's cached for the session.
-    if (state.status === "idle" && scope !== "county") activateMyLocation();
   }
 
   useEffect(() => {
@@ -372,34 +393,44 @@ export default function RightNow({
 
   // ── Craving picker (the front door) ──
   if (!active) {
+    const visibleCravings = showAllCravings
+      ? CRAVINGS
+      : CRAVINGS.filter((candidate) => PRIMARY_CRAVING_KEYS.has(candidate.key));
+
     return (
       <div className="space-y-5">
-        <header className="space-y-1.5">
+        <header className="space-y-1.5" aria-describedby="nearby-intro">
           <h1
             className="font-serif text-[26px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            What do you want right now?
+            Find something nearby
           </h1>
-          <p className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            Tap it. We&rsquo;ll find the nearest one that&rsquo;s open.
+          <p id="nearby-intro" className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
+            Choose what you need. Open places lead the list.
           </p>
         </header>
 
-        <ul className="grid grid-cols-2 gap-2">
-          {CRAVINGS.map((c) => {
+        <ul
+          className="grid grid-cols-2 overflow-hidden border-y"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          {visibleCravings.map((c) => {
             const Icon = ICONS[c.icon] ?? Utensils;
             return (
-              <li key={c.key}>
+              <li
+                key={c.key}
+                className="border-b odd:border-r"
+                style={{ borderColor: "var(--app-border)" }}
+              >
                 <button
                   type="button"
                   onClick={() => pick(c.key)}
-                  className="tactile tactile-interactive flex min-h-[56px] w-full items-center gap-2.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-2.5 text-left"
-                  style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+                  className="tactile-interactive flex min-h-[60px] w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
                 >
                   <span
                     aria-hidden
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]"
                     style={{
                       background: `color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid))`,
                       boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c.color} 20%, transparent)`,
@@ -418,6 +449,17 @@ export default function RightNow({
             );
           })}
         </ul>
+
+        {!showAllCravings && (
+          <button
+            type="button"
+            onClick={() => setShowAllCravings(true)}
+            className="tactile-interactive flex min-h-[44px] w-full items-center justify-center border-b text-[13px] font-semibold"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+          >
+            Show all {CRAVINGS.length} options
+          </button>
+        )}
       </div>
     );
   }
@@ -431,7 +473,7 @@ export default function RightNow({
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
   const sortLabel = sort === "rated"
     ? "top rated first"
-    : origin
+    : hasRankingOrigin
       ? "nearest first"
       : "best matches";
   const areaLabel = townName
@@ -451,7 +493,7 @@ export default function RightNow({
             duplicate on-page picker. */}
         <Link
           href="/today"
-          className="tactile-interactive -ml-1 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px] font-semibold"
+          className="tactile-interactive -ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-full px-2 text-[13px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
@@ -485,7 +527,9 @@ export default function RightNow({
                     ? openCount > 0
                       ? `${openCount} open now · ${sortLabel}`
                       : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
-                    : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
+                    : townName
+                      ? `${openCount} open · ${matched.length} in ${townName} · ${sortLabel}`
+                      : `${openCount} open · ${matched.length} ${origin ? "nearby" : "in the county"} · ${sortLabel}`}
             </p>
           </div>
         </div>
@@ -607,7 +651,7 @@ export default function RightNow({
           <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
             Sort
           </span>
-          <FacetChip label="Nearest" active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
+          <FacetChip label={hasRankingOrigin ? "Nearest" : "Best"} active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
           <FacetChip label="Top rated" active={sort === "rated"} color="var(--app-ink-2)" onClick={() => setSort("rated")} />
         </div>
       </div>
@@ -617,31 +661,95 @@ export default function RightNow({
           show real walk times; without one we say so and offer the button —
           never a distance we can't stand behind. */}
       {!hasFix && !townKey && (
-        <button
-          type="button"
-          onClick={activateMyLocation}
-          className="tactile tactile-interactive flex w-full items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3.5 py-2.5 text-left"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
-          <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-          <span className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-            {state.status === "denied" || state.status === "unavailable"
-              ? approxStatus === "outside-county"
-                ? "Your network location is outside Frederick County, so these are county-wide. Turn on location for nearest-first results."
-                : `Showing ${approxCity ? `${approxCity} (approximate)` : "county-wide matches"}. Turn on location for what's nearest to you.`
-              : "Use my location to see what's nearest to where you're standing."}
-          </span>
-        </button>
+        state.status === "denied" || state.status === "unavailable" ? (
+          <div
+            role="status"
+            className="flex min-h-[48px] items-center gap-2.5 border-y px-1 py-2.5"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <span className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+              Location is off. Showing {approxStatus === "outside-county"
+                ? "county-wide results"
+                : approxCity
+                  ? `results approximately near ${approxCity}`
+                  : "county-wide results"}.
+            </span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={activateMyLocation}
+            disabled={state.status === "loading"}
+            className="tactile-interactive flex min-h-[48px] w-full items-center gap-2.5 border-y px-1 py-2.5 text-left disabled:cursor-wait disabled:opacity-70"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+            <span className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+              {state.status === "loading"
+                ? "Getting your location…"
+                : state.status === "error"
+                  ? "Location timed out · Try precise location again"
+                : approxCity
+                  ? `Near ${approxCity} approximately · Use precise location`
+                  : "Use my location for nearest-first results"}
+            </span>
+          </button>
+        )
       )}
 
-      {results.length === 0 ? (
+      {results.length === 0 && townName && matched.length === 0 && nearbyTownFallback.length > 0 ? (
+        <section aria-labelledby="nearby-town-fallback-heading" className="space-y-3">
+          <div
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+          >
+            <h2 id="nearby-town-fallback-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Closest verified options
+            </h2>
+            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              Radius doesn&rsquo;t have a verified {activeNoun} listing in {townName} yet. These are the nearest matches outside town.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => chooseTown(null)}
+                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Search all towns
+              </button>
+              <Link
+                href="/submit/place"
+                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Tell us what&rsquo;s missing
+              </Link>
+            </div>
+          </div>
+          <ul className="space-y-2" aria-label={`Closest ${activeNoun} outside ${townName}`}>
+            {nearbyTownFallback.map(({ place, distance }) => (
+              <li key={place.slug}>
+                <p className="mb-1 px-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+                  {MUNICIPALITY_BY_SLUG[place.municipality ?? ""]?.name ?? place.city}
+                  {` · ${(distance / 1609).toFixed(distance < 16090 ? 1 : 0)} mi from ${townName}`}
+                </p>
+                <PlaceCard place={place} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : results.length === 0 ? (
         <div
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center"
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
             {townName
-              ? `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
+              ? matched.length === 0
+                ? `Radius doesn't have a verified ${activeNoun} listing in ${townName} yet.`
+                : `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
               : closingSoonOnly
                 ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
                 : openOnly && matched.length > 0
@@ -653,19 +761,30 @@ export default function RightNow({
           {/* Clear the town scope, the closing-soon filter, or (when Open-now hid
               everything but closed matches exist) offer those — never dead-end. */}
           {townName ? (
-            <button
-              type="button"
-              onClick={() => chooseTown(null)}
-              className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-            >
-              Show all towns
-            </button>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => chooseTown(null)}
+                className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Search all towns
+              </button>
+              {matched.length === 0 ? (
+                <Link
+                  href="/submit/place"
+                  className="tactile-interactive inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
+                  style={{ background: "var(--app-bg-elevated)", color: "var(--app-brand-press)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+                >
+                  Tell us what&rsquo;s missing
+                </Link>
+              ) : null}
+            </div>
           ) : closingSoonOnly ? (
             <button
               type="button"
               onClick={() => setClosingSoonOnly(false)}
-              className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+              className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
               style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
             >
               Show all open
@@ -675,7 +794,7 @@ export default function RightNow({
               <button
                 type="button"
                 onClick={() => setOpenOnly(false)}
-                className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                className="tactile-interactive mt-3 inline-flex min-h-[44px] items-center rounded-full px-3 text-[13px] font-semibold"
                 style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
               >
                 Show all {matched.length}, including closed

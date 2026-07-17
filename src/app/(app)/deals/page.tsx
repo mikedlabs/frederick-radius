@@ -62,7 +62,7 @@ export default function DealsPage() {
           <div className="min-w-0">
             <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
               <Tag className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-              Deals
+              Daily specials
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               {todayCount > 0 ? (

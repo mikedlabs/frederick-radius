@@ -34,8 +34,8 @@ export default function PlaceAudienceTags({ tags }: { tags?: string[] }) {
 
   return (
     <section
-      className="rounded-[var(--app-radius-lg)] border p-4"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      className="border-y py-4"
+      style={{ borderColor: "var(--app-border)" }}
     >
       <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
         Good to know

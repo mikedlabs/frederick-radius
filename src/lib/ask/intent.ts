@@ -76,7 +76,9 @@ export function parseAskIntent(query: string): AskIntent {
 
   const timeNeed: AskTimeNeed = /\b(right now|open now|now)\b/i.test(q)
     ? "now"
-    : /\b(tonight|date night|evening(?: out)?)\b/i.test(q)
+    // "Date night" and "an evening out" describe the outing, not the date.
+    // Only explicit current-evening language should pin the plan to tonight.
+    : /\b(tonight|this evening)\b/i.test(q)
       ? "tonight"
       : /\b(this )?weekend\b/i.test(q)
         ? "weekend"

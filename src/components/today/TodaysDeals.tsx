@@ -17,11 +17,13 @@ import TodaysDealsStack from "@/components/today/TodaysDealsStack";
 export default async function TodaysDeals({
   now,
   limit = Number.MAX_SAFE_INTEGER,
+  embedded = false,
 }: {
   now: Date;
   limit?: number;
+  embedded?: boolean;
 }) {
   const deals = await getMergedTodaysDeals(now, limit);
   if (deals.length === 0) return null;
-  return <TodaysDealsStack deals={deals} weekday={EASTERN_WEEKDAY(now)} now={now} />;
+  return <TodaysDealsStack deals={deals} weekday={EASTERN_WEEKDAY(now)} now={now} embedded={embedded} />;
 }

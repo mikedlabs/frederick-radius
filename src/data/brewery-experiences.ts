@@ -7,13 +7,24 @@
  * Brewery names and logos remain the property of their respective owners.
  */
 
-export const BREWERY_SOURCE_CHECKED_AT = "2026-07-15" as const;
+export const BREWERY_SOURCE_CHECKED_AT = "2026-07-16" as const;
 
 export type BreweryScene =
   | "carroll-creek"
   | "city-taprooms"
   | "destination-stops"
   | "farm-country";
+
+export type BreweryFeature =
+  | "food"
+  | "byo-food"
+  | "outdoor"
+  | "dog-friendly"
+  | "family-friendly"
+  | "live-music"
+  | "non-beer"
+  | "to-go"
+  | "downtown";
 
 export type BreweryExperience = {
   slug: string;
@@ -23,7 +34,13 @@ export type BreweryExperience = {
   scene: BreweryScene;
   story: string;
   traits: readonly string[];
+  /** Only source-checked visit-planning attributes belong here. This powers
+   * the taproom board; an omitted feature means "not confirmed", not "no". */
+  features: readonly BreweryFeature[];
   sourceUrl: `https://${string}`;
+  /** Brewery-controlled or venue-controlled current beer menu. Optional: a
+   * missing link is more honest than sending someone to a stale archive. */
+  tapListUrl?: `https://${string}`;
   checkedAt: typeof BREWERY_SOURCE_CHECKED_AT;
   statusNote?: string;
 };
@@ -67,7 +84,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "A downtown brewery whose house catalog moves from crisp lagers to hop-forward and dark beer.",
     traits: ["downtown", "varied beer styles"],
+    features: ["downtown", "live-music"],
     sourceUrl: "https://oldemother.com/",
+    tapListUrl: "https://oldemother.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -78,7 +97,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "carroll-creek",
     story: "A creekside-adjacent brewery with a garden and a regular food-truck setup.",
     traits: ["Carroll Creek", "beer garden", "food trucks"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["food", "outdoor", "dog-friendly", "non-beer"],
+    sourceUrl: "https://www.attaboybeer.com/",
+    tapListUrl: "https://www.attaboybeer.com/on-tap",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -89,9 +110,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "carroll-creek",
     story: "A Carroll Creek brewery associated with Belgian-inspired beer and the Union Mills building.",
     traits: ["Carroll Creek", "Belgian-inspired beer"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["food", "outdoor", "dog-friendly", "non-beer"],
+    sourceUrl: "https://www.steinhardtbrewing.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
-    statusNote: "Current public listings conflict on operating status. Check the brewery directly before visiting.",
   },
   {
     slug: "rockwell-brewery-frederick",
@@ -101,7 +122,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "destination-stops",
     story: "A Frederick brewery with a broad catalog and a taproom identified by the brewery as Riverside.",
     traits: ["Riverside taproom", "varied beer styles"],
+    features: ["food", "live-music", "non-beer"],
     sourceUrl: "https://www.rockwellbrewery.com/",
+    tapListUrl: "https://www.rockwellbrewery.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -112,7 +135,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "A Frederick brewery housed in a former ice-cream plant, with a broad house-beer catalog.",
     traits: ["historic industrial setting", "varied beer styles"],
+    features: ["food"],
     sourceUrl: "https://monocacybrewing.com/",
+    tapListUrl: "https://untappd.com/v/monocacy-brewing/342895",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -123,7 +148,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "The downtown brewpub revived Frederick's historic Brewer's Alley name in 1996.",
     traits: ["downtown", "brewpub", "food on site"],
+    features: ["food", "downtown"],
     sourceUrl: "https://brewers-alley.com/",
+    tapListUrl: "https://brewers-alley.com/brewhouse/our-beer/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -134,7 +161,8 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "A small-batch Frederick brewhouse with a rotating, experimental catalog.",
     traits: ["small-batch beer", "rotating lineup"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["outdoor", "dog-friendly", "family-friendly", "live-music", "non-beer"],
+    sourceUrl: "https://www.sandboxbrewhouse.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -145,7 +173,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "carroll-creek",
     story: "A Carroll Creek brewery whose name and identity center on Random Acts of Kindness.",
     traits: ["Carroll Creek", "community-minded identity"],
+    features: ["food", "live-music", "non-beer"],
     sourceUrl: "https://www.rakbrewing.com/",
+    tapListUrl: "https://www.rakbrewing.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -156,7 +186,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "destination-stops",
     story: "A Brunswick brewery associated with a restored 1948 fire station.",
     traits: ["Brunswick", "historic fire-station setting"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["food", "outdoor", "dog-friendly", "family-friendly", "live-music", "non-beer"],
+    sourceUrl: "https://www.smoketownbrewing.com/",
+    tapListUrl: "https://www.smoketownbrewing.com/menu?menu=good-eats",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -167,7 +199,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "A Frederick brewery whose catalog spans hop-forward beer, Belgian styles, and dark ales.",
     traits: ["hop-forward beer", "Belgian-style beer"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["byo-food", "dog-friendly", "to-go"],
+    sourceUrl: "https://www.midnightrunbrewing.com/",
+    tapListUrl: "https://docs.google.com/document/d/1RyA3lCrP632aZ0JP767C9Pfku9gIQa2Onij6qAmjmO4/edit",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -178,7 +212,9 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "farm-country",
     story: "A farm brewery west of the city with outdoor space and views toward the Catoctins.",
     traits: ["farm setting", "outdoor space", "Catoctin views"],
+    features: ["food", "outdoor", "dog-friendly", "family-friendly", "live-music"],
     sourceUrl: "https://www.prospectpointbrewing.com/",
+    tapListUrl: "https://www.prospectpointbrewing.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -189,6 +225,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "city-taprooms",
     story: "A Frederick beer project centered on German-style lagers and ales.",
     traits: ["German-style beer"],
+    features: [],
     sourceUrl: "https://untappd.com/w/bra-dr-bier-co/575990",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
     statusNote: "A current taproom location and public access could not be confirmed from a primary source. Check before planning a visit.",
@@ -201,6 +238,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "farm-country",
     story: "A Thurmont estate where brewery, winery, and distillery offerings share one destination.",
     traits: ["estate setting", "beer, wine, and spirits"],
+    features: ["outdoor", "non-beer"],
     sourceUrl: VISIT_FREDERICK_BREWERIES,
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
@@ -212,6 +250,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "farm-country",
     story: "A Mount Airy farm brewery pouring from a historic bank-barn setting.",
     traits: ["working farm", "historic bank barn"],
+    features: ["outdoor"],
     sourceUrl: "https://freys.farm/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
@@ -223,6 +262,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "destination-stops",
     story: "A Mount Airy beer stop with a catalog spanning crisp lagers, IPAs, and darker ales.",
     traits: ["Mount Airy", "varied beer styles"],
+    features: ["dog-friendly", "family-friendly"],
     sourceUrl: "https://www.liquidityaleworks.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
@@ -234,7 +274,8 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "farm-country",
     story: "A farm brewery at Stillpoint Farm, tied closely to its own fields and hopyard.",
     traits: ["working farm", "farm brewery", "hopyard"],
-    sourceUrl: VISIT_FREDERICK_BREWERIES,
+    features: ["food", "byo-food", "outdoor", "dog-friendly", "family-friendly", "live-music", "non-beer", "to-go"],
+    sourceUrl: "https://www.milkhousebrewery.com/faqs/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
   },
   {
@@ -245,6 +286,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     scene: "farm-country",
     story: "A Mount Airy farm-brewery identity built around its hop-yard setting.",
     traits: ["farm setting", "hop yard"],
+    features: [],
     sourceUrl: "https://redshedman.com/",
     checkedAt: BREWERY_SOURCE_CHECKED_AT,
     statusNote: "Current directory coverage and access details are inconsistent. Check the brewery directly before visiting.",

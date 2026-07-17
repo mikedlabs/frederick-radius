@@ -91,10 +91,9 @@ export default function ShareButton({
     <button
       type="button"
       onClick={onClick}
-      className={
-        className ??
-        "inline-flex items-center gap-1 text-xs font-medium transition active:scale-95"
-      }
+      className={`tap-44-y ${
+        className ?? "inline-flex items-center gap-1 text-xs font-medium transition active:scale-95"
+      }`}
       style={{ color: "var(--app-ink-3)" }}
       aria-label={`Share ${title}`}
     >

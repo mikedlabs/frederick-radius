@@ -1,117 +1,132 @@
 import Link from "next/link";
-import { ArrowDown, Route } from "lucide-react";
-import { BeerGlassArt } from "./BeerGlassArt";
+import { ArrowDown, CalendarDays, MapPin, Sparkles } from "lucide-react";
+import { ALL_BEERS, BREWERIES, BREWERY_BY_SLUG } from "@/data/beers";
+import { BreweryLogo } from "./BreweryLogo";
+import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 
-/**
- * Editorial lead for the Frederick beer guide, as a FIELD-GUIDE PLATE.
- *
- * The first cover was a dark marketing-green block over a blurred night
- * photo with flat cartoon glasses — off-system for the app (the dark
- * palette belongs to /pitch) and the exact clipart style the design-tells
- * audit exists to catch ("the cover looks cheesy", owner). This version
- * speaks the same language as every other page: paper cream ground,
- * Fraunces display, engraved glassware in ink, a mono ledger stamp for the
- * counts. No photo, no priority image, no contrast grades to maintain.
- * No third-party image, rating, tap, or live-status claim is made here.
- */
-export default function BeerHero() {
+const COVER_ROOMS = [
+  "attaboy-beer-frederick",
+  "milkhouse-brewery-mt-airy",
+  "olde-mother-brewing-frederick",
+] as const;
+
+/** The beer guide's photo-led cover: Frederick rooms, not generic beer art. */
+export default function BeerHero({ photos }: { photos: BreweryPhotoMap }) {
+  const rooms = COVER_ROOMS.map((slug) => BREWERY_BY_SLUG[slug]).filter(Boolean);
+  // Lead with a real branded flight so the cover is unmistakably about beer
+  // without repeating the default Attaboy taproom featured immediately below.
+  const leadRoom = rooms[2] ?? rooms[0];
+
   return (
-    <section
+    <header
       aria-labelledby="beer-hero-title"
-      className="fg-plate relative overflow-hidden rounded-[var(--app-radius-xl)] border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        backgroundImage: "var(--app-paper-light)",
-        boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
-      }}
+      className="beer-cover relative -mx-4 -mt-6 overflow-hidden border-y border-white/10 bg-[#11100d] text-[#f7f0e4] sm:-mx-5 lg:mx-0 lg:mt-0 lg:rounded-[10px] lg:border"
     >
-      <div className="grid gap-2 px-5 pt-7 sm:px-9 sm:pt-9 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)] lg:gap-8 lg:px-12 lg:pt-11">
-        <div className="min-w-0">
-          <p className="fg-eyebrow flex items-center gap-2">
-            <span aria-hidden className="h-px w-7" style={{ background: "currentColor" }} />
-            Frederick County beer guide
-          </p>
+      <div className="absolute inset-0 beer-cover-light" aria-hidden />
 
-          <h1
-            id="beer-hero-title"
-            className="mt-3 max-w-[9ch] font-serif text-[clamp(3rem,8.5vw,5.4rem)] font-semibold leading-[0.9] tracking-[-0.04em] text-balance"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Frederick,
-            <br />
-            <span style={{ color: "var(--app-brand-2)" }}>on tap.</span>
-          </h1>
+      <div className="relative grid min-h-[580px] grid-rows-[auto_330px] lg:min-h-[610px] lg:grid-cols-[minmax(0,1.02fr)_minmax(390px,.98fr)] lg:grid-rows-1">
+        <div className="z-10 flex flex-col justify-between px-5 pb-8 pt-8 sm:px-9 sm:pb-10 sm:pt-10 lg:px-12 lg:py-12">
+          <div>
+            <p className="flex items-center gap-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">
+              <span className="h-px w-8 bg-[#e3b65d]" aria-hidden />
+              Frederick County beer guide
+            </p>
+            <h1
+              id="beer-hero-title"
+              className="mt-5 max-w-[8ch] font-serif text-[clamp(4rem,16vw,7.8rem)] font-semibold leading-[0.77] tracking-[-0.065em] text-balance"
+            >
+              Frederick.<br />
+              <span className="text-[#e3b65d]">On tap.</span>
+            </h1>
+            <p className="mt-7 max-w-[33rem] text-[15px] leading-relaxed text-white/66 sm:text-[17px]">
+              Pick the room, match your taste, and see what is happening. A better way into the county&rsquo;s beer scene than another list.
+            </p>
+          </div>
 
-          <p className="mt-4 max-w-[34rem] text-[15px] leading-relaxed sm:text-[16px]" style={{ color: "var(--app-ink-2)" }}>
-            174 signature pours from 17 local breweries. Start with what sounds good, not a list.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2.5 min-[430px]:flex-row min-[430px]:flex-wrap">
+          <div className="mt-7 flex flex-wrap gap-2.5">
+            <Link
+              href="#taproom-board"
+              className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#f7f0e4] px-5 text-[13px] font-bold text-[#17130e] transition hover:bg-white"
+            >
+              Pull a tap
+              <ArrowDown className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+            </Link>
             <Link
               href="#find-your-pour"
-              className="tap-44-y tactile-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-semibold"
-              style={{
-                background: "var(--app-brand-2)",
-                color: "var(--app-on-brand)",
-                boxShadow: "var(--app-elev-1), var(--app-hi)",
-              }}
+              className="inline-flex min-h-12 items-center justify-center gap-2 border border-[#e3b65d]/55 px-5 text-[13px] font-semibold text-[#f3d496] transition hover:border-[#e3b65d] hover:bg-[#e3b65d]/10"
             >
-              Find your pour
-              <ArrowDown className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </Link>
-            <Link
-              href="#beer-days"
-              className="tap-44-y tactile-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-[14px] font-semibold"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-elevated-solid)",
-                color: "var(--app-ink)",
-                boxShadow: "var(--app-elev-1), var(--app-hi)",
-              }}
-            >
-              Build a beer day
-              <Route className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+              Match my taste
+              <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
             </Link>
           </div>
-
-          <p className="mt-5 font-mono text-[10px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-            Signature-pour guide · Verify today&rsquo;s availability before you go.
-          </p>
         </div>
 
-        {/* The plate art: three engraved pours on a printed counter line,
-            with the pour-book count as a stamped ledger tablet. */}
-        <div className="relative mt-2 min-w-0 lg:mt-0" style={{ color: "var(--app-ink)" }}>
-          <div
-            aria-hidden
-            className="absolute right-1 top-0 rotate-[1.5deg] rounded-[var(--app-radius-sm)] border px-3 py-2 text-right font-mono uppercase"
-            style={{
-              borderColor: "color-mix(in srgb, var(--app-ink) 35%, transparent)",
-              background: "color-mix(in srgb, var(--app-accent) 12%, var(--app-bg-elevated-solid))",
-              color: "var(--app-ink)",
-              boxShadow: "var(--app-edge)",
-            }}
-          >
-            <span className="block text-[9px] tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-              County pour book
-            </span>
-            <span className="mt-0.5 block text-[13px] font-bold tracking-[0.08em]">17 breweries</span>
+        <div className="group relative overflow-hidden border-t border-white/10 bg-[#1b1712] lg:border-l lg:border-t-0">
+          {leadRoom ? (
+            <BreweryPhoto
+              brewerySlug={leadRoom.slug}
+              breweryName={leadRoom.name}
+              src={photos[leadRoom.slug]}
+              decorative
+              priority
+              sizes="(max-width: 1024px) 100vw, 46vw"
+              className="h-full w-full"
+              imageClassName="object-cover transition-transform duration-[1600ms] ease-out group-hover:scale-[1.035]"
+            />
+          ) : null}
+          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,7,5,.05)_10%,rgba(8,7,5,.22)_42%,rgba(8,7,5,.92)_100%)]" />
+          <span aria-hidden className="absolute inset-y-0 left-0 hidden w-1/3 bg-[linear-gradient(90deg,rgba(17,16,13,.75),transparent)] lg:block" />
+
+          <div className="absolute right-4 top-4 rotate-1 border border-[#e3b65d]/45 bg-[#171510]/84 px-3 py-2 text-right font-mono uppercase backdrop-blur-md sm:right-6 sm:top-6">
+            <span className="block text-[8px] tracking-[0.16em] text-white/44">County pour book</span>
+            <span className="mt-0.5 block text-[12px] font-bold tracking-[0.08em] text-[#f3d496]">{BREWERIES.length} rooms · {ALL_BEERS.length} pours</span>
           </div>
 
-          <div className="flex items-end justify-center pt-10 sm:gap-2 lg:h-full lg:pt-6">
-            <BeerGlassArt family="stout-porter" variant="pint" className="h-[128px] w-auto shrink sm:h-[175px] lg:h-[215px]" />
-            <BeerGlassArt family="lager-pilsner" variant="pilsner" className="h-[150px] w-auto shrink sm:h-[200px] lg:h-[250px]" />
-            <BeerGlassArt family="sour-wild" variant="tulip" className="h-[132px] w-auto shrink sm:h-[180px] lg:h-[220px]" />
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+            <p className="mb-3 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-[#f3d496]">Real rooms across the county</p>
+            <div className="grid grid-cols-3 gap-2">
+              {rooms.map((brewery, index) => (
+                <Link
+                  key={brewery.slug}
+                  href={`/places/${brewery.slug}`}
+                  className="group/room flex min-h-[70px] items-center gap-2 border border-white/18 bg-[#11100d]/78 p-2 text-white backdrop-blur-md transition hover:border-[#e3b65d]/62 hover:bg-[#11100d]/90"
+                >
+                  <BreweryLogo
+                    brewerySlug={brewery.slug}
+                    breweryName={brewery.name}
+                    decorative
+                    sizes="42px"
+                    className="h-10 w-10 shrink-0 bg-[#f7f0e4] object-contain p-1 shadow-[0_10px_20px_rgba(0,0,0,.32)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[6.5px] uppercase tracking-[0.12em] text-white/44">
+                      {index === 0 ? "City" : index === 1 ? "Farm" : "Downtown"}
+                    </span>
+                    <span className="mt-0.5 block line-clamp-2 text-[8px] font-semibold leading-tight group-hover/room:underline sm:text-[9px]">
+                      {brewery.name}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Plate footer rule — the same caption grammar the Today plates use. */}
-      <div className="flex items-center gap-2 px-5 pb-4 pt-1 sm:px-9 lg:px-12 lg:pb-5">
-        <div className="fg-rule flex-1" />
-        <span className="fg-plate-no shrink-0">Pl. XVII</span>
-      </div>
-    </section>
+      <nav aria-label="Beer guide shortcuts" className="relative grid grid-cols-3 border-t border-white/10 bg-black/15">
+        <Link href="#taproom-board" className="group flex min-h-[62px] items-center justify-center gap-2 border-r border-white/10 px-2 text-center text-[11px] font-semibold text-white/68 transition hover:bg-white/5 hover:text-white">
+          <MapPin className="h-3.5 w-3.5 text-[#e3b65d] transition group-hover:-translate-y-0.5" aria-hidden />
+          Taprooms
+        </Link>
+        <Link href="#beer-week" className="group flex min-h-[62px] items-center justify-center gap-2 border-r border-white/10 px-2 text-center text-[11px] font-semibold text-white/68 transition hover:bg-white/5 hover:text-white">
+          <CalendarDays className="h-3.5 w-3.5 text-[#e3b65d] transition group-hover:-translate-y-0.5" aria-hidden />
+          This week
+        </Link>
+        <Link href="#find-your-pour" className="group flex min-h-[62px] items-center justify-center gap-2 px-2 text-center text-[11px] font-semibold text-white/68 transition hover:bg-white/5 hover:text-white">
+          <Sparkles className="h-3.5 w-3.5 text-[#e3b65d] transition group-hover:-translate-y-0.5" aria-hidden />
+          Taste match
+        </Link>
+      </nav>
+    </header>
   );
 }

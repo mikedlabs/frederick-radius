@@ -197,6 +197,7 @@ import {
   DUPE_K,
   EMPTY_FC,
   FREDERICK,
+  FREDERICK_COUNTY_BOUNDS,
   FREDERICK_MAX_BOUNDS,
   FREDERICK_MIN_ZOOM,
   FREDERICK_MAX_ZOOM,
@@ -253,6 +254,39 @@ function prefersReducedMotion(): boolean {
     && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 }
 
+/** Keep the county outline clear of the top instrument and mobile nav. On a
+ * manual refit we measure the real dock; first paint uses the same responsive
+ * fallback before those nodes exist. */
+function countyFitPadding(measureDock = true): { top: number; right: number; bottom: number; left: number } {
+  if (typeof window === "undefined") {
+    return { top: 96, right: 32, bottom: 64, left: 32 };
+  }
+  const mobile = window.innerWidth < 768;
+  const short = window.innerHeight < 600;
+  const shortLandscape = window.innerHeight < 520 && window.innerWidth > window.innerHeight;
+  const mapTop = measureDock
+    ? document.querySelector<HTMLElement>(".mapboxgl-map")?.getBoundingClientRect().top ?? 0
+    : 0;
+  const dockBottom = measureDock
+    ? document.querySelector<HTMLElement>("[data-map-dock]")?.getBoundingClientRect().bottom
+    : undefined;
+  const measuredTop = dockBottom ? Math.ceil(dockBottom - mapTop + 16) : 0;
+  // The first-paint dock is roughly 138–148px tall. Its nodes do not exist yet,
+  // so reserve the full instrument plus breathing room on every viewport.
+  const fallbackTop = shortLandscape ? 72 : 164;
+  return {
+    top: Math.max(fallbackTop, measuredTop),
+    right: shortLandscape ? 20 : mobile ? 20 : 40,
+    bottom: shortLandscape ? 16 : mobile ? (short ? 72 : 104) : 56,
+    left: shortLandscape ? 20 : mobile ? 20 : 40,
+  };
+}
+
+const SHORT_LANDSCAPE_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-179, -80],
+  [179, 80],
+];
+
 type Props = {
   /** Pin-field records (MapPinPlace). Full PlaceCardData satisfies the type,
    *  so SavedList/radius callers pass full records; /map browse passes the
@@ -265,6 +299,13 @@ type Props = {
   fullBleed?: boolean;
   initialCenter?: [number, number];
   initialZoom?: number;
+  /** Fit this extent on first paint. Used by the clean /map entry so the
+   *  entire county is visible on every viewport, including narrow phones. */
+  initialBounds?: [[number, number], [number, number]];
+  /** Camera constraints can be looser on the full browse surface than on
+   * embedded maps, while coordinate validation remains county-tight. */
+  cameraMinZoom?: number;
+  cameraMaxBounds?: [[number, number], [number, number]];
   /** Fires on map idle with curated places currently in the viewport,
    *  nearest-to-center first — powers the synced results list. */
   onPlacesInView?: (slugs: string[]) => void;
@@ -345,6 +386,9 @@ export default function AppMap({
   fullBleed = false,
   initialCenter = FREDERICK,
   initialZoom = 14,
+  initialBounds,
+  cameraMinZoom = FREDERICK_MIN_ZOOM,
+  cameraMaxBounds = FREDERICK_MAX_BOUNDS,
   recenterToKnownLocation = false,
   pinpointDefault = false,
   onPlacesInView,
@@ -366,20 +410,31 @@ export default function AppMap({
   activeSlugs = null,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  // Rotation may refit an untouched county overview, but it must never yank a
+  // camera the user deliberately panned, zoomed, searched, or focused.
+  const cameraIntentRef = useRef(false);
   // Effective camera home: when we arrived via a category and already
   // hold the user's cached fix, open on them so the map (and its
   // closest-first list) reads "from where you're standing." Read once
   // at mount — never prompts; falls back to the city center. We seed
   // initialViewState directly rather than flyTo so there's no jarring
   // glide from Downtown to the user on load.
-  const effectiveCenter = useMemo<[number, number]>(() => {
-    if (recenterToKnownLocation) {
-      const cached = readCachedPosition();
-      if (cached) return [cached.lng, cached.lat];
-    }
-    return initialCenter;
+  const cachedPosition = useMemo<LngLat | null>(() => {
+    if (!recenterToKnownLocation) return null;
+    const cached = readCachedPosition();
+    return cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot read of the cached fix at mount
   }, []);
+  const effectiveCenter: [number, number] = cachedPosition
+    ? [cachedPosition.lng, cachedPosition.lat]
+    : initialCenter;
+  // Stable first-paint camera input. Measuring DOM here on every React render
+  // caused avoidable layout reads; explicit Whole County refits still measure
+  // the live dock through countyFitPadding().
+  const initialCountyPadding = useMemo(() => countyFitPadding(false), []);
+  const [shortLandscapeViewport, setShortLandscapeViewport] = useState(
+    () => typeof window !== "undefined" && window.innerHeight < 520 && window.innerWidth > window.innerHeight,
+  );
   // Shareable / reload-safe camera: a `?c=lng,lat,zoom` param (written on
   // moveend below) reopens the map exactly where it was left. Read once at
   // mount; malformed values fall through to the mode/cached default. Mapbox
@@ -392,6 +447,44 @@ export default function AppMap({
     if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
     return { longitude: lng, latitude: lat, zoom: z };
   }, []);
+  useEffect(() => {
+    const updateViewportMode = () => {
+      const next = window.innerHeight < 520 && window.innerWidth > window.innerHeight;
+      setShortLandscapeViewport((current) => current === next ? current : next);
+    };
+    window.addEventListener("resize", updateViewportMode, { passive: true });
+    window.addEventListener("orientationchange", updateViewportMode, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateViewportMode);
+      window.removeEventListener("orientationchange", updateViewportMode);
+    };
+  }, []);
+  const previousShortLandscape = useRef(shortLandscapeViewport);
+  useEffect(() => {
+    const wasShortLandscape = previousShortLandscape.current;
+    previousShortLandscape.current = shortLandscapeViewport;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    // Keep the Mapbox imperative state in step with the reactive prop during
+    // an orientation transition, then resize before calculating the fit.
+    map.setMaxBounds(shortLandscapeViewport ? SHORT_LANDSCAPE_MAX_BOUNDS : cameraMaxBounds);
+    map.resize();
+
+    const viewportModeChanged = shortLandscapeViewport !== wasShortLandscape;
+    const untouchedCountyView = Boolean(initialBounds) && !recenterToKnownLocation && !urlCamera;
+    if (!viewportModeChanged || !untouchedCountyView || cameraIntentRef.current) return;
+
+    requestAnimationFrame(() => {
+      map.resize();
+      map.fitBounds(FREDERICK_COUNTY_BOUNDS, {
+        padding: countyFitPadding(),
+        duration: prefersReducedMotion() ? 0 : 450,
+        easing: CAM_EASE,
+        essential: true,
+      });
+    });
+  }, [cameraMaxBounds, initialBounds, recenterToKnownLocation, shortLandscapeViewport, urlCamera]);
   const { openSheet } = usePlaceSheet();
   // ── Sheet hydration (the /map payload slim). Browse mode ships pin-field
   // records only; the sheet is the one consumer that wants the full card
@@ -535,7 +628,7 @@ export default function AppMap({
       // URL persistence is an enhancement; the local toggle still works.
     }
   };
-  const [userLoc, setUserLoc] = useState<LngLat | null>(null);
+  const [userLoc, setUserLoc] = useState<LngLat | null>(cachedPosition);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
   const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? false);
@@ -711,6 +804,7 @@ export default function AppMap({
     if (!p || !map) return;
     setSelectedSlug(p.slug);
     haptic("light");
+    cameraIntentRef.current = true;
     // Pan to the result without zooming in — the user already chose
     // their zoom level; we just move the camera to put the pin in
     // view. This is the change that kills "the map keeps jumping
@@ -1150,6 +1244,7 @@ export default function AppMap({
             // dense downtown cluster steps in calmly instead of snapping
             // the whole county to street level. Very dense clusters take
             // a second tap — that gentle tiering is the intended feel.
+            cameraIntentRef.current = true;
             smoothFocus(map, coords, { minZoom: zoom, maxStep: 2.5 });
           });
         // Curated clusters ALSO answer "what's in here": list the leaves in a
@@ -1198,6 +1293,7 @@ export default function AppMap({
         // shift the camera up so the pin + its selected glow stay visible
         // instead of hiding under the card that just rose over them.
         const m = mapRef.current?.getMap();
+        cameraIntentRef.current = true;
         m?.easeTo({
           center: [place.geom.lng, place.geom.lat],
           offset: [0, -120],
@@ -1342,7 +1438,10 @@ export default function AppMap({
         const map = mapRef.current?.getMap();
         setSelectedSlug(p.slug);
         setQ("");
-        if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+        if (map) {
+          cameraIntentRef.current = true;
+          smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+        }
         setParkingPeek(null);
         setPeekPlace(p);
         return;
@@ -1487,6 +1586,7 @@ export default function AppMap({
       (pos) => {
         setLocating(false);
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
+        cameraIntentRef.current = true;
         haptic("light");
         track("map_locate", { in_county: isInFrederickCounty(loc.lng, loc.lat) });
         // County lock (6.2): a user physically outside Frederick County
@@ -1617,6 +1717,13 @@ export default function AppMap({
       }
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
+      onPointerDownCapture={(event) => {
+        const target = event.target as Element;
+        if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
+          cameraIntentRef.current = true;
+        }
+      }}
+      onWheelCapture={() => { cameraIntentRef.current = true; }}
     >
       {/* ── The search bar. On /map browse it's FOLDED INTO the dock's top
           row (MapDock) so there is one instrument and one map-search; the
@@ -1774,11 +1881,22 @@ export default function AppMap({
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
-            urlCamera ?? {
-              longitude: effectiveCenter[0],
-              latitude: effectiveCenter[1],
-              zoom: initialZoom,
-            }
+            urlCamera ?? (cachedPosition
+              ? {
+                  longitude: cachedPosition.lng,
+                  latitude: cachedPosition.lat,
+                  zoom: initialZoom,
+                }
+              : initialBounds
+              ? {
+                  bounds: initialBounds,
+                  fitBoundsOptions: { padding: initialCountyPadding },
+                }
+              : {
+                  longitude: effectiveCenter[0],
+                  latitude: effectiveCenter[1],
+                  zoom: initialZoom,
+                })
           }
           mapStyle={MAP_BAKED_STYLE ? (BAKED_STYLE as unknown as StyleSpecification) : STYLE_URL}
           style={{ width: "100%", height: "100%" }}
@@ -1794,8 +1912,11 @@ export default function AppMap({
           // Leash the camera to the county (+ buffer) so flings don't
           // sail off into empty tiles the user then has to scroll back
           // from — and so the place set always has context on screen.
-          maxBounds={FREDERICK_MAX_BOUNDS}
-          minZoom={FREDERICK_MIN_ZOOM}
+          // A 235px-high landscape phone needs a wider camera footprint than
+          // any useful local pan leash permits. The fit bounds + 6.8 floor keep
+          // the county visible there; portrait/desktop retain the browse leash.
+          maxBounds={shortLandscapeViewport ? undefined : cameraMaxBounds}
+          minZoom={cameraMinZoom}
           maxZoom={FREDERICK_MAX_ZOOM}
           // Don't tear down + re-create the GL context when the map
           // unmounts (mode toggle, route change) — reusing it makes the
@@ -3083,11 +3204,21 @@ export default function AppMap({
             geoMsg={geoMsg}
             goNearMe={goNearMe}
             flyTo={(center, zoom) => {
+              cameraIntentRef.current = true;
               mapRef.current?.getMap().flyTo({
                 center,
                 zoom,
                 duration: prefersReducedMotion() ? 0 : 1100,
                 curve: 1.25,
+                easing: CAM_EASE,
+                essential: true,
+              });
+            }}
+            fitCounty={() => {
+              cameraIntentRef.current = false;
+              mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+                padding: countyFitPadding(),
+                duration: prefersReducedMotion() ? 0 : 900,
                 easing: CAM_EASE,
                 essential: true,
               });
@@ -3123,7 +3254,10 @@ export default function AppMap({
               updateListView(false);
               setSelectedSlug(p.slug);
               const m = mapRef.current?.getMap();
-              if (m && p.geom) smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });
+              if (m && p.geom) {
+                cameraIntentRef.current = true;
+                smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });
+              }
               setParkingPeek(null);
               setPeekPlace(p);
             }}
@@ -3229,7 +3363,10 @@ export default function AppMap({
                     setSelectedSlug(pin.slug);
                     haptic("light");
                     const m = mapRef.current?.getMap();
-                    if (m) smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
+                    if (m) {
+                      cameraIntentRef.current = true;
+                      smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
+                    }
                     setParkingPeek(null);
                     setPeekPlace(pin);
                   }}

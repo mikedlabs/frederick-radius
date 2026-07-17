@@ -38,7 +38,7 @@ export default function ShippingPage() {
       <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
-        <Link href="/amenities" className="inline-flex items-center gap-1 hover:underline" style={{ color: "var(--app-ink-3)" }}>
+        <Link href="/amenities" className="tap-44-y inline-flex items-center gap-1 hover:underline" style={{ color: "var(--app-ink-3)" }}>
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
           Amenities
         </Link>
@@ -67,7 +67,7 @@ export default function ShippingPage() {
         ODbL), refreshed on deploy. Hours vary and holidays close counters, so
         check before a late run. Know a drop-off or locker we&rsquo;re
         missing?{" "}
-        <Link href="/submit/place" className="font-semibold hover:underline" style={{ color: "var(--app-brand-press)" }}>
+        <Link href="/submit/place" className="tap-44 inline-flex font-semibold hover:underline" style={{ color: "var(--app-brand-press)" }}>
           Tell us
         </Link>
         .

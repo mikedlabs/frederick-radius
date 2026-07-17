@@ -157,6 +157,18 @@
       "municipality": "urbana",
       "category": "market"
     },
+    "pumpernickel-rye-urbana": {
+      "subcategories": [
+        "coffee"
+      ],
+      "short_blurb": "Homegrown deli and coffee bar serving Rise Up coffee, espresso, tea, bagels, and breakfast."
+    },
+    "panera-bread-urbana": {
+      "subcategories": [
+        "restaurant"
+      ],
+      "short_blurb": "Cafe serving coffee, breakfast, sandwiches, soups, salads, and bakery items."
+    },
     "musket-ridge-golf-club-myersville": {
       "category": "golf"
     },
@@ -1048,6 +1060,30 @@
     },
     "cafe-nola": {
       "category": "restaurant"
+    },
+    "bollingers-restaurant-and-uncle-dirtys-brew-works-thurmont": {
+      "subcategories": ["brewery"]
+    },
+    "10tavern-thurmont": {
+      "subcategories": ["bar"]
+    },
+    "habanero-mexican-food-bar-grill-new-market": {
+      "subcategories": ["bar"]
+    },
+    "vesuvius-italian-wine-bar-urbana": {
+      "subcategories": ["bar"]
+    },
+    "jubilee-foods-emmitsburg": {
+      "subcategories": ["grocery"]
+    },
+    "trouts-market-woodsboro": {
+      "subcategories": ["grocery"]
+    },
+    "superfoods-cafe-market-mount-airy": {
+      "subcategories": ["grocery"]
+    },
+    "myersville-market-crown-gas-station-myersville": {
+      "subcategories": ["grocery"]
     },
     "starbucks-844": {
       "name": "Starbucks"

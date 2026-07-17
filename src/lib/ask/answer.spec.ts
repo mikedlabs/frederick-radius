@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { askFrederick } from "./answer";
 
 const downtown = {
@@ -104,17 +104,24 @@ describe("askFrederick structured answers", () => {
   });
 
   it("builds a lower-walking parent plan without unconfirmed stops", async () => {
-    const result = await askFrederick(
-      "Plan an evening with easy parking and less walking for my parents",
-      downtown,
-    );
-    expect(result.usedModel).toBe(false);
-    expect(result.intent).toMatchObject({ audience: "visitor", travelMode: "drive" });
-    expect(result.answer).toContain("two stops");
-    expect(result.answer).not.toContain("walkable");
-    expect(result.plan?.stops).toHaveLength(2);
-    expect(result.plan?.stops.every((stop) => stop.status !== "Hours unconfirmed")).toBe(true);
-    expect(result.plan?.stops.some((stop) => Boolean(stop.tip))).toBe(true);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T14:00:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "Plan an evening with easy parking and less walking for my parents",
+        downtown,
+      );
+      expect(result.usedModel).toBe(false);
+      expect(result.intent).toMatchObject({ audience: "visitor", travelMode: "drive" });
+      expect(result.answer).toContain("two stops");
+      expect(result.answer).not.toContain("walkable");
+      expect(result.plan?.stops).toHaveLength(2);
+      expect(result.plan?.stops[0]?.time).toBe("6:00 PM");
+      expect(result.plan?.stops.every((stop) => stop.status !== "Hours unconfirmed")).toBe(true);
+      expect(result.plan?.stops.some((stop) => Boolean(stop.tip))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("answers physical amenity questions from the amenity layer, never civic search noise", async () => {
@@ -208,6 +215,7 @@ describe("askFrederick structured answers", () => {
 
   it("can anchor a plan on a real place named in the request", async () => {
     const result = await askFrederick("Plan a date night around Hootch & Banter", downtown);
+    expect(result.intent).toMatchObject({ timeNeed: null });
     expect(result.answer).toContain("anchored this at Hootch & Banter");
     expect(result.plan?.stops[0].name).toBe("Hootch & Banter");
   });

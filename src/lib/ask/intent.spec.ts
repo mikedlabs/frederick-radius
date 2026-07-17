@@ -9,8 +9,8 @@ describe("parseAskIntent", () => {
       vibe: "food",
       durationHours: 3,
       travelMode: "walk",
-      timeNeed: "tonight",
-      constraints: ["Tonight", "Walking", "Date", "3 hours"],
+      timeNeed: null,
+      constraints: ["Walking", "Date", "3 hours"],
     });
   });
 
@@ -74,6 +74,14 @@ describe("parseAskIntent", () => {
       kind: "plan",
       audience: "visitor",
       travelMode: "drive",
+      timeNeed: null,
+    });
+  });
+
+  it("pins a plan only when the user explicitly says this evening", () => {
+    expect(parseAskIntent("Plan a date for this evening")).toMatchObject({
+      kind: "plan",
+      audience: "date",
       timeNeed: "tonight",
     });
   });

@@ -42,12 +42,10 @@ function defaultWant(now: Date): string {
 export default function CravingStrip({
   locationSlot,
   intelSlot,
-  contextSlot,
 }: {
   locationSlot?: ReactNode;
   /** The "right now" intelligence line (NowIntel) above the grid. */
   intelSlot?: ReactNode;
-  contextSlot?: ReactNode;
 }) {
   // The meal occasion right now (Frederick clock) — Eat's time-aware lead sub.
   const now = new Date();
@@ -55,17 +53,15 @@ export default function CravingStrip({
   const defaultOpen = defaultWant(now);
 
   return (
-    <section aria-labelledby="i-want-eyebrow" className="space-y-3">
-      <div className="flex min-h-[34px] items-center justify-between gap-3">
-        <h2
-          id="i-want-eyebrow"
-          className="font-serif text-[18px] font-semibold leading-none tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          I want to…
-        </h2>
+    <section aria-labelledby="quick-actions-heading" className="space-y-2.5">
+      <h2 id="quick-actions-heading" className="sr-only">
+        Quick actions
+      </h2>
+      {locationSlot ? (
+        <div className="flex min-h-[34px] justify-end">
         {locationSlot}
-      </div>
+        </div>
+      ) : null}
 
       {intelSlot}
 
@@ -73,8 +69,6 @@ export default function CravingStrip({
         meal={{ key: meal.key, label: meal.label, phrase: meal.phrase }}
         defaultOpen={defaultOpen}
       />
-
-      {contextSlot}
     </section>
   );
 }

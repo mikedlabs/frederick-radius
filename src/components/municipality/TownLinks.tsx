@@ -53,7 +53,7 @@ export default function TownLinks({
           href={town.homepage}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[13px] font-semibold"
+          className="tap-44-y inline-flex items-center gap-1 text-[13px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
           {town.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
@@ -69,7 +69,7 @@ export default function TownLinks({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
+                className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
               >
                 {label}
@@ -89,7 +89,7 @@ export default function TownLinks({
           {town.contact.phone && (
             <a
               href={`tel:${town.contact.phone.replace(/[^0-9]/g, "")}`}
-              className="inline-flex items-center gap-1 font-semibold"
+              className="tap-44-y inline-flex items-center gap-1 font-semibold"
               style={{ color: "var(--app-cool)" }}
             >
               <Phone className="h-3 w-3" strokeWidth={2} aria-hidden />

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import {
   CATEGORIES,
   CATEGORY_BY_SLUG,
@@ -14,9 +15,6 @@ import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
-import PhotoMosaic from "@/components/today/PhotoMosaic";
-import PageBloom from "@/components/ui/PageBloom";
-import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
@@ -195,48 +193,38 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   };
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-5 sm:space-y-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }}
       />
-      <PageBloom variant="single" />
+      <nav aria-label="Breadcrumb">
+        <Link
+          href="/places"
+          className="tap-44 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          All places
+        </Link>
+      </nav>
 
-      {/* Typographic category hero. The old hero draped a generic "season=auto"
-          county aerial behind every category, so "Pizza" landed on a random
-          pool shot — irrelevant, and against the field-guide bar (typography
-          carries hierarchy; no misleading decoration). Instead: a calm cream
-          plate tinted by the category's own ink, its engraved glyph as a faint
-          watermark, and the eyebrow / serif title / blurb in ink. On-brand for
-          every category, and honest — no photo pretending to be the subject. */}
-      <header
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{
-          borderColor: `color-mix(in srgb, ${c.color} 30%, var(--app-border))`,
-          background: `linear-gradient(135deg, color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`,
-          boxShadow: "var(--app-elev-1), var(--app-hi)",
-        }}
-      >
-        <CategoryIcon
-          slug={c.slug}
-          className="pointer-events-none absolute -bottom-7 -right-5 h-40 w-40 sm:h-48 sm:w-48"
-          style={{ color: `color-mix(in srgb, ${c.color} 15%, transparent)` }}
-        />
-        <div className="relative p-5 sm:p-6">
-          <p
-            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em]"
-            style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}
-          >
-            <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: c.color }} />
-            Category · Frederick County
-          </p>
-          <h1 className="mt-2 font-serif text-[30px] font-semibold leading-tight tracking-tight sm:text-[36px]" style={{ color: "var(--app-ink)" }}>
-            {c.name}
-          </h1>
-          <p className="mt-1.5 max-w-[46ch] font-serif text-[14px] italic leading-snug sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
-            {c.blurb}
-          </p>
-        </div>
+      {/* A category is already a browsing tool; it does not need a second
+          card-like hero around its title. The flat heading keeps the first
+          viewport for the location control and useful recommendations. */}
+      <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
+        <p className="eyebrow" style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}>
+          Frederick County guide
+        </p>
+        <h1 className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
+          {c.name}
+        </h1>
+        <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
+          {c.blurb}
+        </p>
+        <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          {places.length} place{places.length === 1 ? "" : "s"}
+        </p>
       </header>
       {/* The location control is ALWAYS shown and always changeable (beta
           feedback 2026-07-12: once a town was set, the old control vanished
@@ -254,7 +242,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           row via PlaceCard's responsive layout. */}
       {topPicks.length > 0 && (
         <section className="space-y-2.5">
-          <SectionHeading title="Worth your time" accent={c.color} />
+          <SectionHeading title="Start here" accent={c.color} />
           {/* Compact row cards — the SAME dense card /nearby and the browse
               list use — so the visual language stays consistent from Today
               through every listing surface, right up to the place page. (Was
@@ -276,7 +264,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
             className="text-xs font-medium uppercase tracking-[0.08em]"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Refine
+            Browse by type
           </h2>
           <ul className="flex flex-wrap gap-1.5">
             {subs.map((s) => (
@@ -295,17 +283,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         </section>
       )}
 
-      {/* Photo wall: six tiles from this category. The wall makes
-          the page feel like browsing a curated collection, not a
-          stacked list. Only renders when there are enough photo-
-          backed places to fill the grid. */}
-      {placesWithPhotos.length >= 4 && (
-        <section className="space-y-3">
-          <SectionHeading title={`${c.name}, in photos`} accent={c.color} />
-          <PhotoMosaic places={placesWithPhotos} />
-        </section>
-      )}
-
       {/* Browse: PlaceList lets the visitor flip between a 2-up
           photo grid (visual) and a dense list (scannable). Category
           pages default to list because users land here intent-driven
@@ -317,7 +294,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           directory. The full list is preserved, one tap away — a user
           is never forced to scroll the whole category to leave. */}
       <CollapsibleSection
-        title="Show all places"
+        title={`All ${c.name.toLowerCase()}`}
+        headingLevel={2}
         count={places.length}
         countLabel="places"
         storageKey={`fr.category.${slug}.browse`}

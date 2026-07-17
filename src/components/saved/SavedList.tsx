@@ -25,7 +25,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Search, Settings, ArrowRight, Layers } from "lucide-react";
+import { MapPin, Calendar, Search, Settings, ArrowRight, Layers } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -39,7 +39,7 @@ import type { ReactNode } from "react";
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
 const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
-  { key: "town", label: "By town", hint: "Your field guide, grouped by place" },
+  { key: "town", label: "By town", hint: "Group saved places by town" },
   { key: "open", label: "Open now", hint: "What you can go to right now" },
   { key: "category", label: "By category", hint: "Group by what kind of place" },
   { key: "recent", label: "Recent", hint: "Most recently saved first" },
@@ -577,7 +577,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   if (placesPending) {
     return (
       <div aria-busy="true" className="min-h-[34rem] space-y-4">
-        <Masthead stand="Your field guide" />
+        <Masthead stand="Loading saved places" />
         <div className="space-y-3">
           <Skeleton.Block height={46} round="var(--app-radius-sm)" />
           <Skeleton.Block height={56} round="var(--app-radius-md)" />
@@ -595,7 +595,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) {
     return (
       <div className="min-h-[34rem] space-y-4">
-        <Masthead stand={<>Your field guide · {userEmail ?? "on this device"}</>} />
+        <Masthead stand="Places and events you want to keep" />
         <EmptyState />
       </div>
     );
@@ -637,10 +637,11 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
       <Masthead
         stand={
           <>
-            Your field guide
-            {standParts.map((part, i) => (
-              <span key={i}> · {part}</span>
-            ))}
+            {standParts.length > 0
+              ? standParts.map((part, i) => (
+                  <span key={i}>{i > 0 ? " · " : ""}{part}</span>
+                ))
+              : "Places and events you want to keep"}
           </>
         }
       />
@@ -979,7 +980,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             <button
               type="button"
               onClick={clearRecent}
-              className="ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+              className="tap-44 ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
               style={{ color: "var(--app-ink-3)" }}
             >
               Clear
@@ -1099,38 +1100,26 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
  * that fill it. No fake shelf, no pre-stuffed seeds, no box art.
  */
 function EmptyState() {
-  const KEEPS: { title: string; desc: string }[] = [
-    { title: "Places", desc: "The taproom, trail, or table you mean to get to." },
-    { title: "Events", desc: "Shows and happenings worth the trip." },
-    { title: "Routes", desc: "String saved stops into one good day out." },
-  ];
   const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
     { href: "/search", label: "Search", Icon: Search },
-    { href: "/map", label: "Map", Icon: MapPin },
+    { href: "/nearby", label: "Nearby", Icon: MapPin },
     { href: "/events", label: "Events", Icon: Calendar },
-    { href: "/towns", label: "Towns", Icon: Building2 },
   ];
 
   return (
     <div className="space-y-4">
       <div className="sv-empty-hero">
-        <h2>Blank for now, and that&rsquo;s fine.</h2>
+        <h2>Nothing saved yet.</h2>
         <p>
-          Tap the bookmark on any place or event and it lands here as a card
-          you carry, grouped by town, ready to turn into a plan.
+          Save any place or event to keep it here.
         </p>
       </div>
 
-      <ul className="sv-empty-keeps">
-        {KEEPS.map(({ title, desc }) => (
-          <li key={title}>
-            <b>{title}</b>
-            <span>{desc}</span>
-          </li>
-        ))}
-      </ul>
-
-      <nav className="sv-doors" aria-label="Start here">
+      <nav
+        className="sv-doors"
+        aria-label="Find something to save"
+        style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+      >
         {DOORS.map(({ href, label, Icon }) => (
           <Link key={href} href={href} className="tactile-interactive">
             <Icon strokeWidth={2} aria-hidden />

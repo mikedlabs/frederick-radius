@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Waves } from "lucide-react";
-import { poolsStatus, MORE_POOLS } from "@/lib/pools";
+import { ChevronRight, Waves } from "lucide-react";
+import { poolsStatus } from "@/lib/pools";
 
 /**
  * PoolsToday — a seasonal "pools open now" card for the Today page.
@@ -17,7 +17,7 @@ export default function PoolsToday({ now }: { now: Date }) {
 
   // Open pools first, then the rest — the answer ("what can I swim at now")
   // leads.
-  const ordered = [...pools].sort((a, b) => Number(b.openNow) - Number(a.openNow));
+  const openPools = pools.filter((pool) => pool.openNow);
 
   return (
     <section className="mt-4 space-y-2.5" aria-labelledby="pools-today-heading">
@@ -34,17 +34,17 @@ export default function PoolsToday({ now }: { now: Date }) {
           className="font-serif text-[18px] font-semibold leading-none tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          {anyOpen ? "Pools open now" : "Where to swim"}
+          Pools
         </h2>
       </div>
 
-      <ul className="space-y-2">
-        {ordered.map((p) => (
+      {anyOpen ? (
+      <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
+        {openPools.map((p) => (
           <li key={p.slug}>
             <Link
               href={`/places/${p.slug}`}
-              className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-3"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+              className="tap-44 flex items-center gap-3 py-2.5"
             >
               <span
                 aria-hidden
@@ -63,47 +63,22 @@ export default function PoolsToday({ now }: { now: Date }) {
           </li>
         ))}
       </ul>
-      {/* More county pools — listed for coverage. No live open/now: their
-          hours are each town's and unverified to the minute, so they link to
-          the place page for details rather than a real-time claim. */}
-      {MORE_POOLS.length > 0 && (
-        <div className="pt-1">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            More around the county
-          </p>
-          <ul className="mt-1.5 space-y-2">
-            {MORE_POOLS.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/places/${p.slug}`}
-                  className="flex items-center gap-3 rounded-[var(--app-radius-md)] border p-3"
-                  style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-                >
-                  <span
-                    aria-hidden
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                    style={{ background: "color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-elevated))", color: "var(--app-cool)" }}
-                  >
-                    <Waves className="h-3 w-3" strokeWidth={2.2} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                      {p.name}
-                    </span>
-                    <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                      {p.town} · open for the season
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+      ) : (
+        <Link
+          href="/nearby?c=pools"
+          className="tap-44 flex items-center justify-between border-y py-2.5 text-[13px] font-semibold"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          Closed right now · see seasonal hours
+          <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
       )}
 
-      <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        City of Frederick pools show live hours; other county pools are seasonal. Hours vary, call ahead on weather days.
-      </p>
+      {anyOpen ? (
+        <Link href="/nearby?c=pools" className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+          All pools <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
+      ) : null}
     </section>
   );
 }

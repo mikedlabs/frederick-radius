@@ -1,4 +1,5 @@
 import type { LngLat } from "@/lib/geo";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation/latLong/current";
 
@@ -67,4 +68,36 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
 export function pickWorstAqi(obs: AqiObservation[]): AqiObservation | null {
   if (obs.length === 0) return null;
   return [...obs].sort((a, b) => b.aqi - a.aqi)[0];
+}
+
+/** AirNow publishes a local observation date + hour rather than an ISO
+ * timestamp. Convert the two documented date shapes to an actual Eastern
+ * instant so stale readings never authorize reassuring outdoor guidance. */
+export function airQualityObservedAt(obs: AqiObservation): Date | null {
+  const raw = obs.dateObserved.trim();
+  const ymd = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(raw);
+  const mdy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
+  const year = ymd ? Number(ymd[1]) : mdy ? Number(mdy[3]) : NaN;
+  const month = ymd ? Number(ymd[2]) : mdy ? Number(mdy[1]) : NaN;
+  const day = ymd ? Number(ymd[3]) : mdy ? Number(mdy[2]) : NaN;
+  if (![year, month, day, obs.hourObserved].every(Number.isFinite)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || obs.hourObserved < 0 || obs.hourObserved > 23) {
+    return null;
+  }
+  const instant = new Date(easternWallToUtcISO(year, month, day, obs.hourObserved, 0));
+  return Number.isFinite(instant.getTime()) ? instant : null;
+}
+
+/** AirNow is hourly. Three hours is enough room for publication lag without
+ * letting an old Good reading hide a changed condition. A one-hour future
+ * allowance tolerates monitor/reporting clock skew. */
+export function isFreshAqiObservation(
+  obs: AqiObservation,
+  now = new Date(),
+  maxAgeMs = 3 * 60 * 60 * 1_000,
+): boolean {
+  const observedAt = airQualityObservedAt(obs);
+  if (!observedAt) return false;
+  const age = now.getTime() - observedAt.getTime();
+  return age >= -60 * 60 * 1_000 && age <= maxAgeMs;
 }

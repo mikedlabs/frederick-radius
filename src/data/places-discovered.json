@@ -21772,5 +21772,64 @@
     "google_place_id": "ChIJq12ENvEsyIkRji5or4Eg-qo",
     "feature_score": 5,
     "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "starbucks-coffee-company-urbana",
+    "name": "Starbucks Coffee Company",
+    "category": "coffee",
+    "short_blurb": "Welcoming coffeehouse with handcrafted coffee, espresso & tea, plus breakfast, lunch & pastries.",
+    "address": "3260 Bennett Creek Ave, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3527,
+      "lat": 39.32237
+    },
+    "phone": "(227) 231-0061",
+    "google_place_id": "ChIJbyP8JEDXyYkRF2bRMQK6_w0",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
+  },
+  {
+    "slug": "dunkin-urbana",
+    "name": "Dunkin'",
+    "category": "coffee",
+    "short_blurb": "Long-running chain serving signature breakfast items & a variety of coffee drinks.",
+    "address": "8925 Fingerboard Rd, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.34797499999999,
+      "lat": 39.3248945
+    },
+    "website": "https://locations.dunkindonuts.com/en/md/frederick/8925-fingerboard-rd/345177?utm_source=google&utm_medium=local&utm_campaign=localmaps&utm_content=345177&y_source=1_MTIxMTA3OTItNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+    "phone": "(301) 810-5103",
+    "google_place_id": "ChIJSVo5RaLXyYkRBVKRFepdkLk",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
+  },
+  {
+    "slug": "panera-bread-urbana",
+    "name": "Panera Bread",
+    "category": "coffee",
+    "short_blurb": "Coffee in Urbana.",
+    "address": "3266 Bennett Creek Ave, Urbana, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3541001,
+      "lat": 39.322964899999995
+    },
+    "website": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main",
+    "phone": "(240) 436-2130",
+    "google_place_id": "ChIJL4wqN37XyYkR_MU3ildDf9U",
+    "feature_score": 5,
+    "updated_at": "2026-07-16"
   }
 ]

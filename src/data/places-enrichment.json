@@ -72531,5 +72531,99 @@
     "lng": -77.1546566,
     "primary_type": "colloquial_area",
     "enriched_at": "2026-06-16T14:21:26.388Z"
+  },
+  "starbucks-coffee-company-urbana": {
+    "business_status": "OPERATIONAL",
+    "weekday_hours": [
+      "Monday: 4:30 AM – 10:00 PM",
+      "Tuesday: 4:30 AM – 10:00 PM",
+      "Wednesday: 4:30 AM – 10:00 PM",
+      "Thursday: 4:30 AM – 10:00 PM",
+      "Friday: 4:30 AM – 10:00 PM",
+      "Saturday: 5:00 AM – 10:00 PM",
+      "Sunday: 5:00 AM – 10:00 PM"
+    ],
+    "has_hours": true,
+    "rating": 4.2,
+    "user_rating_count": 36,
+    "photo_names": [
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydgM0Zt8KYnM73-1Za_aZ6hEyTl_UclodZ-CLTQ_ZZ5X09MP2dzfsEgI7h7Hq_tE16D1W88BZ3zm6iMmLOErtajyzxWe2pa81WUAZQeRzu_x2YDaAq9zfs782ERufvudnR9oahNYvxxv1TAVUBXU2d7BIswpNeAF3d6KM0JLxFY80dhkAirMKi-LR9asUjsL1-YqYglc0iz3ho_g1a2Oxcz6yvvtPS3hQxdfgg8MPyDU2mCir5mx-xKD0N99mmigBip1PAy-GBRhQm5h0YtGJfXrqVZ3Il9wb3nJMbIQ7jJQD7Wd2xIQtIM44g3W5K2xNkodP1r1uifK2__-i8kAEtIoBeNt5-em7ICFKYvQdUZRf7y4ZXnrxMZMCCR_R-sxhuuMJmbbvznHy_Kx3hL4YEJ-I2t3dU6ECm5fbnnAFVkJyKnWc-xEIpWixs_eSIVQ",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydgPNpMyfU2s5JXUJ9aUYCoXzeL3JFZHtRIg9Ohl9G7kSYQYqRpZFfF5y2PdXMYuAZZIbS3A99sVwoPyVTL0Gkdn-6Pf1onZBzV9iV0Rv3avHPPBLE4G2QHZ5ivFak_VmBWFQBnVRw5BSBiN1TTvxilbETPbSkqC6jZ19vgfB1Et7FCdYWxM7SuBt4gpoGs3dKyMCOd71tz7dVfg5OGb7yV-zm2KSlQC27ia1XfTRj2-gpC5zO42J2j_YC831O13ySL1zkv8vCj_57Wq9R4kyfqxReTDtcbR02hGy9sia52xkpZVbt7sD421DdhKAw14-rwBXnHM8g_ZS7L6_BH8bY1DK7-isFKF8HmRl0DnNfQiGskLAp4wr9IsSbQORo5CaF3QQ99HZG0JgSVs0wRIxr3GMVzg_DNotqLTVQiumawluLSW2G0044TAED67FrIR",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydgp5KMMTRMT4kPOElC1OeX2sRuLPn-Pr3GMM1R1dKFFLu2Hq__S3DAiEf4iU_xwoQsbpgmsq7YnWZxBU-4Efpy6L_EduDAGGgPyr9DSSm9nBzRuh1C5kpP-Zjjnj_FoRhN68xdcYBA3UsYH5d5smA2xBDF2RrQj-xDyyMUSeyafqD9S_IRtxr-Dxbm3AIWTZyGMlfUMqwRSGN1Kcx5uEQtfmUiqvcIstnsrjgzuCymgy_wB5SiRydshwANSW3fm4GuDEFy5hro928tNMcgUCb0Nz_KuX4pu__DoAmXv3GEar4HTtYHktCrrI3VRP_VSmO9S3Vk6tFaSaoauJpahthIuHfMRLh6-_zOREqPlyaH4kwKdmi6lxPIxFpCgBjdZbc-6QTcyx_IpQ1TlFoWX6XjEBUTkJuZtwBYOFMGcq8Sr2mViVAQ1g-LPmI7LFI7J",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydjgQwWix1_SBoAjkUae9bqRu9HyoomF_AvyN0EhPy8nwfJsxrRDQ0Nq8xMVgubyQ9q2ZM9F1XCTd8-qPQ87jkwZrN9KKvU3Zpq6JMyzN3jaDD1V1NjDnolTpIK-wYlC8-pGKgFSwYOglWdRudEvAUTQ1ZWcz51uaVHn5E9dO__4GNwkVqAdFP93tCAbuKCuIOxsrBbgQlVTJDkevQrgPROpCLY1xZh3JUjrkqOS5uWnEsy7Tz3Zj3fMJmx6uVsG5H5R9nOblIbWym4jA6sRc9b3D9mxS5X25CMwBqxQBqC7sNEh4byNkRH4gFUNp_RRYJO62_aAbTz_SoqEHvHUIojFRNjy4EH0dSFjg0t2eiYjYEM9yKi1EKmLSygvRX2cDj-7KmUIzf0id69FdGYsaFFRCBgJqojAu1pozWkw_n99iWv17ilgpzIwjrCMrgSE",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydh3IkeyF23-jZ21UJll8ECwuJoKTlnP1bthBShN-zvfWDzHqPrQdzwFLuY2gR29EhCrzjRtuDV5Ke1Ifffjf2Z6QMp4FEXPMKLcQtbVTK20jlA_VpyvBpYneH94bKKu-zVlJtBEeegWi0nJ2zoDQJtYDrhc0FNcPEOkAsAFub1o_Zu-KSzTLcq_glBYlbFDvE4tdW8GH05dKGOnrgdW8rR2rqnbl4ouMbMul9gvTxKZEirWRItwfgz1DpG8n843CQEM5GsdRfBm37vsNNV248pvr71UT15bZPPzl4aRNROS4JpHN2uhu-jSEY7pvLQfu2C_FyJiYGL1ODX_t8TcQr5Uvqw4vqJOaaMldZmnBWfN99t-dkyeO3e5xN0uHmV-K1L4paQTBxx0sRzKiJilxkqXAH46zXsqLDV8Nj9PYJagxnHox5kIqKtmmMhyh5kv",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydiRV2uZIpaoH62UAlnFg7BGJeJx4aF10r63obTwri1iWwkUxECQK66K9CswGYkBMvhZHD78VuIInCiooV0C40aKVtEtvcotumFI0IhG1PcGqcu75Em9M_WfxUlHkqGrsbq3UsBhMwzjx4VGj1743vkXc-Hn7HPBw94WUt-kZWUCNkAl-8JDX8kTsRdHcp3dHOf3mHodlbfBRd81lweRTDgwGdYA4c3t3mSYMhW5eFkuKXnn-okRXR-BedylgbRpRNRULymLQUy9D23GjaXRmiaBgaXS-9kIgQh6qxVMpIoRinXinvD5HO72F8_8Ul6uHNxJ4-V5Skbh_Tdm8-YOyv4AaofHyB68EtvGlWjLcya_IoXDXNtBU63LS3HfrlrUToBGOjEpLAEGDwqK0xqQQtmiNHVF6uETok1hFV5num8EGw",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydjE7ULAJi3QP7xOPnXW8JDXauxrMDrToCiMHdZ4XzWSGRmG3wF1xdVuZCfTN-U_vGq9Lv-qGZLLJUEs_ILAb4AnNws8-TveSfGMUSoRecoYXM2qKOTwusGd1JQh6T2U6yYJbUb1rsZf96LiXDki76G7nQLOfBdtX9GImRSKbKm0cE79EzfoPRN_vozj2kIb6YYWi_7CTf97obmNQuK3V9Ea4aLedwbf9K4lHl-y4MghhidTrU5SA-_ie_9kdvTQUJVa6liuQGhKqO7-qMUzW_mMhJPsiwE1W6PqBs_7b6evhxf-ahdVeoTdoK6XXOcOFrddvqVVCs0xaEKWo5MSyqvU8tOhAsQvxr7slNDtSE47U7Gz58j8v_zjWJtlmksUJq-DRqtK_W0nuh4bD4YN8TsBtEw4FT5pAHU-f9erT7J8pjeGsieSG8Lj7YNl4w",
+      "places/ChIJbyP8JEDXyYkRF2bRMQK6_w0/photos/AWCwydh92CcK0ETvkWnZnHJW5uq0rZVZWXPpNHw1HDzP1ShdonFRpIwLLfs2ujxeOzIV5flcIbKoa0FfJldxEC9G3qxwaCHI4yT-IFooXsKS_8683Y4Vtl7ipyyvjftpc75AeJhzyupC1yiyhK_H5AsV7jkX4x7-PUsakBa2sP9tZP0BLKER-W1uORjHO6Mw0MRP7ZG4s93Dxpx22qgZ4671VO0QNxdN5utlobfpyxiOQJZ1wB1QKMSMkSK_Z5OTP5HhoY86v4x5bkEvTsoM4uRo3Fk0mT1_FVFPGD4Jmv4tbhG30pXNuVOGw0svRT0T36Kbww2q6fFjWS1hU9pACAMqIMyTpYH3czRDKUrHxhNuuO5I8tXaHinUeZ9rn9ZLbp5CphO1kdWhAi_fuOT47Czw4495lcr5DsMHxHyYjMSN97AvLBUyh4WaB33Y6E7Db1dA"
+    ],
+    "phone": "(227) 231-0061",
+    "lat": 39.32237,
+    "lng": -77.3527,
+    "primary_type": "coffee_shop",
+    "editorial_summary": "Welcoming coffeehouse with handcrafted coffee, espresso & tea, plus breakfast, lunch & pastries.",
+    "enriched_at": "2026-07-16T22:58:32.011Z"
+  },
+  "dunkin-urbana": {
+    "business_status": "OPERATIONAL",
+    "weekday_hours": [
+      "Monday: 5:00 AM – 9:00 PM",
+      "Tuesday: 5:00 AM – 9:00 PM",
+      "Wednesday: 5:00 AM – 9:00 PM",
+      "Thursday: 5:00 AM – 9:00 PM",
+      "Friday: 5:00 AM – 9:00 PM",
+      "Saturday: 5:00 AM – 9:00 PM",
+      "Sunday: 5:00 AM – 9:00 PM"
+    ],
+    "has_hours": true,
+    "rating": 4.1,
+    "user_rating_count": 449,
+    "photo_names": [
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydhfgdd3s6sPsfUmv3WeGUGbtccEidaXDqFPzsJgX0S1nDIzfJJ_qaLSgBZstss25IhMe_mqe7HCIWx-SbYTy-GzNh2Qbot6PTG2jSNDplnc-C80_MKDu99WUMoB2TkjPKdgyeBBBMsCy2DhMlLSaDggGEK00G2rTBwhZttsnSDA_YNwMZC5-3-AVyuiJ3nF2VnujWYLNHNNmis0rarp3prFssslpeU2C3ZGgKHfayMD2ZdqyoDNJ9nfmAi7cTd6xGhXspwnIo3-iZyor0NiwXdKCt--sR0rtcmUzeZrzbIRpe1l2DETSwyA7H7yh9b2_qjrD46QlUiwfC5VX4xAn8HACPwUVWLXAuGYFpa4nxyjLc6G-9bpS-KkhF1thzwfxybABTn-e9uUuhQaA-6GRdMeZQ18epUlQe6CygMmurZG2g",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydg_RWXrNvSIsjYwMm9iRz_1M6wAwXwcsOBwPL1bdIrxw_z6vLhUyhZ_DUbX8PsAUwX5fRtF1t9Ah_cICnbcnJq9jeMVtZSuBLY-nQTQMaWimWhsHK0NvPqSa9rq-tMc1khRDZO59GED_mnWIp2mWkXlvBe3IfLK6PCkwZT6AHtu4en8zoghF5KH4gGEl1SEGwvXWFIqPB8iUhouhGWZW_oNh9J2oq7v8h-rzfpnhEsWvme_EuWSAGE1-IsmtihmXV26gkNjImcfTp8hBiMorrQmTBkGuTktbgWjqjDrnh9td_rZvsreiJN4PGG16a2yjR9Q5JR-mb38w0D6eKdwYF5plK7ScNNj67FN3DHNNSU5vhKfH44k6ImDpmA9M_fHNwgyUxNAlrKo3RaS17v7gAm4TwbEvL41nLuwbcCbSkZCwA",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydityvEqHrUUpJuxn12Zyoeh-3Rzv7LBSGZGykEEKEt3ch8CBbC6jkqG8Ujgje576j2B8gWRAiQW0R5K8mbBKwxWapzib9UsoriR9H3V6x1l7KRk-z07VAypmtXvlw1LsLEbW6oBg0xnKD7zbi7z1w1ILgK7KoaIodEmqxyF4vp1zt7GcKi_vpGPvWKoy4e6rCLDlOvMKMyTZkn9YdGAdDh9FzY53BY-qiL3Huzn_ITnLFahAw3FoCgOPg-Qv-xWzYk_rlcWDD8GIOyl1khqIQgggYehMvlNeKYItxIj4CA4bMK-s9DheQdo0L05cwiaVAy8_RHKWLbhuoHC5PM5mkW-meimb9WP4TeP0PyOl49Y5d82Tesarg3wWgu5OIgwAUUNVNU0gIvYesjXPt0MahMyPIKDov0PotHwy6tWTJnpmAw1cgkPkgabJYlVkoZi",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydh2Pn6pQ6M_ai-Sctx5noaJGV9Y5NnGl2jWh1FYIm3FqDjFxOUlNwdXQAe53DJadO3psvSpH23e9c7BR8u1akq0cPxTZBhx8VI-WxoPfcx8gd-kRaB6Odan-fb03XrLZEfTmZUA_zISWPDjBZgf2lVRgCiT4QzdsVXQUUQclB4WpUPTcmXf9WomA60IxrD4gKNekMvB7Xs-jOmIjVImqx34EVZoiIOiS3RQeNMypX-6yWrkbP3LQCUw6gbCZe1-JaJWwxHT-S5FCWEfLHKRFLuuP6qHwTUmJWwGJ293XcXxG-0atoB3yBAk8ZdwnmU2lLwKUcavkvnN0QQzTXvXuGnytugnFeI0tgqdORxgVB_x1Xjn83ygGL65ZAF3Q3kxYywlq_RWPyXBd_Qt41FgmkqyVOIx7IyPvDquSbmjJJwiQFwU",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydiP5OjVhYbedcJZI1iSQDNX0RxoanC03mXHt7yIizY-SicnoMfJmXlaEMAzKUeI9o2QV-R8DNHgQRRZztqvrodaa159RswsjcQ5-VOnnNs4QVEyBvnR-RWk6Gv5TGLwW0ONuoz1GeQqt7eO3dyiNSY4nhmodsdiqHT4z_RORfT8Y9O27uV6mXQ25GxTYEy0rggyK6NVzqZA-qI1s0xbQyeDx8piTBMD0QJEzlZUlkbk9I_JqKu8Q3vwhOraZNm-mmb5DSpS2Ofhuo415dZSpp7RETf4qWLcK5LiKnQbHkEAmCLzFRvKGQoUPPZMqQ3ofo5XHZ9Rto24MGK_p61aYeJYI6jXwWZmoiHTvBzgjnuOJWax6CmTDc9grHBqJjqDgzCD5mQEyW_Rnoui-s_R8uWT2I8RwZ-g1Cezrz9tW9v_B4RfLxw54Vcne7CA_IBG",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydhWVJFMFzQZsPD5qv5Fm8EnmUQQ57gDPBJ9DWLbFbEuW6qaMyFhSzGTPysdHojFenqU2LA33P8ttSnVyTSP6La03uW2ow83gUZaXGDB1Y6pLbQ8J3Z7DRUH3OGqzNcjs_VjxbLwSsHIA0kfs8LNMICwEIfbQy6rdc9VGeQp8Z6yjefkyqTK5oEdE5ZaJnpKElCHhQ4pvkmRqTY9lfgzYtZMG8p6GdFiXjjJvvePIFh6dH9WKEB3Zg4-UiBP9lpsEYVDvKMP3boGvrEuJFeFQ5ljupY8SSa8bd6-w1WMmELd-6PPfouG3JrNZc71yPVObiTi86HccTcP9V-GZtGi-77eFI8g_SF48hBgOXF4pcfcHjmh98PSaEiER8_4EfZY_4iRuTmYz9qIfMNSxJBn4lWXNd0J19CZ7t8HaXPizUM",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydg2MPS-rLrnQ_QXCQ_U63iAqhKLR3O0FZ443vauNwjLnLQUxv6rCtWh9nuGYlaB8wuCaf-aUsCWt1VUKgugaWd9f8SLQLI8Dwq1k8KYLc3SBwxL0YyMUsC98c2XrybeETC93nWtxzlEI7guiNZzpk3aF0WRvfOxZjJSZf44SZhDyzP8V_Jsp6jo3AjyJDmh1tOdi-06ms1taFsBtd2RoYQN5-wbwuQJiNB5rzks4uo3frgfFuH7tcg7JhDGu4aWSowmc_RajCLG8rTJneuRgOiOWhTnyue1yfI3oihteh6ckJWLFPlcbLiLLqcXgBtMyUApTXMGm4MVBbfV1bQaCSyq7SvsVB8vo2SU2PMWmA_kf-g3m7HoNNZML4bePLQGsYkwCs4nwaBkmMo6bqM9gE-tgExglIron56yc61s9iEq4d6AJ3vtC_OIPJ8o1g",
+      "places/ChIJSVo5RaLXyYkRBVKRFepdkLk/photos/AWCwydgphOxOGu6Rp8NDgfrC3YaEZYhwkurWuXWsP0fxABdO7iCCL3f7wQ7xEOtylJDnoVEElc8G_ILfrdQXbTMYNyY3ia_bgd9g1cg7r7GAN0qC_8-AK5atMYTuN5Ax2MnHgIRaPQPwtdq6ovJm6zxEsI8dVyck7TTuBQiVB4ItyH-nAp0NcAPXUFPOZ1RaCcLU-mOlc1yqPjY2D2Ox-fkJ2eVje761hmvomApWJbTo7Bzxhe36GuNoV9-2yxTqNfz2t2DLAcK4PKIzjC1QMQ7v3bNmM1m3WCCHBW91-6DfzONRAT9V-jm3K2KZ4J-dyvIgLoJM8vJlhHtNB94khM_pMQuvZCAozlINYiVcFCImCUmu3qxUmhhTy65q8ycD-LpSCoZbzCY4uETzW1JJ94mNHLU2xWs1tDZwmwqvs9Vp1-4v2zAdTauHJgo8NXKD_VcF"
+    ],
+    "phone": "(301) 810-5103",
+    "website": "https://locations.dunkindonuts.com/en/md/frederick/8925-fingerboard-rd/345177?utm_source=google&utm_medium=local&utm_campaign=localmaps&utm_content=345177&y_source=1_MTIxMTA3OTItNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+    "lat": 39.3248945,
+    "lng": -77.34797499999999,
+    "primary_type": "coffee_shop",
+    "editorial_summary": "Long-running chain serving signature breakfast items & a variety of coffee drinks.",
+    "enriched_at": "2026-07-16T22:58:32.011Z"
+  },
+  "panera-bread-urbana": {
+    "business_status": "OPERATIONAL",
+    "weekday_hours": [
+      "Monday: 6:00 AM – 9:00 PM",
+      "Tuesday: 6:00 AM – 9:00 PM",
+      "Wednesday: 6:00 AM – 9:00 PM",
+      "Thursday: 6:00 AM – 9:00 PM",
+      "Friday: 6:00 AM – 9:00 PM",
+      "Saturday: 6:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 9:00 PM"
+    ],
+    "has_hours": true,
+    "rating": 4.2,
+    "user_rating_count": 166,
+    "photo_names": [
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydi3EQsE651NHSs4wCD5fM6X9844LiZ2O2xd-KX2D0xxbytWTaxlBdBdEmn34BGCpjdDbGVoy-nex58oEm3CkhVmM2JaDgTYYPlysb6c5IYcuRRXQQx6cEu-jY1Hwm4JqidV6O51KyS_pTXCLc6NBJCUzwGcPl1kGhcJYM7amrkGePl8olGbkFmJFLE_dNuxD3Zm24Uugqlu2r04GBuI83DRu9nojn0baoY1QZcnssOzkK39H6dI7fGjkLT44KY-cr5P8WKuxxq2ocENQmfKgbyoZxPLJiXDegyHHSqYnUSN4CV-Dpubmv28dTbycBAmJ0xfo9n66qlkW4KWRnimEpVC9JXY4hefaI_Dgb0aEZPEEdgu9TAVhhfOq40s5knnIesCE1TmhXz0QGrcLEgG6iRuQHem-yCjPWKh6YorzJU",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydgSj0iAjfYt8_6dJFZXUD8pgmdczg2ylj3Ugwebrsy48uh56cr1y7icW_q6QOtB_z_yzG-9xMvd93FD1hQ-UpAPEAmeuzGUeQiG5NlL8Q-bARQSbadQpJmpjN4rWOFQ0jbfp2JBnQdwJRUvKPOdPD8jhjYB6U8fUQ0qYrGWXffy0rhS1m3bFbuS4R68vC8mBl8qVQJzv2vGhw9Kfv4TJchc6oFaW4ECUpqWZmiL9eYkqJprG1fQi_cEkmiBIqzaeWXMA55v0nwtffv5jrN5bQ4DMjXFRw13TKxLAKyz1yHVuUtI6Q7aEIoHJFsDaHgpRHG2D5KKE2AmFAzT47PoZycO1Xyj1TAjbV7B7v7KAjEFMg7JYFQkzRpS4mQRXCunugP6ur5ouDtBv_yajPCEipa8HZn-rvHqILm_RudoaJmg9Q",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydgRZ8kDiiay5mtF3aF0ItVyHbMK5TbHiyV7Eko9rj1AzJ2NM5o_91-zB9RJ9Jw-NMca6W0dlc9mTs3N5YpBprXRXNc35sWRBHpfucTufekw0Ax6IFoSQCAexP98cw-z7l1BkH7c3wO52e3w4M0nevl7VqtX0x5MXk3lOPBCryR-zetKglJxAIA7sNEtVrIFvHpSbJXIZNDpztWtnT3IbLHhmCYLJ04Xpl7_RnjEOpVD3kAAxn-YYaXKuPjywi8NeSclWkJzKjfgQbNIvRpfqlWpqD8mNWhFl0woN3KUgMDLJWv-kclurc-5gWwvnZ1f2p5mQnpgRJzobNYt6umRcuHcLmrtqrYDw8espKTn1bcwyksZdpZww5se3Tq4rw5q7wcIxi0o_cPYqyAjocnEqtttXhPiuCIggSXdda9dFCHxiw",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydhabOL1tdRfsF7cu8hqkSH-F-k295R8cHp156MAJYyhhM7H9uow9NRoHpQgjurYVvb9exD4Ksp_jIKkEiI2v9HX3H4MZ_qje8FoOJ5sDvOwyOyRPer05nbT9TTl0J0yQxPFgmhGwR40weAFAKZL6C4jQ_uS_CQa_tINxJcKEfWuOzl1-OtEBXs063jxYEtg8w136Bmo7q2vsY3muboRhriPb33x-fJEB1UBdDdyUA5Dxo0OgOB2G_MbEfKkp6WrmKdWsVObrDVs3pStKoyrV4aybxCziuFtoJShnsVUl0rIxpA-__lIs3PExx5VKWoQFtlol0dG509faKgjeN4fJ0EAXyvFVp9e2FK9eTjqdwCkg51X1rqjiSDZZq9K3htYdrBlbK0B8FS89xshJ91WpmjlwcXAUsja1kKco-FzuYOGpN2W",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydggz67SMyxQhrJ4yLxR4X-BlpRLoVEbwPhCMmDOz6cXOlkEQDfSQ03BPFDvddtr75an3Y28ffAe8HEnsdBJX4dZQ8guRJGfyTIWpeqVjLZcoE7KafoEkVNOBt4z2FGTqT2K38o17PabA-Ldo7E0DJLu9XQcvG7Qx995QDI-zi3JkGKlLOQx81v1sV_9dJCyQM9QfTfsM0mJ2H1EUchuuteMaUfT4f4JUD9F4ljmcfVDhTHRJiNvRMEIQoSLAcjpvxg9rovnCIgY3moRISuuNffPAa8BBDyEdOdtld2U8oWklHtecNrdPjm89AhnXKVbi9zVSbdusDsDzPqf5LTD1_V0JviZRLjNTMN-ceSOlkImfMIwEhgNLg8LowPkcXeBmhxOD0Kh-H9uRNWR0TxkjM6wGRcyGxJKXSut9Hr7g---uw",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydh0edUDsU0o3UF7lW8wd_Ke2Ewd-8-bZ2BjURvtRANFqgG2Id_GOjL6ZHkikuKYPRCVEM1zRBLJNfNV7F8EhtKniYsjubjjR-LxPrzY6g6UVcCtQnLtPPum0TyMMqd5JC5_Ken_TFyVP-_-6OjSVOshPnII4fpu74sflZKLQi_EojedMKxJh1l_IoADR0SCH_DTH8imDp0lsqKwLon_npAQyuAQDvMXRB-AxnO8QTGTBqD7PXR3MjyfKD2pUixAtQxsiCD7L4YIs9QDaeWfswc2pYC_dPBSQDxaGOWahsJ11HgOBYLmWJOBSNebSjOAQlKIs4YTUhprJ21ooaIdG51uG7bkZbO6lS1zIR-w3cJEHtSYLQVsYTFQ81-ZQpkwENhzpngNqgilez2c34mkDJbjEbAGmlhmFzdjbibC0NfBubM",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydig5z0bBVLszFz0PyzOIwBJajOf-bMNCf3CKEaU7IQ1GEKtUNUr5YEiC2Q8yDpOV3qv6m6TOl27wC07SuOEad6mHvXEHqAuA8ZxbROM7y8fXOn3jkYoSFXXczvmo7sZE-KO81BOH9eKHPHWZuTq3LplJ55coQZ_QMTT1OnVf_v2bGbozV1FaoScIvRwdjEc-0MEPtU-OuHYOByHi2WmrUgwAeCW_js06FuvfBBPkHq-78R4P0_SjHbCrEkT6aRLT8SqK3_JPvgGSh25o7D04HMg-lUy9Xs5E30dZF8U-5GdegoXJHxd501ULfCMXtYGpDH1KfDUYdo2lNr5YiGVYmmVAPaN_UmMvv9_f3wTQ0RpxaijobLJxcK2K4W_qdZ3kjqa91ACO0SiP1WYvSV3I2V2h2QlNjCTe8bWlD-c0B6IOm2C",
+      "places/ChIJL4wqN37XyYkR_MU3ildDf9U/photos/AWCwydh8XjW4_BD1bVnWbYZaz0vleGb8Qul2hzu_NKTmS7sLaMn372HE_nBtE5D1SHkC9Rw5xP5pMEUY1MJdYZk7n_MzkfAwkMLHIGQzZJJRLiDx8Gt6svvOT4UPI6cQLi7KxK69KfggIYqKOP_DHNL8fNqfkNz10lCV4Rc_sCzFrYw1_GCYznDLk7geWw6brXQ1fXv0scxvZ2uN4NWhWik7fgFHzl9hzLndKRlcuraBLXKdD2dfCf5kdPHWDGLAOvzwEwQfMdWgdXmuliVglzzIv9jiQwpPmN8DaVIgD8pWJzTunz-2D86hadHVs8fspnoNoad_nvd1W_IV8B-stvjSOaaDtGH-Uov2KqkMos99szzNK-aroSNB9f22vC050KK3PhsgFqM05bX0YcjUOZsDnvtNX5Mljw41kyNKl-691Kk"
+    ],
+    "phone": "(240) 436-2130",
+    "website": "https://www.panerabread.com/en-us/cafe/locations/md/urbana/3266-bennett-creek-ave?utm_medium=local&utm_source=google&utm_campaign=dpm-dist&utm_term=203844&utm_content=main",
+    "lat": 39.322964899999995,
+    "lng": -77.3541001,
+    "primary_type": "cafe",
+    "enriched_at": "2026-07-16T22:58:32.011Z"
   }
 }

@@ -123,7 +123,7 @@ export default function TopShelf({ breweryCards }: { breweryCards: PlaceCardData
                     of a places guide defeats the row (390px check). */}
                 <Link
                   href={`/places/${row.brewerySlug}`}
-                  className="relative z-10 block truncate text-[11.5px] font-medium underline-offset-2 hover:underline"
+                  className="tap-44-y relative z-10 block truncate text-[11.5px] font-medium underline-offset-2 hover:underline"
                   style={{ color: "var(--app-ink-2)" }}
                 >
                   {row.breweryName}

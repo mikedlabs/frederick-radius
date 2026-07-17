@@ -27,8 +27,16 @@ describe("patchRecord", () => {
   it("overlays only the patched fields, identity otherwise", () => {
     const p = { slug: "x", name: "Old", category: "restaurant", short_blurb: "b" };
     expect(patchRecord(p, undefined)).toBe(p);
-    const out = patchRecord(p, { x: { name: "New", category: "cafe" } });
-    expect(out).toEqual({ slug: "x", name: "New", category: "cafe", short_blurb: "b" });
+    const out = patchRecord(p, {
+      x: { name: "New", category: "cafe", subcategories: ["restaurant"] },
+    });
+    expect(out).toEqual({
+      slug: "x",
+      name: "New",
+      category: "cafe",
+      subcategories: ["restaurant"],
+      short_blurb: "b",
+    });
     expect(p.name).toBe("Old"); // input not mutated
   });
 });

@@ -21,6 +21,7 @@ import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import { INTENT_BY_KEY } from "@/data/intents";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * /places — the directory index.
@@ -140,7 +141,7 @@ export default function PlacesIndexPage() {
         <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Start with a need
         </h2>
-        <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        <ul className="shelf-rail shelf-grid-md -mx-4 gap-2.5 px-4 pb-2 md:mx-0 md:grid-cols-4 md:px-0">
           {[
             { label: "Open now", href: "/open-now", icon: Clock, color: "var(--app-positive)" },
             { label: "Eat & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
@@ -153,7 +154,7 @@ export default function PlacesIndexPage() {
           ].map((m) => {
             const Icon = m.icon;
             return (
-              <li key={m.label}>
+              <li key={m.label} className="w-[9.5rem] shrink-0 snap-start md:w-auto">
                 <Link
                   href={m.href}
                   className="tactile tactile-interactive flex min-h-[104px] flex-col items-start justify-between gap-3 rounded-[var(--app-radius-lg)] p-4"
@@ -270,13 +271,14 @@ export default function PlacesIndexPage() {
           what kind of place they want but not which town. Sorted by
           count (highest first) so the dense parts of the directory
           read up top. */}
-      <section className="space-y-3">
-        <h2
-          className="font-serif text-[20px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          By category
-        </h2>
+      <CollapsibleSection
+        title="Browse every category"
+        count={catCounts.length}
+        countLabel="categories"
+        headingLevel={2}
+        storageKey="fr.places.categories"
+        className="space-y-3"
+      >
         <ul
           className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3"
           aria-label="Browse places by category"
@@ -316,60 +318,24 @@ export default function PlacesIndexPage() {
             </li>
           ))}
         </ul>
-      </section>
+      </CollapsibleSection>
 
       {/* Towns — the primary browsing axis for someone who knows
           where they want to go but not what to do there. Same
           highest-first sort; towns with zero seeded places are
           hidden so we never advertise empty surfaces. */}
-      <section className="space-y-3">
-        <h2
-          className="font-serif text-[20px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          By town
-        </h2>
+      <CollapsibleSection
+        title="Browse by town"
+        headingLevel={2}
+        storageKey="fr.places.towns"
+        className="space-y-3"
+      >
         {/* Alive town cards — name + this-week event count + the town's
             next move (its soonest event), or its editorial blurb when
             quiet. Richer than the old count-only list, and shared with
             the rest of the app (audit E2). */}
         <MunicipalityStrip />
-      </section>
-
-      {/* Search nudge — the third browsing path. Keyboard ⌘K opens
-          the full-text search; we point at the TopBar so the user
-          doesn't have to learn the shortcut. */}
-      <section
-        className="rounded-[var(--app-radius-lg)] border p-5"
-        style={{
-          borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-        }}
-      >
-        <h2
-          className="font-serif text-[18px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Looking for somewhere specific?
-        </h2>
-        <p
-          className="mt-1.5 text-[13px] leading-relaxed"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          Tap the search bar at the top, or hit{" "}
-          <kbd
-            className="rounded border px-1.5 py-0.5 font-mono text-[11px]"
-            style={{
-              borderColor: "var(--app-border)",
-              background: "var(--app-bg-sunken)",
-              color: "var(--app-ink-2)",
-            }}
-          >
-            ⌘K
-          </kbd>
-          . Search runs across every place, event, and town.
-        </p>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

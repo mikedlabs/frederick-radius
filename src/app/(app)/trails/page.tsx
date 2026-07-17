@@ -159,6 +159,7 @@ export default async function TrailsPage() {
               title={g.name}
               count={g.list.length}
               countLabel={g.list.length === 1 ? "trail" : "trails"}
+              headingLevel={2}
               storageKey={`fr.trails.${g.slug}`}
               defaultOpen={i === 0}
             >

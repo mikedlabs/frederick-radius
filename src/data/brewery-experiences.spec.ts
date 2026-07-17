@@ -39,6 +39,7 @@ describe("brewery experience data", () => {
       expect(experience.checkedAt).toBe(BREWERY_SOURCE_CHECKED_AT);
       expect(experience.story.trim().length).toBeGreaterThan(0);
       expect(experience.traits.length).toBeGreaterThan(0);
+      if (experience.tapListUrl) expect(new URL(experience.tapListUrl).protocol).toBe("https:");
     }
 
     const cautionedSlugs = BREWERY_EXPERIENCES.filter(
@@ -51,7 +52,6 @@ describe("brewery experience data", () => {
       [
         "brudr-bier-co-frederick",
         "red-shedman-farm-brewery-and-hop-yard-mount-airy",
-        "steinhardt-brewing-company-frederick",
       ].sort(),
     );
   });
