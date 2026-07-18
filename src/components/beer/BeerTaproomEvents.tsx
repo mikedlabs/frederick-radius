@@ -124,7 +124,7 @@ export default async function BeerTaproomEvents() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[13px] font-semibold leading-snug text-[#281e14] sm:text-[14px]">{event.title}</span>
-                    <span className="mt-1 block truncate text-[10px] text-black/50">{event.venue_name || event.municipality_name}</span>
+                    <span className="mt-1 block truncate text-[10px] text-black/65">{event.venue_name || event.municipality_name}</span>
                   </span>
                   <ArrowUpRight className="h-4 w-4 text-black/38 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
                 </Link>

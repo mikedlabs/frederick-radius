@@ -190,7 +190,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
             Filter by the things that matter for your visit. Select a brewery to see its location, source-checked features, and signature beers.
           </p>
         </div>
-        <p className="text-[11px] text-black/54" aria-live="polite">
+        <p className="text-[11px] text-black/65" aria-live="polite">
           {visible.length} of {BREWERY_EXPERIENCES.length} breweries
         </p>
       </header>
@@ -229,9 +229,9 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
       ) : (
         <div className="mt-4 overflow-hidden rounded-[12px] border border-black/12 bg-[#f7f0e4]">
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-3 py-2 sm:px-4">
-            <p className="text-[10px] text-black/54">Swipe the brewery logos to browse.</p>
+            <p className="text-[10px] text-black/65">Swipe the brewery logos to browse.</p>
             <div className="flex items-center gap-1.5">
-              <span className="mr-1 font-mono text-[9px] text-black/50">{activeVisibleIndex + 1}/{visible.length}</span>
+              <span className="mr-1 font-mono text-[9px] text-black/65">{activeVisibleIndex + 1}/{visible.length}</span>
               <button type="button" className={styles.navButton} aria-label="Previous brewery" onClick={() => selectVisibleIndex(activeVisibleIndex - 1)}>
                 <ChevronLeft className="h-4 w-4" aria-hidden />
               </button>
@@ -338,7 +338,7 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
               <div className={styles.pours}>
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-[11px] font-semibold text-black/72">Signature beers</p>
-                  {place?.google_rating ? <span className="text-[9px] text-black/50">Google {place.google_rating.toFixed(1)}</span> : null}
+                  {place?.google_rating ? <span className="text-[9px] text-black/65">Google {place.google_rating.toFixed(1)}</span> : null}
                 </div>
                 <ol className="mt-2 divide-y divide-black/10">
                   {pours.map((beer) => {
@@ -348,14 +348,14 @@ export default function BeerTaproomBoard({ places }: { places: PlaceCardData[] }
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: family.base }} aria-hidden />
                         <span className="min-w-0">
                           <span className="block truncate text-[12px] font-semibold">{beer.name}</span>
-                          <span className="mt-0.5 block truncate text-[9px] text-black/52">{beer.style}</span>
+                          <span className="mt-0.5 block truncate text-[9px] text-black/65">{beer.style}</span>
                         </span>
-                        {beer.abv != null ? <span className="font-mono text-[9px] text-black/48">{beer.abv.toFixed(1)}%</span> : null}
+                        {beer.abv != null ? <span className="font-mono text-[9px] text-black/65">{beer.abv.toFixed(1)}%</span> : null}
                       </li>
                     );
                   })}
                 </ol>
-                <p className="mt-3 flex gap-2 text-[9px] leading-relaxed text-black/50">
+                <p className="mt-3 flex gap-2 text-[9px] leading-relaxed text-black/65">
                   <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
                   <span>Details checked {BREWERY_SOURCE_CHECKED_AT}. Signature beers are not a live tap claim.</span>
                 </p>
