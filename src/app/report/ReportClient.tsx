@@ -80,7 +80,7 @@ export default function ReportClient({
 
   const locate = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus({ tone: "error", text: "Location isn't available on this device." });
+      setStatus({ tone: "error", text: "Your location is not available on this device." });
       return;
     }
     setLocating(true);
@@ -167,7 +167,7 @@ export default function ReportClient({
       setStatus(
         d.queued
           ? { tone: "ok", text: "Thanks. Sent for review; it'll appear once approved." }
-          : { tone: "ok", text: "Posted to the map. Thank you." },
+          : { tone: "ok", text: "Your report is now on the map." },
       );
       setNote("");
       setPhoto(null);

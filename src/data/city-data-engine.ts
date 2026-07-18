@@ -37,7 +37,7 @@ export const PERSONAS = [
         name: "Visitor",
         icon: "MapPin",
         benefit: "Get oriented without opening a dozen tabs, then verify important details with the original source.",
-        primaryUse: "Explore Frederick",
+        primaryUse: "Get oriented in Frederick",
         useCase: "Trip discovery",
         topFeatures: ["Town browsing", "Event ideas", "Source links"],
     },
@@ -119,7 +119,7 @@ export const PRODUCT_STATUS = {
         {
             label: "Rewards",
             value: "Concept only",
-            detail: "No partners, issued coins, or redemption network.",
+            detail: "The rewards concept has no partners or operating redemption network, and no coins have been issued.",
             stage: "concept",
         },
     ],

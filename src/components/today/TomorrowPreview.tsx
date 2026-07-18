@@ -38,7 +38,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
   if (!top && !wx) return null;
 
   const weatherLine = wx
-    ? `High ${wx.temp}°${wx.shortForecast ? `, ${shortCondition(wx.shortForecast)}` : ""}`
+    ? `Tomorrow's high is ${wx.temp}°${wx.shortForecast ? `, with ${shortCondition(wx.shortForecast)}` : ""}.`
     : null;
 
   return (
@@ -61,7 +61,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
         {top ? (
           <Link
             href={`/events/${top.slug}`}
-            className="tactile-interactive group mt-2 flex items-center gap-2"
+            className="tactile-interactive group mt-2 flex min-h-11 items-center gap-2"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="min-w-0 flex-1">
@@ -78,7 +78,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
           </Link>
         ) : (
           <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-            A quieter day on the calendar.{" "}
+            No major event is listed for tomorrow yet.{" "}
             <Link href="/events" className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
               See what&rsquo;s on
             </Link>
@@ -95,15 +95,15 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
  *  stays one calm clause. Falls back to a lowercased first phrase. */
 function shortCondition(sf: string): string {
   const t = sf.toLowerCase();
-  if (/thunder|t-?storm|severe/.test(t)) return "storms around";
-  if (/snow|sleet|flurr|wintry|ice/.test(t)) return "snow";
-  if (/rain|shower|drizzle/.test(t)) return "rain around";
-  if (/fog|mist|haz/.test(t)) return "gray and hazy";
-  if (/overcast|mostly cloudy/.test(t)) return "mostly cloudy";
-  if (/partly (sunny|cloudy)/.test(t)) return "partly sunny";
+  if (/thunder|t-?storm|severe/.test(t)) return "storms possible";
+  if (/snow|sleet|flurr|wintry|ice/.test(t)) return "wintry weather possible";
+  if (/rain|shower|drizzle/.test(t)) return "rain possible";
+  if (/fog|mist|haz/.test(t)) return "fog or haze";
+  if (/overcast|mostly cloudy/.test(t)) return "mostly cloudy skies";
+  if (/partly (sunny|cloudy)/.test(t)) return "partly sunny skies";
   if (/cloud/.test(t)) return "some clouds";
-  if (/sunny/.test(t)) return "mostly sunny";
-  if (/clear|fair/.test(t)) return "clear";
+  if (/sunny/.test(t)) return "mostly sunny skies";
+  if (/clear|fair/.test(t)) return "clear skies";
   // Unknown phrasing: first clause before a "then", lowercased.
   return t.split(/\s+then\s+/)[0].trim();
 }

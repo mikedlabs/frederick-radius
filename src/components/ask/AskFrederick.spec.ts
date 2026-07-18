@@ -1,0 +1,98 @@
+import { describe, expect, it } from "vitest";
+import {
+  askQuestionPath,
+  askResultHeading,
+  explicitAreaInQuery,
+  hasResolvedNearbyArea,
+  nearbyQueryNeedsAreaChoice,
+  queryNeedsNearbyContext,
+  sourceHasDistinctDetail,
+  sourceSaveTarget,
+} from "./AskFrederick";
+
+describe("Ask Radius question links", () => {
+  it("encodes only the bounded, self-contained question", () => {
+    expect(askQuestionPath("  dinner & live music tonight  ")).toBe(
+      "/ask?q=dinner%20%26%20live%20music%20tonight",
+    );
+    expect(askQuestionPath("   ")).toBe("/ask");
+    expect(
+      new URL(askQuestionPath("closer"), "https://frederickradius.app").searchParams.get(
+        "q",
+      ),
+    ).toBe("closer");
+    expect(askQuestionPath("x".repeat(400))).toBe(`/ask?q=${"x".repeat(300)}`);
+  });
+});
+
+describe("Ask Radius nearby context", () => {
+  it("recognizes questions that need a deliberate location", () => {
+    expect(queryNeedsNearbyContext("Find breakfast near me")).toBe(true);
+    expect(queryNeedsNearbyContext("Where is the closest trash can?")).toBe(true);
+    expect(queryNeedsNearbyContext("What is within walking distance from me?")).toBe(true);
+    expect(queryNeedsNearbyContext("Plan a walkable date night downtown")).toBe(false);
+    expect(queryNeedsNearbyContext("What events are happening tonight?")).toBe(false);
+  });
+
+  it("accepts only a device fix or an explicit area for a nearby question", () => {
+    expect(hasResolvedNearbyArea(null, false)).toBe(false);
+    expect(hasResolvedNearbyArea("nearme", false)).toBe(false);
+    expect(hasResolvedNearbyArea("county", false)).toBe(false);
+    expect(hasResolvedNearbyArea("town:urbana", false)).toBe(true);
+    expect(hasResolvedNearbyArea(null, true)).toBe(true);
+    expect(nearbyQueryNeedsAreaChoice("Breakfast near me", null, false)).toBe(true);
+    expect(nearbyQueryNeedsAreaChoice("Breakfast near me", "county", false)).toBe(true);
+    expect(
+      nearbyQueryNeedsAreaChoice(
+        "Coffee near me in Frederick County",
+        "county",
+        false,
+      ),
+    ).toBe(false);
+    expect(nearbyQueryNeedsAreaChoice("Breakfast near me", null, true)).toBe(false);
+  });
+
+  it("respects a place named in the question", () => {
+    expect(explicitAreaInQuery("Coffee in Urbana right now")).toBe("town:urbana");
+    expect(explicitAreaInQuery("Dinner in New Market")).toBe("town:new-market");
+    expect(explicitAreaInQuery("What is happening in Frederick County?")).toBe("county");
+    expect(explicitAreaInQuery("What is open tonight?")).toBeNull();
+  });
+
+  it("derives saved IDs from the real detail link", () => {
+    expect(sourceSaveTarget({ href: "/places/cafe-nola-frederick" })).toEqual({
+      type: "place",
+      id: "cafe-nola-frederick",
+    });
+    expect(sourceSaveTarget({ href: "/events/alive-at-five?from=ask" })).toEqual({
+      type: "event",
+      id: "alive-at-five",
+    });
+    expect(sourceSaveTarget({ href: "https://example.com/source" })).toBeNull();
+  });
+
+  it("does not describe an upstream failure as an empty search", () => {
+    const empty = { status: "empty" as const, intent: undefined };
+    expect(askResultHeading(empty, "service")).toBe(
+      "Radius could not complete that request.",
+    );
+    expect(askResultHeading(empty, null)).toBe(
+      "Radius could not find a solid match.",
+    );
+  });
+
+  it("hides a detail line when it only repeats the reason", () => {
+    expect(
+      sourceHasDistinctDetail({
+        reason: "This local deli and coffee bar serves Rise Up…",
+        detail: "This local deli and coffee bar serves Rise Up coffee and breakfast.",
+      }),
+    ).toBe(false);
+    expect(
+      sourceHasDistinctDetail({
+        reason: "Best local fit for breakfast",
+        detail: "Serves bagels, espresso, and breakfast sandwiches.",
+      }),
+    ).toBe(true);
+  });
+});

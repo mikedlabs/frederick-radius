@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/overhead" },
   title: "Overhead: planes over Frederick right now",
   description:
-    "A live map of the planes over Frederick County. Every aircraft transmitting within ~60 miles, plotted at its real position with its route, altitude, and speed.",
+    "See aircraft returned by airplanes.live within roughly 60 nautical miles of Frederick, with available route and flight details.",
 };
 
 /**
@@ -32,7 +32,8 @@ export default function OverheadPage() {
           Overhead
         </h1>
         <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          What&rsquo;s flying over Frederick right now. Low traffic leads, the planes you could actually crane your neck and spot.
+          See what is transmitting over Frederick right now. The nearest
+          returned aircraft appear first so likely sightings are easier to find.
         </p>
         <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-cool)" }} />
       </header>

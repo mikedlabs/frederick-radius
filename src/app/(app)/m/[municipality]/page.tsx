@@ -278,7 +278,7 @@ export default async function MunicipalityPage(
         </section>
       ) : (
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-          We&apos;re still seeding places for {m.name}. Check back soon, or{" "}
+          No places are listed for {m.name} yet. Check back later, or{" "}
           <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand-press)" }}>
             submit a place you love
           </Link>

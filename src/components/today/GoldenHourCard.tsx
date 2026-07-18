@@ -21,10 +21,10 @@ export default function GoldenHourCard({ now }: { now: Date }) {
 
   const goldenStart = fmt(win.goldenStart);
   const sunset = fmt(win.sunset);
-  const heading = win.active ? "Golden hour now" : "Golden hour soon";
+  const heading = win.active ? "Golden hour is underway." : "Golden hour starts soon.";
   const detail = win.active
-    ? `Best light until ${sunset}`
-    : `Best light ${goldenStart} to ${sunset}`;
+    ? `The calculated golden-hour window continues until ${sunset}.`
+    : `The calculated golden-hour window runs from ${goldenStart} to ${sunset}.`;
 
   return (
     <section aria-label="Golden hour" className="mt-4">

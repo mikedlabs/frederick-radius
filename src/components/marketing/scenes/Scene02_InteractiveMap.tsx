@@ -28,7 +28,7 @@ export default function Scene02_InteractiveMap() {
                     Community by <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Community</span>
                 </h2>
                 <p className="text-gray-400 text-lg font-light">
-                    Illustrative coverage preview — not a boundary or population map
+                    This preview shows coverage only; it is not a boundary or population map.
                 </p>
             </motion.div>
 

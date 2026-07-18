@@ -232,7 +232,7 @@ export default async function TransitPage() {
             Services are currently free." */}
         {(TRANSIT_RAW as { fareFree?: boolean }).fareFree && (
           <p className="text-[14px] font-semibold" style={{ color: "var(--app-brand-2)" }}>
-            Every ride is free. No fares, no passes, no app.
+            Rides are free, so there is nothing to buy before boarding.
           </p>
         )}
         {/* Live "N buses moving now" from the GTFS-realtime feed. */}

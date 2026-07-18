@@ -131,7 +131,7 @@ export default async function NextTrainBoard({
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          The Brunswick Line runs weekday commuter service. No county trains scheduled today.
+          The Brunswick Line runs weekday commuter service. No county trains are scheduled today.
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -148,7 +148,7 @@ export default async function NextTrainBoard({
                 </p>
                 {none ? (
                   <p className="mt-1.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                    No more trains here today.
+                    No more trains stop here today.
                   </p>
                 ) : (
                   <div className="mt-2 space-y-1.5">

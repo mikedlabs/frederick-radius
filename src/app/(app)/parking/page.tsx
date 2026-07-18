@@ -201,7 +201,7 @@ export default async function ParkingPage() {
           className="font-serif text-[32px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Parking, the short answer.
+          Find downtown parking.
         </h1>
         <p
           className="text-[15px] leading-relaxed"

@@ -237,7 +237,7 @@ export default async function PulseWeatherPanel({
       >
         <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ opacity: 0.85 }}>
           <span aria-hidden className="pulse-dot inline-block h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-          Live · NWS · Frederick{updated ? ` · ${updated}` : ""}
+          Current · NWS · Frederick{updated ? ` · ${updated}` : ""}
         </p>
         <div className="mt-1.5 flex items-center justify-between gap-3">
           <div className="min-w-0">

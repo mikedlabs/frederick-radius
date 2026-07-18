@@ -60,7 +60,8 @@ export default function AppFooter() {
         </ul>
       </nav>
       <p className="mt-3 text-meta" style={{ color: "var(--app-ink-3)" }}>
-        Frederick Radius: one guide for Frederick City and the towns around it.
+        Frederick Radius helps people find open places, local events, and
+        practical information across Frederick County, Maryland.
       </p>
       {/* Independence + reliance disclaimer (civic-facing app): keeps the
           product honest and prevents anyone mistaking it for an official

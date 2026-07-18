@@ -9,7 +9,7 @@ import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 export const metadata: Metadata = {
   alternates: { canonical: "/nearby" },
   title: "Nearby",
-  description: "Find the nearest open coffee, food, drinks, shops, and things to do across Frederick County.",
+  description: "Find open places across Frederick County, ranked from your location when available.",
 };
 
 // open_status is time-sensitive: a cached page would say "open" after close.

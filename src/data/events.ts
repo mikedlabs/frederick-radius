@@ -146,9 +146,9 @@ function aliveAtFiveSeason(): Event[] {
     const isOpener = idx === 0;
     const isFinale = idx === LINEUP.length - 1;
     const title = isOpener
-      ? `Alive @ Five — Opening Night · ${band}`
+      ? `Alive @ Five: Opening Night · ${band}`
       : isFinale
-      ? `Alive @ Five — Season Finale · ${band}`
+      ? `Alive @ Five: Season Finale · ${band}`
       : `Alive @ Five · ${band}`;
     return {
       slug: `alive-at-five-${date}`,
@@ -590,7 +590,7 @@ export const EVENTS: Event[] = [
     slug: "weinberg-cinema-series-2026-summer",
     title: "Classic Cinema at the Weinberg",
     description:
-      "The Weinberg's classic-movie series at $5/seat — big-screen, big-band orchestra, Vaudeville-era venue. June lineup includes North by Northwest, Casablanca, and Rear Window.",
+      "The Weinberg's $5 classic-movie series uses its big screen and historic theater. The June lineup includes North by Northwest, Casablanca, and Rear Window.",
     starts_at: iso(at(30, 19, 30)),
     ends_at: iso(at(30, 22, 0)),
     timezone: "America/New_York",

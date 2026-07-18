@@ -145,7 +145,7 @@ export default function TransitMap({
         className="grid place-items-center rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] p-6 text-center text-[13px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)", height }}
       >
-        Route shapes unavailable right now. Check back shortly.
+        Route shapes are temporarily unavailable.
       </div>
     );
   }

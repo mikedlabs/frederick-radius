@@ -376,7 +376,7 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
             title: "Motorsports",
             where: "The Grandstand",
             when: "Truck & Tractor Pull Mon 9/21, Demolition Derby (cars) Tue 9/22, Demolition Derby (trucks & vans) Wed 9/23",
-            note: "The ticketed grandstand nights between the concerts.",
+            note: "Grandstand motorsports fill the ticketed nights between the concerts.",
             source_url: "https://thegreatfrederickfair.com/grandstand/",
             confidence: "confirmed",
           },
@@ -408,7 +408,7 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
       },
       {
         q: "Is it good for kids?",
-        a: "Yes. Kids 10 and under get in free, the midway and livestock barns are the heart of the day, and a Jack Pass bundles admission with a ride-all-day wristband.",
+        a: "Yes. Children 10 and under get in free, and much of the daytime activity centers on the midway and livestock barns. A Jack Pass bundles admission with a ride-all-day wristband.",
       },
       {
         q: "Where do I park?",
@@ -427,7 +427,7 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
     icon: "PartyPopper",
     weatherSensitive: true,
     intro:
-      "For more than four decades, In The Streets has closed Market Street to traffic and filled it with stages, food, and crowds that now top seventy-five thousand. In 2026 it lands on Saturday, September 12: the festival core runs late morning to late afternoon, with a morning road race, a midday craft-beverage garden, and an evening party along Carroll Creek. It is Celebrate Frederick's signature end-of-summer day, and it's free.",
+      "For more than four decades, In The Streets has closed Market Street to traffic and filled it with stages, food, and crowds that now top seventy-five thousand. In 2026 it lands on Saturday, September 12. A morning road race leads into the festival, followed by a midday beverage garden and an evening party along Carroll Creek. It is Celebrate Frederick's signature end-of-summer day, and admission is free.",
     note: "Times are from Celebrate Frederick's event page. Exact road-closure hours aren't published yet; check their parking and directions link closer to the day.",
     sections: [
       {
@@ -457,7 +457,7 @@ export const CIVIC_MOMENTS: CivicMoment[] = [
             title: "Craft Beverage Experience",
             where: "Downtown Frederick",
             when: "Sat, Sept 12 · noon to 5 PM",
-            note: "A midday tasting garden of local breweries, distilleries, and wineries.",
+            note: "Local breweries, distilleries, and wineries pour in a midday tasting garden.",
             source_url: "https://www.celebratefrederick.com/events/in-the-street/",
             confidence: "confirmed",
           },

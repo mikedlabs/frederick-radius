@@ -205,7 +205,7 @@ export default async function OpenNowPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />

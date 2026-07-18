@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   // so the orphan-era noindex is lifted per its own reversal note.
   title: "Parks",
   description:
-    "Every park and open-space area in Frederick County: type, size, address, and who maintains it. Live from Frederick County GIS.",
+    "Browse park and open-space records returned by Frederick County GIS, with available location and maintenance details.",
 };
 
 // Parks change rarely; the integration revalidates weekly.
@@ -74,14 +74,14 @@ export default async function ParksPage() {
     <div className="space-y-6">
       <header className="space-y-1.5">
         <p className="eyebrow">
-          Frederick County GIS · live
+          Frederick County GIS
         </p>
         <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Parks
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every park and open-space area the county tracks: its type,
-          size, and who maintains it. Tap one to see it on the map.
+          Browse the park and open-space records returned by the county GIS.
+          Tap a record to see its mapped location.
         </p>
         <p className="text-[13px]">
           <Link
@@ -101,8 +101,8 @@ export default async function ParksPage() {
         >
           <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             We&rsquo;re rebuilding our connection to the county parks
-            layer. In the meantime, these are the parks that carry the
-            weight of the system:
+            layer. Use these official park directories while the feed is
+            unavailable:
           </p>
           <ul className="space-y-2">
             {[
@@ -161,8 +161,7 @@ export default async function ParksPage() {
             ))}
           </ul>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            The full searchable list returns once we&rsquo;ve wired the
-            new feed.
+            The searchable list will return when the feed reconnects.
           </p>
         </section>
       ) : (
@@ -195,8 +194,8 @@ export default async function ParksPage() {
             </CollapsibleSection>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data: Frederick County GIS open data (Parks &amp; Open Space
-            and official Park Locations), refreshed weekly.
+            Data comes from Frederick County GIS open-data layers for parks
+            and official park locations. Radius refreshes the records weekly.
           </p>
         </>
       )}

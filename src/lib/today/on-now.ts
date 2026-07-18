@@ -69,24 +69,55 @@ export type OnNowMarket = {
   hours?: string;
 };
 
+export type MarketTiming = "now" | "later" | "earlier" | "today";
+
+type MarketWindow = { start: number; end: number };
+
+/** Parse a published market range into Eastern minutes. */
+export function marketWindowMinutes(hours?: string): MarketWindow | null {
+  if (!hours) return null;
+  const normalized = hours
+    .replace(/\bnoon\b/gi, "12pm")
+    .replace(/\bmidnight\b/gi, "12am")
+    .replace(/a\.\s*m\./gi, "am")
+    .replace(/p\.\s*m\./gi, "pm");
+  const range = normalized.match(
+    /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|\u2013|\u2014|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i,
+  );
+  if (!range || (!range[3] && !range[6])) return null;
+
+  const toMinutes = (hourText: string, minuteText: string | undefined, meridiem: string): number | null => {
+    const hour = Number(hourText);
+    const minute = minuteText ? Number(minuteText) : 0;
+    if (!Number.isFinite(hour) || hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+    const hour24 = meridiem.toLowerCase() === "pm" ? (hour % 12) + 12 : hour % 12;
+    return hour24 * 60 + minute;
+  };
+
+  const endMeridiem = range[6] ?? range[3];
+  const startMeridiem = range[3] ?? endMeridiem;
+  if (!startMeridiem || !endMeridiem) return null;
+  let start = toMinutes(range[1], range[2], startMeridiem);
+  const end = toMinutes(range[4], range[5], endMeridiem);
+  // Published market hours often omit the first suffix ("11-1 PM"). If
+  // copying the end suffix would put the start after the end, the range crosses
+  // noon and the missing start suffix is AM.
+  if (start != null && end != null && !range[3] && endMeridiem.toLowerCase() === "pm" && start >= end) {
+    start = toMinutes(range[1], range[2], "am");
+  }
+  if (start == null || end == null || end <= start) return null;
+  return { start, end };
+}
+
 /**
- * The end of a market's published hours ("3pm - 6pm", "9:30am-1pm") as
- * Eastern minutes, or null when the string doesn't state a parseable end.
+ * The end of a market's published range ("3pm - 6pm", "9:30am-1pm") as
+ * Eastern minutes, or null when the full range is not parseable.
  * The weekday filter alone let a 3-6pm market sit under a pulsing ON NOW
  * header at 9:47 PM (fresh-eyes audit, Jul 2026); this is the missing
- * clock half of that gate. Parses the LAST am/pm time in the string.
+ * clock half of that gate.
  */
 export function marketEndMinutes(hours?: string): number | null {
-  if (!hours) return null;
-  const matches = [...hours.matchAll(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi)];
-  const last = matches[matches.length - 1];
-  if (!last) return null;
-  const h = Number(last[1]);
-  const mm = last[2] ? Number(last[2]) : 0;
-  if (!Number.isFinite(h) || h < 1 || h > 12 || mm < 0 || mm > 59) return null;
-  const mer = last[3].toLowerCase();
-  const h24 = mer === "pm" ? (h % 12) + 12 : h % 12;
-  return h24 * 60 + mm;
+  return marketWindowMinutes(hours)?.end ?? null;
 }
 
 /** The current Eastern wall-clock time as minutes since midnight.
@@ -103,6 +134,28 @@ function easternMinutesOfDay(d: Date): number {
       .map((x) => [x.type, x.value]),
   ) as Record<string, string>;
   return Number(p.hour) * 60 + Number(p.minute);
+}
+
+/** Classify a market using both ends of its published range. */
+export function marketTimingAt(hours: string | undefined, now: Date): MarketTiming {
+  const window = marketWindowMinutes(hours);
+  if (!window) return "today";
+  const current = easternMinutesOfDay(now);
+  if (current < window.start) return "later";
+  if (current >= window.end) return "earlier";
+  return "now";
+}
+
+/** Choose a truthful masthead for the current-utility band. */
+export function todayUtilityBandLabel(input: {
+  currentCount: number;
+  laterCount: number;
+  todayCount: number;
+}): "Available now" | "Later today" | "For today" | null {
+  if (input.currentCount > 0) return "Available now";
+  if (input.laterCount > 0) return "Later today";
+  if (input.todayCount > 0) return "For today";
+  return null;
 }
 
 /** Eastern-minutes → "7 PM" / "7:30 PM"; 1440 reads as "close". */
@@ -174,10 +227,8 @@ export function selectOnNowChips(input: {
   events: OnNowEvent[];
   pours: OnNowPour[];
   markets: OnNowMarket[];
-  /** Event slug already headlining elsewhere on the page (the TonightSolo
-   *  card sits two rows above this strip and both rank the same pool, so a
-   *  live headliner appeared TWICE in the first screen). The slot skips it
-   *  and features the next-best live thing instead. */
+  /** Event slug already featured elsewhere on Today. The strip skips it and
+   *  uses the next useful live item instead. */
   excludeEventSlug?: string | null;
 }): OnNowChip[] {
   const { now, events, pours, markets, excludeEventSlug } = input;
@@ -221,20 +272,14 @@ export function selectOnNowChips(input: {
     });
   }
 
-  // The weekday filter said "today"; the clock says whether it's still
-  // going. A market whose stated hours have ended never sits under the
-  // ON NOW header - an unparseable hours string keeps the chip (the
-  // conservative default: a missing claim beats a wrong hide).
-  const nowMin = easternMinutesOfDay(now);
-  const market = markets.find((m) => {
-    const end = marketEndMinutes(m.hours);
-    return end == null || nowMin < end;
-  });
+  // A weekday match is not a live signal. The full published range must
+  // include the current Eastern time before the market enters this strip.
+  const market = markets.find((m) => marketTimingAt(m.hours, now) === "now");
   if (market) {
     chips.push({
       kind: "market",
       href: "/category/market",
-      kicker: "Market today",
+      kicker: "Open now",
       title: market.name,
       meta: market.hours,
     });

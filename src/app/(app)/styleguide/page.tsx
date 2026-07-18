@@ -19,7 +19,7 @@ import EmptyState from "@/components/ui/EmptyState";
  */
 export const metadata: Metadata = {
   title: "Style guide",
-  description: "The Frederick Radius design system: palette, type, and components.",
+  description: "Review the palette, type, and components in the Frederick Radius design system.",
   robots: { index: false, follow: false },
 };
 
@@ -107,7 +107,7 @@ export default function StyleGuidePage() {
             Fraunces · serif display
           </p>
           <p className="font-serif text-[32px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            What&rsquo;s worth your time.
+            Find what is worth your time.
           </p>
         </div>
         <div className="space-y-1">
@@ -217,7 +217,7 @@ export default function StyleGuidePage() {
         <Eyebrow>Empty state</Eyebrow>
         <EmptyState
           icon={Compass}
-          title="Nothing on the calendar today."
+          title="No events are on the calendar today."
           body="When something's on, it'll show up here first."
           tone="brand"
           cta={{ label: "Browse all events", href: "/events" }}

@@ -135,8 +135,8 @@ export default function WelcomeFlow() {
           style={{ color: "var(--app-ink-3)" }}
         >
           {step === 1
-            ? "Pick one. We'll tilt your home page toward it. You can change it later."
-            : "Just tells us how to phrase things. It stays on your device."}
+            ? "Choose one to personalize your home page. You can change it later."
+            : "Your answer only changes how Radius phrases recommendations, and it stays on this device."}
         </p>
       </header>
 
@@ -215,7 +215,7 @@ export default function WelcomeFlow() {
                 Yes, I live here
               </span>
               <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                Resident view: familiar names, no orientation copy
+                Uses familiar local names with less explanation.
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -245,7 +245,7 @@ export default function WelcomeFlow() {
                 Just visiting
               </span>
               <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                Visitor view: context-rich, a little more orientation
+                Adds more context to help you get oriented.
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />

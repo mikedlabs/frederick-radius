@@ -45,10 +45,9 @@ export const revalidate = 600;
 export const metadata: Metadata = {
   alternates: { canonical: "/places" },
   title: "All places",
-  description:
-    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services. The directory.",
+  description: "Browse Frederick County places by need, category, town, or map.",
   openGraph: { title: "All places", description:
-    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services. The directory." },
+    "Browse Frederick County places by need, category, town, or map." },
 };
 
 export default function PlacesIndexPage() {

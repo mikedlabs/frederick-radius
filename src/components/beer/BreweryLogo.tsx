@@ -10,6 +10,7 @@ type BreweryLogoProps = {
   decorative?: boolean;
   className?: string;
   sizes?: string;
+  loading?: "eager" | "lazy";
 };
 
 function breweryInitials(name: string): string {
@@ -33,6 +34,7 @@ export function BreweryLogo({
   decorative = false,
   className = "",
   sizes = "64px",
+  loading,
 }: BreweryLogoProps) {
   const logoSrc = BREWERY_EXPERIENCE_BY_SLUG[brewerySlug]?.logoSrc;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function BreweryLogo({
         alt={decorative ? "" : accessibleLabel}
         fill
         sizes={sizes}
+        loading={loading}
         className="object-contain"
         onError={() => setFailedSrc(logoSrc)}
       />

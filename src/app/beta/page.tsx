@@ -9,12 +9,10 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Frederick Radius: early-access beta",
-  description:
-    "Your field guide to Frederick County. Find what's open, what's on, and what matters before you head out.",
+  description: "Early access to a local guide for deciding where to go across Frederick County.",
   openGraph: {
-    title: "Your field guide to Frederick County",
-    description:
-      "Find what's open, what's on, and what matters before you head out. Early-access beta.",
+    title: "Plan your day in Frederick County",
+    description: "Check open places and local events before you head out.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
@@ -65,15 +63,14 @@ export default async function BetaPage({
                 fontSize: "clamp(38px, 7vw, 64px)",
               }}
             >
-              Your field guide to Frederick County.
+              Plan your day in Frederick County.
             </h1>
 
             <p
               className="mx-auto mt-5 max-w-[32rem] text-[17px] leading-relaxed lg:mx-0"
               style={{ color: "var(--app-ink-2)" }}
             >
-              Find what&rsquo;s open, what&rsquo;s on today, and what matters
-              before you head out.
+              Check what is open and what is happening before you head out.
             </p>
 
             <Suspense fallback={<ProofLineShell />}>
@@ -84,7 +81,7 @@ export default async function BetaPage({
               className="mt-5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Open now&nbsp; · &nbsp;Today&rsquo;s events&nbsp; · &nbsp;Live local conditions
+              Current hours and events across the county
             </p>
           </div>
 
@@ -109,7 +106,7 @@ export default async function BetaPage({
               className="mt-1.5 text-[14px] leading-relaxed"
               style={{ color: "var(--app-ink-2)" }}
             >
-              We&rsquo;ll email you a personal code right away.
+              You will receive a personal code by email right away.
             </p>
 
             <BetaEmailField />
@@ -193,7 +190,7 @@ export default async function BetaPage({
           className="flex flex-col items-center justify-between gap-2 border-t py-5 text-center text-[11.5px] sm:flex-row sm:text-left"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          <p>Made locally in Frederick, Maryland. An independent project.</p>
+          <p>An independent project made in Frederick, Maryland.</p>
           <p className="flex items-center gap-3">
             <Link
               href="/privacy"

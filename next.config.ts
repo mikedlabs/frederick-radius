@@ -295,12 +295,10 @@ const nextConfig: NextConfig = {
       // on the real page instead of a 404.
       { source: "/services", destination: "/contacts", permanent: true },
       { source: "/civic", destination: "/contacts", permanent: true },
-      // /guide (the old discovery funnel) is retired — PR #624 dropped its
-      // tab on the thesis that /today's craving strip + global search now
-      // cover the find-what-you-want intent, and the page is now removed.
-      // 308 to /today so the indexed URL's equity + every bookmark / push /
-      // search-result link resolves instead of 404ing.
-      { source: "/guide", destination: "/today", permanent: true },
+      // The old /guide discovery funnel is now the focused Ask Radius
+      // workspace. Keep bookmarks and indexed links useful without restoring
+      // a redundant fifth bottom-navigation tab.
+      { source: "/guide", destination: "/ask", permanent: true },
       // Submit/business hub paths 404'd (only the leaf routes existed),
       // which reads as broken to community submitters + business owners
       // (external audit ship-blocker #2). Point the bare paths at the

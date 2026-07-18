@@ -205,7 +205,7 @@ export default async function HistoryPage({
 
       {topic && moments.length + people.length + rest.length === 0 && (
         <p className="rounded-[var(--app-radius-md)] border px-3.5 py-4 text-center text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
-          Nothing tagged <span className="font-semibold">#{topic}</span> yet.{" "}
+          There are no entries tagged <span className="font-semibold">#{topic}</span> yet.{" "}
           <Link href="/history" className="underline" style={{ color: "var(--app-cool)" }}>Show all</Link>.
         </p>
       )}

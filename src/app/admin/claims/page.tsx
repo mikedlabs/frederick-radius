@@ -91,7 +91,7 @@ function Queue({ rows }: { rows: Row[] }) {
 
       <section className="mt-6">
         {pending.length === 0 ? (
-          <AllClear>Nothing waiting. All caught up.</AllClear>
+          <AllClear>No claims are waiting for review.</AllClear>
         ) : (
           <ul className="space-y-3">
             {pending.map((s) => (

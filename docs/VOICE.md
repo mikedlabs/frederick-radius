@@ -6,14 +6,13 @@ to a user, it answers to this document.
 
 The test for every line: **would a calm, knowledgeable local actually say
 this?** Not a marketer, not a chatbot, not an app trying to sound friendly.
-A neighbor who genuinely knows the county and has nothing to prove.
+A neighbor who knows the county and has nothing to prove.
 
 ---
 
 ## What it is (say it this plainly)
 
-> One place for the whole county — the city and every town in it — that
-> tells you what's open, what's on, and what's actually worth your time.
+> A local guide to places and events across Frederick County.
 
 That's the entire brand. There is no metaphor underneath it. No sweep, no
 signal, no "always on." The product's competence is the story; the copy
@@ -34,8 +33,8 @@ on day one, the product teaches them by being useful, not by explaining
 itself.
 
 - **Tagline (locked):** *Around here.*
-- **Descriptor (the line under the name):** *What's open, what's on, and
-  what's worth your time — across the city and every town in the county.*
+- **Descriptor (the line under the name):** *A local guide to places and
+  events across Frederick County.*
 
 Backup tagline register, if a surface needs a fuller line: *The whole
 county, close up.* / *Frederick County, the way a local knows it.*
@@ -66,25 +65,59 @@ verb: "Eat & drink," "Open now," "Plan a day," "Save this." Labels are what
 you *do*, not categories you *are*.
 
 **6. The product is calm.** No urgency theater, no exclamation points, no
-"Don't miss out!" If something is genuinely time-sensitive ("closes in 30
+"Don't miss out!" If something is time-sensitive ("closes in 30
 min"), the fact carries the urgency. We never manufacture it.
+
+**7. Write complete sentences when the interface speaks.** Body copy,
+guidance, empty states, descriptions, and recommendations use proper sentence
+structure. Do not imitate casual speech with clipped fragments, stacked
+half-sentences, or dramatic full stops. A heading such as "Open now" is a
+label, not prose, and may remain a phrase.
+
+**8. Do not default to rhetorical groups of three.** Three parallel clauses,
+three benefits, three adjectives, or three matching short sentences often read
+like generated copy. This is a writing rule, not a product limit. Three search
+results, choices, steps, cards, or facts are fine when the data or task calls
+for three. The structure should follow the information instead of a memorized
+rhetorical beat.
 
 ---
 
-## Banned words (these ship us into template territory)
+## Stock marketing language
 
-Never use, in any user-facing string or marketing copy:
+The voice lint mechanically rejects these in Radius-authored user copy:
 
-> discover · curated · seamless · effortless · unlock · elevate · your
-> gateway to · powered by · reimagined · the future of · real-time · live ·
-> smart · vibrant · immersive · "hidden gems" (as a headline) · "we've got
-> you covered" · "everything you need" · "at your fingertips" · "explore" (as
-> a CTA) · "dive in" · "level up" · game-changer · revolutionary (in
-> product copy)
+> soothing · nestled · must-visit · vibrant · elevated · curated experience ·
+> unlock · heart of · disrupt · seamless · delight · game-changing · leverage ·
+> robust · holistic · ecosystem · bucket list · unforgettable · tucked away ·
+> one-stop shop · effortless · reimagined · immersive · revolutionary
+
+It also rejects the stock phrases "your gateway to," "powered by," "the
+future of," "we've got you covered," "everything you need," "at your
+fingertips," "dive in," and "level up."
+
+Context matters for words with real local or technical meanings. "Craft beer,"
+"staff reporter," a transit "destination," and the beer style "robust porter"
+are factual uses, so the lint has narrow exceptions for them. "Hidden gem" is
+allowed only as the exact name of the existing editorial filter, never as
+promotional prose. "Discover" and "explore" are rejected when they are generic
+actions or sentence-opening commands, but they can remain search vocabulary or
+appear inside a specific factual instruction. "Live," "real-time," and "smart"
+can name an actual feed, status, device, or event. They are rejected when they
+form a vague promise such as "smart experience."
 
 Also banned: **em dashes** in user-facing copy (`cleanFeedText` converts a
 stray one to a comma, but don't author them). And **exclamation points**
 except where a real human would genuinely use one, which is almost never.
+
+Also avoid these structural tells:
+
+- Three short sentences with matching grammar.
+- A fragment followed by a slogan-like payoff.
+- Repeated "X, Y, and Z" lists when one concrete fact would be clearer.
+- Fake spoken fragments such as "For tonight." or "Around here, anyway."
+- A string of adjectives where a time, location, price, or source would do
+  more useful work.
 
 Why the list matters: these are the words every vibe-coded app reaches for.
 Refusing them *is* the brand position. The absence is the differentiator.
@@ -99,9 +132,9 @@ The most useful reference is a good/bad pair. Match the left column.
 
 | Ship this | Not this |
 |---|---|
-| Tuesday, 6pm. Here's what's open and close. | Discover what's happening around you right now! |
-| Rain's coming by 4. Here's the indoor list. | Don't let the weather ruin your day — explore indoor fun! |
-| Quiet night in the county. A few places still open. | Endless possibilities await you tonight! |
+| It is Tuesday at 6pm. Here is what is open nearby. | Discover what's happening around you right now! |
+| Rain is expected by 4pm, so here are nearby indoor options. | Don't let the weather ruin your day — explore indoor fun! |
+| It is a quiet night in the county, but a few places remain open. | Endless possibilities await you tonight! |
 
 ### Town pages
 
@@ -110,9 +143,9 @@ In a thin town, don't fake depth — say the honest thing and point onward.
 
 | Ship this | Not this |
 |---|---|
-| Thurmont. The gateway to Catoctin, Camp David just over the ridge. | Explore the vibrant community of Thurmont! |
+| Thurmont is the gateway to Catoctin, with Camp David just over the ridge. | Explore the vibrant community of Thurmont! |
 | Burkittsville is tiny. Come for Gathland's overlooks and the walk up South Mountain. | Discover the hidden gems of charming Burkittsville. |
-| Not much open in Woodsboro tonight. The nearest is Keyes Creamery, 6 min out. | No results found in your area. |
+| Few places are open in Woodsboro tonight. The nearest is Keyes Creamery, 6 min out. | No results found in your area. |
 
 ### Place & event cards
 
@@ -120,15 +153,15 @@ State, don't sell. The place's own facts do the work.
 
 | Ship this | Not this |
 |---|---|
-| Open till 10. Downtown Frederick. | Conveniently located and open late for your enjoyment! |
-| Saturday only, 8am till they sell out. | A must-visit local favorite you won't want to miss! |
-| Free. Outdoor. Dogs welcome. | The perfect spot for the whole family! |
+| It is open till 10 in downtown Frederick. | Conveniently located and open late for your enjoyment! |
+| It opens Saturdays at 8am and closes when it sells out. | A must-visit local favorite you won't want to miss! |
+| The outdoor event is free. Dogs are welcome. | The perfect spot for the whole family! |
 
 ### Empty states (honest, never dead-ends)
 
 | Ship this | Not this |
 |---|---|
-| Nothing saved yet. Find a place worth remembering and it lands here. | You haven't saved anything yet. Start exploring! |
+| You have not saved anything yet. Find a place worth remembering and it lands here. | You haven't saved anything yet. Start exploring! |
 | No events match that. Try a different day, or widen the town. | 0 results. |
 | We don't have hours for this one yet. Call ahead. | Hours unavailable. |
 
@@ -137,14 +170,14 @@ State, don't sell. The place's own facts do the work.
 | Ship this | Not this |
 |---|---|
 | Where are you? We'll sort everything by what's close. | Let's personalize your experience! |
-| What are you here for? Pick a few. You can change it anytime. | Unlock your custom feed by selecting your interests! |
+| Choose a few interests to improve your results. You can change them later. | Unlock your custom feed by selecting your interests! |
 
 ### 404 / errors (calm, a way out)
 
 | Ship this | Not this |
 |---|---|
 | That page moved or never existed. Here's the map. | Oops! Something went wrong. |
-| Off the calendar. That event isn't listed. See what's on this week. | Event not found. |
+| That event is no longer listed, so see what is on this week. | Event not found. |
 
 ### Push notifications (earn the interruption, or don't send)
 

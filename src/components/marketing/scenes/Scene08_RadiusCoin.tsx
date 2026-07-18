@@ -76,7 +76,7 @@ export default function Scene08_RadiusCoin() {
                                 Ways it could work
                             </h3>
                             <p className="mb-5 text-sm leading-relaxed text-gray-500">
-                                Illustrative actions, not an active earning schedule.
+                                These actions are examples, not an active earning schedule.
                             </p>
                             <div className="space-y-3">
                                 {RADIUS_COIN.earnOpportunities.map((opportunity, index) => (

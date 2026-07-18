@@ -148,7 +148,7 @@ export default function ShippingGuide({
 
       {shown.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
-          No match. Try a town name, or a carrier like “UPS”.
+          No location matches. Try a town name or a carrier like “UPS.”
         </p>
       ) : (
         <div className="space-y-5">

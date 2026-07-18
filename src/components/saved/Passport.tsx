@@ -402,7 +402,7 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
           className="relative mb-3 font-serif text-[15px] italic"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Earned around here.
+          These stamps mark what you have explored nearby.
         </p>
 
         {earned.length > 0 ? (

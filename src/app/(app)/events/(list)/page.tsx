@@ -28,10 +28,9 @@ import SlowSuspenseFallback from "@/components/ui/SlowSuspenseFallback";
 export const metadata: Metadata = {
   alternates: { canonical: "/events" },
   title: "Events",
-  description:
-    "Live event feeds from Celebrate Frederick, the County calendar, Ticketmaster (including the Frederick Keys), Bandsintown, and the Weinberg Center lineup.",
+  description: "Browse event listings from official calendars and ticketing feeds across Frederick County.",
   openGraph: { title: "Events", description:
-    "Live event feeds from Celebrate Frederick, the County calendar, Ticketmaster (including the Frederick Keys), Bandsintown, and the Weinberg Center lineup." },
+    "Browse event listings from official calendars and ticketing feeds across Frederick County." },
 };
 
 // 5 min: the "Tonight" hero + weekend buckets are computed against now,
@@ -129,7 +128,7 @@ export default async function EventsIndexPage() {
             DFP killed their public iCal and the Hood Trumba feed is gone;
             naming dead feeds in the trust block was the opposite of trust. */}
         <p>
-          Live event data pulled from Celebrate Frederick, the Frederick
+          Event listings come from Celebrate Frederick, the Frederick
           County calendar, Ticketmaster (music + Frederick Keys home
           games), Bandsintown, the Weinberg Center lineup, and the county
           municipal calendars. Refreshed about every five minutes.

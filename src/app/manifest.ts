@@ -4,7 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Frederick Radius",
     short_name: "Radius",
-    description: "A better way to use Frederick County.",
+    description:
+      "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
     start_url: "/today",
     scope: "/",
     id: "/",
@@ -28,9 +29,9 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      // start_url is "/today" (the answer surface); these jump targets are
-      // the other primary BottomNav tabs. The Find (/guide) shortcut was
-      // dropped when /guide lost its tab — /today + search cover that intent.
+      // start_url is "/today". Ask is a focused decision tool rather than a
+      // bottom tab, so the installed app keeps it one long-press away.
+      { name: "Ask Radius", url: "/ask", short_name: "Ask" },
       { name: "Map", url: "/map", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
       { name: "Saved", url: "/my-radius", short_name: "Saved" },

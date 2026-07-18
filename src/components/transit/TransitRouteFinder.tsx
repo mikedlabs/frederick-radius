@@ -61,7 +61,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
 
       {shown.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          {routes.length === 0 ? "Route data unavailable right now. Check back shortly." : `No route matches “${query.trim()}”.`}
+          {routes.length === 0 ? "Route data is temporarily unavailable." : `No route matches “${query.trim()}”.`}
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">

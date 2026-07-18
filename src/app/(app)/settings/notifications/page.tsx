@@ -7,8 +7,7 @@ import PageBloom from "@/components/ui/PageBloom";
 export const metadata: Metadata = {
   robots: { index: false },
   title: "Notifications",
-  description:
-    "Choose what you hear from Frederick Radius. Civic alerts, saved event reminders, daily briefing.",
+  description: "Choose which Frederick Radius alerts appear on this device.",
 };
 
 export default function NotificationsSettingsPage() {
@@ -31,9 +30,8 @@ export default function NotificationsSettingsPage() {
           Notifications
         </h1>
         <p className="text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Get a quiet ping when something you care about happens. Topics
-          are off until you turn them on, and you can disconnect from
-          this device anytime.
+          Turn on only the alerts you want. You can change them or disconnect
+          this device at any time.
         </p>
       </header>
 
@@ -51,9 +49,8 @@ export default function NotificationsSettingsPage() {
           What we send
         </p>
         <p className="mt-1">
-          Only the topics you turn on. Nothing else. We don&apos;t send
-          marketing, growth nags, or pings outside the bands you pick.
-          You can unsubscribe in one tap.
+          We send only the topics and time windows you choose. There are no
+          marketing messages, and every alert can be turned off here.
         </p>
       </section>
     </div>

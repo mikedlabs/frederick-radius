@@ -12,8 +12,10 @@
  * 16/32/48/64/96/128/256/384/640/750/828/1080/1200/1920/2048/3840) or
  * the optimizer responds 400. Callers pass a value from that set.
  *
- * Pass-through cases — returned unchanged: empty, data:, blob:, and
- * already-optimized (/_next/) URLs.
+ * Pass-through cases: empty, data:, blob:, already-optimized (/_next/),
+ * and the same-origin place-photo proxy. The proxy already accepts a width
+ * and may return an SVG fallback; routing that fallback through /_next/image
+ * makes Next reject it with a 400.
  */
 export function sizedImage(
   url: string | undefined | null,
@@ -21,6 +23,14 @@ export function sizedImage(
   q = 70,
 ): string {
   if (!url) return "";
+  if (
+    url === "/api/place-photo" ||
+    url.startsWith("/api/place-photo?")
+  ) {
+    const proxyUrl = new URL(url, "https://frederickradius.invalid");
+    proxyUrl.searchParams.set("w", String(w));
+    return `${proxyUrl.pathname}${proxyUrl.search}${proxyUrl.hash}`;
+  }
   if (
     url.startsWith("data:") ||
     url.startsWith("blob:") ||

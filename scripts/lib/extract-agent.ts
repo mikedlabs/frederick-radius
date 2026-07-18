@@ -1,3 +1,6 @@
+import { cleanFeedText } from "../../src/lib/format/text";
+import { clampDescription } from "../../src/lib/events/normalize";
+
 /**
  * Extraction engine — the shared core behind every "go get the buried
  * data" agent (civic contacts, venue events, specials, hours, …).
@@ -96,6 +99,8 @@ export type FeedEvent = {
   starts_at: string; // ISO 8601
   ends_at?: string;
   description?: string;
+  /** Publisher prose copied from the structured venue feed. */
+  description_origin?: "source-excerpt";
   ticket_url?: string;
 };
 
@@ -147,10 +152,15 @@ export function parseSquarespaceEvents(json: unknown, baseUrl?: string): FeedEve
     if (typeof it.endDate === "number" && Number.isFinite(it.endDate)) {
       ev.ends_at = new Date(it.endDate).toISOString();
     }
-    // Excerpt is HTML; strip to one plain line if present.
+    // Excerpt is publisher-authored HTML. Clean markup and entities, then use
+    // the shared sentence-aware cap rather than cutting the organizer's prose
+    // in the middle of a word or clause.
     if (typeof it.excerpt === "string" && it.excerpt.trim()) {
-      const plain = it.excerpt.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      if (plain) ev.description = plain.slice(0, 280);
+      const plain = cleanFeedText(it.excerpt);
+      if (plain) {
+        ev.description = clampDescription(plain, 280);
+        ev.description_origin = "source-excerpt";
+      }
     }
     if (typeof it.fullUrl === "string" && it.fullUrl) {
       ev.ticket_url = origin ? `${origin}${it.fullUrl}` : it.fullUrl;
@@ -201,7 +211,9 @@ export async function extractJson<T = unknown>(
   const preamble =
     "You extract structured data from a public webpage's text. Return ONLY JSON — no prose. " +
     "Critically: include ONLY facts clearly present in the text. Never invent phone numbers, " +
-    "dates, prices, or hours. If you can't find something, omit it. If nothing applies, return an empty result.\n\n";
+    "dates, prices, or hours. If you can't find something, omit it. When a requested field contains " +
+    "reader-facing prose, write a complete sentence without fragments, slogans, or a padded three-part list. " +
+    "If nothing applies, return an empty result.\n\n";
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -254,7 +266,9 @@ export async function extractJsonFromImage<T = unknown>(
   const preamble =
     "You read structured data from an image of a calendar or event flyer. Return ONLY JSON — no prose. " +
     "Critically: include ONLY events legibly shown in the image. Never invent a date, time, or act, and " +
-    "never guess at text you cannot read. If the image has no readable events, return an empty result.\n\n";
+    "never guess at text you cannot read. When a requested field contains reader-facing prose, write a " +
+    "complete sentence without fragments, slogans, or a padded three-part list. If the image has no readable " +
+    "events, return an empty result.\n\n";
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -351,4 +365,3 @@ export async function preflightKey(): Promise<boolean> {
   console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
   return true;
 }
-

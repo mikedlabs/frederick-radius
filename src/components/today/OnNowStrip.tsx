@@ -73,8 +73,8 @@ export default async function OnNowStrip({ now, eventsPromise }: { now: Date; ev
     events: publicEvents,
     pours: livePoursNow(now),
     markets: markets.map((m) => ({ name: m.name, hours: m.hours })),
-    // TonightSolo (two rows up) already carries the headliner; without this
-    // the same live event printed twice in the first screen.
+    // The event program owns the selected headliner, so this dormant compact
+    // strip will not duplicate it if the strip is enabled again.
     excludeEventSlug: pickTonightEvent(now, publicEvents)?.slug ?? null,
   });
 

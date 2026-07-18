@@ -24,7 +24,7 @@ import RhythmField from "@/components/rhythm/RhythmField";
 export const metadata: Metadata = {
   title: "The Rhythm",
   description:
-    "Watch 1,200 Frederick County places wake and sleep. Scrub the week, hour by hour, and see the patterns hiding in posted business hours.",
+    "See how many Frederick County places are listed as open at each hour of the week, based on their posted hours.",
   alternates: { canonical: "/rhythm" },
 };
 
@@ -79,15 +79,12 @@ export default function RhythmPage() {
           </span>
         </div>
         <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight" style={{ color: "var(--app-ink)" }}>
-          The Rhythm{" "}
-          <span className="font-serif italic font-normal" style={{ color: "var(--app-ink-3)" }}>
-            of the county, hour by hour
-          </span>
+          See when Frederick County places are open.
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every light is one place, on when its posted hours say open. Drag
-          through the week and watch the county wake, trade shifts, and go
-          dark. The chips jump to patterns most people never notice.
+          Each light represents one place and turns on when its posted hours
+          say it is open. Move through the week to compare different times,
+          or select a light to identify the place.
         </p>
       </header>
 
@@ -100,10 +97,9 @@ export default function RhythmPage() {
       />
 
       <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Built from the posted hours of {data.places.length} operational
-        places in the dataset. A light means posted-open, not a promise;
-        holidays and one-off closures don&rsquo;t show here. Tap any light
-        to name it.
+        The display uses the posted hours of {data.places.length} operational
+        places in the dataset. A light shows a posted opening, not a confirmed
+        current status. Holidays and one-off closures may not appear here.
       </p>
     </div>
   );

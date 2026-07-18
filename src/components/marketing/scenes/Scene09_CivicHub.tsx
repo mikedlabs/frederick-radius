@@ -53,7 +53,7 @@ export default function Scene09_CivicHub() {
                         The <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">right official source</span>, faster
                     </h2>
                     <p className="text-xl font-light text-gray-400">
-                        A clearer path to public information — not a government portal
+                        This is a path to public information, not a government portal.
                     </p>
                 </motion.div>
 

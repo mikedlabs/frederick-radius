@@ -46,11 +46,15 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { haversineMeters } from "@/lib/geo";
+import { haversineMeters, isInFrederickCountyArea } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import { haptic } from "@/lib/haptics";
 import { setScope, subscribeScopeChange, scopeTownSlug, type DecisionOriginSource, type Scope } from "@/lib/scope";
-import { canUseOriginForRanking, compareRightNowCandidates } from "@/lib/right-now-ranking";
+import {
+  canUseOriginForRanking,
+  compareRightNowCandidates,
+  rightNowSortLabel,
+} from "@/lib/right-now-ranking";
 
 /**
  * RightNow — the one-tap craving answer.
@@ -214,13 +218,18 @@ export default function RightNow({
     setScope("nearme");
     request();
   }
-  // Sort: nearest-first (default) or top-rated-first. Open places always lead
-  // either way — you can't walk into a closed one.
+  // Sort within the availability tier: open places lead unless the Open now
+  // filter has already removed everything else. The result summary names that
+  // ordering instead of promising a literal nearest-first list.
   const [sort, setSort] = useState<"nearest" | "rated">("nearest");
 
   // A town-scoped distance is distance from the town centroid, not the user.
   // Never print it as if it came from the device.
   const hasFix = state.status === "granted" && !townKey && scope !== "county";
+  const deviceOutsideCounty = state.status === "granted" && !isInFrederickCountyArea(
+    state.position.lng,
+    state.position.lat,
+  );
   // A selected town is a deliberate lens and therefore outranks a device
   // fix. Sorting Thurmont results from a Frederick phone location made the
   // town scope technically filtered but locally wrong.
@@ -471,15 +480,14 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
-  const sortLabel = sort === "rated"
-    ? "top rated first"
-    : hasRankingOrigin
-      ? "nearest first"
-      : "best matches";
+  const availabilityLeads = !openOnly && !craving?.alwaysOpen;
+  const sortLabel = rightNowSortLabel(sort, hasRankingOrigin, availabilityLeads);
   const areaLabel = townName
     ? `in ${townName}`
     : hasFix
-      ? "near you"
+      ? deviceOutsideCounty
+        ? "in Frederick County, nearest to you"
+        : "near you"
       : approxOrigin
         ? approxCity
           ? `approximately near ${approxCity}`
@@ -491,14 +499,28 @@ export default function RightNow({
         {/* The cravings live on /today now (the "I want…" grid), so the
             answer's back affordance returns there rather than swapping to a
             duplicate on-page picker. */}
-        <Link
-          href="/today"
+        <button
+          type="button"
+          onClick={() => {
+            let sameOriginReferrer = false;
+            try {
+              sameOriginReferrer = Boolean(document.referrer) &&
+                new URL(document.referrer).origin === window.location.origin;
+            } catch {
+              sameOriginReferrer = false;
+            }
+            if (sameOriginReferrer && window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.assign("/today");
+            }
+          }}
           className="tactile-interactive -ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-full px-2 text-[13px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
+          Back
+        </button>
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden
@@ -689,9 +711,9 @@ export default function RightNow({
               {state.status === "loading"
                 ? "Getting your location…"
                 : state.status === "error"
-                  ? "Location timed out · Try precise location again"
+                  ? "Location timed out. Try precise location again"
                 : approxCity
-                  ? `Near ${approxCity} approximately · Use precise location`
+                  ? `You are near ${approxCity}. Use precise location for better results.`
                   : "Use my location for nearest-first results"}
             </span>
           </button>
@@ -708,7 +730,7 @@ export default function RightNow({
               Closest verified options
             </h2>
             <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Radius doesn&rsquo;t have a verified {activeNoun} listing in {townName} yet. These are the nearest matches outside town.
+              Radius has no verified listing for {activeNoun} in {townName} yet. These are the nearest matches outside town.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -748,15 +770,15 @@ export default function RightNow({
           <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
             {townName
               ? matched.length === 0
-                ? `Radius doesn't have a verified ${activeNoun} listing in ${townName} yet.`
-                : `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
+                ? `Radius has no verified listing for ${activeNoun} in ${townName} yet.`
+                : `Radius found no ${openOnly && !closingSoonOnly ? "open " : ""}options for ${activeNoun} in ${townName} right now.`
               : closingSoonOnly
-                ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
+                ? `Radius found no options for ${activeNoun} that are closing soon${hasFix ? " near you" : ""}.`
                 : openOnly && matched.length > 0
-                  ? `Nothing open right now for ${activeNoun}.`
+                  ? `Radius found no open options for ${activeNoun} right now.`
                   : meal
-                    ? `Nothing open ${meal.phrase} near you right now.`
-                    : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
+                    ? `Radius found no open options for ${activeNoun} ${meal.phrase} near you right now.`
+                    : `Radius found no options for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
           </p>
           {/* Clear the town scope, the closing-soon filter, or (when Open-now hid
               everything but closed matches exist) offer those — never dead-end. */}

@@ -44,6 +44,24 @@ describe("search — normalize drops noise but keeps real keywords", () => {
     // "i need a" is pure filler + a single char -> no terms -> no hits.
     expect(search("i need a", 5)).toHaveLength(0);
   });
+
+  it("does not treat Frederick location language as evidence for unknown terms", () => {
+    const { hits } = qualifiedSearch(
+      "Where can I buy zxqv quux near Frederick?",
+      12,
+      undefined,
+      { origin: { lng: -77.4109, lat: 39.4137 } },
+    );
+    expect(hits).toHaveLength(0);
+  });
+
+  it("still resolves a real business name that includes Frederick", () => {
+    expect(
+      search("Frederick Bodywork", 5).some(
+        (hit) => hit.type === "place" && hit.place.slug === "frederick-bodywork",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("qualifiedSearch — event intent survives location language", () => {
@@ -113,6 +131,20 @@ describe("qualifiedSearch — natural category plurals", () => {
 });
 
 describe("qualifiedSearch — Ask uses place context by default", () => {
+  it("hard-filters an unconstrained search to the selected town", () => {
+    const { hits, meta } = qualifiedSearch("MZ Art Studio", 12, undefined, {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(meta.qualifiers.constrained).toBe(false);
+    expect(places.length).toBeGreaterThan(0);
+    expect(places.every((place) => place.municipality === "urbana")).toBe(true);
+  });
+
   it("answers a downtown breakfast-sandwich request with downtown matches, not Brunswick", () => {
     const { hits, meta } = qualifiedSearch(
       "Where can I get a breakfast sandwich?",

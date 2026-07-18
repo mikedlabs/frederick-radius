@@ -16,7 +16,7 @@ import CollectClient from "./CollectClient";
  */
 export const metadata: Metadata = {
   title: "Collect · Frederick Radius",
-  description: "Mark civic amenities on the Frederick County map.",
+  description: "Use the Frederick County map to mark civic amenities.",
   robots: { index: false, follow: false },
 };
 

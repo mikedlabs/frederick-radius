@@ -50,7 +50,7 @@ export default function CopyReview() {
       {/* ── The worklist: hairlines, not cards, so the copy can breathe. ── */}
       <section className="mt-7">
         {scraped.length === 0 ? (
-          <AllClear>No scraped descriptions to rewrite. Every listing reads as prose.</AllClear>
+          <AllClear>No scraped descriptions need review.</AllClear>
         ) : (
           <>
             <SectionLabel

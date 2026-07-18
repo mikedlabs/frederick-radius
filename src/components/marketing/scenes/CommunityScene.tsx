@@ -14,7 +14,7 @@ export default function CommunityScene() {
                         <span className="text-primary">One Platform.</span>
                     </h2>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        From historic downtowns to mountain gateways, Frederick Radius unifies our diverse municipalities.
+                        Frederick Radius connects local information across Frederick City and the county&rsquo;s surrounding communities.
                     </p>
                 </div>
 

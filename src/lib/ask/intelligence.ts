@@ -5,6 +5,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { parseAskIntent, type AskIntent } from "@/lib/ask/intent";
+import { clockLine, normalizePlainTextAnswer, optionCountInstruction, scopeAskEvents } from "@/lib/ask/context";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import type { AskAction, AskPlanPreview, AskSource } from "@/lib/ask/contracts";
 import { filterCitedSources } from "@/lib/ask/citations";
@@ -22,12 +23,20 @@ import type { Event } from "@/data/events";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
 import { formatHoursLine } from "@/lib/hours";
 import { isChainName } from "@/lib/category-ranking";
-import { getNwsForecast } from "@/lib/integrations/nws";
 import { getParkingOccupancy, parkingFeedConfigured } from "@/lib/integrations/parking-live";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
 import { matchesSearchQualifiers, parseSearchQualifiers } from "@/lib/search/qualifiers";
+import { loadAskWeather } from "@/lib/ask/weather";
+import { safeAskDescription } from "@/lib/ask/source-copy";
+import { placeDietaryEvidence, placeMatchesDietary } from "@/lib/ask/dietary";
+import { eventFitsAskIntent } from "@/lib/ask/event-filter";
 
 const AGENT_MODEL = process.env.ASK_RADIUS_AGENT_MODEL || "openai/gpt-5.4-mini";
+// This is an enhancement path, never the only path to an answer. Keep one
+// bounded budget for the full tool loop so a slow model or optional live feed
+// cannot hold the decision UI behind the function's 30-second ceiling.
+const AGENT_TOTAL_TIMEOUT_MS = 7_000;
+const AGENT_STEP_TIMEOUT_MS = 3_500;
 const COMPLEX_RE = /\b(?:parents?|visitors?|wheelchair|accessible|mobility|can(?:not|'t) walk|less walking|parking|rain|weather|before|after|then|plus|followed by|combine|itinerary|plan|date night|afternoon|evening|morning|budget|under \$?\d+)\b/i;
 
 export type RadiusAgentAnswer = {
@@ -59,7 +68,7 @@ function categoryName(slug: string): string {
   return CATEGORY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ");
 }
 
-function placeSource(place: PlaceCardData): AskSource {
+function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
   return {
     slug: place.slug,
     name: place.name,
@@ -67,9 +76,9 @@ function placeSource(place: PlaceCardData): AskSource {
     city: place.city || place.municipality,
     href: `/places/${place.slug}`,
     eyebrow: categoryName(place.category),
-    reason: place.field_note_tip || place.known_for?.[0] || "Strong fit from Radius",
-    detail: place.short_blurb || place.description || undefined,
-    distance: place.distance_m != null ? formatDistance(place.distance_m) : undefined,
+    reason: place.field_note_tip || place.known_for?.[0] || "Matched the request in Radius",
+    detail: safeAskDescription(place.name, place.short_blurb, place.description),
+    distance: showDistance && place.distance_m != null ? formatDistance(place.distance_m) : undefined,
     status: formatHoursLine(place.open_status),
     phone: place.phone || undefined,
     confidence: place.is_verified && (place.hours_verified || place.open_status.state === "unknown") ? "high" : "medium",
@@ -89,7 +98,7 @@ function eventSource(event: Event): AskSource {
     href: `/events/${event.slug}`,
     eyebrow: `${when} · ${time}`,
     reason: event.venue_name ? `At ${event.venue_name}` : "Current Radius calendar match",
-    detail: event.description?.slice(0, 160),
+    detail: safeAskDescription(event.title, event.description)?.slice(0, 160),
     confidence: "high",
     photo_url: event.hero_image,
   };
@@ -105,6 +114,7 @@ function semanticPlaceAllowed(place: PlaceCardData, query: string, context: Qual
   if (intent.travelMode === "walk" && context.origin && haversineMeters(context.origin, place.geom) > 2_400) return false;
   if (intent.budget === "free" && !(place.tags ?? []).includes("free")) return false;
   if (intent.budget === "value" && place.price_band != null && place.price_band > 2) return false;
+  if (!placeMatchesDietary(place, intent.dietary)) return false;
   return true;
 }
 
@@ -135,8 +145,8 @@ function mergePlaceHits(
 
 const outputSchema = z.object({
   answer: z.string().min(1).max(800),
-  placeSlugs: z.array(z.string()).max(4).default([]),
-  eventSlugs: z.array(z.string()).max(4).default([]),
+  placeSlugs: z.array(z.string()).max(12).default([]),
+  eventSlugs: z.array(z.string()).max(12).default([]),
   followUps: z.array(z.object({
     label: z.string().min(1).max(40),
     query: z.string().min(1).max(300),
@@ -158,9 +168,13 @@ Truth rules:
 - If the data is thin, say that plainly.
 
 Writing rules:
-- 2 to 4 short, useful sentences. No markdown headings, filler, metaphors, or em dashes.
-- Sound like a calm local expert. Explain the tradeoff that determined the recommendation.
-- Follow-ups must materially change the decision, such as less walking, cheaper, indoors, or swap dinner.`;
+- Lead with the strongest recommendation and explain the concrete tradeoff that determined it. Add a second option only when it gives the user a meaningfully different choice.
+- Honor an explicitly requested number of options when the tool evidence supports that number. This overrides the one-or-two-choice default. If fewer verified choices are available, state the shortfall instead of inventing or padding.
+- If the user asks for multiple, several, or a few options without a number, return more than one evidence-backed choice when possible. Include the returned slug for every place or event named in the answer so each source can be cited.
+- Use complete grammatical sentences with naturally varied lengths. Do not use clipped fragments, slogans, rhetorical groups of three, filler, metaphors, or em dashes.
+- Keep the answer to one concise paragraph of no more than 100 words unless an explicit option count requires a little more room. Even then, stay concise.
+- Return plain text only. Do not use markdown, headings, bullets, numbered lists, emphasis marks, or links.
+- Sound like a calm local expert. Follow-ups must materially change the decision, such as reducing the walk or moving the plan indoors.`;
 
 export async function runRadiusAgent(
   query: string,
@@ -172,12 +186,13 @@ export async function runRadiusAgent(
   const eventEvidence = new Map<string, Event>();
   const toolsUsed = new Set<string>();
   const taste = buildTasteProfile(tasteSignals);
+  const now = new Date();
   let plan: AskPlanPreview | null = null;
   let usedHybrid = false;
 
   const searchPlaces = tool({
     description: "Find real Frederick County places using keyword, semantic, hours, distance, town, price, and local-only constraints.",
-    inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(8).default(6) }),
+    inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(12).default(6) }),
     execute: async ({ query: toolQuery, limit }) => {
       toolsUsed.add("places");
       const lexical = qualifiedSearch(toolQuery, 16, undefined, context).hits;
@@ -199,7 +214,8 @@ export async function runRadiusAgent(
           priceBand: hit.place.price_band ?? null,
           knownFor: hit.place.known_for?.slice(0, 3) ?? [],
           fieldNote: hit.place.field_note_tip ?? null,
-          blurb: hit.place.short_blurb || null,
+          blurb: safeAskDescription(hit.place.name, hit.place.short_blurb, hit.place.description) ?? null,
+          dietaryEvidence: placeDietaryEvidence(hit.place, parseAskIntent(toolQuery, now).dietary),
         }];
       });
     },
@@ -207,14 +223,17 @@ export async function runRadiusAgent(
 
   const searchEvents = tool({
     description: "Find current Frederick County events from Radius's unified, deduplicated calendar.",
-    inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(8).default(6) }),
+    inputSchema: z.object({ query: z.string().min(1).max(300), limit: z.number().int().min(1).max(12).default(6) }),
     execute: async ({ query: toolQuery, limit }) => {
       toolsUsed.add("events");
       const pool = await Promise.race([
         assembleUnifiedEvents(new Date()).then((result) => result.publicEvents).catch(() => [] as Event[]),
         new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 1_500)),
       ]);
-      const hits = qualifiedSearch(toolQuery, 20, pool, context).hits
+      const eventIntent = parseAskIntent(toolQuery, now);
+      const scopedPool = scopeAskEvents(pool, context.municipality)
+        .filter((event) => eventFitsAskIntent(event, eventIntent, now));
+      const hits = qualifiedSearch(toolQuery, 20, scopedPool, context).hits
         .filter((hit): hit is Extract<SearchHit, { type: "event" }> => hit.type === "event")
         .slice(0, limit);
       return hits.map((hit) => {
@@ -237,12 +256,26 @@ export async function runRadiusAgent(
     inputSchema: z.object({ hours: z.number().int().min(1).max(12).default(8) }),
     execute: async ({ hours }) => {
       toolsUsed.add("weather");
-      const forecast = await getNwsForecast(context.origin ?? FREDERICK_CENTER);
-      if (!forecast) return { available: false, periods: [] };
+      const weather = await loadAskWeather(context.origin ?? FREDERICK_CENTER, now);
+      if (!weather.forecast && weather.alerts.length === 0 && !weather.aqi) {
+        return { available: false, periods: [], alerts: [], airQuality: null };
+      }
       return {
         available: true,
-        asOf: forecast.asOf,
-        periods: forecast.hourly.slice(0, hours).map((period) => ({
+        asOf: weather.forecast?.asOf ?? null,
+        alerts: weather.alerts.map((alert) => ({
+          event: alert.event,
+          headline: alert.headline,
+          severity: alert.severity,
+          endsAt: alert.ends_at,
+          url: alert.url,
+        })),
+        airQuality: weather.aqi ? {
+          aqi: weather.aqi.aqi,
+          category: weather.aqi.category.name,
+          reportingArea: weather.aqi.reportingArea,
+        } : null,
+        periods: (weather.forecast?.hourly ?? []).slice(0, hours).map((period) => ({
           start: period.startTime,
           temperature: `${period.temperature}°${period.temperatureUnit}`,
           forecast: period.shortForecast,
@@ -320,27 +353,30 @@ export async function runRadiusAgent(
     output: Output.object({ schema: outputSchema }),
     stopWhen: stepCountIs(5),
     prepareStep: ({ stepNumber }) => ({ toolChoice: stepNumber === 0 ? "required" : "auto" }),
+    maxRetries: 1,
   });
 
   try {
     const { output } = await agent.generate({
-      prompt: `User request: ${query}\nLocation context: ${context.contextLabel || "Frederick County; exact location unavailable"}\nExplicit taste signals: ${tasteSummary(taste) || "none"}`,
-      abortSignal: AbortSignal.timeout(9_000),
+      prompt: `User request: ${query}\nCurrent Frederick date and time: ${clockLine(now)} Eastern\nLocation context: ${context.contextLabel || "Frederick County; exact location unavailable"}\nExplicit taste signals: ${tasteSummary(taste) || "none"}\nResponse count: ${optionCountInstruction(query)}`,
+      timeout: { totalMs: AGENT_TOTAL_TIMEOUT_MS, stepMs: AGENT_STEP_TIMEOUT_MS },
     });
     if (!output) return null;
     const sources: AskSource[] = [];
     for (const slug of output.placeSlugs) {
       const place = placeEvidence.get(slug);
-      if (place && !sources.some((source) => source.slug === slug)) sources.push(placeSource(place));
+      if (place && !sources.some((source) => source.slug === slug)) {
+        sources.push(placeSource(place, Boolean(context.origin && context.canShowDistance !== false)));
+      }
     }
     for (const slug of output.eventSlugs) {
       const event = eventEvidence.get(slug);
       if (event && !sources.some((source) => source.slug === slug)) sources.push(eventSource(event));
     }
-    const answer = output.answer.replace(/\s*[—–]\s*/g, ", ").trim();
+    const answer = normalizePlainTextAnswer(output.answer);
     return {
       answer,
-      sources: filterCitedSources(sources, answer).slice(0, 4),
+      sources: filterCitedSources(sources, answer).slice(0, 12),
       actions: output.followUps.map((item) => ({ label: item.label, kind: "refine", query: item.query })),
       plan,
       tools: [...toolsUsed],

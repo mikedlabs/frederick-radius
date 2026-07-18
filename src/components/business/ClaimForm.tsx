@@ -88,7 +88,7 @@ export default function ClaimForm({ placeSlug = "" }: { placeSlug?: string }) {
           className="rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
           style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
         >
-          Claiming the listing for{" "}
+          You are claiming the listing for{" "}
           <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
             {placeSlug}
           </span>

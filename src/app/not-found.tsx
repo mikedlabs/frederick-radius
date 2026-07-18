@@ -49,7 +49,7 @@ export default function NotFound() {
         </span>
         <div className="space-y-2">
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Off the map
+            Page not found
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
             That page isn&apos;t here.
@@ -58,8 +58,8 @@ export default function NotFound() {
             className="mx-auto max-w-sm text-[14px] text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
-            The link may be old, or the place or event was removed. The
-            rest of Frederick is one tap away.
+            The link may be old, or the page may have been removed. Search
+            Frederick Radius or return to Today.
           </p>
         </div>
         {/* Search is the fastest way forward for someone who landed on a

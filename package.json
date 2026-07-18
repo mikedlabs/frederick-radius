@@ -130,6 +130,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "axe-core": "^4.12.1",
     "babel-plugin-react-compiler": "^1.0.0",
     "chrome-launcher": "^1.2.1",
     "drizzle-kit": "^0.31.10",
@@ -142,8 +143,7 @@
     "typescript": "^5",
     "vitest": "^4.1.10",
     "yaml": "^2.9.0",
-    "zod": "^4.4.3",
-    "axe-core": "^4.12.1"
+    "zod": "^4.4.3"
   },
   "overrides": {
     "postcss": "8.5.14"

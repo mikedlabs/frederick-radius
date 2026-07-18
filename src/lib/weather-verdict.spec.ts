@@ -15,7 +15,7 @@ describe("weatherVerdict fog branch (the one moodLine had and this engine lacked
   it("reads fog as a mixed gray sky, never a fine day", () => {
     for (const sf of ["Patchy Fog", "Areas Of Mist", "Haze", "Hazy"]) {
       const v = weatherVerdict(input({ shortForecast: sf }));
-      expect(v.line).toBe("Low and gray, fog hanging around.");
+      expect(v.line).toBe("Fog is hanging around, and visibility may be low.");
       expect(v.tone).toBe("mixed");
     }
   });
@@ -37,34 +37,34 @@ describe("weatherVerdict overnight band (22:00–05:00)", () => {
   it("never claims daylight in the dark hours", () => {
     for (const now of [OVERNIGHT, LATE]) {
       const v = weatherVerdict(input({ shortForecast: "Isolated Whatever", now }));
-      expect(v.line).toBe("A quiet night out there.");
+      expect(v.line).toBe("Conditions are quiet tonight.");
     }
   });
 
   it("clear overnight reads as a quiet clear night", () => {
-    expect(weatherVerdict(input({ now: OVERNIGHT })).line).toBe("Quiet and clear out there.");
+    expect(weatherVerdict(input({ now: OVERNIGHT })).line).toBe("Conditions are quiet and clear tonight.");
   });
 
   it("cloudy overnight reads as a quiet night, not an easy day to explore", () => {
     const v = weatherVerdict(input({ shortForecast: "Mostly Cloudy", now: OVERNIGHT }));
-    expect(v.line).toBe("Quiet night, clouds over the county.");
+    expect(v.line).toBe("Clouds are hanging over the county tonight.");
   });
 
   it("active rain overnight names the night, not an indoor kind of day", () => {
     const v = weatherVerdict(input({ shortForecast: "Rain Showers", precipNow: 80, now: OVERNIGHT }));
-    expect(v.line).toBe("Rain moving through the night.");
+    expect(v.line).toBe("Rain is moving through tonight.");
     expect(v.tone).toBe("rough");
   });
 });
 
 describe("weatherVerdict daytime/evening bands are unchanged", () => {
   it("clear midday reads as a good day to be outside", () => {
-    expect(weatherVerdict(input({})).line).toBe("Clear out, a good day to be outside.");
+    expect(weatherVerdict(input({})).line).toBe("It is clear and comfortable outside.");
   });
 
   it("clear 7 PM reads as a patio kind of evening", () => {
     expect(weatherVerdict(input({ now: EVENING })).line).toBe(
-      "Clear and easy, a patio kind of evening.",
+      "It is clear and mild enough for a patio this evening.",
     );
   });
 
@@ -90,7 +90,7 @@ describe("weatherVerdict safety overrides", () => {
   it("uses a dangerous forecast high even when the current hour is mild", () => {
     const v = weatherVerdict(input({ temp: 78, forecastHigh: 102, shortForecast: "Clear" }));
     expect(v.tone).toBe("rough");
-    expect(v.line).toMatch(/dangerous heat later/i);
+    expect(v.line).toMatch(/dangerous heat.*later/i);
   });
 
   it("suppresses cheerful copy for any active weather alert", () => {
@@ -99,7 +99,7 @@ describe("weatherVerdict safety overrides", () => {
       activeAlerts: [{ event: "Flood Watch", severity: "Moderate" }],
     }));
     expect(v.tone).toBe("mixed");
-    expect(v.line).toMatch(/Flood Watch active/);
+    expect(v.line).toMatch(/Flood Watch.*active/);
     expect(v.line).not.toMatch(/good day|patio|easy day/i);
   });
 
@@ -113,7 +113,7 @@ describe("weatherVerdict safety overrides", () => {
       }],
     }));
     expect(v.tone).toBe("rough");
-    expect(v.line).toMatch(/very unhealthy air/i);
+    expect(v.line).toMatch(/very unhealthy.*air|air.*very unhealthy/i);
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 
@@ -123,7 +123,7 @@ describe("weatherVerdict safety overrides", () => {
       airQuality: { aqi: 168, category: "Unhealthy" },
     }));
     expect(v.tone).toBe("rough");
-    expect(v.line).toMatch(/unhealthy air/i);
+    expect(v.line).toMatch(/unhealthy.*air|air.*unhealthy/i);
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 
@@ -188,7 +188,7 @@ describe("weatherVerdict safety overrides", () => {
       ],
     }));
     expect(v.tone).toBe("rough");
-    expect(v.line).toMatch(/Tornado Warning active/i);
+    expect(v.line).toMatch(/Tornado Warning.*active/i);
   });
 
   it("uses hazardous guidance at AQI 301 and above", () => {
@@ -196,7 +196,7 @@ describe("weatherVerdict safety overrides", () => {
       airQuality: { aqi: 301, category: "Hazardous" },
     }));
     expect(v.tone).toBe("rough");
-    expect(v.line).toMatch(/hazardous air/i);
+    expect(v.line).toMatch(/hazardous.*air|air.*hazardous/i);
   });
 
   it("still surfaces a safety product when the ordinary forecast is unavailable", () => {
@@ -208,6 +208,6 @@ describe("weatherVerdict safety overrides", () => {
         description: "Code Purple. Air is very unhealthy.",
       }],
     }));
-    expect(v.line).toMatch(/very unhealthy air/i);
+    expect(v.line).toMatch(/very unhealthy.*air|air.*very unhealthy/i);
   });
 });

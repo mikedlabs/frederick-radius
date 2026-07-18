@@ -30,6 +30,12 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run ingest:venues
+      # Commits pushed with GITHUB_TOKEN do not start another workflow run.
+      # Run the copy/provenance gates here before the bot writes to main.
+      - name: Verify venue copy provenance and voice
+        run: |
+          npm run style:lint
+          npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
       - name: Commit refreshed data
         run: |
           git config user.name "frederick-radius-bot"

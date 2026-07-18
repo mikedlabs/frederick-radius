@@ -14,16 +14,15 @@ import { isClosedNow } from "@/lib/hours";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { clusterOrder, daypart } from "@/lib/daypart";
-import { dealsAvailableNow } from "@/lib/today/dealAvailability";
+import { todayDealAvailability } from "@/lib/today/dealAvailability";
+import { isEventToday } from "@/lib/eventWhenLabel";
+import { marketTimingAt, todayUtilityBandLabel } from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
-/** Count of verified happy hours whose window includes RIGHT NOW (Eastern) —
- *  the same window test HappyHourWallet uses, so the band's "On now" label and
- *  the live cards never disagree. "Between rounds" (next pour) does NOT count as
- *  on-now, which is the honest distinction the band header rides on. */
-function liveHappyCount(now: Date): number {
+/** Count verified happy hours that are live now or still ahead today. */
+function happyHourAvailability(now: Date): { currentCount: number; laterCount: number } {
   const p = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
   }).formatToParts(now);
@@ -31,36 +30,26 @@ function liveHappyCount(now: Date): number {
   const wd: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
   const day = wd[get("weekday")] ?? 0;
   const min = (Number(get("hour")) % 24) * 60 + Number(get("minute"));
-  let n = 0;
+  let currentCount = 0;
+  let laterCount = 0;
   for (const v of placesWithFieldHappyHour()) {
-    if (!parseHappyHour(v.happy_hour.schedule).some((w) => w.days.includes(day) && min >= w.start && min < w.end)) continue;
-    // Don't count a pour whose venue is provably closed now (DQ-019), so the
-    // band's "On now" total matches the live cards, which now suppress those.
-    const p = clientPlaceBySlug(v.slug);
-    if (p && isClosedNow(p.hours, p.hours_verified ?? false, now)) continue;
-    n++;
+    const place = clientPlaceBySlug(v.slug);
+    if (!place) continue;
+    const windows = parseHappyHour(v.happy_hour.schedule).filter((window) => window.days.includes(day));
+    const live = windows.some((window) => min >= window.start && min < window.end);
+    if (live && !isClosedNow(place.hours, place.hours_verified ?? false, now)) {
+      currentCount++;
+      continue;
+    }
+    if (windows.some((window) => window.start > min)) laterCount++;
   }
-  return n;
+  return { currentCount, laterCount };
 }
 
 /**
- * OnNowBand — the live layer of /today, gathered under ONE header instead of
- * four free-floating sections. Happy hour, today's verified specials, farmers
- * markets, and tonight's parking play used to stack as separate beats; here they
- * read as a single "what's live" band.
- *
- * Two jobs:
- *   1. CONSOLIDATE — one masthead ("On now" when something's genuinely live,
- *      "Coming up" when the only thing to show is the next happy hour) so the
- *      page stops reading like a stacked dashboard.
- *   2. ORDER BY DAYPART — the blocks reorder with the clock (markets lead the
- *      morning; happy hour + parking lead the evening), so the most useful live
- *      thing is first at 8am vs 9pm. Each block still self-hides, so this is a
- *      priority order, not a promise all four render.
- *
- * Async server component: it reads the same loaders the blocks do (cached, so
- * the re-reads are ~free) to decide the header wording, then renders the blocks
- * in daypart order. Streams in its own Suspense boundary on /today.
+ * The current-utility band keeps live offers separate from scheduled items.
+ * Its blocks follow the daypart priority and self-hide when they have no useful
+ * information left today.
  */
 export default async function OnNowBand({
   now,
@@ -75,68 +64,93 @@ export default async function OnNowBand({
    *  on the page, not three. */
   marketTeaserAbove?: boolean;
 }) {
-  const { publicEvents } = await eventsPromise;
-
-  // Presence, from the EXACT loaders each block uses, so the header never lies.
-  const markets = marketTeaserAbove ? [] : await marketsOpenToday(now);
-  const deals = await getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER);
-  const dealsCount = dealsAvailableNow(deals, EASTERN_WEEKDAY(now), now).length;
-  const happyCount = liveHappyCount(now);
-  const parking = parkingPlanForToday(
+  // The header uses the same schedules as the cards. A day match alone is not
+  // enough to claim that a market or offer is available now.
+  const marketsPromise = marketTeaserAbove ? Promise.resolve([]) : marketsOpenToday(now);
+  const [{ publicEvents }, markets, deals] = await Promise.all([
+    eventsPromise,
+    marketsPromise,
+    getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER),
+  ]);
+  const weekday = EASTERN_WEEKDAY(now);
+  const dealTimings = deals.map((deal) => todayDealAvailability(deal.hours, weekday, now));
+  const dealCurrentCount = dealTimings.filter((timing) => timing.state === "now").length;
+  const dealLaterCount = dealTimings.filter((timing) => timing.state === "later").length;
+  const dealTodayCount = dealTimings.filter((timing) => timing.state === "today").length;
+  const marketTimings = markets.map((market) => marketTimingAt(market.hours, now));
+  const marketCurrentCount = marketTimings.filter((timing) => timing === "now").length;
+  const marketLaterCount = marketTimings.filter((timing) => timing === "later").length;
+  const marketTodayCount = marketTimings.filter((timing) => timing === "today").length;
+  const happy = happyHourAvailability(now);
+  const parkingCandidate = parkingPlanForToday(
     publicEvents.map((e) => ({ slug: e.slug, title: e.title, starts_at: e.starts_at, geom: e.geom, category: e.category })),
     PARKING_GARAGES,
     now,
   );
+  const parking = parkingCandidate && isEventToday(parkingCandidate.event.starts_at, now)
+    ? parkingCandidate
+    : null;
 
-  const liveCount = (happyCount > 0 ? 1 : 0) + (dealsCount > 0 ? 1 : 0) + (markets.length > 0 ? 1 : 0) + (parking ? 1 : 0);
-  const anyLive = liveCount > 0;
+  const currentCount = happy.currentCount + dealCurrentCount + marketCurrentCount;
+  const laterCount = happy.laterCount + dealLaterCount + marketLaterCount + (parking ? 1 : 0);
+  const todayCount = dealTodayCount + marketTodayCount;
+  const label = todayUtilityBandLabel({ currentCount, laterCount, todayCount });
+  if (!label) return null;
 
-  // Each block is responsible for its own self-hide; we just place them in
-  // daypart order. (HappyHourWallet is the one that nearly always renders —
-  // it falls back to the next pour — which is why the header reads "Coming up"
-  // when nothing is genuinely on now.)
+  const hasHappyHour = happy.currentCount + happy.laterCount > 0;
+  const hasDeals = dealCurrentCount + dealLaterCount + dealTodayCount > 0;
+  const hasMarkets = marketCurrentCount + marketLaterCount + marketTodayCount > 0;
   const blocks: Record<string, ReactNode> = {
-    happy: <HappyHourWallet now={now} />,
-    deals: <TodaysDeals now={now} embedded />,
-    markets: marketTeaserAbove ? null : <MarketsTodayBeat now={now} />,
+    happy: hasHappyHour ? <HappyHourWallet now={now} /> : null,
+    deals: hasDeals ? <TodaysDeals now={now} embedded /> : null,
+    markets: !marketTeaserAbove && hasMarkets ? <MarketsTodayBeat now={now} /> : null,
     parking: parking ? (
       <TonightParkingPlan
         eventTitle={parking.event.title}
         eventSlug={parking.event.slug}
+        eventStartsAt={parking.event.starts_at}
         primaryGarageName={parking.primaryGarage.name}
         alternatives={parking.alternatives}
       />
     ) : null,
   };
 
-  const ordered = clusterOrder(daypart(now)).map((k) => blocks[k]).filter(Boolean);
+  const ordered = clusterOrder(daypart(now))
+    .map((key) => ({ key, node: blocks[key] }))
+    .filter(({ node }) => node != null);
   if (ordered.length === 0) return null;
 
+  const currentSummary = [
+    happy.currentCount > 0 ? `${happy.currentCount} happy hour${happy.currentCount === 1 ? "" : "s"}` : null,
+    dealCurrentCount > 0 ? `${dealCurrentCount} special${dealCurrentCount === 1 ? "" : "s"}` : null,
+    marketCurrentCount > 0 ? `${marketCurrentCount} market${marketCurrentCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+  const summary = currentCount > 0
+    ? [...currentSummary, laterCount > 0 ? `${laterCount} later today` : null].filter(Boolean).join(" · ")
+    : laterCount > 0
+      ? `${laterCount} scheduled`
+      : `${todayCount} listed`;
+
   return (
-    <section className="mt-5 space-y-3" aria-label="On now">
+    <section className="mt-5 space-y-3" aria-label={label}>
       <div className="flex items-baseline justify-between gap-3 px-0.5">
         {/* Serif-title register, matching its /today peers (PoolsToday,
             CravingStrip) instead of the lone mono-eyebrow it used to wear. The
             mono stays, but only on the tally to the right (counts support). */}
         <h2 className="flex items-center gap-2 font-serif text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {anyLive && (
+          {currentCount > 0 && (
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
           )}
-          {anyLive ? "Available now" : "Coming up"}
+          {label}
         </h2>
-        {/* A quiet live tally, never the headline (brand voice: counts support). */}
-        {anyLive && (
-          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-            {[happyCount > 0 ? `${happyCount} happy hour${happyCount === 1 ? "" : "s"}` : null, dealsCount > 0 ? `${dealsCount} special${dealsCount === 1 ? "" : "s"}` : null]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
-        )}
+        <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
+          {summary}
+        </span>
       </div>
       <div className="fg-rule" aria-hidden />
       <div className="space-y-4">
-        {ordered.map((node, i) => (
-          <div key={i}>{node}</div>
+        {ordered.map(({ key, node }) => (
+          <div key={key}>{node}</div>
         ))}
       </div>
     </section>

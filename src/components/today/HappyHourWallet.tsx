@@ -144,7 +144,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
         </div>
         <Link
           href={`/places/${next.slug}`}
-          aria-label={`No happy hour on right now. Next: ${next.name}, ${next.label.toLowerCase()}`}
+          aria-label={`No happy hour is active right now. The next is ${next.name}, ${next.label.toLowerCase()}.`}
           className="tactile-interactive flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] p-2.5"
           style={{
             backgroundColor: "var(--app-bg-elevated-solid)",
@@ -195,7 +195,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
           </h3>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-            {n} {n === 1 ? "pour" : "pours"} pouring now
+            {n} {n === 1 ? "deal" : "deals"} available now
           </p>
         </div>
         <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
@@ -214,7 +214,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             <li key={pour.slug}>
               <Link
                 href={`/places/${pour.slug}`}
-                aria-label={`${pour.name}${pour.deal ? `: ${pour.deal}` : ""}. Happy hour ${tab.toLowerCase()}`}
+                aria-label={`${pour.name}${pour.deal ? `: ${pour.deal.replace(/[.!?]+$/, "")}` : ""}. Happy hour: ${tab.toLowerCase()}.`}
                 className="tactile-interactive relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] py-2.5 pl-3 pr-2.5"
                 style={{
                   backgroundColor: "var(--app-bg-elevated-solid)",
@@ -286,7 +286,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
 
       {overflow > 0 && (
         <Link href="/happy-hour" className="tap-44 block text-center font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          +{overflow} more pouring now <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+          +{overflow} more live deals <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       )}
     </section>

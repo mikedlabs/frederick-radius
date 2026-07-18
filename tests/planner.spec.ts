@@ -21,11 +21,19 @@ const INPUT: PlanInputs = {
 };
 
 describe("plan spec encode/decode", () => {
-  it("round trips a spec, URL safe", () => {
+  it("round trips a URL-safe spec without precise location data", () => {
     const spec: PlanSpec = { v: 1, i: INPUT, s: [{ p: "a-place" }, { e: "an-event" }] };
     const token = encodeSpec(spec);
     expect(token).not.toMatch(/[+/=]/); // URL safe
-    expect(decodeSpec(token)).toEqual(spec);
+    expect(decodeSpec(token)).toEqual({
+      ...spec,
+      i: {
+        audience: INPUT.audience,
+        vibe: INPUT.vibe,
+        duration_hours: INPUT.duration_hours,
+        start_at: INPUT.start_at,
+      },
+    });
   });
 
   it("returns null for a junk token", () => {

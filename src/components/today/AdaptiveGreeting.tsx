@@ -49,39 +49,39 @@ function pickGreeting(
   const isVisitor = mode === "visitor";
 
   if (hour >= 5 && hour < 8) {
-    if (wet) return isVisitor ? "Rain in the morning forecast." : "Showers this morning.";
-    if (wetMaybe) return isVisitor ? "Rain in the morning forecast." : "Showers around this morning.";
-    if (sunny) return isVisitor ? "Sunrise window is open." : "First light. Coffee weather.";
-    return isVisitor ? "Good morning, Frederick." : "Morning. The county's up.";
+    if (wet) return isVisitor ? "Rain is in the morning forecast." : "Showers are expected this morning.";
+    if (wetMaybe) return isVisitor ? "Rain is in the morning forecast." : "Showers are possible this morning.";
+    if (sunny) return isVisitor ? "Sunrise window is open." : "First light brings coffee weather.";
+    return isVisitor ? "Good morning, Frederick." : "The county is up this morning.";
   }
   if (hour >= 8 && hour < 12) {
-    if (wet) return isVisitor ? "Showers around. Carry a layer." : "Showers around this morning.";
-    if (wetMaybe) return isVisitor ? "Rain in the morning forecast." : "Showers in the forecast.";
-    if (sunny) return isVisitor ? "Sunny morning." : "Clear morning.";
-    if (cloudy) return isVisitor ? "Overcast morning." : "Overcast morning. Mellow start.";
-    return isVisitor ? "Good morning. What's open?" : "Morning. Same time, fresh week.";
+    if (wet) return isVisitor ? "Showers are around, so carry a layer." : "Showers are expected this morning.";
+    if (wetMaybe) return isVisitor ? "Rain is in the morning forecast." : "Showers are in the forecast.";
+    if (sunny) return isVisitor ? "It is a sunny morning." : "The morning is clear.";
+    if (cloudy) return isVisitor ? "It is overcast this morning." : "The morning is overcast and quiet.";
+    return isVisitor ? "Good morning. What is open?" : "The county is moving this morning.";
   }
   if (hour >= 12 && hour < 17) {
-    if (wet) return isVisitor ? "Showers around. Carry a layer." : "Showers around this afternoon.";
-    if (wetMaybe) return isVisitor ? "Rain in the afternoon forecast." : "Showers in the forecast.";
-    if (sunny) return isVisitor ? "Sun for now." : "Sun's out.";
-    if (cloudy) return isVisitor ? "Mild afternoon in Frederick." : "Quiet afternoon.";
-    return isVisitor ? "Good afternoon." : "Midday check.";
+    if (wet) return isVisitor ? "Showers are around, so carry a layer." : "Showers are expected this afternoon.";
+    if (wetMaybe) return isVisitor ? "Rain is in the afternoon forecast." : "Showers are in the forecast.";
+    if (sunny) return isVisitor ? "The sun is out for now." : "The sun is out.";
+    if (cloudy) return isVisitor ? "It is a mild afternoon in Frederick." : "The afternoon is quiet.";
+    return isVisitor ? "It is a good afternoon in Frederick." : "The day is moving along.";
   }
   if (hour >= 17 && hour < 20) {
-    if (wet) return isVisitor ? "Showers around this evening." : "Showers around this evening.";
-    if (wetMaybe) return isVisitor ? "Rain in the evening forecast." : "Showers in the forecast.";
-    if (sunny) return isVisitor ? "Golden hour." : "Golden hour. You know the spots.";
-    return isVisitor ? "Good to see you in Frederick." : "Evening. What's the move?";
+    if (wet) return isVisitor ? "Showers are expected this evening." : "Showers are expected this evening.";
+    if (wetMaybe) return isVisitor ? "Rain is in the evening forecast." : "Showers are in the forecast.";
+    if (sunny) return isVisitor ? "Golden hour has started." : "Golden hour has started, and you know the spots.";
+    return isVisitor ? "Good to see you in Frederick." : "What's the move this evening?";
   }
   if (hour >= 20 && hour < 23) {
-    if (fog) return isVisitor ? "Fog rolling in." : "Fog rolling in. Easy lights.";
-    if (wet) return isVisitor ? "Showers around tonight." : "Showers around tonight.";
-    if (wetMaybe) return isVisitor ? "Rain in the night forecast." : "Showers in the forecast.";
-    return isVisitor ? "Frederick after dark." : "Late tonight. Still open?";
+    if (fog) return isVisitor ? "Fog is rolling in." : "Fog is rolling in under the lights.";
+    if (wet) return isVisitor ? "Showers are expected tonight." : "Showers are expected tonight.";
+    if (wetMaybe) return isVisitor ? "Rain is in the overnight forecast." : "Showers are in the forecast.";
+    return isVisitor ? "Frederick stays active after dark." : "It is late, but some places are still open.";
   }
   // 23 - 4 (overnight)
-  return isVisitor ? "Frederick is quiet now. Still beautiful." : "Late hours. The county sleeps light.";
+  return isVisitor ? "Frederick is quiet now. Still beautiful." : "The county sleeps lightly at this hour.";
 }
 
 export default async function AdaptiveGreeting() {

@@ -42,6 +42,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run ingest:business -- --limit=${{ github.event.inputs.limit || '60' }}
+      # Commits pushed with GITHUB_TOKEN do not start another workflow run.
+      # business-info.json contains Radius-authored prose, so gate it here.
+      - name: Verify Radius-authored copy
+        run: npm run style:lint
       - name: Commit refreshed data
         run: |
           git config user.name  "frederick-radius-bot"

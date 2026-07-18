@@ -163,7 +163,7 @@ export default function FeedbackWidget() {
         open={open}
         onClose={close}
         title={succeeded ? "Thanks, that's in front of us." : "Send feedback"}
-        subtitle={succeeded ? undefined : "What's working? What's rough?"}
+        subtitle={succeeded ? undefined : "What would you keep or change?"}
         maxHeight="80dvh"
         footer={
           succeeded ? (

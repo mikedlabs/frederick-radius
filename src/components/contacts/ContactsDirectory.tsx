@@ -170,8 +170,7 @@ export default function ContactsDirectory({
           )}
           {total === 0 && (
             <p className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
-              Nothing matched. Try a plainer word (like “water” or “court”), the
-              emergency lines above, or{" "}
+              No contact matches. Try a broader term or{" "}
               <Link href="/search" className="underline" style={{ color: "var(--app-cool)" }}>search in your own words</Link>.
             </p>
           )}

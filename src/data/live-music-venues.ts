@@ -58,8 +58,8 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "cafe-611-restaurant",                     scheduleNote: "Bandsintown venue 10004683" },
 
   // ── Recurring series / seasonal stages ──
-  { slug: "carroll-creek-outdoor-amphitheater", scheduleNote: "Alive @ Five — Thu 5–8pm, May–Sept (downtownfrederick.org)" },
-  { slug: "baker-park-bandshell",               scheduleNote: "Summer Concert Series — Sun, Jun–Aug (celebratefrederick.com)" },
+  { slug: "carroll-creek-outdoor-amphitheater", scheduleNote: "Alive @ Five: Thu 5–8pm, May–Sept (downtownfrederick.org)" },
+  { slug: "baker-park-bandshell",               scheduleNote: "Summer Concert Series: Sun, Jun–Aug (celebratefrederick.com)" },
   { slug: "frederick-arts-council-sky-stage",   scheduleNote: "skystagefrederick.com/project/calendar · seasonal" },
 
   // ── Regular live music, Facebook/website-announced ──
@@ -68,7 +68,7 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "bushwaller-irish-pub-frederick",     scheduleNote: "Facebook events" },
   { slug: "jojos-restaurant-tap-house",         scheduleNote: "jojosrestauranttaphouse.com/events · Sat live music" },
   { slug: "pour-decisions-restaurant-bar-music-new-market", scheduleNote: "Facebook events" },
-  { slug: "ott-house-emmitsburg",               scheduleNote: "Mon/Tue/Fri — Facebook" },
+  { slug: "ott-house-emmitsburg",               scheduleNote: "Mon/Tue/Fri; Facebook" },
   { slug: "attaboy-beer-frederick",             scheduleNote: "attaboybeer.com" },
   { slug: "citizens-ballroom",                  scheduleNote: "Facebook events" },
   // Open downtown now; live music most Fri & Sat ~9 PM (cover bands + regional
@@ -87,12 +87,12 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "orchid-cellar-meadery-middletown",   scheduleNote: "orchidcellar.com/events" },
   { slug: "catoctin-breeze-vineyard-thurmont",  scheduleNote: "catoctinbreeze.com/events · weekend music" },
   { slug: "springfield-manor-thurmont",         scheduleNote: "Sat & Sun 2–5pm" },
-  { slug: "milkhouse-brewery-mt-airy",          scheduleNote: "Sat 5–8pm, Sun 3–6pm — Facebook" },
+  { slug: "milkhouse-brewery-mt-airy",          scheduleNote: "Sat 5–8pm, Sun 3–6pm; Facebook" },
   { slug: "red-shedman-farm-brewery-and-hop-yard-mount-airy", scheduleNote: "redshedman.com/events · irregular" },
 
   // ── Brunswick ──
   { slug: "cannons-events-brunswick",           scheduleNote: "upstairsatsmoketown.com/projects · Facebook" },
-  { slug: "smoketown-brewing-brunswick",        scheduleNote: "Fri live music — Facebook" },
+  { slug: "smoketown-brewing-brunswick",        scheduleNote: "Fri live music; Facebook" },
 ];
 
 /** Fast membership test for "is this a live-music venue?" */

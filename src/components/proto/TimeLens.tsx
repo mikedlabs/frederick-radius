@@ -125,7 +125,7 @@ export default function TimeLens({ windows, events, nowMin }: { windows: Windows
         </p>
         {upcoming.length === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            Nothing else on the calendar after this. Drag earlier to see the day.
+            No later events are on the calendar. Drag earlier to see the day.
           </p>
         ) : (
           <ul className="space-y-2">

@@ -21,14 +21,13 @@ import {
   Layers3,
   Map,
   MapPin,
+  MessageCircleQuestion,
   Navigation,
   Package,
   ParkingCircle,
   Plane,
   Sigma,
   Settings,
-  ShieldCheck,
-  Store,
   Tag,
   type LucideIcon,
 } from "lucide-react";
@@ -46,30 +45,37 @@ type CompassItem = {
 
 const START_HERE: CompassItem[] = [
   {
+    href: "/ask",
+    label: "Ask Radius",
+    description: "Get a local answer or build a plan from current Radius data.",
+    icon: MessageCircleQuestion,
+    color: "var(--app-brand)",
+  },
+  {
     href: "/open-now",
     label: "Open now",
-    description: "Food, shops, and useful places open this minute",
+    description: "Find useful places that are open now.",
     icon: Clock3,
     color: "var(--app-positive)",
   },
   {
     href: "/events?lens=weekend",
     label: "This weekend",
-    description: "The county calendar, already narrowed to Friday–Sunday",
+    description: "See county events from Friday through Sunday.",
     icon: CalendarDays,
     color: "var(--app-brand)",
   },
   {
     href: "/nearby",
     label: "Nearby",
-    description: "Good options ranked from where you are",
+    description: "Rank nearby options using your current location.",
     icon: Navigation,
     color: "var(--app-cool)",
   },
   {
     href: "/plan",
     label: "Make a plan",
-    description: "Build a few hours around a mood or an occasion",
+    description: "Build an outing around a mood or occasion.",
     icon: CalendarCheck,
     color: "var(--app-accent-press)",
   },
@@ -79,28 +85,28 @@ const DISCOVER: CompassItem[] = [
   {
     href: "/collections",
     label: "Collections",
-    description: "Hand-picked shortlists for date night, rainy days, kids, and more.",
+    description: "Local shortlists with a clear reason for every stop.",
     icon: Layers3,
     color: "var(--app-brand)",
   },
   {
     href: "/towns",
     label: "Towns",
-    description: "Meet the city, towns, village, and communities that make the county.",
+    description: "Browse Frederick City, county towns, and surrounding communities.",
     icon: Map,
     color: "var(--app-brand-2)",
   },
   {
     href: "/history",
     label: "History",
-    description: "Frederick's story, tied to the places where it happened.",
+    description: "Read Frederick's history through the places where it happened.",
     icon: History,
     color: "var(--app-accent-press)",
   },
   {
     href: "/markers",
     label: "Markers & landmarks",
-    description: "Roadside inscriptions, covered bridges, and historic landmarks.",
+    description: "Read roadside markers and find other local landmarks.",
     icon: Landmark,
     color: "var(--app-cool)",
   },
@@ -114,7 +120,7 @@ const DISCOVER: CompassItem[] = [
   {
     href: "/from-above/preview",
     label: "From Above",
-    description: "See Frederick County as an aerial field guide.",
+    description: "See Frederick County through Mike's drone archive.",
     icon: Camera,
     color: "var(--app-cool)",
   },
@@ -124,42 +130,42 @@ const PRACTICAL: CompassItem[] = [
   {
     href: "/parking",
     label: "Parking",
-    description: "Garages, lots, live guidance, and local backup options",
+    description: "Find garages, lots, and event parking guidance.",
     icon: ParkingCircle,
     color: "var(--app-cool)",
   },
   {
     href: "/transit",
     label: "Transit",
-    description: "Live buses, TransIT routes, and MARC information",
+    description: "See current TransIT buses and MARC information.",
     icon: BusFront,
     color: "var(--app-cool)",
   },
   {
     href: "/contacts",
     label: "Contacts",
-    description: "Permits, trash, taxes, voting, and who to call",
+    description: "Find the correct local office for permits, trash, taxes, or voting.",
     icon: Landmark,
     color: "var(--app-civic)",
   },
   {
     href: "/check-a-date",
     label: "Check a date",
-    description: "See what is already happening before you schedule",
+    description: "See what is already happening before you schedule.",
     icon: CalendarCheck,
     color: "var(--app-brand-2)",
   },
   {
     href: "/shipping",
     label: "Post & shipping",
-    description: "Post offices, UPS, FedEx, and collection boxes",
+    description: "Find mail and shipping locations, including collection boxes.",
     icon: Package,
     color: "var(--app-brand-2)",
   },
   {
     href: "/deals",
     label: "Deals",
-    description: "Verified local specials, organized by day",
+    description: "Compare verified local specials by day.",
     icon: Tag,
     color: "var(--app-brand)",
   },
@@ -179,8 +185,8 @@ const CURIOSITIES: CompassItem[] = [
     : []),
   {
     href: "/rhythm",
-    label: "The Rhythm",
-    description: "Watch the county wake and sleep, hour by hour.",
+    label: "County hours",
+    description: "See how activity changes across the county by hour.",
     icon: AudioWaveform,
     color: "var(--app-brand)",
   },
@@ -194,7 +200,7 @@ const CURIOSITIES: CompassItem[] = [
   {
     href: "/numbers",
     label: "The county, counted",
-    description: "Every figure in the guide, computed from the live dataset.",
+    description: "See counts computed from the current Radius dataset.",
     icon: Sigma,
     color: "var(--app-brand-2)",
   },
@@ -204,30 +210,23 @@ const CONTRIBUTE: CompassItem[] = [
   {
     href: "/report",
     label: "Mark a spot",
-    description: "Add a useful note to the map",
+    description: "Add a useful note to the map.",
     icon: MapPin,
     color: "var(--app-brand)",
   },
   {
     href: "/submit/event",
     label: "Add an event",
-    description: "Submit something for the calendar",
+    description: "Submit an event for the calendar.",
     icon: CalendarPlus,
     color: "var(--app-brand)",
   },
   {
     href: "/submit/place",
     label: "Add a place",
-    description: "Tell us what the map is missing",
+    description: "Tell us which place the map is missing.",
     icon: CirclePlus,
     color: "var(--app-positive)",
-  },
-  {
-    href: "/business/claim",
-    label: "Claim a business",
-    description: "Keep your listing accurate",
-    icon: Store,
-    color: "var(--app-brand-2)",
   },
 ];
 
@@ -255,29 +254,29 @@ export default function CompassHub() {
           paper-cream plate language as every sibling surface (eyebrow +
           serif title + brand rule) instead of a one-off dark gradient hero.
           The compass motif rides as a small eyebrow mark, not a banner. */}
-      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-white/10 bg-[#15130f] px-5 py-8 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
+      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 py-8 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:py-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
         <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-[#e14328]/28" aria-hidden>
-          <span className="absolute inset-10 rounded-full border border-white/8" />
+          <span className="absolute inset-10 rounded-full border border-black/7" />
           <span className="absolute inset-[5.2rem] rounded-full border border-[#e14328]/20" />
           <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e14328] shadow-[0_0_0_8px_rgba(225,67,40,.12)]" />
         </div>
-        <p className="relative font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#ef7b63]">
+        <p className="relative font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--app-brand-press)]">
           <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           Frederick County compass
         </p>
         <h1
           className="relative mt-4 max-w-[8ch] font-serif text-[clamp(3.4rem,14vw,6rem)] font-semibold leading-[0.82] tracking-[-0.055em] text-balance"
         >
-          Find your way.
+          What do you need?
         </h1>
         <p
-          className="relative mt-5 max-w-[28rem] text-[13.5px] leading-relaxed text-white/62 sm:text-[15px]"
+          className="relative mt-5 max-w-[28rem] text-[13.5px] leading-relaxed text-[var(--app-ink-2)] sm:text-[15px]"
         >
-          One way into every Frederick guide, map, calendar, and useful local tool.
+          Open a Radius guide, map, calendar, or practical tool without hunting through the app.
         </p>
-        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-white/62">
+        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--app-ink-3)]">
           <span className="h-px w-10 bg-[#e14328]" aria-hidden />
-          Start with the job
+          Open a tool
         </div>
       </header>
 
@@ -295,12 +294,12 @@ export default function CompassHub() {
             {
               href: home ? `/m/${home.slug}` : "/settings",
               label: home ? home.name : "Choose your home town",
-              description: home ? "Your local guide" : "Tune nearby results",
+              description: home ? "Open the guide for your home area." : "Choose a home area for nearby results.",
               icon: MapPin,
               color: "var(--app-brand)",
             },
-            { href: "/my-radius", label: "Saved", description: "Places and events you kept", icon: Bookmark, color: "var(--app-brand-2)" },
-            { href: "/settings", label: "Tune Compass", description: "Home, interests, and alerts", icon: Settings, color: "var(--app-cool)" },
+            { href: "/my-radius", label: "Saved", description: "Open the places and events you saved.", icon: Bookmark, color: "var(--app-brand-2)" },
+            { href: "/settings", label: "Settings", description: "Change how Radius is set up for you.", icon: Settings, color: "var(--app-cool)" },
           ]}
         />
       </section>
@@ -324,7 +323,7 @@ export default function CompassHub() {
       </section>
 
       <section aria-labelledby="compass-curious">
-        <SectionHeading id="compass-curious" numeral="V" title="Curiosities" />
+        <SectionHeading id="compass-curious" numeral="V" title="More county data" />
         <div className="mt-3">
           <LedgerList items={CURIOSITIES} intentProps={intentProps} />
         </div>
@@ -340,11 +339,6 @@ export default function CompassHub() {
         <LedgerList items={CONTRIBUTE} intentProps={intentProps} />
       </section>
 
-      <nav aria-label="About Frederick Radius" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t pt-5 text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        <Link href="/about" prefetch={false} {...intentProps("/about")} className="tap-44 hover:underline">About</Link>
-        <Link href="/trust" prefetch={false} {...intentProps("/trust")} className="tap-44 inline-flex items-center gap-1 hover:underline"><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Trust & data</Link>
-        <Link href="/terms" prefetch={false} {...intentProps("/terms")} className="tap-44 hover:underline">Terms & privacy</Link>
-      </nav>
     </div>
   );
 }
@@ -401,7 +395,7 @@ function LedgerList({
       className={`border-y sm:grid ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
       style={{ borderColor: "var(--app-border-strong)" }}
     >
-      {/* href alone can repeat ("Choose your home town" and "Tune Compass"
+      {/* href alone can repeat ("Choose your home town" and "Settings"
           both land on /settings until a home is set) — key on the pair. */}
       {items.map((item) => (
         <li key={`${item.href}|${item.label}`} className={liClass} style={{ borderColor: "var(--app-border)" }}>

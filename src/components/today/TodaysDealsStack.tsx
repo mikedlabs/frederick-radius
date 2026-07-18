@@ -35,8 +35,10 @@ export default function TodaysDealsStack({
       index,
       availability: todayDealAvailability(deal.hours, weekday, now),
     }))
+    .filter(({ availability }) => availability.state !== "earlier")
     .sort((a, b) => a.availability.rank - b.availability.rank || a.index - b.index)
     .slice(0, MAX_ROWS);
+  if (shown.length === 0) return null;
 
   return (
     <section aria-labelledby="today-specials-heading" className="space-y-3">
@@ -62,18 +64,13 @@ export default function TodaysDealsStack({
         </span>
       </div>
 
-      {shown.length === 0 ? (
-        <p className="px-0.5 py-2 font-serif text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-          No verified specials today.
-        </p>
-      ) : (
-        <ol
-          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
-        >
+      <ol
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
           {shown.map(({ deal, availability }) => {
             const category = deal.category ?? "restaurant";
             const accent = CATEGORY_BY_SLUG[category]?.color ?? "var(--app-brand-2)";
@@ -152,8 +149,7 @@ export default function TodaysDealsStack({
               </li>
             );
           })}
-        </ol>
-      )}
+      </ol>
 
       <Link
         href="/deals"

@@ -244,7 +244,7 @@ export default function RoutePearls() {
 
       {rows.length === 0 ? (
         <p className="px-3 py-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          No buses on the road right now.
+          No buses are on the road right now.
         </p>
       ) : (
         <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>

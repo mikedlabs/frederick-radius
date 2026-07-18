@@ -93,24 +93,24 @@ export default async function BeerTaproomEvents() {
   const events = [] as typeof candidates;
   for (const candidate of candidates) {
     const count = breweryCounts.get(candidate.brewerySlug) ?? 0;
-    if (count >= 2) continue;
+    if (count >= 1) continue;
     breweryCounts.set(candidate.brewerySlug, count + 1);
     events.push(candidate);
-    if (events.length === 7) break;
+    if (events.length === 4) break;
   }
 
   return (
     <section id="beer-week" aria-labelledby="beer-week-heading" className="scroll-mt-24">
       <header className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-brand-press)" }}>The taproom calendar</p>
+          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-brand-press)" }}>Taproom events</p>
           <h2 id="beer-week-heading" className="mt-2 max-w-[9ch] font-serif text-[clamp(2.8rem,9vw,5rem)] font-semibold leading-[0.86] tracking-[-0.05em]" style={{ color: "var(--app-ink)" }}>
-            Beer has plans.
+            See what is happening at local taprooms.
           </h2>
-          <p className="mt-4 max-w-[38rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Live music, releases, and taproom nights pulled from brewery and local calendars.</p>
+          <p className="mt-4 max-w-[38rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Browse taproom events from brewery and local calendars, including live music and releases.</p>
         </div>
         <Link href="/events?cats=brewery" className="inline-flex min-h-11 items-center gap-1.5 border-b text-[11px] font-semibold" style={{ borderColor: "var(--app-brand)", color: "var(--app-ink-2)" }}>
-          Full events board <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+          See all beer events <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </header>
 
@@ -141,7 +141,7 @@ export default async function BeerTaproomEvents() {
         </ol>
       ) : (
         <p className="mt-7 flex items-center gap-2 border-y py-6 text-[12px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-          <CalendarDays className="h-4 w-4" aria-hidden /> No source-backed taproom events are on the board for the next seven days.
+          <CalendarDays className="h-4 w-4" aria-hidden /> No source-backed taproom events are listed for the next seven days.
         </p>
       )}
 
@@ -160,7 +160,7 @@ export function BeerTaproomEventsFallback() {
       <div className="h-2.5 w-44 animate-pulse rounded bg-black/10" />
       <div className="mt-3 h-12 w-72 max-w-full animate-pulse rounded bg-black/10" />
       <div className="mt-6 flex gap-3 overflow-hidden">
-        {[0, 1, 2].map((row) => <div key={row} className="h-[285px] w-[78vw] max-w-[290px] shrink-0 animate-pulse bg-black/10" />)}
+        {[0, 1].map((row) => <div key={row} className="h-[285px] w-[78vw] max-w-[290px] shrink-0 animate-pulse bg-black/10" />)}
       </div>
     </section>
   );

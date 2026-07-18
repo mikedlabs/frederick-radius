@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   robots: { index: false },
   title: "Welcome",
   description:
-    "Frederick County, at a glance. Tell us who you are and we'll tune what you see.",
+    "Tell Frederick Radius whether you live here or are visiting so it can adjust the guide.",
 };
 
 /**

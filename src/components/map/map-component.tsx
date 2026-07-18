@@ -80,7 +80,7 @@ export default function MapComponent({ lensMode = "visitor" }: MapComponentProps
 
                                 <h3 className="text-lg font-bold text-white mb-1 font-outfit">{point.label}</h3>
                                 <p className="text-sm text-gray-300 mb-4 leading-relaxed">
-                                    {lensMode === "investor" ? "Investment Opportunity available. See PDF for details." : "Experience the best of Frederick County."}
+                                    {lensMode === "investor" ? "An investment opportunity is available. See the PDF for details." : "You can explore places across Frederick County here."}
                                 </p>
 
                                 <AnimatedButton variant="secondary" className="w-full py-2 text-sm">
@@ -102,4 +102,3 @@ export default function MapComponent({ lensMode = "visitor" }: MapComponentProps
         </div>
     );
 }
-

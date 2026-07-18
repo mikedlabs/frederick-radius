@@ -218,6 +218,6 @@ export async function GET(request: Request) {
       rls_unprotected: dbAnomalies.filter((a) => a.kind === "rls_unprotected").map((a) => a.source),
       ingest_stale: dbAnomalies.filter((a) => a.kind === "ingest_stale").map((a) => a.source),
     },
-    note: "Recompute only. Commit-time scripts persist the artifacts.",
+    note: "This endpoint only recomputes health; commit-time scripts persist artifacts.",
   });
 }

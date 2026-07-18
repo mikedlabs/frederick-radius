@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Tag, ArrowRight, ChevronDown, DoorOpen, Phone } from "lucide-react";
+import { MapPin, Calendar, Building2, Tag, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
@@ -17,7 +17,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
   title: "Search",
-  description: "Search Frederick County for places, events, towns, and categories.",
+  description: "Search Frederick County listings and events by name or area.",
 };
 
 /**
@@ -249,6 +249,23 @@ export default async function SearchPage({
         <SearchInput defaultValue={query} />
       </header>
 
+      {query ? (
+        <Link
+          href={`/ask?q=${encodeURIComponent(query)}`}
+          className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
+            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
+          }}
+        >
+          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+          <span className="min-w-0 flex-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Need a recommendation or a plan? Ask Radius about this.
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+        </Link>
+      ) : null}
+
       {/* Answer-first lead: the direct answer to an intent query, above the
           ranked list. Links to the nearest-open craving surface (or Open now). */}
       {answer && (
@@ -385,8 +402,7 @@ export default async function SearchPage({
 
       {query && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
         <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          <p>No matches for &ldquo;{query}&rdquo;.</p>
-          <p>Try a shorter name, category, or town.</p>
+          <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
           <p>
             Need a government office?{" "}
             <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>

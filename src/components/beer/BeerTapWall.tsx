@@ -38,7 +38,7 @@ function townName(slug: string): string {
 
 function signaturePours(brewery: Brewery) {
   const flagships = brewery.beers.filter((beer) => beer.flagship);
-  return (flagships.length >= 3 ? flagships : brewery.beers).slice(0, 3);
+  return (flagships.length >= 2 ? flagships : brewery.beers).slice(0, 2);
 }
 
 export default function BeerTapWall() {

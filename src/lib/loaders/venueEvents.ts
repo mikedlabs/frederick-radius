@@ -16,7 +16,11 @@ import { isNonMusicTitle } from "@/lib/events/live-music";
  * their own site (The Banyan, The Derby, Sky Stage…). Read side: feeds
  * the events surfaces + the "ask Frederick" answer engine. Each row
  * carries source + fetchedAt so the UI can show provenance + freshness.
- * Starts empty; never fabricated.
+ * Starts empty; never fabricated. Event titles, venue names, and source
+ * excerpts remain publisher-owned fields; ordinary feed-boundary cleanup does
+ * not turn them into Radius copy. Descriptions identify whether they are
+ * publisher excerpts or short Radius summaries, so editorial checks never
+ * rewrite an organizer's wording.
  */
 
 export type VenueEvent = {
@@ -24,6 +28,7 @@ export type VenueEvent = {
   starts_at: string;
   ends_at?: string;
   description?: string;
+  description_origin?: "source-excerpt" | "radius-summary";
   price?: string;
   ticket_url?: string;
   venue_slug: string;

@@ -18,12 +18,9 @@ import {
  *   - Events    /events
  *   - Saved     /my-radius  (the page is titled "Saved" to match this tab)
  *
- * The /guide browse funnel ("Find" / formerly "Ask" / "Guide") was DROPPED
- * from the primary nav: /today's craving strip + the global header search
- * now cover the find-what-you-want intent, so a fifth tab for it was a
- * redundant front door. The PAGE has since been retired entirely — /guide
- * now 308-redirects to /today (next.config) — since /today fully inherited
- * the find-what-you-want intent.
+ * Ask Radius lives at /ask as a focused decision workspace. It is deliberately
+ * not a fifth bottom tab: Today carries its compact launcher, while Compass
+ * carries the full entry. The old /guide URL redirects to /ask.
  *
  * Today leads the nav: the UI survey found the temporal / ambient-live-data
  * layer is the single biggest daily-return driver for residents. Secondary

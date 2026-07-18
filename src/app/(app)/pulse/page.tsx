@@ -48,8 +48,8 @@ export const metadata: Metadata = {
   // focused surfaces in /sitemap. Reversible if the route is
   // promoted back into nav.
   robots: { index: false, follow: true },
-  title: "Live Pulse",
-  description: "Live traffic, power, school, and 311 status across Frederick County: one screen instead of four government websites.",
+  title: "County Pulse",
+  description: "Check current Frederick County conditions from official sources.",
 };
 
 export const revalidate = 120;
@@ -224,6 +224,8 @@ export default async function PulsePage() {
   // rescue, weather alerts) are tracked: if any fails or times out, we can't
   // honestly say all clear (audit FR-002). The rest keep the plain fallback.
   let urgentDegraded = false;
+  let safetyAvailable = true;
+  let fixitAvailable = true;
   const markDegraded = () => {
     urgentDegraded = true;
   };
@@ -231,8 +233,13 @@ export default async function PulsePage() {
     withTimeoutTracked(getChartIncidentsFrederick(), FEED_MS, [], markDegraded),
     withTimeoutTracked(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }, markDegraded),
     withTimeoutTracked(getFcpsAlerts(), FEED_MS, [], markDegraded),
-    withTimeout(getFixItIssues(15), FEED_MS, []),
-    withTimeoutTracked(getPulsePointIncidents(), FEED_MS, [], markDegraded),
+    withTimeoutTracked(getFixItIssues(15), FEED_MS, [], () => {
+      fixitAvailable = false;
+    }),
+    withTimeoutTracked(getPulsePointIncidents(), FEED_MS, [], () => {
+      safetyAvailable = false;
+      markDegraded();
+    }),
     // NWS active alerts for Frederick County, MD. When something's up (severe
     // storm, flood, heat advisory) this rides at the top of the board.
     withTimeoutTracked(getNwsAlertsResult(), FEED_MS, { alerts: [], available: false }, markDegraded),
@@ -333,8 +340,8 @@ export default async function PulsePage() {
   const leadSafety = safety[0];
   const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
 
-  let heroLine = "Frederick is steady right now.";
-  let heroSub = "No active weather or air-quality alerts, major road incidents, significant outages, or school changes.";
+  let heroLine = "No major local disruptions are reported.";
+  let heroSub = "Official feeds report no major weather, road, utility, or school disruptions.";
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
@@ -370,7 +377,7 @@ export default async function PulsePage() {
     heroLeadKey = "traffic";
     heroLine = `${leadTraffic.road}${leadTraffic.direction ? ` ${leadTraffic.direction}` : ""} has a reported incident.`;
     heroSub = leadTraffic.lanes_affected
-      ? `${leadTraffic.type}. ${leadTraffic.lanes_affected}. Check the location before choosing your route.`
+      ? `${leadTraffic.type}: ${leadTraffic.lanes_affected}. Check the location before choosing your route.`
       : `${leadTraffic.type}. Check the location and expected clearing time before choosing your route.`;
     heroLeadMeta = leadTraffic.location;
     heroActionLabel = "Check the road impact";
@@ -484,7 +491,7 @@ export default async function PulsePage() {
         </ul>
       )}
     </div>
-  ) : emptyNote("No local headlines right now.");
+  ) : emptyNote("No local headlines are available right now.");
 
   const policeBody = (
     <div className="space-y-3">
@@ -524,7 +531,7 @@ export default async function PulsePage() {
 
   const roadworkBody = advisories.length > 0
     ? <PoliceBlotter items={advisories} now={nowMs} />
-    : emptyNote("No road work or closures reported right now.");
+    : emptyNote("No road work or closures are reported right now.");
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -582,7 +589,7 @@ export default async function PulsePage() {
         </div>
       )}
       <p className="px-1 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Nearest EPA monitors within 25 miles, updated hourly.
+        Readings come from the nearest EPA monitors within 25 miles and update hourly.
       </p>
     </div>
   ) : null;
@@ -674,7 +681,7 @@ export default async function PulsePage() {
       key: "power",
       label: "Power out",
       iconName: "Zap",
-      countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "Clear",
+      countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "No major outage",
       accent: outagesActive ? "var(--app-danger)" : "var(--app-cool)",
       active: outagesActive,
       attention: situationActive.power,
@@ -713,31 +720,43 @@ export default async function PulsePage() {
             />
           ))}
         </>
-      ) : emptyNote("No significant power outages right now."),
+      ) : emptyNote("No significant power outages are reported right now."),
     },
     // ── The rest → compact status tiles ──
     {
       key: "safety",
       label: "Fire & rescue",
       iconName: "Siren",
-      countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
+      countLabel: safety.length > 0
+        ? `${safety.length} active`
+        : safetyAvailable
+          ? "No active calls reported"
+          : "Feed unavailable",
       accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: safety.length > 0,
       attention: situationActive.safety,
       kind: "status",
       sourceLabel: "PulsePoint",
-      peek: safety.length > 0 ? safety[0].type : "no active calls",
+      peek: safety.length > 0
+        ? safety[0].type
+        : safetyAvailable
+          ? "no active calls reported"
+          : "PulsePoint could not be reached",
       body: safety.length > 0
         ? safety.slice(0, 12).map((s) => (
             <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
           ))
-        : emptyNote("No active fire or rescue calls right now."),
+        : emptyNote(
+            safetyAvailable
+              ? "No active fire or rescue calls are reported right now."
+              : "PulsePoint reports could not be loaded right now.",
+          ),
     },
     {
       key: "traffic",
       label: "Traffic",
       iconName: "Construction",
-      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
+      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "None reported",
       accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: traffic.length > 0,
       attention: situationActive.traffic,
@@ -765,13 +784,13 @@ export default async function PulsePage() {
               ]}
             />
           ))
-        : emptyNote("No traffic incidents or roadwork reported right now."),
+        : emptyNote("No traffic incidents or roadwork are reported right now."),
     },
     {
       key: "schools",
       label: "Schools",
       iconName: "School",
-      countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "Clear",
+      countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "No closure or delay",
       accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
       active: schoolAlerts.length > 0,
       attention: situationActive.schools,
@@ -802,13 +821,17 @@ export default async function PulsePage() {
               meta={[timeAgo(a.published_at)]}
             />
           ))
-        : emptyNote("No school closures or delays right now."),
+        : emptyNote("No school closures or delays are reported right now."),
     },
     {
       key: "fixit",
       label: "311 open",
       iconName: "AlertTriangle",
-      countLabel: fixit.length > 0 ? `${fixit.length} open` : "Clear",
+      countLabel: fixit.length > 0
+        ? `${fixit.length} open`
+        : fixitAvailable
+          ? "No open reports"
+          : "Reports unavailable",
       accent: "var(--app-cool)",
       active: false,
       attention: false,
@@ -825,7 +848,11 @@ export default async function PulsePage() {
               meta={[i.address, timeAgo(i.reported_at), i.status]}
             />
           ))
-        : emptyNote("No open 311 reports right now."),
+        : emptyNote(
+            fixitAvailable
+              ? "No open 311 reports are listed right now."
+              : "FCG FixIT reports could not be loaded right now.",
+          ),
     },
     {
       key: "alerts",
@@ -881,7 +908,7 @@ export default async function PulsePage() {
             );
           })
         : alertResult.available
-          ? emptyNote("No weather alerts for Frederick County right now.")
+          ? emptyNote("No weather alerts are active for Frederick County right now.")
           : emptyNote("Weather alerts could not be checked right now. Use weather.gov for the official status."),
     },
     {
@@ -933,7 +960,7 @@ export default async function PulsePage() {
                     const trendTone: "neutral" | "good" | "warning" =
                       dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
                     const trendLabel =
-                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Live";
+                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Current";
                     // A flood category (action+) outranks the trend on the pill —
                     // on a water board, "how close to flooding" beats "rising".
                     const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
@@ -1113,7 +1140,7 @@ export default async function PulsePage() {
       key: "news",
       label: "In the news",
       iconName: "Newspaper",
-      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "Quiet",
+      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "No stories loaded",
       accent: "var(--app-cool)",
       active: false,
       attention: false,
@@ -1219,16 +1246,16 @@ export default async function PulsePage() {
     if (urgentDegraded) {
       addHeroChip({ tone: "warning", label: "Some feeds unavailable" });
     } else {
-      if (!leadTraffic) addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
-      if (!outagesActive) addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
-      if (!leadSchool) addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
-      if (!leadSafety) addHeroChip({ tone: "positive", label: "Fire & rescue quiet", key: "safety" });
-      if (!leadAlert) addHeroChip({ tone: "positive", label: "No weather alerts", key: "alerts" });
+      if (!leadTraffic) addHeroChip({ tone: "positive", label: "No major road incidents reported", key: "traffic" });
+      if (!outagesActive) addHeroChip({ tone: "positive", label: "No significant outage reported", key: "power" });
+      if (!leadSchool) addHeroChip({ tone: "positive", label: "No closure or delay reported", key: "schools" });
+      if (!leadSafety) addHeroChip({ tone: "positive", label: "No active fire or rescue calls reported", key: "safety" });
+      if (!leadAlert) addHeroChip({ tone: "positive", label: "No active weather alerts reported", key: "alerts" });
     }
   } else {
-    addHeroChip({ tone: "positive", label: "Roads clear", key: "traffic" });
-    addHeroChip({ tone: "positive", label: "Power steady", key: "power" });
-    addHeroChip({ tone: "positive", label: "Schools normal", key: "schools" });
+    addHeroChip({ tone: "positive", label: "No major road incidents reported", key: "traffic" });
+    addHeroChip({ tone: "positive", label: "No significant outage reported", key: "power" });
+    addHeroChip({ tone: "positive", label: "No closure or delay reported", key: "schools" });
     if (wxCur) {
       addHeroChip({ tone: "cool", label: `${wxCur.temperature}°${wxCondition ? ` ${wxCondition}` : ""}`, key: "weather" });
     }
@@ -1257,7 +1284,7 @@ export default async function PulsePage() {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-cool)" }} />
-            Live bus map
+            Buses right now
           </h2>
           <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>TransIT · free</span>
         </div>
@@ -1272,8 +1299,8 @@ export default async function PulsePage() {
         }}
       >
         <p className="leading-relaxed">
-          Informational only, not a substitute for 911 or official
-          emergency broadcasts.
+          This information is for general use only. Call 911 in an emergency
+          and follow official emergency broadcasts.
         </p>
         <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>

@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json(
-      { ok: false, status: 503, message: "GOOGLE_PLACES_API_KEY not configured" },
+      { ok: false, status: 503, message: "Google Places is not configured." },
       { status: 503 },
     );
   }
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
   const parsed = Schema.safeParse(Object.fromEntries(url.searchParams));
   if (!parsed.success) {
     return NextResponse.json(
-      { ok: false, status: 400, message: "invalid query", issues: parsed.error.flatten() },
+      { ok: false, status: 400, message: "The query is invalid.", issues: parsed.error.flatten() },
       { status: 400 },
     );
   }

@@ -56,7 +56,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "hidden-gems",
     title: "Small finds",
     blurb:
-      "Small finds locals actually remember. The spots a resident sends a visitor to, not the names everyone already knows.",
+      "These are the smaller places a resident is likely to send a visitor before the usual names.",
     accent: "var(--app-accent)",
     places: [...HIDDEN_GEM_SLUGS],
   },
@@ -64,7 +64,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "frederick-without-a-plan",
     title: "Frederick without a plan",
     blurb:
-      "An unscripted downtown afternoon. Start with coffee, walk the creek, end with a beer. Every stop is a short walk from the last.",
+      "This downtown route starts with coffee and follows the creek before ending near a taproom. Each stop is a short walk from the last.",
     accent: "var(--app-brand)",
     places: [
       "dublin-roasters-frederick",
@@ -79,7 +79,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "walkable-date-night",
     title: "Walkable date night",
     blurb:
-      "Start with a cup, walk the creek at golden hour, find a small-plates dinner, finish with a quiet drink. Everything is one block apart.",
+      "Start near Carroll Creek, then walk to dinner and a quiet drink. The stops stay within a few downtown blocks.",
     accent: "var(--app-brand)",
     places: [
       "frederick-coffee-company-frederick",
@@ -93,7 +93,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "rainy-day-frederick",
     title: "Rainy day Frederick",
     blurb:
-      "When the sky won't cooperate. Indoor places that make a wet afternoon better, not worse, with the right amount of room and the right amount of quiet.",
+      "These indoor stops work for a wet afternoon when you want enough room to stay awhile.",
     accent: "var(--app-cool)",
     places: [
       "national-museum-civil-war-medicine-frederick",
@@ -108,7 +108,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "kid-energy-burners",
     title: "Kid energy burners",
     blurb:
-      "Where to send a four-year-old when the four walls are closing in. Open space, real running room, and a parking spot you can actually find.",
+      "These places give young kids room to run and have parking close enough to keep the trip manageable.",
     accent: "var(--app-brand-2)",
     places: [
       "baker-park-frederick",
@@ -159,7 +159,7 @@ export const COLLECTIONS: CollectionDef[] = [
     slug: "lgbtq-frederick",
     title: "LGBTQ+ Frederick",
     blurb:
-      "Starting with The Frederick Center, the county's LGBTQ+ community hub. We list spaces we can verify are welcoming, not guesses, and this grows as we confirm more.",
+      "The Frederick Center anchors this list. Other spaces appear only after we can verify that they are welcoming.",
     accent: "var(--app-accent)",
     places: [
       "the-frederick-center",

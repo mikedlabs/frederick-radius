@@ -181,8 +181,7 @@ export default async function WeeklyForecast() {
                 className="text-right text-[13px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
-                {d.lo != null ? `${d.lo}°` : "—"}
+                {d.lo != null ? `${d.lo}°` : "N/A"}
               </span>
 
               {/* Range bar — the day's Lo→Hi sits inside the week's
@@ -222,8 +221,7 @@ export default async function WeeklyForecast() {
                 className="text-right text-[13px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink)" }}
               >
-                {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
-                {d.hi != null ? `${d.hi}°` : "—"}
+                {d.hi != null ? `${d.hi}°` : "N/A"}
               </span>
 
               {/* Optional precip chip, only when rain is ≥30% chance.

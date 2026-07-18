@@ -1,10 +1,11 @@
 /**
- * Rule-based copy-quality detector. The rules are exactly the ones in
- * STYLE.md so the detector and the editorial standard never drift.
+ * Rule-based copy-quality detector. It applies the relevant docs/VOICE.md
+ * rules plus scraped-directory tells such as phone numbers and contact CTAs.
+ * Owner-authored source copy is enforced separately by scripts/style-lint.ts.
  *
  * Returns:
  *   "none"       no usable description
- *   "scraped"    trips a STYLE.md scraped pattern
+ *   "scraped"    trips a voice-guide scraped pattern
  *   "auto_clean" reads as prose, no editor sign-off yet
  *   "reviewed"   an editor approved it (set via overrides, not inferred)
  *
@@ -28,7 +29,7 @@ const PHONE = /\(\d{3}\)\s*\d{3}[-.\s]?\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/;
 const CONTACT = /\b(feel free to|reach out|contact us|call us|give us a call|email us|book (?:now|online)|find us on|follow us|dm us)\b/i;
 const LINK = /https?:\/\/|www\.\S|\S+@\S+\.\w/i;
 
-/** Classify a place description against the STYLE.md scraped patterns. */
+/** Classify a place description against the voice-guide scraped patterns. */
 export function classifyDescription(
   name: string,
   description: string | undefined | null,

@@ -1,10 +1,12 @@
 import { COUNTY_REGION_LABELS, parseCountyRegions, type CountyRegion } from "@/data/county-regions";
 import { parseReservationRequest } from "@/lib/ask/reservations";
+import { parseAskDateTime } from "@/lib/ask/time";
 
 export type AskIntentKind = "place" | "event" | "plan" | "civic" | "explore";
-export type AskTimeNeed = "now" | "today" | "tonight" | "weekend" | "morning" | "afternoon" | null;
+export type AskTimeNeed = "now" | "today" | "tonight" | "tomorrow" | "weekend" | "morning" | "afternoon" | null;
 export type AskAudience = "solo" | "date" | "family" | "friends" | "visitor";
 export type AskVibe = "easy" | "active" | "cultural" | "outdoors" | "food";
+export type AskDietaryConstraint = "gluten-free" | "vegan" | "vegetarian" | "dairy-free" | "nut-free";
 
 export type AskIntent = {
   kind: AskIntentKind;
@@ -19,13 +21,17 @@ export type AskIntent = {
   surpriseMe: boolean;
   reservation: boolean;
   requestedTime: string | null;
+  requestedDate: string | null;
+  requestedDateTime: string | null;
+  partySize: number | null;
+  dietary: AskDietaryConstraint[];
   regions: CountyRegion[];
   constraints: string[];
 };
 
 const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole|county office|department|phone number|pay (?:a|my)|animal control)\b/i;
 const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happening|calendar)\b/i;
-const PLAN_RE = /\b(plan|itinerary|date night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
+const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
 const PLACE_RE = /\b(where|food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|hotel|motel|lodging|place to stay|museum|patio|open|nearby|near me)\b/i;
 
 function durationFor(q: string): 2 | 3 | 4 | 6 {
@@ -38,7 +44,7 @@ function durationFor(q: string): 2 | 3 | 4 | 6 {
     return 2;
   }
   if (/\b(all day|half day|day trip)\b/i.test(q)) return 6;
-  if (/\b(few hours|afternoon|evening|date night)\b/i.test(q)) return 3;
+  if (/\b(few hours|afternoon|evening|date[-\s]+night)\b/i.test(q)) return 3;
   return 2;
 }
 
@@ -49,7 +55,10 @@ function labelFor(kind: AskIntentKind, q: string): string {
   if (/breakfast sandwich|egg sandwich|bagel sandwich/i.test(q)) return "Breakfast sandwich";
   if (/\bsteak(?:house)?\b/i.test(q)) return "Steak dinner";
   if (/coffee|cafe/i.test(q)) return "Coffee";
-  if (/restaurant|dinner|lunch|breakfast|food/i.test(q)) return "Food nearby";
+  if (/\bbreakfast\b/i.test(q)) return "Breakfast";
+  if (/\blunch\b/i.test(q)) return "Lunch";
+  if (/\bdinner\b/i.test(q)) return "Dinner";
+  if (/restaurant|food/i.test(q)) return "Food nearby";
   if (kind === "place") return "Best local matches";
   return "Explore Frederick";
 }
@@ -59,9 +68,14 @@ function labelFor(kind: AskIntentKind, q: string): string {
  * its own data. The model is deliberately not in this loop: location, time,
  * budget, and itinerary constraints should behave the same on every request.
  */
-export function parseAskIntent(query: string): AskIntent {
+export function parseAskIntent(query: string, now = new Date()): AskIntent {
   const q = query.trim();
-  const plan = PLAN_RE.test(q);
+  const compoundPlan = (
+    /\b(?:dinner|food|restaurant|drinks?)\b/i.test(q) &&
+    /\b(?:show|concert|live music|event|performance)\b/i.test(q) &&
+    /\b(?:and|then|plus|followed by|before|after)\b/i.test(q)
+  );
+  const plan = PLAN_RE.test(q) || compoundPlan;
   const civic = CIVIC_RE.test(q);
   const event = EVENT_RE.test(q);
   const kind: AskIntentKind = civic
@@ -80,6 +94,8 @@ export function parseAskIntent(query: string): AskIntent {
     // Only explicit current-evening language should pin the plan to tonight.
     : /\b(tonight|this evening)\b/i.test(q)
       ? "tonight"
+      : /\btomorrow\b/i.test(q)
+        ? "tomorrow"
       : /\b(this )?weekend\b/i.test(q)
         ? "weekend"
       : /\b(this )?morning\b/i.test(q)
@@ -107,7 +123,7 @@ export function parseAskIntent(query: string): AskIntent {
       ? "active"
       : /\b(art|history|museum|gallery|culture|theater|theatre)\b/i.test(q)
         ? "cultural"
-        : /\b(food|eat|eaten|ate|eating|restaurant|breakfast|lunch|dinner|coffee|beer|drink|date night)\b/i.test(q)
+        : /\b(food|eat|eaten|ate|eating|restaurant|breakfast|lunch|dinner|coffee|beer|drink|date[-\s]+night)\b/i.test(q)
           ? "food"
           : "easy";
 
@@ -120,27 +136,39 @@ export function parseAskIntent(query: string): AskIntent {
     : /\b(drive|driving|car)\b/i.test(q)
       ? "drive" as const
       : null;
-  const budget = /\b(free|no cost|costs? nothing)\b/i.test(q)
+  const dietary = [
+    /\bgluten[- ]free\b/i.test(q) ? "gluten-free" as const : null,
+    /\bvegan\b/i.test(q) ? "vegan" as const : null,
+    /\bvegetarian\b/i.test(q) ? "vegetarian" as const : null,
+    /\bdairy[- ]free\b|\blactose[- ]free\b/i.test(q) ? "dairy-free" as const : null,
+    /\bnut[- ]free\b|\bpeanut[- ]free\b/i.test(q) ? "nut-free" as const : null,
+  ].filter((value): value is AskDietaryConstraint => value != null);
+  const asksFreeAdmission = /\b(?:free admission|free entry|no cost|costs? nothing|for free|free to (?:attend|enter|visit))\b/i.test(q) ||
+    (/\bfree\b/i.test(q) && dietary.length === 0);
+  const budget = asksFreeAdmission
     ? "free" as const
     : /\b(cheap|inexpensive|budget|affordable|under \$?\d+)\b/i.test(q)
       ? "value" as const
       : null;
   const localOnly = /\b(local only|locally owned|independent|no chains?|skip chains?)\b/i.test(q);
   const surpriseMe = /\b(surprise me|dealers? choice|pick for me|anything|something fun)\b/i.test(q);
-  const reservation = parseReservationRequest(q);
+  const reservation = parseReservationRequest(q, now);
+  const dateTime = parseAskDateTime(q, now);
   const regions = parseCountyRegions(q);
   const durationHours = durationFor(q);
 
   const constraints = [
-    timeNeed === "now" ? "Open now" : timeNeed === "tonight" ? "Tonight" : timeNeed === "weekend" ? "This weekend" : timeNeed === "morning" ? "Morning" : timeNeed === "afternoon" ? "Afternoon" : timeNeed === "today" ? "Today" : null,
+    timeNeed === "now" ? "Open now" : timeNeed === "tonight" ? "Tonight" : timeNeed === "tomorrow" ? "Tomorrow" : timeNeed === "weekend" ? "This weekend" : timeNeed === "morning" ? "Morning" : timeNeed === "afternoon" ? "Afternoon" : timeNeed === "today" ? "Today" : null,
     travelMode === "walk" ? "Walking" : travelMode === "drive" ? "Driving" : null,
     audience === "date" ? "Date" : audience === "family" ? "Family" : audience === "friends" ? "Friends" : audience === "visitor" ? "Visitor" : null,
     budget === "free" ? "Free" : budget === "value" ? "Good value" : null,
-    localOnly ? "Local only" : null,
+    localOnly ? "Independent spots" : null,
+    ...dietary.map((item) => item === "gluten-free" ? "Gluten-free" : item === "dairy-free" ? "Dairy-free" : item === "nut-free" ? "Nut-free" : item[0].toUpperCase() + item.slice(1)),
     kind === "plan" ? `${durationHours} hours` : null,
     surpriseMe ? "Surprise me" : null,
     reservation.requested ? "Reservation" : null,
     reservation.timeLabel,
+    dateTime.explicitDate && !timeNeed ? dateTime.dateLabel : null,
     ...regions.map((region) => COUNTY_REGION_LABELS[region]),
   ].filter((value): value is string => Boolean(value));
 
@@ -157,6 +185,10 @@ export function parseAskIntent(query: string): AskIntent {
     surpriseMe,
     reservation: reservation.requested,
     requestedTime: reservation.timeLabel,
+    requestedDate: reservation.dateKey ?? dateTime.dateKey,
+    requestedDateTime: reservation.dateTime ?? dateTime.instant?.toISOString() ?? null,
+    partySize: reservation.partySize,
+    dietary,
     regions,
     constraints,
   };

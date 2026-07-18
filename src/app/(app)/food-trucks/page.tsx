@@ -138,7 +138,7 @@ export default function FoodTrucksPage() {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: "Food trucks & carts in Frederick County",
-    description: "Frederick County's mobile food and treat vendors.",
+    description: "Browse Frederick County's mobile food and treat vendors.",
     mainEntity: itemListJsonLd(
       "Food trucks in Frederick County",
       FOOD_TRUCKS.map((t) => ({ name: t.name, path: "/food-trucks" })),

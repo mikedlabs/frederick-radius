@@ -15,7 +15,7 @@ import SharedRadiusView from "@/components/saved/SharedRadiusView";
 export const metadata: Metadata = {
   robots: { index: false },
   title: "A shared Frederick radius",
-  description: "A set of Frederick County places someone is keeping an eye on.",
+  description: "This shared list contains Frederick County places that someone saved.",
 };
 
 export default async function SharedRadiusPage({

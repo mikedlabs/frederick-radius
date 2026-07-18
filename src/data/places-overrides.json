@@ -161,13 +161,13 @@
       "subcategories": [
         "coffee"
       ],
-      "short_blurb": "Homegrown deli and coffee bar serving Rise Up coffee, espresso, tea, bagels, and breakfast."
+      "short_blurb": "This local deli and coffee bar serves Rise Up coffee, espresso, tea, bagels, and breakfast."
     },
     "panera-bread-urbana": {
       "subcategories": [
         "restaurant"
       ],
-      "short_blurb": "Cafe serving coffee, breakfast, sandwiches, soups, salads, and bakery items."
+      "short_blurb": "This cafe serves coffee, breakfast, sandwiches, soups, salads, and bakery items."
     },
     "musket-ridge-golf-club-myersville": {
       "category": "golf"
@@ -549,7 +549,7 @@
     "jkw-beauty": {
       "address": "8 N East St",
       "category": "wellness",
-      "short_blurb": "Appointment-based studio for hair, makeup, beauty lessons, and custom spray tans.",
+      "short_blurb": "This appointment-based studio offers hair, makeup, beauty lessons, and custom spray tans.",
       "website": "https://jkwbeauty.com/"
     },
     "tin-corner": {
@@ -715,7 +715,7 @@
         "lat": 39.4132905
       },
       "category": "wellness",
-      "short_blurb": "Therapy, psychological testing, and medication management near downtown Frederick."
+      "short_blurb": "Orchard Mental Health Group offers therapy, psychological testing, and medication management near downtown Frederick."
     },
     "red-canyon-physical-therapy": {
       "category": "wellness"

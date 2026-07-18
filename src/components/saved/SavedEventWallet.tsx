@@ -99,8 +99,7 @@ function Card({
   const saved = savedDateLabel(savedAt);
   const hasGeom =
     Boolean(event.geom) && Number.isFinite(event.geom.lat) && Number.isFinite(event.geom.lng);
-  // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph in the mono ledger, not prose
-  const dash = "—";
+  const dash = "Not available";
 
   function toggle() {
     if (open) {

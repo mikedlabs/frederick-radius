@@ -167,7 +167,7 @@ export default async function LiveMusicPage() {
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="font-serif text-[19px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-            Nothing on the wire right now.
+            No live shows are on the wire right now.
           </p>
           <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
             We track verified venue calendars and ticketed listings. Some
@@ -205,7 +205,7 @@ export default async function LiveMusicPage() {
               </ul>
             ) : (
               <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                Nothing on the wire for tonight. The next shows are below.
+                No shows are on the wire for tonight. The next shows are below.
               </p>
             )}
           </section>

@@ -39,8 +39,8 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
     ? {
         headline: visitor ? "Plan tonight in one tap" : "Tonight, walkable",
         subhead: visitor
-          ? "Dinner, drinks, then somewhere to land late. All walkable."
-          : "Dinner, drinks, late spot. Routed by foot.",
+          ? "Build a walkable evening from dinner through the last stop."
+          : "Route tonight's stops on foot.",
         cta: visitor ? "Plan tonight" : "Plan it",
         // Routes to /plan — the dedicated planner surface that
         // walks the user through dinner → drinks → late spot. The
@@ -55,8 +55,8 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
     : {
         headline: visitor ? "What is open near you" : "What's open right now",
         subhead: visitor
-          ? "Coffee, food, parks, and trails open near you right now."
-          : "Coffee, food, parks, trails. Open-now filtered.",
+          ? "See nearby coffee, food, parks, and trails that are open now."
+          : "See nearby places filtered by what is open now.",
         cta: visitor ? "Open near me" : "Show me",
         href: "/map?mode=radius",
         Icon: Navigation,

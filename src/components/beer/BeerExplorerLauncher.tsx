@@ -64,9 +64,9 @@ export default function BeerExplorerLauncher({
       aria-labelledby={open ? "beer-explorer-heading" : "all-beer-heading"}
       className="-mx-4 scroll-mt-24 overflow-hidden border-y sm:-mx-5 lg:mx-0 lg:rounded-[8px] lg:border"
       style={{
-        borderColor: "rgba(255,255,255,.1)",
-        background: open ? "var(--app-bg-elevated-solid)" : "#15130f",
-        boxShadow: "0 28px 62px -38px rgba(20,14,8,.78)",
+        borderColor: "rgba(51,35,20,.15)",
+        background: open ? "var(--app-bg-elevated-solid)" : "#f1e6d2",
+        boxShadow: "0 28px 62px -40px rgba(52,35,20,.42)",
       }}
     >
       <div id={EXPLORER_ID} hidden={!open} className="space-y-5 p-4 sm:p-7">
@@ -107,24 +107,24 @@ export default function BeerExplorerLauncher({
         </div>
       </div>
 
-      <div hidden={open} className="relative grid min-h-[330px] gap-7 overflow-hidden p-5 text-[#f7f0e4] sm:grid-cols-[1fr_auto] sm:items-end sm:p-9">
-        <span className="pointer-events-none absolute -right-3 -top-10 font-serif text-[190px] font-semibold leading-none text-white/[0.035]" aria-hidden>{beerCount}</span>
+      <div hidden={open} className="relative grid min-h-[330px] gap-7 overflow-hidden p-5 text-[#281e14] sm:grid-cols-[1fr_auto] sm:items-end sm:p-9">
+        <span className="pointer-events-none absolute -right-3 -top-10 font-serif text-[190px] font-semibold leading-none text-black/[0.035]" aria-hidden>{beerCount}</span>
         <div className="relative flex gap-4">
-          <span aria-hidden className="mt-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center border border-[#e3b65d]/45 text-[#e3b65d]">
+          <span aria-hidden className="mt-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center border border-[#85501f]/45 text-[#85501f]">
             <SlidersHorizontal className="h-5 w-5" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">
-              Looking for something specific?
+            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#85501f]">
+              Full beer catalog
             </p>
             <h2
               id="all-beer-heading"
               className="mt-3 max-w-[8ch] font-serif text-[clamp(2.8rem,9vw,5rem)] font-semibold leading-[0.84] tracking-[-0.05em]"
             >
-              Every pour, searchable.
+              Search every local beer.
             </h2>
-            <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-white/56">
-              Search all {beerCount} beers by name, style, brewery, or town.
+            <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-black/62">
+              Search all {beerCount} beers using whatever you know, from the beer name to its style, brewery, or town.
             </p>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function BeerExplorerLauncher({
           }}
           aria-controls={EXPLORER_ID}
           aria-expanded="false"
-          className="relative inline-flex min-h-13 w-full items-center justify-center gap-2 border border-[#e3b65d]/55 bg-[#e3b65d] px-5 py-3 text-[13px] font-bold text-[#17130e] transition hover:bg-[#f0ca7c] sm:w-auto"
+          className="relative inline-flex min-h-13 w-full items-center justify-center gap-2 border border-[#382517] bg-[#382517] px-5 py-3 text-[13px] font-bold text-[#fffaf2] transition hover:bg-[#24170f] sm:w-auto"
         >
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Search all {beerCount} beers

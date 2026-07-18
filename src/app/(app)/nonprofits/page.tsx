@@ -134,7 +134,7 @@ export default async function NonprofitsPage({
         </div>
         {activeMeta ? (
           <p className="mb-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            {activeMeta.blurb} Sorted by reported budget; many small groups file no financials.
+            {activeMeta.blurb} The list is sorted by reported budget, and many small groups file no financials.
           </p>
         ) : (
           <p className="mb-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { askFrederick } from "./answer";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
@@ -29,6 +30,114 @@ describe("askFrederick structured answers", () => {
     expect(result.answer).toContain("closest verified");
   });
 
+  it("does not invent proximity when a nearby request has no ranking origin", async () => {
+    const result = await askFrederick("Where can I get coffee near me?", {
+      contextLabel: "Whole county",
+      fallbackReason: "location-unavailable",
+    });
+    expect(result.usedModel).toBe(false);
+    expect(result.answer).toContain("countywide catalog matches, not a nearest-place claim");
+    expect(result.context).toBe("Whole county");
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources.every((source) => source.distance == null)).toBe(true);
+  });
+
+  it("keeps a selected-town coffee answer inside that town", async () => {
+    const result = await askFrederick("Where can I get coffee near me?", {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(
+      result.sources.every(
+        (source) => clientPlaceBySlug(source.slug)?.municipality === "urbana",
+      ),
+    ).toBe(true);
+    expect(result.sources.every((source) => source.distance == null)).toBe(true);
+    expect(result.sources.some((source) => source.name === "Market Street Boba Beans")).toBe(false);
+  });
+
+  it("treats timeless breakfast as a best-fit decision, not an open-chain race", async () => {
+    const result = await askFrederick("Breakfast near me", {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+      canShowDistance: false,
+    });
+
+    expect(result.intent?.label).toBe("Breakfast");
+    expect(result.sources[0]?.name).toBe("Pumpernickel + Rye");
+    expect(result.sources.some((source) => source.name === "Giant Food")).toBe(false);
+    expect(result.sources.every((source) => source.city === "Urbana")).toBe(true);
+    expect(result.sources.every((source) => source.distance == null)).toBe(true);
+  });
+
+  it("does not call closed Urbana coffee shops strong open-now matches", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));
+    try {
+      const result = await askFrederick("coffee right now in Urbana", {
+        origin: { lng: -77.3523, lat: 39.3276 },
+        municipality: "urbana",
+        contextLabel: "Urbana",
+        canShowDistance: false,
+      });
+
+      expect(result.intent?.timeNeed).toBe("now");
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(result.sources.every((source) => source.href.startsWith("/places/"))).toBe(true);
+      expect(result.sources.every((source) => /^Closed\b/.test(source.status ?? ""))).toBe(true);
+      expect(result.answer).toContain("couldn’t verify a coffee place open right now");
+      expect(result.answer).toContain("cards show when they reopen");
+      expect(result.answer).not.toContain("strong matches");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not duplicate an article in an unavailable open-now answer", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));
+    try {
+      const result = await askFrederick(
+        "Where can I get a breakfast sandwich near downtown Frederick right now?",
+        downtown,
+      );
+
+      expect(result.answer).toContain(
+        "couldn’t verify a breakfast sandwich open right now",
+      );
+      expect(result.answer).not.toContain("a a breakfast");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns an honest empty answer for unsupported product language", async () => {
+    const result = await askFrederick(
+      "Where can I buy zxqv quux near Frederick?",
+      downtown,
+    );
+
+    expect(result).toMatchObject({ status: "empty", usedModel: false });
+    expect(result.sources).toEqual([]);
+    expect(result.answer).toContain("couldn’t find a reliable match");
+    expect(result.answer).not.toMatch(/strongest matches/i);
+  });
+
+  it("names a saved-home ranking anchor instead of calling it the user's location", async () => {
+    const result = await askFrederick("What grocery store is closest to me?", {
+      origin: { lng: -77.6278, lat: 39.3143 },
+      contextLabel: "Ranked from Brunswick",
+    });
+    expect(result.answer).toContain("closest verified");
+    expect(result.answer).toContain("from Brunswick");
+    expect(result.answer).not.toContain("to your location");
+  });
+
   it("puts the official voter-registration action first", async () => {
     const result = await askFrederick("How do I register to vote in Frederick County?", downtown);
     expect(result.sources[0]).toMatchObject({
@@ -40,6 +149,30 @@ describe("askFrederick structured answers", () => {
     });
     expect(result.answer).toContain("official Frederick resource");
     expect(result.sources).toHaveLength(1);
+  });
+
+  it("does not turn an ordinary and-query into a department answer", async () => {
+    const result = await askFrederick("beer and food tonight", downtown);
+    expect(result.sources.some((source) => source.slug.startsWith("dept-"))).toBe(false);
+    expect(result.answer).not.toMatch(/official contact for/i);
+  });
+
+  it("keeps a mixed coffee-and-amenity request from collapsing to one tool", async () => {
+    const result = await askFrederick("coffee and a trash can near me", downtown);
+    expect(result.sources.some((source) => source.href.startsWith("/places/"))).toBe(true);
+    expect(result.sources.some((source) => source.category === "trash")).toBe(true);
+    expect(result.answer).toMatch(/trash can/i);
+  });
+
+  it("routes pet and human poison emergencies to dedicated official actions", async () => {
+    const pet = await askFrederick("My dog ate chocolate. I need an emergency vet", downtown);
+    expect(pet.usedModel).toBe(false);
+    expect(pet.sources.some((source) => source.name === "ASPCA Animal Poison Control")).toBe(true);
+    expect(pet.actions?.some((action) => action.href === "/emergency-vet")).toBe(true);
+
+    const human = await askFrederick("Who do I call for a possible poisoning?", downtown);
+    expect(human.answer).toContain("1-800-222-1222");
+    expect(human.actions?.some((action) => action.href === "tel:+18002221222")).toBe(true);
   });
 
   it("keeps City of Frederick trash information out of the county flow", async () => {
@@ -163,7 +296,7 @@ describe("askFrederick structured answers", () => {
       category: "parking",
       confidence: "high",
     });
-    expect(result.answer).toContain("walking distance, not live space availability");
+    expect(result.answer).toContain("uses walking distance and does not show live space availability");
     expect(result.sources.every((source) => source.category === "parking")).toBe(true);
   });
 
@@ -172,6 +305,40 @@ describe("askFrederick structured answers", () => {
     expect(result.intelligence?.tools).toContain("parking");
     expect(result.sources[0]?.category).toBe("parking");
     expect(result.answer).not.toContain("identify");
+  });
+
+  it("does not silently use downtown as the anchor for parking near me", async () => {
+    const result = await askFrederick("Where can I park near me?", {
+      contextLabel: "Whole county",
+      fallbackReason: "location-unavailable",
+    });
+    expect(result.usedModel).toBe(false);
+    expect(result.answer).toContain("I don’t have a precise location or selected town");
+    expect(result.answer).not.toContain("closest mapped city garage to downtown Frederick");
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources.every((source) => source.distance == null)).toBe(true);
+  });
+
+  it("does not recommend downtown garages for a far-county parking anchor", async () => {
+    const result = await askFrederick("Where can I park near me?", {
+      origin: { lng: -77.3523, lat: 39.3276 },
+      municipality: "urbana",
+      contextLabel: "Urbana",
+    });
+    expect(result.status).toBe("empty");
+    expect(result.answer).toContain("outside the downtown Frederick garage area");
+    expect(result.sources).toEqual([]);
+  });
+
+  it("does not build a downtown itinerary for a locationless near-me plan", async () => {
+    const result = await askFrederick("Plan an easy afternoon near me", {
+      contextLabel: "Whole county",
+      fallbackReason: "location-unavailable",
+    });
+    expect(result.usedModel).toBe(false);
+    expect(result.plan).toBeNull();
+    expect(result.answer).toContain("I won’t silently treat downtown Frederick as your location");
+    expect(result.actions?.some((action) => action.label === "Choose a town")).toBe(true);
   });
 
   it("is honest about roaming food trucks and links to current sources", async () => {
@@ -237,12 +404,14 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.map((source) => source.slug)).toEqual(["averys-maryland-grille-frederick"]);
     expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
     expect(result.actions?.[0]).toMatchObject({
-      label: "Check OpenTable for 7:30 PM",
       kind: "open",
     });
+    expect(result.actions?.[0]?.label).toContain("Check OpenTable");
+    expect(result.actions?.[0]?.label).toContain("7:30 PM");
     expect(result.actions?.[0]?.href).toMatch(/^https:\/\/www\.opentable\.com\/s\?/);
-    expect(result.actions?.map((action) => action.label)).toEqual([
-      "Check OpenTable for 7:30 PM",
+    const handoff = new URL(result.actions?.[0]?.href ?? "");
+    expect(handoff.searchParams.get("dateTime")).toMatch(/T19:30:00$/);
+    expect(result.actions?.map((action) => action.label).slice(1)).toEqual([
       "Closest matches",
       "Make it a dinner plan",
     ]);

@@ -78,12 +78,11 @@ export default function TopBar() {
     };
   }, [hidden]);
 
-  // /map folds its own search into the dock ("the map's ONE search", same
-  // index as this bar's overlay), and the page never scrolls, so the
-  // auto-hide can't resolve the duplication — two stacked search fields
-  // would sit in the top 130px permanently. Suppress the pill there; the
-  // wordmark, pulse, and Browse stay, and ⌘K still opens the overlay.
-  const isMapSurface = pathname === "/map";
+  // /map and /search each own a full search control. Suppress the global
+  // trigger on those routes so people never have to choose between two
+  // search boxes that do the same job. The wordmark/back control, pulse,
+  // Compass, and the ⌘K shortcut remain available.
+  const pageOwnsSearch = pathname === "/map" || pathname === "/search";
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -210,7 +209,7 @@ export default function TopBar() {
               icons competing for attention. Fills the space between
               the logo and the right-side chips, Apple-Maps style.
               Tap anywhere on it opens the typeahead modal. */}
-          {isMapSurface ? (
+          {pageOwnsSearch ? (
             // Spacer keeps the right cluster (pulse · Browse) on the right
             // edge while the dock below owns search on this surface.
             <div aria-hidden className="min-w-0 flex-1" />
@@ -218,7 +217,7 @@ export default function TopBar() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label="Search places, events, towns"
+              aria-label="Search Frederick County"
               className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
@@ -229,7 +228,7 @@ export default function TopBar() {
                   them concatenated ("What's open?What's open right now?").
                   The button's aria-label is the accessible name; this text
                   is decorative. */}
-              <span className="truncate text-left">Search places, events, towns…</span>
+              <span className="truncate text-left">Search Frederick County</span>
               <kbd
                 className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -276,9 +275,9 @@ export default function TopBar() {
             onMouseEnter={() => router.prefetch("/compass")}
             onFocus={() => router.prefetch("/compass")}
             onPointerDown={() => router.prefetch("/compass")}
-            aria-label="Compass: every guide, map, and tool in one place"
+            aria-label="Open the Frederick Radius index"
             aria-current={pathname === "/compass" ? "page" : undefined}
-            title="Every guide, map, and tool in one place"
+            title="Open all guides and tools"
             className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",

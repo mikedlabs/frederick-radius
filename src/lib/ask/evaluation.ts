@@ -42,7 +42,7 @@ export const ASK_EVAL_CASES: AskEvalCase[] = [
   { name: "surprise", query: "surprise me with somewhere local", intent: "explore", requirePlace: true },
   {
     name: "steak reservation handoff",
-    query: "I want a steak dinner tonight—use OpenTable for a 7:30 reservation",
+    query: "I want a steak dinner tonight, and use OpenTable for a 7:30 reservation",
     intent: "place",
     requirePlace: true,
     allowedPlaceCategories: ["restaurant"],

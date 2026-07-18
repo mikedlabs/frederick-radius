@@ -19,7 +19,7 @@ export default function ShareTodayButton() {
   async function share() {
     const data = {
       title: "Today in Frederick County",
-      text: "What's open, what's on, and what's worth your time around here today.",
+      text: "Use current conditions and posted listings to decide what to do in Frederick County today.",
       url: SHARE_URL,
     };
     try {
@@ -34,7 +34,7 @@ export default function ShareTodayButton() {
     }
     try {
       await navigator.clipboard.writeText(SHARE_URL);
-      toast("Link copied. Today's almanac card rides along.");
+      toast("Today's almanac link is copied.");
       track("share_today", { method: "clipboard" });
     } catch {
       toast("Copy this link: frederickradius.app/today");

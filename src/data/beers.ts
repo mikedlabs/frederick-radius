@@ -94,15 +94,15 @@ export type FamilyMeta = {
 };
 
 export const STYLE_FAMILIES: FamilyMeta[] = [
-  { key: "ipa", label: "Hoppy IPA", tagline: "Bitter, piney, citrus and pine.", base: "#C7841F", deep: "#7A4A0E" },
-  { key: "wheat-hazy", label: "Hazy and juicy", tagline: "Soft, fruity, low bitterness.", base: "#D08A32", deep: "#8A5212" },
-  { key: "pale-ale", label: "Pale and easy", tagline: "Balanced, everyday, sessionable.", base: "#B8912F", deep: "#75570F" },
-  { key: "lager-pilsner", label: "Crisp and clean", tagline: "Light, refreshing, drinks easy.", base: "#B08A1C", deep: "#6E5410" },
-  { key: "amber-brown", label: "Malty and toasty", tagline: "Caramel, nutty, toasted malt.", base: "#9A5C2A", deep: "#5E3316" },
-  { key: "stout-porter", label: "Dark and roasty", tagline: "Coffee, chocolate, roast.", base: "#4A3128", deep: "#241610" },
-  { key: "belgian-farmhouse", label: "Belgian and farmhouse", tagline: "Spicy yeast, dry, rustic.", base: "#B5811E", deep: "#6F4C0E" },
-  { key: "sour-wild", label: "Sour and funky", tagline: "Tart, fruity, puckering.", base: "#B33A6E", deep: "#711E44" },
-  { key: "specialty-other", label: "Something different", tagline: "Fruit, dessert, and the odd one out.", base: "#6E4E88", deep: "#402B53" },
+  { key: "ipa", label: "Hoppy IPA", tagline: "Expect firm bitterness with citrus and pine.", base: "#C7841F", deep: "#7A4A0E" },
+  { key: "wheat-hazy", label: "Hazy and juicy", tagline: "Expect soft fruit with low bitterness.", base: "#D08A32", deep: "#8A5212" },
+  { key: "pale-ale", label: "Pale and easy", tagline: "These beers stay balanced and easy to drink.", base: "#B8912F", deep: "#75570F" },
+  { key: "lager-pilsner", label: "Crisp and clean", tagline: "These lagers are light, refreshing, and easy to drink.", base: "#B08A1C", deep: "#6E5410" },
+  { key: "amber-brown", label: "Malty and toasty", tagline: "Expect caramel and toasted-malt flavors.", base: "#9A5C2A", deep: "#5E3316" },
+  { key: "stout-porter", label: "Dark and roasty", tagline: "Expect coffee, chocolate, and roasted malt.", base: "#4A3128", deep: "#241610" },
+  { key: "belgian-farmhouse", label: "Belgian and farmhouse", tagline: "Expect dry beer with spicy yeast character.", base: "#B5811E", deep: "#6F4C0E" },
+  { key: "sour-wild", label: "Sour and funky", tagline: "These beers are tart and fruity.", base: "#B33A6E", deep: "#711E44" },
+  { key: "specialty-other", label: "Something different", tagline: "Expect fruit, dessert flavors, or something harder to classify.", base: "#6E4E88", deep: "#402B53" },
 ];
 
 export const FAMILY_BY_KEY: Record<StyleFamily, FamilyMeta> = Object.fromEntries(

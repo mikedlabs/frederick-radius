@@ -73,7 +73,7 @@ export default async function LoginPage({
           style={{ color: "var(--app-ink-2)" }}
         >
           Your followed places stay in sync across your devices. We&apos;ll
-          email you a magic link. No password to remember.
+          email you a magic link. You do not need to remember a password.
         </p>
       </header>
 

@@ -12,7 +12,7 @@ const OWNER_TOOL_CONCEPTS = [
     },
     {
         label: "Correction requests",
-        description: "Flag an inaccurate detail for review.",
+        description: "Visitors can flag an inaccurate detail for review.",
         status: "Limited beta",
         icon: PencilLine,
     },
@@ -51,7 +51,7 @@ export default function Scene06_CommercialIntegration() {
                         A clearer experience for <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">local businesses</span>
                     </h2>
                     <p className="text-lg font-light text-gray-400">
-                        A transparent profile-and-corrections workflow — not a fictional live analytics dashboard.
+                        Business owners can correct profiles through a transparent workflow. No analytics are invented.
                     </p>
                 </motion.div>
 
@@ -65,7 +65,7 @@ export default function Scene06_CommercialIntegration() {
                     >
                         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs font-medium text-amber-200">
                             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                            Illustrative profile — not a real business listing
+                            Example profile, not a real business listing
                         </div>
 
                         <div className="mb-8 flex items-start gap-5">

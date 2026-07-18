@@ -64,6 +64,11 @@ export default function BottomNav() {
     return () => window.removeEventListener("resize", measure);
   }, [activeIdx]);
 
+  // Ask is a focused decision workspace with its own Back control. The fixed
+  // pill otherwise covers the first source heading as soon as an answer lands,
+  // precisely when the visitor is trying to verify it.
+  if (pathname.startsWith("/ask")) return null;
+
   return (
     <div
       // Hide the floating bottom pill at lg+ where the SideRail takes

@@ -33,17 +33,17 @@ export default function AppError({
         className="text-[11px] font-semibold uppercase tracking-[0.14em]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Off the trail
+        Page error
       </p>
       <h1
         className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
         style={{ color: "var(--app-ink)" }}
       >
-        This page hit a snag.
+        This page could not load.
       </h1>
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        The county data is fine. The page just failed to draw. Try it
-        again, or head back to the guide.
+        Frederick Radius could not finish loading this page. Try again or
+        return to Today.
       </p>
       <div className="flex items-center gap-2.5 pt-1">
         <button

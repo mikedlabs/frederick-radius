@@ -81,7 +81,7 @@ export default function FromYourSaved() {
         cta="All saved"
       />
       <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-        Open right now.
+        These saved places are open now.
       </p>
       <ul className="space-y-2">
         {openNow.map((p) => (
