@@ -19,7 +19,9 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   useEffect(() => {
     const tick = () => setSec(Math.max(0, Math.round((Date.now() - renderedAt) / 1000)));
     tick();
-    const id = setInterval(tick, 1000);
+    // A half-minute cadence keeps the counter honest without the nervous
+    // second-by-second flicker in the masthead (owner report, 2026-07-18).
+    const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, [renderedAt]);
 
@@ -27,7 +29,7 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
 
   const label =
     sec < 60
-      ? `${sec}s ago`
+      ? "just now"
       : sec < 3600
         ? `${Math.floor(sec / 60)}m ago`
         : `${Math.floor(sec / 3600)}h ago`;
