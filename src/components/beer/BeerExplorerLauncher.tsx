@@ -121,7 +121,7 @@ export default function BeerExplorerLauncher({
             >
               Search all {beerCount} signature beers
             </h2>
-            <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-black/55">
+            <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-black/65">
               Search by beer name, style, brewery, or town.
             </p>
           </div>

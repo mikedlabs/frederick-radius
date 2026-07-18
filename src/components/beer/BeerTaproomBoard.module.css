@@ -94,7 +94,10 @@
   max-width: 100%;
   margin-top: 4px;
   overflow: hidden;
-  color: rgb(43 33 23 / 48%);
+  /* 65%, not 48%: 8.5px text needs WCAG AA 4.5:1 on the cream card —
+     the same bump applied to every text-black/45-55 utility on this
+     board (the gate pins axe at zero). */
+  color: rgb(43 33 23 / 65%);
   font-size: 8.5px;
   font-weight: 600;
   line-height: 1.2;

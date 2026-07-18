@@ -64,11 +64,11 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           </span>
           <span className="flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6">
             <span className="min-w-0">
-              <span className="flex items-center gap-2 text-[10px] font-semibold text-black/50"><MapIcon className="h-3.5 w-3.5" aria-hidden />Interactive map</span>
+              <span className="flex items-center gap-2 text-[10px] font-semibold text-black/65"><MapIcon className="h-3.5 w-3.5" aria-hidden />Interactive map</span>
               <span className="mt-2 block text-[16px] font-semibold">Open the brewery map</span>
-              <span className="mt-1 block text-[10px] text-black/50">{places.length} breweries pinned</span>
+              <span className="mt-1 block text-[10px] text-black/65">{places.length} breweries pinned</span>
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-black/50 transition group-hover:translate-x-1" aria-hidden />
+            <ArrowRight className="h-4 w-4 shrink-0 text-black/65 transition group-hover:translate-x-1" aria-hidden />
           </span>
         </button>
       )}

@@ -71,7 +71,7 @@ export default function BeerTasteFlight() {
           return (
             <button key={taste.key} type="button" aria-pressed={selected} onClick={() => setPathKey(taste.key)} className="min-h-[72px] w-[148px] shrink-0 rounded-[10px] border px-3 py-2.5 text-left sm:w-auto" style={{ borderColor: selected ? "rgba(112,69,31,.55)" : "var(--app-border)", background: selected ? "rgba(255,252,245,.88)" : "rgba(255,252,245,.38)", color: "var(--app-ink)" }}>
               <span className="block text-[12px] font-semibold">{taste.label}</span>
-              <span className="mt-1 block text-[9px] text-black/48">{STATS[taste.key].beers} signature beers</span>
+              <span className="mt-1 block text-[9px] text-black/65">{STATS[taste.key].beers} signature beers</span>
             </button>
           );
         })}
@@ -111,13 +111,13 @@ function PourCard({ beer, index, saved, pathKey }: { beer: BeerWithBrewery; inde
       style={{ borderColor: "rgba(40,30,20,.12)", borderTopColor: family.base }}
     >
       <div className="min-w-0 p-3.5">
-        <p className="font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-black/45">0{index + 1} · {visualLabel}{beer.abv != null ? ` · ${beer.abv.toFixed(1)}%` : ""}</p>
+        <p className="font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-black/65">0{index + 1} · {visualLabel}{beer.abv != null ? ` · ${beer.abv.toFixed(1)}%` : ""}</p>
         <h3 className="mt-1.5 truncate text-[14px] font-bold text-[#281e14]">{beer.name}</h3>
-        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-black/55">{beer.notes}</p>
+        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-black/65">{beer.notes}</p>
         <Link href={`/places/${beer.brewerySlug}`} className="mt-1 inline-flex min-h-11 max-w-full items-center text-[10px] font-semibold text-black/68 hover:underline">
           <span className="truncate">{beer.breweryName}</span>
         </Link>
-        {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" className="ml-2 inline-flex min-h-11 items-center gap-1 text-[9px] text-black/48 hover:text-black/72">Untappd <ArrowUpRight className="h-3 w-3" aria-hidden /></a> : null}
+        {untappdUrl ? <a href={untappdUrl} target="_blank" rel="noreferrer" className="ml-2 inline-flex min-h-11 items-center gap-1 text-[9px] text-black/65 hover:text-black/72">Untappd <ArrowUpRight className="h-3 w-3" aria-hidden /></a> : null}
       </div>
 
       <button type="button" onClick={() => addSaved("beer", key)} disabled={saved} aria-label={saved ? `${beer.name} is saved to My taps` : `Save ${beer.name} to My taps`} className="m-1.5 grid h-11 w-11 place-items-center self-start rounded-full border border-black/12 text-black/58 disabled:opacity-50">
