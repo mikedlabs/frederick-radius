@@ -316,7 +316,13 @@ export function search(
       fieldScore(p.description ?? "", terms) * 1 +
       fieldScore(p.category, terms) * 2 +
       fieldScore(p.city, terms) * 1 +
-      (p.tags ?? []).reduce((acc, t) => acc + fieldScore(t, terms), 0);
+      // Curated subcategories are corrected roles (places-overrides.json) —
+      // score them like tags so "pizza" finds Pistarro's (subcategory pizza,
+      // no pizza in the name) the same way it finds category matches.
+      [...(p.tags ?? []), ...(p.subcategories ?? [])].reduce(
+        (acc, t) => acc + fieldScore(t, terms),
+        0,
+      );
     // Intent can SURFACE a relevant place with no keyword match (boost),
     // and SINK a mismatch that only caught a stray token (downrank).
     const evidenceText = [

@@ -1105,6 +1105,9 @@
     },
     "rockwell-brewery-frederick-2": {
       "name": "Rockwell Brewery Riverside"
+    },
+    "pistarros": {
+      "subcategories": ["pizza"]
     }
   }
 }

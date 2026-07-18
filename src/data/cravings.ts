@@ -76,6 +76,33 @@ export type Craving = {
 // word-boundary token are added.
 const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve|dairy ?queen|\bdq\b/i;
 const PIZZA = /pizza|pizzeria/i;
+
+/**
+ * Canonical pizza evidence — ONE matcher for every pizza entry point
+ * (/category/pizza, the Today "cat:pizza" want answer, the map's
+ * Eat & drink → Pizza facet). Google's primary_type files most of the
+ * county's pizzerias under plain "restaurant" or "italian_restaurant"
+ * (Rocky's Pizza, Tuscany's Pizzeria, Pasquale's Italian Pizza) and Pizza
+ * Hut under "pizza_delivery", so strict category matching alone hid about
+ * a quarter of the catalog's actual pizza places (owner report, Jul 2026).
+ * Evidence accepted, all of it real fields: the corrected category, a
+ * curated "pizza" subcategory (places-overrides.json), a pizza/pizzeria
+ * NAME, or a pizza_* Google type. Deliberately NO blurb sniffing — a
+ * restaurant whose description merely mentions pizza is not a pizzeria.
+ */
+export function isPizzaPlace(p: {
+  category: string;
+  name: string;
+  subcategories?: string[];
+  primary_type?: string;
+}): boolean {
+  return (
+    p.category === "pizza" ||
+    (p.subcategories ?? []).includes("pizza") ||
+    PIZZA.test(p.name) ||
+    (p.primary_type ?? "").startsWith("pizza_")
+  );
+}
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|h\s*mart|megamart|mega ?mart/i;
 // Family fun is matched by ACTIVITY name, not the `family` category — that
 // category is a junk bucket (mostly schools, daycares, PTAs, a driving school,
@@ -135,12 +162,11 @@ export const CRAVINGS: Craving[] = [
     icon: "Utensils",
     color: "var(--app-accent)",
     // Pizza folded in — a pizzeria is still "I want food," so it's not its
-    // own tile; Food answers it (category pizza OR a pizza/pizzeria name).
+    // own tile; Food answers it via the canonical pizza matcher.
     match: (p) =>
       p.category === "restaurant" ||
       p.category === "food-truck" ||
-      p.category === "pizza" ||
-      PIZZA.test(p.name),
+      isPizzaPlace(p),
     // Food narrows by CUISINE, derived from what's actually nearby (Mexican,
     // Asian, BBQ, Seafood, Pizza, Burgers, …) — far richer than a fixed
     // sit-down/pizza/truck split, and it pulls from the whole county.

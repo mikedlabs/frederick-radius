@@ -1,5 +1,5 @@
 import "server-only";
-import { CRAVINGS, matchesCraving, matchesCravingFacet } from "@/data/cravings";
+import { CRAVINGS, isPizzaPlace, matchesCraving, matchesCravingFacet } from "@/data/cravings";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
@@ -256,10 +256,17 @@ function resolveWant(
     if (!cat) return null;
     const children = CATEGORIES.filter((x) => x.parent === slug).map((x) => x.slug);
     const match = new Set<string>([slug, ...children]);
+    // Pizza mirrors rankPlaces' widened evidence (isPizzaPlace): most local
+    // pizzerias carry a "restaurant" category from Google, so category
+    // matching alone answered "pizza" with a fraction of the real list.
+    const wantsPizza = match.has("pizza");
     return {
       label: cat.name,
       browseHref: `/category/${slug}`,
-      match: (p) => match.has(p.category) || (p.subcategories ?? []).some((s) => match.has(s)),
+      match: (p) =>
+        match.has(p.category) ||
+        (p.subcategories ?? []).some((s) => match.has(s)) ||
+        (wantsPizza && isPizzaPlace(p)),
     };
   }
   if (isMealKey(cKey)) {
