@@ -1010,11 +1010,20 @@ export default function AskFrederick({
     if (!query || typeof window === "undefined") return;
     const url = new URL(askQuestionPath(query), window.location.origin).toString();
 
+    // Share the ANSWER when one is on screen, not just the question — a
+    // plan texted to a friend only works if the plan itself rides in the
+    // message (owner ask, 2026-07-18: "text or email plans that are
+    // made"). The permalink still comes along for the tap-through; the
+    // question alone remains the fallback while an answer is loading.
+    const answer = res?.answer?.trim() ?? "";
+    const shareText =
+      answer.length > 600 ? `${answer.slice(0, 597).trimEnd()}…` : answer || query;
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Ask Radius",
-          text: query,
+          text: shareText,
           url,
         });
         setShareStatus("shared");
