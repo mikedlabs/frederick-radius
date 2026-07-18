@@ -20,8 +20,7 @@ import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
-import KeysCard from "@/components/today/KeysCard";
-import { isKeysEvent } from "@/lib/today/keysEvent";
+import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
@@ -62,13 +61,16 @@ import TodayAsk from "@/components/today/TodayAsk";
 /**
  * Now — the daily briefing.
  *
- * Spine (post-findability pass, top to bottom — matches the render below):
+ * Spine (one-hero pass, top to bottom — matches the render below; the
+ * evening gear reorders 2-4, see the EVENING GEAR note in HomePage):
  *
  *   1. SkyHero        → time-of-day sky + date, clock, and weather
  *   2. OnNowBand      → current utility followed by clearly timed later items
- *   3. What's on      → every public event in the city or county today
- *   4. MastheadNotes  → dated local context that self-hides
- *   5. The full briefing + More for today (collapsed)
+ *   3. Headliner      → THE headline of the page when a real draw is on
+ *                       (TonightHeadline); nothing renders on a quiet day
+ *   4. What's on      → the rest of today's public program
+ *   5. MastheadNotes  → dated local context that self-hides
+ *   6. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
  *  to FIND what you need, not a suggestion engine that tells you an idea you
@@ -153,6 +155,64 @@ export default async function HomePage() {
   // cold-miss streaming gap.)
   const eventsPromise = assembleUnifiedEvents(now);
 
+  // ── EVENING GEAR ────────────────────────────────────────────────────────
+  // After 5 PM Eastern the page shifts what leads: the reader's question is
+  // no longer "what is my day like" but "what is on tonight." Server-side
+  // on the Eastern wall clock (the page ISRs every 300s, so the flip lands
+  // within minutes of 5 PM):
+  //   before 17:00 — current order: Available now (KeysScore + OnNowBand),
+  //                  then the headliner directly under it, golden hour, then
+  //                  the day program.
+  //   from   17:00 — the ON TONIGHT block (headliner + tonight rows) moves
+  //                  directly under the sky hero; Available now (happy hours,
+  //                  deals, markets, parking) follows it; everything else
+  //                  keeps its relative order below.
+  // Emphasis re-composition only — every section renders in both gears, and
+  // each event-dependent region still awaits the ONE shared events promise
+  // inside its own <Suspense>, so the streaming shape is unchanged.
+  const eveningGear = easternStartHour(now.toISOString()) >= 17;
+
+  // The one headliner (splitTonightFeature's pick, drawn from the same shared
+  // promise). Null fallback: a quiet day must never stream in a hero-shaped
+  // skeleton it then takes away.
+  const headliner = (
+    <Suspense fallback={null}>
+      <TonightHeadliner eventsPromise={eventsPromise} now={now} />
+    </Suspense>
+  );
+
+  // Current utility belongs beside the calendar. Every live claim uses a
+  // clock-checked window, while parking and later markets keep their
+  // published timing. The shared event promise prevents duplicate feed
+  // work across this band and the event program.
+  const availableNow = (
+    <>
+      <div className="[&:not(:empty)]:mt-4">
+        <KeysScore />
+      </div>
+      <div id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense fallback={null}>
+          <OnNowBand now={now} eventsPromise={eventsPromise} />
+        </Suspense>
+      </div>
+    </>
+  );
+
+  // The event program streams inside its own Suspense boundary.
+  const whatsOn = (
+    <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+      <Suspense
+        fallback={
+          <section className="mt-5 space-y-3" aria-label="Events today">
+            <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+          </section>
+        }
+      >
+        <WhatsOn eventsPromise={eventsPromise} now={now} />
+      </Suspense>
+    </div>
+  );
+
   return (
     // Sheet boundary in lean-surface mode: today's rails deliberately keep
     // the event corpus out of the client payload, so a tap on any event
@@ -236,12 +296,6 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
-      {/* Ask is a compact handoff, not an embedded conversation. People can
-          start a question here, then use the dedicated decision workspace for
-          context, evidence, follow-ups, and actions without stretching Today
-          into another dashboard. */}
-      <TodayAsk />
-
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
           themselves before seeing any value, and most people never touch a
@@ -254,38 +308,35 @@ export default async function HomePage() {
       {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
           the day; once it's past ~9 PM (the "late" daypart, strictly on the
           Eastern clock) it leads the editorial spine with tomorrow's top draw +
-          weather look, so a spent day isn't a dead end. */}
+          weather look, so a spent day isn't a dead end. It keeps this slot in
+          BOTH gears: through the true evening (5-9 PM) it renders nothing, and
+          late at night tomorrow's answer belongs above tonight's leftovers. */}
       <Suspense fallback={null}>
         <TomorrowPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
 
-      {/* Current utility belongs before the calendar. Every live claim uses a
-          clock-checked window, while parking and later markets keep their
-          published timing. The shared event promise prevents duplicate feed
-          work across this band and the event program below. */}
-      <div className="[&:not(:empty)]:mt-4">
-        <KeysScore />
-      </div>
-      <div id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-        <Suspense fallback={null}>
-          <OnNowBand now={now} eventsPromise={eventsPromise} />
-        </Suspense>
-      </div>
-      <GoldenHourCard now={now} />
-
-      {/* The event program follows the immediate answers and streams inside its
-          own Suspense boundary. */}
-      <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-        <Suspense
-          fallback={
-            <section className="mt-5 space-y-3" aria-label="Events today">
-              <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-            </section>
-          }
-        >
-          <WhatsOn eventsPromise={eventsPromise} now={now} />
-        </Suspense>
-      </div>
+      {/* The two gears — see the EVENING GEAR note above. Same sections, same
+          Suspense boundaries, different order. TodayAsk (the compact handoff
+          into the decision workspace, not an embedded conversation) rides
+          along: directly under the hero by day, after the tonight block in
+          the evening. GoldenHourCard self-hides outside its window. */}
+      {eveningGear ? (
+        <>
+          {headliner}
+          {whatsOn}
+          {availableNow}
+          <TodayAsk />
+          <GoldenHourCard now={now} />
+        </>
+      ) : (
+        <>
+          <TodayAsk />
+          {availableNow}
+          {headliner}
+          <GoldenHourCard now={now} />
+          {whatsOn}
+        </>
+      )}
 
       <Suspense
         fallback={
@@ -529,6 +580,57 @@ function easternStartHour(iso: string): number {
   );
 }
 
+/** The one today-program derivation, read by BOTH the page headliner and the
+ *  What's-on program. Pure and cheap: the two Suspense regions await the SAME
+ *  shared events promise and call this on its single resolved value, so they
+ *  can never disagree about which event is the headliner or which rows remain. */
+function deriveTodayProgram(publicEvents: Awaited<EventsPromise>["publicEvents"], now: Date) {
+  const todayAll = publicEvents
+    .filter((e) => isEventToday(e.starts_at, now))
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  // Time-honesty partition (the 7:55 PM audit render led with six ENDED 2-4 PM
+  // library crafts while a live Keys game sat ninth): the rail carries only
+  // what's live or still ahead; finished draws demote to a quiet "Earlier
+  // today" line list, and finished civic rows drop entirely (a meeting that
+  // ended has no evening value). Grouping stays by start-day; the floor is
+  // isEventEnded's real end time.
+  const ended = todayAll.filter((e) => isEventEnded(e, now));
+  const ahead = todayAll.filter((e) => !isEventEnded(e, now));
+  // The headline treatment is for DRAWS only. Routine recurring programming
+  // (storytime, ESL class, tech help — the standing library calendar) joins
+  // civic business in the quiet program rows, ordered by start time, so the
+  // hierarchy never flattens.
+  const todaysEvents = ahead
+    .filter((e) => !isUtilityEvent(e) && !isRoutineProgram(e))
+    .sort(compareForLead);
+  const alsoToday = ahead.filter((e) => isUtilityEvent(e) || isRoutineProgram(e));
+  const earlierToday = ended.filter((e) => !isUtilityEvent(e));
+  // The selected lead renders exactly once (as the page headliner). Duplicate
+  // feed occurrences are removed from the compact program below instead of
+  // removing the lead.
+  const { feature, remaining: upcomingRest } = splitTonightFeature(now, todaysEvents);
+  return {
+    todayAll,
+    ahead,
+    feature,
+    upcomingRest,
+    remainingAlsoToday: withoutTodayFeature(feature, alsoToday),
+    remainingEarlierToday: withoutTodayFeature(feature, earlierToday),
+  };
+}
+
+/** ONE-HERO composition, part 1: the page headliner. When today has a real
+ *  draw (splitTonightFeature's pick — utility and routine programming never
+ *  qualify), it renders as THE headline of the page via TonightHeadline. On a
+ *  quiet day this renders nothing at all — no faked hero — and WhatsOn says
+ *  the quiet truth in its place. */
+async function TonightHeadliner({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const { feature } = deriveTodayProgram(publicEvents, now);
+  if (!feature) return null;
+  return <TonightHeadline event={feature} now={now} />;
+}
+
 /** One line of the day program: mono time column (the visible sort key),
  *  then title + venue. The editorial tier reads as TYPOGRAPHY — draws get
  *  weight, ink, and their category's color dot; civic/routine rows sit in
@@ -605,35 +707,13 @@ function ProgramRow({
  *  join the same chronological program as quiet rows. */
 async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
   const { publicEvents } = await eventsPromise;
-  const todayAll = publicEvents
-    .filter((e) => isEventToday(e.starts_at, now))
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  // Time-honesty partition (the 7:55 PM audit render led with six ENDED 2-4 PM
-  // library crafts while a live Keys game sat ninth): the rail carries only
-  // what's live or still ahead; finished draws demote to a quiet "Earlier
-  // today" line list, and finished civic rows drop entirely (a meeting that
-  // ended has no evening value). Grouping stays by start-day; the floor is
-  // isEventEnded's real end time.
-  const ended = todayAll.filter((e) => isEventEnded(e, now));
-  const ahead = todayAll.filter((e) => !isEventEnded(e, now));
-  // The photo-card rail is for DRAWS only. Routine recurring programming
-  // (storytime, ESL class, tech help — the standing library calendar) used to
-  // ride the same rail in the same card language as tonight's headline acts,
-  // flattening the hierarchy; it now joins civic business in the quiet
-  // "Also today" line list, ordered by start time.
-  const todaysEvents = ahead
-    .filter((e) => !isUtilityEvent(e) && !isRoutineProgram(e))
-    .sort(compareForLead);
-  const alsoToday = ahead.filter((e) => isUtilityEvent(e) || isRoutineProgram(e));
-  const earlierToday = ended.filter((e) => !isUtilityEvent(e));
   // (The overnight "First thing tomorrow" strip that used to live here grew into
   // its own composed TomorrowPreview beat above — top draw + weather look, gated
   // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
-  // The selected lead renders here exactly once. Duplicate feed occurrences
-  // are removed from the compact program below instead of removing the lead.
-  const { feature, remaining: upcomingRest } = splitTonightFeature(now, todaysEvents);
-  const remainingAlsoToday = withoutTodayFeature(feature, alsoToday);
-  const remainingEarlierToday = withoutTodayFeature(feature, earlierToday);
+  // The headliner itself renders ONCE, at page level (TonightHeadliner); this
+  // section carries the rest of the program. Same derivation, same promise.
+  const { todayAll, ahead, feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
+    deriveTodayProgram(publicEvents, now);
   const featureDuplicateCount = feature
     ? Math.max(0, todayAll.filter((event) => isSameTodayListing(event, feature)).length - 1)
     : 0;
@@ -689,19 +769,21 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             : undefined
         }
       >
-        {feature || upcomingRest.length > 0 || remainingAlsoToday.length > 0 || remainingEarlierToday.length > 0 ? (
+        {upcomingRest.length > 0 || remainingAlsoToday.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
-            {/* The one editor's pick, and it SAYS so — the unlabeled hero was
-                the first "why is this big?" of the section. */}
-            {feature && (
-              <div>
-                <p className="mb-1.5 px-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
-                  {!feature.is_all_day && easternStartHour(feature.starts_at) >= 17 ? "Tonight's pick" : "Today's pick"}
-                </p>
-                {isKeysEvent(feature)
-                  ? <KeysCard event={feature} variant="feature" />
-                  : <EventCard event={feature} variant="feature" />}
-              </div>
+            {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
+                draw earned the page headline, say so plainly instead of
+                promoting a routine row into a fake hero; the quiet program
+                rows below and the week content further down carry the page. */}
+            {!feature && (
+              <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
+                week ahead is on the{" "}
+                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                  events page
+                </Link>
+                .
+              </p>
             )}
             {programGroups.length > 0 && (
               <div className="reveal-up">
@@ -748,6 +830,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               </details>
             )}
           </div>
+        ) : feature ? (
+          /* The headliner above is the whole calendar — an honest one-liner,
+             not an "empty" claim the hero itself contradicts. */
+          <p className="text-body py-4" style={{ color: "var(--app-ink-3)" }}>
+            Nothing else is on the calendar today.
+          </p>
         ) : (
           <p
             className="text-body py-4"
