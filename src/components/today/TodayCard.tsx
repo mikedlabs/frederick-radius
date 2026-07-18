@@ -54,13 +54,18 @@ function bandFor(h: number): Band {
   return "overnight";
 }
 
+// The greeting is a person saying hello, not a clock reading itself out
+// ("It is evening." — owner report, 2026-07-18: sounds dumb, and the
+// card already shows the actual time an inch away). Say what a calm
+// local would say at that hour and let the weather verdict carry the
+// information.
 const GREETING: Record<Band, string> = {
   morning: "Good morning.",
-  midday: "It is midday.",
-  afternoon: "It is afternoon.",
-  evening: "It is evening.",
-  late: "It is late tonight.",
-  overnight: "It is very early.",
+  midday: "Midday.",
+  afternoon: "Good afternoon.",
+  evening: "Good evening.",
+  late: "Late night.",
+  overnight: "The early hours.",
 };
 
 function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
