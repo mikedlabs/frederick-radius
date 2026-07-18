@@ -7,6 +7,7 @@ import BeerHero from "@/components/beer/BeerHero";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
+import OnTapNow from "@/components/beer/OnTapNow";
 import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 import MyTaps from "@/components/beer/MyTaps";
 import TaproomMap from "@/components/beer/TaproomMap";
@@ -45,6 +46,13 @@ export default function BeerPage() {
 
       <Suspense fallback={<BeerTaproomEventsFallback />}>
         <BeerTaproomEvents />
+      </Suspense>
+
+      {/* Live tap lists from pilot breweries' own Untappd for Business
+          menus. Self-hides until at least one brewery shares a read-only
+          token (docs/UNTAPPD_PILOT.md), then lights up per brewery. */}
+      <Suspense fallback={null}>
+        <OnTapNow />
       </Suspense>
 
       <TaproomMap places={breweryCards} />
