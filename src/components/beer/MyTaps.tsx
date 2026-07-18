@@ -32,8 +32,9 @@ export default function MyTaps({ heading = true, photos = {} }: { heading?: bool
 
   return (
     <section
+      id="my-taps"
       aria-label="My taps"
-      className="-mx-4 space-y-5 overflow-hidden border-y border-black/12 px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
+      className="scroll-mt-24 -mx-4 space-y-5 overflow-hidden border-y border-black/12 px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
       style={{
         background: "#f1e6d2",
         boxShadow: "0 24px 52px -36px rgba(52,35,20,.4)",

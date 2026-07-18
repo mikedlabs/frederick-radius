@@ -25,7 +25,7 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
   if (places.length === 0) return null;
 
   return (
-    <section aria-labelledby="taproom-map-heading">
+    <section id="taproom-map" aria-labelledby="taproom-map-heading" className="scroll-mt-24">
       <header className="mb-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
           <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>Brewery map</p>

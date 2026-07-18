@@ -8,6 +8,7 @@ import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
 import OnTapNow from "@/components/beer/OnTapNow";
+import BeerSectionRail from "@/components/beer/BeerSectionRail";
 import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 import MyTaps from "@/components/beer/MyTaps";
 import TaproomMap from "@/components/beer/TaproomMap";
@@ -39,6 +40,12 @@ export default function BeerPage() {
   return (
     <div className="space-y-12 pb-4 sm:space-y-16">
       <BeerHero />
+
+      {/* Sticky chapter rail: the guide is ten sections deep and everything
+          below the first screen depended on scroll stamina. One tap to any
+          chapter, active chapter inked, chapters that aren't rendered
+          (live taps pre-pilot) hide themselves. */}
+      <BeerSectionRail />
 
       <BeerTaproomBoard places={breweryCards} />
 
