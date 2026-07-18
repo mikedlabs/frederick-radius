@@ -383,7 +383,10 @@ describe("askFrederick structured answers", () => {
   it("can anchor a plan on a real place named in the request", async () => {
     const result = await askFrederick("Plan a date night around Hootch & Banter", downtown);
     expect(result.intent).toMatchObject({ timeNeed: null });
-    expect(result.answer).toContain("anchored this at Hootch & Banter");
+    // The lead names the anchor and the actual itinerary (pick-first
+    // rule), not the planner's process.
+    expect(result.answer).toContain("Anchored at Hootch & Banter");
+    expect(result.answer).toContain("Hootch & Banter at ");
     expect(result.plan?.stops[0].name).toBe("Hootch & Banter");
   });
 

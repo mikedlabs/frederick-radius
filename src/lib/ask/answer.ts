@@ -1320,7 +1320,24 @@ export async function askFrederick(
       status: "matches",
       configured: hasKey(),
       usedModel: false,
-      answer: `${anchorName && anchorApplied ? `I anchored this at ${anchorName} and built outward` : `I built this around ${intent.durationHours} hours`}${intent.travelMode === "walk" ? ", keeping the stops walkable" : reducedMobility ? ", keeping it to two stops and prioritizing verified parking guidance" : ""}. Every stop is a real Radius record, and you can swap anything that is not your speed.`,
+      // The lead names the actual itinerary — "Dinner at X, then the show
+      // at Y" — instead of describing the planner's process ("I built
+      // this...", "Every stop is a real Radius record"), the same
+      // pick-first rule the other answer paths follow.
+      answer: (() => {
+        const stopLine = plan.stops
+          .slice(0, 3)
+          .map((stop) => (stop.time ? `${stop.name} at ${stop.time}` : stop.name))
+          .join(", then ");
+        const overflow = plan.stops.length > 3 ? `, with ${plan.stops.length - 3} more in the full plan` : "";
+        const anchorLead = anchorName && anchorApplied ? `Anchored at ${anchorName}: ` : "";
+        const constraint = intent.travelMode === "walk"
+          ? " Every leg is walkable."
+          : reducedMobility
+            ? " It stays to two stops with verified parking guidance."
+            : "";
+        return `${anchorLead}${stopLine}${overflow}.${constraint} Swap any stop that is not your speed.`;
+      })(),
       sources: [],
       context: context.origin ? context.contextLabel ?? null : "downtown Frederick",
       intent,
@@ -1807,6 +1824,29 @@ export async function askFrederick(
         retrieval: "keyword",
         personalized,
       } : undefined,
+    };
+  }
+
+  // Cold-window honesty guard: for a few minutes after a deploy the
+  // unified event feed can be empty, and with no events block the model
+  // improvised the one forbidden answer for a tonight question — "check
+  // the Frederick tourism website" (measured on prod). An evening
+  // question with no event data gets the honest deterministic line and
+  // the board links instead; place questions (a want/category) still
+  // reach the model on place data alone.
+  if (/\b(?:tonight|this evening)\b/i.test(q) && !eventsBlock && !want) {
+    return {
+      status: "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer: "I can’t see the live event calendar right now, so I won’t guess at tonight. The events board has the current list.",
+      sources: [],
+      context: retrieval.meta.contextLabel,
+      intent,
+      actions: [
+        { label: "Open tonight’s events", kind: "open", href: "/events?when=today" },
+        { label: "Open live music", kind: "open", href: "/live-music" },
+      ],
     };
   }
 
