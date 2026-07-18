@@ -1,3 +1,5 @@
+import { hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
+
 /**
  * Weather verdict, turns a forecast into advice.
  *
@@ -36,6 +38,9 @@ export type VerdictInput = {
   /** Worst current AirNow observation when available. AQI 101+ must suppress
    *  outdoor-positive language even before an alert product is published. */
   airQuality?: { aqi: number; category?: string } | null;
+  /** Pollutants present in the fresh AirNow response. A current ozone value
+   * does not cover PM2.5 when an official smoke alert is active. */
+  airQualityParameters?: string[];
   /** Whether the official NWS alert feed answered successfully. `false` is
    *  different from an available feed with zero alerts. */
   alertsAvailable?: boolean;
@@ -125,6 +130,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
     forecastHigh,
     activeAlerts = [],
     airQuality = null,
+    airQualityParameters = [],
     alertsAvailable = true,
     airQualityAvailable = true,
     weatherAvailable = true,
@@ -143,11 +149,24 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   const heatAlert = activeAlerts.find((a) => HEAT_ALERT.test(`${a.event} ${a.headline ?? ""}`));
   const airAlert = activeAlerts.find((a) => AIR_ALERT.test(`${a.event} ${a.headline ?? ""} ${a.description ?? ""}`));
   const airCopy = `${airAlert?.event ?? ""} ${airAlert?.headline ?? ""} ${airAlert?.description ?? ""}`;
+  const airAlertSummary = airAlert ? summarizeAirQualityAlert(airAlert) : null;
+  const declaredAirLevel = airAlertSummary?.level ?? null;
   const measuredAqi = airQuality && Number.isFinite(airQuality.aqi) ? airQuality.aqi : null;
-  const hazardousAirAlert = /code\s*maroon|hazardous/i.test(airCopy);
-  const veryUnhealthyAirAlert = /code\s*purple|very unhealthy/i.test(airCopy);
-  const unhealthyAirAlert = /code\s*red|\bunhealthy\b.*general population/i.test(airCopy);
-  const sensitiveAirAlert = Boolean(airAlert) || /code\s*orange|sensitive groups/i.test(airCopy);
+  // When a bulletin covers several periods, its operative "issued Code X"
+  // declaration wins. Only use broad severity words as a fallback when no
+  // declared code can be parsed.
+  const hazardousAirAlert = declaredAirLevel === "maroon"
+    || (declaredAirLevel === null && /hazardous/i.test(airCopy));
+  const veryUnhealthyAirAlert = declaredAirLevel === "purple"
+    || (declaredAirLevel === null && /very unhealthy/i.test(airCopy));
+  const unhealthyAirAlert = declaredAirLevel === "red"
+    || (declaredAirLevel === null && /\bunhealthy\b.*general population/i.test(airCopy));
+  const sensitiveAirAlert = Boolean(airAlert);
+  const missingAlertPollutant = Boolean(
+    airAlertSummary?.pollutant
+    && !hasObservationForAlert(airAlertSummary, airQualityParameters),
+  );
+  const elevatedAirPeriodActive = isElevatedAirQualityPeriodActive(airAlertSummary, now);
   const hazardousAirMeasured = measuredAqi !== null && measuredAqi >= 301;
   const veryUnhealthyAirMeasured = measuredAqi !== null && measuredAqi >= 201;
   const unhealthyAirMeasured = measuredAqi !== null && measuredAqi >= 151;
@@ -205,10 +224,31 @@ export function weatherVerdict(input: VerdictInput): Verdict {
     };
   }
   if (sensitiveAir) {
+    if (!sensitiveAirMeasured && airAlertSummary?.level === "orange" && missingAlertPollutant) {
+      const period = airAlertSummary.forecastPeriod ? ` for ${airAlertSummary.forecastPeriod}` : "";
+      if (elevatedAirPeriodActive && airAlertSummary.elevatedPeriod) {
+        const coverage = airQualityParameters.length > 0
+          ? "AirNow’s latest observations do not include PM2.5"
+          : "no fresh PM2.5 reading is available";
+        return {
+          line: `A Code Orange air-quality alert is in effect${period}. The MDE notice says PM2.5 may be unhealthy to very unhealthy ${airAlertSummary.elevatedPeriod}, and ${coverage}, so everyone should avoid strenuous outdoor activity during that window.`,
+          tone: "rough",
+        };
+      }
+      const observationCoverage = airQualityParameters.length > 0
+        ? "The latest AirNow observations do not include PM2.5 and cannot measure the smoke in the alert."
+        : "AirNow has not returned a fresh PM2.5 reading for Frederick, so the current smoke level cannot be confirmed from a live observation.";
+      return {
+        line: `A Code Orange air-quality alert is in effect${period}. ${observationCoverage}`,
+        tone: "rough",
+      };
+    }
     return {
       line: sensitiveAirMeasured
         ? "The current air is unhealthy for sensitive groups. Reduce strenuous activity outside."
-        : "An official air-quality alert warns of unhealthy conditions for sensitive groups. Reduce strenuous activity outside.",
+        : airAlertSummary?.levelLabel
+          ? `An official Code ${airAlertSummary.levelLabel} air-quality alert warns of unhealthy conditions for sensitive groups. Reduce strenuous activity outside.`
+          : "An official air-quality alert warns of unhealthy conditions for sensitive groups. Reduce strenuous activity outside.",
       tone: "rough",
     };
   }

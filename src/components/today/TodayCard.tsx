@@ -137,6 +137,7 @@ export default async function TodayCard() {
     forecastHigh: high,
     activeAlerts: alertResult.alerts,
     airQuality: worstAir ? { aqi: worstAir.aqi, category: worstAir.category.name } : null,
+    airQualityParameters: freshAir.map((observation) => observation.parameter),
     alertsAvailable: alertResult.available,
     airQualityAvailable,
     weatherAvailable: Boolean(cur && forecast),

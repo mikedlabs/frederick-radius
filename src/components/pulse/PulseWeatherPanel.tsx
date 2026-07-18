@@ -1,5 +1,6 @@
 import { getNwsForecast, iconForShortForecast, type NwsForecast, type NwsHourly } from "@/lib/integrations/nws";
-import { getAirQuality, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
+import { getAirQuality, isFreshAqiObservation, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
+import { aqiParameterLabel } from "@/lib/air-quality";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { currentSkyPalette } from "@/components/today/SkyHero";
@@ -218,7 +219,8 @@ export default async function PulseWeatherPanel({
   const windMph = parseWindMph(cur.windSpeed);
   const feels = feelsLike(cur.temperature, cur.relativeHumidity, windMph);
   const popMax = Math.max(0, ...forecast.hourly.slice(0, 12).map((h) => h.probabilityOfPrecipitation ?? 0));
-  const aqi = aqiObs ? pickWorstAqi(aqiObs) : null;
+  const freshAqi = (aqiObs ?? []).filter((observation) => isFreshAqiObservation(observation));
+  const aqi = pickWorstAqi(freshAqi);
   const sun = sunTimes(new Date(), FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
   const updated = forecast.asOf ? fmtClock(new Date(forecast.asOf)) : null;
   const days = buildDays(daily);
@@ -268,8 +270,8 @@ export default async function PulseWeatherPanel({
           <Stat label="Rain" value={`${popMax}%`} />
           <Stat label="Dewpoint" value={cur.dewpointC != null ? `${Math.round(cToF(cur.dewpointC))}°` : "-"} />
           <Stat
-            label="Air quality"
-            value={aqi ? `${aqi.aqi} ${aqi.category.name.split(" ")[0]}` : "-"}
+            label={aqi ? aqiParameterLabel(aqi.parameter) : "Air quality"}
+            value={aqi ? `AQI ${aqi.aqi} · ${aqi.category.name}` : "-"}
             valueColor={aqi ? aqi.category.color : undefined}
           />
         </div>

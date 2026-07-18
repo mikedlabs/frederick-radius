@@ -61,6 +61,9 @@ export type WantAnswer = {
   rankingMode: "best-fit" | "open-now";
   hero: WantRow | null;
   also: WantRow[];
+  /** Complete open-now set for category tools that need an honest filter.
+   *  Included only for breweries so ordinary Today answers stay compact. */
+  open?: WantRow[];
   later: WantRow[];
   /** How many more open-later places fold behind the "later" preview. */
   laterMore: number;
@@ -429,6 +432,7 @@ export function buildWantAnswer(
     rankingMode,
     hero: open[heroIdx] ? toRow(open[heroIdx], false) : null,
     also: alsoPool.slice(0, ALSO_MAX).map((c) => toRow(c, false)),
+    open: cKey === "breweries" ? open.map((candidate) => toRow(candidate, false)) : undefined,
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,

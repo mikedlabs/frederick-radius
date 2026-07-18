@@ -118,6 +118,64 @@ describe("weatherVerdict safety overrides", () => {
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 
+  it("keeps a Saturday Code Orange bulletin distinct from its earlier Red-to-Purple smoke period", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Haze",
+      activeAlerts: [{
+        event: "Air Quality Alert",
+        severity: "Unknown",
+        description: `The Maryland Department of the Environment has issued a Code
+ORANGE Air Quality Alert Saturday for the Maryland Piedmont region.
+
+Fine particulate matter due to wildfire smoke will persist at levels consistent
+with an Air Quality Index of Unhealthy (Red Alert) to Very Unhealthy (Purple
+Alert) Friday night into Saturday morning.`,
+      }],
+      airQuality: { aqi: 12, category: "Good" },
+      airQualityParameters: ["O3"],
+      now: new Date("2026-07-18T06:00:00Z"),
+    }));
+    expect(v.tone).toBe("rough");
+    expect(v.line).toMatch(/Code Orange/i);
+    expect(v.line).toMatch(/PM2\.5 may be unhealthy to very unhealthy Friday night into Saturday morning/i);
+    expect(v.line).toMatch(/everyone should avoid strenuous outdoor activity during that window/i);
+    expect(v.line).not.toMatch(/current air is (?:good|very unhealthy)/i);
+  });
+
+  it("returns to Code Orange sensitive-group guidance after the stronger smoke window", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Haze",
+      activeAlerts: [{
+        event: "Air Quality Alert",
+        severity: "Unknown",
+        description: `The Maryland Department of the Environment has issued a Code Orange Air Quality Alert Saturday.
+Fine particulate matter due to wildfire smoke may be Unhealthy (Red Alert) to Very Unhealthy (Purple Alert) Friday night into Saturday morning.`,
+      }],
+      airQuality: { aqi: 12, category: "Good" },
+      airQualityParameters: ["O3"],
+      now: new Date("2026-07-18T18:00:00Z"),
+    }));
+    expect(v.line).toMatch(/Code Orange/i);
+    expect(v.line).toMatch(/do not include PM2\.5/i);
+    expect(v.line).not.toMatch(/everyone should avoid/i);
+  });
+
+  it("does not invent an ozone reading when AirNow returned no fresh observation", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Haze",
+      activeAlerts: [{
+        event: "Air Quality Alert",
+        severity: "Unknown",
+        description: "The Maryland Department of the Environment has issued a Code Orange Air Quality Alert Saturday due to fine particulate matter from wildfire smoke.",
+      }],
+      airQuality: null,
+      airQualityParameters: [],
+      airQualityAvailable: false,
+    }));
+    expect(v.line).toMatch(/has not returned a fresh PM2\.5 reading/i);
+    expect(v.line).not.toMatch(/latest AirNow observations/i);
+  });
+
   it("uses a current unhealthy AQI even when no alert product is present", () => {
     const v = weatherVerdict(input({
       shortForecast: "Clear",

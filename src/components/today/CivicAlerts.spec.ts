@@ -32,6 +32,13 @@ describe("nwsDisplaySeverity", () => {
     }))).toBe("advisory");
   });
 
+  it("does not promote an issued Code Orange alert because its timing notes mention Purple", () => {
+    expect(nwsDisplaySeverity(alert({
+      description: `MDE has issued a Code Orange Air Quality Alert Saturday.
+Smoke was expected at Red to Very Unhealthy (Purple Alert) levels Friday night into Saturday morning.`,
+    }))).toBe("advisory");
+  });
+
   it("continues to suppress unrelated Unknown products", () => {
     expect(nwsDisplaySeverity(alert({
       event: "Special Weather Statement",

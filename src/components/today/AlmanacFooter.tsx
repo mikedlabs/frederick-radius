@@ -1,6 +1,7 @@
 import { Sunrise, Sunset, Wind, Droplets } from "lucide-react";
 import { daylightDelta } from "@/lib/almanac";
-import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
+import { aqiParameterLabel } from "@/lib/air-quality";
 import { getKfdkMetar, dewpointComfort } from "@/lib/integrations/aviationweather";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -28,7 +29,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
   // sunrise + sunset on this strip. Returns null without an
   // AIRNOW_API_KEY, so the chip is hidden when the env var isn't set.
   const aqi = await getAirQuality(FREDERICK_CENTER).catch(() => null);
-  const worst = aqi ? pickWorstAqi(aqi) : null;
+  const worst = aqi ? pickWorstAqi(aqi.filter((observation) => isFreshAqiObservation(observation, now))) : null;
 
   // KFDK METAR dewpoint comfort — surfaces a label ("Sticky", "Muggy",
   // "Oppressive", "Very dry") inline ONLY at the edges of the comfort
@@ -148,7 +149,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
             title={`AQI ${worst.aqi} ${worst.category.name} (${worst.parameter}), observed in ${worst.reportingArea}`}
           >
             <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-            AQI {worst.aqi}
+            {aqiParameterLabel(worst.parameter).replace(/^./, (c) => c.toUpperCase())} AQI {worst.aqi}
           </span>
         </>
       )}

@@ -16,6 +16,11 @@ export type AqiObservation = {
   aqi: number;
   category: AqiCategory;
   reportingArea: string;
+  /** AirNow reporting-area coordinates when supplied. These locate the
+   * reporting product; they are not necessarily a monitor location. */
+  latitude?: number;
+  longitude?: number;
+  stateCode?: string;
   dateObserved: string;
   /** Local hour (0-23) the reading was observed — surfaced so the tile can
    *  say "as of 2 PM" instead of showing a bare, undateable number. */
@@ -27,6 +32,9 @@ type AirNowResp = Array<{
   AQI: number;
   Category: { Number: number; Name: string };
   ReportingArea: string;
+  Latitude?: number;
+  Longitude?: number;
+  StateCode?: string;
   DateObserved: string;
   HourObserved: number;
 }>;
@@ -48,7 +56,9 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
     const res = await fetch(url, { next: { revalidate: 1800 } });
     if (!res.ok) return null;
     const data = (await res.json()) as AirNowResp;
-    return data.map((r) => ({
+    return data
+      .filter((r) => Number.isFinite(r.AQI) && r.AQI >= 0 && Number.isFinite(r.Category?.Number))
+      .map((r) => ({
       parameter: r.ParameterName,
       aqi: r.AQI,
       category: {
@@ -57,9 +67,12 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
         color: COLORS[r.Category.Number] ?? "#7A7975",
       } as AqiCategory,
       reportingArea: r.ReportingArea,
+      latitude: Number.isFinite(r.Latitude) ? r.Latitude : undefined,
+      longitude: Number.isFinite(r.Longitude) ? r.Longitude : undefined,
+      stateCode: r.StateCode || undefined,
       dateObserved: r.DateObserved,
       hourObserved: r.HourObserved,
-    }));
+      }));
   } catch {
     return null;
   }
