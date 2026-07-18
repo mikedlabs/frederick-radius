@@ -34,6 +34,54 @@ const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happen
 const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
 const PLACE_RE = /\b(where|food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|hotel|motel|lodging|place to stay|museum|patio|open|nearby|near me)\b/i;
 
+export type FixedAppointmentAnchor = {
+  relation: "before" | "after";
+  kind: "show" | "concert" | "performance" | "event" | "movie" | "play";
+  timeLabel: string | null;
+  dateTime: string | null;
+};
+
+const FIXED_APPOINTMENT_RE = /\b(before|after)\s+(?:(?:a|an|the|my|our|their|tonight(?:'s)?|tomorrow(?:'s)?)\s+)?(?:(\d{1,2}(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)?)\s+)?(shows?|concerts?|performances?|events?|movies?|plays?)\b(?:\s+(?:at\s+)?(\d{1,2}(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)))?/i;
+
+const APPOINTMENT_KIND: Record<string, FixedAppointmentAnchor["kind"]> = {
+  show: "show",
+  shows: "show",
+  concert: "concert",
+  concerts: "concert",
+  performance: "performance",
+  performances: "performance",
+  event: "event",
+  events: "event",
+  movie: "movie",
+  movies: "movie",
+  play: "play",
+  plays: "play",
+};
+
+/**
+ * An event named after "before" or "after" is normally a fixed appointment,
+ * not something Radius has been asked to discover. A clock is accepted only
+ * when it includes minutes or a meridiem, avoiding "before 3 events" as time.
+ */
+export function parseFixedAppointmentAnchor(
+  query: string,
+  now = new Date(),
+): FixedAppointmentAnchor | null {
+  const match = query.match(FIXED_APPOINTMENT_RE);
+  if (!match) return null;
+  const rawClock = match[2] ?? match[4] ?? null;
+  const safeClock = rawClock && (rawClock.includes(":") || /(?:a|p)\.?m\.?/i.test(rawClock))
+    ? rawClock.trim()
+    : null;
+  const parsed = safeClock ? parseAskDateTime(`${query} at ${safeClock}`, now) : null;
+  return {
+    relation: match[1].toLowerCase() as FixedAppointmentAnchor["relation"],
+    kind: APPOINTMENT_KIND[match[3].toLowerCase()],
+    timeLabel: parsed?.timeLabel ?? null,
+    dateTime: parsed?.instant?.toISOString() ?? null,
+  };
+}
+
 function durationFor(q: string): 2 | 3 | 4 | 6 {
   const match = q.match(/\b(\d+(?:\.5)?)\s*(?:hour|hr)s?\b/i);
   const stated = match ? Number(match[1]) : NaN;
@@ -70,14 +118,16 @@ function labelFor(kind: AskIntentKind, q: string): string {
  */
 export function parseAskIntent(query: string, now = new Date()): AskIntent {
   const q = query.trim();
+  const fixedAppointment = parseFixedAppointmentAnchor(q, now);
   const compoundPlan = (
+    !fixedAppointment &&
     /\b(?:dinner|food|restaurant|drinks?)\b/i.test(q) &&
     /\b(?:show|concert|live music|event|performance)\b/i.test(q) &&
     /\b(?:and|then|plus|followed by|before|after)\b/i.test(q)
   );
   const plan = PLAN_RE.test(q) || compoundPlan;
   const civic = CIVIC_RE.test(q);
-  const event = EVENT_RE.test(q);
+  const event = EVENT_RE.test(q) && !(fixedAppointment && PLACE_RE.test(q));
   const kind: AskIntentKind = civic
     ? "civic"
     : plan

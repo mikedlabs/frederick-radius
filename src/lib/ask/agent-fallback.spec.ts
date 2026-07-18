@@ -26,6 +26,7 @@ describe("Ask Radius agent timeout fallback", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     if (originalGatewayKey == null) delete process.env.AI_GATEWAY_API_KEY;
     else process.env.AI_GATEWAY_API_KEY = originalGatewayKey;
   });
@@ -58,5 +59,33 @@ describe("Ask Radius agent timeout fallback", () => {
     expect(result.sources).toEqual([]);
     expect(result.answer).toContain("can’t reliably compare two");
     expect(result.answer).not.toMatch(/\d+ strong matches/i);
+  });
+
+  it("returns downtown dinner choices when a timed show is only an appointment anchor", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T05:00:00.000Z"));
+    const result = await askFrederick(
+      "I need a quiet dinner downtown before a 7:30 show tonight",
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+    expect(mocks.runRadiusAgent).not.toHaveBeenCalled();
+    expect(mocks.generateText).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "matches",
+      usedModel: false,
+      intent: { kind: "place", label: "Dinner", timeNeed: "tonight" },
+    });
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
+    expect(result.sources.every((source) => /^At 6:00 PM · (?:Open|Closing soon)\b/.test(source.status ?? ""))).toBe(true);
+    expect(result.answer).toContain("scheduled to be open around 6:00 PM");
+    expect(result.answer).toContain("90 minutes before your 7:30 PM show");
+    expect(result.answer).toContain("does not have verified noise-level data");
+    expect(result.answer).not.toMatch(/(?:is|are|feels?|should be) quiet/i);
+    expect(result.answer).not.toMatch(/live[- ]music|music calendar|can.t verify/i);
   });
 });

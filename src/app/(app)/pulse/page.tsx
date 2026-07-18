@@ -97,15 +97,15 @@ function alertGuidance(event: string, description = ""): string {
   if (name.includes("wind")) return "Secure loose outdoor items and use extra care around trees and power lines.";
   if (/air quality|smoke|ozone/i.test(copy)) {
     if (/code\s*maroon|hazardous/i.test(copy)) {
-      return "Air is hazardous. Avoid outdoor activity and follow official guidance.";
+      return "The official alert warns of hazardous air. Avoid outdoor activity and follow official guidance.";
     }
     if (/code\s*purple|very unhealthy/i.test(copy)) {
-      return "Air is very unhealthy for everyone. Avoid strenuous activity outside.";
+      return "The official alert warns of very unhealthy air. Avoid strenuous activity outside.";
     }
     if (/code\s*red|unhealthy for (?:the )?general population/i.test(copy)) {
-      return "Air is unhealthy. Everyone should avoid prolonged or heavy outdoor activity.";
+      return "The official alert warns of unhealthy air. Everyone should avoid prolonged or heavy outdoor activity.";
     }
-    return "Air may be unhealthy for sensitive groups. Take it easier outside and check the official alert.";
+    return "The official alert warns that air may be unhealthy for sensitive groups. Take it easier outside.";
   }
   return "Keep official alerts on and check the Frederick-specific timing before changing your plans.";
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAskIntent } from "./intent";
+import { parseAskIntent, parseFixedAppointmentAnchor } from "./intent";
 
 describe("parseAskIntent", () => {
   it("turns a natural date-night request into plan inputs", () => {
@@ -120,6 +120,40 @@ describe("parseAskIntent", () => {
     expect(parseAskIntent("Dinner and a show Saturday night")).toMatchObject({
       kind: "plan",
       audience: "solo",
+    });
+  });
+
+  it("treats a timed show as a fixed anchor for dinner discovery", () => {
+    const now = new Date("2026-07-18T05:00:00.000Z");
+    const query = "I need a quiet dinner downtown before a 7:30 show tonight";
+    expect(parseAskIntent(query, now)).toMatchObject({
+      kind: "place",
+      label: "Dinner",
+      timeNeed: "tonight",
+      vibe: "food",
+    });
+    expect(parseFixedAppointmentAnchor(query, now)).toEqual({
+      relation: "before",
+      kind: "show",
+      timeLabel: "7:30 PM",
+      dateTime: "2026-07-18T23:30:00.000Z",
+    });
+  });
+
+  it.each(["concert", "performance", "event", "movie", "play"])(
+    "treats a known %s as an appointment rather than event discovery",
+    (kind) => {
+      expect(parseAskIntent(`Find dinner downtown before a 7:30 ${kind} tonight`)).toMatchObject({
+        kind: "place",
+        label: "Dinner",
+      });
+    },
+  );
+
+  it("keeps an actual concert-discovery question on the event path", () => {
+    expect(parseAskIntent("What concerts are happening tonight?")).toMatchObject({
+      kind: "event",
+      timeNeed: "tonight",
     });
   });
 });

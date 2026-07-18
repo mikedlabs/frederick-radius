@@ -7,7 +7,12 @@ import { matchCivicAction } from "@/data/civic-actions";
 import { departmentJurisdictionLabel, isDepartmentRequest, matchDepartment } from "@/data/department-contacts";
 import { findTownCivicResource } from "@/data/town-websites";
 import { findMunicipalCivic } from "@/lib/loaders/municipalCivic";
-import { parseAskIntent, type AskIntent } from "@/lib/ask/intent";
+import {
+  parseAskIntent,
+  parseFixedAppointmentAnchor,
+  type AskIntent,
+  type FixedAppointmentAnchor,
+} from "@/lib/ask/intent";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import { runRadiusAgent, shouldUseRadiusAgent } from "@/lib/ask/intelligence";
 import { filterCitedSources } from "@/lib/ask/citations";
@@ -981,6 +986,39 @@ function localNoteFor(slug: string): string {
   return `; LOCAL NOTE: ${compact}`;
 }
 
+type FixedAppointmentWindow = {
+  at: Date;
+  timeLabel: string;
+  leadMinutes: number;
+};
+
+function easternTimeLabel(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+/** A meal before a known appointment needs a real arrival window, not the
+ * current clock. Ninety minutes leaves a practical dinner block before the
+ * user needs to be at the show, concert, movie, or other named appointment. */
+function fixedAppointmentWindow(
+  anchor: FixedAppointmentAnchor | null,
+  query: string,
+  now: Date,
+): FixedAppointmentWindow | null {
+  if (anchor?.relation !== "before" || !anchor.dateTime) return null;
+  const appointmentAt = new Date(anchor.dateTime);
+  if (!Number.isFinite(appointmentAt.getTime()) || appointmentAt <= now) return null;
+  const leadMinutes = /\b(?:breakfast|brunch|lunch|dinner|supper|restaurant|food|eat)\b/i.test(query)
+    ? 90
+    : 60;
+  const at = new Date(appointmentAt.getTime() - leadMinutes * 60_000);
+  if (at <= now) return null;
+  return { at, timeLabel: easternTimeLabel(at), leadMinutes };
+}
+
 /** "Downtown" is the same 1-mile core /map uses (mode-scope.ts). */
 const DOWNTOWN_RADIUS_M = 1609;
 
@@ -997,6 +1035,7 @@ function wantContextBlock(
   context: QualifiedSearchContext,
   query: string,
   dietary: AskIntent["dietary"] = [],
+  availabilityLabel?: string,
 ): { block: string; picks: WantRow[]; label: string } | null {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
@@ -1087,16 +1126,21 @@ function wantContextBlock(
   const parts: string[] = [];
   if (open.length > 0) {
     parts.push(
-      wa.rankingMode === "best-fit"
+      availabilityLabel
+        ? `Scheduled open around ${availabilityLabel}:\n${open.map(line).join("\n")}`
+        : wa.rankingMode === "best-fit"
         ? `Best fits (current hours shown):\n${open.map(line).join("\n")}`
         : `Open now:\n${open.map(line).join("\n")}`,
     );
   }
-  if (later.length > 0) parts.push(`Opens later today:\n${later.map(line).join("\n")}`);
-  if (notable.length > 0) parts.push(`Notable (hours not posted):\n${notable.map(line).join("\n")}`);
+  if (!availabilityLabel && later.length > 0) parts.push(`Opens later today:\n${later.map(line).join("\n")}`);
+  if (!availabilityLabel && notable.length > 0) parts.push(`Notable (hours not posted):\n${notable.map(line).join("\n")}`);
+  if (availabilityLabel && open.length === 0) {
+    parts.push(`No match has verified hours showing it open around ${availabilityLabel}.`);
+  }
   return {
-    block: `RANKED PICKS: ${what}${areaText} (this guide's own list, strongest first, current hours shown):\n${parts.join("\n")}\n`,
-    picks: [...open, ...later, ...notable],
+    block: `RANKED PICKS: ${what}${areaText} (this guide's own list, strongest first, ${availabilityLabel ? `hours evaluated around ${availabilityLabel}` : "current hours shown"}):\n${parts.join("\n")}\n`,
+    picks: availabilityLabel ? open : [...open, ...later, ...notable],
     label: wa.label,
   };
 }
@@ -1116,6 +1160,8 @@ export async function askFrederick(
       ? 6
       : 4;
   const intent = parseAskIntent(q);
+  const fixedAppointment = parseFixedAppointmentAnchor(q, now);
+  const appointmentWindow = fixedAppointmentWindow(fixedAppointment, q, now);
   const actions = followUps(q, intent, context);
   const emergency = emergencyRequestKind(q);
   if (emergency) return answerEmergencyRequest(emergency, intent, context);
@@ -1174,7 +1220,11 @@ export async function askFrederick(
   // Complex requests get the full tool-using decision engine. Every tool is
   // read-only and fail-soft; simple nearby/open/category questions keep the
   // existing fast deterministic path below.
-  const agentAttempted = !amenitySupplement && shouldUseRadiusAgent(q, intent);
+  // A recognized pre-appointment clock has a stronger deterministic answer:
+  // evaluate verified hours at the actual meal window and preserve the user's
+  // deadline. The general agent only sees current open states, so using it here
+  // could undo that time grounding or add avoidable latency.
+  const agentAttempted = !amenitySupplement && !appointmentWindow && shouldUseRadiusAgent(q, intent);
   if (agentAttempted) {
     const intelligent = await runRadiusAgent(q, context, tasteSignals);
     if (intelligent) {
@@ -1205,7 +1255,10 @@ export async function askFrederick(
   // they satisfied the full comparison.
   const requestsPlanComparison =
     /\bcompare\b/i.test(q) && /\b(?:two|2|both)\b/i.test(q);
-  const requiresCurrentEvent = /\b(?:live music|concerts?|shows?)\b/i.test(q);
+  // "Before a 7:30 show" describes a fixed appointment. It does not ask the
+  // fallback planner to find or verify that show, so dinner discovery must not
+  // dead-end just because the optional live-events path is unavailable.
+  const requiresCurrentEvent = !fixedAppointment && /\b(?:live music|concerts?|shows?)\b/i.test(q);
   if (intent.kind === "plan" && (requestsPlanComparison || requiresCurrentEvent)) {
     return {
       status: "empty",
@@ -1382,7 +1435,16 @@ export async function askFrederick(
   const wantIntent = retrieval.meta.qualifiers.compoundIntent || intent.reservation
     ? null
     : wantIntentOf(q, now);
-  const want = wantIntent ? wantContextBlock(wantIntent, now, context, q, intent.dietary) : null;
+  const want = wantIntent
+    ? wantContextBlock(
+        wantIntent,
+        appointmentWindow?.at ?? now,
+        context,
+        q,
+        intent.dietary,
+        appointmentWindow?.timeLabel,
+      )
+    : null;
   const wantBlock = want ? `${want.block}\n` : "";
   const wantSlugs = new Set((want?.picks ?? []).map((r) => r.slug));
   for (const r of (want?.picks ?? []).slice(0, answerSourceLimit)) {
@@ -1391,14 +1453,14 @@ export async function askFrederick(
       const rankedPlace = context.origin
         ? { ...place, distance_m: haversineMeters(context.origin, place.geom) }
         : place;
-      sources.push(
-          placeSource(
+      const source = placeSource(
           rankedPlace,
           r.detail || r.fact || `Listed for ${want!.label.toLowerCase()} in Radius`,
           null,
           canExposeDistance(context),
-        ),
-      );
+        );
+      if (appointmentWindow) source.status = `At ${appointmentWindow.timeLabel} · ${r.fact}`;
+      sources.push(source);
     }
   }
 
@@ -1679,28 +1741,38 @@ export async function askFrederick(
     const responseSources = openNowRequested && verifiedOpenSources.length > 0
       ? verifiedOpenSources
       : sources;
-    const primaryAnswer = explicitWeatherAnswer || deterministicAnswer({
-      civic: civic?.label,
-      department: dept?.name,
-      municipal: useMunicipal
-        ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent }
-        : useTownResource
-          ? { town: useTownResource.town.name, label: useTownResource.label, exact: true }
-          : undefined,
-      count: responseSources.length,
-      category: want?.label ?? retrieval.meta.qualifiers.categoryLabel,
-      openNow: openNowRequested,
-      downtown: retrieval.meta.qualifiers.downtown,
-      nearMe: retrieval.meta.qualifiers.nearMe,
-      nearMeApplied: retrieval.meta.nearMeApplied,
-      strictNearest,
-      contextLabel: retrieval.meta.contextLabel,
-      eventIntent: isEventSearchIntent(q),
-      regions: intent.regions,
-      reservation: intent.reservation,
-      requestedTime: intent.requestedTime,
-      sources: responseSources,
-    });
+    const appointmentAnswer = appointmentWindow && fixedAppointment?.timeLabel
+      ? [
+          responseSources.length > 0
+            ? `I found ${responseSources.length} ${retrieval.meta.qualifiers.downtown ? "downtown " : ""}${(want?.label ?? "dinner").toLowerCase()} match${responseSources.length === 1 ? "" : "es"} scheduled to be open around ${appointmentWindow.timeLabel}, leaving ${appointmentWindow.leadMinutes} minutes before your ${fixedAppointment.timeLabel} ${fixedAppointment.kind}.`
+            : `I couldn’t verify a ${retrieval.meta.qualifiers.downtown ? "downtown " : ""}${(want?.label ?? "dinner").toLowerCase()} match open around ${appointmentWindow.timeLabel} before your ${fixedAppointment.timeLabel} ${fixedAppointment.kind}.`,
+          /\b(?:quiet|quieter|noise|conversation)\b/i.test(q)
+            ? "Radius does not have verified noise-level data for these places, so I have not labeled any of them quiet."
+            : null,
+        ].filter(Boolean).join(" ")
+      : null;
+    const primaryAnswer = explicitWeatherAnswer || appointmentAnswer || deterministicAnswer({
+        civic: civic?.label,
+        department: dept?.name,
+        municipal: useMunicipal
+          ? { town: useMunicipal.town, label: useMunicipal.contacts[0]?.label, exact: useMunicipal.matchedIntent }
+          : useTownResource
+            ? { town: useTownResource.town.name, label: useTownResource.label, exact: true }
+            : undefined,
+        count: responseSources.length,
+        category: want?.label ?? retrieval.meta.qualifiers.categoryLabel,
+        openNow: openNowRequested,
+        downtown: retrieval.meta.qualifiers.downtown,
+        nearMe: retrieval.meta.qualifiers.nearMe,
+        nearMeApplied: retrieval.meta.nearMeApplied,
+        strictNearest,
+        contextLabel: retrieval.meta.contextLabel,
+        eventIntent: isEventSearchIntent(q),
+        regions: intent.regions,
+        reservation: intent.reservation,
+        requestedTime: intent.requestedTime,
+        sources: responseSources,
+      });
     const supplements = [
       !wantsWeather(q) ? weatherSafety : null,
       amenitySupplement?.answer,
