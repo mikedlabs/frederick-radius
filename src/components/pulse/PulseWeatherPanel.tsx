@@ -71,7 +71,7 @@ function buildDays(daily: NwsHourly[]): Day[] {
   return days.slice(0, 7);
 }
 
-function Stat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function Stat({ label, value, valueColor, detail }: { label: string; value: string; valueColor?: string; detail?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
@@ -80,6 +80,11 @@ function Stat({ label, value, valueColor }: { label: string; value: string; valu
       <span className="font-mono text-[14px] font-semibold tabular-nums leading-none" style={{ color: valueColor ?? "var(--app-ink)" }}>
         {value}
       </span>
+      {detail ? (
+        <span className="font-mono text-[8.5px] leading-tight" style={{ color: "var(--app-ink-3)" }}>
+          {detail}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -269,10 +274,17 @@ export default async function PulseWeatherPanel({
           <Stat label="Wind" value={`${cur.windDirection} ${windMph}`} />
           <Stat label="Rain" value={`${popMax}%`} />
           <Stat label="Dewpoint" value={cur.dewpointC != null ? `${Math.round(cToF(cur.dewpointC))}°` : "-"} />
+          {/* The AQI carries its own receipt: a bare "Ozone AQI 38, Good"
+              beside a same-day smoke bulletin reads as a contradiction
+              (owner report, 2026-07-18) even when both are true - the
+              alert covered the morning, the storms scrubbed the air, and
+              the reading is an hourly station value. Naming the hour and
+              the station area lets the number defend itself. */}
           <Stat
             label={aqi ? aqiParameterLabel(aqi.parameter) : "Air quality"}
             value={aqi ? `AQI ${aqi.aqi} · ${aqi.category.name}` : "-"}
             valueColor={aqi ? aqi.category.color : undefined}
+            detail={aqi ? `as of ${((aqi.hourObserved % 12) || 12)}${aqi.hourObserved < 12 ? "am" : "pm"} · ${aqi.reportingArea}` : undefined}
           />
         </div>
 
