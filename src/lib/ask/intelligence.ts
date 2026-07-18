@@ -8,7 +8,7 @@ import { parseAskIntent, type AskIntent } from "@/lib/ask/intent";
 import { clockLine, normalizePlainTextAnswer, optionCountInstruction, scopeAskEvents } from "@/lib/ask/context";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import type { AskAction, AskPlanPreview, AskSource } from "@/lib/ask/contracts";
-import { filterCitedSources } from "@/lib/ask/citations";
+import { filterCitedSources, sourceIsCited } from "@/lib/ask/citations";
 import { hybridPlaceSearch, fuseRankedIds } from "@/lib/ask/hybrid-search";
 import {
   buildTasteProfile,
@@ -363,18 +363,37 @@ export async function runRadiusAgent(
       timeout: { totalMs: AGENT_TOTAL_TIMEOUT_MS, stepMs: AGENT_STEP_TIMEOUT_MS },
     });
     if (!output) return null;
+    const answer = normalizePlainTextAnswer(output.answer);
     const sources: AskSource[] = [];
+    const showDistance = Boolean(context.origin && context.canShowDistance !== false);
     for (const slug of output.placeSlugs) {
       const place = placeEvidence.get(slug);
       if (place && !sources.some((source) => source.slug === slug)) {
-        sources.push(placeSource(place, Boolean(context.origin && context.canShowDistance !== false)));
+        sources.push(placeSource(place, showDistance));
       }
     }
     for (const slug of output.eventSlugs) {
       const event = eventEvidence.get(slug);
       if (event && !sources.some((source) => source.slug === slug)) sources.push(eventSource(event));
     }
-    const answer = normalizePlainTextAnswer(output.answer);
+    // Citation recovery: the model sometimes narrates a pick without
+    // echoing its slug into the structured output, and the answer then
+    // rendered with ZERO source cards — a recommendation with no visible
+    // receipt (measured live: "what should i do tonight" named two real
+    // events, sources: 0). Any evidence row the answer actually NAMES
+    // gets its card, by the same test filterCitedSources applies below,
+    // so a named pick can never go unsourced while unnamed evidence
+    // still stays off the tray.
+    for (const [slug, place] of placeEvidence) {
+      if (!sources.some((source) => source.slug === slug) && sourceIsCited({ name: place.name }, answer)) {
+        sources.push(placeSource(place, showDistance));
+      }
+    }
+    for (const [slug, event] of eventEvidence) {
+      if (!sources.some((source) => source.slug === slug) && sourceIsCited({ name: event.title }, answer)) {
+        sources.push(eventSource(event));
+      }
+    }
     return {
       answer,
       sources: filterCitedSources(sources, answer).slice(0, 12),
