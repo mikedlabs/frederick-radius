@@ -10,12 +10,15 @@ import { deriveStamps, type StampState, type StampTone } from "@/lib/stamps";
 /**
  * Passport — the earned layer of /my-radius.
  *
- * Every stamp renders as a field-guide CANCELLATION stamp (the ink kind a
- * ranger presses into a national-park passport): a double ring, the title
- * bent around the top arc, the county line around the bottom, and the day
- * it was earned in the middle — speckled by an SVG turbulence filter and
- * set at a slightly-off rotation so no two press the same. Deliberately
- * not a badge, a trophy, or anything shiny.
+ * Every stamp renders as a field-guide CANCELLATION seal (the ink kind a
+ * ranger presses into a national-park passport): a flat double ring, the
+ * title bent around the top arc, the second line around the bottom, a
+ * small line engraving in the middle, and the day it was earned beneath
+ * it. Flat ink on the paper, set on an even grid. The first cut of this
+ * dressed the seal up as a POSTAGE stamp — perforated die-cut edge,
+ * speckled postmark strike, random tilt, drop shadow — and the owner
+ * called it what it was (2026-07-18: "cheesy"). Ornament went; the
+ * engraving stayed.
  *
  * Honesty rules:
  *   - Stamps derive ONLY from real local signals (src/lib/stamps.ts).
@@ -169,130 +172,74 @@ function artFor(key: string): string {
   return TOWN_DEFAULT;
 }
 
-/** Perforated stamp outline: a rectangle with punched semicircle bites,
- *  the die-cut edge of a real postage stamp. Built once per geometry. */
-function perfPath(w: number, h: number, r: number, step: number): string {
-  const nx = Math.round(w / step);
-  const ny = Math.round(h / step);
-  let d = `M ${r},0 `;
-  for (let i = 1; i < nx; i++) { const x = (w * i) / nx; d += `L ${(x - r).toFixed(1)},0 A ${r},${r} 0 0 0 ${(x + r).toFixed(1)},0 `; }
-  d += `L ${w - r},0 A ${r},${r} 0 0 0 ${w},${r} `;
-  for (let i = 1; i < ny; i++) { const y = (h * i) / ny; d += `L ${w},${(y - r).toFixed(1)} A ${r},${r} 0 0 0 ${w},${(y + r).toFixed(1)} `; }
-  d += `L ${w},${h - r} A ${r},${r} 0 0 0 ${w - r},${h} `;
-  for (let i = nx - 1; i > 0; i--) { const x = (w * i) / nx; d += `L ${(x + r).toFixed(1)},${h} A ${r},${r} 0 0 0 ${(x - r).toFixed(1)},${h} `; }
-  d += `L ${r},${h} A ${r},${r} 0 0 0 0,${h - r} `;
-  for (let i = ny - 1; i > 0; i--) { const y = (h * i) / ny; d += `L 0,${(y + r).toFixed(1)} A ${r},${r} 0 0 0 0,${(y - r).toFixed(1)} `; }
-  return d + `L 0,${r} A ${r},${r} 0 0 0 ${r},0 Z`;
-}
-const SW = 68; // stamp width in local units
-const SH = 82; // stamp height
-const PERF = perfPath(SW, SH, 2.1, 6.8);
-
-/** Deterministic per-key hash → stable "hand-pressed" irregularity:
- *  rotation, a small vertical drift, and a slight size variance, so the
- *  spread reads organically stamped rather than laid out on a grid. */
-function hashOf(key: string): number {
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-function tilt(key: string): number {
-  return ((hashOf(key) % 13) - 6) * 0.9;
-}
-function drift(key: string): number {
-  return ((hashOf(key + "y") % 9) - 4) * 1.6;
-}
-function sizeOf(key: string): number {
-  return 86 + (hashOf(key + "s") % 12);
-}
-
 export function Stamp({ state, date, index }: { state: StampState; date: string; index: number }) {
   const { def } = state;
   const ink = TONE[def.tone];
-  const fid = `pm-${def.key}`;
-  const seed = (hashOf(def.key) % 11) + 3;
-  const w = sizeOf(def.key);
-  const h = Math.round((w * (SH + 12)) / (SW + 12));
-  const [d1, d2] = date ? [date.replace(/ ’\d+$/, ""), "2026"] : ["EARNED", "HERE"];
-  const longTitle = def.title.length > 11;
+  const arcId = `arc-${def.key}`;
+  const longTitle = def.title.length > 12;
+  const longSub = def.sub.length > 12;
   return (
     <figure
       className="stamp-press m-0"
-      style={{
-        transform: `rotate(${tilt(def.key)}deg) translateY(${drift(def.key)}px)`,
-        marginInline: "-2px",
-        filter: "drop-shadow(0 2px 3px rgba(22,20,14,.22))",
-        "--press-delay": `${Math.min(index, 10) * 85}ms`,
-      } as React.CSSProperties}
+      style={{ "--press-delay": `${Math.min(index, 10) * 85}ms` } as React.CSSProperties}
     >
       <svg
-        viewBox={`-6 -6 ${SW + 12} ${SH + 12}`}
-        width={w}
-        height={h}
+        viewBox="0 0 100 100"
+        width={88}
+        height={88}
         role="img"
         aria-label={`${def.title} stamp, earned ${date || "around here"}`}
       >
         <defs>
-          {/* ink erosion for the postmark strike only — the stamp itself
-              stays crisp, the way print sits under a hand cancellation */}
-          <filter id={fid} x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed={seed} result="n" />
-            <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.5 -0.25" result="a" />
-            <feComposite in="SourceGraphic" in2="a" operator="in" />
-          </filter>
+          {/* Top arc runs clockwise so the title reads upright; the bottom
+              arc runs counter-clockwise so the second line does too. */}
+          <path id={`${arcId}-t`} d="M 50,50 m -35,0 a 35,35 0 1,1 70,0" fill="none" />
+          <path id={`${arcId}-b`} d="M 50,50 m -35,0 a 35,35 0 1,0 70,0" fill="none" />
         </defs>
-        {/* stamp paper with die-cut perforations */}
-        <path d={PERF} fill="var(--app-paper, #FCF8EE)" stroke="var(--app-ink-tint-12, rgba(22,20,14,.14))" strokeWidth="0.5" />
-        {/* engraved frame + tablets + vignette, in the stamp's ink */}
+        {/* One flat ink per seal: double ring, arc text, engraving, date. */}
         <g style={{ color: ink }} stroke="currentColor" fill="currentColor">
-          <rect x="4.5" y="4.5" width={SW - 9} height={SH - 9} fill="none" strokeWidth="1.4" />
-          <rect x="7" y="7" width={SW - 14} height={SH - 14} fill="none" strokeWidth="0.5" />
+          <circle cx="50" cy="50" r="48" fill="none" strokeWidth="2" />
+          <circle cx="50" cy="50" r="43.5" fill="none" strokeWidth="0.7" />
           <text
-            x={SW / 2}
-            y="13.5"
-            textAnchor="middle"
-            fontSize={longTitle ? 4.7 : 5.6}
+            fontSize={longTitle ? 7.6 : 8.4}
             fontWeight="700"
-            letterSpacing={longTitle ? 0.7 : 1.1}
-            {...(def.title.length > 13 ? { textLength: SW - 22, lengthAdjust: "spacingAndGlyphs" as const } : {})}
+            letterSpacing={longTitle ? 0.6 : 1.6}
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
-            {def.title.toUpperCase()}
+            <textPath href={`#${arcId}-t`} startOffset="50%" textAnchor="middle">
+              {def.title.toUpperCase()}
+            </textPath>
           </text>
-          <path d={`M10,16.5 h${SW - 20}`} strokeWidth="0.5" />
-          <g dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
-          <path d={`M10,${SH - 16} h${SW - 20}`} strokeWidth="0.5" />
           <text
-            x={SW / 2}
-            y={SH - 9.5}
-            textAnchor="middle"
-            fontSize="4.4"
+            fontSize="6.6"
             fontWeight="600"
-            letterSpacing="0.8"
-            {...(def.sub.length > 13 ? { textLength: SW - 22, lengthAdjust: "spacingAndGlyphs" as const } : {})}
+            letterSpacing={longSub ? 0.5 : 1.2}
             stroke="none"
             style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
           >
-            {def.sub.toUpperCase()}
+            <textPath href={`#${arcId}-b`} startOffset="50%" textAnchor="middle">
+              {def.sub.toUpperCase()}
+            </textPath>
           </text>
-        </g>
-        {/* the cancellation: earning IS the postmark, struck over the corner */}
-        <g
-          filter={`url(#${fid})`}
-          stroke="var(--app-ink-2, #423E34)"
-          fill="var(--app-ink-2, #423E34)"
-          opacity="0.85"
-          transform={`rotate(-10 ${SW - 4} 6)`}
-        >
-          <circle cx={SW - 4} cy="6" r="11.5" fill="none" strokeWidth="1.5" />
-          <text x={SW - 4} y="4.4" textAnchor="middle" fontSize="5" fontWeight="700" letterSpacing="0.4" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
-            {d1}
+          {/* Side pips where the two arc lines meet, the engraver's rest. */}
+          <circle cx="12.5" cy="50" r="1.4" stroke="none" />
+          <circle cx="87.5" cy="50" r="1.4" stroke="none" />
+          {/* Line engraving, drawn in the legacy 68-unit space; scaled and
+              centered here. Static markup, no user input. */}
+          <g transform="translate(18.7, 2) scale(0.92)" dangerouslySetInnerHTML={{ __html: artFor(def.key) }} />
+          <text
+            x="50"
+            y="66.5"
+            textAnchor="middle"
+            fontSize="6"
+            fontWeight="700"
+            letterSpacing="0.8"
+            stroke="none"
+            style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
+          >
+            {date || "COLLECTED"}
           </text>
-          <text x={SW - 4} y="10.6" textAnchor="middle" fontSize="5" fontWeight="700" stroke="none" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
-            {d2}
-          </text>
-          <path d={`M ${SW - 26},16 q 8,3 22,3 M ${SW - 28},20.5 q 10,3 26,2.6`} fill="none" strokeWidth="1.1" />
         </g>
       </svg>
       <figcaption className="sr-only">{def.hint}</figcaption>
@@ -406,7 +353,7 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
         </p>
 
         {earned.length > 0 ? (
-          <div className="relative flex flex-wrap items-center justify-start gap-y-4 pl-1">
+          <div className="relative grid grid-cols-3 justify-items-center gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5">
             {earned.map((s, i) => (
               <Stamp key={s.def.key} state={s} date={stampDay(dates[s.def.key] ?? "")} index={i} />
             ))}

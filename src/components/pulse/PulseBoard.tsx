@@ -349,28 +349,28 @@ export default function PulseBoard({
 
   const degraded = hero.degraded ?? false;
   const heroColor = hero.allClear ? "var(--app-positive)" : degraded ? "var(--app-warning)" : "var(--app-danger)";
-  const HeroIcon = hero.allClear ? ShieldCheck : degraded ? AlertTriangle : Siren;
+  // The status word the masthead prints beside the dateline — typography
+  // carries the state, not an icon bubble (owner report, 2026-07-18: the
+  // rings + badge read like a status widget, not the front page it fronts).
+  const statusWord = hero.allClear ? "All clear" : degraded ? "Watching" : "Active alert";
 
   return (
     <>
-      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-7 pt-8 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-black/6" aria-hidden>
-          <span className="absolute inset-10 rounded-full border border-black/6" />
-          <span className="absolute inset-[5rem] rounded-full" style={{ border: `1px solid color-mix(in srgb, ${heroColor} 38%, transparent)` }} />
-          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: heroColor, boxShadow: `0 0 0 9px color-mix(in srgb, ${heroColor} 13%, transparent)` }} />
-        </div>
+      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-7 pt-7 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-9 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
         <div className="max-w-[42rem]">
-          <div className="relative flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.17em] text-black/65">
-            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
-            Frederick County status
+          {/* Masthead rule + dateline: the status color lives in one confident
+              rule over the wire-desk eyebrow, newspaper fashion. */}
+          <div aria-hidden className="mb-3 h-[3px] w-14 rounded-full" style={{ background: heroColor }} />
+          <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-[0.17em] text-black/65">
+            <span>Frederick County status</span>
+            <span aria-hidden className="text-black/30">·</span>
+            <span className="flex items-center gap-1.5" style={{ color: heroColor }}>
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: heroColor }} />
+              {statusWord}
+            </span>
             <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
-          <div className="mt-3 flex items-start gap-3">
-            <span aria-hidden className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ color: heroColor, background: `color-mix(in srgb, ${heroColor} 18%, transparent)` }}>
-              <HeroIcon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-            </span>
-            <div className="min-w-0">
-          <h1 className="max-w-[34rem] font-serif text-[clamp(2.25rem,10vw,4.4rem)] font-semibold leading-[0.9] tracking-[-0.05em] text-balance text-[var(--app-ink)]">
+          <h1 className="mt-3 max-w-[38rem] font-serif text-[clamp(1.9rem,7.5vw,3.4rem)] font-semibold leading-[0.95] tracking-[-0.04em] text-balance text-[var(--app-ink)]">
             {hero.line}
           </h1>
           <p className="mt-3 max-w-[36rem] text-[13px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
@@ -383,8 +383,6 @@ export default function PulseBoard({
               </button>
             </div>
           )}
-            </div>
-          </div>
           <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
           <p className="mt-2 flex items-center gap-1.5 text-[9px] text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
         </div>
