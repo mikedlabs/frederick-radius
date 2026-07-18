@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ChevronUp, Search } from "lucide-react";
 import { ALL_BEERS } from "@/data/beers";
+import CellarWall from "./CellarWall";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 const EXPLORER_ID = "beer-explorer-panel";
@@ -106,7 +107,13 @@ export default function BeerExplorerLauncher({
         </div>
       </div>
 
-      <div hidden={open} className="grid gap-5 p-5 text-[#281e14] sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
+      <div hidden={open} className="space-y-5 p-5 text-[#281e14] sm:p-7">
+        {/* The cellar at a glance: every signature beer as one band of
+            color, family by family, taller = stronger. The wall IS the
+            "see all the beers" moment; the search below is the door to
+            any single one of them. */}
+        <CellarWall />
+        <div className="grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="flex gap-3.5">
           <span aria-hidden className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#85501f]/30 text-[#85501f]">
             <Search className="h-4 w-4" strokeWidth={1.9} />
@@ -141,6 +148,7 @@ export default function BeerExplorerLauncher({
           <Search className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Open beer search
         </button>
+        </div>
       </div>
     </section>
   );
