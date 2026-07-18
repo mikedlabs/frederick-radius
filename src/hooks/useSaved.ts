@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { ensurePersistentStorage } from "@/lib/persistence";
 
 const KEY = "fr:saved:v1";
 
@@ -46,6 +47,10 @@ function write(items: SavedRef[]) {
   if (typeof window === "undefined") return;
   const next = JSON.stringify(items);
   window.localStorage.setItem(KEY, next);
+  // The user just saved something worth protecting — ask the browser to
+  // move this origin's storage from best-effort (evictable; iOS clears
+  // it after ~7 idle days) to persistent. Idempotent, promptless.
+  ensurePersistentStorage();
   cachedRaw = next;
   cachedSnapshot = items;
   listeners.forEach((l) => l());
