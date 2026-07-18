@@ -145,3 +145,28 @@ export async function deliverDataHealthReport(input: {
     return "skipped";
   }
 }
+
+/**
+ * Weekly business digest delivery — a fresh issue every Monday (no
+ * lifecycle: a digest is a report, not an incident). Same token and
+ * repo as the health alerts; "skipped" without the token.
+ */
+export async function deliverWeeklyDigest(body: string, now: Date = new Date()): Promise<DeliveryResult> {
+  const token = process.env.GITHUB_ALERTS_TOKEN;
+  if (!token) return "skipped";
+  const repo = process.env.GITHUB_ALERTS_REPO ?? REPO_FALLBACK;
+  const week = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+  }).format(now);
+  try {
+    const res = await gh(token, "POST", `/repos/${repo}/issues`, {
+      title: `[digest] The week in Frederick Radius · ${week}`,
+      body,
+    });
+    return res.ok ? "created" : "skipped";
+  } catch {
+    return "skipped";
+  }
+}

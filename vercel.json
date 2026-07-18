@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "crons": [
     {
       "path": "/api/cron/warm-events",
@@ -65,6 +67,10 @@
     {
       "path": "/api/cron/golden-hour",
       "schedule": "*/15 20-23,0-1 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-digest",
+      "schedule": "0 12 * * 1"
     }
   ],
   "headers": [
