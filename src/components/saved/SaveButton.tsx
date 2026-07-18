@@ -53,7 +53,7 @@ async function maybeOfferEventReminders(slug: string): Promise<void> {
     const reg = await navigator.serviceWorker?.ready;
     if (await reg?.pushManager.getSubscription()) return; // already wired
     toast("Want a nudge an hour before it starts?", {
-      description: "One reminder per saved event. Nothing else.",
+      description: "Radius sends one reminder for each saved event.",
       duration: 8000,
       action: {
         label: "Remind me",
@@ -66,7 +66,7 @@ async function maybeOfferEventReminders(slug: string): Promise<void> {
               void syncSavedEventReminder(slug, true);
               toast.success("You'll get a nudge an hour before.");
             } else if (r === "denied" || r === "dismissed") {
-              toast("No reminders then. You can change this in Settings.");
+              toast("Reminders are off for now. You can change this in Settings.");
             }
           });
         },

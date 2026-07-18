@@ -1,8 +1,8 @@
 {
   "linganore-winecellars-mount-airy": {
-    "known_for": "Award-winning Maryland wines produced over three generations at Maryland's largest winery.",
+    "known_for": "Linganore is Maryland's largest winery and has produced award-winning Maryland wines across three generations.",
     "hours_text": "Mon–Thurs 10am–5pm, Fri 10am–8pm, Sat 10am–8pm, Sun 12pm–6pm. Closed: New Year's Day, Easter, Thanksgiving, Christmas. Christmas Eve 10am–3pm, New Year's Eve 10am–3pm, July 4th 10am–5pm.",
-    "notable": "Free winery tours Saturdays & Sundays at 12pm & 4pm. Red Shedman Brewery (craft brews, cider, seltzer) located adjacent to tasting room. Food truck-music weekends held seasonally.",
+    "notable": "Free winery tours run at noon and 4pm on Saturday and Sunday. Red Shedman Brewery sits next to the tasting room, and seasonal weekends bring food trucks and music.",
     "name": "Linganore Winecellars",
     "source": {
       "url": "http://www.linganorewines.com/",
@@ -10,10 +10,10 @@
     }
   },
   "ayse-meze-lounge-frederick": {
-    "known_for": "Mediterranean and Neapolitan Italian cuisine featuring pizzas, pastas, mezes, and wood-fired seafood.",
+    "known_for": "Ayse serves Mediterranean and Neapolitan Italian food, including pizza, pasta, meze, and wood-fired seafood.",
     "happy_hour": "Tuesday - Friday 3:30pm-7pm",
     "hours_text": "Monday CLOSED; Tuesday - Thursday 11:30am - 8:30pm; Friday 11:30am - 9:00pm; Saturday 4pm - 9:00pm; Sunday 11:30am - 8:30pm",
-    "notable": "Private dining room accommodates up to 55 guests; Sunday brunch 11:30am - 2pm; lunch express service Tuesday - Friday 11:30am - 3:30pm",
+    "notable": "The private dining room holds up to 55 guests. Sunday brunch runs from 11:30am to 2pm, while lunch express service runs Tuesday through Friday from 11:30am to 3:30pm.",
     "name": "Ayse Meze Lounge",
     "source": {
       "url": "https://aysemeze.com/",
@@ -21,13 +21,13 @@
     }
   },
   "magoos-frederick": {
-    "known_for": "Traditional Irish pub with Irish classics and pints in downtown Frederick.",
+    "known_for": "Magoo's is a traditional downtown Irish pub serving Irish standards and pints.",
     "specials": [
       "Whiskey Wednesday",
       "Traditional Irish Set 1st, 3rd, and 5th Thursdays each month"
     ],
     "hours_text": "Sunday: 11:00 AM-8:00 PM, Monday: 11:00 AM-9:00 PM, Tuesday: 11:00 AM-9:00 PM, Wednesday: 11:00 AM-9:00 PM, Thursday: 11:00 AM-10:00 PM, Friday: 11:00 AM-11:00 PM, Saturday: 11:00 AM-11:00 PM",
-    "notable": "The Celtic Cave; dine in or take out available; Ireland and Scotland trips offered",
+    "notable": "The Celtic Cave and Bridal Suite provide space to get ready for private events. The pub offers dine-in and takeout and also organizes trips to Ireland and Scotland.",
     "name": "Magoo's Pub & Eatery",
     "source": {
       "url": "http://www.magoosfrederick.com/",
@@ -35,10 +35,10 @@
     }
   },
   "acacia-house-frederick": {
-    "known_for": "Wood-grilled dishes, handcrafted cocktails with fresh ingredients, and elevated comfort food in a modern culinary setting.",
+    "known_for": "Fire&Oak serves wood-grilled dishes and comfort food alongside cocktails made with fresh ingredients.",
     "hours_text": "Sunday–Thursday 11:00 AM–11:00 PM, Friday–Saturday 11:00 AM–1:00 AM. Brunch (Saturday & Sunday only) 10:00 AM–2:00 PM.",
     "reservations_url": "https://www.fireandoakrestaurant.com/reservations",
-    "notable": "Located in historic downtown Frederick in the space formerly occupied by Firestone's.",
+    "notable": "The restaurant is in the former Firestone's space in downtown Frederick.",
     "name": "Fire&Oak Culinary Tavern",
     "source": {
       "url": "https://www.fireandoakrestaurant.com/",
@@ -46,9 +46,9 @@
     }
   },
   "monocacy-brewing-frederick": {
-    "known_for": "Quality craft beer brewed and packaged in historic Frederick, MD.",
+    "known_for": "Monocacy beer is brewed and packaged in Frederick.",
     "hours_text": "Monday: 3–9PM, Tuesday: 3–9PM, Wednesday: 3–10PM, Thursday: 3–10PM, Friday: 12–10PM, Saturday: 12–10PM, Sunday: 12–8PM",
-    "notable": "Brewery and tasting room open to the public; offers online gift cards and private event bookings.",
+    "notable": "The brewery and tasting room are open to the public. Online gift cards and private-event bookings are available.",
     "name": "Monocacy Brewing Company",
     "source": {
       "url": "http://monocacybrewing.com/",
@@ -56,9 +56,9 @@
     }
   },
   "attaboy-beer-frederick": {
-    "known_for": "Independent craft brewery in Frederick, Maryland brewing NEIPAs, West Coast IPAs, Pils, Pales, Lagers, Belgian styles, Seltzers, and Hard Ciders with a dog-friendly garage and beer garden.",
+    "known_for": "Attaboy is an independent Frederick brewery making hazy and West Coast IPAs, pilsners, pale ales, lagers, Belgian styles, seltzers, and hard cider.",
     "hours_text": "Tuesday-Sunday 12-10p",
-    "notable": "Dog-friendly garage & beer garden; food trucks daily; no reservations needed, seat yourself; casual vibe",
+    "notable": "The garage and beer garden are dog-friendly, and food trucks visit daily. Seating is casual and first-come, with no reservation required.",
     "name": "Attaboy Beer",
     "source": {
       "url": "http://www.attaboybeer.com/",
@@ -66,7 +66,7 @@
     }
   },
   "rockwell-brewery-frederick": {
-    "known_for": "Award-winning craft beers brewed onsite, live music on weekends, and pub food from their own kitchen.",
+    "known_for": "Rockwell brews award-winning beer on site and serves pub food from its own kitchen, with live music on weekends.",
     "happy_hour": "Monday to Friday 3:00–6:00pm: pitchers & special pricing on drinks",
     "specials": [
       "Wednesday: Trivia Night (sign ups 6:30pm, starts 7pm)",
@@ -76,7 +76,7 @@
       "Recurring: Latin Music DJ Dance Party (6/25, 7/30, 8/27 at 7:30pm, no cover charge)"
     ],
     "hours_text": "Mon–Thurs 3pm–9pmish, Fri noon–10:30pmish, Sat noon–10:30pmish, Sun noon–8pmish",
-    "notable": "Dogs welcome in outdoor areas (leashed and well-behaved); private event space available; family-friendly with games; gluten-reduced beer options available.",
+    "notable": "Leashed, well-behaved dogs are welcome outdoors, and private-event space is available. The taproom has games for families and offers gluten-reduced beer.",
     "name": "Rockwell Brewery",
     "source": {
       "url": "http://www.rockwellbrewery.com/",
@@ -84,10 +84,10 @@
     }
   },
   "milkhouse-brewery-mt-airy": {
-    "known_for": "Classic beer styles brewed with Maryland hops, located at Stillpoint Farm with a taproom and local mercantile.",
+    "known_for": "Milkhouse brews classic beer styles with Maryland hops at Stillpoint Farm, which also has a taproom and local mercantile.",
     "happy_hour": "Friday Happy Hour: 3-5pm, $1 off Pints; Thursday: $5 Pours All Night",
     "hours_text": "Taproom Hours: Thursday 5-8pm, Friday 3-8pm, Saturday 1-8pm, Sunday 1-6pm. Mercantile Hours: Saturday 2-7pm, Sunday 2-6pm",
-    "notable": "Live music every Saturday; dog-friendly events (Paws and Pints); on-site mercantile with local produce, meats, and artisan goods; regular events including yoga, star gazing, and stitch & sip gatherings.",
+    "notable": "Live music runs every Saturday, and Paws and Pints events welcome dogs. The on-site mercantile carries local food and goods, while the event calendar includes yoga, stargazing, and stitch-and-sip gatherings.",
     "name": "Milkhouse Brewery",
     "source": {
       "url": "https://www.milkhousebrewery.com/",
@@ -95,9 +95,9 @@
     }
   },
   "dublin-roasters-frederick": {
-    "known_for": "Hand-roasted small-batch coffee using environmentally-friendly air roasting, featuring organic and fair-trade beans from small family coffee farms.",
+    "known_for": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
     "hours_text": "Mon – Fri: 7 AM – 3 PM, Sat – Sun: 8 AM – 3 PM",
-    "notable": "Features local artists' work throughout the store; dog-friendly; offers meeting rooms for 1-15 people; hosts book clubs, community groups, and serves as a workspace.",
+    "notable": "The shop displays work by local artists and welcomes dogs. Meeting rooms hold one to 15 people, and the space hosts book clubs and community groups.",
     "name": "Dublin Roasters Coffee",
     "source": {
       "url": "https://dublinroasterscoffee.com/",
@@ -105,9 +105,9 @@
     }
   },
   "frederick-coffee-company-frederick": {
-    "known_for": "Neighborhood coffee shop since 1991 featuring espresso drinks, breakfast sandwiches, and house-made soups.",
+    "known_for": "Frederick Coffee Co. has served espresso drinks, breakfast sandwiches, and house-made soups since 1991.",
     "hours_text": "Monday–Thursday 6AM–5PM, Friday–Saturday 6AM–6PM, Sunday 6AM–5PM",
-    "notable": "Located in historic Everedy Square & Shab Row in Downtown Frederick; features rotating local art on the walls",
+    "notable": "The shop is in Everedy Square and Shab Row in downtown Frederick, with rotating work by local artists on its walls.",
     "name": "Frederick Coffee Co & Cafe",
     "source": {
       "url": "http://fredcoffeeco.com/",
@@ -115,9 +115,9 @@
     }
   },
   "isabellas-taverna-tapas-bar-frederick": {
-    "known_for": "Spanish tapas and taverna cuisine in historic downtown Frederick.",
+    "known_for": "Isabella's serves Spanish tapas and taverna food in downtown Frederick.",
     "hours_text": "Monday–Thursday: 11:30AM–9PM, Friday: 11:30AM–10PM (Bar 11PM), Saturday: 8AM–10PM (Bar 11PM), Sunday: 8AM–8PM",
-    "notable": "Weekend brunch Saturday & Sunday from 8am–3pm; online ordering available.",
+    "notable": "Weekend brunch runs from 8am to 3pm on Saturday and Sunday. Online ordering is available.",
     "name": "Isabella's Taverna & Tapas Bar",
     "source": {
       "url": "http://www.isabellas-tavern.com/",
@@ -125,8 +125,8 @@
     }
   },
   "bushwaller-irish-pub-frederick": {
-    "known_for": "Irish pub known for quality beers (18 draft options including Guinness), whiskeys, and Irish/American gastro pub comfort food.",
-    "notable": "Historic building dating to 1840s; 18-tap draft system originally installed by Guinness; popular for St. Patrick's Day and watching soccer/rugby matches.",
+    "known_for": "Bushwaller's is an Irish pub with 18 draft options, including Guinness, plus whiskey and Irish-American comfort food.",
+    "notable": "The building dates to the 1840s, and Guinness originally installed its 18-tap draft system. The pub draws crowds for St. Patrick's Day and televised soccer or rugby matches.",
     "name": "Bushwaller's",
     "source": {
       "url": "http://bushwallers.com/",
@@ -134,7 +134,7 @@
     }
   },
   "el-rancho-frederick": {
-    "known_for": "Mexican food with fresh, seasonal ingredients sourced from local farmers' markets; dine-in, outdoor patio, and takeout options.",
+    "known_for": "Gran Azteca serves Mexican food made with seasonal ingredients from local farmers' markets, with dine-in, patio, and takeout options.",
     "specials": [
       "Monday: Fajitas (Steak or Chicken) $20, House Margaritas (Any Flavor) $7",
       "Tuesday: Taco Tuesday $3.99 (Steak, Chicken, Birria, Beef Tongue, Chorizo, Al Pastor, Carnitas, Fish, Shrimp, Barbacoa)",
@@ -142,8 +142,7 @@
       "Thursday: Taco Trio $15 (Served with Rice & Beans)",
       "Friday: Corona-ritas $15 (Any Flavor)"
     ],
-    "hours_text": "Open today 10:30 am – 09:30 pm",
-    "notable": "Outdoor patio available; 22 years of experience from the Hernandez del Cid family restaurant legacy.",
+    "notable": "An outdoor patio is available. The Hernandez del Cid family's restaurant experience spans 22 years.",
     "name": "Gran Azteca Mexican Food Bar & Grill",
     "source": {
       "url": "http://granaztecafrederick.com/",
@@ -151,8 +150,8 @@
     }
   },
   "smoketown-brewing-brunswick": {
-    "known_for": "Fresh craft beer, good food, and community events in a restored downtown fire station with a dog-friendly patio overlooking the bridge and passing trains.",
-    "notable": "Dog-friendly spacious patio with views of the bridge and passing trains; upstairs event hall (Upstairs at Smoketown) available for gatherings; located in a restored downtown fire station.",
+    "known_for": "Smoketown serves beer and food in a restored Brunswick fire station, with community events and a dog-friendly patio overlooking the railroad bridge.",
+    "notable": "The spacious patio welcomes dogs and overlooks the bridge and passing trains. Upstairs at Smoketown provides an event hall for gatherings.",
     "name": "Smoketown Brewing",
     "source": {
       "url": "http://www.smoketownbrewing.com/",
@@ -160,7 +159,7 @@
     }
   },
   "main-cup-middletown": {
-    "known_for": "Comfort food classics and globally inspired dishes served in a restaurant and bar setting.",
+    "known_for": "The Main Cup serves comfort-food standards and globally inspired dishes in a restaurant and bar setting.",
     "specials": [
       "Prime Rib Monday",
       "Toss It Up Tuesday Salad Special",
@@ -175,12 +174,12 @@
     }
   },
   "the-cozy-creamery-thurmont": {
-    "known_for": "Award-winning broasted chicken and home-style cooking made with fresh, locally sourced ingredients.",
+    "known_for": "The menu features award-winning broasted chicken and home-style cooking made with fresh, locally sourced ingredients.",
     "specials": [
       "8 pieces of chicken & 2 pint sides $18.99 - Every Wednesday"
     ],
     "hours_text": "Monday Closed; Tuesday - Friday 8:00 AM - 8:00 PM; Saturday 7:00 AM - 8:00 PM; Sunday 7:00 AM - 2:00 PM",
-    "notable": "Family-owned restaurant that offers catering services; known for warm hospitality and community involvement.",
+    "notable": "The family-owned restaurant offers catering and takes part in community events.",
     "name": "Thurmont Kountry Kitchen",
     "source": {
       "url": "https://www.thurmontkountrykitchen.com/",
@@ -188,9 +187,9 @@
     }
   },
   "isabellas-taverna-tapas-bar": {
-    "known_for": "Spanish tapas bar offering a slice of Spain in historic downtown Frederick.",
+    "known_for": "Isabella's serves Spanish tapas in downtown Frederick.",
     "hours_text": "Monday–Thursday: 11:30AM–9PM; Friday: 11:30AM–10PM (Bar 11PM); Saturday: 8AM–10PM (Bar 11PM); Sunday: 8AM–8PM",
-    "notable": "Weekend brunch available Saturday & Sunday from 8am-3pm; online ordering available",
+    "notable": "Weekend brunch runs from 8am to 3pm on Saturday and Sunday. Online ordering is available.",
     "name": "Isabella's Taverna & Tapas Bar",
     "source": {
       "url": "http://www.isabellas-tavern.com/",
@@ -198,9 +197,9 @@
     }
   },
   "wastlers-barber-shop": {
-    "known_for": "Quality haircuts and grooming services with a tradition of precision cuts, classic shaves, and modern styles since 1965.",
+    "known_for": "Wastler's has provided precision haircuts, classic shaves, and modern grooming services since 1965.",
     "hours_text": "Mon–Wed: 7am–6pm, Thurs–Sat: 7am–6pm, Sun: 8am–4:30pm",
-    "notable": "Family-owned barbershop established in 1965, serving generations of customers in Frederick, MD.",
+    "notable": "The family-owned barbershop opened in 1965 and has served generations of Frederick customers.",
     "name": "Wastler’s Barber Shop",
     "source": {
       "url": "http://www.wastlersbarbershop.com/",
@@ -208,11 +207,11 @@
     }
   },
   "7th-sister": {
-    "known_for": "Mid-Atlantic cuisine featuring oysters with blackberry mignonette and house crab cake seared golden with whole grain mustard and herbs.",
+    "known_for": "7th Sister serves Mid-Atlantic food, including oysters with blackberry mignonette and a house crab cake seared until golden with whole-grain mustard and herbs.",
     "happy_hour": "Thu - Fri: 4pm-6pm",
     "hours_text": "Brunch Sat-Sun: 11am-3pm, Dinner Seating Thu - Sun: 4pm-9pm",
     "reservations_url": "https://7thsister.com/reservations",
-    "notable": "Historic mansion setting in Frederick with The Shed & Patio, available for private events and gatherings.",
+    "notable": "The restaurant occupies a historic Frederick mansion, and The Shed & Patio is available for private events.",
     "name": "7th Sister",
     "source": {
       "url": "https://www.7thsister.com/",
@@ -228,9 +227,9 @@
     }
   },
   "drewskiithebarber": {
-    "known_for": "Quality haircuts and grooming services with a tradition of professional barbering serving generations of customers since 1965.",
+    "known_for": "The barbershop has provided haircuts and grooming services to generations of customers since 1965.",
     "hours_text": "Mon–Wed: 7am–6pm, Thurs–Sat: 7am–6pm, Sun: 8am–4:30pm",
-    "notable": "Located at 48 N Market St, Frederick, MD; established in 1965 and a community staple for over five decades.",
+    "notable": "The barbershop was founded in 1965 and is now at 48 North Market Street.",
     "name": "Wastler’s Barber Shop",
     "source": {
       "url": "http://www.wastlersbarbershop.com/",
@@ -238,7 +237,7 @@
     }
   },
   "best-of-business-listings": {
-    "known_for": "Retro glass bottle soda pop, TikTok candy, and local ice cream",
+    "known_for": "The shop sells soda in retro glass bottles, candy popular on TikTok, and local ice cream.",
     "name": "North Market Pop Shop",
     "source": {
       "url": "http://northmarketpopshop.com/",
@@ -246,8 +245,8 @@
     }
   },
   "frederick-soups-and-comfort-foods": {
-    "known_for": "Soups and comfort foods with a menu that changes weekly and fluctuates daily.",
-    "notable": "Menu changes frequently; small batches made daily; location closes when sold out; no phone orders or delivery; no advance orders accepted.",
+    "known_for": "The menu centers on soup and comfort food, with weekly changes and daily variation.",
+    "notable": "The kitchen makes small batches each day and closes when they sell out. It does not accept phone or advance orders and does not offer delivery.",
     "name": "Frederick Soups and Comfort Foods",
     "source": {
       "url": "http://www.fredericksoups.com/",
@@ -255,9 +254,9 @@
     }
   },
   "manoushe": {
-    "known_for": "Artisanal croissants, pastries, and baked goods including cruffins, scones, and specialty cakes.",
+    "known_for": "Bakehouse makes croissants and other baked goods, including cruffins, scones, and specialty cakes.",
     "hours_text": "Thursday - Sunday: 8:00am - 2:00pm (or sell out!)",
-    "notable": "Located at 69 South Market Street in Downtown Frederick; operates as a storefront bakery.",
+    "notable": "The storefront bakery is at 69 South Market Street in downtown Frederick.",
     "name": "Bakehouse",
     "source": {
       "url": "http://www.bakehousemd.com/",
@@ -265,7 +264,7 @@
     }
   },
   "mon-bon-croissant": {
-    "known_for": "Delicious croissants and a bakery cafe experience.",
+    "known_for": "Mon Bon is a bakery cafe that specializes in croissants.",
     "name": "Mon Bon Croissant Bakery Cafe",
     "source": {
       "url": "http://monboncroissant.com/",
@@ -273,9 +272,9 @@
     }
   },
   "mackies-southern-bbq": {
-    "known_for": "Texas-style slow-smoked barbecue, particularly Baby Back Ribs, Pulled Pork, and Brisket.",
+    "known_for": "Mackie's serves Texas-style, slow-smoked barbecue, including baby back ribs, pulled pork, and brisket.",
     "hours_text": "Sunday 11:00 AM - 07:00 PM, Monday Closed, Tuesday–Saturday 11:00 AM - 07:00 PM",
-    "notable": "Family-owned barbecue business with a food truck in Olney; catering available for events; dine-in service offered; portion of every sale supports local schools and first responders.",
+    "notable": "This family-owned barbecue business operates a food truck in Olney and offers dine-in service and event catering. A portion of every sale supports local schools and first responders.",
     "name": "Mackie's Barbecue - Catering",
     "source": {
       "url": "https://www.mackiesbarbecue.com/",
@@ -283,9 +282,9 @@
     }
   },
   "the-station-market-and-cafe": {
-    "known_for": "Farm to table vegetarian cafe with locally sourced ingredients, fresh pastries, and house-made soups.",
+    "known_for": "The Station is a farm-to-table vegetarian cafe using local ingredients in its pastries, soups, and other dishes.",
     "hours_text": "Mon Closed, Tue Closed, Wed 09:00 am – 04:00 pm, Thu 09:00 am – 04:00 pm, Fri 09:00 am – 05:00 pm, Sat 09:00 am – 05:00 pm, Sun 09:00 am – 04:00 pm",
-    "notable": "Kitchen opens around 9:30 am daily with full pastry selection; offers weekday online ordering for cafe food with 20-25 minute pickup time; hosts Saturday Farmer's Market and CSA pick-up; available for venue rental and catering.",
+    "notable": "The kitchen opens around 9:30am on operating days, and weekday online orders quote a 20- to 25-minute pickup time. The site hosts a Saturday farmers market and CSA pickup and is available for rentals or catering.",
     "name": "The Station Market & Cafe",
     "source": {
       "url": "http://www.thestationmarketandcafe.com/",
@@ -293,10 +292,10 @@
     }
   },
   "roros-mexican-grill-and-cantina": {
-    "known_for": "Mexican food favorites including quesadillas, nachos, and churros, served fresh daily in a colorful, fun family atmosphere.",
+    "known_for": "Plaza Mexico serves Mexican standards such as quesadillas, nachos, and churros in a colorful family restaurant.",
     "happy_hour": "Monday–Thursday 3pm–7pm: Traditional Jumbo House Margaritas $9.00, all beer $1 off",
     "hours_text": "Mon–Thurs 11am–9:30pm; Fri–Sat 11am–10pm; Sun 11am–9pm",
-    "notable": "Family restaurant with colorful décor and bar serving cerveza and margaritas; kitchen closes 30 minutes prior to restaurant closing time",
+    "notable": "The bar serves beer and margaritas. The kitchen closes 30 minutes before the restaurant.",
     "name": "Plaza Mexico Restaurant",
     "source": {
       "url": "https://www.plazamexicomd.com/",
@@ -304,9 +303,9 @@
     }
   },
   "frederick-coffee-co-cafe": {
-    "known_for": "Neighborhood coffee shop since 1991 featuring specialty espresso drinks, breakfast sandwiches, and house-made soups.",
+    "known_for": "Frederick Coffee Co. has served espresso drinks, breakfast sandwiches, and house-made soups since 1991.",
     "hours_text": "Monday–Thursday 6AM–5PM, Friday–Saturday 6AM–6PM, Sunday 6AM–5PM",
-    "notable": "Located in Everedy Square & Shab Row in Downtown Frederick; colorful historic building formerly a Sinclair Gas Station and Frederick's first video rental store; features rotating local art on walls.",
+    "notable": "The shop occupies a colorful historic building in Everedy Square and Shab Row that once housed a Sinclair gas station and Frederick's first video store. Local art rotates on the walls.",
     "name": "Frederick Coffee Co & Cafe",
     "source": {
       "url": "http://fredcoffeeco.com/",
@@ -314,9 +313,9 @@
     }
   },
   "midnight-run-brewing": {
-    "known_for": "Dynamic and full-flavored craft brews including stouts, sours, IPAs, and Belgian ales, with a diverse tap list that changes weekly.",
+    "known_for": "Midnight Run brews stouts, sours, IPAs, and Belgian ales, with a tap list that changes weekly.",
     "hours_text": "Monday - closed, Tuesday - closed, Wednesday - 5-10p, Thursday - 5-10p, Friday - 4-10p, Saturday - 12-10p, Sunday - 12-8p",
-    "notable": "Dog-friendly tap room with hand-made design; bring your own food; beer available to-go.",
+    "notable": "The taproom welcomes dogs and allows outside food. Beer is available to go.",
     "name": "Midnight Run Brewing",
     "source": {
       "url": "http://www.midnightrunbrew.com/",
@@ -324,9 +323,9 @@
     }
   },
   "sweeties": {
-    "known_for": "Homemade, all-natural specialty flavored ice cream with constantly rotating new flavors, plus candy and gifts.",
+    "known_for": "Sweeties makes all-natural ice cream in rotating flavors and also sells candy and gifts.",
     "hours_text": "Between Labor Day & Memorial Day: Monday–Thursday 12–9pm, Friday 12–10pm, Saturday 11am–10:30pm, Sunday 11am–9pm. Other times weather permitting.",
-    "notable": "Located at Carroll Creek Park (waterfront location), offers free taste tests to help customers choose flavors, sells candy in addition to ice cream, and has umbrella tables for outdoor seating.",
+    "notable": "The Carroll Creek Park shop offers free tastes before purchase and sells candy alongside ice cream. Umbrella tables provide outdoor seating.",
     "name": "Sweeties",
     "source": {
       "url": "http://www.sweetiescompany.com/",
@@ -336,7 +335,7 @@
   "jraymonds-steakhouse": {
     "hours_text": "Kitchen: 5 p.m. - 9 p.m. Sunday-Thursday, 5 p.m. - 10 p.m. Friday-Saturday",
     "happy_hour": "Mon–Fri 4–6pm: Social Hour at the bar",
-    "notable": "Valet parking available via Church Street entrance",
+    "notable": "Valet parking is available at the Church Street entrance.",
     "name": "Wye Oak Tavern",
     "source": {
       "url": "https://www.wyeoaktavern.com/",
@@ -344,7 +343,7 @@
     }
   },
   "hoffman-brothers-ice-cream": {
-    "known_for": "Handcrafted ice cream with signature flavors like Honey Graham, Chocolate Love, and Caramel Crunch, plus nondairy options.",
+    "known_for": "Hoffman Brothers makes ice cream in signature flavors such as Honey Graham, Chocolate Love, and Caramel Crunch, with nondairy options available.",
     "hours_text": "Monday: Closed | Tuesday–Thursday: 3pm–8pm | Friday–Saturday: 3pm–9pm | Sunday: 3pm–8pm",
     "name": "Hoffman Brothers Ice Cream",
     "source": {
@@ -353,9 +352,9 @@
     }
   },
   "tin-corner": {
-    "known_for": "Slow-simmered pho, sizzling rice plates, and fresh Vietnamese cuisine with house-made sauces.",
+    "known_for": "Tin Corner serves slow-simmered pho, sizzling rice plates, and Vietnamese dishes with house-made sauces.",
     "hours_text": "Monday to Sunday 11 AM–9 PM",
-    "notable": "Located in downtown Frederick at the end of Market Street near popular bars and breweries.",
+    "notable": "The restaurant is near the north end of Market Street in downtown Frederick, close to several bars and breweries.",
     "name": "Tin Corner",
     "source": {
       "url": "https://tincornerfrederick.com/",
@@ -364,7 +363,7 @@
   },
   "a": {
     "hours_text": "Monday–Wednesday 10:00am–9:00pm, Thursday 10:00am–9:00pm, Friday 10:00am–11:00pm, Saturday 9:00am–11:00pm, Sunday 9:00am–9:00pm",
-    "notable": "Outdoor seating available",
+    "notable": "Outdoor seating is available.",
     "name": "Up on Market Bistro & Inn",
     "source": {
       "url": "http://www.uponmarket301.com/",
@@ -372,9 +371,9 @@
     }
   },
   "cacique-frederick": {
-    "known_for": "Spanish and Latin-American fine dining featuring Chile Relleno, Paella Valencia, Fajita Trio Deluxe, and award-winning Margaritas and Sangrias.",
+    "known_for": "Cacique serves Spanish and Latin American dishes, including Chile Relleno, Paella Valencia, and Fajita Trio Deluxe, along with award-winning margaritas and sangria.",
     "hours_text": "Sun - Thur: 11:30am - 10pm; Fri & Sat: 11:30am - 11pm",
-    "notable": "Established 2004; second location in Hagerstown, MD; fine dining with comfortable and cozy atmosphere",
+    "notable": "Cacique opened in 2004 and now has a second location in Hagerstown. The Frederick dining room has a comfortable, relaxed setting.",
     "name": "Cacique Restaurant",
     "source": {
       "url": "http://www.caciquerestaurants.com/",

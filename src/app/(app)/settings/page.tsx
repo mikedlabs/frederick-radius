@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   robots: { index: false },
   title: "Settings",
   description:
-    "How Frederick Radius is tuned for you. Persona, where you're anchored, what you're into, and what you hear from us.",
+    "Choose how Frederick Radius uses your home area and interests, and manage your account.",
 };
 
 export default async function SettingsPage() {
@@ -39,14 +39,14 @@ export default async function SettingsPage() {
           Settings
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          How we&apos;re tuned for you.
+          Your Radius settings
         </h1>
         <p
           className="text-[14px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Every pick here tunes what leads on Today and the Map.
-          Nothing here is required, and nothing here is shared.
+          Change what leads on Today and the Map. Preferences stay on this
+          device, while signing in syncs saved places.
         </p>
       </header>
 
@@ -123,7 +123,7 @@ export default async function SettingsPage() {
                 className="block text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Magic link, no password. Your saves come with you.
+                Sign in with a magic link to keep your saves on every device.
               </span>
             </span>
             <span

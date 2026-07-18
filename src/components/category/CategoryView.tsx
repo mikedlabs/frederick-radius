@@ -167,7 +167,7 @@ export default function CategoryView({
         <PlaceList
           places={all}
           initialLayout="list"
-          emptyMessage="We are still seeding this category. Submit a place you love."
+          emptyMessage="No places are listed in this category yet. You can suggest one through the place submission form."
         />
       </CollapsibleSection>
     </div>

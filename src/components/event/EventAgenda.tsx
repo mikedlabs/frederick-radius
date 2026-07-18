@@ -69,7 +69,7 @@ export default function EventAgenda({
     return (
       <EmptyState
         icon={CalendarDays}
-        title="Nothing on the calendar in this range."
+        title="No events are on the calendar in this range."
         body="Try a wider time window from the chips above, or jump to the weekend."
         cta={{ label: "See this weekend", href: "/events?lens=weekend" }}
       />

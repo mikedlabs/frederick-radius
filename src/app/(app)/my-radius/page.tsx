@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   // pointing at a tab called "Saved"). Route stays /my-radius.
   title: "Saved",
   description:
-    "Your saved Frederick: the places, events, and routes you're keeping an eye on.",
+    "Frederick Radius keeps your saved places, events, and routes together.",
 };
 
 /**

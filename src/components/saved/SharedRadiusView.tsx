@@ -58,12 +58,12 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
           </p>
         </div>
         <h1 className="mt-2 font-serif text-[24px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Someone&rsquo;s Frederick
+          Someone shared these Frederick places.
         </h1>
         {places && places.length > 0 && (
           <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-            {places.length} place{places.length === 1 ? "" : "s"}
-            {townCount > 1 ? ` across ${townCount} towns` : ""}, worth a look.
+            This list has {places.length} place{places.length === 1 ? "" : "s"}
+            {townCount > 1 ? ` across ${townCount} towns` : ""}.
           </p>
         )}
       </header>

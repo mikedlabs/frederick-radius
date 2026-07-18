@@ -133,11 +133,13 @@ async function fetchVenue(
           ? new Date(item.endDate)
           : undefined;
       const eventUrl = item.fullUrl && origin ? `${origin}${item.fullUrl}` : venue.squarespace;
+      const description = descriptionFrom(item);
       out.push({
         title,
         starts_at: start.toISOString(),
         ends_at: end?.toISOString(),
-        description: descriptionFrom(item),
+        description,
+        ...(description ? { description_origin: "source-excerpt" as const } : {}),
         ticket_url: eventUrl,
         venue_slug: venue.slug,
         venue_name: venueName,

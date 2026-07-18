@@ -128,7 +128,7 @@
   },
   "emmitsburg": {
     "last_verified": "2026-06-16",
-    "one_liner": "A small Catoctin-foothills town that is both a major Catholic pilgrimage destination and a quiet college town.",
+    "one_liner": "This small town in the Catoctin foothills is a major Catholic pilgrimage site and home to Mount St. Mary's University.",
     "faq": [
       {
         "q": "What is Emmitsburg known for?",
@@ -189,7 +189,7 @@
         "confidence": "high"
       },
       {
-        "text": "The Seton Shrine ranks among the top eight Catholic pilgrimage destinations in the country, and the basilica and grounds are open to visitors, not just pilgrims.",
+        "text": "The Seton Shrine is described as one of the country's top eight Catholic pilgrimage destinations, and the basilica and grounds welcome visitors as well as pilgrims.",
         "source_url": "https://en.wikipedia.org/wiki/Emmitsburg,_Maryland",
         "confidence": "high"
       },
@@ -246,7 +246,7 @@
         "confidence": "high"
       },
       {
-        "text": "Carroll Creek Park began as a flood-control project; the city's initial roughly $11 million investment leveraged about $150 million in new construction, infill development, and historic renovation.",
+        "text": "Carroll Creek Park began as a flood-control project. The city's initial investment of roughly $11 million helped spur about $150 million in new construction, infill development, and historic renovation.",
         "source_url": "https://www.planning.org/greatplaces/neighborhoods/2010/downtownfrederick.htm",
         "confidence": "high"
       },
@@ -496,7 +496,7 @@
         "confidence": "high"
       },
       {
-        "text": "Treat Myersville as a base or a quick bite off I-70, not a downtown destination; it is overwhelmingly rural and residential, with the draws on the mountain west of town.",
+        "text": "Myersville works best as a base or a quick food stop off I-70. The town is largely rural and residential, while its main outdoor draws sit on the mountain to the west.",
         "source_url": "https://en.wikipedia.org/wiki/Myersville,_Maryland",
         "confidence": "medium"
       }
@@ -718,7 +718,7 @@
         "confidence": "medium"
       },
       {
-        "text": "This is a residential town rather than a downtown destination, so come for the train and the countryside scenery, not a main-street stroll.",
+        "text": "This is primarily a residential town. The train and surrounding countryside are the draw, rather than a main-street stroll.",
         "source_url": "https://en.wikipedia.org/wiki/Walkersville,_Maryland",
         "confidence": "medium"
       }

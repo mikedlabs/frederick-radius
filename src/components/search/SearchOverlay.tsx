@@ -4,7 +4,7 @@ import { track } from "@/lib/track";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, MessageCircleQuestion, Phone, Train } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
   SearchResult,
@@ -370,7 +370,7 @@ export default function SearchOverlay({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search places, events, towns…"
+            placeholder="Search Frederick County"
             aria-label="Search"
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
@@ -537,7 +537,7 @@ export default function SearchOverlay({
             ) : hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
-              <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
+              <p className="mt-1 text-xs">Try a shorter search, then add a town if you need to narrow it.</p>
             </div>
             )
           ) : (
@@ -640,6 +640,43 @@ export default function SearchOverlay({
               })}
             </ul>
           )}
+
+          {query.trim() ? (
+            <div className="border-t px-3 py-3" style={{ borderColor: "var(--app-border)" }}>
+              <Link
+                href={`/ask?q=${encodeURIComponent(query.trim())}`}
+                onClick={() => {
+                  track("ask_open", { source: "search" });
+                  onClose();
+                }}
+                className="tactile-interactive flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 transition active:scale-[0.99]"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--app-brand) 32%, var(--app-border))",
+                  background: "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated))",
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+                  style={{
+                    background: "var(--app-brand)",
+                    color: "var(--app-on-brand, #fff)",
+                  }}
+                >
+                  <MessageCircleQuestion className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    Ask Radius about this
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                    Ask a local question or build a plan from Radius data.
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {/* Footer hints */}
@@ -716,6 +753,7 @@ function EmptyHint({
   const homeMuni = getHomeMuni();
   const homeMuniName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name : null;
   const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Sparkles }> = [
+    { href: "/ask", title: "Ask Radius", subtitle: "Get help deciding", Icon: MessageCircleQuestion },
     { href: "/events?lens=today", title: "Plan tonight", subtitle: "What's happening this evening", Icon: Sparkles },
     { href: "/events", title: "All events", subtitle: "Tonight, weekend, this week", Icon: Sparkles },
     ...(homeMuniName && homeMuni

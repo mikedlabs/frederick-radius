@@ -103,7 +103,7 @@ describe("weatherPhrase", () => {
 
   it("looks good for 60-82°F clear/sunny", () => {
     const p = hour("a", "b", { shortForecast: "Sunny", temperature: 74 });
-    expect(weatherPhrase(p)).toMatch(/looks good/i);
+    expect(weatherPhrase(p)).toMatch(/conditions should be sunny/i);
   });
 
   it("falls back to temp + condition when nothing else matches", () => {
@@ -168,7 +168,7 @@ describe("eatBeforePhrase", () => {
       place("Brewer's Alley", 600),
     ]);
     expect(out).toContain("Cellar Door");
-    expect(out).toMatch(/min walk/i);
+    expect(out).toMatch(/minute walk/i);
     expect(out).toMatch(/2 more/);
   });
 
@@ -184,7 +184,7 @@ describe("eatBeforePhrase", () => {
 
   it("rounds walking time up so '0 min walk' never appears", () => {
     const out = eatBeforePhrase([place("Right Outside", 30)]);
-    expect(out).not.toMatch(/\b0 min/);
-    expect(out).toMatch(/1 min/);
+    expect(out).not.toMatch(/\b0-minute/);
+    expect(out).toMatch(/1-minute/);
   });
 });

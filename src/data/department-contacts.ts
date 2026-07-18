@@ -109,7 +109,7 @@ const DEPARTMENT_ALIASES: Record<string, string[]> = {
 };
 
 const DEPARTMENT_STOP = new Set([
-  "about", "city", "county", "department", "for", "frederick", "how", "maryland",
+  "about", "and", "city", "county", "department", "for", "frederick", "how", "maryland",
   "number", "office", "official", "phone", "the", "to", "what", "where", "who",
 ]);
 
@@ -126,6 +126,13 @@ export type DepartmentMatchContext = {
   municipality?: string | null;
 };
 
+/** A shared word in a department name is not enough to turn an ordinary
+ * discovery request into government help. Require an office/contact action
+ * or a clear government service name before department scoring runs. */
+export function isDepartmentRequest(query: string): boolean {
+  return /\b(?:call|contact|phone|number|office|department|government|who (?:handles|do i call)|where do i (?:report|pay|apply)|report (?:a|an|the)|pay (?:a|my|the)|apply for|permit|inspection|utility bill|trash pickup|recycling pickup|yard waste|pothole|storm drain|code enforcement|animal control|public works|solid waste|parks (?:and|&) recreation|fire (?:and|&) rescue|sheriff(?:'s)? office|health department|county council|city council)\b/i.test(query);
+}
+
 /**
  * Match the right office and jurisdiction. Shared names such as Public Works,
  * Parks, Planning, and Utilities must not silently default to whichever row
@@ -135,6 +142,7 @@ export function matchDepartment(
   query: string,
   context: DepartmentMatchContext = {},
 ): DepartmentContact | null {
+  if (!isDepartmentRequest(query)) return null;
   const q = query.toLowerCase();
   const queryTokens = new Set(departmentTokens(q));
   const explicitCounty = /\b(?:frederick\s+)?county\b/.test(q);

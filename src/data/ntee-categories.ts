@@ -39,19 +39,19 @@ export type NonprofitCategoryMeta = {
 
 /** Display order = rough public-facing interest, causes people browse first. */
 export const NONPROFIT_CATEGORIES: NonprofitCategoryMeta[] = [
-  { slug: "human-services", label: "Human services", icon: "HeartHandshake", blurb: "Food, housing, relief, and direct help for neighbors." },
-  { slug: "youth-recreation", label: "Youth & recreation", icon: "Bike", blurb: "Sports leagues, youth programs, and clubs." },
-  { slug: "faith", label: "Faith & religion", icon: "Church", blurb: "Congregations and faith-based organizations." },
-  { slug: "education", label: "Education", icon: "GraduationCap", blurb: "Schools, PTAs, scholarships, and learning." },
-  { slug: "arts", label: "Arts & culture", icon: "Palette", blurb: "Theaters, museums, music, and history." },
-  { slug: "community", label: "Community & advocacy", icon: "Users", blurb: "Neighborhood improvement, civil rights, and local capacity." },
-  { slug: "health", label: "Health & wellness", icon: "Stethoscope", blurb: "Clinics, disease groups, and mental health." },
-  { slug: "philanthropy", label: "Philanthropy", icon: "HandCoins", blurb: "Foundations, grantmakers, and giving funds." },
-  { slug: "environment", label: "Environment & animals", icon: "Trees", blurb: "Land trusts, conservation, and animal welfare." },
-  { slug: "public-safety", label: "Public safety", icon: "Siren", blurb: "Fire, rescue, and disaster preparedness." },
-  { slug: "international", label: "International", icon: "Globe", blurb: "Foreign affairs, aid, and cross-border work." },
-  { slug: "membership", label: "Membership & mutual", icon: "Landmark", blurb: "Fraternal orders, cemeteries, and mutual-benefit groups." },
-  { slug: "other", label: "Other", icon: "Circle", blurb: "Registered orgs the IRS has not yet categorized." },
+  { slug: "human-services", label: "Human services", icon: "HeartHandshake", blurb: "These organizations provide food, housing, relief, or other direct help." },
+  { slug: "youth-recreation", label: "Youth & recreation", icon: "Bike", blurb: "Find leagues and recreation programs for young people." },
+  { slug: "faith", label: "Faith & religion", icon: "Church", blurb: "Find congregations and organizations rooted in faith." },
+  { slug: "education", label: "Education", icon: "GraduationCap", blurb: "Find schools and groups that support local learning." },
+  { slug: "arts", label: "Arts & culture", icon: "Palette", blurb: "This section covers performing arts, museums, and local history." },
+  { slug: "community", label: "Community & advocacy", icon: "Users", blurb: "Find groups working on neighborhood improvement, civil rights, or local capacity." },
+  { slug: "health", label: "Health & wellness", icon: "Stethoscope", blurb: "Find clinics and organizations focused on physical or mental health." },
+  { slug: "philanthropy", label: "Philanthropy", icon: "HandCoins", blurb: "Find foundations and other organizations that fund local work." },
+  { slug: "environment", label: "Environment & animals", icon: "Trees", blurb: "Find land trusts and groups working in conservation or animal welfare." },
+  { slug: "public-safety", label: "Public safety", icon: "Siren", blurb: "Find fire and rescue groups alongside disaster-preparedness organizations." },
+  { slug: "international", label: "International", icon: "Globe", blurb: "These organizations work in foreign affairs, aid, or cross-border programs." },
+  { slug: "membership", label: "Membership & mutual", icon: "Landmark", blurb: "This section includes fraternal orders, cemeteries, and mutual-benefit groups." },
+  { slug: "other", label: "Other", icon: "Circle", blurb: "The IRS has not yet assigned these registered organizations to another category." },
 ];
 
 export const NONPROFIT_CATEGORY_BY_SLUG: Record<NonprofitCategory, NonprofitCategoryMeta> =

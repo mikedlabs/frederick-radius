@@ -167,43 +167,43 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   });
   if (immediateAlert) {
     return {
-      line: `${immediateAlert.event} active, check conditions before heading out.`,
+      line: `${immediateAlert.event} is active, so check official conditions before heading out.`,
       tone: "rough",
     };
   }
   if (heatAlert && (hazardousAir || veryUnhealthyAir || unhealthyAir || sensitiveAir)) {
     return {
-      line: "Dangerous heat and unhealthy air today, limit time and exertion outside.",
+      line: "Dangerous heat and unhealthy air are present today. Limit your time and exertion outside.",
       tone: "rough",
     };
   }
   if (hazardousAir) {
     return {
-      line: "Hazardous air today, avoid outdoor activity and follow official guidance.",
+      line: "The air is hazardous today. Avoid outdoor activity and follow official guidance.",
       tone: "rough",
     };
   }
   if (veryUnhealthyAir) {
     return {
-      line: "Very unhealthy air today, avoid strenuous activity outside.",
+      line: "The air is very unhealthy today. Avoid strenuous activity outside.",
       tone: "rough",
     };
   }
   if (unhealthyAir) {
     return {
-      line: "Unhealthy air today, avoid prolonged or heavy activity outside.",
+      line: "The air is unhealthy today. Avoid prolonged or heavy activity outside.",
       tone: "rough",
     };
   }
   if (sensitiveAir) {
     return {
-      line: "Air is unhealthy for sensitive groups, take it easier outside.",
+      line: "Air quality is unhealthy for sensitive groups. Reduce strenuous activity outside.",
       tone: "rough",
     };
   }
   if (heatAlert) {
     return {
-      line: "Dangerous heat today, limit time outside and stay hydrated.",
+      line: "Dangerous heat is expected today. Limit your time outside and stay hydrated.",
       tone: "rough",
     };
   }
@@ -212,25 +212,25 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   );
   if (severeAlert) {
     return {
-      line: `${severeAlert.event} active, check conditions before heading out.`,
+      line: `${severeAlert.event} is active, so check official conditions before heading out.`,
       tone: "rough",
     };
   }
   if (activeAlerts.length > 0) {
     return {
-      line: `${activeAlerts[0].event} active, check conditions before heading out.`,
+      line: `${activeAlerts[0].event} is active, so check official conditions before heading out.`,
       tone: "mixed",
     };
   }
   if (typeof forecastHigh === "number" && forecastHigh >= 100) {
     return {
-      line: "Dangerous heat later today, limit time outside and stay hydrated.",
+      line: "Dangerous heat is expected later today. Limit your time outside and stay hydrated.",
       tone: "rough",
     };
   }
   if (typeof forecastHigh === "number" && forecastHigh >= 95) {
     return {
-      line: "Very hot later today, plan around shade and AC.",
+      line: "It will be very hot later today. Plan around shade or air conditioning.",
       tone: "mixed",
     };
   }
@@ -240,7 +240,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   //    current hour with thunderstorms at 8 PM must not read as a patio
   //    evening.
   if (STORM.test(shortForecast)) {
-    return { line: "Storms around, stay close to cover.", tone: "rough" };
+    return { line: "Storms are nearby, so stay close to shelter.", tone: "rough" };
   }
   const stormHorizon = now.getTime() + 6 * 3_600_000;
   const stormHour = hourly.find((h) => {
@@ -249,24 +249,24 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   });
   if (stormHour) {
     return {
-      line: `Storms around by ${hourLabel(stormHour.startTime)}, stay close to cover.`,
+      line: `Storms are possible by ${hourLabel(stormHour.startTime)}, so stay close to shelter.`,
       tone: "rough",
     };
   }
 
   // 2. Snow.
   if (SNOW.test(shortForecast)) {
-    return { line: "Snow out, slow roads, warm rooms.", tone: "mixed" };
+    return { line: "Snow is falling, and roads may be slow. An indoor plan is safer.", tone: "mixed" };
   }
 
   // 3. Actively wet now (rain in the forecast + a real chance).
   if (isActivelyWet(shortForecast, precipNow)) {
     return {
       line: overnight
-        ? "Rain moving through the night."
+        ? "Rain is moving through tonight."
         : evening
-          ? "Wet evening, pick somewhere with a roof."
-          : "Wet out, an indoor kind of day.",
+          ? "It is a wet evening, so choose somewhere indoors."
+          : "It is wet outside, so an indoor plan makes sense.",
       tone: "rough",
     };
   }
@@ -277,7 +277,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   // unavailable or stale.
   if (!alertsAvailable || !airQualityAvailable || !weatherAvailable) {
     return {
-      line: "Live weather or air-safety data is temporarily unavailable; check conditions before heading out.",
+      line: "Current weather or air-safety data is temporarily unavailable. Check official conditions before heading out.",
       tone: "mixed",
     };
   }
@@ -297,7 +297,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   });
   if (rainHour) {
     return {
-      line: `Dry now, showers by ${hourLabel(rainHour.startTime)}, so get out before then.`,
+      line: `It is dry now, but showers are expected by ${hourLabel(rainHour.startTime)}. Plan to be inside before then.`,
       tone: "mixed",
     };
   }
@@ -309,10 +309,10 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   if (mentionsWet(shortForecast)) {
     return {
       line: overnight
-        ? "A stray shower possible out there."
+        ? "A stray shower is possible overnight."
         : evening
-          ? "A stray shower possible, worth a light layer."
-          : "A stray shower possible, nothing to cancel over.",
+          ? "A stray shower is possible, so bring a light layer."
+          : "A stray shower is possible, but it should not cancel your day.",
       tone: "mixed",
     };
   }
@@ -324,15 +324,15 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   //      out."). One engine owns the read now; fog can never fall
   //      through to a fine-day line again.
   if (/fog|mist|haz[ey]/i.test(shortForecast)) {
-    return { line: "Low and gray, fog hanging around.", tone: "mixed" };
+    return { line: "Fog is hanging around, and visibility may be low.", tone: "mixed" };
   }
 
   // 5. Temperature extremes.
   if (temp <= 38) {
-    return { line: "Cold one, bundle up if you head out.", tone: "mixed" };
+    return { line: "It is cold outside, so bundle up before you leave.", tone: "mixed" };
   }
   if (temp >= 89) {
-    return { line: "Hot out, chase shade and AC.", tone: "mixed" };
+    return { line: "It is hot outside, so look for shade or air conditioning.", tone: "mixed" };
   }
 
   // 6. The good days. Time-of-day framing turns a generic "nice out"
@@ -342,20 +342,20 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   if (clear) {
     return {
       line: overnight
-        ? "Quiet and clear out there."
+        ? "Conditions are quiet and clear tonight."
         : evening
-          ? "Clear and easy, a patio kind of evening."
-          : "Clear out, a good day to be outside.",
+          ? "It is clear and mild enough for a patio this evening."
+          : "It is clear and comfortable outside.",
       tone: "good",
     };
   }
   if (cloudy) {
     return {
       line: overnight
-        ? "Quiet night, clouds over the county."
+        ? "Clouds are hanging over the county tonight."
         : evening
-          ? "Mild and grey, a comfortable evening to wander."
-          : "Soft and grey, an easy day to explore.",
+          ? "It is mild and cloudy this evening."
+          : "It is cloudy and comfortable outside.",
       tone: "good",
     };
   }
@@ -364,10 +364,10 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   //    4 AM the honest read is a quiet night, not daylight.
   return {
     line: overnight
-      ? "A quiet night out there."
+      ? "Conditions are quiet tonight."
       : evening
-        ? "A fine evening to get out."
-        : "A fine day to get out.",
+        ? "Conditions are comfortable this evening."
+        : "Conditions are comfortable for heading out.",
     tone: "good",
   };
 }

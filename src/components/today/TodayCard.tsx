@@ -56,11 +56,11 @@ function bandFor(h: number): Band {
 
 const GREETING: Record<Band, string> = {
   morning: "Good morning.",
-  midday: "Midday.",
-  afternoon: "Afternoon.",
-  evening: "This evening.",
-  late: "Late tonight.",
-  overnight: "The early hours.",
+  midday: "It is midday.",
+  afternoon: "It is afternoon.",
+  evening: "It is evening.",
+  late: "It is late tonight.",
+  overnight: "It is very early.",
 };
 
 function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -203,9 +203,7 @@ export default async function TodayCard() {
         </div>
       )}
 
-      {/* Tonight's headline event moved OUT of this card (owner call,
-          2026-07-10): it now renders as its own solo card directly below the
-          weather hero — see TonightSolo in app/(app)/today/page.tsx. */}
+      {/* The selected event lead renders once in the Events today section. */}
     </section>
   );
 }

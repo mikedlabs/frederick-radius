@@ -60,7 +60,7 @@ export async function GET(request: Request) {
   const tomorrowKey = easternDateKey(new Date(Date.now() + 24 * 3_600_000));
   const result = await fanoutToTopic("daily-briefing", `rain-tmrw:${tomorrowKey}`, {
     title: "Rain likely tomorrow",
-    body: `${tomorrow.shortForecast}. A good day for the indoor picks: galleries, cafes, the library.`,
+    body: `${tomorrow.shortForecast}. The rainy-day collection has indoor options around Frederick County.`,
     url: "/collections/rainy-day-frederick",
     tag: `rain-tmrw:${tomorrowKey}`,
   });

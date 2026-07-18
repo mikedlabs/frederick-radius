@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Trails",
   description:
-    "Every maintained trail in Frederick County: park, surface, length, and what you can do on it. Live from Frederick County GIS.",
+    "Browse trail records returned by Frederick County GIS, with surface and length where those details are available.",
 };
 
 // Trails change rarely; the integration revalidates weekly.
@@ -70,14 +70,14 @@ export default async function TrailsPage() {
     <div className="space-y-6">
       <header className="space-y-1.5">
         <p className="eyebrow">
-          Frederick County GIS · live
+          Frederick County GIS
         </p>
         <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Trails
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every maintained trail in the county: surface, length, and what
-          you can do on it. Tap one to see it on the map.
+          Browse the trail records returned by the county GIS. Tap a record
+          to see its mapped location.
         </p>
       </header>
 
@@ -88,8 +88,8 @@ export default async function TrailsPage() {
         >
           <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             We&rsquo;re rebuilding our connection to the county trail
-            layer. In the meantime, these three sources cover ~95% of
-            the trails locals use:
+            layer. Use these public trail sources while the feed is
+            unavailable:
           </p>
           <ul className="space-y-2">
             {[
@@ -138,8 +138,7 @@ export default async function TrailsPage() {
             ))}
           </ul>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            The full searchable list returns once we&rsquo;ve wired the
-            new feed.
+            The searchable list will return when the feed reconnects.
           </p>
         </section>
       ) : (
@@ -171,7 +170,8 @@ export default async function TrailsPage() {
             </CollapsibleSection>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data: Frederick County GIS open data, refreshed weekly.
+            Data comes from Frederick County GIS open data. Radius refreshes
+            the records weekly.
           </p>
         </>
       )}

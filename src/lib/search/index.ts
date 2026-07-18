@@ -84,14 +84,14 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
   {
     id: "action:tonight",
     title: "Plan tonight",
-    subtitle: "Dinner, drinks, then somewhere to land late.",
+    subtitle: "Build an evening plan around current local options.",
     href: "/tonight",
     keywords: ["tonight", "plan", "evening", "night", "dinner", "drinks", "date"],
   },
   {
     id: "action:discover",
     title: "Hidden Frederick",
-    subtitle: "A daily sweep of lesser-known places.",
+    subtitle: "See a daily selection of lesser-known local places.",
     href: "/discover",
     keywords: ["discover", "hidden", "gem", "gems", "new", "explore"],
   },
@@ -105,7 +105,7 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
   {
     id: "action:events",
     title: "Browse all events",
-    subtitle: "Live, upcoming, by category, by town.",
+    subtitle: "Find upcoming events by category or town.",
     href: "/events",
     keywords: ["events", "what's on", "calendar", "happening", "concerts", "shows"],
   },
@@ -115,21 +115,21 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
     // with the verified emergency tiers, not a name-match lottery.
     id: "action:emergency-vet",
     title: "Pet emergency care",
-    subtitle: "The two 24/7 animal ERs, urgent care hours, poison lines.",
+    subtitle: "See verified emergency and urgent-care options for pets.",
     href: "/emergency-vet",
     keywords: ["vet", "vets", "veterinarian", "veterinary", "emergency vet", "animal hospital", "pet emergency", "dog emergency", "cat emergency", "pet poison", "urgent care pets"],
   },
   {
     id: "action:map",
     title: "Open the map",
-    subtitle: "Everything visible at a glance.",
+    subtitle: "See Frederick County places on a map.",
     href: "/map",
     keywords: ["map", "where", "view"],
   },
   {
     id: "action:settings",
     title: "Settings",
-    subtitle: "Persona, your spot, interests, notifications.",
+    subtitle: "Manage your location and other Radius preferences.",
     href: "/settings",
     keywords: ["settings", "preferences", "account", "profile", "personalize"],
   },
@@ -219,7 +219,7 @@ function hitToResult(h: SearchHit): SearchResult {
       type: "category",
       id: `category:${c.slug}`,
       title: c.name,
-      subtitle: c.blurb ?? "Browse this category",
+      subtitle: c.blurb ?? "Browse this category.",
       href: `/category/${c.slug}`,
     };
   }
@@ -240,7 +240,7 @@ function hitToResult(h: SearchHit): SearchResult {
     type: "municipality",
     id: `municipality:${m.slug}`,
     title: m.name,
-    subtitle: m.hero_blurb ?? `${m.type ?? "Municipality"} · pop. ${m.population?.toLocaleString() ?? "?"}`,
+    subtitle: m.hero_blurb ?? `This ${m.type ?? "municipality"} has a 2020 population of ${m.population?.toLocaleString() ?? "an unknown number"}.`,
     href: `/m/${m.slug}`,
   };
 }

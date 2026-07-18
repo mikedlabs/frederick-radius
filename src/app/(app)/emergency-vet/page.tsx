@@ -23,7 +23,7 @@ import { PET_CARE_FACILITIES, PET_POISON_LINES, type PetCareFacility } from "@/d
 export const metadata: Metadata = {
   title: "Emergency vet care",
   description:
-    "The two true 24/7 animal ERs serving Frederick County, urgent care hours, and poison hotlines. Verified numbers, tiered for a crisis.",
+    "Find verified phone numbers for 24-hour animal emergency rooms, urgent care, and poison hotlines serving Frederick County.",
   alternates: { canonical: "/emergency-vet" },
 };
 

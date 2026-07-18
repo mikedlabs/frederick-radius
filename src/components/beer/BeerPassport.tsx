@@ -164,9 +164,9 @@ function monogramOf(name: string): string {
 }
 
 function progressLine(count: number): string {
-  if (count === BREWERIES.length) return "County complete. That is one well-used field guide.";
-  if (count >= 12) return "Nearly the whole county.";
-  if (count >= 6) return "A proper Frederick sampler.";
+  if (count === BREWERIES.length) return "You have visited every brewery listed in this guide.";
+  if (count >= 12) return "You have visited nearly all the listed breweries.";
+  if (count >= 6) return "You have visited breweries across a good part of the county.";
   if (count > 0) return "The passport is underway.";
   return "Your first stamp is waiting.";
 }
@@ -192,10 +192,10 @@ export default function BeerPassport({
   return (
     <section
       aria-labelledby="beer-passport-heading"
-      className="relative -mx-4 overflow-hidden border-y border-white/10 px-4 py-9 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-12 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
+      className="relative -mx-4 overflow-hidden border-y border-black/12 px-4 py-9 text-[#281e14] sm:-mx-5 sm:px-8 sm:py-12 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
       style={{
-        background: "linear-gradient(145deg, #742c20, #2b1915 88%)",
-        boxShadow: "0 28px 60px -38px rgba(43,18,12,.82)",
+        background: "linear-gradient(145deg, #f4e8d2, #e9d5b7 88%)",
+        boxShadow: "0 28px 60px -40px rgba(67,42,20,.42)",
       }}
     >
       <div
@@ -203,31 +203,31 @@ export default function BeerPassport({
         className="pointer-events-none absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(70% 80% at 0% 0%, rgba(255,214,137,.18), transparent 68%), repeating-linear-gradient(90deg, transparent 0 76px, rgba(255,255,255,.018) 77px 78px)",
+            "radial-gradient(70% 80% at 0% 0%, rgba(255,255,255,.42), transparent 68%), repeating-linear-gradient(90deg, transparent 0 76px, rgba(87,52,22,.025) 77px 78px)",
         }}
       />
 
       <div className="relative space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2c981]">Your Frederick passport</p>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#8a3f32]">Your Frederick passport</p>
             <h2
               id="beer-passport-heading"
               className="mt-2 max-w-[9ch] font-serif text-[clamp(2.8rem,9vw,5rem)] font-semibold leading-[0.86] tracking-[-0.05em]"
             >
-              Stamp your way across the county.
+              Keep track of the breweries you visit.
             </h2>
-            <p className="mt-4 max-w-[34rem] text-[12px] leading-relaxed text-white/58">
-              Tap a stamp after a visit. Saved only on this device; no account or location.
+            <p className="mt-4 max-w-[34rem] text-[12px] leading-relaxed text-black/62">
+              Tap a stamp after a visit. Your progress stays on this device, and Radius does not use an account or location to record it.
             </p>
           </div>
           <div className="shrink-0 text-right" aria-live="polite" aria-atomic="true">
             <p
-              className="font-serif text-[34px] font-semibold leading-none tabular-nums text-[#f2c981]"
+              className="font-serif text-[34px] font-semibold leading-none tabular-nums text-[#8a3f32]"
             >
               {visited.length}/{BREWERIES.length}
             </p>
-            <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/42">
+            <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-black/48">
               stamped
             </p>
           </div>
@@ -240,17 +240,17 @@ export default function BeerPassport({
             aria-valuemin={0}
             aria-valuemax={BREWERIES.length}
             aria-valuenow={visited.length}
-            className="h-1 overflow-hidden bg-black/24"
+            className="h-1 overflow-hidden bg-black/14"
           >
             <div
               className="h-full transition-[width] duration-300"
               style={{
                 width: `${percent}%`,
-                background: "linear-gradient(90deg, #f2c981, #f07a58)",
+                background: "linear-gradient(90deg, #a6523f, #d47a47)",
               }}
             />
           </div>
-          <p className="mt-2 text-[10px] text-white/46">
+          <p className="mt-2 text-[10px] text-black/65">
             {progressLine(visited.length)}
           </p>
         </div>

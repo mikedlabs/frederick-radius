@@ -24,14 +24,14 @@ const fmtTime = (d: Date | null) => (d ? ET({ hour: "numeric", minute: "2-digit"
 function seasonalNote(now: Date): { label: string; note: string } {
   const [m, d] = ET({ month: "numeric", day: "numeric" }).format(now).split("/").map(Number);
   const md = m * 100 + d;
-  if (md >= 315 && md <= 415) return { label: "Spring bloom", note: "Daffodils, then cherry and dogwood. Last frost is typically mid-April." };
-  if (md >= 416 && md <= 531) return { label: "Late spring", note: "Frost risk past. Redbud and azalea; the mountains green up." };
-  if (md >= 601 && md <= 630) return { label: "Firefly season", note: "Peak fireflies after dusk in the meadows and along the creek lines." };
-  if (md >= 701 && md <= 815) return { label: "High summer", note: "Long light, warm creeks, ripe at the orchards and farm stands." };
-  if (md >= 816 && md <= 930) return { label: "Late summer", note: "First cool nights; the slide toward fall has started." };
-  if (md >= 1001 && md <= 1115) return { label: "Peak foliage", note: "Best color on the Catoctin ridge in mid-to-late October." };
-  if (md >= 1116 || md <= 131) return { label: "Bare-tree winter", note: "Long sightlines on the ridge; clearest dark skies of the year." };
-  return { label: "Early spring", note: "Sap rising; first green at the field edges." };
+  if (md >= 315 && md <= 415) return { label: "Spring bloom", note: "Daffodils usually appear first, followed by cherry and dogwood blooms. The last frost is typically mid-April." };
+  if (md >= 416 && md <= 531) return { label: "Late spring", note: "The usual frost window has passed by late spring, when redbuds and azaleas bloom as the mountains turn green." };
+  if (md >= 601 && md <= 630) return { label: "Firefly season", note: "Fireflies usually peak after dusk in the meadows and along the creek lines." };
+  if (md >= 701 && md <= 815) return { label: "High summer", note: "Long summer light warms the creeks and brings produce to orchards and farm stands." };
+  if (md >= 816 && md <= 930) return { label: "Late summer", note: "The first cool nights signal the move toward fall." };
+  if (md >= 1001 && md <= 1115) return { label: "Peak foliage", note: "Color on the Catoctin ridge usually peaks in mid-to-late October." };
+  if (md >= 1116 || md <= 131) return { label: "Bare-tree winter", note: "Bare trees open long sightlines on the ridge, and winter often brings the clearest dark skies of the year." };
+  return { label: "Early spring", note: "Sap begins to rise as the first green appears at the field edges." };
 }
 
 function MoonDisc({ illumination, waxing }: { illumination: number; waxing: boolean }) {

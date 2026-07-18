@@ -1021,7 +1021,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             <SavedEventWallet events={upcomingEvents} savedAt={savedAtByEventSlug} now={now} />
           ) : (
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-              Nothing upcoming. Your saved shows have all passed.
+              There are no upcoming events. Your saved events have all passed.
             </p>
           )}
 
@@ -1109,7 +1109,7 @@ function EmptyState() {
   return (
     <div className="space-y-4">
       <div className="sv-empty-hero">
-        <h2>Nothing saved yet.</h2>
+        <h2>You have not saved anything yet.</h2>
         <p>
           Save any place or event to keep it here.
         </p>

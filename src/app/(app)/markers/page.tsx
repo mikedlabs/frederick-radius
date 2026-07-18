@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Markers & landmarks",
   description:
-    "The history on the ground in Frederick County, Maryland: read the inscription on every roadside marker, and find the National Register landmarks and covered bridges. Live from MDOT and the National Park Service.",
+    "Read roadside marker records from MDOT and browse National Register sites returned by the National Park Service.",
 };
 
 // Markers + the register change rarely; the integration revalidates weekly.
@@ -70,9 +70,8 @@ export default async function MarkersPage() {
           </div>
         </div>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Read the inscription on every roadside marker in the county, and find the
-          National Register landmarks and covered bridges. Live from MDOT and the
-          National Park Service. For the stories behind them, see{" "}
+          Read roadside marker text returned by MDOT and browse National Register
+          sites from the National Park Service. For longer local stories, see{" "}
           <a href="/history" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             Frederick history
           </a>
@@ -115,7 +114,7 @@ export default async function MarkersPage() {
 
           {bridges.length > 0 && (
             <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Includes {bridges.length} of the county&rsquo;s historic bridges, among them the
+              The returned register data includes {bridges.length} historic bridges, among them the
               Utica, Loys Station, and Roddy Road covered bridges.
             </p>
           )}

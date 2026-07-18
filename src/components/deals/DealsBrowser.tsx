@@ -145,7 +145,7 @@ export default function DealsBrowser({ rows, today }: { rows: DealRow[]; today: 
 
         {forDay.total === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[12.5px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            No verified deals on {DAY_FULL[day]} yet. Try another day.
+            There are no verified deals on {DAY_FULL[day]} yet. Try another day.
           </p>
         ) : (
           <div className="space-y-3.5">

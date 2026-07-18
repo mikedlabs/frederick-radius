@@ -15,14 +15,21 @@ import { ArrowRight, CircleParking } from "lucide-react";
 export default function TonightParkingPlan({
   eventTitle,
   eventSlug,
+  eventStartsAt,
   primaryGarageName,
   alternatives,
 }: {
   eventTitle: string;
   eventSlug: string;
+  eventStartsAt: string;
   primaryGarageName: string;
   alternatives: string[];
 }) {
+  const eventTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(eventStartsAt));
   const backups =
     alternatives.length >= 2
       ? `${alternatives[0]} and ${alternatives[1]} are good backups.`
@@ -49,19 +56,24 @@ export default function TonightParkingPlan({
         >
           <CircleParking className="h-5 w-5" strokeWidth={2} aria-hidden />
         </span>
-        <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
-            Heading to{" "}
-            <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-brand-press)" }}>
-              {eventTitle}
+        <div className="min-w-0">
+          <p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            Later today · {eventTime}
+          </p>
+          <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
+              Heading to{" "}
+              <Link href={`/events/${eventSlug}`} style={{ color: "var(--app-brand-press)" }}>
+                {eventTitle}
+              </Link>
+              ?
+            </span>{" "}
+            {primaryGarageName} fills fast. {backups}{" "}
+            <Link href="/parking" className="tap-44-y font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
+              Parking guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
-            ?
-          </span>{" "}
-          {primaryGarageName} fills fast. {backups}{" "}
-          <Link href="/parking" className="tap-44-y font-semibold whitespace-nowrap" style={{ color: "var(--app-brand-press)" }}>
-            Parking guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-          </Link>
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   );

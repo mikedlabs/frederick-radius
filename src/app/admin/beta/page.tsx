@@ -237,7 +237,7 @@ function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved
   return (
     <Section title="Feedback inbox">
       {pending.length === 0 ? (
-        <AllClear>No unread feedback. All caught up.</AllClear>
+        <AllClear>There is no unread feedback.</AllClear>
       ) : (
         <ul className="mt-3 space-y-3">
           {pending.map((f) => (

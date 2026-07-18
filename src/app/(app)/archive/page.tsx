@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Archive Lens | Frederick Radius",
     description:
-      "Primary-source maps, building surveys, newspapers, and photographs from Frederick's past.",
+      "Review primary-source maps, building surveys, newspapers, and photographs from Frederick's past.",
     type: "website",
   },
 };
@@ -128,59 +128,59 @@ export default function ArchivePage() {
       <header
         className="relative isolate overflow-hidden rounded-[var(--app-radius-xl)] border px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-11"
         style={{
-          borderColor: "color-mix(in srgb, var(--app-on-brand) 16%, transparent)",
-          background: "var(--app-brand-2)",
-          color: "var(--app-on-brand)",
-          boxShadow: "var(--app-elev-3)",
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated-solid)",
+          color: "var(--app-ink)",
+          boxShadow: "var(--app-elev-1)",
         }}
       >
         <div
           className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)",
+              "linear-gradient(rgba(28,44,39,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(28,44,39,.18) 1px, transparent 1px)",
             backgroundSize: "36px 36px",
           }}
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute -right-20 -top-24 -z-10 h-72 w-72 rounded-full border border-white/20"
+          className="pointer-events-none absolute -right-20 -top-24 -z-10 h-72 w-72 rounded-full border border-black/10"
           aria-hidden
         >
-          <div className="absolute inset-10 rounded-full border border-white/15" />
-          <div className="absolute inset-24 rounded-full border border-white/15" />
+          <div className="absolute inset-10 rounded-full border border-black/8" />
+          <div className="absolute inset-24 rounded-full border border-black/8" />
         </div>
 
         <div className="relative max-w-[48rem]">
-          <p className="eyebrow inline-flex items-center gap-2 text-white/72">
+          <p className="eyebrow inline-flex items-center gap-2 text-[var(--app-brand-2)]">
             <Library className="h-3.5 w-3.5" aria-hidden />
             Archive Lens · primary sources
           </p>
-          <h1 className="mt-3 max-w-[42rem] font-serif text-[38px] font-semibold leading-[0.98] tracking-tight text-white sm:text-[50px] lg:text-[58px]">
+          <h1 className="mt-3 max-w-[42rem] font-serif text-[38px] font-semibold leading-[0.98] tracking-tight text-[var(--app-ink)] sm:text-[50px] lg:text-[58px]">
             Frederick, under the surface.
           </h1>
-          <p className="mt-4 max-w-[39rem] text-[14px] leading-relaxed text-white/78 sm:text-[16px]">
+          <p className="mt-4 max-w-[39rem] text-[14px] leading-relaxed text-[var(--app-ink-2)] sm:text-[16px]">
             Fire-insurance maps. Measured building surveys. Newspaper pages. Documentary photographs. Inspect the records, then follow every object back to the Library of Congress.
           </p>
 
-          <dl className="mt-6 flex flex-wrap gap-x-7 gap-y-3 border-t border-white/20 pt-4">
+          <dl className="mt-6 flex flex-wrap gap-x-7 gap-y-3 border-t border-black/12 pt-4">
             <div>
-              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">Map editions</dt>
+              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--app-ink-3)]">Map editions</dt>
               <dd className="mt-0.5 font-serif text-[20px] font-semibold tabular-nums">
                 {firstEdition} to {lastEdition}
               </dd>
             </div>
             <div>
-              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">Atlas sheets</dt>
+              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--app-ink-3)]">Atlas sheets</dt>
               <dd className="mt-0.5 font-serif text-[20px] font-semibold tabular-nums">{totalSheets}</dd>
             </div>
             <div>
-              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">Reviewed records</dt>
+              <dt className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--app-ink-3)]">Reviewed records</dt>
               <dd className="mt-0.5 font-serif text-[20px] font-semibold tabular-nums">{LOC_ARCHIVE_RECORDS.length}</dd>
             </div>
           </dl>
 
-          <p className="mt-5 inline-flex items-start gap-2 text-[10px] leading-relaxed text-white/60">
+          <p className="mt-5 inline-flex items-start gap-2 text-[10px] leading-relaxed text-[var(--app-ink-3)]">
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             Curated by Frederick Radius from Library of Congress records. Independent; no affiliation or endorsement is implied.
           </p>

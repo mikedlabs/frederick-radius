@@ -33,21 +33,21 @@ export default function MyTaps({ heading = true, photos = {} }: { heading?: bool
   return (
     <section
       aria-label="My taps"
-      className="-mx-4 space-y-5 overflow-hidden border-y border-white/10 px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
+      className="-mx-4 space-y-5 overflow-hidden border-y border-black/12 px-4 py-8 sm:-mx-5 sm:px-8 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10"
       style={{
-        background: "#15130f",
-        boxShadow: "0 24px 52px -34px rgba(20,14,8,.7)",
+        background: "#f1e6d2",
+        boxShadow: "0 24px 52px -36px rgba(52,35,20,.4)",
       }}
     >
       {heading && (
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]"><Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />Your bar tab</p>
-            <h2 className="mt-2 font-serif text-[34px] font-semibold leading-none tracking-[-0.04em] text-[#f7f0e4]">
+            <p className="flex items-center gap-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#85501f]"><Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />Saved beers</p>
+            <h2 className="mt-2 font-serif text-[34px] font-semibold leading-none tracking-[-0.04em] text-[#281e14]">
               Your saved pours
             </h2>
           </div>
-          <span className="border border-white/20 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-white/65">
+          <span className="border border-black/18 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-black/60">
             {beers.length} {beers.length === 1 ? "pour" : "pours"}
           </span>
         </div>

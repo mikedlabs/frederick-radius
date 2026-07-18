@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   // time-baked (no "today" or a specific event): social platforms cache
   // the card at share time, so a dated card would go stale in a feed
   // within a day. The kicker has to read true a week from now.
-  let kicker = "What's open, what's happening, and what's worth your time";
+  let kicker = "A local guide to places and events across Frederick County";
   // `blurb` is the editorial one-liner shown below the title on place
   // and municipality cards. Stable per-record (not time-bound), so it
   // survives OG-image edge caching without going stale — which is why
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
     // so it reads true whenever it surfaces in a feed.
     title = "You're early.";
     kicker = "Early-access beta · Frederick Radius";
-    blurb = "Downtown Frederick and the county, connected. What's open, what's on, and what's worth your time.";
+    blurb = "An early look at a local guide to places and events across Frederick County.";
     accent = "#E14328";
   } else if (type === "almanac") {
     // The daily almanac card — the one share card that IS time-bound, made

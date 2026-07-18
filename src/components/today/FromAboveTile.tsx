@@ -95,7 +95,7 @@ export default function FromAboveTile() {
             fontStyle: "italic",
           }}
         >
-          Six years of mornings over Downtown Frederick.
+          These photos capture six years of mornings over Downtown Frederick.
         </p>
         <p
           className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold"

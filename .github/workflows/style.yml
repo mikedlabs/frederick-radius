@@ -1,6 +1,6 @@
 name: style
 
-# STYLE.md guard. The prior external audit found em dashes shipped on
+# Voice guard. The prior external audit found em dashes shipped on
 # /plan because nothing mechanical enforced the editorial rules. This
 # job runs the rule-based lint on every pull request and fails the PR
 # on any violation. See docs/briefs/2026-05-18-external-audit-actions.md
@@ -8,6 +8,8 @@ name: style
 
 on:
   pull_request: {}
+  push:
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -35,5 +37,5 @@ jobs:
         # need bit-exact deps; tolerate the drift and unblock merge.
         run: npm install --no-audit --no-fund
 
-      - name: STYLE.md lint
+      - name: Voice lint
         run: npm run style:lint

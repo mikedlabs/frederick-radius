@@ -76,7 +76,7 @@ describe("selectOnNowChips", () => {
     expect(chips.map((c) => c.kind)).toEqual(["event", "place", "market"]);
     expect(chips[0]).toMatchObject({ href: "/events/olde-mother-live", kicker: "Live now", meta: "Olde Mother Brewing" });
     expect(chips[1]).toMatchObject({ href: "/places/brewers", kicker: "Open now", meta: "till 9 PM" });
-    expect(chips[2]).toMatchObject({ href: "/category/market", kicker: "Market today", meta: "3-9 PM" });
+    expect(chips[2]).toMatchObject({ href: "/category/market", kicker: "Open now", meta: "3-9 PM" });
   });
 
   it("drops any slot that has nothing (a market-only day shows one chip)", () => {

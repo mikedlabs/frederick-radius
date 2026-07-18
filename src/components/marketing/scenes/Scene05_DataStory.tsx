@@ -25,7 +25,7 @@ export default function Scene05_DataStory() {
                         Where Radius <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">actually stands</span>
                     </h2>
                     <p className="text-lg font-light text-gray-400">
-                        No vanity metrics or invented revenue chart — just the beta, the tests, and the next decisions.
+                        This shows the beta as it is, without invented growth or revenue numbers.
                     </p>
                 </motion.div>
 

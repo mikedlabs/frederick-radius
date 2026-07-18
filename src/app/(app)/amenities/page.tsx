@@ -156,15 +156,15 @@ export default async function AmenitiesPage() {
           className="font-serif text-[32px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Useful things, mapped.
+          Find useful public amenities.
         </h1>
         <p
           className="text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Restrooms, water, benches, outlets, dog bags, Wi-Fi and the other
-          small things that can save a trip. Open a category to see every
-          mapped point nearby.
+          The map includes public restrooms, drinking water, benches, power
+          outlets, dog-waste stations, and Wi-Fi. Open a category to see the
+          mapped locations near you.
         </p>
       </header>
 
@@ -316,7 +316,7 @@ export default async function AmenitiesPage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                Mail it, ship it, or grab it
+                Find mail and shipping services
               </span>
               <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                 {shipOffices} post offices, {shipStores} UPS &amp; FedEx counters, plus{" "}
@@ -342,11 +342,11 @@ export default async function AmenitiesPage() {
           className="font-serif text-[18px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Know one we&apos;re missing?
+          Is a public amenity missing?
         </h2>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          A reliable restroom downtown, a Wi-Fi-friendly cafe, a tucked-away
-          picnic spot, tell us. The map only knows what people tell it.
+          Send its location and any access details. Radius reviews each
+          submission before adding it to the map.
         </p>
         <Link
           href="/submit/place"

@@ -34,16 +34,16 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
     <section aria-labelledby="taproom-map-heading">
       <header className="mb-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-brand-press)" }}>The county pour map</p>
+          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-brand-press)" }}>Frederick County brewery map</p>
         <h2
           id="taproom-map-heading"
           className="mt-2 max-w-[10ch] font-serif text-[clamp(2.8rem,8vw,4.7rem)] font-semibold leading-[0.87] tracking-[-0.05em]"
           style={{ color: "var(--app-ink)" }}
         >
-          Seventeen rooms. One county.
+          See every brewery across Frederick County.
         </h2>
         </div>
-        <p className="max-w-[22rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>See the downtown cluster, the farm breweries, and the rooms worth building a drive around.</p>
+        <p className="max-w-[22rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>See the downtown cluster and the breweries farther across the county before you choose a route.</p>
       </header>
 
       {open ? (
@@ -78,7 +78,7 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           <span className="relative flex items-start justify-between gap-5">
             <span>
               <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">Interactive map</span>
-              <span className="mt-2 block max-w-[8ch] font-serif text-[42px] font-semibold leading-[0.86] tracking-[-0.045em] sm:text-[54px]">Open the whole beer county.</span>
+              <span className="mt-2 block max-w-[9ch] font-serif text-[42px] font-semibold leading-[0.86] tracking-[-0.045em] sm:text-[54px]">Open the brewery map.</span>
             </span>
             <span className="grid h-12 w-12 shrink-0 place-items-center border border-white/20 bg-white/5">
               <MapIcon className="h-5 w-5" strokeWidth={1.8} />

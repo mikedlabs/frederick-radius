@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/numbers" },
   title: "Frederick County in numbers",
   description:
-    "The county, counted: 1,500+ real places by town and kind, 174 local pours, verified happy hours and field notes, markets, nonprofits, and the oldest town on the ledger. Every figure computed from the live dataset.",
+    "See counts of places, towns, brewery pours, field notes, and other records in the Frederick Radius dataset.",
 };
 
 // The numbers change when the dataset changes (deploys, overrides, the
@@ -132,20 +132,20 @@ export default function NumbersPage() {
           Frederick County, counted.
         </h1>
         <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every figure on this page is computed from the guide&rsquo;s live
-          dataset, nothing typed in by hand. Tap any number to browse what it
-          counts.
+          Figures on this page are calculated from the guide&rsquo;s current
+          datasets when the page builds. Tap a linked number to browse the
+          records behind it.
         </p>
       </header>
 
       <Plate numeral="I" title="The catalog">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          <Stat value={n.catalog.places.toLocaleString()} label="real places on the ledger" href="/places" />
+          <Stat value={n.catalog.places.toLocaleString()} label="place records in the guide" href="/places" />
           <Stat value={String(n.catalog.towns)} label="towns and villages" href="/towns" />
-          <Stat value={n.catalog.verifiedHours.toLocaleString()} label="with verified live hours" href="/rhythm" />
-          <Stat value={n.catalog.rated.toLocaleString()} label="carrying community ratings" />
+          <Stat value={n.catalog.verifiedHours.toLocaleString()} label="with posted hours in the dataset" href="/rhythm" />
+          <Stat value={n.catalog.rated.toLocaleString()} label="with a Google rating" />
           <Stat value={n.catalog.fourEightPlus.toLocaleString()} label="rated 4.8 stars or better" />
-          <Stat value={n.fieldwork.notedPlaces.toLocaleString()} label="with hand-verified field notes" />
+          <Stat value={n.fieldwork.notedPlaces.toLocaleString()} label="with field-note records" />
         </div>
       </Plate>
 
@@ -160,26 +160,26 @@ export default function NumbersPage() {
       <Plate numeral="IV" title="The pour book">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <Stat value={String(n.beer.beers)} label="signature pours cataloged" href="/beer" />
-          <Stat value={String(n.beer.breweries)} label="breweries pouring them" href="/beer" />
-          <Stat value={`${n.beer.strongestAbv.toFixed(1)}%`} label="the county's strongest pour" />
-          <Stat value={`${n.beer.medianAbv.toFixed(1)}%`} label="the median pour" />
+          <Stat value={String(n.beer.breweries)} label="breweries represented" href="/beer" />
+          <Stat value={`${n.beer.strongestAbv.toFixed(1)}%`} label="highest ABV in the guide" />
+          <Stat value={`${n.beer.medianAbv.toFixed(1)}%`} label="median ABV in the guide" />
         </div>
         <div className="mt-2.5">
           <Leaders rows={n.beer.families} unit="Pours by style family" />
         </div>
         {n.beer.topRated && (
           <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
-            Highest-rated pour on Untappd: <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{n.beer.topRated.name}</span>{" "}
+            The highest Untappd rating in the guide belongs to <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{n.beer.topRated.name}</span>{" "}
             ({n.beer.topRated.brewery}), ★ {n.beer.topRated.rating.toFixed(2)}.
           </p>
         )}
       </Plate>
 
-      <Plate numeral="V" title="The fieldwork">
+      <Plate numeral="V" title="Guide notes">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <Stat value={String(n.fieldwork.happyHours)} label="happy hours verified at the source" href="/happy-hour" />
-          <Stat value={String(n.fieldwork.parkingTips)} label="parking tricks worth knowing" />
-          <Stat value={String(n.fieldwork.insiderNotes)} label="insider notes from real visits" />
+          <Stat value={String(n.fieldwork.happyHours)} label="with a cited happy-hour record" href="/happy-hour" />
+          <Stat value={String(n.fieldwork.parkingTips)} label="with a parking note" />
+          <Stat value={String(n.fieldwork.insiderNotes)} label="with an insider note" />
           <Stat value={String(n.county.farmersMarkets)} label="farmers markets on the calendar" href="/category/market" />
         </div>
       </Plate>
@@ -189,15 +189,15 @@ export default function NumbersPage() {
           <Stat value={n.county.nonprofits.toLocaleString()} label="registered nonprofits (IRS record)" href="/nonprofits" />
           <Stat value={String(n.county.shippingPoints)} label="places to mail a package" href="/shipping" />
           {n.county.oldestTown && (
-            <Stat value={String(n.county.oldestTown.est)} label={`${n.county.oldestTown.name} founded, the county's oldest`} href="/towns" />
+            <Stat value={String(n.county.oldestTown.est)} label={`${n.county.oldestTown.name} founded, earliest in the mapped town data`} href="/towns" />
           )}
-          <Stat value={n.county.townsPopulation.toLocaleString()} label="people living in the mapped towns (2020)" href="/towns" />
+          <Stat value={n.county.townsPopulation.toLocaleString()} label="people in the mapped towns (2020 data)" href="/towns" />
         </div>
       </Plate>
 
       <p className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-        Counted from the live dataset at build time; the page recounts as the
-        guide grows.
+        These counts come from the shipped datasets at build time and update
+        when the guide rebuilds.
         <Link href="/trust" className="inline-flex items-center gap-1 font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
           How Radius checks data
           <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />

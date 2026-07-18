@@ -247,7 +247,7 @@ export default function NotificationsCard() {
         flash(json.error ? `Send failed: ${json.error}` : "Send failed.");
         return;
       }
-      flash("Test sent. Check your notifications.");
+      flash("The test notification was sent.");
     } finally {
       setBusy(false);
     }
@@ -364,8 +364,8 @@ export default function NotificationsCard() {
           : enabled
             ? topics.size === 0
               ? "You're subscribed. Pick at least one topic below to start receiving alerts."
-              : "Choose what gets through. Your selections save automatically."
-            : "One tap to opt in. You'll only get the topics you choose."}
+              : "Your topic choices save automatically."
+            : "Turn notifications on, then choose the topics you want."}
       </p>
 
       <ul className="mt-4 space-y-2">

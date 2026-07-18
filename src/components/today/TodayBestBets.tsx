@@ -53,7 +53,7 @@ export default function TodayBestBets({ initial }: { initial: TodayEventResponse
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 id="today-bets-heading" className="text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Worth a look today</h2>
-          <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>Three current draws, not the whole calendar.</p>
+          <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>This shortlist highlights what stands out now without repeating the whole calendar.</p>
         </div>
         <Link href="/events?lens=today" prefetch={false} className="shrink-0 text-[11.5px] font-semibold" style={{ color: "var(--app-brand-press)" }}>All events</Link>
       </div>

@@ -14,27 +14,27 @@ export type PushTopic =
 export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = {
   "civic-alerts": {
     label: "Civic alerts",
-    desc: "NWS warnings, park closures, county incidents",
+    desc: "Receive important weather and civic alerts.",
   },
   "saved-events": {
     label: "Saved event reminders",
-    desc: "One hour before something you saved starts",
+    desc: "Get a reminder one hour before a saved event starts.",
   },
   "daily-briefing": {
     label: "Daily briefing",
-    desc: "What's on today, sent every morning at 8",
+    desc: "Get the day's local briefing every morning at 8.",
   },
   specials: {
     label: "Specials near you",
-    desc: "Deals and pop-ups from Frederick County businesses",
+    desc: "Hear about deals and pop-ups from Frederick County businesses.",
   },
   parking: {
     label: "Parking alerts",
-    desc: "A heads-up before downtown garages fill, so you can pick another",
+    desc: "Get notices about downtown parking conditions.",
   },
   "golden-hour": {
     label: "Golden hour",
-    desc: "A heads-up half an hour before the day's best light",
+    desc: "Get a reminder 30 minutes before local golden hour.",
   },
 };
 

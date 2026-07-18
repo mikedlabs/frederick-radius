@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   const today = fc?.daily?.[0];
   const weatherStr =
     today && typeof today.temperature === "number"
-      ? `${today.temperature}°${today.temperatureUnit ?? "F"} · ${today.shortForecast}`
+      ? `Today's forecast is ${today.temperature}°${today.temperatureUnit ?? "F"} with ${today.shortForecast.toLowerCase()}.`
       : null;
 
   const todayCount = (live.events ?? []).filter(
@@ -72,7 +72,9 @@ export async function GET(request: Request) {
 
   const parts: string[] = [];
   if (weatherStr) parts.push(weatherStr);
-  if (todayCount > 0) parts.push(`${todayCount} thing${todayCount === 1 ? "" : "s"} on today`);
+  if (todayCount > 0) {
+    parts.push(`${todayCount} listed event${todayCount === 1 ? " is" : "s are"} happening today.`);
+  }
 
   // Nothing trustworthy to say → stay silent (no empty morning buzz).
   if (parts.length === 0) {
@@ -81,7 +83,7 @@ export async function GET(request: Request) {
 
   const result = await fanoutToTopic("daily-briefing", `briefing:${todayKey}`, {
     title: "Today in Frederick",
-    body: parts.join(" · "),
+    body: parts.join(" "),
     url: "/today",
     tag: `briefing:${todayKey}`,
   });
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ran_at: new Date().toISOString(),
     date: todayKey,
-    body: parts.join(" · "),
+    body: parts.join(" "),
     ...result,
   });
 }

@@ -788,14 +788,14 @@ export default function RadiusBuilder({
           aria-busy={geoStatus === "loading" || undefined}
           aria-label={
             geoStatus === "denied"
-              ? "Location blocked. Enable in browser settings."
+              ? "Location access is blocked. Enable it in your browser settings."
               : myLoc
                 ? "Using your location"
                 : "Center on your location"
           }
           title={
             geoStatus === "denied"
-              ? "Location blocked. Enable in browser settings."
+              ? "Location access is blocked. Enable it in your browser settings."
               : myLoc
                 ? "Using your location"
                 : "Center on your location"
@@ -983,7 +983,7 @@ export default function RadiusBuilder({
           />
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Couldn&rsquo;t access your location.
+              Radius could not access your location.
             </p>
             <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
               Enable it in your browser settings, or pick a center below.
@@ -1469,7 +1469,7 @@ export default function RadiusBuilder({
                 className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[12px]"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
-                No {activeCuisine ? "matching" : ""} spots in this group inside the radius.
+                There are no {activeCuisine ? "matching" : ""} spots in this group inside the radius.
               </p>
             ) : view === "grid" ? (
               <div className="grid grid-cols-2 gap-3">
@@ -1589,7 +1589,7 @@ export default function RadiusBuilder({
       {inside.length === 0 && insideAmenities.length === 0 && (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          Nothing inside this radius. Move the slider, change the mode, or pick a different center.
+          There are no places inside this radius. Widen or move the radius to try again.
         </p>
       )}
       </MapControlSheet>

@@ -2,7 +2,6 @@ import { meterUsage } from "@/lib/usage-meter";
 import { NextResponse, type NextRequest } from "next/server";
 import { askFrederick } from "@/lib/ask/answer";
 import { isRateLimited, isSameOriginMutationRequest, readJsonBodyWithLimit } from "@/lib/origin-check";
-import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
@@ -60,19 +59,24 @@ export async function POST(req: NextRequest) {
     Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
       ? { lat: roundCoord(lat), lng: roundCoord(lng) }
       : null;
-  const approx = await approxLocation();
   const requestScope = typeof body.scope === "string" ? parseScope(body.scope.slice(0, 60)) : null;
+  // Ask must never turn an edge/network estimate into a "near me" answer.
+  // IP geolocation is coarse enough to rank Brunswick or south-county places
+  // ahead of someone standing downtown. A selected town, a rounded device
+  // fix, or the saved home town may rank results; without one, Ask is
+  // explicitly countywide and its answer copy says proximity is unavailable.
   const context = resolveDecisionContext({
     scopeRaw: requestScope ?? req.cookies.get(SCOPE_COOKIE)?.value ?? null,
     homeMuniRaw: req.cookies.get("fr_home_muni")?.value ?? null,
     deviceOrigin,
-    approximateOrigin: approx.origin,
-    approximateStatus: approx.status,
+    approximateOrigin: null,
+    approximateStatus: "missing",
   });
   const result = await askFrederick(query, {
     origin: context.origin,
     municipality: context.filterMunicipality,
     contextLabel: context.label,
+    canShowDistance: context.canShowDistance,
     fallbackReason: context.fallbackReason,
   }, { taste: body.taste });
   if (result.usedModel) meterUsage("anthropic_ask");

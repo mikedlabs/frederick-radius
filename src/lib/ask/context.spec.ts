@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, rankForSources, filterCitedSources, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -48,7 +48,7 @@ describe("eventContextLines", () => {
       WED_6PM,
     );
     expect(block).toContain("EVENTS TODAY (including tonight)");
-    expect(block).toContain("7:00 PM — Bluegrass Jam @ Steinhardt Brewing (Frederick) [live music]");
+    expect(block).toContain("7:00 PM: Bluegrass Jam at Steinhardt Brewing (Frederick) [live music]");
     expect(picked.map((e) => e.slug)).toEqual(["jam"]);
   });
 
@@ -115,6 +115,16 @@ describe("eventContextLines", () => {
     expect(picked.some((e) => e.slug === "jam")).toBe(true);
     // ...and the block stays chronological after the relevance cut.
     expect(picked[picked.length - 1].slug).toBe("jam");
+  });
+});
+
+describe("scopeAskEvents", () => {
+  it("keeps a selected town's event context inside that town", () => {
+    const pool = [
+      ev({ slug: "urbana", municipality: "urbana" }),
+      ev({ slug: "frederick", municipality: "frederick" }),
+    ];
+    expect(scopeAskEvents(pool, "urbana").map((event) => event.slug)).toEqual(["urbana"]);
   });
 });
 
@@ -245,8 +255,122 @@ describe("stripInlineMarkdown", () => {
   it("collapses code ticks and links to their text", () => {
     expect(stripInlineMarkdown("check `hours` on [the map](/map)")).toBe("check hours on the map");
   });
+  it("removes the remaining common markdown forms", () => {
+    expect(stripInlineMarkdown("> _Cafe Nola_ is ~~probably~~ closest.")).toBe(
+      "Cafe Nola is probably closest.",
+    );
+    expect(stripInlineMarkdown("![Cafe Nola](photo.jpg) is nearby.")).toBe(
+      "Cafe Nola is nearby.",
+    );
+  });
   it("leaves legitimate prose alone", () => {
     const s = "Shab Row & Everedy Square, 5-9 PM. A 4.5 star spot.";
     expect(stripInlineMarkdown(s)).toBe(s);
+  });
+});
+
+describe("normalizePlainTextAnswer", () => {
+  it("turns markdown bullets into separate grammatical sentences", () => {
+    expect(
+      normalizePlainTextAnswer("## Picks\n- **Cafe Nola** — closest\n- `Beans` — open later"),
+    ).toBe("Cafe Nola is closest. Beans is open later.");
+  });
+
+  it("preserves complete numbered recommendations without joining them", () => {
+    expect(
+      normalizePlainTextAnswer(
+        "1. Cafe Nola is the closest verified match.\n2) Beans & Bagels stays open later.",
+      ),
+    ).toBe("Cafe Nola is the closest verified match. Beans & Bagels stays open later.");
+  });
+
+  it("turns colon-style numbered picks into grammatical cited claims", () => {
+    expect(
+      normalizePlainTextAnswer(
+        "Here are two choices:\n1. Cafe Nola: closest verified match\n2. Beans & Bagels: It stays open later",
+      ),
+    ).toBe(
+      "Here are two choices. Cafe Nola is the closest verified match. For Beans & Bagels, it stays open later.",
+    );
+  });
+
+  it("folds a wrapped list-item detail into the same grammatical sentence", () => {
+    expect(
+      normalizePlainTextAnswer(
+        "### Three choices\n1. Cafe Nola — closest downtown\n   and it serves breakfast all day\n2. Beans & Bagels — open later",
+      ),
+    ).toBe("Cafe Nola is closest downtown and it serves breakfast all day. Beans & Bagels is open later.");
+  });
+
+  it("makes bare-name bullets grammatical instead of concatenating names", () => {
+    expect(normalizePlainTextAnswer("- Cafe Nola\n- Beans & Bagels")).toBe(
+      "Options include Cafe Nola and Beans & Bagels.",
+    );
+  });
+
+  it("keeps ordinary prose as one plain-text paragraph", () => {
+    expect(normalizePlainTextAnswer("Cafe Nola is closest.\nBeans stays open later.")).toBe(
+      "Cafe Nola is closest. Beans stays open later.",
+    );
+  });
+
+  it("drops a markdown heading instead of splicing it into prose", () => {
+    expect(normalizePlainTextAnswer("## Best choice\nCafe Nola is closest.")).toBe(
+      "Cafe Nola is closest.",
+    );
+  });
+
+  it("keeps a noun-phrase list detail as a recommendation, not an identity", () => {
+    expect(normalizePlainTextAnswer("- Cafe Nola — breakfast sandwiches and coffee")).toBe(
+      "Consider Cafe Nola for its breakfast sandwiches and coffee.",
+    );
+  });
+
+  it("does not turn an arbitrary business detail into a copula claim", () => {
+    expect(normalizePlainTextAnswer("- Hootch & Banter: creekside patio")).toBe(
+      "Consider Hootch & Banter for its creekside patio.",
+    );
+  });
+
+  it("recognizes business names that contain a lower-case connector", () => {
+    expect(normalizePlainTextAnswer("- Up on Market")).toBe(
+      "Up on Market is one option.",
+    );
+  });
+
+  it("preserves numeric ranges while cleaning prose dashes", () => {
+    expect(normalizePlainTextAnswer("Cafe Nola – open 5 – 9 PM")).toBe(
+      "Cafe Nola is open 5-9 PM.",
+    );
+  });
+});
+
+describe("requestedOptionCount", () => {
+  it.each([
+    ["Give me 4 coffee shops downtown", 4],
+    ["What are the top three breweries?", 3],
+    ["Show me a couple of dinner options", 2],
+    ["I want several rainy-day ideas", "multiple"],
+  ])("reads an explicit option request from %s", (query, expected) => {
+    expect(requestedOptionCount(query)).toBe(expected);
+  });
+
+  it.each([
+    "Build a three-hour plan",
+    "What is the best 3-hour plan?",
+    "Give me 3 hours in Frederick",
+    "Find 2 tickets for tonight",
+    "Dinner for 4 people",
+    "Find coffee at 7:30",
+    "What is the best breakfast sandwich?",
+  ])("does not mistake another number for an option count: %s", (query) => {
+    expect(requestedOptionCount(query)).toBeNull();
+  });
+
+  it("tells the model to honor the requested count without inventing citations", () => {
+    const instruction = optionCountInstruction("Recommend five local breweries");
+    expect(instruction).toContain("explicitly requested 5 options");
+    expect(instruction).toContain("Name every choice so its source can be cited");
+    expect(instruction).toContain("instead of inventing or padding");
   });
 });

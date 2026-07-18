@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/trust" },
   title: "Trust & data",
   description:
-    "Where the data comes from, what the badges mean, and what we don't do.",
+    "See where Frederick Radius data comes from and what its source labels mean.",
 };
 
 export default function TrustPage() {
@@ -44,8 +44,8 @@ export default function TrustPage() {
           className="text-[16px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          A short, honest page. What we know, what we don&apos;t,
-          and how to tell the difference on every place card.
+          This page explains the difference between checked source data and
+          owner-supplied details.
         </p>
       </header>
 
@@ -87,17 +87,17 @@ export default function TrustPage() {
         >
           <li>
             <strong style={{ color: "var(--app-ink)" }}>The place index.</strong>{" "}
-            {placeCount} current place records assembled from business,
+            {placeCount} records in the shipped place index, assembled from business,
             government, community, and mapping sources. Automated quality checks
             and review rules screen the index; we do not claim every listing was
             individually vetted by hand.
           </li>
           <li>
-            <strong style={{ color: "var(--app-ink)" }}>Live event feeds.</strong>{" "}
+            <strong style={{ color: "var(--app-ink)" }}>Event feeds.</strong>{" "}
             Downtown Frederick Partnership, Celebrate Frederick, Hood College,
             Frederick County government calendar, plus ticketed listings from
-            Ticketmaster, Bandsintown, and the Weinberg Center. Pulled fresh,
-            multiple times a day.
+            Ticketmaster, Bandsintown, and the Weinberg Center. Radius checks
+            these feeds multiple times a day.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Google Places.</strong>{" "}
@@ -119,7 +119,7 @@ export default function TrustPage() {
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Resident submissions.</strong>{" "}
-            People who notice we&apos;re missing something and send it via{" "}
+            Residents can send a missing place through{" "}
             <Link
               href="/submit/place"
               className="underline"
@@ -127,7 +127,7 @@ export default function TrustPage() {
             >
               /submit/place
             </Link>
-            . Reviewed by hand before going live.
+            . Radius reviews each submission before publication.
           </li>
         </ul>
       </section>
@@ -197,10 +197,10 @@ export default function TrustPage() {
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          A small chip tells you when we last checked the available source for
-          the basics. &ldquo;Checked at source · 3d ago&rdquo; is recent; &ldquo;Last checked
-          Mar 2025&rdquo; is stale. It does not say that the owner supplied or approved
-          the listing. We reserve &ldquo;Owner verified&rdquo; for an approved active claim.
+          A small chip records when Radius last checked available source details.
+          &ldquo;Checked at source · 3d ago&rdquo; is recent, while &ldquo;Last checked Mar
+          2025&rdquo; is stale. The chip does not mean the owner supplied or approved
+          the listing. &ldquo;Owner verified&rdquo; is reserved for an approved active claim.
         </p>
       </section>
 
@@ -259,8 +259,8 @@ export default function TrustPage() {
           >
             hello@frederickradius.app
           </a>{" "}
-          with what you saw and where. We read every message and fix
-          things by hand.
+          with what you saw and where. We review correction messages and update
+          records by hand.
         </p>
       </section>
 
@@ -268,7 +268,7 @@ export default function TrustPage() {
         className="pt-2 text-center text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Made locally in Frederick, Maryland. Independent of local government.
+        Frederick Radius is made locally in Frederick, Maryland, and is independent of local government.
       </p>
     </div>
   );

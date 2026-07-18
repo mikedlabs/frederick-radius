@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import {
+  ERROR_BOUNDARY_MARKERS_BY_KIND,
+  findErrorBoundaryMarker,
+} from "./error-boundary-markers";
 
 /**
  * The standing UX gate — the July 2026 hand-run sweeps, committed.
@@ -7,8 +12,8 @@ import path from "node:path";
  * Two failure classes this catches, both of which reached (or nearly
  * reached) prod that month before a human noticed:
  *
- *   1. RENDER ROT — a page 500s into the error boundary ("This page hit
- *      a snag") or comes up near-empty. The brewery-logo change 500'd
+ *   1. RENDER ROT — a page 500s into any app error boundary or comes up
+ *      near-empty. The brewery-logo change 500'd
  *      /beer on first render (a next.config localPatterns miss) and only
  *      a screenshot caught it.
  *   2. ACCESSIBILITY ROT — axe-core WCAG A/AA violations. The first full
@@ -29,6 +34,7 @@ const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 // hand sweep used, plus /numbers (added after).
 const ROUTES = [
   "/today",
+  "/ask",
   "/events",
   "/search?q=animal+control",
   "/nearby",
@@ -56,10 +62,6 @@ const ROUTES = [
   "/reserve",
 ];
 
-// Marker copy of the app's error boundary — a page serving this has
-// crashed, whatever its HTTP status says.
-const ERROR_BOUNDARY_TEXT = "This page hit a snag";
-
 type AxeViolation = {
   id: string;
   impact: string | null;
@@ -69,6 +71,34 @@ type AxeViolation = {
 
 test.describe("UX gate: render health + WCAG A/AA", () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the detector tracks every current error-boundary message", () => {
+    const boundarySources = {
+      component: readFileSync(
+        path.join(process.cwd(), "src/components/ui/ErrorBoundary.tsx"),
+        "utf8",
+      ),
+      route: readFileSync(
+        path.join(process.cwd(), "src/app/(app)/error.tsx"),
+        "utf8",
+      ),
+      global: readFileSync(
+        path.join(process.cwd(), "src/app/global-error.tsx"),
+        "utf8",
+      ),
+    };
+
+    for (const kind of Object.keys(
+      ERROR_BOUNDARY_MARKERS_BY_KIND,
+    ) as Array<keyof typeof ERROR_BOUNDARY_MARKERS_BY_KIND>) {
+      for (const marker of ERROR_BOUNDARY_MARKERS_BY_KIND[kind]) {
+        expect(
+          boundarySources[kind],
+          `${kind} error-boundary copy changed; update the runtime detector`,
+        ).toContain(marker);
+      }
+    }
+  });
 
   for (const route of ROUTES) {
     test(`${route}`, async ({ page }) => {
@@ -88,20 +118,29 @@ test.describe("UX gate: render health + WCAG A/AA", () => {
       expect(response?.status(), `${route} should serve 200`).toBe(200);
       await page.waitForTimeout(2500);
       const body = await page.textContent("body");
-      expect(body, `${route} should not render the error boundary`).not.toContain(ERROR_BOUNDARY_TEXT);
-      // Blank-shell check. Height alone can't tell an HONEST short page
-      // from an empty shell (both fit the 844px viewport): search may
-      // legitimately answer with a single strong result, and /nearby is
-      // a compact intent chooser. Those routes assert real interactive
-      // content instead of pixels; everything else keeps the height bar.
+      const errorMarker = findErrorBoundaryMarker(body);
+      expect(
+        errorMarker,
+        `${route} should not render an error boundary${errorMarker ? ` (matched: ${errorMarker})` : ""}`,
+      ).toBeNull();
+      // A complete page can legitimately fit within one phone viewport. A
+      // fixed minimum document height treated concise search/chooser states as
+      // blank, so assert the actual shell contract instead: visible main
+      // content, one page heading, and meaningful text.
+      const main = page.locator("main").first();
+      await expect(main, `${route} should expose its main content`).toBeVisible();
+      await expect(page.locator("main h1"), `${route} should have one page heading`).toHaveCount(1);
+      const mainText = ((await main.innerText()) ?? "").replace(/\s+/g, " ").trim();
+      expect(mainText.length, `${route} should render real content, not a blank shell`).toBeGreaterThan(20);
+
+      // Search and Nearby intentionally render compact states. Preserve their
+      // stronger interaction check because text alone could pass on an empty
+      // chooser shell.
       if (route.startsWith("/search") || route === "/nearby") {
         expect(
           await page.locator("main a, main button").count(),
           `${route} should render real content (links/actions), not a blank shell`,
         ).toBeGreaterThan(2);
-      } else {
-        const height = await page.evaluate(() => document.body.scrollHeight);
-        expect(height, `${route} should render real content, not a blank shell`).toBeGreaterThan(900);
       }
 
       // ── Accessibility: WCAG 2.0/2.1 A + AA, pinned at zero ──

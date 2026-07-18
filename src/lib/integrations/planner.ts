@@ -16,13 +16,14 @@ import type { Place } from "@/data/places";
 // static-imports the ~12MB enrichment into the client bundle).
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { upcomingEvents, EVENT_BY_SLUG, type Event } from "@/data/events";
+import { EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
+import { haversineMeters, FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { isChainName } from "@/lib/category-ranking";
 import { getOpenStatus } from "@/lib/hours";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 export type PlanInputs = {
   audience: "solo" | "date" | "family" | "friends" | "visitor";
@@ -31,6 +32,9 @@ export type PlanInputs = {
   /** ISO string so the spec is serializable. Defaults to now. */
   start_at?: string;
   start_near?: LngLat;
+  /** A deliberately selected town is a hard boundary, not merely a centroid
+   * used to make out-of-town stops look local. */
+  municipality?: string;
   /** Optional Ask Radius constraints. Older shared plans omit these and
    *  continue to reconstruct exactly as before. */
   max_distance_m?: number;
@@ -58,6 +62,12 @@ export type PlanStop = {
   why: string;
   /** "open" | "likely" | "unknown" | "closed", for the stop chip. */
   open: "open" | "likely" | "unknown" | "closed";
+  /** Estimated transition from the previous stop. The first stop omits this
+   * because Radius does not know the user's exact departure point unless they
+   * explicitly share it. */
+  travel_from_previous_min?: number;
+  travel_from_previous_m?: number;
+  travel_mode?: "walk" | "drive";
   place?: Place;
   event?: Event;
   /** A real Google place photo when enrichment supplied one. The
@@ -116,6 +126,10 @@ type Slot = "morning" | "afternoon" | "evening";
 const FOOD = new Set(["restaurant", "bar", "brewery", "coffee", "bakery", "market", "pizza"]);
 const CULTURE = new Set(["theater", "museum", "gallery", "music", "arts"]);
 const OUTDOOR = new Set(["park", "trail", "playground"]);
+const MEALS = new Set(["restaurant", "pizza", "food-truck"]);
+const DRINKS = new Set(["bar", "brewery", "winery", "distillery"]);
+const TREATS = new Set(["coffee", "bakery", "ice-cream"]);
+const SHOPPING = new Set(["shopping", "antiques", "book-store", "market"]);
 
 const DURATION_MIN: Record<string, number> = {
   coffee: 40, bakery: 30, restaurant: 80, pizza: 60, bar: 60, brewery: 70,
@@ -123,7 +137,53 @@ const DURATION_MIN: Record<string, number> = {
   park: 50, trail: 60, playground: 40, shopping: 40, wellness: 60,
 };
 const DEFAULT_DURATION = 45;
-const TRAVEL_MIN = 12; // rough hop between stops in a compact county seat
+
+function fitsVibe(cat: string, vibe: PlanInputs["vibe"]): boolean {
+  if (vibe === "food") return FOOD.has(cat) || DRINKS.has(cat) || TREATS.has(cat);
+  if (vibe === "cultural") {
+    return CULTURE.has(cat) || ["public-art", "tours", "library", "book-store", "restaurant", "coffee", "bakery"].includes(cat);
+  }
+  if (vibe === "outdoors") {
+    return OUTDOOR.has(cat) || ["golf", "agritourism", "restaurant", "coffee", "bakery", "brewery"].includes(cat);
+  }
+  if (vibe === "active") {
+    return OUTDOOR.has(cat) || ["golf", "wellness", "yoga", "restaurant", "coffee"].includes(cat);
+  }
+  return FOOD.has(cat) || CULTURE.has(cat) || OUTDOOR.has(cat) || SHOPPING.has(cat) || ["public-art", "tours", "library", "agritourism"].includes(cat);
+}
+
+/** Prevent plans from filling their available slots with cosmetically
+ * different versions of the same experience. */
+function experienceGroup(cat: string): string {
+  if (MEALS.has(cat)) return "meal";
+  if (DRINKS.has(cat)) return "drinks";
+  if (TREATS.has(cat)) return "treat";
+  if (CULTURE.has(cat) || ["public-art", "tours", "library"].includes(cat)) return "culture";
+  if (OUTDOOR.has(cat) || ["golf", "agritourism"].includes(cat)) return "outdoors";
+  if (SHOPPING.has(cat)) return "shopping";
+  return cat;
+}
+
+function openingStopBonus(cat: string, input: PlanInputs, slot: Slot): number {
+  if (input.vibe === "food" && MEALS.has(cat)) return 3;
+  if (input.vibe === "outdoors" && OUTDOOR.has(cat)) return 3;
+  if (input.vibe === "active" && (OUTDOOR.has(cat) || ["wellness", "yoga"].includes(cat))) return 3;
+  if (input.vibe === "cultural" && (CULTURE.has(cat) || ["public-art", "tours", "library"].includes(cat))) return 3;
+  if (input.audience === "date" && slot === "evening" && MEALS.has(cat)) return 2;
+  return 0;
+}
+
+function isPublicPlanCandidate(place: Place): boolean {
+  if (/\b(fraternal order|eagles (?:lodge|aerie)|aerie \d|elks lodge|moose lodge|american legion|vfw|veterans of foreign wars)\b/i.test(place.name)) {
+    return false;
+  }
+  if ((FOOD.has(place.category) || DRINKS.has(place.category) || TREATS.has(place.category))) {
+    const address = place.address?.trim().toLowerCase();
+    const city = place.city?.trim().toLowerCase();
+    if (!address || address === city || !/\d/.test(address)) return false;
+  }
+  return true;
+}
 
 function slotFor(d: Date): Slot {
   const h = Number(
@@ -207,7 +267,8 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
     isDestinationCategory(cat) || (input.vibe === "active" && cat === "wellness");
   return clientPlaces()
     .filter((p) => {
-      if (!isRecommendable(p) || !allowCategory(p.category)) return false;
+      if (input.municipality && p.municipality !== input.municipality) return false;
+      if (!isRecommendable(p) || !allowCategory(p.category) || !isPublicPlanCandidate(p)) return false;
       // A date-night request should not start at a daytime errand/snack stop
       // merely because it is close and highly rated. Keep the evening set to
       // destinations that can carry an actual night out.
@@ -254,6 +315,7 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
     })
     .filter((c) => {
       if (c.distance >= (input.max_distance_m ?? 20_000) || c.score <= 0) return false;
+      if (!fitsVibe(c.d.category, input.vibe)) return false;
       if (c.d.open_status.state === "closed") return false;
       // A time-specific plan should not route someone to a place whose hours
       // Radius cannot confirm for that window.
@@ -271,50 +333,17 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
     .sort((a, b) => b.score - a.score);
 }
 
-/** Greedy nearest neighbour ordering so the stops form a sane route. */
-function routeOrder(picks: Scored[], origin: LngLat, anchorSlug?: string): Scored[] {
-  const remaining = [...picks];
-  const ordered: Scored[] = [];
-  let from = origin;
-  if (anchorSlug) {
-    const anchorIndex = remaining.findIndex((pick) => pick.d.slug === anchorSlug);
-    if (anchorIndex >= 0) {
-      const anchor = remaining.splice(anchorIndex, 1)[0];
-      ordered.push(anchor);
-      from = anchor.d.geom;
-    }
-  }
-  while (remaining.length > 0) {
-    let best = 0;
-    let bestD = Infinity;
-    for (let i = 0; i < remaining.length; i++) {
-      const dist = haversineMeters(from, remaining[i].d.geom);
-      if (dist < bestD) { bestD = dist; best = i; }
-    }
-    const next = remaining.splice(best, 1)[0];
-    ordered.push(next);
-    from = next.d.geom;
-  }
-  return ordered;
-}
-
 function durationFor(cat: string): number {
   return DURATION_MIN[cat] ?? DEFAULT_DURATION;
 }
 
 function whyFor(d: PlaceCardData, input: PlanInputs): string {
-  const dist = formatDistance(d.distance_m ?? 0);
-  const rating = d.google_rating ? `${d.google_rating.toFixed(1)} on Google, ` : "";
-  const openBit =
-    d.open_status.state === "open" ? "hours line up"
-    : d.open_status.state === "closing-soon" ? "closes near the end of this stop"
-    : d.open_status.state === "closed" ? "check hours, may be closed"
-    : "hours not confirmed";
+  const rating = d.google_rating ? `Rated ${d.google_rating.toFixed(1)} on Google and ` : "";
   const fit: Record<PlanInputs["audience"], string> = {
-    date: "easy for a date", family: "works with kids", solo: "good solo",
-    friends: "fine with a group", visitor: "a local pick",
+    date: "a good fit for a date", family: "a practical family stop", solo: "comfortable for a solo outing",
+    friends: "well suited to a group", visitor: "a useful local introduction",
   };
-  return `${rating}${openBit}. ${dist} from your start, ${fit[input.audience]}.`;
+  return `${rating}${fit[input.audience]}.`;
 }
 
 function stopCountFor(hours: PlanInputs["duration_hours"]): number {
@@ -326,115 +355,171 @@ function stopCountFor(hours: PlanInputs["duration_hours"]): number {
 
 /** Resolve inputs to a concrete origin and start time. */
 function resolve(input: PlanInputs): { origin: LngLat; now: Date } {
+  const municipality = input.municipality
+    ? MUNICIPALITIES.find((town) => town.slug === input.municipality)
+    : undefined;
   return {
-    origin: input.start_near ?? FREDERICK_CENTER,
+    origin: input.start_near ?? municipality?.centroid ?? FREDERICK_CENTER,
     now: input.start_at ? new Date(input.start_at) : new Date(),
   };
+}
+
+function estimateTravel(from: LngLat, to: LngLat): { minutes: number; meters: number; mode: "walk" | "drive" } {
+  const meters = haversineMeters(from, to);
+  if (meters <= 1_600) {
+    return { minutes: Math.max(3, Math.ceil(meters / 75)), meters, mode: "walk" };
+  }
+  return { minutes: Math.max(6, Math.ceil(meters / 500) + 3), meters, mode: "drive" };
+}
+
+function confirmedOpenForStop(place: Place, at: Date, durationMin: number): boolean {
+  const start = getOpenStatus(place.hours, { verified: place.hours_verified }, at).state;
+  const nearEnd = new Date(at.getTime() + Math.max(1, durationMin - 5) * 60_000);
+  const end = getOpenStatus(place.hours, { verified: place.hours_verified }, nearEnd).state;
+  return start === "open" && (end === "open" || end === "closing-soon");
 }
 
 /** Lay stops out on the clock from the start time. Pure. */
 function schedule(
   ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }>,
   start: Date,
+  input: PlanInputs,
 ): PlanStop[] {
   let cursor = start.getTime();
-  return ordered.map((o, i) => {
+  let previous: LngLat | null = null;
+  const stops: PlanStop[] = [];
+  for (const o of ordered) {
+    const geom = o.place?.geom ?? o.event?.geom;
+    const travel = previous && geom ? estimateTravel(previous, geom) : null;
+    if (travel) cursor += travel.minutes * 60_000;
     // An event anchors to its real start time when that is later.
     if (o.event) {
       const evStart = new Date(o.event.starts_at).getTime();
+      const evEnd = o.event.ends_at ? new Date(o.event.ends_at).getTime() : null;
+      if (evEnd && cursor >= evEnd) continue;
       if (evStart > cursor) cursor = evStart;
     }
     const cat = o.place?.category ?? "event";
-    const dur = o.event ? 90 : durationFor(cat);
+    const eventRemaining = o.event?.ends_at
+      ? Math.floor((new Date(o.event.ends_at).getTime() - cursor) / 60_000)
+      : 90;
+    const dur = o.event ? Math.max(15, Math.min(90, eventRemaining)) : durationFor(cat);
     const at = new Date(cursor).toISOString();
     const scheduledState = o.place
       ? getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(cursor)).state
       : null;
+    const endState = o.place
+      ? getOpenStatus(
+          o.place.hours,
+          { verified: o.place.hours_verified },
+          new Date(cursor + Math.max(1, dur - 5) * 60_000),
+        ).state
+      : null;
     const openState: PlanStop["open"] = o.event
       ? o.openState
-      : scheduledState === "open" || scheduledState === "closing-soon"
+      : scheduledState === "open" && (endState === "open" || endState === "closing-soon")
         ? "open"
-        : scheduledState === "closed"
+        : scheduledState === "closed" || endState === "closed"
           ? "closed"
           : "unknown";
-    cursor += (dur + TRAVEL_MIN) * 60_000;
+    // A known-closed place never belongs in a ready-to-use plan. Do not spend
+    // the user's time budget on it; the next valid stop keeps the same slot.
+    if (openState === "closed") continue;
+    cursor += dur * 60_000;
     const notes = o.place ? fieldNotesFor(o.place.slug) : null;
     const tip = notes?.parking?.text ?? notes?.insider?.[0]?.text;
-    return {
-      order: i + 1,
+    stops.push({
+      order: stops.length + 1,
       at,
       duration_min: dur,
-      why: o.why,
+      why: o.place ? whyFor({ ...o.place, open_status: getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(at)) } as PlaceCardData, input) : o.why,
       open: openState,
       place: o.place,
       event: o.event,
       photo_url: o.photo_url ?? o.event?.hero_image,
+      ...(travel ? {
+        travel_from_previous_min: travel.minutes,
+        travel_from_previous_m: travel.meters,
+        travel_mode: travel.mode,
+      } : {}),
       ...(tip ? { tip } : {}),
-    };
-  });
+    });
+    if (geom) previous = geom;
+  }
+  return stops;
 }
 
 export function buildPlan(input: PlanInputs): Plan {
   const { origin, now } = resolve(input);
-  const candidates = scoredCandidates(input, origin, now);
+  const resolvedInput: PlanInputs = { ...input, start_at: now.toISOString() };
+  const candidates = scoredCandidates(resolvedInput, origin, now);
+  const slot = slotFor(now);
 
   const stopCount = Math.min(stopCountFor(input.duration_hours), input.max_stops ?? Infinity);
-  const timeBudget = input.duration_hours * 60 + 20;
+  const windowEnd = now.getTime() + input.duration_hours * 60 * 60_000;
   const seen = new Set<string>();
+  const seenGroups = new Set<string>();
   const picks: Scored[] = [];
-  let planned = 0;
-  for (const c of candidates) {
-    if (picks.length >= stopCount) break;
-    if (seen.has(c.d.slug)) continue;
-    // Diversity: no two stops of the same category.
-    if (picks.some((x) => x.d.category === c.d.category)) continue;
-    const nextMinutes = planned + durationFor(c.d.category) + (picks.length > 0 ? TRAVEL_MIN : 0);
-    // Respect the requested window once we have a usable two-stop outing.
-    // A "3 hour" plan that silently schedules four hours breaks the contract
-    // more than returning a focused two-stop route does.
-    if (picks.length >= 2 && nextMinutes > timeBudget) continue;
-    seen.add(c.d.slug);
-    picks.push(c);
-    planned = nextMinutes;
+  let cursor = now.getTime();
+  let previous = origin;
+
+  while (picks.length < stopCount) {
+    const choices = candidates
+      .filter((candidate) => {
+        if (seen.has(candidate.d.slug)) return false;
+        if (seenGroups.has(experienceGroup(candidate.d.category))) return false;
+        const travel = picks.length > 0 ? estimateTravel(previous, candidate.d.geom) : null;
+        const arrival = new Date(cursor + (travel?.minutes ?? 0) * 60_000);
+        const duration = durationFor(candidate.d.category);
+        if (arrival.getTime() + duration * 60_000 > windowEnd) return false;
+        return confirmedOpenForStop(candidate.d as Place, arrival, duration);
+      })
+      .sort((a, b) => {
+        if (input.anchor_slug) {
+          if (a.d.slug === input.anchor_slug) return -1;
+          if (b.d.slug === input.anchor_slug) return 1;
+        }
+        const aTravel = picks.length > 0 ? estimateTravel(previous, a.d.geom).minutes : 0;
+        const bTravel = picks.length > 0 ? estimateTravel(previous, b.d.geom).minutes : 0;
+        const aOpening = picks.length === 0 ? openingStopBonus(a.d.category, resolvedInput, slot) : 0;
+        const bOpening = picks.length === 0 ? openingStopBonus(b.d.category, resolvedInput, slot) : 0;
+        return (b.score + bOpening - bTravel * 0.08) - (a.score + aOpening - aTravel * 0.08);
+      });
+    const choice = choices[0];
+    if (!choice) break;
+    const travel = picks.length > 0 ? estimateTravel(previous, choice.d.geom) : null;
+    cursor += (travel?.minutes ?? 0) * 60_000;
+    cursor += durationFor(choice.d.category) * 60_000;
+    previous = choice.d.geom;
+    seen.add(choice.d.slug);
+    seenGroups.add(experienceGroup(choice.d.category));
+    picks.push(choice);
   }
 
-  const routed = routeOrder(picks, origin, input.anchor_slug);
-
-  // A real event inside the window earns a slot.
-  const windowEnd = new Date(now.getTime() + input.duration_hours * 3_600_000);
-  const event = upcomingEvents(now).find((e) => {
-    const s = new Date(e.starts_at);
-    return s >= now && s <= windowEnd;
-  });
-
-  const items = routed.map((c) => ({
+  const items = picks.map((c) => ({
     place: c.d as Place,
     photo_url: c.d.google_photo_url,
     openState: c.d.open_status.state === "closing-soon" ? ("open" as const)
       : c.d.open_status.state === "open" ? ("open" as const)
       : c.d.open_status.state === "closed" ? ("closed" as const)
       : ("unknown" as const),
-    why: whyFor(c.d, input),
+    why: whyFor(c.d, resolvedInput),
   }));
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [...items];
-  if (event && ordered.length < stopCount) {
-    ordered.push({
-      event,
-      openState: "open",
-      why: `Live: ${event.title} at ${event.venue_name}.`,
-    });
-  }
-
-  const stops = schedule(ordered, now);
+  // Events are intentionally not auto-inserted here. The client-safe seed
+  // list cannot prove that an event is public, still active, relevant, and
+  // reachable inside this route. Event-aware planning belongs on the server
+  // against the unified public feed; a place-only plan is safer until then.
+  const stops = schedule(ordered, now, resolvedInput);
   const spec: PlanSpec = {
     v: 1,
-    i: input,
+    i: shareSafeInputs(resolvedInput),
     s: stops.map((st) => (st.place ? { p: st.place.slug } : { e: st.event!.slug })),
   };
 
   return {
-    title: titleFor(input, now, stops),
-    summary: summaryFor(input, stops),
+    title: titleFor(resolvedInput, now),
+    summary: summaryFor(resolvedInput, stops),
     stops,
     share: encodeSpec(spec),
   };
@@ -448,11 +533,12 @@ export function buildPlan(input: PlanInputs): Plan {
 export function reconstructPlan(spec: PlanSpec): Plan | null {
   if (spec?.v !== 1 || !Array.isArray(spec.s)) return null;
   const { origin, now } = resolve(spec.i);
+  const resolvedInput: PlanInputs = { ...spec.i, start_at: now.toISOString() };
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [];
   for (const ref of spec.s) {
     if ("p" in ref) {
       const p = clientPlaceBySlug(ref.p);
-      if (!p) continue;
+      if (!p || !isPublicPlanCandidate(p) || (spec.i.municipality && p.municipality !== spec.i.municipality)) continue;
       const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       ordered.push({
         place: p,
@@ -460,28 +546,41 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
         openState: d.open_status.state === "closed" ? "closed"
           : d.open_status.state === "open" || d.open_status.state === "closing-soon" ? "open"
           : "unknown",
-        why: whyFor(d, spec.i),
+        why: whyFor(d, resolvedInput),
       });
     } else {
       const e = EVENT_BY_SLUG[ref.e];
-      if (!e) continue;
+      if (!e || (spec.i.municipality && e.municipality !== spec.i.municipality)) continue;
       ordered.push({ event: e, openState: "open", why: `Live: ${e.title} at ${e.venue_name}.` });
     }
   }
   if (ordered.length === 0) return null;
-  const stops = schedule(ordered, now);
+  const stops = schedule(ordered, now, resolvedInput);
+  const safeSpec: PlanSpec = {
+    ...spec,
+    i: shareSafeInputs(resolvedInput),
+    s: stops.map((stop) => stop.place ? { p: stop.place.slug } : { e: stop.event!.slug }),
+  };
   return {
-    title: titleFor(spec.i, now, stops),
-    summary: summaryFor(spec.i, stops),
+    title: titleFor(resolvedInput, now),
+    summary: summaryFor(resolvedInput, stops),
     stops,
-    share: encodeSpec(spec),
+    share: encodeSpec(safeSpec),
   };
 }
 
 // URL safe base64 of the JSON spec. Small (slugs only), so links stay
 // short enough to share in a text message.
+function shareSafeInputs(input: PlanInputs): PlanInputs {
+  // Exact device coordinates do not belong in a reversible share URL. A
+  // municipality is public context; the chosen stops preserve the route.
+  const safe = { ...input };
+  delete safe.start_near;
+  return safe;
+}
+
 export function encodeSpec(spec: PlanSpec): string {
-  const json = JSON.stringify(spec);
+  const json = JSON.stringify({ ...spec, i: shareSafeInputs(spec.i) });
   const b64 = typeof Buffer !== "undefined"
     ? Buffer.from(json, "utf8").toString("base64")
     : btoa(unescape(encodeURIComponent(json)));
@@ -490,12 +589,26 @@ export function encodeSpec(spec: PlanSpec): string {
 
 export function decodeSpec(token: string): PlanSpec | null {
   try {
+    if (!token || token.length > 8_000) return null;
     const b64 = token.replace(/-/g, "+").replace(/_/g, "/");
     const json = typeof Buffer !== "undefined"
       ? Buffer.from(b64, "base64").toString("utf8")
       : decodeURIComponent(escape(atob(b64)));
     const spec = JSON.parse(json) as PlanSpec;
-    return spec?.v === 1 ? spec : null;
+    if (!spec || spec.v !== 1 || !spec.i || typeof spec.i !== "object") return null;
+    if (!Array.isArray(spec.s) || spec.s.length > 8) return null;
+    if (!["solo", "date", "family", "friends", "visitor"].includes(spec.i.audience)) return null;
+    if (!["easy", "active", "cultural", "outdoors", "food"].includes(spec.i.vibe)) return null;
+    if (![2, 3, 4, 6].includes(spec.i.duration_hours)) return null;
+    if (spec.i.start_at && !Number.isFinite(new Date(spec.i.start_at).getTime())) return null;
+    if (spec.i.municipality && !MUNICIPALITIES.some((town) => town.slug === spec.i.municipality)) return null;
+    const validRefs = spec.s.every((ref) => {
+      if (!ref || typeof ref !== "object") return false;
+      if ("p" in ref) return typeof ref.p === "string" && ref.p.length > 0 && ref.p.length < 160;
+      if ("e" in ref) return typeof ref.e === "string" && ref.e.length > 0 && ref.e.length < 160;
+      return false;
+    });
+    return validRefs ? spec : null;
   } catch {
     return null;
   }
@@ -727,7 +840,11 @@ export function reshuffleSpec(spec: PlanSpec, pinnedSlugs: string[], seed: numbe
  *  "N min total" chip sums (PlanBuilder.totalMinutes), so the title and
  *  the chip can never disagree about how long the plan really runs. */
 function plannedMinutes(stops: PlanStop[]): number {
-  return stops.reduce((sum, s) => sum + (s.duration_min ?? 0), 0);
+  if (stops.length === 0) return 0;
+  const first = new Date(stops[0].at).getTime();
+  const last = stops[stops.length - 1];
+  const end = new Date(last.at).getTime() + last.duration_min * 60_000;
+  return Math.max(0, Math.round((end - first) / 60_000));
 }
 
 /** 280 → "about 4½ hours"; 60 → "about an hour"; 90 → "about 1½ hours". */
@@ -739,30 +856,25 @@ function hoursPhrase(totalMin: number): string {
   return half === whole ? `about ${whole} hours` : `about ${whole}½ hours`;
 }
 
-function titleFor(input: PlanInputs, now: Date, stops: PlanStop[]): string {
+function titleFor(input: PlanInputs, now: Date): string {
   const seg = slotFor(now);
-  const vibeWord: Record<PlanInputs["vibe"], string> = {
-    easy: "An easy", active: "An active", cultural: "A cultural",
-    outdoors: "An outdoor", food: "A food-first",
-  };
-  // Name the ACTUAL scheduled length, not the requested budget: the
-  // per-category durations routinely add past duration_hours, and a hero
-  // that says "3-hour" beside a chip that sums to 280 min reads as a
-  // broken promise on the surface whose pitch is respecting your time.
-  const total = plannedMinutes(stops);
-  if (total === 0) return `${vibeWord[input.vibe]} ${seg}`;
-  return `${vibeWord[input.vibe]} ${seg}, ${hoursPhrase(total)}`;
+  if (input.audience === "date") return seg === "evening" ? "Date night" : `A ${seg} date`;
+  if (input.audience === "friends") return `A ${seg} with friends`;
+  if (input.audience === "family") return `A family ${seg}`;
+  if (input.audience === "visitor") return `A ${seg} in Frederick`;
+  return `A solo ${seg}`;
 }
 
 function summaryFor(input: PlanInputs, stops: PlanStop[]): string {
   if (stops.length === 0) {
     return "Could not find a good match. Try a different vibe, more time, or a wider start.";
   }
-  const audienceFor: Record<PlanInputs["audience"], string> = {
-    solo: "going solo", date: "date night", family: "with the kids",
-    friends: "with friends", visitor: "if you are visiting",
-  };
-  return `${stops.length} stops for ${audienceFor[input.audience]}. Real places, nothing invented.`;
+  const town = input.municipality
+    ? MUNICIPALITIES.find((item) => item.slug === input.municipality)?.name
+    : null;
+  const area = town ?? "Frederick County";
+  const total = hoursPhrase(plannedMinutes(stops));
+  return `${stops.length === 1 ? "One stop" : `${stops.length} stops`} in ${area}, with ${total} scheduled.`;
 }
 
 // Optional Claude narrative; only runs when ANTHROPIC_API_KEY is set.
@@ -778,8 +890,9 @@ export async function narratePlanWithClaude(plan: Plan): Promise<string | null> 
       "You are a local Frederick County, Maryland concierge.",
       `Plan: ${plan.title}.`,
       `Stops:\n${stopText}`,
-      "Write 2 sentences that tie the stops together: flow, timing, what to expect.",
-      "Do not invent details. Do not restate the names. Read like a thoughtful friend.",
+      "Write two complete sentences that explain how the stops fit together.",
+      "Use a warm, direct voice without inventing details or repeating place names.",
+      "Do not use fragments, slogans, an automatic three-part list, or promotional filler.",
     ].join("\n\n");
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -796,7 +909,8 @@ export async function narratePlanWithClaude(plan: Plan): Promise<string | null> 
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { content?: Array<{ text?: string }> };
-    return data.content?.[0]?.text ?? null;
+    const narrative = data.content?.[0]?.text?.replace(/—/g, ",").replace(/\s+/g, " ").trim();
+    return narrative || null;
   } catch {
     return null;
   }

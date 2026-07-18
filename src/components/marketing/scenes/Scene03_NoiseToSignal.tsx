@@ -28,7 +28,7 @@ export default function Scene03_NoiseToSignal() {
                     The <span className="text-red-500">Problem</span>
                 </h2>
                 <p className="text-gray-400 text-xl font-light">
-                    Information scattered across endless platforms
+                    Local information is split across too many sources.
                 </p>
             </motion.div>
 
@@ -119,7 +119,7 @@ export default function Scene03_NoiseToSignal() {
                             </h1>
                         </div>
                         <div className="text-xl text-gray-400 font-light">
-                            One clean signal. Zero noise.
+                            One clear starting point.
                         </div>
                     </motion.div>
 
@@ -137,7 +137,7 @@ export default function Scene03_NoiseToSignal() {
                             </span>{" "}
                         </p>
                         <div className="mt-6 pt-6 border-t border-white/10 text-gray-400 text-lg">
-                            Local places, events, and updates in one interface — with source links when details matter.
+                            Places and events share one interface, with source links where details matter.
                         </div>
                     </motion.div>
                 </div>

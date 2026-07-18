@@ -33,8 +33,17 @@ export type AskEvent = {
   venue_name?: string | null;
   /** Resolved venue place slug — feeds the live-music venue join. */
   venue_place_slug?: string | null;
+  municipality?: string | null;
   municipality_name?: string;
 };
+
+/** Preserve an explicit town scope before building a time-window block. The
+ * search layer already scopes hits, but context formerly reintroduced the
+ * countywide event pool and let other towns leak into the answer. */
+export function scopeAskEvents<T extends AskEvent>(events: T[], municipality?: string | null): T[] {
+  if (!municipality) return events;
+  return events.filter((event) => event.municipality === municipality);
+}
 
 /**
  * "Wednesday, July 15, 2026, 1 PM" — Eastern, HOUR granularity on purpose:
@@ -292,7 +301,7 @@ export function eventContextLines(
     // Venue-joined shows inherit the venue's sell-category ("restaurant"),
     // which would hide the music from the model — tag them honestly.
     const tag = isMusic(e) ? "live music" : e.category;
-    return `- ${time} — ${e.title}${e.venue_name ? ` @ ${e.venue_name}` : ""}${town ? ` (${town})` : ""}${tag ? ` [${tag}]` : ""}`;
+    return `- ${time}: ${e.title}${e.venue_name ? ` at ${e.venue_name}` : ""}${town ? ` (${town})` : ""}${tag ? ` [${tag}]` : ""}`;
   });
   return { block: `EVENTS ${label}, from the live Frederick calendar:\n${lines.join("\n")}\n`, picked };
 }
@@ -402,9 +411,193 @@ export function filterCitedSources<S extends { name: string; category: string }>
  */
 export function stripInlineMarkdown(s: string): string {
   return s
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*\n]{1,120})\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
+    .replace(/(?<!\w)_([^_\n]{1,120})_(?!\w)/g, "$1")
+    .replace(/~~([^~\n]{1,120})~~/g, "$1")
     .replace(/`+([^`\n]+)`+/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+}
+
+const OPTION_NOUN = "options?|choices?|recommendations?|suggestions?|picks?|places?|spots?|shops?|restaurants?|breweries?|events?|activities|ideas?|stops?|things(?:\\s+to\\s+do)?";
+const COUNT_WORDS: Readonly<Record<string, number>> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+};
+
+export type RequestedOptionCount = number | "multiple" | null;
+
+/**
+ * Read only an explicit answer-count request. Party size, times, prices, and
+ * plan duration do not qualify. This keeps "a three-hour plan" from becoming
+ * a demand for three recommendations while still hearing "three dinner spots."
+ */
+export function requestedOptionCount(query: string): RequestedOptionCount {
+  const q = query.toLowerCase().replace(/\s+/g, " ").trim();
+  const countToken = `\\d{1,2}|${Object.keys(COUNT_WORDS).join("|")}`;
+  const exactPatterns = [
+    new RegExp(`\\b(?:top|best)\\s+(${countToken})\\s+(?:[a-z'-]+\\s+){0,3}(?:${OPTION_NOUN})\\b`, "i"),
+    new RegExp(`\\b(${countToken})\\s+(?:[a-z'-]+\\s+){0,3}(?:${OPTION_NOUN})\\b`, "i"),
+    new RegExp(`\\b(?:give|show|list|name|find|recommend|suggest)\\s+(?:me\\s+)?(?:the\\s+)?(${countToken})\\s+(?:[a-z'-]+\\s+){0,3}(?:${OPTION_NOUN})\\b`, "i"),
+  ];
+  for (const pattern of exactPatterns) {
+    const token = q.match(pattern)?.[1]?.toLowerCase();
+    if (!token) continue;
+    const count = /^\d+$/.test(token) ? Number(token) : COUNT_WORDS[token];
+    if (count >= 1 && count <= 50) return count;
+  }
+  if (new RegExp(`\\b(?:a\\s+couple(?:\\s+of)?|couple(?:\\s+of)?)\\s+(?:[a-z'-]+\\s+){0,2}(?:${OPTION_NOUN})\\b`, "i").test(q)) {
+    return 2;
+  }
+  if (new RegExp(`\\b(?:multiple|several|a\\s+few|some)\\s+(?:[a-z'-]+\\s+){0,2}(?:${OPTION_NOUN})\\b`, "i").test(q)) {
+    return "multiple";
+  }
+  return null;
+}
+
+/** A query-specific instruction shared by the direct and tool-using models. */
+export function optionCountInstruction(query: string): string {
+  const requested = requestedOptionCount(query);
+  if (typeof requested === "number") {
+    return `The user explicitly requested ${requested} ${requested === 1 ? "option" : "options"}. Return exactly that many distinct, evidence-backed choices when the supplied data supports them. Name every choice so its source can be cited. If fewer than ${requested} verified choices are available, return every supported choice and plainly state the shortfall instead of inventing or padding.`;
+  }
+  if (requested === "multiple") {
+    return "The user explicitly requested multiple options without giving a number. Return more than one distinct, evidence-backed choice when the supplied data supports it, and name every choice so its source can be cited.";
+  }
+  return "The user did not request a list or a specific number of options. Lead with one strongest answer, and add another choice only when it offers a meaningful tradeoff.";
+}
+
+const TERMINAL_PUNCTUATION = /[.!?][\])}'\"]*$/;
+const PREDICATE_START = /^(?:is|are|was|were|has|have|offers?|serves?|opens|stays?|closes?|sits?|costs?|includes?|features?|works?|takes?|runs?|hosts?|accepts?|requires?|provides?|gives?|makes?|keeps?|can|will|should|would)\b/i;
+const CLAUSE_START = /^(?:it|they|this|that|you|we|i)\s+(?:is|are|was|were|has|have|offers?|serves?|opens?|stays?|closes?|can|will|should|would)\b/i;
+const ADJECTIVE_DETAIL_START = /^(?:open|closed|closest|nearest|best|cheapest|quietest|later|nearby|downtown|walkable|casual|cozy|quieter|livelier|available|free|family-friendly|kid-friendly|dog-friendly)\b/i;
+const BARE_OPTION_NAME = /^[A-Z0-9][\w'’.-]*(?:\s+(?:&|and|at|by|for|from|in|of|on|the|to|[A-Z0-9][\w'’.-]*))*$/;
+const MARKDOWN_HEADING = /^#{1,6}\s+\S/;
+
+function finishSentence(value: string): string {
+  const text = value.trim().replace(/[,;:]$/, "");
+  return !text || TERMINAL_PUNCTUATION.test(text) ? text : `${text}.`;
+}
+
+function looksLikeSentence(value: string): boolean {
+  return /\b(?:is|are|was|were|has|have|offers?|serves?|opens?|stays?|closes?|sits?|costs?|includes?|features?|works?|takes?|runs?|hosts?|accepts?|requires?|provides?|gives?|makes?|keeps?|can|will|should|would|recommend|suggest)\b/i.test(value);
+}
+
+function listItemSentence(value: string): string {
+  const item = value.trim().replace(/\s+/g, " ");
+  if (!item) return "";
+  const parts = item.match(/^(.{1,120}?)(?:\s+(?:—|–|-)\s+|\s*:\s+)(.+)$/);
+  if (parts) {
+    const subject = parts[1].trim().replace(/[:;,]$/, "");
+    const detail = parts[2].trim();
+    if (TERMINAL_PUNCTUATION.test(subject)) return `${subject} ${finishSentence(detail)}`;
+    if (looksLikeSentence(subject)) {
+      const next = CLAUSE_START.test(detail)
+        ? `${detail.charAt(0).toUpperCase()}${detail.slice(1)}`
+        : detail;
+      return `${finishSentence(subject)} ${finishSentence(next)}`;
+    }
+    if (PREDICATE_START.test(detail)) return finishSentence(`${subject} ${detail}`);
+    if (CLAUSE_START.test(detail)) return finishSentence(`For ${subject}, ${detail.charAt(0).toLowerCase()}${detail.slice(1)}`);
+    if (/^\$/.test(detail)) return finishSentence(`${subject} costs ${detail}`);
+    if (/^\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/i.test(detail)) {
+      return finishSentence(`${subject} is open from ${detail}`);
+    }
+    if (/^(?:closest|nearest|best|cheapest|quietest)\s+(?:verified\s+)?(?:match|option|choice|place|spot|restaurant|brewery|event)\b/i.test(detail)) {
+      return finishSentence(`${subject} is the ${detail}`);
+    }
+    if (ADJECTIVE_DETAIL_START.test(detail)) return finishSentence(`${subject} is ${detail}`);
+    // A model bullet such as "Hootch & Banter: creekside patio" does not
+    // establish an identity predicate. Keep the recommendation relationship
+    // explicit instead of manufacturing "Hootch & Banter is creekside patio."
+    return finishSentence(`Consider ${subject} for its ${detail}`);
+  }
+  if (looksLikeSentence(item)) return finishSentence(item);
+  if (BARE_OPTION_NAME.test(item)) {
+    return finishSentence(`${item} is one option`);
+  }
+  return finishSentence(`This option is ${item.charAt(0).toLowerCase()}${item.slice(1)}`);
+}
+
+/** Normalize model output for Ask Radius surfaces, which render plain text. */
+export function normalizePlainTextAnswer(s: string): string {
+  const lines = stripInlineMarkdown(s)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const hasList = lines.some((line) => /^(?:[-*•]\s+|\d+[.)]\s+)/.test(line));
+
+  if (!hasList) {
+    const proseLines = lines.filter((line) => !MARKDOWN_HEADING.test(line));
+    const content = proseLines.length > 0
+      ? proseLines
+      : lines.map((line) => line.replace(/^#{1,6}\s*/, ""));
+    return content
+      .map((line) => {
+        const normalizedRanges = line.replace(/(?<=\d)\s*[–—]\s*(?=\d)/g, "-");
+        return /\s[–—]\s/.test(normalizedRanges)
+          ? listItemSentence(normalizedRanges)
+          : normalizedRanges;
+      })
+      .join(" ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  const intro: string[] = [];
+  const items: string[] = [];
+  let currentItem = "";
+  const flushItem = () => {
+    if (currentItem) items.push(currentItem);
+    currentItem = "";
+  };
+
+  for (const line of lines) {
+    if (MARKDOWN_HEADING.test(line)) continue;
+    const list = line.match(/^(?:[-*•]\s+|\d+[.)]\s+)(.+)$/);
+    if (list) {
+      flushItem();
+      currentItem = list[1].trim();
+      continue;
+    }
+    if (currentItem) {
+      currentItem = `${currentItem} ${line}`;
+      continue;
+    }
+    const titleLike = line.replace(/:$/, "");
+    if (titleLike.split(/\s+/).length <= 4 && !looksLikeSentence(titleLike)) continue;
+    intro.push(line);
+  }
+  flushItem();
+
+  if (items.length > 1 && items.every((item) => BARE_OPTION_NAME.test(item))) {
+    const names = items.map((item) => item.trim());
+    const joined = names.length === 2
+      ? `${names[0]} and ${names[1]}`
+      : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+    return [...intro.map(finishSentence), finishSentence(`Options include ${joined}`)]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  return [...intro.map(finishSentence), ...items.map(listItemSentence)]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }

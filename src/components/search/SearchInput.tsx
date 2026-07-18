@@ -21,11 +21,11 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         const next = q.trim();
         router.push(next ? `/search?q=${encodeURIComponent(next)}` : "/search");
       }}
-      className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
+      className="search-field-shell flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
       style={{ borderColor: "var(--app-control-border)" }}
     >
       <label htmlFor="site-search-input" className="sr-only">
-        Search places, events, and towns
+        Search Frederick County
       </label>
       <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
       <input
@@ -35,7 +35,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         name="q"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search places, events, towns…"
+        placeholder="Search Frederick County"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"

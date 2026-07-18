@@ -55,7 +55,7 @@ export default function GlobalError({
             color: "#6b6453",
           }}
         >
-          Off the trail
+          Application error
         </p>
         <h1
           style={{
@@ -67,10 +67,10 @@ export default function GlobalError({
             fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
-          The app hit a snag.
+          Frederick Radius could not load.
         </h1>
         <p style={{ margin: 0, maxWidth: 360, fontSize: 14, lineHeight: 1.5, color: "#3a352b" }}>
-          Something failed while loading the page. Reloading usually fixes it.
+          Something failed while loading this page. Try loading it again.
         </p>
         <button
           type="button"

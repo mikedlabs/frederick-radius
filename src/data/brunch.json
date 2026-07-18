@@ -7,7 +7,7 @@
     "hours": "11am-3pm",
     "sourceUrl": "https://www.7thsister.com/brunch-menu/",
     "confidence": "high",
-    "note": "Dedicated brunch menu; Sat-Sun 11am-3pm stated on their own site.",
+    "note": "The restaurant's site lists a dedicated brunch menu from 11am to 3pm on Saturday and Sunday.",
     "slug": "7th-sister"
   },
   {
@@ -18,7 +18,7 @@
     "hours": "11am-2:45pm",
     "sourceUrl": "https://hootchandbanter.com/",
     "confidence": "high",
-    "note": "Brunch menu with mimosas ($7) and pitchers ($25).",
+    "note": "The brunch menu lists $7 mimosas and $25 pitchers.",
     "slug": "hootch-and-banter-frederick"
   },
   {
@@ -29,7 +29,7 @@
     "hours": "10am-3pm",
     "sourceUrl": "https://jojosrestauranttaphouse.com/menu/",
     "confidence": "high",
-    "note": "Brunch menu + brunch cocktails, Sat-Sun 10am-3pm per their menu.",
+    "note": "The menu lists brunch food and cocktails from 10am to 3pm on Saturday and Sunday.",
     "slug": "jojos-restaurant-tap-house"
   },
   {
@@ -40,7 +40,7 @@
     "hours": "11am-3pm",
     "sourceUrl": "https://www.bushwallers.com/menu",
     "confidence": "high",
-    "note": "Sunday brunch, Irish-style: Irish breakfast, chicken & waffles, Irish coffee.",
+    "note": "Sunday brunch includes an Irish breakfast, chicken and waffles, and Irish coffee.",
     "slug": "bushwaller-irish-pub-frederick"
   },
   {
@@ -51,7 +51,7 @@
     "hours": "8am-4pm",
     "sourceUrl": "https://www.showroomfrederick.com/about",
     "confidence": "high",
-    "note": "Brunch 7 days a week, 8am-4pm: chicken & waffles, biscuits & gravy, steak & eggs.",
+    "note": "Brunch runs daily from 8am to 4pm, with chicken and waffles, biscuits and gravy, and steak and eggs on the menu.",
     "slug": "showroom-frederick"
   },
   {
@@ -62,7 +62,7 @@
     "hours": "10am-2pm",
     "sourceUrl": "http://www.dutchsdaughter.com/wp-content/uploads/2025/10/UPDATEDBRUNCHMENU2025.pdf",
     "confidence": "high",
-    "note": "Award-winning Sunday brunch buffet ($46.95): carved prime rib, crab omelet, French toast.",
+    "note": "The award-winning Sunday brunch buffet costs $46.95 and includes carved prime rib, crab omelets, and French toast.",
     "slug": "dutchs-daughter-frederick"
   },
   {
@@ -73,7 +73,7 @@
     "hours": "from 11am",
     "sourceUrl": "https://www.thewinekitchen.com/menus",
     "confidence": "medium",
-    "note": "Sunday brunch menu; venue opens 11am but doesn't post an exact brunch window.",
+    "note": "The venue opens at 11am on Sunday but does not post an exact brunch window.",
     "slug": "the-wine-kitchen-frederick"
   },
   {
@@ -84,7 +84,7 @@
     "hours": "from 10am",
     "sourceUrl": "https://firebirdsrestaurants.com/frederick/menu/weekend-brunch",
     "confidence": "high",
-    "note": "Weekend brunch menu from 10am: baked French toast, shrimp & grits, brunch burger.",
+    "note": "Weekend brunch starts at 10am, with baked French toast, shrimp and grits, and a brunch burger on the menu.",
     "slug": "firebirds-wood-fired-grill-frederick"
   },
   {
@@ -95,7 +95,7 @@
     "hours": "until 3pm",
     "sourceUrl": "https://www.mariachirestaurant.com/",
     "confidence": "high",
-    "note": "Weekend brunch with brunch cocktails, until 3pm (on the Frederick/Urbana line)."
+    "note": "Weekend brunch and brunch cocktails are available until 3pm near the Frederick-Urbana border."
   },
   {
     "name": "Wilcom's Inn",
@@ -105,7 +105,7 @@
     "hours": "10:30am-3pm",
     "sourceUrl": "https://www.wilcoms.com/menu?menu=brunch-menu-1",
     "confidence": "high",
-    "note": "Weekend brunch buffet ($45 adult / $20 kids), mimosas + bloody marys + sangria."
+    "note": "The weekend brunch buffet costs $45 for adults and $20 for children, with mimosas, Bloody Marys, and sangria available."
   },
   {
     "name": "Atlantic Grille",
@@ -115,7 +115,7 @@
     "hours": "see source",
     "sourceUrl": "https://atlanticgrilleurbana.com/brunch/",
     "confidence": "medium",
-    "note": "Sunday brunch (scrambled eggs, home fries, 14-inch pancakes); exact hours not posted."
+    "note": "Sunday brunch includes scrambled eggs, home fries, and 14-inch pancakes, but exact hours are not posted."
   },
   {
     "name": "Vintage",
@@ -125,7 +125,7 @@
     "hours": "10am-1pm",
     "sourceUrl": "http://www.vintage-eats.com",
     "confidence": "high",
-    "note": "Sunday brunch buffet 10am-1pm; lunch menu from 12pm.",
+    "note": "The Sunday brunch buffet runs from 10am to 1pm, and the lunch menu begins at noon.",
     "slug": "vintage-restaurant-new-market"
   },
   {
@@ -136,7 +136,7 @@
     "hours": "11am-2pm",
     "sourceUrl": "https://www.facebook.com/bolder144/",
     "confidence": "high",
-    "note": "Sunday brunch specials 11am-2pm (confirmed on their Facebook)."
+    "note": "The restaurant's Facebook page lists Sunday brunch specials from 11am to 2pm."
   },
   {
     "name": "Memories Charcoal House",
@@ -146,7 +146,7 @@
     "hours": "until 2pm",
     "sourceUrl": "https://memoriescharcoalhouse.com/",
     "confidence": "high",
-    "note": "Sunday Social Brunch until 2pm; $5 bloody marys & mimosas, rotating menu.",
+    "note": "Sunday Social Brunch runs until 2pm with a rotating menu and $5 Bloody Marys or mimosas.",
     "slug": "memories-charcoal-house-mount-airy"
   }
 ]

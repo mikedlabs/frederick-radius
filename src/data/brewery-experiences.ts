@@ -59,7 +59,7 @@ export const BREWERY_SCENE_META: Readonly<
   },
   "city-taprooms": {
     label: "City taprooms",
-    description: "Distinct Frederick beer rooms, from a downtown brewpub to small-batch projects.",
+    description: "These Frederick beer rooms range from a downtown brewpub to small-batch projects.",
   },
   "destination-stops": {
     label: "Destination stops",
@@ -67,7 +67,7 @@ export const BREWERY_SCENE_META: Readonly<
   },
   "farm-country": {
     label: "Farm country",
-    description: "Barns, fields, estates, and views beyond the center of town.",
+    description: "These rooms sit among working farms and open country beyond central Frederick.",
   },
 };
 
@@ -236,7 +236,7 @@ export const BREWERY_EXPERIENCES: readonly BreweryExperience[] = [
     logoSourceUrl: "https://assets.untappd.com/site/brewery_logos_hd/brewery-359313_70ee7_hd.jpeg",
     logoSourceLabel: UNTAPPD_LOGO_SOURCE,
     scene: "farm-country",
-    story: "A Thurmont estate where brewery, winery, and distillery offerings share one destination.",
+    story: "At this Thurmont estate, beer, wine, and spirits are available at the same stop.",
     traits: ["estate setting", "beer, wine, and spirits"],
     features: ["outdoor", "non-beer"],
     sourceUrl: VISIT_FREDERICK_BREWERIES,

@@ -12,15 +12,14 @@ import { Download, X, Share, Plus } from "lucide-react";
  * dismiss so it never feels like a trap. The useInstallPrompt hook
  * gates WHEN it appears; this is purely how it looks when it does.
  *
- * Suppressed on the full-bleed map (`/map`): there the prompt floats at
- * `bottom-20` directly over the live map and its on-canvas controls,
- * piling onto an already-dense surface (the audit's "install prompt
- * blocking the Map CTA"). The nudge still appears on every other route.
+ * Suppressed on the full-bleed map and the focused Ask workspace. Both
+ * surfaces use the lower viewport for primary controls or answer content;
+ * the install nudge can wait for a less time-sensitive page.
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
   const { show, ios, promptInstall, dismiss } = useInstallPrompt();
-  if (!show || pathname === "/map") return null;
+  if (!show || pathname === "/map" || pathname.startsWith("/ask")) return null;
 
   return (
     <div
@@ -63,7 +62,7 @@ export default function InstallPrompt() {
         </div>
         <div className="min-w-0 flex-1">
           <p id="install-title" className="font-serif text-[15px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Keep Frederick a tap away
+            Install Frederick Radius
           </p>
           {ios ? (
             <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -78,7 +77,7 @@ export default function InstallPrompt() {
             </p>
           ) : (
             <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Add it to your home screen. Opens full-screen and works offline for saved places.
+              Add it to your home screen so it opens full-screen and keeps saved places available offline.
             </p>
           )}
           <div className="mt-2.5 flex items-center gap-3">

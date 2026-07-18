@@ -1,136 +1,85 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock,
-  Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
-  User, Heart, Users, UsersRound, Luggage,
-  Leaf, Zap, Drama, Footprints, UtensilsCrossed,
-  BookOpen, Coffee, Wine, Trees, CloudRain, Sun, Compass,
-  CloudSun, Sunset, SearchX, Pin, Check, Bookmark,
+  AlertCircle,
+  Bookmark,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Clock,
+  CloudRain,
+  Footprints,
+  Leaf,
+  LocateFixed,
+  MapPin,
+  Navigation,
+  Pin,
+  Plus,
+  RefreshCw,
+  Route,
+  Share2,
+  SlidersHorizontal,
+  UsersRound,
+  X,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
-import type { Plan, PlanInputs, PlanAlternative, PlanSlotCategory } from "@/lib/integrations/planner";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { generatePlan, removeStop, stopAlternatives, stopSwapOptions, setStop, addStop, reshufflePlan } from "./actions";
-import { formatDistance } from "@/lib/geo";
+import Link from "next/link";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import { useFollowedSlugs } from "@/hooks/useFollows";
-import type { PlaceCardData } from "@/lib/loaders/places";
-import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITIES } from "@/data/municipalities";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { formatDistance } from "@/lib/geo";
+import type { PlaceCardData } from "@/lib/loaders/places";
+import type {
+  Plan,
+  PlanAlternative,
+  PlanInputs,
+  PlanSlotCategory,
+} from "@/lib/integrations/planner";
+import { useFollowedSlugs } from "@/hooks/useFollows";
+import {
+  addStop,
+  generatePlan,
+  removeStop,
+  setStop,
+  stopAlternatives,
+  stopSwapOptions,
+} from "./actions";
 
-/**
- * PlanBuilder — the /plan workhorse.
- *
- * Redesigned around two states:
- *
- * 1. NO-PLAN (the empty / first-visit state)
- *    Opens with VIBE cards as the primary CTA — five cinematic
- *    color-graded tiles ("Easy / Active / Cultural / Outdoors /
- *    Food first") that pick the mood AND immediately build a plan
- *    in one tap. Below, a "Curated outings" preset rail keeps the
- *    8 popular combinations one tap away. At the bottom, a
- *    "Customize the details" link opens a Vaul drawer where power
- *    users can pick audience, duration, start window, and "near me"
- *    location. Casual user: 1 tap. Power user: 4 picks + tap.
- *
- * 2. HAS-PLAN
- *    The plan itself is the page. A hero card (title + narrative
- *    + stop-count + total minutes). Below, a cinematic numbered
- *    timeline of stops with photo banners, time + open chips, and
- *    inline Swap / Remove / Directions actions. A sticky action
- *    bar at the bottom of the page on mobile gives single-tap
- *    Shuffle / Build new / Share so the user is never hunting for
- *    the controls after they've scrolled through 5 stops.
- *
- * Mobile-first. Single column. Generous touch targets. Respects
- * prefers-reduced-motion. Uses Vaul for the customize drawer (the
- * native-feeling mobile pattern), navigator.share for sharing,
- * navigator.geolocation for "near me". All progressive — the page
- * works without any of those APIs.
- */
+type StartMode = "now" | "afternoon" | "evening" | "custom";
 
-const AUDIENCES: { value: PlanInputs["audience"]; label: string; Icon: LucideIcon }[] = [
-  { value: "solo", label: "Solo", Icon: User },
-  { value: "date", label: "Date", Icon: Heart },
-  { value: "family", label: "Family", Icon: Users },
-  { value: "friends", label: "Friends", Icon: UsersRound },
-  { value: "visitor", label: "Visitor", Icon: Luggage },
+const AUDIENCES: Array<{
+  value: PlanInputs["audience"];
+  label: string;
+}> = [
+  { value: "solo", label: "Solo" },
+  { value: "date", label: "A date" },
+  { value: "family", label: "Family" },
+  { value: "friends", label: "Friends" },
+  { value: "visitor", label: "Visitors" },
 ];
 
-// Cinematic vibe cards — the new front-and-center CTA. Each carries
-// its own color story so the picker reads as a mood board, not a
-// filter row. The hex is the "mood color" — used for gradient
-// backings, accent bands, and the active state.
-const VIBES: {
+const VIBES: Array<{
   value: PlanInputs["vibe"];
   label: string;
-  tagline: string;
-  Icon: LucideIcon;
-  color: string;
-}[] = [
-  { value: "easy",     label: "Easy",     tagline: "Wander, sit, sip.",      Icon: Leaf, color: "#859076" },
-  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     Icon: Zap, color: ACCENTS.amber },
-  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", Icon: Drama, color: ACCENTS.plum },
-  { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     Icon: Footprints, color: "#2E3B2C" },
-  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: ACCENTS.terracotta },
-];
-
-type Preset = {
-  id: string;
-  Icon: LucideIcon;
-  label: string;
-  tagline: string;
-  audience: PlanInputs["audience"];
-  vibe: PlanInputs["vibe"];
-  hours: PlanInputs["duration_hours"];
-  start: StartMode;
-  color: string;
-};
-
-const PRESETS: Preset[] = [
-  { id: "library-date", Icon: BookOpen, label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: ACCENTS.plum },
-  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: ACCENTS.terracotta },
-  { id: "first-date", Icon: Coffee, label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
-  { id: "girls-night", Icon: Wine, label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
-  { id: "family-sunday", Icon: Trees, label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: ACCENTS.catoctin },
-  { id: "rainy-day", Icon: CloudRain, label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: ACCENTS.slate },
-  { id: "sunny-saturday", Icon: Sun, label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: ACCENTS.amber },
-  { id: "showing-friends", Icon: Compass, label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: ACCENTS.slate },
+}> = [
+  { value: "easy", label: "Keep it easy" },
+  { value: "food", label: "Food first" },
+  { value: "cultural", label: "Arts & history" },
+  { value: "outdoors", label: "Be outside" },
+  { value: "active", label: "Stay moving" },
 ];
 
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
-type StartMode = "now" | "afternoon" | "evening";
-const STARTS: { value: StartMode; label: string; Icon: LucideIcon }[] = [
-  { value: "now", label: "Now", Icon: Clock },
-  { value: "afternoon", label: "Afternoon", Icon: CloudSun },
-  { value: "evening", label: "Evening", Icon: Sunset },
-];
-
-function startAtFor(mode: StartMode): string | undefined {
-  if (mode === "now") return undefined;
-  const d = new Date();
-  d.setHours(mode === "afternoon" ? 14 : 18, 0, 0, 0);
-  if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
-  return d.toISOString();
-}
-
-function clock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 const OPEN_LABEL: Record<Plan["stops"][number]["open"], { text: string; color: string }> = {
-  open: { text: "Open", color: "var(--app-positive)" },
+  open: { text: "Open for this stop", color: "var(--app-positive)" },
   likely: { text: "Likely open", color: "var(--app-warning)" },
   unknown: { text: "Hours unconfirmed", color: "var(--app-ink-3)" },
-  closed: { text: "May be closed", color: "var(--app-warning)" },
+  closed: { text: "Closed at this time", color: "var(--app-negative)" },
 };
 
 export default function PlanBuilder({
@@ -145,951 +94,538 @@ export default function PlanBuilder({
   const [audience, setAudience] = useState<PlanInputs["audience"]>(initialInputs?.audience ?? "date");
   const [vibe, setVibe] = useState<PlanInputs["vibe"]>(initialInputs?.vibe ?? "easy");
   const [hours, setHours] = useState<PlanInputs["duration_hours"]>(initialInputs?.duration_hours ?? 3);
-  const [startMode, setStartMode] = useState<StartMode>("now");
+  const [startMode, setStartMode] = useState<StartMode>(initialInputs?.start_at ? "custom" : "now");
+  const [customStart, setCustomStart] = useState(() => toLocalInput(initialInputs?.start_at));
+  const [area, setArea] = useState(() => {
+    if (!initialInputs) return "frederick";
+    return initialInputs.municipality ?? "county";
+  });
   const [near, setNear] = useState<{ lng: number; lat: number } | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
-  const [editing, setEditing] = useState(!shared);
-  const [busy, setBusy] = useState<number | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
 
-  // ── User agency (pick / add / pin) ──────────────────────────────
-  // Pinned place slugs survive a Shuffle (which now re-rolls only the
-  // unpinned stops). A place the user explicitly added is auto-pinned,
-  // so Shuffle never discards a choice they made on purpose.
   const [pinned, setPinned] = useState<Set<string>>(new Set());
-  // Swap CHOOSER (vs the old blind swap): which stop is being chosen
-  // for, and the real alternatives fetched for that slot.
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
   const [alts, setAlts] = useState<PlanAlternative[] | null>(null);
-  // The category switcher inside the Swap chooser: what kinds this slot
-  // could become, and which kind is currently selected.
   const [swapCats, setSwapCats] = useState<PlanSlotCategory[] | null>(null);
   const [swapCat, setSwapCat] = useState<string | null>(null);
-  // Add-from-Saved drawer.
   const [addOpen, setAddOpen] = useState(false);
+
   const { slugs: savedSlugs } = useFollowedSlugs();
-  // Hydrate saved places via the by-slugs API (NOT a static import of
-  // places-client.json — that inlined the whole ~1.8MB dataset into /plan's
-  // client bundle). Mirrors SavedList's pattern; ships only the saved rows.
   const savedKey = useMemo(() => [...savedSlugs].sort().join(","), [savedSlugs]);
   const [savedPlaces, setSavedPlaces] = useState<Map<string, PlaceCardData>>(new Map());
-  useEffect(() => {
-    if (savedSlugs.size === 0) return;
-    const ctrl = new AbortController();
-    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(savedKey)}`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data: { places: PlaceCardData[] }) => {
-        const m = new Map<string, PlaceCardData>();
-        for (const p of data.places) m.set(p.slug, p);
-        setSavedPlaces(m);
-      })
-      .catch((err) => {
-        if (err && err.name !== "AbortError") setSavedPlaces(new Map());
-      });
-    return () => ctrl.abort();
-  }, [savedKey, savedSlugs.size]);
-  // Monotonic shuffle seed — advanced on each re-roll.
-  const shuffleSeed = useRef(0);
 
-  const useMyLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    setGeoMsg(null);
+  useEffect(() => {
+    if (savedSlugs.size === 0) {
+      setSavedPlaces(new Map());
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(savedKey)}`, {
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((data: { places: PlaceCardData[] }) => {
+        setSavedPlaces(new Map(data.places.map((place) => [place.slug, place])));
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setSavedPlaces(new Map());
+      });
+    return () => controller.abort();
+  }, [savedKey, savedSlugs.size]);
+
+  const selectedTown = area !== "county" && area !== "near"
+    ? MUNICIPALITIES.find((town) => town.slug === area)
+    : undefined;
+
+  const areaLabel = area === "near"
+    ? "Near your location"
+    : area === "county"
+      ? "Frederick County"
+      : selectedTown?.name ?? "Frederick";
+
+  const requestMyLocation = () => {
+    setErrorMsg(null);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoMsg("Location is not available in this browser.");
+      return;
+    }
+    setGeoMsg("Finding your location…");
     navigator.geolocation.getCurrentPosition(
-      (pos) => setNear({ lng: pos.coords.longitude, lat: pos.coords.latitude }),
-      (err) =>
-        setGeoMsg(
-          err && err.code === 1
-            ? "Location is off. Enable it to plan from where you are."
-            : "Could not get your location. Using downtown Frederick.",
-        ),
-      { enableHighAccuracy: true, timeout: 8000 },
+      (position) => {
+        setNear({ lng: position.coords.longitude, lat: position.coords.latitude });
+        setArea("near");
+        setGeoMsg("The route will start near your current location. Your coordinates will not be added to the share link.");
+      },
+      (error) => {
+        setGeoMsg(error?.code === 1
+          ? "Location is off. Choose an area or allow location access."
+          : "Radius could not get your location. Choose an area instead.");
+      },
+      { enableHighAccuracy: true, timeout: 8_000 },
     );
   };
 
-  const onBuild = (overrides?: Partial<PlanInputs> & { seed?: number; start?: StartMode }) => {
-    const usingStart = overrides?.start ?? startMode;
+  const handleAreaChange = (nextArea: string) => {
+    if (nextArea === "near") {
+      if (near) setArea("near");
+      else requestMyLocation();
+      return;
+    }
+    setArea(nextArea);
+    setNear(null);
+    setGeoMsg(null);
+  };
+
+  const buildInputs = (): PlanInputs | null => {
+    const startAt = startAtFor(startMode, customStart);
+    if (!startAt) {
+      setErrorMsg("Choose a valid date and time before building the plan.");
+      return null;
+    }
+    return {
+      audience,
+      vibe,
+      duration_hours: hours,
+      start_at: startAt,
+      ...(selectedTown ? {
+        municipality: selectedTown.slug,
+        start_near: selectedTown.centroid,
+      } : {}),
+      ...(area === "county" ? { max_distance_m: 60_000 } : {}),
+      ...(area === "near" && near ? { start_near: near, max_distance_m: 16_000 } : {}),
+    };
+  };
+
+  const onBuild = () => {
+    const inputs = buildInputs();
+    if (!inputs) return;
+    setErrorMsg(null);
+    setStatusMsg("Building a route that fits those choices…");
     startTransition(async () => {
-      const result = await generatePlan({
-        audience: overrides?.audience ?? audience,
-        vibe: overrides?.vibe ?? vibe,
-        duration_hours: overrides?.duration_hours ?? hours,
-        start_at: startAtFor(usingStart),
-        start_near: near ?? undefined,
-        seed: overrides?.seed,
-      });
-      setPlan(result);
-      setEditing(true);
-      setDrawerOpen(false);
+      try {
+        const result = await generatePlan(inputs);
+        if (!result) throw new Error("No plan returned");
+        setPlan(result);
+        setDrawerOpen(false);
+        setStatusMsg(result.stops.length > 0
+          ? `Built a ${result.stops.length}-stop plan for ${areaLabel}.`
+          : "No open route fit those choices.");
+        replacePlanUrl(result.share);
+        window.setTimeout(() => resultRef.current?.focus(), 50);
+      } catch {
+        setErrorMsg("Radius could not build this plan. Please try again.");
+        setStatusMsg(null);
+      }
     });
   };
 
-  /** One-tap VIBE card: set the vibe + immediately build with the
-   *  current other settings. Smoothes the path for casual users. */
-  const onVibeTap = (v: PlanInputs["vibe"]) => {
-    setVibe(v);
-    onBuild({ vibe: v });
-  };
-
-  /** Cycle helpers — let the user advance audience / duration /
-   *  start by tapping the in-page "Planning for" chips instead of
-   *  opening the Customize drawer. Each tap moves to the next
-   *  option and loops; no build is triggered until the user taps a
-   *  vibe card. Surfaces the assumptions before the vibe-tap
-   *  generates a plan around them. */
-  const cycleAudience = () => {
-    const i = AUDIENCES.findIndex((a) => a.value === audience);
-    setAudience(AUDIENCES[(i + 1) % AUDIENCES.length].value);
-  };
-  const cycleHours = () => {
-    const i = DURATIONS.indexOf(hours);
-    setHours(DURATIONS[(i + 1) % DURATIONS.length]);
-  };
-  const cycleStart = () => {
-    const i = STARTS.findIndex((s) => s.value === startMode);
-    setStartMode(STARTS[(i + 1) % STARTS.length].value);
-  };
-  const currentAudience = AUDIENCES.find((a) => a.value === audience) ?? AUDIENCES[0];
-  const currentStart = STARTS.find((s) => s.value === startMode) ?? STARTS[0];
-
-  // Shuffle now re-rolls only the UNPINNED stops, keeping anything the
-  // user pinned or added — "pin what you love, shuffle the rest". With
-  // nothing pinned it re-rolls the whole plan (the old behavior), but
-  // spec-based so edits aren't silently discarded.
-  const onShuffle = () => {
-    if (!plan) return;
-    const token = plan.share;
-    // Monotonic seed — each shuffle advances it so the re-roll differs,
-    // without an impure Math.random() in render scope.
-    shuffleSeed.current += 1;
-    mutate(() => reshufflePlan(token, [...pinned], shuffleSeed.current), null);
-  };
-
-  const onPreset = (p: Preset) => {
-    setAudience(p.audience);
-    setVibe(p.vibe);
-    setHours(p.hours);
-    setStartMode(p.start);
-    onBuild({
-      audience: p.audience,
-      vibe: p.vibe,
-      duration_hours: p.hours,
-      start: p.start,
-    });
-  };
-
-  const mutate = (fn: () => Promise<Plan | null>, idx: number | null) => {
-    setBusy(idx);
+  const mutate = (work: () => Promise<Plan | null>, index: number | null, success: string) => {
+    setBusy(index);
+    setErrorMsg(null);
     startTransition(async () => {
-      const result = await fn();
-      if (result) setPlan(result);
-      setBusy(null);
+      try {
+        const result = await work();
+        if (!result) throw new Error("No updated plan returned");
+        setPlan(result);
+        setStatusMsg(success);
+        replacePlanUrl(result.share);
+      } catch {
+        setErrorMsg("That change did not go through. Your current plan is still here.");
+      } finally {
+        setBusy(null);
+      }
     });
   };
 
-  // Open the Swap chooser for a stop: fetch the kinds this slot could be
-  // + the current kind's real alternatives, so the user picks what AND
-  // what kind (vs. the blind "next").
-  const openSwap = (idx: number) => {
+  const openSwap = (index: number) => {
     if (!plan) return;
-    setSwapIdx(idx);
+    setSwapIdx(index);
     setAlts(null);
     setSwapCats(null);
     setSwapCat(null);
-    const token = plan.share;
+    setErrorMsg(null);
     startTransition(async () => {
-      const { categories, alternatives, selected } = await stopSwapOptions(token, idx);
-      setSwapCats(categories);
-      setSwapCat(selected);
-      setAlts(alternatives);
+      try {
+        const options = await stopSwapOptions(plan.share, index);
+        setSwapCats(options.categories);
+        setSwapCat(options.selected);
+        setAlts(options.alternatives);
+      } catch {
+        setAlts([]);
+        setErrorMsg("Radius could not load other stops right now.");
+      }
     });
   };
-  // Change WHAT KIND of stop this slot is, then show that kind's picks.
-  const pickSwapCat = (cat: string) => {
+
+  const pickSwapCategory = (category: string) => {
     if (!plan || swapIdx === null) return;
-    const token = plan.share;
-    const idx = swapIdx;
-    setSwapCat(cat);
+    setSwapCat(category);
     setAlts(null);
     startTransition(async () => {
-      setAlts(await stopAlternatives(token, idx, cat));
+      try {
+        setAlts(await stopAlternatives(plan.share, swapIdx, category));
+      } catch {
+        setAlts([]);
+      }
     });
   };
-  const chooseStop = (idx: number, slug: string) => {
+
+  const chooseStop = (index: number, slug: string) => {
     if (!plan) return;
-    const token = plan.share;
-    const oldSlug = plan.stops[idx]?.place?.slug;
-    setSwapIdx(null);
-    // If this slot was pinned, the pin follows the user's new choice (and
-    // the now-absent old slug is dropped, so it can't haunt a later Shuffle).
+    const oldSlug = plan.stops[index]?.place?.slug;
     if (oldSlug && pinned.has(oldSlug)) {
-      setPinned((cur) => {
-        const next = new Set(cur);
+      setPinned((current) => {
+        const next = new Set(current);
         next.delete(oldSlug);
         next.add(slug);
         return next;
       });
     }
-    mutate(() => setStop(token, idx, slug), idx);
+    setSwapIdx(null);
+    mutate(() => setStop(plan.share, index, slug), index, "That stop has been changed.");
   };
+
   const togglePin = (slug: string) => {
-    setPinned((cur) => {
-      const next = new Set(cur);
+    setPinned((current) => {
+      const next = new Set(current);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       return next;
     });
   };
+
+  const inPlan = new Set((plan?.stops ?? []).flatMap((stop) => stop.place ? [stop.place.slug] : []));
+  const savedCandidates = [...savedSlugs]
+    .filter((slug) => !inPlan.has(slug))
+    .map((slug) => savedPlaces.get(slug))
+    .filter((place): place is PlaceCardData => Boolean(place?.geom));
+
   const addFromSaved = (slug: string) => {
     if (!plan) return;
-    const token = plan.share;
     setAddOpen(false);
-    // A place the user added on purpose is pinned, so Shuffle keeps it.
-    setPinned((cur) => new Set(cur).add(slug));
-    mutate(() => addStop(token, slug), null);
+    setPinned((current) => new Set(current).add(slug));
+    mutate(() => addStop(plan.share, slug), null, "Your saved place has been added.");
   };
-
-  // Saved places the user could drop in — resolvable, with a position,
-  // not already in the plan.
-  const inPlanSlugs = new Set(
-    (plan?.stops ?? []).map((s) => s.place?.slug).filter(Boolean) as string[],
-  );
-  const savedCandidates = [...savedSlugs]
-    .filter((s) => !inPlanSlugs.has(s))
-    .map((s) => savedPlaces.get(s))
-    .filter((p): p is NonNullable<typeof p> => Boolean(p && p.geom));
 
   const onShare = async () => {
     if (!plan) return;
     const url = `${window.location.origin}/plan?p=${plan.share}`;
     try {
-      if (navigator.share) await navigator.share({ title: plan.title, text: plan.summary, url });
-      else {
+      if (navigator.share) {
+        await navigator.share({ title: plan.title, text: plan.summary, url });
+      } else {
         await navigator.clipboard.writeText(url);
-        setGeoMsg("Link copied. Paste it to share this plan.");
+        setStatusMsg("The plan link is copied.");
       }
-    } catch {
-      /* user dismissed the share sheet */
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        setErrorMsg("Radius could not share this plan. Please copy the page address instead.");
+      }
     }
   };
 
-  const building = pending && busy === null;
+  const startOver = () => {
+    setPlan(null);
+    setStatusMsg(null);
+    setErrorMsg(null);
+    window.history.replaceState(null, "", "/plan");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const controls = (
+    <PlannerFields
+      area={area}
+      onAreaChange={handleAreaChange}
+      onUseLocation={requestMyLocation}
+      geoMsg={geoMsg}
+      startMode={startMode}
+      onStartModeChange={setStartMode}
+      customStart={customStart}
+      onCustomStartChange={setCustomStart}
+      audience={audience}
+      onAudienceChange={setAudience}
+      vibe={vibe}
+      onVibeChange={setVibe}
+      hours={hours}
+      onHoursChange={setHours}
+    />
+  );
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* ── NO-PLAN — primary builder surface ──────────────── */}
+    <div className="mx-auto max-w-3xl pb-8">
       {!plan && (
-        <>
-          {/* HERO PROMPT */}
-          <section className="space-y-2">
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Pick a mood
-            </p>
-            <h2
-              className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              What kind of night?
-            </h2>
-            <p className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-              Tap one to build a plan with that energy.
-            </p>
-          </section>
-
-          {/* PLANNING FOR — three quick-cycle chips that surface the
-              audience / duration / start assumptions BEFORE a vibe
-              tap auto-builds against them. Tap a chip to advance to
-              the next option; no build runs until the user picks a
-              vibe. Previously these lived only inside the Customize
-              drawer, so casual users were getting plans built with
-              default assumptions they couldn't see. */}
-          <section
-            className="-mt-1 flex flex-wrap items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-2"
-            style={{ borderColor: "var(--app-border)" }}
-            aria-label="Plan settings"
+        <section
+          className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <p className="eyebrow mb-3" style={{ color: "var(--app-ink-3)" }}>Plan settings</p>
+          {controls}
+          <button
+            type="button"
+            onClick={onBuild}
+            disabled={pending}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white transition sm:mt-6 active:scale-[0.99] disabled:opacity-65"
+            style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-brand-glow)" }}
           >
-            <span
-              className="px-1 text-[10px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Planning for
-            </span>
-            <button
-              type="button"
-              onClick={cycleAudience}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-              aria-label={`Audience: ${currentAudience.label}. Tap to change.`}
-            >
-              <currentAudience.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              {currentAudience.label}
-            </button>
-            <button
-              type="button"
-              onClick={cycleHours}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-              aria-label={`Duration: ${hours} hours. Tap to change.`}
-            >
-              <Clock className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              {hours} hr
-            </button>
-            <button
-              type="button"
-              onClick={cycleStart}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-              aria-label={`Start: ${currentStart.label}. Tap to change.`}
-            >
-              <currentStart.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Starts {currentStart.label.toLowerCase()}
-            </button>
-          </section>
-
-          {/* VIBE CARDS — the primary CTA. Cinematic color-graded
-              tiles that pick a vibe AND build in one tap.
-              Layout: scroll-snap rail on mobile (single touch-friendly
-              row), grid on tablet+, and a full 5-across on desktop.
-              That avoids the lone-last-card problem 2-col layouts have
-              with an odd-count grid, and gives mobile users a swipe
-              affordance the brief asked for. */}
-          <div className="-mx-4 sm:mx-0">
-            <ul
-              className="shelf-rail gap-2.5 px-4 pb-1 sm:px-0 sm:grid sm:grid-cols-3 sm:overflow-visible lg:grid-cols-5"
-              aria-label="Pick a vibe to start"
-            >
-              {VIBES.map((v) => (
-                <li
-                  key={v.value}
-                  className="aspect-[4/5] w-[44vw] max-w-[180px] shrink-0 snap-start sm:w-auto sm:max-w-none"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onVibeTap(v.value)}
-                    disabled={pending}
-                    aria-pressed={vibe === v.value}
-                    className="vibe-card group relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 text-left transition active:scale-[0.985] disabled:opacity-70"
-                    style={{
-                      // Deepened toward bedrock across the whole wash: the raw
-                      // mood color put 12px white text at ~2.7:1 (AA fail on
-                      // every mid-tone card). Same hue, ink it can sit on.
-                      background: `linear-gradient(155deg, color-mix(in srgb, ${v.color} 86%, var(--app-bedrock)) 0%, color-mix(in srgb, ${v.color} 52%, var(--app-bedrock)) 100%)`,
-                      boxShadow: `0 12px 28px -10px ${v.color}, var(--app-elev-1)`,
-                    }}
-                  >
-                    <v.Icon
-                      aria-hidden
-                      className="pointer-events-none absolute -bottom-5 -right-4 h-28 w-28 text-white transition-transform duration-300 group-hover:scale-105"
-                      strokeWidth={1.5}
-                      style={{ opacity: 0.22 }}
-                    />
-                    <div className="relative flex h-full flex-col">
-                      <v.Icon aria-hidden className="h-6 w-6 text-white" strokeWidth={2.25} />
-                      <span className="mt-auto block">
-                        <span className="block font-serif text-[20px] font-semibold leading-tight tracking-tight text-white">
-                          {v.label}
-                        </span>
-                        <span className="mt-0.5 block text-[12px] leading-snug text-white/95">
-                          {v.tagline}
-                        </span>
-                      </span>
-                    </div>
-                    <span
-                      aria-hidden
-                      className="absolute inset-x-3 top-0 h-px"
-                      style={{ background: "rgba(255,255,255,0.35)" }}
-                    />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* PRESET RAIL — curated outings, secondary CTA */}
-          <section className="space-y-2.5">
-            <div className="flex items-baseline justify-between">
-              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                Ready-made outings
-              </p>
-              <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                The combos people search for
-              </p>
-            </div>
-            <div className="-mx-4 px-4 sm:-mx-0 sm:px-0">
-              <ul
-                className="shelf-rail gap-2 pb-1"
-                aria-label="Ready-made plan presets"
-              >
-                {PRESETS.map((p) => (
-                  <li key={p.id} className="shrink-0 snap-start">
-                    <button
-                      type="button"
-                      onClick={() => onPreset(p)}
-                      disabled={pending}
-                      className="tactile-interactive relative flex w-[170px] flex-col gap-1 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left transition active:scale-[0.985] disabled:opacity-70"
-                      style={{
-                        background: `linear-gradient(155deg, color-mix(in srgb, ${p.color} 22%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)`,
-                        border: `1px solid color-mix(in srgb, ${p.color} 30%, var(--app-border))`,
-                        boxShadow: "var(--app-elev-1)",
-                      }}
-                    >
-                      <p.Icon
-                        aria-hidden
-                        className="pointer-events-none absolute -bottom-4 -right-3 h-[72px] w-[72px]"
-                        strokeWidth={1.5}
-                        style={{ opacity: 0.16, color: p.color }}
-                      />
-                      <p.Icon aria-hidden className="relative h-[18px] w-[18px]" strokeWidth={2.25} style={{ color: p.color }} />
-                      <span
-                        className="relative font-serif text-[14px] font-semibold leading-tight tracking-tight"
-                        style={{ color: "var(--app-ink)" }}
-                      >
-                        {p.label}
-                      </span>
-                      <span
-                        className="relative text-[11px] leading-snug"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {p.tagline}
-                      </span>
-                      <span
-                        className="relative mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em]"
-                        style={{ color: p.color }}
-                      >
-                        {p.hours}h · {p.start === "now" ? "now" : p.start}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          {/* CUSTOMIZE DRAWER TRIGGER + LOCATION */}
-          <section className="space-y-2.5">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="tactile tactile-interactive flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-4 py-3.5 text-left"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-bg-elevated)",
-              }}
-            >
-              <span className="flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                  style={{
-                    background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
-                    color: "var(--app-cool)",
-                  }}
-                >
-                  <Wand2 className="h-3.5 w-3.5" strokeWidth={2.25} />
-                </span>
-                <span className="flex flex-col">
-                  <span
-                    className="text-[14px] font-semibold leading-tight"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    Customize the details
-                  </span>
-                  <span
-                    className="text-[11px] leading-snug"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {currentSettingsLabel(audience, hours, startMode, near != null)}
-                  </span>
-                </span>
-              </span>
-              <ChevronDown
-                className="h-4 w-4 shrink-0"
-                strokeWidth={2.25}
-                style={{ color: "var(--app-ink-3)" }}
-                aria-hidden
-              />
-            </button>
-
-            {/* Primary build button — the always-on escape hatch even
-                if the user doesn't tap a vibe. Uses current state. */}
-            <button
-              type="button"
-              onClick={() => onBuild()}
-              disabled={pending}
-              className="tactile tactile-lift tactile-glow-brand group relative inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-                transitionTimingFunction: "var(--app-ease-spring)",
-              }}
-            >
-              <Sparkles
-                className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`}
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              {building ? "Stitching your night together…" : "Build my evening"}
-            </button>
-            {geoMsg && (
-              <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                {geoMsg}
-              </p>
-            )}
-          </section>
-
-          {/* Subtle honesty footer — sets expectations before any plan
-              renders. */}
-          <p
-            className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[12px] leading-relaxed"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            <Sparkles
-              className="mt-0.5 h-3 w-3 shrink-0"
-              style={{ color: "var(--app-cool)" }}
-              aria-hidden
-            />
-            <span>
-              Every stop is a real, operational place in Frederick County,
-              pulled from the directory, not invented. We respect your
-              vibe + audience + time budget when stitching them together.
-            </span>
-          </p>
-        </>
+            <Route className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            {pending ? "Building your route…" : "Build my plan"}
+          </button>
+          <Message status={statusMsg} error={errorMsg} />
+        </section>
       )}
 
-      {/* ── HAS-PLAN — the plan IS the page ──────────────── */}
       {plan && (
-        <section className="space-y-4">
-          {/* PLAN HERO */}
+        <section ref={resultRef} tabIndex={-1} className="space-y-4 outline-none" style={{ outline: "none" }}>
           <article
-            className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] p-5"
-            style={{
-              background:
-                "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 60%, color-mix(in srgb, var(--app-cool) 8%, var(--app-bg-elevated)) 100%)",
-            }}
+            className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
+            style={{ borderColor: "var(--app-border)" }}
           >
-            <span
-              aria-hidden
-              className="absolute inset-x-5 top-0 h-[3px] rounded-full"
-              style={{
-                background:
-                  "linear-gradient(90deg, var(--app-brand), var(--app-cool))",
-              }}
-            />
-            <p
-              className="eyebrow inline-flex items-center gap-1.5"
-              style={{ color: "var(--app-cool)" }}
-            >
-              <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              Your plan
-            </p>
-            <h2
-              className="mt-1.5 font-serif text-[26px] font-semibold leading-[1.1] tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {plan.title}
-            </h2>
-            {plan.summary && (
-              <p
-                className="mt-1.5 text-[14px] leading-relaxed"
-                style={{ color: "var(--app-ink-2)" }}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
+                  {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {areaLabel}
+                </p>
+                {shared ? (
+                  <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    {plan.title}
+                  </h1>
+                ) : (
+                  <h2 className="mt-1 font-serif text-[28px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    {plan.title}
+                  </h2>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
+                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+                Adjust
+              </button>
+            </div>
+
+            {plan.summary && (
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 {plan.summary}
               </p>
             )}
-            {/* Live-sky honesty: one calm line when NWS puts rain over 50%
-                during this plan's window. Absent on dry evenings. */}
             {plan.weather_note && (
-              <p
-                className="mt-2 inline-flex items-start gap-1.5 text-[13px] leading-relaxed"
-                style={{ color: "var(--app-cool)" }}
-              >
-                <CloudRain className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              <p className="mt-3 flex items-start gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] p-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                <CloudRain className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
                 {plan.weather_note}
               </p>
             )}
-            {plan.narrative && (
-              <blockquote
-                className="mt-3 border-l-2 pl-3 font-serif text-[15px] italic leading-relaxed"
-                style={{
-                  borderColor: "color-mix(in srgb, var(--app-brand) 50%, transparent)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                {plan.narrative}
-              </blockquote>
-            )}
+
             {plan.stops.length > 0 && (
-              <ul
-                className="mt-3.5 flex flex-wrap items-center gap-1.5"
-                aria-label="Plan summary"
-              >
-                <Meta>
-                  <MapPin className="h-3 w-3" aria-hidden />
-                  {plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}
-                </Meta>
-                <Meta>
-                  <Clock className="h-3 w-3" aria-hidden />
-                  {totalMinutes(plan)} min total
-                </Meta>
-                {totalRadius(plan) > 0 && (
-                  <Meta>
-                    <Navigation className="h-3 w-3" aria-hidden />
-                    {formatDistance(totalRadius(plan))} across
-                  </Meta>
+              <ul className="mt-4 flex flex-wrap gap-2" aria-label="Plan summary">
+                <Meta><Clock className="h-3.5 w-3.5" aria-hidden />{planWindowLabel(plan)}</Meta>
+                <Meta><MapPin className="h-3.5 w-3.5" aria-hidden />{plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}</Meta>
+                {totalRouteDistance(plan) > 0 && (
+                  <Meta><Route className="h-3.5 w-3.5" aria-hidden />{formatDistance(totalRouteDistance(plan))} between stops</Meta>
                 )}
               </ul>
             )}
-            {shared && !editing && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="tactile tactile-lift mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-white"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-                }}
-              >
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                Make it your own
-              </button>
+
+            {plan.stops.length > 0 && (
+              <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                <a
+                  href={routeUrlForPlan(plan)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[14px] font-semibold text-white"
+                  style={{ background: "var(--app-brand-press)" }}
+                >
+                  <Navigation className="h-4 w-4" aria-hidden />
+                  Open full route
+                </a>
+                <button
+                  type="button"
+                  onClick={onShare}
+                  className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-[var(--app-radius-md)] border px-3"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                  aria-label="Share this plan"
+                >
+                  <Share2 className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
             )}
           </article>
 
-          {/* STOPS — cinematic numbered timeline */}
           {plan.stops.length === 0 ? (
-            <div className="tactile flex flex-col items-center gap-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] px-6 py-10 text-center">
-              <span
-                aria-hidden
-                className="grid h-12 w-12 place-items-center rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)" }}
-              >
-                <SearchX className="h-6 w-6" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
-              </span>
-              <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
-                No clean match for that combo
-              </p>
-              <p className="max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                Try a different vibe, give it more time, or open Customize
-                and tap &ldquo;Near me&rdquo; for a wider net.
+            <div className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center" style={{ borderColor: "var(--app-border)" }}>
+              <AlertCircle className="mx-auto h-6 w-6" style={{ color: "var(--app-brand)" }} aria-hidden />
+              <h3 className="mt-2 font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                Nothing reliable fits yet.
+              </h3>
+              <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                Radius did not find enough places with confirmed hours for that area and time. Try an earlier start, a longer drive, or another kind of outing.
               </p>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold"
-                style={{
-                  background: "var(--app-bg-sunken)",
-                  color: "var(--app-ink-2)",
-                }}
+                className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
               >
-                <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                Open Customize
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                Change the plan
               </button>
             </div>
           ) : (
-            <ol
-              className="reveal-up relative space-y-3 pl-10"
-              aria-label="Plan stops, in order"
-            >
-              {/* The vertical thread between stop nodes — gradient
-                  from brand at the top to cool at the bottom so the
-                  timeline feels intentional, not like a CSS hairline. */}
+            <div className="relative">
               <span
                 aria-hidden
-                className="pointer-events-none absolute bottom-4 left-[15px] top-4 w-[2px] rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(var(--app-brand), var(--app-cool))",
-                  opacity: 0.55,
-                }}
+                className="pointer-events-none absolute bottom-6 left-[15px] top-6 w-px"
+                style={{ background: "var(--app-border-strong)" }}
               />
-              {plan.stops.map((stop, idx) => (
-                <Stop
-                  key={`${stop.order}-${idx}`}
-                  stop={stop}
-                  idx={idx}
-                  busy={busy}
-                  pending={pending}
-                  editing={editing}
-                  isPinned={stop.place ? pinned.has(stop.place.slug) : false}
-                  onSwap={() => openSwap(idx)}
-                  onPin={stop.place ? () => togglePin(stop.place!.slug) : undefined}
-                  onRemove={() => mutate(() => removeStop(plan.share, idx), idx)}
-                />
-              ))}
-              {/* Add a specific place the user wants — from their Saved
-                  list — instead of only what the planner picked. */}
-              {editing && (
-                <li className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setAddOpen(true)}
-                    disabled={pending}
-                    className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-elevated)] px-3 py-3 text-[13px] font-semibold disabled:opacity-50"
-                    style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-                    Add a stop you want
-                  </button>
-                </li>
-              )}
-            </ol>
-          )}
-
-          {/* HONESTY FOOTER */}
-          {plan.stops.length > 0 && (
-            <p
-              className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px] leading-relaxed"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              <Sparkles
-                className="mt-0.5 h-3 w-3 shrink-0"
-                style={{ color: "var(--app-cool)" }}
-                aria-hidden
-              />
-              <span>
-                Every stop is a real, operational place from our directory,
-                nothing invented. Open hours are best-known; confirm
-                before you go.
-              </span>
-            </p>
-          )}
-
-          {/* STICKY ACTION BAR (mobile) — keeps shuffle / new / share
-              one tap away even after the user has scrolled past 5 stops. */}
-          <div
-            className="pointer-events-none fixed inset-x-0 bottom-[env(safe-area-inset-bottom,0px)] z-[var(--z-fab)] px-3 pb-3"
-            // Sit ABOVE BottomNav (which is ~68-72px tall). Bumping
-            // this with a translate keeps a clean stack on mobile.
-            style={{ transform: "translateY(-64px)" }}
-          >
-            <div
-              className="pointer-events-auto mx-auto flex max-w-md items-center gap-1.5 rounded-full border p-1 shadow-[var(--app-elev-3)]"
-              style={{
-                background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
-                borderColor: "var(--app-border)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-              }}
-            >
-              <BarAction
-                onClick={onShuffle}
-                icon={Shuffle}
-                label="Shuffle"
-                disabled={pending}
-                busy={pending && busy === null}
-              />
-              <BarAction
-                onClick={() => {
-                  setPlan(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                icon={Plus}
-                label="New plan"
-                disabled={pending}
-              />
-              <BarAction
-                onClick={onShare}
-                icon={Share2}
-                label="Share"
-                primary
-                disabled={pending}
-              />
+              <ol className="space-y-3 pl-10" aria-label="Plan stops, in order">
+                {plan.stops.map((stop, index) => (
+                  <Stop
+                    key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
+                    stop={stop}
+                    index={index}
+                    pending={pending}
+                    busy={busy}
+                    pinned={stop.place ? pinned.has(stop.place.slug) : false}
+                    onSwap={stop.place ? () => openSwap(index) : undefined}
+                    onPin={stop.place ? () => togglePin(stop.place!.slug) : undefined}
+                    onRemove={() => mutate(() => removeStop(plan.share, index), index, "The stop has been removed.")}
+                  />
+                ))}
+                {savedCandidates.length > 0 && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setAddOpen(true)}
+                      disabled={pending}
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] border border-dashed px-3 text-[13px] font-semibold disabled:opacity-50"
+                      style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      Add a saved place
+                    </button>
+                  </li>
+                )}
+              </ol>
             </div>
+          )}
+
+          <div className={`grid gap-2 ${plan.stops.length > 0 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {plan.stops.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                Change settings
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={startOver}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Start another
+            </button>
           </div>
+          <Message status={statusMsg} error={errorMsg} />
         </section>
       )}
 
-      {/* ── Customize Drawer — Vaul ─────────────────────────────── */}
       <BottomDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        title="Customize the details"
-        subtitle="Pick who, how long, and when. We'll do the rest."
+        title="Adjust the plan"
+        subtitle="Change the area, time, company, or focus. Your current route stays until you rebuild it."
       >
         <div className="space-y-5 px-4 py-4">
-          <Field label="Who you're with">
-            <ChipRow>
-              {AUDIENCES.map((a) => (
-                <Chip
-                  key={a.value}
-                  active={a.value === audience}
-                  onClick={() => setAudience(a.value)}
-                  accent="brand"
-                >
-                  <a.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
-                  {a.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <Field label="Vibe">
-            <ChipRow>
-              {VIBES.map((v) => (
-                <Chip
-                  key={v.value}
-                  active={v.value === vibe}
-                  onClick={() => setVibe(v.value)}
-                  accent="cool"
-                >
-                  <v.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
-                  {v.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <Field label="How long">
-            <ChipRow>
-              {DURATIONS.map((d) => (
-                <Chip
-                  key={d}
-                  active={d === hours}
-                  onClick={() => setHours(d)}
-                  accent="cool"
-                >
-                  {d} hours
-                </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <Field label="Start">
-            <ChipRow>
-              {STARTS.map((s) => (
-                <Chip
-                  key={s.value}
-                  active={s.value === startMode}
-                  onClick={() => setStartMode(s.value)}
-                  accent="cool"
-                >
-                  <s.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
-                  {s.label}
-                </Chip>
-              ))}
-              <Chip active={near != null} onClick={useMyLocation} accent="brand">
-                <Navigation className="h-3.5 w-3.5" aria-hidden />{" "}
-                {near ? "Your spot" : "Near me"}
-              </Chip>
-            </ChipRow>
-            {geoMsg && (
-              <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                {geoMsg}
-              </p>
-            )}
-          </Field>
-
+          {controls}
           <button
             type="button"
-            onClick={() => onBuild()}
+            onClick={onBuild}
             disabled={pending}
-            className="tactile tactile-lift tactile-glow-brand group relative inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-            }}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white disabled:opacity-65"
+            style={{ background: "var(--app-brand-press)" }}
           >
-            <Sparkles
-              className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`}
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            {building ? "Stitching your night…" : "Build with these"}
+            <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />
+            {pending ? "Rebuilding…" : "Update this plan"}
           </button>
+          <Message status={statusMsg} error={errorMsg} />
         </div>
       </BottomDrawer>
 
-      {/* Swap chooser — instead of blindly cycling to the "next best",
-          show the real alternatives for this slot and let the user pick. */}
       <BottomDrawer
         open={swapIdx !== null}
-        onOpenChange={(o) => { if (!o) setSwapIdx(null); }}
-        title="Swap this stop"
-        subtitle="Change the kind, or pick another. These all fit the slot."
+        onOpenChange={(open) => { if (!open) setSwapIdx(null); }}
+        title="Change this stop"
+        subtitle="Choose another place that fits the route."
       >
-        <div className="px-4 py-4">
-          {/* Category switcher — make this slot a different KIND of stop
-              (dessert instead of a bar), then pick the place. */}
+        <div className="space-y-3 px-4 py-4">
           {swapCats && swapCats.length > 1 && (
-            <div className="-mx-4 mb-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex gap-1.5">
-                {swapCats.map((c) => {
-                  const cc = CATEGORY_BY_SLUG[c.category]?.color ?? "var(--app-brand)";
-                  const active = c.category === swapCat;
-                  return (
-                    <button
-                      key={c.category}
-                      type="button"
-                      disabled={pending}
-                      onClick={() => pickSwapCat(c.category)}
-                      aria-pressed={active}
-                      className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50"
-                      style={{
-                        background: active ? cc : "var(--app-bg-sunken)",
-                        color: active ? "#fff" : "var(--app-ink-2)",
-                      }}
-                    >
-                      <CategoryIcon
-                        slug={c.category}
-                        className="h-3.5 w-3.5"
-                        strokeWidth={2.25}
-                        style={{ color: active ? "#fff" : cc }}
-                      />
-                      {c.name}
-                    </button>
-                  );
-                })}
+            <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex gap-2">
+                {swapCats.map((category) => (
+                  <button
+                    key={category.category}
+                    type="button"
+                    onClick={() => pickSwapCategory(category.category)}
+                    disabled={pending}
+                    aria-pressed={swapCat === category.category}
+                    className="inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold"
+                    style={{
+                      borderColor: swapCat === category.category ? "var(--app-cool)" : "var(--app-border)",
+                      background: swapCat === category.category ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                      color: swapCat === category.category ? "white" : "var(--app-ink-2)",
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
               </div>
             </div>
           )}
           {alts === null ? (
-            <ul className="space-y-2" aria-busy>
-              {[0, 1, 2].map((i) => (
-                <li
-                  key={i}
-                  className="h-[64px] animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
-                />
-              ))}
+            <ul className="space-y-2" aria-busy="true">
+              {[0, 1, 2].map((item) => <li key={item} className="h-16 animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]" />)}
             </ul>
           ) : alts.length === 0 ? (
             <p className="py-6 text-center text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              No other good fits for this slot right now.
+              No other open places fit this slot right now.
             </p>
           ) : (
             <ul className="space-y-2">
-              {alts.map((a) => {
-                const cat = CATEGORY_BY_SLUG[a.category];
-                const catColor = cat?.color ?? "var(--app-brand)";
+              {alts.map((alternative) => {
+                const category = CATEGORY_BY_SLUG[alternative.category];
+                const color = category?.color ?? "var(--app-cool)";
                 return (
-                  <li key={a.slug}>
+                  <li key={alternative.slug}>
                     <button
                       type="button"
+                      onClick={() => swapIdx !== null && chooseStop(swapIdx, alternative.slug)}
                       disabled={pending}
-                      onClick={() => swapIdx !== null && chooseStop(swapIdx, a.slug)}
-                      className="tactile tactile-interactive flex w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
+                      className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
                       style={{ borderColor: "var(--app-border)" }}
                     >
-                      <span
-                        aria-hidden
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                        style={{ background: `color-mix(in srgb, ${catColor} 16%, transparent)` }}
-                      >
-                        <CategoryIcon slug={a.category} className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: catColor }} />
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}>
+                        <CategoryIcon slug={alternative.category} className="h-[18px] w-[18px]" style={{ color }} aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span
-                          className="block font-serif text-[15px] font-semibold leading-tight"
-                          style={{ color: "var(--app-ink)" }}
-                        >
-                          {a.name}
-                        </span>
-                        <span
-                          className="mt-0.5 block truncate text-[12px] leading-tight"
-                          style={{ color: "var(--app-ink-3)" }}
-                        >
-                          {a.why || a.categoryName}
-                        </span>
+                        <span className="block font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{alternative.name}</span>
+                        <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{alternative.categoryName}</span>
                       </span>
-                      <Check className="h-4 w-4 shrink-0" style={{ color: catColor }} aria-hidden />
+                      <Check className="h-4 w-4 shrink-0" style={{ color }} aria-hidden />
                     </button>
                   </li>
                 );
@@ -1099,64 +635,37 @@ export default function PlanBuilder({
         </div>
       </BottomDrawer>
 
-      {/* Add-a-stop — pull a place the user already saved into the plan,
-          so they're building the night, not just accepting it. */}
       <BottomDrawer
         open={addOpen}
         onOpenChange={setAddOpen}
-        title="Add a stop you want"
-        subtitle="Drop in a place you've saved. We'll fit it into the night."
+        title="Add a saved place"
+        subtitle="Choose one of your saved places to add to this route."
       >
         <div className="px-4 py-4">
           {savedCandidates.length === 0 ? (
-            <div className="py-6 text-center">
-              <Bookmark className="mx-auto h-6 w-6" style={{ color: "var(--app-ink-3)" }} aria-hidden />
-              <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                {savedSlugs.size === 0
-                  ? "Save places you love and they'll show up here to add."
-                  : "Everything you've saved is already in this plan."}
-              </p>
-            </div>
+            <p className="py-6 text-center text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+              Save a place first, then it will appear here.
+            </p>
           ) : (
             <ul className="space-y-2">
-              {savedCandidates.map((p) => {
-                const cat = CATEGORY_BY_SLUG[p.category];
-                const catColor = cat?.color ?? "var(--app-brand)";
-                return (
-                  <li key={p.slug}>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => addFromSaved(p.slug)}
-                      className="tactile tactile-interactive flex w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <span
-                        aria-hidden
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                        style={{ background: `color-mix(in srgb, ${catColor} 16%, transparent)` }}
-                      >
-                        <CategoryIcon slug={p.category} className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: catColor }} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className="block font-serif text-[15px] font-semibold leading-tight"
-                          style={{ color: "var(--app-ink)" }}
-                        >
-                          {p.name}
-                        </span>
-                        <span
-                          className="mt-0.5 block truncate text-[12px] leading-tight"
-                          style={{ color: "var(--app-ink-3)" }}
-                        >
-                          {cat?.name ?? p.category}
-                        </span>
-                      </span>
-                      <Plus className="h-4 w-4 shrink-0" style={{ color: catColor }} aria-hidden />
-                    </button>
-                  </li>
-                );
-              })}
+              {savedCandidates.map((place) => (
+                <li key={place.slug}>
+                  <button
+                    type="button"
+                    onClick={() => addFromSaved(place.slug)}
+                    disabled={pending}
+                    className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <Bookmark className="h-4 w-4 shrink-0" style={{ color: "var(--app-brand)" }} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{place.name}</span>
+                      <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{CATEGORY_BY_SLUG[place.category]?.name ?? place.category}</span>
+                    </span>
+                    <Plus className="h-4 w-4 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
         </div>
@@ -1165,373 +674,483 @@ export default function PlanBuilder({
   );
 }
 
-/* ───────────────────────── Subcomponents ───────────────────────── */
+function PlannerFields({
+  area,
+  onAreaChange,
+  onUseLocation,
+  geoMsg,
+  startMode,
+  onStartModeChange,
+  customStart,
+  onCustomStartChange,
+  audience,
+  onAudienceChange,
+  vibe,
+  onVibeChange,
+  hours,
+  onHoursChange,
+}: {
+  area: string;
+  onAreaChange: (value: string) => void;
+  onUseLocation: () => void;
+  geoMsg: string | null;
+  startMode: StartMode;
+  onStartModeChange: (value: StartMode) => void;
+  customStart: string;
+  onCustomStartChange: (value: string) => void;
+  audience: PlanInputs["audience"];
+  onAudienceChange: (value: PlanInputs["audience"]) => void;
+  vibe: PlanInputs["vibe"];
+  onVibeChange: (value: PlanInputs["vibe"]) => void;
+  hours: PlanInputs["duration_hours"];
+  onHoursChange: (value: PlanInputs["duration_hours"]) => void;
+}) {
+  return (
+    <div className="divide-y rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+      <PickerRow label="Area" Icon={MapPin} action={
+        <div className="flex min-w-0 items-center gap-1">
+          <select
+            value={area}
+            onChange={(event) => onAreaChange(event.target.value)}
+            className="min-h-11 min-w-0 flex-1 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+            style={{ color: "var(--app-ink)" }}
+            aria-label="Planning area"
+          >
+            <option value="county">Anywhere in Frederick County</option>
+            {area === "near" && <option value="near">Near my current location</option>}
+            {MUNICIPALITIES.map((town) => <option key={town.slug} value={town.slug}>{town.name}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={onUseLocation}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            style={{ background: area === "near" ? "var(--app-brand)" : "var(--app-bg-sunken)", color: area === "near" ? "white" : "var(--app-ink-2)" }}
+            aria-label="Use my current location"
+            aria-pressed={area === "near"}
+          >
+            <LocateFixed className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      } />
+      {geoMsg && <p className="px-3 pb-3 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>}
+
+      <PickerRow label="Start" Icon={CalendarDays} controlId="plan-start" action={
+        <select
+          id="plan-start"
+          value={startMode}
+          onChange={(event) => onStartModeChange(event.target.value as StartMode)}
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          style={{ color: "var(--app-ink)" }}
+          aria-label="Start time"
+        >
+          {(["now", "afternoon", "evening", "custom"] as StartMode[]).map((mode) => (
+            <option key={mode} value={mode}>{startModeLabel(mode)}</option>
+          ))}
+        </select>
+      } />
+      {startMode === "custom" && (
+        <div className="px-3 pb-3">
+          <input
+            type="datetime-local"
+            value={customStart}
+            onChange={(event) => onCustomStartChange(event.target.value)}
+            className="min-h-11 w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            aria-label="Custom start date and time in Frederick"
+          />
+        </div>
+      )}
+
+      <PickerRow label="Going with" Icon={UsersRound} controlId="plan-audience" action={
+        <select
+          id="plan-audience"
+          value={audience}
+          onChange={(event) => onAudienceChange(event.target.value as PlanInputs["audience"])}
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          style={{ color: "var(--app-ink)" }}
+          aria-label="Who is going"
+        >
+          {AUDIENCES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      } />
+
+      <PickerRow label="Focus" Icon={Leaf} controlId="plan-focus" action={
+        <select
+          id="plan-focus"
+          value={vibe}
+          onChange={(event) => onVibeChange(event.target.value as PlanInputs["vibe"])}
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          style={{ color: "var(--app-ink)" }}
+          aria-label="What matters most"
+        >
+          {VIBES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      } />
+
+      <PickerRow label="Time available" Icon={Clock} controlId="plan-duration" action={
+        <select
+          id="plan-duration"
+          value={hours}
+          onChange={(event) => onHoursChange(Number(event.target.value) as PlanInputs["duration_hours"])}
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          style={{ color: "var(--app-ink)" }}
+          aria-label="Time available"
+        >
+          {DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} hours</option>)}
+        </select>
+      } />
+    </div>
+  );
+}
+
+function PickerRow({
+  label,
+  Icon,
+  action,
+  controlId,
+}: {
+  label: string;
+  Icon: LucideIcon;
+  action: React.ReactNode;
+  controlId?: string;
+}) {
+  const content = (
+    <>
+      <span className="inline-flex min-w-0 flex-1 items-center gap-2 text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+        <Icon className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        {label}
+      </span>
+      {controlId ? (
+        <span className="min-w-0 max-w-[62%] flex-1 text-right">{action}</span>
+      ) : (
+        <div className="min-w-0 max-w-[62%] flex-1 text-right">{action}</div>
+      )}
+      <ChevronRight className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+    </>
+  );
+  const className = "flex min-h-[52px] items-center gap-3 px-3 sm:min-h-14";
+
+  if (controlId) {
+    return (
+      <label htmlFor={controlId} className={`${className} cursor-pointer`}>
+        {content}
+      </label>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
+    </div>
+  );
+}
 
 function Stop({
-  stop, idx, busy, pending, editing, isPinned, onSwap, onPin, onRemove,
+  stop,
+  index,
+  pending,
+  busy,
+  pinned,
+  onSwap,
+  onPin,
+  onRemove,
 }: {
   stop: Plan["stops"][number];
-  idx: number;
-  busy: number | null;
+  index: number;
   pending: boolean;
-  editing: boolean;
-  isPinned: boolean;
-  onSwap: () => void;
+  busy: number | null;
+  pinned: boolean;
+  onSwap?: () => void;
   onPin?: () => void;
   onRemove: () => void;
 }) {
   const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
-  const name = stop.place?.name ?? stop.event?.title ?? "";
-  const where = stop.place
-    ? `${stop.place.address}, ${stop.place.city}`
-    : stop.event?.venue_name ?? "";
+  const name = stop.place?.name ?? stop.event?.title ?? "Stop";
+  const where = stop.place ? placeLocationLabel(stop.place.address, stop.place.city) : stop.event?.venue_name;
   const geom = stop.place?.geom ?? stop.event?.geom;
-  const ol = OPEN_LABEL[stop.open];
-  // Make the KIND of stop explicit — a labeled category mark in the
-  // category's own color. Place stops only; events read by their time.
-  const placeCat = stop.place?.category;
-  const catMeta = placeCat ? CATEGORY_BY_SLUG[placeCat] : undefined;
-  const catColor = catMeta?.color ?? "var(--app-cool)";
+  const status = OPEN_LABEL[stop.open];
 
   return (
     <li className="relative">
+      {stop.travel_from_previous_min && (
+        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+          {stop.travel_mode === "walk" ? <Footprints className="h-3.5 w-3.5" aria-hidden /> : <Navigation className="h-3.5 w-3.5" aria-hidden />}
+          About {stop.travel_from_previous_min} min {stop.travel_mode === "walk" ? "on foot" : "by car"}
+          {stop.travel_from_previous_m ? ` · ${formatDistance(stop.travel_from_previous_m)}` : ""}
+        </p>
+      )}
       <span
-        className="absolute -left-10 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full font-serif text-sm font-bold text-white"
-        style={{
-          background:
-            "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))",
-          boxShadow: "var(--app-elev-2), 0 0 0 4px var(--app-bg)",
-        }}
+        className="absolute -left-10 top-3 z-10 grid h-8 w-8 place-items-center rounded-full font-serif text-[13px] font-bold text-white"
+        style={{ background: "var(--app-brand)", boxShadow: "0 0 0 4px var(--app-bg)" }}
         aria-hidden
       >
         {stop.order}
       </span>
-      <article className="tactile tactile-interactive overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]">
-        {stop.photo_url && (
-          <div className="relative h-36 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-            <Image
-              src={stop.photo_url}
-              alt=""
-              unoptimized={stop.photo_url.startsWith("/api/place-photo")}
-              fill
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-300 hover:scale-105"
-            />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 60%, transparent 100%)",
-              }}
-            />
-            <span
-              className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums shadow-[var(--app-elev-1)]"
-              style={{ color: "var(--app-cool)" }}
-            >
-              <Clock className="h-3 w-3" aria-hidden />
-              {clock(stop.at)} · {stop.duration_min} min
-            </span>
-            <span
-              className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-elev-1)]"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: ol.color }}
-                aria-hidden
-              />
-              {ol.text}
-            </span>
-            {/* Title overlay on photo — reads cinematic without
-                covering the image. */}
-            <Link
-              href={href}
-              className="absolute inset-x-0 bottom-0 block p-3 group"
-            >
-              <h3 className="font-serif text-[18px] font-semibold leading-tight tracking-tight text-white drop-shadow-md group-hover:underline">
+      <article className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" style={{ borderColor: "var(--app-border)" }}>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold">
+              <span className="tabular-nums" style={{ color: "var(--app-cool)" }}>{clock(stop.at)} · {stop.duration_min} min</span>
+              <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} aria-hidden />
+                {status.text}
+              </span>
+            </div>
+            <Link href={href} className="group mt-1.5 block">
+              <h3 className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
                 {name}
               </h3>
               {where && (
-                <p className="mt-0.5 truncate text-[12px] text-white/85">
+                <p className="mt-1 line-clamp-2 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
                   <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
                   {where}
                 </p>
               )}
             </Link>
           </div>
-        )}
-        <div className="p-4">
-          {!stop.photo_url && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-                  style={{
-                    background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
-                    color: "var(--app-cool)",
-                  }}
-                >
-                  <Clock className="h-3 w-3" aria-hidden />
-                  {clock(stop.at)} · {stop.duration_min} min
-                </span>
-                <span
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  <span
-                    className="inline-block h-1.5 w-1.5 rounded-full"
-                    style={{ background: ol.color }}
-                    aria-hidden
-                  />
-                  {ol.text}
-                </span>
-              </div>
-              <Link href={href} className="group mt-2 block">
-                <h3
-                  className="font-serif text-[18px] font-semibold leading-snug tracking-tight transition-colors group-hover:underline"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {name}
-                </h3>
-                {where && (
-                  <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                    <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
-                    {where}
-                  </p>
-                )}
-              </Link>
-            </>
-          )}
-          {placeCat && catMeta && (
-            <div className="mt-2">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
-                style={{
-                  background: `color-mix(in srgb, ${catColor} 13%, transparent)`,
-                  color: catColor,
-                }}
-              >
-                <CategoryIcon slug={placeCat} className="h-3 w-3" strokeWidth={2.25} />
-                {catMeta.name}
-              </span>
+          {stop.photo_url && (
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]">
+              <Image
+                src={stop.photo_url}
+                alt=""
+                fill
+                unoptimized={stop.photo_url.startsWith("/api/place-photo")}
+                sizes="80px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
+                className="object-cover"
+              />
             </div>
           )}
-          <p
-            className="mt-2 text-[14px] leading-relaxed text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {stop.why}
-          </p>
-          {/* The verified Field Note for this stop — parking intel first. No
-              other app's plan tells you where to park at each stop; render it
-              as the quiet expert margin note it is, never a badge. */}
-          {stop.tip && (
-            <p
-              className="mt-2 border-l-2 pl-2.5 text-[12px] leading-relaxed"
-              style={{ borderColor: "var(--app-brand-2)", color: "var(--app-ink-2)" }}
-            >
-              {stop.tip}
-            </p>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {geom && (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                <Navigation className="h-3 w-3" aria-hidden />
-                Directions
-              </a>
-            )}
-            <Link
-              href={href}
-              className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
+        </div>
+
+        <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>
+
+        {stop.tip && (
+          <details className="mt-2 rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)] px-3">
+            <summary className="flex min-h-11 cursor-pointer items-center text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+              Parking and arrival note
+            </summary>
+            <p className="mb-3 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{stop.tip}</p>
+          </details>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {geom && (
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[12px] font-semibold"
               style={{ color: "var(--app-ink-2)" }}
             >
-              Details
-              <ChevronRight className="h-3 w-3" aria-hidden />
-            </Link>
-            {editing && stop.place && (
-              <>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={onSwap}
-                  className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-                  style={{ color: "var(--app-ink-2)" }}
-                >
-                  <RefreshCw
-                    className={`h-3 w-3 ${busy === idx ? "animate-spin" : ""}`}
-                    aria-hidden
-                  />
-                  Swap
-                </button>
-                {onPin && (
-                  <button
-                    type="button"
-                    onClick={onPin}
-                    disabled={pending}
-                    aria-pressed={isPinned}
-                    className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-                    style={{
-                      background: isPinned ? "var(--app-cool)" : "var(--app-bg-sunken)",
-                      color: isPinned ? "#fff" : "var(--app-ink-2)",
-                    }}
-                  >
-                    <Pin className="h-3 w-3" strokeWidth={2.25} fill={isPinned ? "currentColor" : "none"} aria-hidden />
-                    {isPinned ? "Pinned" : "Pin"}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={onRemove}
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[var(--app-bg-sunken)] disabled:opacity-50"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  <X className="h-3 w-3" aria-hidden />
-                  Remove
-                </button>
-              </>
-            )}
-          </div>
+              <Navigation className="h-3.5 w-3.5" aria-hidden />
+              Directions
+            </a>
+          )}
+          <Link
+            href={href}
+            className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[12px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Details <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+          {onSwap && (
+            <button
+              type="button"
+              onClick={onSwap}
+              disabled={pending}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[12px] font-semibold disabled:opacity-50"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${busy === index ? "animate-spin" : ""}`} aria-hidden />
+              Change
+            </button>
+          )}
+          {onPin && (
+            <button
+              type="button"
+              onClick={onPin}
+              disabled={pending}
+              aria-pressed={pinned}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold disabled:opacity-50"
+              style={{ background: pinned ? "var(--app-cool)" : "var(--app-bg-sunken)", color: pinned ? "white" : "var(--app-ink-2)" }}
+            >
+              <Pin className="h-3.5 w-3.5" fill={pinned ? "currentColor" : "none"} aria-hidden />
+              {pinned ? "Pinned" : "Pin"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={pending}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium disabled:opacity-50"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Remove
+          </button>
         </div>
       </article>
     </li>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Message({ status, error }: { status: string | null; error: string | null }) {
+  if (!status && !error) return null;
   return (
-    <div>
-      <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{label}</p>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
-
-function ChipRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-1.5">{children}</div>;
-}
-
-function Chip({
-  active, accent = "brand", onClick, children,
-}: {
-  active: boolean;
-  accent?: "brand" | "cool";
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const accentColor = accent === "cool" ? "var(--app-cool)" : "var(--app-brand)";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-medium transition active:scale-[0.94]"
-      style={{
-        borderColor: active ? accentColor : "var(--app-border)",
-        background: active ? accentColor : "var(--app-bg-elevated)",
-        color: active ? "white" : "var(--app-ink-2)",
-        boxShadow: active ? "var(--app-elev-2)" : "var(--app-elev-1)",
-        transitionTimingFunction: "var(--app-ease-spring)",
-      }}
+    <p
+      className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed"
+      style={{ color: error ? "var(--app-negative)" : "var(--app-ink-3)" }}
+      role={error ? "alert" : "status"}
+      aria-live="polite"
     >
-      {children}
-    </button>
+      {error && <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />}
+      {error ?? status}
+    </p>
   );
 }
 
 function Meta({ children }: { children: React.ReactNode }) {
   return (
-    <li
-      className="inline-flex items-center gap-1.5 rounded-full bg-white/55 px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-      style={{ color: "var(--app-ink-2)" }}
-    >
+    <li className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-[var(--app-bg-sunken)] px-2.5 text-[11px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
       {children}
     </li>
   );
 }
 
-function BarAction({
-  onClick, icon: Icon, label, primary, disabled, busy,
-}: {
-  onClick: () => void;
-  icon: typeof Shuffle;
-  label: string;
-  primary?: boolean;
-  disabled?: boolean;
-  busy?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-semibold transition active:scale-[0.96] disabled:opacity-50"
-      style={
-        primary
-          ? {
-              background:
-                "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-              color: "white",
-              boxShadow: "var(--app-brand-glow)",
-            }
-          : {
-              background: "transparent",
-              color: "var(--app-ink-2)",
-            }
-      }
-    >
-      <Icon
-        className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`}
-        strokeWidth={2.25}
-        aria-hidden
-      />
-      {label}
-    </button>
-  );
-}
-
-/* ───────────────────────── Helpers ───────────────────────── */
-
-function currentSettingsLabel(
-  audience: PlanInputs["audience"],
-  hours: PlanInputs["duration_hours"],
-  start: StartMode,
-  hasLocation: boolean,
-): string {
-  const aud = AUDIENCES.find((a) => a.value === audience)?.label ?? audience;
-  const startLabel = STARTS.find((s) => s.value === start)?.label ?? start;
-  const loc = hasLocation ? " · Near me" : "";
-  return `${aud} · ${hours}h · ${startLabel}${loc}`;
-}
-
-function totalMinutes(plan: Plan): number {
-  return plan.stops.reduce((sum, s) => sum + (s.duration_min ?? 0), 0);
-}
-
-function totalRadius(plan: Plan): number {
-  let max = 0;
-  let baseLng: number | null = null;
-  let baseLat: number | null = null;
-  for (const s of plan.stops) {
-    const g = s.place?.geom ?? s.event?.geom;
-    if (!g) continue;
-    if (baseLng === null) {
-      baseLng = g.lng;
-      baseLat = g.lat;
-      continue;
-    }
-    const dLng =
-      (g.lng - baseLng) * 111320 * Math.cos(((baseLat ?? 0) * Math.PI) / 180);
-    const dLat = (g.lat - (baseLat ?? 0)) * 111320;
-    max = Math.max(max, Math.sqrt(dLng * dLng + dLat * dLat));
+function startModeLabel(mode: StartMode): string {
+  if (mode === "now") return "Now";
+  if (mode === "afternoon" || mode === "evening") {
+    const hour = mode === "afternoon" ? 14 : 18;
+    const target = nextFrederickTime(hour);
+    const today = frederickDateKey(new Date());
+    const day = frederickDateKey(target) === today ? "Today" : "Tomorrow";
+    return `${day} at ${mode === "afternoon" ? "2 PM" : "6 PM"}`;
   }
-  return max;
+  return "Pick a time";
+}
+
+function startAtFor(mode: StartMode, customStart: string): string | null {
+  if (mode === "now") return new Date().toISOString();
+  if (mode === "custom") return frederickLocalToIso(customStart);
+  return nextFrederickTime(mode === "afternoon" ? 14 : 18).toISOString();
+}
+
+function toLocalInput(value?: string): string {
+  const date = value ? new Date(value) : null;
+  if (!date || !Number.isFinite(date.getTime())) return "";
+  const parts = frederickParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function frederickParts(date: Date): Record<"year" | "month" | "day" | "hour" | "minute", string> {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<"year" | "month" | "day" | "hour" | "minute", string>;
+}
+
+function frederickDateKey(date: Date): string {
+  const parts = frederickParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function frederickLocalToIso(value: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const target = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  let instant = target;
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const parts = frederickParts(new Date(instant));
+    const represented = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+    );
+    instant += target - represented;
+  }
+  return Number.isFinite(instant) ? new Date(instant).toISOString() : null;
+}
+
+function nextFrederickTime(hour: number): Date {
+  const now = new Date();
+  const today = frederickDateKey(now);
+  let candidate = new Date(frederickLocalToIso(`${today}T${String(hour).padStart(2, "0")}:00`) ?? now.toISOString());
+  if (candidate.getTime() <= now.getTime()) {
+    const [year, month, day] = today.split("-").map(Number);
+    const tomorrow = new Date(Date.UTC(year, month - 1, day + 1));
+    const key = `${tomorrow.getUTCFullYear()}-${String(tomorrow.getUTCMonth() + 1).padStart(2, "0")}-${String(tomorrow.getUTCDate()).padStart(2, "0")}`;
+    candidate = new Date(frederickLocalToIso(`${key}T${String(hour).padStart(2, "0")}:00`) ?? now.toISOString());
+  }
+  return candidate;
+}
+
+function clock(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function planDateLabel(plan: Plan): string {
+  if (plan.stops.length === 0) return "Your plan";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(plan.stops[0].at));
+}
+
+function planWindowLabel(plan: Plan): string {
+  if (plan.stops.length === 0) return "No time set";
+  const first = plan.stops[0];
+  const last = plan.stops[plan.stops.length - 1];
+  const end = new Date(new Date(last.at).getTime() + last.duration_min * 60_000).toISOString();
+  return `${clock(first.at)}–${clock(end)}`;
+}
+
+function totalRouteDistance(plan: Plan): number {
+  return plan.stops.reduce((sum, stop) => sum + (stop.travel_from_previous_m ?? 0), 0);
+}
+
+function routeUrlForPlan(plan: Plan): string {
+  const points = plan.stops
+    .map((stop) => stop.place?.geom ?? stop.event?.geom)
+    .filter((point): point is { lat: number; lng: number } => Boolean(point));
+  if (points.length === 0) return "https://www.google.com/maps";
+  const destination = points[points.length - 1];
+  const params = new URLSearchParams({
+    api: "1",
+    destination: `${destination.lat},${destination.lng}`,
+    travelmode: plan.stops.some((stop) => stop.travel_mode === "drive") ? "driving" : "walking",
+  });
+  if (points.length > 1) {
+    params.set("waypoints", points.slice(0, -1).map((point) => `${point.lat},${point.lng}`).join("|"));
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function replacePlanUrl(token: string): void {
+  if (typeof window === "undefined") return;
+  window.history.replaceState(null, "", `/plan?p=${encodeURIComponent(token)}`);
+}
+
+function placeLocationLabel(address?: string, city?: string): string {
+  const cleanAddress = address?.trim();
+  const cleanCity = city?.trim();
+  if (!cleanAddress) return cleanCity ?? "";
+  if (!cleanCity || cleanAddress.toLowerCase() === cleanCity.toLowerCase()) return cleanAddress;
+  return `${cleanAddress}, ${cleanCity}`;
 }

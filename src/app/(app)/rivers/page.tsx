@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/rivers" },
   title: "Rivers & streams",
   description:
-    "Live USGS gauges for the Monocacy, Catoctin Creek, Linganore, and the Potomac in Frederick County. Current height, flow, and 24-hour trend.",
+    "Live USGS gauges show the current height, flow, and 24-hour trend for Frederick County waterways.",
   // Orphan-by-design until linked into nav. /pulse links here once
   // this lands so it's not invisible.
   robots: { index: true, follow: true },

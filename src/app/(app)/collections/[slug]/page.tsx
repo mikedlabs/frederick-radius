@@ -245,7 +245,7 @@ export default async function CollectionPage({
       )}
 
       <footer className="border-t pt-4 text-[11.5px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        Curated locally. No paid placement. Missing a place?{" "}
+        These lists are selected locally and have no paid placement. If a place is missing, {" "}
         <Link
           href="/submit/place"
           className="tap-44 inline-flex min-h-11 items-center font-semibold underline"

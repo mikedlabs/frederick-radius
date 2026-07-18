@@ -522,7 +522,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-title" style={{ color: "var(--app-ink)" }}>Nearby</h2>
           <Link href={exploreAreaHref} className="tap-44 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-            Explore area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
+            View area <ArrowRight aria-hidden className="ml-1 h-3.5 w-3.5" strokeWidth={2.25} />
           </Link>
         </div>
         <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">

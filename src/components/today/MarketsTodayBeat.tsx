@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ShoppingBasket } from "lucide-react";
 import { marketsOpenToday } from "@/lib/markets-today";
+import { marketTimingAt } from "@/lib/today/on-now";
 
 /**
  * "Farmers markets today" — a slim, self-hiding almanac line. Frederick is farm
@@ -11,10 +12,13 @@ import { marketsOpenToday } from "@/lib/markets-today";
  */
 export default async function MarketsTodayBeat({ now }: { now: Date }) {
   const markets = await marketsOpenToday(now);
-  if (markets.length === 0) return null;
+  const relevant = markets
+    .map((market) => ({ market, timing: marketTimingAt(market.hours, now) }))
+    .filter(({ timing }) => timing !== "earlier");
+  if (relevant.length === 0) return null;
 
-  const shown = markets.slice(0, 3);
-  const extra = markets.length - shown.length;
+  const shown = relevant.slice(0, 3);
+  const extra = relevant.length - shown.length;
 
   return (
     <div className="mt-3">
@@ -29,17 +33,20 @@ export default async function MarketsTodayBeat({ now }: { now: Date }) {
           style={{ color: "var(--app-brand)" }}
         />
         <span className="font-semibold" style={{ color: "var(--app-ink)" }}>
-          {markets.length === 1 ? "Farmers market today:" : "Farmers markets today:"}
+          {relevant.length === 1 ? "Farmers market today:" : "Farmers markets today:"}
         </span>
-        {shown.map((m, i) => (
-          <span key={m.norm}>
-            {m.name}
-            <span style={{ color: "var(--app-ink-3)" }}> {m.hours}</span>
+        {shown.map(({ market, timing }, i) => (
+          <span key={market.norm}>
+            {market.name}
+            <span className="ml-1 font-semibold" style={{ color: timing === "now" ? "var(--app-positive)" : "var(--app-ink-3)" }}>
+              {timing === "now" ? "Open now" : timing === "later" ? "Later today" : "Today"}
+            </span>
+            <span style={{ color: "var(--app-ink-3)" }}> {market.hours}</span>
             {/* Maryland's own market registry says which markets take SNAP —
                 a fact worth a quiet tag (7 of the county's 9 markets do, and
                 nothing else surfaces it). FMNP-only markets stay untagged:
                 "SNAP" must mean SNAP. */}
-            {/\bsnap\b/i.test(m.benefits ?? "") && (
+            {/\bsnap\b/i.test(market.benefits ?? "") && (
               <span
                 className="ml-1 align-[1px] font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]"
                 style={{ color: "var(--app-brand-2)" }}

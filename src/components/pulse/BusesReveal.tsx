@@ -97,7 +97,7 @@ export default function BusesReveal() {
       <button
         type="button"
         onClick={toggleOpen}
-        aria-label={open ? "Hide live buses" : "Show live buses"}
+        aria-label={open ? "Hide current buses" : "Show current buses"}
         aria-expanded={open}
         aria-controls="pulse-live-buses"
         className="tactile-interactive flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-4 py-3 text-left transition active:scale-[0.99]"
@@ -120,7 +120,7 @@ export default function BusesReveal() {
           </span>
           <span className="min-w-0">
             <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {open ? "Live buses" : "Show live buses"}
+              {open ? "Buses right now" : "Show current buses"}
             </span>
             <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
               {open ? "Route progress, map, and next stops" : "See every route and follow buses in real time"}

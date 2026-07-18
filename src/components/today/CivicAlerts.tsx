@@ -210,7 +210,7 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
       </a>
       )}
       {more > 0 && (
-        <a href="/pulse" className="block px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <a href="/pulse" className="flex min-h-11 items-center px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </a>
       )}

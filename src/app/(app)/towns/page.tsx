@@ -6,7 +6,7 @@ import { getWeeklyPublicEventCountsByMunicipality } from "@/lib/guided/town-even
 
 export const metadata: Metadata = {
   title: "Towns",
-  description: "Pick a Frederick County town to start. Real place counts and what's on this week.",
+  description: "Choose a Frederick County town to see its places and events this week.",
   alternates: { canonical: "/towns" },
 };
 

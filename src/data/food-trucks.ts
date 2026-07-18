@@ -47,14 +47,14 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Brewpub fare",
     kind: "food",
     homeBase: "Monocacy Brewing Company",
-    blurb: "The kitchen on wheels parked at Monocacy Brewing.",
+    blurb: "The Alley Wagon serves as the kitchen on wheels at Monocacy Brewing.",
   },
   {
     slug: "blendabowl",
     name: "Blendabowl",
     cuisine: "Acai bowls & smoothies",
     kind: "food",
-    blurb: "Acai and pitaya bowls, smoothies, vegan and gluten-free options.",
+    blurb: "Blendabowl serves acai and pitaya bowls, smoothies, and vegan or gluten-free options.",
     facebook: "https://facebook.com/profile.php?id=61574773000675",
   },
   {
@@ -62,7 +62,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Blues BBQ",
     cuisine: "Barbecue",
     kind: "food",
-    blurb: "Pit beef, pulled pork, smoked brisket, and baby back ribs.",
+    blurb: "Blues BBQ serves pit beef, pulled pork, smoked brisket, and baby back ribs.",
     facebook: "https://facebook.com/thebluesbbqtruck",
   },
   {
@@ -77,7 +77,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "D's Delights",
     cuisine: "Rice bowls & gyros",
     kind: "food",
-    blurb: "Rice bowls, gyros, burgers, and seafood rolls.",
+    blurb: "D's Delights serves rice bowls, gyros, burgers, and seafood rolls.",
     facebook: "https://facebook.com/profile.php?id=100066257723124",
   },
   {
@@ -86,7 +86,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Wood-fired pizza",
     kind: "food",
     homeBase: "RAK Brewing",
-    blurb: "Wood-fired Neapolitan pies from a mobile pizzeria.",
+    blurb: "Dop Pizza makes wood-fired Neapolitan pies from a mobile kitchen.",
     facebook: "https://facebook.com/doppizza.co",
   },
   {
@@ -94,7 +94,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Fryday",
     cuisine: "Loaded fries",
     kind: "food",
-    blurb: "Crispy fries loaded with premium toppings and bold sauces.",
+    blurb: "Fryday serves crispy fries with a range of toppings and sauces.",
     facebook: "https://facebook.com/profile.php?id=61586562268008",
   },
   {
@@ -102,7 +102,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "The Garage",
     cuisine: "Sandwiches & fries",
     kind: "food",
-    blurb: "Handcrafted sandwiches and fresh-cut fries.",
+    blurb: "The Garage serves sandwiches with fresh-cut fries.",
     facebook: "https://facebook.com/thegaragemd",
   },
   {
@@ -124,7 +124,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "In10se BBQ",
     cuisine: "Barbecue",
     kind: "food",
-    blurb: "Family-owned, serving Frederick County since 2010.",
+    blurb: "This family-owned barbecue truck has served Frederick County since 2010.",
     website: "https://in10sebbq.com",
   },
   {
@@ -132,7 +132,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Mayta's Peruvian",
     cuisine: "Peruvian",
     kind: "food",
-    blurb: "A taste of Peru in the heart of Frederick.",
+    blurb: "Mayta's serves Peruvian food in Frederick.",
   },
   {
     slug: "mls-ragin-cajun",
@@ -146,7 +146,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Pita King",
     cuisine: "Mediterranean",
     kind: "food",
-    blurb: "Mediterranean sandwiches from a mobile kitchen.",
+    blurb: "Pita King serves Mediterranean sandwiches from a mobile kitchen.",
     facebook: "https://facebook.com/pitakingfoodtruck",
   },
   {
@@ -154,7 +154,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Sabor de Cuba",
     cuisine: "Cuban",
     kind: "food",
-    blurb: "Authentic Cuban flavors and street food.",
+    blurb: "Sabor de Cuba serves Cuban street food.",
     website: "https://sabordecubarestaurant.com/experience",
   },
   {
@@ -162,7 +162,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Three Daughters",
     cuisine: "Mediterranean",
     kind: "food",
-    blurb: "Falafel, kabobs, gyros, and more.",
+    blurb: "Three Daughters serves falafel, kabobs, and gyros.",
     facebook: "https://facebook.com/profile.php?id=100063828651829",
   },
   {
@@ -170,7 +170,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Traditional Authentic Mexican Food",
     cuisine: "Mexican",
     kind: "food",
-    blurb: "Tacos, burritos, quesadillas, and the classics.",
+    blurb: "This truck serves tacos, burritos, quesadillas, and other Mexican standards.",
     instagram: "https://instagram.com/traditionalauthenticmexfood",
   },
   {
@@ -186,7 +186,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Kona Ice of Frederick County",
     cuisine: "Shaved ice",
     kind: "treats",
-    blurb: "Flavor-your-own tropical shaved ice, all over the county's events.",
+    blurb: "Kona Ice serves flavor-your-own tropical shaved ice at events across the county.",
     instagram: "https://instagram.com/konaicefrederickmd",
     facebook: "https://facebook.com/KonaIceofFrederickCoMD",
   },
@@ -195,7 +195,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Kotei Kids Organic Shaved Ice",
     cuisine: "Shaved ice",
     kind: "treats",
-    blurb: "Organic, vegan shaved ice.",
+    blurb: "Kotei Kids serves organic, vegan shaved ice.",
     website: "https://koteikidsshavedice.com",
   },
 ];

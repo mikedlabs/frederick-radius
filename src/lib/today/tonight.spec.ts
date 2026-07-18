@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { isSameTodayListing, pickTonightEvent } from "./tonight";
+import { isSameTodayListing, pickTonightEvent, splitTonightFeature, withoutTodayFeature } from "./tonight";
 
 function event(overrides: Partial<EventWithMeta>): EventWithMeta {
   return {
@@ -56,5 +56,48 @@ describe("pickTonightEvent", () => {
     const a = event({ slug: "curated-alive", title: "Alive @ Five · La Unica", starts_at: "2026-07-16T21:00:00.000Z" });
     const b = event({ slug: "feed-alive", title: "Alive @ Five - La Unica", starts_at: "2026-07-16T21:00:00.000Z" });
     expect(isSameTodayListing(a, b)).toBe(true);
+  });
+
+  it("keeps the selected lead exactly once when duplicate feeds describe it", () => {
+    const now = new Date("2026-07-16T21:30:00.000Z");
+    const curated = event({
+      slug: "curated-alive",
+      title: "Alive @ Five · La Unica",
+      starts_at: "2026-07-16T21:00:00.000Z",
+      ends_at: "2026-07-17T00:00:00.000Z",
+    });
+    const feedDuplicate = event({
+      slug: "feed-alive",
+      title: "Alive @ Five - La Unica",
+      starts_at: "2026-07-16T21:00:00.000Z",
+      ends_at: "2026-07-17T00:00:00.000Z",
+    });
+    const trivia = event({ slug: "trivia", title: "Trivia Night" });
+
+    const { feature, remaining } = splitTonightFeature(now, [trivia, feedDuplicate, curated]);
+    const visible = feature ? [feature, ...remaining] : remaining;
+
+    expect(feature?.title).toContain("Alive @ Five");
+    expect(visible.filter((item) => isSameTodayListing(item, curated))).toHaveLength(1);
+    expect(remaining.map((item) => item.slug)).toContain("trivia");
+  });
+
+  it("removes a duplicate that another Today bucket classified differently", () => {
+    const feature = event({
+      slug: "curated-alive",
+      title: "Alive @ Five · La Unica",
+      starts_at: "2026-07-16T21:00:00.000Z",
+    });
+    const routineBucket = [
+      event({
+        slug: "feed-alive",
+        title: "Alive @ Five - La Unica",
+        starts_at: "2026-07-16T21:00:00.000Z",
+        category: "civic",
+      }),
+      event({ slug: "storytime", title: "Library Storytime" }),
+    ];
+
+    expect(withoutTodayFeature(feature, routineBucket).map((item) => item.slug)).toEqual(["storytime"]);
   });
 });

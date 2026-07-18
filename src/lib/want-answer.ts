@@ -10,6 +10,7 @@ import { formatHoursLine, getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import { isChainName, ratingSignal } from "@/lib/category-ranking";
 
 /**
  * The want answer — "I want coffee" resolved to places, ranked for RIGHT
@@ -57,6 +58,7 @@ export type WantRow = {
 export type WantAnswer = {
   key: string;
   label: string;
+  rankingMode: "best-fit" | "open-now";
   hero: WantRow | null;
   also: WantRow[];
   later: WantRow[];
@@ -94,6 +96,10 @@ export type WantCandidate = {
   known_for?: string[];
   field_note_tip?: string;
   deal_hook?: string;
+  google_rating?: number;
+  google_rating_count?: number;
+  hidden_gem?: boolean;
+  local_favorite?: boolean;
 };
 
 /** The slice of a place a `refine` predicate can read — the narrowing seam
@@ -133,6 +139,9 @@ function opensLaterToday(s: OpenStatus): boolean {
  *  folds "downtown frederick" -> "Frederick" for exactly this reason). Fall
  *  back to the municipality name only when a place has no clean city. */
 function townLabel(c: WantCandidate): string | null {
+  if (c.municipality && c.municipality !== "frederick") {
+    return MUNICIPALITY_BY_SLUG[c.municipality]?.name ?? c.city?.trim() ?? null;
+  }
   const city = c.city?.trim();
   if (city) return city;
   return c.municipality ? MUNICIPALITY_BY_SLUG[c.municipality]?.name ?? null : null;
@@ -294,6 +303,29 @@ export function approxHeroIndex(open: WantCandidate[]): number {
   return best;
 }
 
+function bestFitScore(candidate: WantCandidate): number {
+  return (
+    candidate.feature_score +
+    (candidate.local_favorite ? 1.5 : 0) +
+    (candidate.hidden_gem ? 0.5 : 0) +
+    ratingSignal(candidate.google_rating, candidate.google_rating_count) * 0.75 -
+    (isChainName(candidate.name) ? 0.75 : 0)
+  );
+}
+
+/** Rank a timeless Ask decision by editorial fit. Current hours remain on the
+ * row, but they do not let an open chain beat the better local answer merely
+ * because the question was asked after breakfast service ended. */
+export function rankBestFit(candidates: WantCandidate[]): WantCandidate[] {
+  return [...candidates].sort((a, b) => {
+    const scoreDelta = bestFitScore(b) - bestFitScore(a);
+    if (scoreDelta !== 0) return scoreDelta;
+    const distanceDelta = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+    if (distanceDelta !== 0) return distanceDelta;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 export function buildWantAnswer(
   cKey: string,
   facetKey: string | null,
@@ -305,6 +337,7 @@ export function buildWantAnswer(
     contextLabel?: string;
     contextSource?: WantAnswer["contextSource"];
     fallbackReason?: WantAnswer["fallbackReason"];
+    rankingMode?: WantAnswer["rankingMode"];
     /** Extra narrowing over the matched set (cuisine, area) — Ask Frederick's
      *  seam. Runs after the want matcher, so it only ever subtracts. */
     refine?: (p: WantRefinable) => boolean;
@@ -358,6 +391,26 @@ export function buildWantAnswer(
     });
 
   const { open, later, other, total } = partitionWant(candidates);
+  const rankingMode = opts?.rankingMode ?? "open-now";
+
+  if (rankingMode === "best-fit") {
+    const best = rankBestFit(candidates);
+    return {
+      key: cKey,
+      label: want.label,
+      rankingMode,
+      hero: best[0] ? toRow(best[0], false) : null,
+      also: best.slice(1, ALSO_MAX + 1).map((candidate) => toRow(candidate, false)),
+      later: [],
+      laterMore: 0,
+      notable: [],
+      total,
+      browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+      contextLabel: opts?.contextLabel ?? "Whole county",
+      contextSource: opts?.contextSource ?? "county",
+      fallbackReason: opts?.fallbackReason ?? null,
+    };
+  }
 
   // When nothing is open now AND nothing opens later today, but the category
   // still has places (markets, playgrounds, or anything without posted
@@ -373,6 +426,7 @@ export function buildWantAnswer(
   return {
     key: cKey,
     label: want.label,
+    rankingMode,
     hero: open[heroIdx] ? toRow(open[heroIdx], false) : null,
     also: alsoPool.slice(0, ALSO_MAX).map((c) => toRow(c, false)),
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),

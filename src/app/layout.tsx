@@ -74,10 +74,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {
     template: "%s · Frederick Radius",
-    default: "Frederick Radius: Frederick County, organized around your day",
+    default: "Frederick Radius: A local guide to Frederick County",
   },
   description:
-    "Frederick County, organized around your day. What's open, what's happening, and what's worth your time, across every town and community in Frederick County, Maryland.",
+    "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
   applicationName: "Frederick Radius",
   // Single author across all routes: the product is a MAD Productions
   // tool. The personal maker credit lives in the /about body, not the
@@ -102,9 +102,9 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: BASE,
     siteName: "Frederick Radius",
-    title: "Frederick Radius: Frederick County, organized around your day",
+    title: "Frederick Radius: A local guide to Frederick County",
     description:
-      "What's open, what's happening, and what's worth your time across every town and community in Frederick County, Maryland.",
+      "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
     images: [{ url: `${BASE}/api/og`, width: 1200, height: 630 }],
   },
   twitter: {
@@ -113,7 +113,7 @@ export const metadata: Metadata = {
     // Match the OpenGraph description rather than the old generic
     // marketing line, so the share card says what the product does.
     description:
-      "What's open, what's happening, and what's worth your time across every town and community in Frederick County, Maryland.",
+      "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
     images: [`${BASE}/api/og`],
   },
   robots: { index: true, follow: true },

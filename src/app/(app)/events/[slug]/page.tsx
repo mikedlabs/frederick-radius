@@ -769,7 +769,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </details>
           ) : null}
           {lineup.length > 30 ? (
-            <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>Showing the next 30 of {lineup.length} dates.</p>
+            <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>The next 30 of {lineup.length} dates are shown.</p>
           ) : null}
         </section>
       )}

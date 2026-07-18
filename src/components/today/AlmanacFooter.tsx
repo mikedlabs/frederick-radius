@@ -56,15 +56,14 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
   // Compact delta. The full "2 minutes longer than yesterday" form was
   // editorial when the footer sat at the page bottom; in its current
   // home next to the weather it needs to fit on one line at any
-  // viewport. "+2m" / "−3m" / "—" keeps the sign-of-the-season signal
+  // viewport. "+2m", "−3m", or "0m" keeps the sign-of-the-season signal
   // without the prose tail. The verbose version still ships on the
   // hover tooltip for the curious.
   const dMin = delta.deltaMinutes;
   let deltaShort: string;
   let deltaTitle: string;
   if (dMin === 0) {
-    // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
-    deltaShort = "—";
+    deltaShort = "0m";
     deltaTitle = "Same length as yesterday";
   } else if (dMin > 0) {
     deltaShort = `+${dMin}m`;

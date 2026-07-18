@@ -13,9 +13,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
   // /today (the answer surface is now the home entry), and /now + /radius +
   // /guide 308-redirect — listing a redirect in the sitemap is the bug, so
-  // they're gone. /today is priority 1.
+  // it stays out. /today is priority 1 and /ask is the canonical decision tool.
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE}/ask`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/compass`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },

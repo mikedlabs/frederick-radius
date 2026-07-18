@@ -38,7 +38,7 @@ export type WikimediaPhoto = {
 export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
   "carroll-creek-linear-park-frederick": {
     file: "Carroll Creek Park Frederick MD1.jpg",
-    alt: "Carroll Creek Linear Park in downtown Frederick — the landscaped creek promenade and footbridges.",
+    alt: "Carroll Creek Linear Park in downtown Frederick, showing the landscaped creek promenade and footbridges.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Park_Frederick_MD1.jpg",
@@ -119,7 +119,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
     // Carroll Creek Promenade — the iconic downtown Frederick scene (the same
     // verified shot the landmark set uses). Reviewed by eye 2026-06-28.
     file: "Carroll Creek Park Frederick MD1.jpg",
-    alt: "Carroll Creek Promenade in downtown Frederick — brick buildings, the water feature, and spring blossoms along the creek.",
+    alt: "Carroll Creek Promenade in downtown Frederick, with brick buildings, the water feature, and spring blossoms along the creek.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Park_Frederick_MD1.jpg",
@@ -135,7 +135,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   thurmont: {
     file: "Thurmont Town Square Park.jpg",
-    alt: "Thurmont, Maryland's town square park — the town clock, a gazebo, and flower beds at the town center.",
+    alt: "Thurmont's town square park, with the town clock, a gazebo, and flower beds at the town center.",
     author: "CraigShipp.com Photos",
     license: "CC BY-SA 2.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Thurmont_Town_Square_Park.jpg",
@@ -143,7 +143,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   middletown: {
     file: "Middletown, Maryland historic district.jpg",
-    alt: "Main Street in Middletown, Maryland's historic district — porch-fronted homes with the Catoctin ridge beyond.",
+    alt: "Main Street in Middletown's historic district, with porch-fronted homes and the Catoctin ridge beyond.",
     author: "Acroterion",
     license: "CC BY-SA 4.0",
     source_url: "https://commons.wikimedia.org/wiki/File:Middletown,_Maryland_historic_district.jpg",
@@ -159,7 +159,7 @@ export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   },
   "new-market": {
     file: "New Market, Maryland.jpg",
-    alt: "A Victorian antiques storefront on Main Street in New Market, Maryland — the county's antiques town.",
+    alt: "A Victorian antiques storefront on Main Street in New Market, Maryland, a town known for its antique shops.",
     author: "Dougtone",
     license: "CC BY-SA 2.0",
     source_url: "https://commons.wikimedia.org/wiki/File:New_Market,_Maryland.jpg",

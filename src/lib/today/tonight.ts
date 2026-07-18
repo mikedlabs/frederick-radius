@@ -58,3 +58,29 @@ export function pickTonightEvent(now: Date, pool: EventWithMeta[]): EventWithMet
   // carnival or concert.
   return pickLeadEvent(tonight);
 }
+
+/**
+ * Select the Today lead and remove every duplicate of that occurrence from the
+ * remaining rows. This keeps one event visible exactly once when two feeds use
+ * different slugs for the same listing.
+ */
+export function splitTonightFeature(
+  now: Date,
+  pool: EventWithMeta[],
+): { feature: EventWithMeta | null; remaining: EventWithMeta[] } {
+  const feature = pickTonightEvent(now, pool);
+  if (!feature) return { feature: null, remaining: pool };
+  return {
+    feature,
+    remaining: withoutTodayFeature(feature, pool),
+  };
+}
+
+/** Remove the selected occurrence from any other Today bucket. */
+export function withoutTodayFeature(
+  feature: EventWithMeta | null,
+  pool: EventWithMeta[],
+): EventWithMeta[] {
+  if (!feature) return pool;
+  return pool.filter((event) => !isSameTodayListing(event, feature));
+}

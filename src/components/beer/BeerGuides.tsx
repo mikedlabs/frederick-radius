@@ -23,7 +23,7 @@ const BEER_DAYS: BeerDayDefinition[] = [
   {
     slug: "downtown-contrast",
     eyebrow: "Downtown Frederick",
-    title: "Two rooms. Two directions.",
+    title: "Try two very different downtown rooms.",
     description: "Pair a hop-forward IPA at Olde Mother with a crisp kölsch at Brewer's Alley. The point is contrast, not collecting stops.",
     stops: [
       { brewerySlug: "olde-mother-brewing-frederick", beerName: "Impressionist" },
@@ -61,19 +61,19 @@ function isResolvedStop(stop: ResolvedStop | null): stop is ResolvedStop {
   return stop !== null;
 }
 
-/** Three intentionally small outings, not another all-results surface. */
+/** A few intentionally small outings, not another all-results surface. */
 export default function BeerGuides({ photos }: { photos: BreweryPhotoMap }) {
   return (
     <section id="beer-days" aria-labelledby="beer-days-heading" className="-mx-4 scroll-mt-24 overflow-hidden border-y border-white/10 bg-[#15130f] px-4 py-9 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:py-12 lg:mx-0 lg:rounded-[8px] lg:border lg:px-10">
       <header className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
         <div>
-          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">Three good moves</p>
+          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#e3b65d]">A few good routes</p>
           <h2 id="beer-days-heading" className="mt-2 max-w-[9ch] font-serif text-[clamp(3rem,9vw,5.4rem)] font-semibold leading-[0.84] tracking-[-0.055em]">
-            Go somewhere good.
+            Choose a simple beer outing.
           </h2>
         </div>
         <p className="max-w-[36rem] pb-1 text-[14px] leading-relaxed text-white/58">
-          Three small routes built around place, pace, and one pour worth knowing. No brewery checklist required.
+          Each route stays small enough to enjoy the room instead of racing through a brewery checklist.
         </p>
       </header>
 

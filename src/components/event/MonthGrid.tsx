@@ -231,7 +231,7 @@ export default function MonthGrid({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-sm"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Nothing scheduled this day.
+              No events are scheduled for this day.
             </p>
           ) : (
             <ul className="space-y-1.5">

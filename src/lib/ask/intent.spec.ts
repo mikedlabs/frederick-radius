@@ -14,6 +14,18 @@ describe("parseAskIntent", () => {
     });
   });
 
+  it("recognizes a hyphenated date-night comparison as planning", () => {
+    expect(
+      parseAskIntent(
+        "Compare two date-night options near downtown for tomorrow, including dinner timing, parking, and live music",
+      ),
+    ).toMatchObject({
+      kind: "plan",
+      audience: "date",
+      durationHours: 3,
+    });
+  });
+
   it("keeps a nearby breakfast question as a place job", () => {
     expect(parseAskIntent("Where can I get a breakfast sandwich near me right now?")).toMatchObject({
       kind: "place",
@@ -37,7 +49,7 @@ describe("parseAskIntent", () => {
       budget: "free",
       localOnly: true,
       surpriseMe: true,
-      constraints: ["Family", "Free", "Local only", "Surprise me"],
+      constraints: ["Family", "Free", "Independent spots", "Surprise me"],
     });
   });
 
@@ -83,6 +95,31 @@ describe("parseAskIntent", () => {
       kind: "plan",
       audience: "date",
       timeNeed: "tonight",
+    });
+  });
+
+  it("captures an explicit weekday and common dinner time", () => {
+    const now = new Date("2026-07-18T18:00:00.000Z");
+    expect(parseAskIntent("Plan a date night Monday at 7", now)).toMatchObject({
+      kind: "plan",
+      requestedDate: "2026-07-20",
+      requestedTime: "7:00 PM",
+      requestedDateTime: "2026-07-20T23:00:00.000Z",
+    });
+  });
+
+  it("treats gluten-free as dietary language, not a zero-dollar budget", () => {
+    expect(parseAskIntent("Find a gluten-free dinner")).toMatchObject({
+      kind: "place",
+      budget: null,
+      dietary: ["gluten-free"],
+    });
+  });
+
+  it("recognizes dinner and a show as a multi-stop plan", () => {
+    expect(parseAskIntent("Dinner and a show Saturday night")).toMatchObject({
+      kind: "plan",
+      audience: "solo",
     });
   });
 });

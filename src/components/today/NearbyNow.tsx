@@ -150,7 +150,7 @@ export default function NearbyNow() {
               {blocked
                 ? "Open places and live events countywide."
                 : loading
-                  ? "Centering on your location."
+                  ? "Radius is centering results on your location."
                   : "Share your location above to center this on you: the open places and live events nearest you."}
             </p>
           </div>

@@ -207,7 +207,7 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
 
         {forDay.total === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[12.5px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            No verified happy hours on {DAY_FULL[day]} yet. Try another day.
+            There are no verified happy hours on {DAY_FULL[day]} yet. Try another day.
           </p>
         ) : (
           <div className="space-y-3.5">

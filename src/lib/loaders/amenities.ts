@@ -35,18 +35,18 @@ const AMENITIES = AMENITIES_RAW as Amenity[];
 
 // Display order — most-asked-for first.
 export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[] = [
-  { kind: "restroom", label: "Public restrooms", blurb: "Where to go, downtown and in parks" },
-  { kind: "wifi", label: "Free Wi-Fi", blurb: "Cafes and libraries with public internet" },
-  { kind: "ev_charging", label: "EV charging", blurb: "Charging stations county-wide" },
-  { kind: "bike_parking", label: "Bike parking", blurb: "Racks and covered bike parking" },
-  { kind: "picnic", label: "Picnic spots", blurb: "Tables and picnic sites" },
-  { kind: "playground", label: "Playgrounds", blurb: "County-wide, for the kids" },
-  { kind: "water", label: "Drinking water", blurb: "Explicitly tagged potable water and bottle-fill points" },
-  { kind: "trash", label: "Trash cans", blurb: "Public waste baskets mapped around parks and streets" },
-  { kind: "recycling", label: "Recycling", blurb: "Public drop-offs and collection containers" },
-  { kind: "bench", label: "Benches", blurb: "Places to sit along streets, parks, and trails" },
-  { kind: "dog_waste", label: "Dog-waste stations", blurb: "Dog-bag and dog-waste bins" },
-  { kind: "bike_repair", label: "Bike repair", blurb: "Public fix-it stations and pumps" },
+  { kind: "restroom", label: "Public restrooms", blurb: "Find public restrooms downtown and in parks." },
+  { kind: "wifi", label: "Free Wi-Fi", blurb: "Find public internet at cafes and libraries." },
+  { kind: "ev_charging", label: "EV charging", blurb: "Find EV charging stations across the county." },
+  { kind: "bike_parking", label: "Bike parking", blurb: "Find racks and covered bike parking." },
+  { kind: "picnic", label: "Picnic spots", blurb: "Find tables and designated picnic sites." },
+  { kind: "playground", label: "Playgrounds", blurb: "Find playgrounds across Frederick County." },
+  { kind: "water", label: "Drinking water", blurb: "Find points tagged as potable water or bottle-fill stations." },
+  { kind: "trash", label: "Trash cans", blurb: "Find public waste baskets mapped along streets and in parks." },
+  { kind: "recycling", label: "Recycling", blurb: "Find public recycling drop-offs and collection containers." },
+  { kind: "bench", label: "Benches", blurb: "Find benches along streets and trails, and in parks." },
+  { kind: "dog_waste", label: "Dog-waste stations", blurb: "Find dog-bag dispensers and waste bins." },
+  { kind: "bike_repair", label: "Bike repair", blurb: "Find public fix-it stations and pumps." },
   // Pools — scaffolding for public swimming pools (city, county
   // recreation, Y branches). The kind is registered so the map's
   // amenity layer + filter UI can carry it; the actual point data
@@ -54,13 +54,13 @@ export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[
   // entries land in amenities.json (kind="pool"), the layer
   // surfaces automatically via amenitiesByKind's "only kinds that
   // actually have points" filter — no UI change needed.
-  { kind: "pool", label: "Public pools", blurb: "City, county, and YMCA pools — seasonal hours" },
+  { kind: "pool", label: "Public pools", blurb: "Find city, county, and YMCA pools. Check seasonal hours." },
   // River gauges — USGS sites on the Monocacy, Catoctin, Linganore,
   // Potomac. Data lives in usgsWater.ts; the map page hydrates these
   // into Amenity shape at request time so they ride the same layer
   // toggle system as restrooms / EV / playgrounds. Tap a gauge to
   // jump to /rivers for the live reading + 24-hour trend.
-  { kind: "river_gauge", label: "River gauges", blurb: "Live USGS gauges — Monocacy, Catoctin, Potomac, Linganore" },
+  { kind: "river_gauge", label: "River gauges", blurb: "See live USGS gauges on the Monocacy, Catoctin, Potomac, and Linganore waterways." },
 ];
 
 export const AMENITY_COUNT = AMENITIES.length;

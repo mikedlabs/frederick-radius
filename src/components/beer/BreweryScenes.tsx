@@ -40,7 +40,7 @@ const SCENE_VISUALS: Record<BreweryScene, SceneVisual> = {
     navLabel: "In the city",
     eyebrow: "Historic rooms + small batches",
     title: "City taprooms",
-    description: "Downtown anchors, production spaces, and small-batch rooms scattered through Frederick.",
+    description: "Frederick's beer rooms range from downtown brewpubs to production and small-batch spaces across the county.",
     photo: "/images/seasons/winter/WINTER 3.jpg",
     objectPosition: "50% 50%",
   },

@@ -53,6 +53,7 @@ type RawEvent = {
   starts_at?: string; // ISO or plain date/time as published
   ends_at?: string;
   description?: string;
+  description_origin?: "source-excerpt" | "radius-summary";
   price?: string;
   ticket_url?: string;
 };
@@ -66,13 +67,16 @@ type VenueEvent = RawEvent & {
 const SHAPE =
   `Extract UPCOMING events from this venue's page as a JSON array. Each item:\n` +
   `{ "title": string, "starts_at": string (date and time as published, ISO if possible), ` +
-  `"ends_at"?: string, "description"?: string (one sentence), "price"?: string, "ticket_url"?: string (absolute) }\n` +
-  `Only events clearly listed on the page with a real date. Skip past events. If none, return [].`;
+  `"ends_at"?: string, "description"?: string (one complete, neutral sentence), "price"?: string, "ticket_url"?: string (absolute) }\n` +
+  `Copy each published title exactly. A description must use only facts from the source and must not use fragments, ` +
+  `slogans, promotional filler, or an invented three-part list. Preserve a factual list when the source requires it. ` +
+  `Only include events clearly listed on the page with a real date. Skip past events. If none, return [].`;
 
 const IMAGE_SHAPE =
   `This image is a venue's monthly events/music calendar. Extract every event legibly shown as a JSON array. Each item:\n` +
   `{ "title": string, "starts_at": string (date, with time if shown; include the year ${new Date().getFullYear()} if the image omits it), ` +
-  `"description"?: string }\n` +
+  `"description"?: string (one complete, neutral sentence using only legible facts) }\n` +
+  `Copy each published title exactly. Do not use fragments, promotional filler, or an invented three-part list. ` +
   `Only events you can actually read in the image, with a real date. If none are legible, return [].`;
 
 /** Resolve the collection method, honoring the legacy render flag. */
@@ -100,7 +104,15 @@ async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; source
     );
     const n = Array.isArray(events) ? events.length : 0;
     console.log(`  ✓ ${n} event(s) from image ${venue.imageUrl}`);
-    return { events: Array.isArray(events) ? events : [], sourceUrl: venue.urls[0] ?? venue.imageUrl };
+    return {
+      events: Array.isArray(events)
+        ? events.map((event) => ({
+            ...event,
+            ...(event.description ? { description_origin: "radius-summary" as const } : {}),
+          }))
+        : [],
+      sourceUrl: venue.urls[0] ?? venue.imageUrl,
+    };
   }
 
   if (method === "feed") {
@@ -127,7 +139,13 @@ async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; source
     );
     if (Array.isArray(events) && events.length) {
       console.log(`  ✓ ${events.length} event(s) from ${url}`);
-      return { events, sourceUrl: url };
+      return {
+        events: events.map((event) => ({
+          ...event,
+          ...(event.description ? { description_origin: "radius-summary" as const } : {}),
+        })),
+        sourceUrl: url,
+      };
     }
     console.log(`  – 0 event(s) from ${url}`);
   }

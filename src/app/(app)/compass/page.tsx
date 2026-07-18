@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/compass" },
   title: "Compass",
   description:
-    "Find what you need across Frederick County: what is open, what is happening, local guides, practical tools, and ways to contribute.",
+    "Open every Frederick Radius guide and tool from one index.",
 };
 
 /**

@@ -28,6 +28,14 @@ SHIPPED brand deck (see `src/app/globals.css` tokens) is:
   + banned-words list + worked copy per surface: `docs/VOICE.md` (the
   source of truth — no metaphors, say the true thing plainly, "around here"
   carries the name). Tagline: "Around here."
+- **Sentence discipline:** User-facing prose uses complete grammatical
+  sentences. Do not manufacture a casual voice with clipped fragments or
+  stacks such as "Good beer. Good people. Right now." Headings, buttons, and
+  data labels may be short phrases when they are clearly interface labels.
+- **No automatic rhetorical groups of three:** Do not default to three clauses,
+  benefits, adjectives, or matching short sentences because the rhythm sounds
+  polished. This is a prose rule, not a product limit. Three results, choices,
+  steps, cards, or facts are correct when the data or task calls for three.
 - **Aesthetic bar:** a well-made field guide — dense, organized, calm.
   Typography carries hierarchy before boxes/borders/badges. One primary
   action per view. Honest empty states. If a change reads like a generic
@@ -47,16 +55,16 @@ draft must read like a person typing in a thread, not composed copy:
 - **Banned tics:** "genuinely", "truly", "I appreciate", "delve",
   snappy symmetric phrasing ("crowned the answer"), tidy
   concede→enumerate→invite arcs, and any closing line that sells.
-- **Specifics are the voice.** "South of downtown", "filed under
-  coffee", "dog waste stations" beat any adjective. One technical
+- **Specifics are the voice.** "South of downtown" and "dog waste stations"
+  beat any adjective. One technical
   detail max, picked for the audience ("a test that fails the build"
   for a software person).
 - **Concede fast, prove with shipped facts.** "You were right, it's
   fixed, it's live" and only claim what is actually deployed; anything
   pending is "still on my list."
-- **Small human roughness:** contractions, digits ("5 minutes"), an
-  occasional self-deprecation ("my screwup"). Shorter beats charming;
-  when unsure, end plain.
+- **Natural, complete sentences:** contractions and digits ("5 minutes") are
+  fine, and an occasional plain admission ("my screwup") can help. Do not
+  imitate a human voice with sentence fragments. When unsure, end plainly.
 - **Never argue about AI or tools.** The app being right is the entire
   argument; that debate gets zero oxygen.
 

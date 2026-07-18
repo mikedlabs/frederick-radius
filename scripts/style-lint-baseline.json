@@ -1,11 +1,6 @@
 {
-  "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-07-17T13:35:01.699Z",
-  "count": 4,
-  "entries": [
-    "src/data/events.ts|craft|Massive juried craft and art show in Thurmon…",
-    "src/data/places.ts|craft|Brunswick's craft brewery in a restored f…",
-    "src/data/places.ts|craft|Downtown craft brewery in a 1909 fireh…",
-    "src/data/places.ts|craft|…goods, prepared foods, craft beer, ferments."
-  ]
+  "note": "No current voice debt. New violations must not be baselined without owner review.",
+  "generated": "2026-07-17T18:20:00.000Z",
+  "count": 0,
+  "entries": []
 }

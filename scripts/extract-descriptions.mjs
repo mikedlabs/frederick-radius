@@ -90,6 +90,7 @@ Rules:
 - Describe what the place IS and why a local goes there. Concrete, not generic ("good place to visit" is banned).
 - Synthesize from the signal; do NOT quote the review verbatim or use first person.
 - Plain and honest. No marketing voice. Banned words: discover, hidden gem, curated, quaint, charming, nestled, vibrant. No em dashes.
+- Do not pad the sentence with a three-part list. Include only facts that help someone decide whether to go.
 - If the editorial + review are both empty or too thin to say anything true and specific, return blurb: null. Never invent facts.`,
   });
   return object.blurb;

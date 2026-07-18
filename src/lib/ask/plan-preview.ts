@@ -3,12 +3,25 @@ import type { AskIntent } from "@/lib/ask/intent";
 import type { AskPlanPreview } from "@/lib/ask/contracts";
 import type { QualifiedSearchContext } from "@/lib/search";
 import { buildPlan, type PlanInputs } from "@/lib/integrations/planner";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 function categoryName(slug: string): string {
   return CATEGORY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ");
 }
 
 function planStart(intent: AskIntent, query: string): string | undefined {
+  if (intent.requestedDateTime) return intent.requestedDateTime;
+  if (intent.requestedDate) {
+    const [year, month, day] = intent.requestedDate.split("-").map(Number);
+    const hour = intent.timeNeed === "morning"
+      ? 9
+      : intent.timeNeed === "afternoon"
+        ? 13
+        : intent.audience === "date" || intent.vibe === "food"
+          ? 18
+          : 10;
+    return easternWallToUtcISO(year, month, day, hour, 0);
+  }
   const explicitWindow = ("morning afternoon tonight".split(" ") as string[]).includes(intent.timeNeed ?? "");
   // An undated "date night" is not a request to leave this instant. Late at
   // night, using `now` filtered the user's named anchor as closed and quietly
@@ -77,6 +90,7 @@ export function buildAskPlanPreview(
     duration_hours: intent.durationHours,
     start_at: planStart(intent, query),
     start_near: context.origin ?? undefined,
+    municipality: context.municipality ?? undefined,
     max_distance_m: intent.travelMode === "walk" ? 2_400 : undefined,
     local_only: intent.localOnly || undefined,
     budget: intent.budget ?? undefined,

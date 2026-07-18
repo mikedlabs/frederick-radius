@@ -49,7 +49,7 @@ import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
 import { isValidCoord } from "@/lib/geo";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { isSameTodayListing, pickTonightEvent } from "@/lib/today/tonight";
+import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -57,17 +57,17 @@ import TomorrowPreview from "@/components/today/TomorrowPreview";
 import GoldenHourCard from "@/components/today/GoldenHourCard";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
+import TodayAsk from "@/components/today/TodayAsk";
 
 /**
  * Now — the daily briefing.
  *
  * Spine (post-findability pass, top to bottom — matches the render below):
  *
- *   1. SkyHero        → time-of-day sky + date/clock + tonight teaser
- *   2. What's on      → every public event in the city/county TODAY (no toggle)
- *   3. MastheadNotes  → dated local context (self-hides)
- *   4. OnNowBand      → the live layer (markets · happy hour · specials · parking)
- *                        under one header, reordered by daypart (self-hides)
+ *   1. SkyHero        → time-of-day sky + date, clock, and weather
+ *   2. OnNowBand      → current utility followed by clearly timed later items
+ *   3. What's on      → every public event in the city or county today
+ *   4. MastheadNotes  → dated local context that self-hides
  *   5. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
@@ -78,8 +78,7 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
  *   • Answers lead (AnswerCards) — the section only ever rendered the
  *                                  "On tonight" card (open-now + weekend
  *                                  answers were already removed); the
- *                                  tonight teaser already lives in the
- *                                  SkyHero, so the duplicate card went.
+ *                                  event lead now lives in What's on.
  *   • RightNowStrip (On deck)    — overlapped the Upcoming events
  *                                  section and TimeToggle below
  *   • PrimaryActionCard (Plan)   — overlapped MoreSheet's Plan tool
@@ -107,7 +106,7 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 export async function generateMetadata(): Promise<Metadata> {
   const day = easternDayKey(new Date());
   const description =
-    "What's open, what's happening, and what's worth your time in Frederick County right now.";
+    "Use current conditions and posted listings to decide what to do in Frederick County today.";
   return {
     alternates: { canonical: "/today" },
     title: "Today in Frederick County",
@@ -128,9 +127,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 
-// pickTonightEvent + its NON_PUBLIC_EVENT filter moved to src/lib/today/tonight
-// so the SkyHero teaser, the What's-On feature, AND the composed "right now"
-// line (NowIntel) all speak ONE agreed headliner instead of re-deriving it.
+// Event lead selection lives in src/lib/today/tonight so Today surfaces one
+// agreed headliner and removes duplicate feed occurrences from the rows below.
 
 // /today is time-sensitive, but force-dynamic made every visit pay the
 // external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
@@ -205,8 +203,8 @@ export default async function HomePage() {
         </h1>
       </header>
 
-      {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
-          tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
+      {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
+          lead the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
           more compact") — the sky is a rounded card within the column rather
           than a full-bleed band, with a tighter weather row inside; the soft
@@ -238,6 +236,12 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
+      {/* Ask is a compact handoff, not an embedded conversation. People can
+          start a question here, then use the dedicated decision workspace for
+          context, evidence, follow-ups, and actions without stretching Today
+          into another dashboard. */}
+      <TodayAsk />
+
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
           themselves before seeing any value, and most people never touch a
@@ -247,14 +251,6 @@ export default async function HomePage() {
           user-facing chooser. (Section ids stay on their divs so deep-link
           anchors like /today#whats-on still work.) */}
 
-      {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
-          The lead "answers" section only ever rendered the single "On
-          tonight" card (the open-now and weekend answers were retired
-          earlier, and parking/transit have their own nearby tools). That
-          tonight card duplicated the SkyHero's own tonight teaser, so the
-          whole section + its buildTodayAnswers scaffolding came out. /today
-          now moves from the weather into the day's actual program. */}
-
       {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
           the day; once it's past ~9 PM (the "late" daypart, strictly on the
           Eastern clock) it leads the editorial spine with tomorrow's top draw +
@@ -263,15 +259,22 @@ export default async function HomePage() {
         <TomorrowPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
 
-      {/* ── EDITORIAL SPINE, DAYPART-ORDERED — the SAME daypart spine the On-now
-          band orders by, lifted to the page's two swappable sections. Morning /
-          midday lead with the day-ahead plan (Plan the moment: walkable date
-          night, kid energy burners, rainy-day, hidden gems — pure
-          discoverability of /collections, no client JS); evening / late lead
-          with tonight's events (the headline answer, soonest first, the rest one
-          tap away via "See all"). Both always render — daypart only picks which
-          comes first, so the page BEHAVES like a local instead of saying so.
-          What's-on streams inside its own Suspense boundary. */}
+      {/* Current utility belongs before the calendar. Every live claim uses a
+          clock-checked window, while parking and later markets keep their
+          published timing. The shared event promise prevents duplicate feed
+          work across this band and the event program below. */}
+      <div className="[&:not(:empty)]:mt-4">
+        <KeysScore />
+      </div>
+      <div id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense fallback={null}>
+          <OnNowBand now={now} eventsPromise={eventsPromise} />
+        </Suspense>
+      </div>
+      <GoldenHourCard now={now} />
+
+      {/* The event program follows the immediate answers and streams inside its
+          own Suspense boundary. */}
       <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense
           fallback={
@@ -301,8 +304,8 @@ export default async function HomePage() {
 
       {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
           the live layer): a returning user's own saved places that are open
-          RIGHT NOW are the highest-intent answer on the page, so they sit just
-          under the day's events, above the general live layer. Client section
+          RIGHT NOW are a high-intent answer, so they sit just under the day's
+          events. Client section
           (saves are client state); renders nothing unless something's open, so
           a first-timer or anyone with no open saves never sees a box. */}
       <FromYourSaved />
@@ -314,33 +317,6 @@ export default async function HomePage() {
       <Suspense fallback={null}>
         <WeekendPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
-
-      {/* ── ON NOW — the live layer (farmers markets, happy hours, today's
-          verified specials, tonight's parking play) gathered under ONE header
-          instead of four free-floating beats, and REORDERED BY DAYPART so the
-          most useful live thing leads at 8am vs 9pm. Each block still self-hides;
-          the band header reads "On now" when something's genuinely live and
-          "Coming up" when the only card is the next happy hour. Streams on the
-          shared events promise (it needs tonight's events for the parking play). */}
-      {/* Golden hour — a calm almanac beat in the live layer: today's sunset +
-          the ~hour of good light before it (real NOAA sun math). Self-hides
-          outside the pre-sunset window, so it appears exactly when it's the most
-          decision-useful — and romantic — number on the page. */}
-      <GoldenHourCard now={now} />
-
-      {/* Live Keys score — client island that self-hides unless there's a game
-          today (home or away). Polls only while the game is live. Leads the live
-          layer because a game in progress is the most time-sensitive thing on
-          the page. The [&:not(:empty)] wrapper costs an idle day zero space. */}
-      <div className="[&:not(:empty)]:mt-4">
-        <KeysScore />
-      </div>
-
-      <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
-        <Suspense fallback={null}>
-          <OnNowBand now={now} eventsPromise={eventsPromise} />
-        </Suspense>
-      </div>
 
       {/* Seasonal pools (summer only; self-hides out of season) — placed BELOW
           the day's events and the happy-hour / on-now layer (owner call):
@@ -371,21 +347,6 @@ export default async function HomePage() {
 
       {/* (HEADS UP / CivicAlerts moved UP to just under the masthead — an active
           warning belongs before anyone plans, not below the whole moat.) */}
-
-      {/* The generated "best move now" card (TodayMoves) was removed
-          2026-06-18: /today is a place to FIND, not a suggestion engine. A
-          rule-based "here's the move" tells the user an idea they may already
-          have; the fast-lane I-want grid, the live moat (happy hours/deals),
-          tonight's event in the hero, and What's-on below already let them
-          find their own answer. Finding, not telling. */}
-
-      {/* (FROM YOUR SAVED moved UP to just under the day's events — a returning
-          user's own open-now saves are the highest-intent answer, so they no
-          longer sit below the whole live layer.) */}
-
-      {/* WHAT'S ON was relocated ABOVE Happy hour (owner call 2026-06-19):
-          today's events are the headline "what's happening" answer, so they now
-          sit right after the weather; the happy-hour / deals moat follows. */}
 
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
@@ -668,18 +629,15 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // (The overnight "First thing tomorrow" strip that used to live here grew into
   // its own composed TomorrowPreview beat above — top draw + weather look, gated
   // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
-  const featuredEvent = pickTonightEvent(now, publicEvents);
-  // The SkyHero teaser (TonightTeaser) already carries pickTonightEvent's #1,
-  // so the feature card here takes the NEXT-best draw and the rail carries the
-  // rest — one event never renders twice on one page (the Jul-8 audit render
-  // showed the same reading as the hero's tappable row AND the big photo
-  // feature two screens later). When there's no teaser there's no feature
-  // card either, same as before.
-  const withoutTeaser = featuredEvent
-    ? todaysEvents.filter((e) => !isSameTodayListing(e, featuredEvent))
-    : todaysEvents;
-  const feature = featuredEvent ? withoutTeaser[0] : undefined;
-  const upcomingRest = feature ? withoutTeaser.slice(1) : withoutTeaser;
+  // The selected lead renders here exactly once. Duplicate feed occurrences
+  // are removed from the compact program below instead of removing the lead.
+  const { feature, remaining: upcomingRest } = splitTonightFeature(now, todaysEvents);
+  const remainingAlsoToday = withoutTodayFeature(feature, alsoToday);
+  const remainingEarlierToday = withoutTodayFeature(feature, earlierToday);
+  const featureDuplicateCount = feature
+    ? Math.max(0, todayAll.filter((event) => isSameTodayListing(event, feature)).length - 1)
+    : 0;
+  const visibleTodayCount = todayAll.length - featureDuplicateCount;
 
   // The day PROGRAM (replaced the unlabeled sideways rail + separate "Also
   // today" bucket, owner call 2026-07-15: "feels like a list with no
@@ -690,7 +648,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
   // glance where the rail hid all but two tiles.
   const program = [
     ...upcomingRest.map((e) => ({ e, quiet: false })),
-    ...alsoToday.map((e) => ({ e, quiet: true })),
+    ...remainingAlsoToday.map((e) => ({ e, quiet: true })),
   ].sort((a, b) => Date.parse(a.e.starts_at) - Date.parse(b.e.starts_at));
   // The front page is a briefing, not the calendar. Eight rows show the shape
   // of the day without making every visitor scroll through the full feed; the
@@ -710,7 +668,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     if (last && last.label === label) last.rows.push(row);
     else programGroups.push({ label, rows: [row] });
   }
-  const tonightCount = ahead.filter((e) => !e.is_all_day && easternStartHour(e.starts_at) >= 17).length;
+  const tonightCount = ahead.filter(
+    (e) =>
+      (!feature || e === feature || !isSameTodayListing(e, feature)) &&
+      !e.is_all_day &&
+      easternStartHour(e.starts_at) >= 17,
+  ).length;
 
   return (
     <section className="mt-5 space-y-3" aria-label="Events today">
@@ -721,12 +684,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
         cta="See all"
         flat
         meta={
-          todayAll.length > 0
-            ? `${todayAll.length} ${todayAll.length === 1 ? "event" : "events"} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""}`
+          visibleTodayCount > 0
+            ? `${visibleTodayCount} ${visibleTodayCount === 1 ? "event" : "events"} today${tonightCount > 0 ? ` · ${tonightCount} tonight` : ""}`
             : undefined
         }
       >
-        {feature || upcomingRest.length > 0 || alsoToday.length > 0 || earlierToday.length > 0 ? (
+        {feature || upcomingRest.length > 0 || remainingAlsoToday.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
             {/* The one editor's pick, and it SAYS so — the unlabeled hero was
                 the first "why is this big?" of the section. */}
@@ -769,14 +732,14 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             {/* Finished draws collapse to one honest line — the record of the
                 day is a tap away, but done things don't spend screen. Native
                 <details>: no client JS. */}
-            {earlierToday.length > 0 && (
+            {remainingEarlierToday.length > 0 && (
               <details className="group">
                 <summary className="tap-44-y flex cursor-pointer list-none items-center gap-1.5 px-0.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] [&::-webkit-details-marker]:hidden" style={{ color: "var(--app-ink-3)" }}>
                   <ChevronRight aria-hidden className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.5} />
-                  Earlier today · {earlierToday.length} wrapped up
+                  Earlier today · {remainingEarlierToday.length} wrapped up
                 </summary>
                 <ul className="mt-1">
-                  {earlierToday.map((e) => (
+                  {remainingEarlierToday.map((e) => (
                     <li key={`${e.slug}-${e.starts_at}`}>
                       <EventCard event={e} variant="utility" hideDate />
                     </li>
@@ -790,7 +753,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             className="text-body py-4"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Nothing on the calendar today.{" "}
+            No events are on the calendar today.{" "}
             <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
               Browse all events
             </Link>

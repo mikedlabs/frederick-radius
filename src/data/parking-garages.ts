@@ -96,7 +96,7 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
     hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
-      "On the west side of downtown — closest to City Hall, the courthouse, and the W Patrick Street restaurant strip.",
+      "This garage is on the west side of downtown, near City Hall, the courthouse, and the West Patrick Street restaurant strip.",
   },
   {
     slug: "court-street-parking-garage-frederick",
@@ -140,6 +140,6 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
     hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
-      "South of Carroll Creek — convenient for the All Saints restaurant row and breweries.",
+      "This garage is south of Carroll Creek and convenient for the All Saints Street restaurant row and nearby breweries.",
   },
 ];

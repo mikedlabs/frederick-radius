@@ -95,7 +95,7 @@ export function placeReasons(
     }
   }
 
-  // 2. Hidden gem — a hand-curated local standout (src/data/hidden-gems).
+  // 2. Hidden gem: a hand-curated local standout from src/data/hidden-gems.
   // Placed high so this editorial "why you'd go" survives the 3-chip cap
   // for the handful of places that earn it; it's the most distinctive
   // single reason for those spots. Until now the curation never reached a

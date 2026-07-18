@@ -7,8 +7,7 @@ import PageBloom from "@/components/ui/PageBloom";
 export const metadata: Metadata = {
   alternates: { canonical: "/collections" },
   title: "Collections",
-  description:
-    "Editorial collections of Frederick places, picked by a resident. Walkable date nights, rainy-day spots, kid energy burners, and more.",
+  description: "Browse local lists organized around a specific kind of day in Frederick County.",
 };
 
 /**
@@ -36,7 +35,7 @@ export default function CollectionsIndex() {
           className="text-[14px] leading-snug"
           style={{ color: "var(--app-ink-3)" }}
         >
-          Hand-picked shortlists for the moment you&rsquo;re in.
+          Local shortlists organized around a specific plan.
         </p>
       </header>
 
@@ -57,10 +56,10 @@ export default function CollectionsIndex() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-serif text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Want one built for right now?
+            Need a plan for today?
           </span>
           <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Pick a mood, who&rsquo;s with you, and how long you have. A fresh plan every time.
+            Choose a mood and how long you have. The route changes each time.
           </span>
         </span>
         <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />

@@ -134,8 +134,7 @@ function Card({
   const sched = todayHoursLine(place.hours);
   const dist = distanceLabel(place.distance_m);
   const saved = savedDateLabel(savedAt);
-  // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph in the mono ledger, not prose
-  const dash = "—";
+  const dash = "Not available";
 
   function toggle() {
     if (open) {

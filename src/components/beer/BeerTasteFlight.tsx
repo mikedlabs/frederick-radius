@@ -53,8 +53,8 @@ export default function BeerTasteFlight({ photos }: { photos: BreweryPhotoMap })
       <header className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>Match by taste</p>
-          <h2 id="flight-heading" className="mt-1 font-serif text-[30px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>What sounds good?</h2>
-          <p className="mt-1 max-w-[38rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Choose a flavor and strength. Radius returns three different breweries instead of fifty beer cards.</p>
+          <h2 id="flight-heading" className="mt-1 font-serif text-[30px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Find a beer that sounds good.</h2>
+          <p className="mt-1 max-w-[38rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Choose a flavor and strength. Radius will build a small flight across different breweries.</p>
         </div>
         <div role="group" aria-label="Choose beer strength" className="flex border-b" style={{ borderColor: "var(--app-border-strong)" }}>
           {STRENGTHS.map((option) => (
@@ -73,7 +73,12 @@ export default function BeerTasteFlight({ photos }: { photos: BreweryPhotoMap })
           const selected = taste.key === pathKey;
           return (
             <button key={taste.key} type="button" aria-pressed={selected} onClick={() => setPathKey(taste.key)} className="min-h-[96px] w-[72vw] max-w-[230px] shrink-0 snap-start rounded-[var(--app-radius-md)] border px-3 py-3 text-left sm:w-auto sm:max-w-none sm:rounded-none sm:border-0 sm:border-r sm:last:border-r-0" style={{ borderColor: "var(--app-border)", background: selected ? "var(--app-ink)" : "var(--app-bg-elevated)", color: selected ? "var(--app-bg)" : "var(--app-ink)" }}>
-              <span className="flex justify-between gap-2 font-mono text-[9px] opacity-70"><span>0{index + 1}</span><span>{STATS[taste.key].beers} pours</span></span>
+              <span
+                className="flex justify-between gap-2 font-mono text-[9px]"
+                style={{ color: selected ? "rgba(247,241,229,.76)" : "rgba(40,30,20,.72)" }}
+              >
+                <span>0{index + 1}</span><span>{STATS[taste.key].beers} pours</span>
+              </span>
               <span className="mt-2 block text-[13px] font-semibold">{taste.label}</span>
               <span className="mt-1 block line-clamp-2 text-[10px] leading-snug opacity-65">{taste.description}</span>
             </button>
@@ -98,7 +103,7 @@ export default function BeerTasteFlight({ photos }: { photos: BreweryPhotoMap })
       ) : (
         <div className="mt-3 border-y py-6 text-center" style={{ borderColor: "var(--app-border)" }}><p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>No pours fit that strength.</p><button type="button" onClick={() => setStrength("any")} className="mt-2 inline-flex min-h-11 items-center text-[12px] font-semibold underline" style={{ color: "var(--app-brand-press)" }}>Show any ABV</button></div>
       )}
-      <p className="mt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Signature-pour snapshot, not a live tap list. Check availability with the brewery.</p>
+      <p className="mt-2 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>The signature-pour data is a snapshot, not a live tap list. Check availability with the brewery.</p>
     </section>
   );
 }

@@ -363,7 +363,7 @@ export const INTENTS: Intent[] = [
   {
     key: "coffee",
     label: "Coffee",
-    blurb: "Roasters, cafes, and the bakeries worth the early line.",
+    blurb: "Find a nearby place for coffee or baked goods.",
     color: "#8B5A2B",
     icon: "Coffee",
     match: (p) => COFFEE.has(p.category),
@@ -378,7 +378,7 @@ export const INTENTS: Intent[] = [
   {
     key: "eat",
     label: "Eat & drink",
-    blurb: "Where to sit down, where to grab something, where to drink.",
+    blurb: "Find a place for a meal or a drink.",
     color: "#A03A22",
     icon: "Utensils",
     match: (p) => FOOD.has(p.category),
@@ -422,7 +422,7 @@ export const INTENTS: Intent[] = [
     key: "wineries",
     label: "Wineries",
     blurb:
-      "The 16 wineries, vineyards, meaderies, and ciderworks across the Maryland Wine Trail.",
+      "Browse Frederick County wineries and other local producers.",
     color: "#7E1F1F",
     icon: "Wine",
     match: (p) => isWinery(p),
@@ -434,7 +434,7 @@ export const INTENTS: Intent[] = [
     key: "breweries",
     label: "Breweries",
     blurb:
-      "Frederick's craft beer scene — brewpubs, taprooms, and distilleries.",
+      "Browse Frederick County breweries and distilleries.",
     color: "#C99632",
     icon: "Beer",
     match: (p) =>
@@ -451,7 +451,7 @@ export const INTENTS: Intent[] = [
   {
     key: "outdoor",
     label: "Get outside",
-    blurb: "Parks, trails, playgrounds, and golf courses for an hour or an afternoon.",
+    blurb: "Find a place to spend time outdoors.",
     color: "#1E6B3A",
     icon: "Trees",
     match: (p) => OUTDOOR.has(p.category),
@@ -469,7 +469,7 @@ export const INTENTS: Intent[] = [
   {
     key: "family",
     label: "Take the kids",
-    blurb: "Family-friendly spots — playgrounds, libraries, museums.",
+    blurb: "Find a family-friendly place to visit.",
     color: "#C99632",
     icon: "Baby",
     match: (p) => FAMILY_CATS.has(p.category),
@@ -485,7 +485,7 @@ export const INTENTS: Intent[] = [
   {
     key: "arts",
     label: "Arts & culture",
-    blurb: "Galleries, stages, museums, and where the live music plays.",
+    blurb: "Find museums and places for art or live performance.",
     color: "#7E2C6F",
     icon: "Palette",
     match: (p) => ARTS.has(p.category),
@@ -509,7 +509,7 @@ export const INTENTS: Intent[] = [
   {
     key: "wellness",
     label: "Wellness & beauty",
-    blurb: "Yoga, gyms, spas, hair & nails — the everyday self-care map.",
+    blurb: "Find local fitness and personal care businesses.",
     color: "#A02929",
     icon: "Heart",
     // Serve the WHOLE self-care category. The old matcher name-filtered
@@ -528,7 +528,7 @@ export const INTENTS: Intent[] = [
   {
     key: "civic",
     label: "Civic & services",
-    blurb: "Libraries, government, voting, pharmacies — the practical stuff.",
+    blurb: "Find public services and practical local resources.",
     color: ACCENTS.slate,
     icon: "Landmark",
     match: (p) => CIVIC.has(p.category),
@@ -548,7 +548,7 @@ export const INTENTS: Intent[] = [
   {
     key: "shop",
     label: "Shops & makers",
-    blurb: "Market Street boutiques, antiques, bookshops, and local makers.",
+    blurb: "Browse independent shops and local markets across Frederick County.",
     color: "#2E7D74",
     icon: "ShoppingBag",
     match: (p) => SHOP.has(p.category),
@@ -567,7 +567,7 @@ export const INTENTS: Intent[] = [
   {
     key: "stay",
     label: "Stay the night",
-    blurb: "A bed for the night — downtown hotels to country B&Bs.",
+    blurb: "Find lodging in Frederick County, from downtown hotels to country inns.",
     color: "#5B1E55",
     icon: "Hotel",
     match: (p) => LODGING.has(p.category),
@@ -580,7 +580,7 @@ export const INTENTS: Intent[] = [
   {
     key: "faith",
     label: "Faith & worship",
-    blurb: "Churches, temples, and houses of worship across the county.",
+    blurb: "Find a place of worship in Frederick County.",
     color: "#5B3A8F",
     icon: "Church",
     match: (p) => WORSHIP.has(p.category),

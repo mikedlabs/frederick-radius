@@ -220,7 +220,7 @@ export default async function CheckADatePage({
                 className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
-                Nothing on the wire for this day yet.
+                No events are on the wire for this day yet.
               </p>
             )}
 

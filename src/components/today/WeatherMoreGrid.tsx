@@ -151,8 +151,7 @@ export default async function WeatherMoreGrid() {
           eyebrowIcon={<WindIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
-            {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
-            {windSpeedText || (metar?.windSpeedKts != null ? `${metar.windSpeedKts} kt` : "—")}
+            {windSpeedText || (metar?.windSpeedKts != null ? `${metar.windSpeedKts} kt` : "N/A")}
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             {dirDeg !== null
@@ -213,7 +212,7 @@ export default async function WeatherMoreGrid() {
           {comfort && (
             <p className="mt-2 text-[12px] leading-snug opacity-80">
               {comfort.label === "Comfortable" || comfort.label === "Dry" ? (
-                "Comfortable humidity."
+                "The humidity feels comfortable."
               ) : (
                 <>
                   <span style={{ color: comfort.color }}>{comfort.label}</span>,{" "}
@@ -240,10 +239,10 @@ export default async function WeatherMoreGrid() {
           </p>
           <p className="mt-2 text-[12px] leading-snug opacity-80">
             {metar.pressureHpa < 1009
-              ? "Below average."
+              ? "Pressure is below average."
               : metar.pressureHpa > 1019
-                ? "Above average."
-                : "Steady."}
+                ? "Pressure is above average."
+                : "Pressure is steady."}
           </p>
         </MoreTile>
       )}
@@ -263,10 +262,10 @@ export default async function WeatherMoreGrid() {
           </p>
           <p className="mt-2 text-[12px] leading-snug opacity-80">
             {metar.visibilityMi >= 10
-              ? "Perfectly clear view."
+              ? "KFDK reports visibility of 10 miles or more."
               : metar.visibilityMi >= 5
-                ? "Hazy but workable."
-                : "Limited. Fog or smoke nearby."}
+                ? "KFDK reports visibility between 5 and 10 miles."
+                : "KFDK reports visibility below 5 miles."}
           </p>
         </MoreTile>
       )}
@@ -284,7 +283,7 @@ export default async function WeatherMoreGrid() {
         </p>
         <p className="mt-2 text-[12px] tabular-nums opacity-80">
           {moon.name === "Full Moon"
-            ? "Full tonight."
+            ? "The moon is full tonight."
             : moon.daysToFull < moon.daysToNew
               ? `Next full in ${moon.daysToFull} days`
               : `Next new in ${moon.daysToNew} days`}

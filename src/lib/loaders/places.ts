@@ -523,11 +523,39 @@ function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source">
  * Runs in both decoratePlace branches so every surface (client bundle,
  * detail page, popups) inherits one verdict.
  */
+const BLURB_SENTENCE_END = /[.!?][\])}'"]*$/;
+const BLURB_FINITE_VERB = /\b(?:am|are|became|began|brings?|built|can|carries?|contains?|covers?|dates?|does|draws?|features?|focuses?|grew|had|has|have|helps?|holds?|hosts?|includes?|is|keeps?|lies|lists?|makes?|offers?|opened|operates?|provides?|remains?|runs?|serves?|sells?|sits?|specializes?|stands?|started|stays?|stocks?|stretches?|supports?|uses?|was|welcomes?|were|will|works?|would)\b/i;
+const BLURB_DANGLING_END = /\b(?:a|am|an|and|are|as|at|because|but|by|can|could|did|do|does|for|from|had|has|have|he|her|his|i|in|including|into|is|it|its|may|might|must|of|on|or|our|shall|she|should|such|that|the|their|these|they|this|those|through|to|was|we|were|when|where|which|while|who|will|with|without|would|you|your)\s*$/i;
+
+/**
+ * Some useful source summaries omit a final period. Missing punctuation alone
+ * does not mean the text was cut off, so keep a conservative complete clause
+ * and finish it here. Obvious scrape truncations still lose: dangling joiners,
+ * an ellipsis, unclosed parentheses, or two sentences fused without whitespace.
+ */
+function finishCompleteBlurbClause(value: string): string | null {
+  const text = value.trim();
+  if (!text) return null;
+  if (BLURB_SENTENCE_END.test(text)) return text;
+  if (
+    /(?:…|\.{2,}|[,;:/\-–—])$/.test(text) ||
+    BLURB_DANGLING_END.test(text) ||
+    /[.!?](?=\S)/.test(text) ||
+    (text.match(/\(/g)?.length ?? 0) !== (text.match(/\)/g)?.length ?? 0) ||
+    (text.match(/\[/g)?.length ?? 0) !== (text.match(/\]/g)?.length ?? 0)
+  ) {
+    return null;
+  }
+
+  const verb = BLURB_FINITE_VERB.exec(text);
+  if (!verb || !/[A-Za-z0-9]/.test(text.slice(0, verb.index))) return null;
+  return `${text}.`;
+}
+
 function boundaryBlurb(raw: string | undefined, name: string): string {
   if (!raw?.trim()) return "";
   const cleaned = cleanBlurbFragment(cleanFeedText(raw));
   if (!cleaned || isJunkBlurb(cleaned, name)) return "";
-
   // A few imports repeated the business name twice before the actual copy.
   // Remove only complete, exact name prefixes, with a small hard limit, then
   // judge the remainder again so an address exposed by the cleanup does not
@@ -536,9 +564,23 @@ function boundaryBlurb(raw: string | undefined, name: string): string {
   for (let pass = 0; pass < 3; pass += 1) {
     const next = stripRepeatedNamePrefix(concise, name);
     if (next === concise) break;
+    // A real sentence often begins with the place name: "Baker Park is…".
+    // Removing that subject produces broken public copy on every surface. If
+    // the remainder begins like a predicate and the original sentence is
+    // complete, keep one full name prefix. Repeated scrape prefixes still
+    // collapse because the first pass leaves another capitalized name.
+    if (
+      finishCompleteBlurbClause(concise) &&
+      /^(?:am|are|is|was|were|has|have|had|can|could|will|would|offers?|serves?|features?|provides?|includes?|hosts?|runs?|sits?|stands?|stocks?|focuses?|covers?|contains?|stretches?|operates?|specializes?|[a-z][a-z'’-]{2,}(?:s|ed))\b/i.test(next)
+    ) {
+      break;
+    }
     concise = next;
   }
-  return concise && !isJunkBlurb(concise) ? concise : "";
+  // A lower-case remainder is almost always the subjectless tail of a scraped
+  // name prefix. Do not ship it as if it were a sentence.
+  if (/^[a-z]/.test(concise) || isJunkBlurb(concise)) return "";
+  return finishCompleteBlurbClause(concise) ?? "";
 }
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {

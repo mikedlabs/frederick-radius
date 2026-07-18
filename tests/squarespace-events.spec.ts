@@ -40,6 +40,7 @@ describe("parseSquarespaceEvents", () => {
     expect(first.ends_at).toBe(new Date(1780808400000).toISOString());
     // HTML excerpt is stripped to one plain line.
     expect(first.description).toBe("Trop-rock on the rooftop.");
+    expect(first.description_origin).toBe("source-excerpt");
     // Relative fullUrl is resolved against the site origin.
     expect(first.ticket_url).toBe(
       "https://www.thebanyanmd.com/livemusic/jimmy-kenny-and-the-pirate-beach-band",
@@ -56,6 +57,27 @@ describe("parseSquarespaceEvents", () => {
     const radio = events.find((e) => e.title === "Radio Hero");
     expect(radio).toBeDefined();
     expect(radio?.description).toBeUndefined();
+  });
+
+  it("does not cut a publisher excerpt in the middle of a later sentence", () => {
+    const firstSentence = "This complete publisher sentence stays intact. ";
+    const longTail = "The next sentence keeps going with more source detail. ".repeat(8);
+    const events = parseSquarespaceEvents(
+      {
+        upcoming: [
+          {
+            title: "Long excerpt",
+            startDate: 1780794000999,
+            excerpt: `<p>${firstSentence}${longTail}</p>`,
+          },
+        ],
+      },
+      "https://example.com/events",
+    );
+
+    expect(events[0].description).toMatch(/[.!?…]$/);
+    expect(events[0].description).not.toMatch(/source det$/);
+    expect(events[0].description_origin).toBe("source-excerpt");
   });
 
   it("never fabricates: drops items missing a title or a numeric startDate", () => {

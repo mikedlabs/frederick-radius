@@ -63,3 +63,19 @@ export function compareRightNowCandidates(
   }
   return a.p.name.localeCompare(b.p.name);
 }
+
+/** Describe the actual ordering shown in Nearby. Availability is a hard tier
+ * unless the user has already narrowed the list to Open now. */
+export function rightNowSortLabel(
+  sort: "nearest" | "rated",
+  hasOrigin: boolean,
+  availabilityLeads: boolean,
+): string {
+  if (sort === "rated") {
+    return availabilityLeads ? "open first, then top rated" : "top rated first";
+  }
+  if (hasOrigin) {
+    return availabilityLeads ? "open first, then nearest" : "nearest first";
+  }
+  return availabilityLeads ? "open first, then best matches" : "best matches";
+}

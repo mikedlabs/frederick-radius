@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildWantAnswer, partitionWant, type WantCandidate } from "./want-answer";
+import { buildWantAnswer, partitionWant, rankBestFit, type WantCandidate } from "./want-answer";
 
 function cand(over: Partial<WantCandidate> & { slug: string }): WantCandidate {
   return {
@@ -98,6 +98,24 @@ describe("buildWantAnswer context", () => {
       fallbackReason: null,
     });
     expect(answer?.browseHref).toContain("town=thurmont");
+  });
+
+  it("can rank a timeless decision by local fit instead of current open state", () => {
+    const ranked = rankBestFit([
+      cand({ slug: "open-chain", name: "Dunkin'", feature_score: 5, google_rating: 4.1 }),
+      cand({
+        slug: "closed-local",
+        name: "Local Deli",
+        feature_score: 5,
+        local_favorite: true,
+        google_rating: 4.5,
+        open_status: { state: "closed", opensAt: "08:00", opensDay: "sat", opensToday: false },
+      }),
+    ]);
+    expect(ranked.map((candidate) => candidate.slug)).toEqual([
+      "closed-local",
+      "open-chain",
+    ]);
   });
 });
 

@@ -36,21 +36,21 @@ type AboutIntent = {
 const ABOUT_INTENTS: AboutIntent[] = [
   {
     label: "Submit a place",
-    hint: "A spot we're missing: a cafe, a trail, a spot only locals know",
+    hint: "Send a place the guide has missed.",
     icon: MapPin,
     accent: "var(--app-brand)",
     href: "/submit/place",
   },
   {
     label: "Submit an event",
-    hint: "Something happening: a market, a show, a fundraiser",
+    hint: "Send an event with its date and official link.",
     icon: CalendarPlus,
     accent: "var(--app-accent)",
     href: "/submit/event",
   },
   {
     label: "Send a correction",
-    hint: "Wrong hours, wrong phone, closed location. Tell us",
+    hint: "Tell us when a listing is wrong or has closed.",
     icon: Pencil,
     accent: "var(--app-warning)",
     href: "mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction",
@@ -58,14 +58,14 @@ const ABOUT_INTENTS: AboutIntent[] = [
   },
   {
     label: "How we verify data",
-    hint: "Sourcing rules, freshness signals, the trust we won't fake",
+    hint: "Read the sourcing and freshness rules behind the guide.",
     icon: ShieldCheck,
     accent: "var(--app-cool)",
     href: "/trust",
   },
   {
     label: "Email Radius",
-    hint: "Partnerships, press, corrections, or just a hello",
+    hint: "Ask about the project or a possible partnership.",
     icon: Mail,
     accent: "var(--app-brand-2)",
     href: "mailto:hello@frederickradius.app",
@@ -73,7 +73,7 @@ const ABOUT_INTENTS: AboutIntent[] = [
   },
   {
     label: "Frederick history",
-    hint: "The essays: Civil War, Spires, the C&O, what built downtown",
+    hint: "Read essays tied to the places that shaped Frederick.",
     icon: Scroll,
     accent: "var(--app-ink-2)",
     href: "/history",
@@ -106,7 +106,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
   title: "About",
   description:
-    "Frederick County, organized around your day. What's open, what's happening, where, and how to get there, across every town and community, one app.",
+    "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
 };
 
 export default async function AboutPage() {
@@ -178,21 +178,17 @@ export default async function AboutPage() {
           Serif was dropped in the May 2026 audit. */}
       <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
-          <span className="font-serif italic text-[18px]" style={{ color: "var(--app-ink)" }}>
-            What&apos;s open, what&apos;s happening, where, and how to get there
-          </span>
-          {" "}across every town and community in Frederick County, Maryland. One app.
+          Frederick Radius helps people find open places, local events, and
+          practical information across Frederick County, Maryland.
         </p>
         <p>
-          Built around five questions a real person actually asks:
-          {" "}<em>Is anything open near me right now?</em>{" "}
-          <em>What&apos;s happening tonight?</em>{" "}
-          <em>What&apos;s worth a Saturday?</em>{" "}
-          <em>What&apos;s that town like?</em>{" "}
-          <em>How do I get there?</em>
+          It is built for the decisions that come up before you leave home.
+          Radius combines posted hours with what is happening nearby and the
+          details needed to get there.
         </p>
         <p>
-          Not a tourism brochure. Not a generic directory. Not a civic dashboard. A daily-use tool that turns this county&apos;s data into actual decisions: what to do, where to go, when to leave.
+          The goal is practical: help someone choose a place or event without
+          sorting through several unrelated sites.
         </p>
         <p>
           Made in Frederick, MD by{" "}
@@ -308,7 +304,7 @@ export default async function AboutPage() {
           className="font-serif text-[22px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Companion content
+          Other Frederick projects
         </h2>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {/* The book — From Above, the photographer's storefront. */}
@@ -541,7 +537,7 @@ export default async function AboutPage() {
         <p className="inline-flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-cool)" }} />
           <Link href="/trust" className="tap-44-y inline-flex items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
-            How we verify everything we publish <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+            How Radius checks and sources listings <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </p>
 

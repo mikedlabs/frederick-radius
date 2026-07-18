@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/shipping" },
   title: "Post & shipping",
   description:
-    "Every post office, UPS Store, FedEx, and USPS mailbox across Frederick County, Maryland. Searchable by town and carrier, with one-tap directions.",
+    "Find listed postal and shipping locations across Frederick County, with town and carrier filters plus directions.",
 };
 
 export const revalidate = 86_400;
@@ -49,22 +49,22 @@ export default function ShippingPage() {
           Post &amp; shipping
         </p>
         <h1 className="font-serif text-[32px] font-semibold leading-[1.05] tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Where to mail it, ship it, or grab it.
+          Find a place to mail or ship a package.
         </h1>
         <div aria-hidden className="h-[3px] w-11 rounded-full" style={{ background: "var(--app-brand)" }} />
         <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every post office, the UPS Store and FedEx counters, and the blue
-          collection boxes across the county. {offices} post {offices === 1 ? "office" : "offices"} and{" "}
-          {stores} ship-and-pack {stores === 1 ? "counter" : "counters"}, searchable by town or carrier.
-          Tap any one for directions.
+          The guide currently lists {offices} post {offices === 1 ? "office" : "offices"} and{" "}
+          {stores} ship-and-pack {stores === 1 ? "counter" : "counters"}, along with USPS collection boxes from
+          OpenStreetMap. Use the town or carrier filters, then tap a location for directions.
         </p>
       </header>
 
       <ShippingGuide groups={groups} />
 
       <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        {SHIP_COUNT} points from OpenStreetMap (© OpenStreetMap contributors,
-        ODbL), refreshed on deploy. Hours vary and holidays close counters, so
+        This page uses {SHIP_COUNT} points from OpenStreetMap (© OpenStreetMap
+        contributors, ODbL) and refreshes when the data is rebuilt for a deployment.
+        Hours vary and holidays close counters, so
         check before a late run. Know a drop-off or locker we&rsquo;re
         missing?{" "}
         <Link href="/submit/place" className="tap-44 inline-flex font-semibold hover:underline" style={{ color: "var(--app-brand-press)" }}>

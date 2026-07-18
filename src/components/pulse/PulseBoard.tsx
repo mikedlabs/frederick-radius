@@ -190,7 +190,7 @@ function HeroFacts({ chips, onOpen, dark = false }: { chips: PulseHeroChip[]; on
 }
 
 function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
-  const [message, setMessage] = useState("Checking what changed…");
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Storage is external state. Read it after paint so hydration remains
@@ -206,9 +206,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
         previous = null;
       }
 
-      if (!previous?.at) {
-        setMessage("First check on this device. We’ll remember today’s snapshot for next time.");
-      } else {
+      if (previous?.at) {
         const added = Object.keys(current).filter((key) => previous?.active[key] !== current[key]);
         const cleared = Object.keys(previous.active).filter((key) => !(key in current));
         if (added.length > 0) {
@@ -238,8 +236,10 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
     return () => window.clearTimeout(timer);
   }, [tiles]);
 
+  if (!message) return null;
+
   return (
-    <div className="flex min-w-0 items-start gap-2.5 border-y px-1 py-3" style={{ borderColor: "var(--app-border-strong)" }}>
+    <div role="status" className="flex min-w-0 items-start gap-2.5 border-y px-1 py-3" style={{ borderColor: "var(--app-border-strong)" }}>
       <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
@@ -255,8 +255,8 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
     <section aria-labelledby="pulse-systems-heading" className="min-w-0 border-y py-3" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex min-w-0 items-center gap-2">
         <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
-        <span className="ml-auto shrink-0 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>checked live</span>
+        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>No major changes reported</h2>
+        <span className="ml-auto shrink-0 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Checked recently</span>
       </div>
       <ul className="mt-2.5 grid min-w-0 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         {tiles.map((tile) => (
@@ -353,16 +353,16 @@ export default function PulseBoard({
 
   return (
     <>
-      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-white/10 bg-[#15130f] px-5 pb-7 pt-8 text-[#f7f0e4] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/6" aria-hidden>
-          <span className="absolute inset-10 rounded-full border border-white/6" />
+      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-7 pt-8 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-black/6" aria-hidden>
+          <span className="absolute inset-10 rounded-full border border-black/6" />
           <span className="absolute inset-[5rem] rounded-full" style={{ border: `1px solid color-mix(in srgb, ${heroColor} 38%, transparent)` }} />
           <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: heroColor, boxShadow: `0 0 0 9px color-mix(in srgb, ${heroColor} 13%, transparent)` }} />
         </div>
         <div className="max-w-[42rem]">
-          <div className="relative flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.17em] text-white/45">
+          <div className="relative flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.17em] text-black/65">
             <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: heroColor }} />
-            Frederick County · live
+            Frederick County status
             <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
           <div className="mt-3 flex items-start gap-3">
@@ -370,14 +370,14 @@ export default function PulseBoard({
               <HeroIcon className="h-[18px] w-[18px]" strokeWidth={1.8} />
             </span>
             <div className="min-w-0">
-          <h1 className="max-w-[34rem] font-serif text-[clamp(2.25rem,10vw,4.4rem)] font-semibold leading-[0.9] tracking-[-0.05em] text-balance text-[#f7f0e4]">
+          <h1 className="max-w-[34rem] font-serif text-[clamp(2.25rem,10vw,4.4rem)] font-semibold leading-[0.9] tracking-[-0.05em] text-balance text-[var(--app-ink)]">
             {hero.line}
           </h1>
-          <p className="mt-3 max-w-[36rem] text-[13px] leading-relaxed text-white/62">{hero.sub}</p>
-          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11px] font-medium text-white/62"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
+          <p className="mt-3 max-w-[36rem] text-[13px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
+          {hero.leadMeta && <p className="mt-2 flex w-fit items-center gap-1.5 text-[11px] font-medium text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3.5 w-3.5" />{hero.leadMeta}</p>}
           {lead && (
             <div className="mt-3">
-              <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-1.5 border-b text-[12px] font-semibold text-white transition active:opacity-70" style={{ borderColor: heroColor }}>
+              <button type="button" onClick={() => openTile(lead.key)} className="inline-flex min-h-11 items-center gap-1.5 border-b text-[12px] font-semibold text-[var(--app-ink)] transition active:opacity-70" style={{ borderColor: heroColor }}>
                 {hero.actionLabel ?? "See what this means"}
                 <ArrowRight aria-hidden className="h-3.5 w-3.5" />
               </button>
@@ -385,8 +385,8 @@ export default function PulseBoard({
           )}
             </div>
           </div>
-          <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} dark /></div>
-          <p className="mt-2 flex items-center gap-1.5 text-[9px] text-white/62"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
+          <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
+          <p className="mt-2 flex items-center gap-1.5 text-[9px] text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
         </div>
       </header>
 
@@ -406,7 +406,7 @@ export default function PulseBoard({
           )}
 
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
-            <GroupHeading id="pulse-live-board-heading" eyebrow="At a glance" title="Live board" note="tap any row" />
+            <GroupHeading id="pulse-live-board-heading" eyebrow="At a glance" title="County status" note="tap any row" />
             <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border)" }}>
               <ul className="min-w-0">{[...conditions, ...gettingAround].map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
             </div>
@@ -423,7 +423,7 @@ export default function PulseBoard({
                 <ul className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
                 {localUpdates.length > 4 && (
                   <button type="button" onClick={() => setShowAllUpdates((value) => !value)} className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-                    {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more local signals`}
+                    {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more updates`}
                     <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
                   </button>
                 )}

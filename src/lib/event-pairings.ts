@@ -69,27 +69,29 @@ export function weatherPhrase(period: NwsHourly | null): string | null {
   const isRaining = /rain|shower|drizzle|storm|thunder/.test(cond);
 
   if (isRaining || precip >= 60) {
-    if (/storm|thunder/.test(cond)) return "Storms at start — keep an eye on the radar";
-    return "Rain expected at start — bring an umbrella";
+    if (/storm|thunder/.test(cond)) {
+      return "Storms are possible when this event starts. Check the radar.";
+    }
+    return "Rain is expected when this event starts. Bring an umbrella.";
   }
   if (precip >= 40) {
-    return `Chance of rain at start — ${temp}°F, ${cond}`;
+    return `There is a chance of rain when this event starts, with a temperature near ${temp}°F.`;
   }
   if (temp <= 40) {
-    return `Cold start — ${temp}°F. Bring layers.`;
+    return `It will be about ${temp}°F when this event starts. Bring layers.`;
   }
   if (temp <= 50 && /clear|sunny|fair/.test(cond)) {
-    return `Cool and clear — low ${Math.round(temp / 10) * 10}s. Bring a layer.`;
+    return `It should be clear and around ${Math.round(temp / 10) * 10}°F when this event starts. Bring a layer.`;
   }
   if (temp >= 90) {
-    return `Hot at start — ${temp}°F. Bring water.`;
+    return `It will be about ${temp}°F when this event starts. Bring water.`;
   }
   if (temp >= 60 && temp <= 82 && /clear|sunny|fair|partly/.test(cond)) {
-    return `Looks good through start — ${temp}°F, ${cond}.`;
+    return `Conditions should be ${cond}, with a temperature near ${temp}°F when this event starts.`;
   }
   // Generic fallback: still useful — names temp and condition.
   if (Number.isFinite(temp) && cond) {
-    return `${temp}°F at start — ${cond}.`;
+    return `Conditions should be ${cond}, with a temperature near ${temp}°F when this event starts.`;
   }
   return null;
 }
@@ -107,7 +109,7 @@ export function parkingPhrase(nearbyParking: PlaceCardData[]): string | null {
   const d = closest.distance_m ?? Infinity;
   if (!Number.isFinite(d)) return null;
   const dist = formatDistance(d);
-  return `Parking ${dist} away at ${closest.name}`;
+  return `The closest listed parking is ${dist} away at ${closest.name}.`;
 }
 
 // ── Eat before ────────────────────────────────────────────────────
@@ -124,6 +126,8 @@ export function eatBeforePhrase(nearbyFood: PlaceCardData[]): string | null {
   if (!Number.isFinite(d)) return null;
   const distMin = Math.max(1, Math.round(d / 80)); // 80 m/min walking pace
   const tail = nearbyFood.length - 1;
-  const more = tail > 0 ? ` or ${tail} more nearby` : "";
-  return `Eat before at ${lead.name} (${distMin} min walk)${more}`;
+  const more = tail > 0
+    ? ` There ${tail === 1 ? "is" : "are"} ${tail} more ${tail === 1 ? "option" : "options"} nearby.`
+    : "";
+  return `You could eat beforehand at ${lead.name}, about a ${distMin}-minute walk away.${more}`;
 }

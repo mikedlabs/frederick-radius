@@ -56,8 +56,8 @@ function detailLine(s: Score): string {
     const t = firstPitch(s.startsAt);
     return t ? `First pitch ${t}` : "Today";
   }
-  if (s.state === "postponed") return "Postponed. Check the official page.";
-  if (s.state === "cancelled") return "Called off";
+  if (s.state === "postponed") return "The game was postponed, so check the official page.";
+  if (s.state === "cancelled") return "The game was called off.";
   // final
   return s.keysHome ? "at Nymeo Field, Frederick" : `at ${s.opponent.name}`;
 }

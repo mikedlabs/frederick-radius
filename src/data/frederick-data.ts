@@ -22,9 +22,9 @@ export const MARKET_STATS: FrederickDataPoint[] = [
 ];
 
 export const LENS_MODES = [
-    { id: "visitor", label: "Visitor", icon: "Map", description: "Tourism, Arts & Events" },
-    { id: "resident", label: "Resident", icon: "Home", description: "Civic Alerts & Services" },
-    { id: "investor", label: "Investor", icon: "TrendingUp", description: "Zoning & Development" },
+    { id: "visitor", label: "Visitor", icon: "Map", description: "Find tourism, arts, and events." },
+    { id: "resident", label: "Resident", icon: "Home", description: "Find civic alerts and services." },
+    { id: "investor", label: "Investor", icon: "TrendingUp", description: "Review zoning and development." },
 ] as const;
 
 export type LensMode = typeof LENS_MODES[number]["id"];

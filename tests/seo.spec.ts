@@ -13,10 +13,11 @@ describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () 
     expect(urls.some((u) => /\/$/.test(u))).toBe(false); // no bare-root "…/"
   });
 
-  it("includes /today (the home) + main content routes, and excludes the retired /guide", () => {
+  it("includes /today and the canonical Ask tool, and excludes the legacy /guide", () => {
     expect(urls.some((u) => u.endsWith("/today"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/ask"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/collections"))).toBe(true);
-    // /guide was retired (308 -> /today); never list a redirecting URL.
+    // /guide now redirects to /ask; never list a redirecting URL.
     expect(urls.some((u) => u.endsWith("/guide"))).toBe(false);
   });
 

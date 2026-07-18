@@ -112,7 +112,7 @@ export default function CollectClient() {
     (fly: boolean) => {
       if (typeof navigator === "undefined" || !navigator.geolocation) {
         setGeoBlocked(true);
-        setStatus({ tone: "error", text: "Location isn't available on this device." });
+        setStatus({ tone: "error", text: "Your location is not available on this device." });
         return;
       }
       setLocating(true);
@@ -180,7 +180,7 @@ export default function CollectClient() {
     }
     if (!passcode) {
       setSettingsOpen(true);
-      setStatus({ tone: "error", text: "Enter the passcode first." });
+      setStatus({ tone: "error", text: "You need to enter the passcode first." });
       return;
     }
     setSaving(true);
@@ -201,7 +201,7 @@ export default function CollectClient() {
       });
       if (res.status === 401) {
         setSettingsOpen(true);
-        setStatus({ tone: "error", text: "Passcode incorrect." });
+        setStatus({ tone: "error", text: "The passcode is incorrect." });
         return;
       }
       if (!res.ok) {
@@ -244,7 +244,7 @@ export default function CollectClient() {
     if (!editing) return;
     if (!passcode) {
       setSettingsOpen(true);
-      setStatus({ tone: "error", text: "Enter the passcode first." });
+      setStatus({ tone: "error", text: "You need to enter the passcode first." });
       return;
     }
     setSaving(true);
@@ -256,7 +256,7 @@ export default function CollectClient() {
         body: JSON.stringify({ id: editing.id, kind, note: note.trim(), photo: photo || undefined, passcode }),
       });
       if (res.status === 401) {
-        setStatus({ tone: "error", text: "Passcode incorrect." });
+        setStatus({ tone: "error", text: "The passcode is incorrect." });
         return;
       }
       if (!res.ok) {
@@ -280,7 +280,7 @@ export default function CollectClient() {
     if (!editing) return;
     if (!passcode) {
       setSettingsOpen(true);
-      setStatus({ tone: "error", text: "Enter the passcode first." });
+      setStatus({ tone: "error", text: "You need to enter the passcode first." });
       return;
     }
     setSaving(true);
@@ -292,7 +292,7 @@ export default function CollectClient() {
         body: JSON.stringify({ id: editing.id, passcode }),
       });
       if (res.status === 401) {
-        setStatus({ tone: "error", text: "Passcode incorrect." });
+        setStatus({ tone: "error", text: "The passcode is incorrect." });
         return;
       }
       if (!res.ok) {

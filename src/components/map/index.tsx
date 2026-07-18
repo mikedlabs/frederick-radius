@@ -10,7 +10,7 @@ const MapComponent = dynamic(() => import("./map-component"), {
         <div className="w-full h-full flex items-center justify-center bg-[#030014]">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-gray-400 text-sm animate-pulse">Loading Radius Map...</p>
+                <p className="text-gray-400 text-sm animate-pulse">The Radius map is loading...</p>
             </div>
         </div>
     ),

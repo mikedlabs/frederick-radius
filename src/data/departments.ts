@@ -256,7 +256,7 @@ const COUNTY: DepartmentContact[] = [
     slug: "county-animal-control",
     jurisdiction: "county",
     name: "Animal Control",
-    about: "Stray, injured, or dangerous animals. Adoption and licensing.",
+    about: "Animal Control handles stray, injured, or dangerous animals as well as adoption and licensing.",
     website: "https://www.frederickcountymd.gov/15/Animal-Control",
     phone: "3016001546",
   },

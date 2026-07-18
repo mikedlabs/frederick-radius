@@ -268,7 +268,7 @@ export default function PreferencesPanel() {
         </ul>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {interests.size === 0
-            ? "Nothing picked yet. Your picks tune what leads on Today."
+            ? "You have not picked anything yet. Your choices determine what leads on Today."
             : `${interests.size} picked: ${[...interests]
                 .map((s) => INTEREST_LABEL[s])
                 .filter(Boolean)
@@ -302,7 +302,8 @@ export default function PreferencesPanel() {
           </button>
         </div>
         <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          Quiet local notes on Today: cultural observances and community resources, each shown on the day it&rsquo;s relevant. On by default. Turn it off to hide them.
+          Today can show relevant cultural observances and community resources.
+          Turn this off to hide those notes.
         </p>
       </SectionShell>
 
@@ -334,7 +335,7 @@ export default function PreferencesPanel() {
               Notifications
             </span>
             <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Civic alerts, saved-event reminders, specials.
+              Choose which local alerts reach this device.
             </span>
           </span>
         </span>

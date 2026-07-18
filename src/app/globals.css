@@ -396,6 +396,16 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
   outline: 2px solid var(--app-brand);
   outline-offset: 2px;
 }
+/* SearchInput's text field lives inside the rounded visual control. Delegate
+   the input ring to that shell so keyboard focus follows the pill instead of
+   drawing a rectangular outline through its icon and Clear action. */
+.search-field-shell:has(input:focus-visible) {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 2px;
+}
+.search-field-shell input:focus-visible {
+  outline: none;
+}
 /* Inset ring for interactive elements nested inside overflow-hidden /
    rounded cards, where an offset outline would be clipped by the parent. */
 .focus-ring-inset:focus-visible {
@@ -4281,107 +4291,32 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ── Frederick beer guide: editorial cover + physical tap wall ─────────
-   The beer page gets one deliberate world of its own: blackened oak,
-   brass, real brewery photography and local marks. Square logo tiles read like a
-   directory; the handle/rail construction turns the same data into an
-   object people understand and want to touch. */
+   The beer page keeps Radius's warm paper surface while using real brewery
+   photography, local marks, brass, and wood for character. */
 .beer-cover {
-  box-shadow: 0 30px 70px -32px rgba(21, 15, 8, 0.72);
+  box-shadow: 0 30px 70px -38px rgba(56, 37, 23, 0.42);
   isolation: isolate;
 }
 .beer-cover-light {
   background:
-    radial-gradient(75% 85% at 86% 30%, rgba(215, 133, 27, 0.14), transparent 64%),
-    linear-gradient(112deg, rgba(255,255,255,0.035), transparent 38%),
-    repeating-linear-gradient(90deg, transparent 0 54px, rgba(255,255,255,0.014) 55px 56px);
+    radial-gradient(75% 85% at 86% 30%, rgba(187, 116, 31, 0.16), transparent 64%),
+    linear-gradient(112deg, rgba(255,255,255,0.28), transparent 38%),
+    repeating-linear-gradient(90deg, transparent 0 54px, rgba(79,51,25,0.022) 55px 56px);
   opacity: 0.9;
 }
-.beer-tap-wall {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 45%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 72px),
-    #100f0c;
-}
-.beer-tap-rail {
-  position: absolute;
-  z-index: 0;
-  top: 112px;
-  left: 0;
-  right: 0;
-  height: 15px;
-  border-top: 1px solid rgba(255,255,255,0.26);
-  border-bottom: 1px solid rgba(0,0,0,0.65);
-  background: linear-gradient(180deg, #8d7450 0%, #4e402e 45%, #2b251d 100%);
-  box-shadow: 0 5px 14px rgba(0,0,0,0.5), inset 0 1px rgba(255,255,255,0.16);
-}
-.beer-tap {
-  position: relative;
-  z-index: 1;
-  min-height: 190px;
-  outline: none;
-}
-.beer-tap-badge {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 82px;
-  height: 82px;
-  margin-inline: auto;
-  padding: 6px;
-  overflow: visible;
-  border: 2px solid rgba(227,182,93,0.34);
-  border-radius: 14px 14px 7px 7px;
-  background: #f7f0e4;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.34), inset 0 0 0 2px rgba(20,16,12,0.08);
-  transform-origin: 50% 115%;
-  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, box-shadow 180ms ease;
-}
-.beer-tap:hover .beer-tap-badge,
-.beer-tap:focus-visible .beer-tap-badge {
-  transform: translateY(-3px) rotate(-1.5deg);
-  border-color: rgba(227,182,93,0.75);
-}
-.beer-tap.is-selected .beer-tap-badge {
-  transform: translateY(-5px) rotate(2deg) scale(1.06);
-  border-color: #e3b65d;
-  box-shadow: 0 17px 32px rgba(0,0,0,0.48), 0 0 0 4px rgba(227,182,93,0.08);
-}
-.beer-tap-stem {
-  position: relative;
-  display: block;
-  width: 10px;
-  height: 46px;
-  margin: -1px auto 0;
-  border-left: 1px solid rgba(255,255,255,0.18);
-  border-right: 1px solid rgba(0,0,0,0.72);
-  background: linear-gradient(90deg, #4f402c, #b29461 44%, #5b4933);
-  box-shadow: 3px 4px 8px rgba(0,0,0,0.36);
-}
-.beer-tap-stem > span {
-  position: absolute;
-  left: 50%;
-  bottom: -5px;
-  width: 24px;
-  height: 12px;
-  border: 1px solid rgba(255,255,255,0.16);
-  border-radius: 3px;
-  background: linear-gradient(180deg, #856e4e, #3c3226);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-  transform: translateX(-50%);
-}
 .beer-tap-detail {
-  color: #fff8eb;
+  color: #281e14;
   background:
-    linear-gradient(112deg, color-mix(in srgb, var(--beer-deep) 92%, #15130f) 0%, #17130f 78%),
-    #17130f;
+    linear-gradient(112deg, color-mix(in srgb, var(--beer-accent) 8%, #f3ead9) 0%, #f4ead7 78%),
+    #f4ead7;
 }
 .beer-tap-detail-glow {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(50% 130% at 90% 0%, color-mix(in srgb, var(--beer-accent) 24%, transparent), transparent 70%),
-    repeating-linear-gradient(90deg, transparent 0 82px, rgba(255,255,255,0.015) 83px 84px);
+    radial-gradient(50% 130% at 90% 0%, color-mix(in srgb, var(--beer-accent) 13%, transparent), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 82px, rgba(72,48,24,0.025) 83px 84px);
 }
 
 .beer-event-poster {
@@ -4392,12 +4327,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: translateY(-3px) rotate(-0.35deg);
   box-shadow: 0 30px 52px -28px rgba(28, 18, 10, 0.88);
 }
-@media (min-width: 40rem) {
-  .beer-tap-rail { top: 112px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .beer-tap-badge { transition: none; }
   .beer-event-poster { transition: none; }
 }
 
@@ -4411,6 +4341,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: var(--z-sticky);
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 6px;
   padding: 8px 12px;
   border-radius: 999px;

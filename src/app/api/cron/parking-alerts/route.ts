@@ -65,9 +65,12 @@ export async function GET(request: Request) {
         : d.percentFull !== null
           ? `is ${d.percentFull}% full`
           : "is nearly full";
-    const body = withSpace.length
-      ? `Try ${withSpace.slice(0, 2).join(" or ")}, still has room.`
-      : "Tap for the other downtown garages.";
+    const suggestions = withSpace.slice(0, 2);
+    const body = suggestions.length === 1
+      ? `Try ${suggestions[0]}. It still has room.`
+      : suggestions.length > 1
+        ? `Try ${suggestions.join(" or ")}. Both still have room.`
+        : "Check the other downtown garages for space.";
 
     const r = await fanoutToTopic("parking", `${d.garageSlug}:${block}`, {
       title: `${label} ${detail}`,

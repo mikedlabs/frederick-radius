@@ -43,14 +43,22 @@ const STOP = new Set([
   "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
 ]);
 
+// Frederick-area words usually describe where to look, not what the visitor
+// needs. Keep them for a bare place-name search, but remove them when a query
+// also contains a more specific term. Otherwise nonsense such as "zxqv quux
+// near Frederick" can rank every business with Frederick in its name.
+const LOCAL_CONTEXT = new Set(["frederick", "maryland", "county", "md"]);
+
 function normalize(s: string): string[] {
-  return s
+  const terms = s
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
     .split(/\s+/)
     // Drop stop words and single-character tokens: a lone "i"/"a" prefix- or
     // substring-matches almost every place name and drowns the real keyword.
     .filter((t) => t.length >= 2 && !STOP.has(t));
+  const specificTerms = terms.filter((term) => !LOCAL_CONTEXT.has(term));
+  return specificTerms.length > 0 ? specificTerms : terms;
 }
 
 function fieldScore(haystack: string, terms: string[]): number {
@@ -436,6 +444,9 @@ export type QualifiedSearchContext = {
   origin?: LngLat | null;
   municipality?: string | null;
   contextLabel?: string;
+  /** Precise device fixes may expose a distance. Town/home centroids may
+   * rank results, but must not be presented as the visitor's distance. */
+  canShowDistance?: boolean;
   fallbackReason?: "outside-county" | "location-unavailable" | null;
 };
 
@@ -481,11 +492,16 @@ export function qualifiedSearch(
   const qualifiers = parseSearchQualifiers(query);
   if (!qualifiers.constrained) {
     const rankingOrigin = context.origin ?? null;
+    const municipality = context.municipality ?? null;
     return {
       hits: search(query, limit, eventPool, {
         origin: rankingOrigin,
         rankPlacesByDistance: Boolean(rankingOrigin),
         rankEventsByDistance: Boolean(rankingOrigin),
+        eventMunicipality: municipality,
+        placeFilter: municipality
+          ? (place) => place.municipality === municipality
+          : undefined,
       }),
       meta: {
         qualifiers,

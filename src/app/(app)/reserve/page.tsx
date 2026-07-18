@@ -118,7 +118,7 @@ export default async function ReservePage() {
         style={{ borderColor: "var(--app-border)" }}
       >
         <p className="text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-          Somewhere else in mind?
+          Do you have somewhere else in mind?
         </p>
         <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
           OpenTable&rsquo;s own search covers the county, including spots we

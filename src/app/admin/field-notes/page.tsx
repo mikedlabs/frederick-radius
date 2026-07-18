@@ -110,7 +110,7 @@ export default async function FieldNotesAdminPage() {
       <section className="mt-8">
         <SectionLabel>On the books · {notes.length}</SectionLabel>
         {notes.length === 0 ? (
-          <EmptyState tone="muted">No owner-added field notes yet. Add one above.</EmptyState>
+          <EmptyState tone="muted">No owner-added field notes exist yet; add one above.</EmptyState>
         ) : (
           <HairlineList>
             {notes.map((n, i) => {

@@ -44,7 +44,7 @@ export default function DealsPage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -79,7 +79,7 @@ export default function DealsPage() {
 
       {rows.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          No current specials are on file. Know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
+          No current specials are on file. Do you know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
         </p>
       ) : (
         <DealsBrowser rows={rows} today={today} />

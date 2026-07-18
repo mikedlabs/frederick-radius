@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { canUseOriginForRanking, compareRightNowCandidates, rightNowQualityScore } from "./right-now-ranking";
+import {
+  canUseOriginForRanking,
+  compareRightNowCandidates,
+  rightNowQualityScore,
+  rightNowSortLabel,
+} from "./right-now-ranking";
 
 const place = (name: string, values: Partial<PlaceCardData> = {}) => ({
   name,
@@ -79,5 +84,11 @@ describe("right-now no-origin ranking", () => {
       .map((p) => ({ p, dist: Infinity, open: true }))
       .sort((a, b) => compareRightNowCandidates(a, b, "rated", false));
     expect(ranked.map(({ p }) => p.name)).toEqual(["Known 3.9", "Unrated"]);
+  });
+
+  it("labels the availability tier instead of promising a false nearest-first list", () => {
+    expect(rightNowSortLabel("nearest", true, true)).toBe("open first, then nearest");
+    expect(rightNowSortLabel("nearest", true, false)).toBe("nearest first");
+    expect(rightNowSortLabel("rated", false, true)).toBe("open first, then top rated");
   });
 });

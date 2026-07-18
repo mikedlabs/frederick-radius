@@ -55,13 +55,14 @@ const SHAPE =
   `Extract these from this local business's own website. Include ONLY facts ` +
   `clearly stated on the page — omit any field that isn't. Return JSON:\n` +
   `{\n` +
-  `  "known_for": string — ONE sentence: the 1–3 things this place is known for (signature dishes/drinks/vibe),\n` +
+  `  "known_for": string — one complete sentence stating the strongest useful fact about what the place is known for; add a second fact only when it changes the decision,\n` +
   `  "happy_hour": string — days + times + what's discounted, verbatim where possible (e.g. "Mon–Fri 4–6pm: $5 drafts, $7 wells"),\n` +
   `  "specials": string[] — recurring weekly specials (e.g. "Taco Tuesday", "half-price bottles Wednesday"),\n` +
   `  "hours_text": string — operating hours as published,\n` +
   `  "reservations_url": string — absolute URL for online reservations if present,\n` +
-  `  "notable": string — one more useful detail (patio, dog-friendly, live-music nights, parking)\n` +
+  `  "notable": string — one complete sentence with another useful supported detail, such as patio access, a dog policy, a recurring music night, or parking\n` +
   `}\n` +
+  `Use complete sentences for known_for and notable. Do not write fragments, slogans, promotional filler, or an automatic three-part list. ` +
   `Never invent prices, times, or dishes. If nothing applies, return {}.`;
 
 function domainOf(u: string): string {

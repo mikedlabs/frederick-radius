@@ -123,7 +123,7 @@ export default function EventCard({
   if (variant === "utility") {
     return (
       <article
-        className="group relative flex items-center gap-2.5 border-b px-1.5 py-2"
+        className="group relative flex min-h-11 items-center gap-2.5 border-b px-1.5"
         style={{ borderColor: "var(--app-border)" }}
       >
         <span
@@ -139,7 +139,7 @@ export default function EventCard({
         <Link
           href={`/events/${event.slug}`}
           prefetch={false}
-          className={`min-w-0 flex-1 truncate text-[13px] outline-none focus-visible:underline ${
+          className={`flex min-h-11 min-w-0 self-stretch flex-1 items-center truncate text-[13px] outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""
           }`}
           style={{ color: "var(--app-ink-2)" }}

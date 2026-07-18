@@ -71,5 +71,5 @@ export function filterTiles<T extends FilterableTile>(
 export function emptyMessage(filter: PulseFilter): string {
   return filter === "attention"
     ? "Nothing needs attention right now. That is the good kind of quiet."
-    : "Nothing to show here.";
+    : "There is nothing to show here.";
 }

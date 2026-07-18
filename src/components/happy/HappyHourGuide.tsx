@@ -417,7 +417,7 @@ export default function HappyHourGuide({
         )}
         {searching && shownRows.length === 0 && (
           <p className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
-            Nothing matched “{query.trim()}”. Try a plainer word (like “beer” or “wine”), or clear the search.
+            No happy hour matches “{query.trim()}”. Try a plainer word like “beer” or “wine,” or clear the search.
           </p>
         )}
       </div>

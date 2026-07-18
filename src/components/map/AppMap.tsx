@@ -1757,8 +1757,8 @@ export default function AppMap({
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
               {mapUnsupported
-                ? "The interactive map needs graphics support this browser doesn't have. You can still browse every place in the county by list."
-                : "It should be back shortly. Reload, or browse every place in the county by list."}
+                ? "The interactive map needs graphics support this browser does not have. You can still browse the Radius place catalog by list."
+                : "It should be back shortly. Reload the map or browse the Radius place catalog by list."}
             </p>
             <div className="mt-1 flex items-center gap-2">
               {!mapUnsupported && (
@@ -2970,7 +2970,7 @@ export default function AppMap({
                 )}
                 {selectedCemetery.approximate && (
                   <p style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
-                    Approximate location, per county records.
+                    This location is approximate and based on county records.
                   </p>
                 )}
               </div>
@@ -3334,7 +3334,7 @@ export default function AppMap({
                   </ul>
                 ) : (
                   <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                    No more trains today. Weekday service only.
+                    No more departures are scheduled today.
                   </p>
                 )}
               </div>

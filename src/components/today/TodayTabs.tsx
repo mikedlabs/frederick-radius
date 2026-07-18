@@ -108,7 +108,7 @@ export default function TodayTabs({
     (tonight.length > 0 ? (
       <div className="space-y-2">
         <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          No verified open spots this late. Here is what is on tonight.
+          No verified spots are open this late. Here is what is on tonight.
         </p>
         <ul className="space-y-2">
           {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -117,7 +117,7 @@ export default function TodayTabs({
     ) : weekendEvents.length > 0 ? (
       <div className="space-y-2">
         <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          No verified open spots right now. Here is what is on this weekend.
+          No verified spots are open right now. Here is what is on this weekend.
         </p>
         <ul className="space-y-2">
           {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -143,7 +143,7 @@ export default function TodayTabs({
       ) : (
         <span>{todayEvents.length} in the next 24 hours</span>
       ),
-      empty: "Nothing on tonight's calendar yet. Open the planner. We'll build one from what's open and what's near you.",
+      empty: "Tonight's calendar is still empty. Open the planner, and Radius will build a plan from places that are open and nearby.",
       content: tonight.length === 0 ? null : (
         <ul className="space-y-2">
           {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -159,7 +159,7 @@ export default function TodayTabs({
       href: "/events",
       hrefLabel: "All events",
       meta: <span>Friday evening through Sunday</span>,
-      empty: "Nothing booked for the weekend yet. Most Frederick events post late. Check back Thursday, or try tonight.",
+      empty: "Most Frederick events post late, so check back Thursday or try tonight.",
       content: weekendEvents.length === 0 ? null : (
         <ul className="space-y-2">
           {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -187,7 +187,7 @@ export default function TodayTabs({
       href: "/map?mode=radius",
       hrefLabel: "Set a radius",
       meta: <span>Inside a 15-minute walk from downtown</span>,
-      empty: "Nothing walkable inside 15 minutes from downtown. Try the Radius map and widen to bike or drive.",
+      empty: "No places are within a 15-minute walk of downtown. Try the Radius map and widen the trip to biking or driving.",
       content: renderPlaces(walkable),
     },
     {
@@ -199,7 +199,7 @@ export default function TodayTabs({
       href: "/map?filter=family",
       hrefLabel: "Family map",
       meta: <span>Kid-friendly places + family events</span>,
-      empty: "No family picks loaded right now. Try Walkable, or Baker Park is always a safe one.",
+      empty: "No family picks are loaded right now. Try the walkable list, or start with Baker Park.",
       content: renderPlaces(familyPicks),
     },
   ];

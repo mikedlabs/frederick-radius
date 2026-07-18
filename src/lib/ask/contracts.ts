@@ -18,12 +18,19 @@ export type AskSource = {
   photo_url?: string;
 };
 
-export type AskAction = {
-  label: string;
-  kind: "refine" | "open";
-  query?: string;
-  href?: string;
-};
+export type AskAction =
+  | {
+      label: string;
+      kind: "refine";
+      query: string;
+      href?: never;
+    }
+  | {
+      label: string;
+      kind: "open";
+      href: string;
+      query?: never;
+    };
 
 export type AskPlanPreview = {
   title: string;

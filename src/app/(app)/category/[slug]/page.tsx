@@ -305,7 +305,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           places={places}
           initialLayout="list"
           facetTags={facetTags}
-          emptyMessage="We are still seeding this category. Submit a place you love."
+          emptyMessage="No places are listed in this category yet. You can suggest one through the place submission form."
         />
       </CollapsibleSection>
     </div>

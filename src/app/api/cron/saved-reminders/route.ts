@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ enabled: true, error: "no-database" }, { status: 503 });
   }
   if (!configurePush()) {
-    return NextResponse.json({ enabled: true, sent: 0, note: "push-not-configured" });
+    return NextResponse.json({ enabled: true, sent: 0, note: "Push notifications are not configured." });
   }
 
   // Every saved event that belongs to a device with a LIVE push subscription.

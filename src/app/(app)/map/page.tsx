@@ -135,9 +135,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/map" },
   title: "Map · Frederick County",
   description:
-    "The full pannable map of Frederick County. Filter by what you're doing. Coffee, food, wineries, breweries, outdoors, family, arts, civic.",
+    "Browse Frederick County places and events on an interactive map. Filter by category or current need.",
   openGraph: { title: "Map · Frederick County", description:
-    "The full pannable map of Frederick County. Filter by what you're doing. Coffee, food, wineries, breweries, outdoors, family, arts, civic." },
+    "Browse Frederick County places and events on an interactive map. Filter by category or current need." },
 };
 
 export const revalidate = 300;

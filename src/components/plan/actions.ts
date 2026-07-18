@@ -10,7 +10,6 @@ import {
   setStopInSpec,
   addStopToSpec,
   reshuffleSpec,
-  narratePlanWithClaude,
   type PlanInputs,
   type PlanSpec,
   type Plan,
@@ -18,15 +17,17 @@ import {
   type PlanSlotCategory,
 } from "@/lib/integrations/planner";
 
-async function withNarrative(plan: Plan | null): Promise<Plan | null> {
+async function withWeather(plan: Plan | null): Promise<Plan | null> {
   if (!plan) return null;
-  const [narrative, weather_note] = await Promise.all([
-    narratePlanWithClaude(plan),
+  // The itinerary itself is deterministic and should not wait on decorative
+  // generated prose. Give the live forecast a short budget, then return the
+  // useful plan even if the network is slow.
+  const weather_note = await Promise.race([
     weatherNoteFor(plan),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 900)),
   ]);
   return {
     ...plan,
-    ...(narrative ? { narrative } : {}),
     ...(weather_note ? { weather_note } : {}),
   };
 }
@@ -43,7 +44,9 @@ async function weatherNoteFor(plan: Plan): Promise<string | null> {
     const last = plan.stops[plan.stops.length - 1];
     const end = new Date(last.at).getTime() + last.duration_min * 60_000;
     const { getNwsForecast } = await import("@/lib/integrations/nws");
-    const fc = await getNwsForecast({ lng: -77.4105, lat: 39.4143 });
+    const firstGeom = plan.stops[0].place?.geom ?? plan.stops[0].event?.geom;
+    if (!firstGeom) return null;
+    const fc = await getNwsForecast(firstGeom);
     if (!fc) return null;
     let peak: { p: number; t: number } | null = null;
     for (const h of fc.hourly) {
@@ -65,13 +68,13 @@ async function weatherNoteFor(plan: Plan): Promise<string | null> {
 
 /** Build a fresh plan from the builder inputs. */
 export async function generatePlan(input: PlanInputs): Promise<Plan | null> {
-  return withNarrative(buildPlan(input));
+  return withWeather(buildPlan(input));
 }
 
 /** Rebuild a plan from a shared token or an edited spec. */
 export async function planFromToken(token: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
-  return spec ? withNarrative(reconstructPlan(spec)) : null;
+  return spec ? withWeather(reconstructPlan(spec)) : null;
 }
 
 /** Drop the stop at index, then rebuild. Pure spec edit. */
@@ -79,14 +82,14 @@ export async function removeStop(token: string, index: number): Promise<Plan | n
   const spec = decodeSpec(token);
   if (!spec) return null;
   const next: PlanSpec = { ...spec, s: spec.s.filter((_, i) => i !== index) };
-  return withNarrative(reconstructPlan(next));
+  return withWeather(reconstructPlan(next));
 }
 
 /** Swap the stop at index for the next best alternative, then rebuild. */
 export async function swapStop(token: string, index: number): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withNarrative(reconstructPlan(swapStopInSpec(spec, index)));
+  return withWeather(reconstructPlan(swapStopInSpec(spec, index)));
 }
 
 /** The real alternatives for a slot, for the Swap chooser. An explicit
@@ -129,14 +132,14 @@ export async function stopSwapOptions(
 export async function setStop(token: string, index: number, slug: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withNarrative(reconstructPlan(setStopInSpec(spec, index, slug)));
+  return withWeather(reconstructPlan(setStopInSpec(spec, index, slug)));
 }
 
 /** Add a specific place (e.g. from Saved) to the plan, then rebuild. */
 export async function addStop(token: string, slug: string): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withNarrative(reconstructPlan(addStopToSpec(spec, slug)));
+  return withWeather(reconstructPlan(addStopToSpec(spec, slug)));
 }
 
 /** Re-roll the plan, keeping the pinned places, then rebuild. */
@@ -147,5 +150,5 @@ export async function reshufflePlan(
 ): Promise<Plan | null> {
   const spec = decodeSpec(token);
   if (!spec) return null;
-  return withNarrative(reconstructPlan(reshuffleSpec(spec, pinnedSlugs, seed)));
+  return withWeather(reconstructPlan(reshuffleSpec(spec, pinnedSlugs, seed)));
 }

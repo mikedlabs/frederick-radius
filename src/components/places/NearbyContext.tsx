@@ -70,7 +70,7 @@ export default async function NearbyContext({
         ))}
       </ul>
       <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        Context from Wikipedia, CC BY-SA.
+        Context source: Wikipedia (CC BY-SA)
       </p>
     </section>
   );

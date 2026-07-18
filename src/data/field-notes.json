@@ -37,7 +37,7 @@
     ],
     "happy_hour": {
       "schedule": "Tue, Wed & Thu specials",
-      "details": "Tue $4 craft pints and 25% off crab legs, Wed crab specials, Thu $1 oysters.",
+      "details": "Tuesday offers $4 craft pints and 25% off crab legs. Wednesday has crab specials, and Thursday has $1 oysters.",
       "source_url": "https://averysmarylandgrille.com/nightly-specials",
       "last_verified": "2026-06-16",
       "confidence": "high"
@@ -66,7 +66,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Wednesday: $17 BBQ rib dinner.",
+        "text": "Wednesday's special is a $17 BBQ rib dinner.",
         "source_url": "https://www.bellessportsbar.com/daily-specials/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
@@ -118,7 +118,7 @@
   "black-hog-bbq-bar": {
     "happy_hour": {
       "schedule": "Mon-Fri 4-6:30pm",
-      "details": "Discounted wine, beer, rail, and specialty cocktails throughout the restaurant.",
+      "details": "The restaurant offers discounted wine, beer, rail drinks, and specialty cocktails during happy hour.",
       "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
       "confidence": "high",
       "last_verified": "2026-06-20"
@@ -145,7 +145,7 @@
     ],
     "deals": [
       {
-        "text": "Tuesday: full slab of ribs with one side for $25, plus 8 wings for $10.",
+        "text": "Tuesday's specials include a full slab of ribs with one side for $25 and eight wings for $10.",
         "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
@@ -239,7 +239,7 @@
         "confidence": "high"
       },
       {
-        "text": "Karaoke on Tuesday nights at 9:00pm.",
+        "text": "Karaoke starts at 9:00 PM on Tuesday nights.",
         "source_url": "https://bushwallers.com/event/karaoke-5/",
         "confidence": "medium"
       },
@@ -265,13 +265,13 @@
   "cactus-flats-walkersville": {
     "insider": [
       {
-        "text": "Old-school community roadhouse, not a Mexican spot despite the name — operating on this site since 1929 (originally the Roma Cafe), known as a friendly biker/locals bar where the staff are called 'Cactus Catz.' Kitchen leans grill: steaks and seafood are the local picks.",
+        "text": "This community roadhouse is not a Mexican restaurant despite its name. It has operated on this site since 1929, originally as the Roma Cafe, and employees use the name 'Cactus Catz.' The kitchen focuses on grilled steaks and seafood.",
         "source_url": "https://thecatoctinbanner.com/cactus-flats/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Weekends are the draw: live music on Saturdays/weekends plus karaoke nights, with a patio for warm weather. It's closed early in the week — open Thu-Fri from 3 PM, Sat & Sun from noon — so plan around that and follow their Facebook for the live-entertainment lineup.",
+        "text": "Weekends bring live music or karaoke nights, with patio seating in warm weather. Posted hours begin at 3 PM Thursday and Friday and at noon Saturday and Sunday. Check the business's Facebook page for the entertainment schedule.",
         "source_url": "https://evendo.com/locations/maryland/catoctin-mountain-park/bar/cactus-flats",
         "confidence": "medium",
         "last_verified": "2026-06-15"
@@ -281,7 +281,7 @@
   "cafe-nola": {
     "happy_hour": {
       "schedule": "Daily 4-7 PM (no day exclusions stated on the official site)",
-      "details": "$5 featured cocktail, $2 off wine, drafts $4 at 4pm, $5 at 5pm, $6 at 6pm.",
+      "details": "Happy hour includes a $5 featured cocktail and $2 off wine. Drafts cost $4 at 4 PM, $5 at 5 PM, and $6 at 6 PM.",
       "source_url": "https://www.cafe-nola.com/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -299,7 +299,7 @@
         "confidence": "medium"
       },
       {
-        "text": "Reader-voted \"Best Breakfast in Frederick\" by Frederick News-Post readers (multiple recent years); it's a breakfast/brunch destination, not just a coffee bar.",
+        "text": "Frederick News-Post readers selected it as \"Best Breakfast in Frederick\" in multiple recent years. People visit for breakfast and brunch, not only coffee.",
         "source_url": "https://downtownfrederick.org/item/cafe-nola/",
         "confidence": "medium"
       }
@@ -381,7 +381,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Pub Trivia every Wednesday night at 6:00 PM.",
+        "text": "Pub Trivia starts at 6:00 PM every Wednesday.",
         "source_url": "http://www.floodzonebrewery.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -441,13 +441,13 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Thursday all day: Burger and a beer (or tots) special.",
+        "text": "Thursday's all-day special pairs a burger with a beer or tots.",
         "source_url": "https://www.frederick-social.com/happenings",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Friday all day: $8 personal pizza.",
+        "text": "Friday's all-day special is an $8 personal pizza.",
         "source_url": "https://www.frederick-social.com/happenings",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -550,7 +550,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Gift cards available; catering offered for weddings, showers, birthdays, and office events.",
+        "text": "Gift cards are available, and catering is offered for weddings, showers, birthdays, and office events.",
         "source_url": "https://www.jbseafood.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -676,12 +676,12 @@
         "confidence": "high"
       },
       {
-        "text": "Monday: $13 burgers and half-price 20oz draft beers (3-7pm, bar area only).",
+        "text": "Monday's bar-area special includes $13 burgers and half-price 20-ounce draft beers from 3 to 7 PM.",
         "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
         "confidence": "high"
       },
       {
-        "text": "Thursday: $8 house martinis (3-7pm, bar area only).",
+        "text": "Thursday's bar-area special offers $8 house martinis from 3 to 7 PM.",
         "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
         "confidence": "high"
       }
@@ -696,7 +696,7 @@
     },
     "insider": [
       {
-        "text": "Woman-owned business that accepts Downtown Frederick Gift Cards.",
+        "text": "This woman-owned business accepts Downtown Frederick Gift Cards.",
         "source_url": "https://downtownfrederick.org/item/magoos-pub-and-eatery/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -760,7 +760,7 @@
     ],
     "happy_hour": {
       "schedule": "Mon-Fri 3-6 PM",
-      "details": "$2 off beer, wine, and signature cocktails; half-off bottled wine Mon-Wed.",
+      "details": "Happy hour takes $2 off beer, wine, and signature cocktails. Bottles of wine are half-price Monday through Wednesday.",
       "source_url": "https://www.instagram.com/themaincup/reel/C51g0yoPoMM/",
       "last_verified": "2026-06-16",
       "confidence": "high"
@@ -795,7 +795,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Thursdays: 25% off crab legs by the pound.",
+        "text": "Thursday's special takes 25% off crab legs by the pound.",
         "source_url": "https://maysrestaurant.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -924,7 +924,7 @@
       "last_verified": "2026-06-15"
     },
     "parking": {
-      "text": "Private lot on site, free for patrons.",
+      "text": "A private on-site lot is free for patrons.",
       "source_url": "https://monocacycrossing.com/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -945,13 +945,13 @@
     ],
     "deals": [
       {
-        "text": "Wednesday: Special Burger or Dinner Burger and any draft beer for $20.",
+        "text": "Wednesday's $20 special pairs a Special Burger or Dinner Burger with any draft beer.",
         "source_url": "https://monocacycrossing.com/value-nights/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Thursday: $10 off all bottles of wine.",
+        "text": "Thursday's special takes $10 off every bottle of wine.",
         "source_url": "https://monocacycrossing.com/value-nights/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -1038,14 +1038,14 @@
   },
   "olde-mother-brewing-frederick": {
     "parking": {
-      "text": "Free parking: use the lot right next to the brewery, shared with Gravel & Grind (15 E 6th St). Free for customers — a real perk on the North Market corridor where street parking is tight.",
+      "text": "Customers can use the free lot next to the brewery, shared with Gravel & Grind at 15 E 6th St. Street parking is limited on this part of the North Market corridor.",
       "source_url": "https://oldemother.com/",
       "confidence": "high",
       "last_verified": "2026-06-15"
     },
     "insider": [
       {
-        "text": "The $1-off-full-pours deal runs all day, not a narrow happy-hour window — you get it open to close.",
+        "text": "The $1 discount on full pours runs all day and applies from opening to close.",
         "source_url": "https://oldemother.com/events/",
         "confidence": "medium"
       },
@@ -1124,7 +1124,7 @@
         "confidence": "high"
       },
       {
-        "text": "Thursday: Wing Special, 75c wings 7-11pm, plus $3 domestic bottles.",
+        "text": "Thursday's wing special offers 75-cent wings from 7 to 11 PM and $3 domestic bottles.",
         "source_url": "https://www.ottfrederick.com/",
         "confidence": "high"
       }
@@ -1297,14 +1297,14 @@
   },
   "pour-decisions-restaurant-bar-music-new-market": {
     "parking": {
-      "text": "Has its own free parking lot on site at 10519 Old National Pike, just off I-70 / Old National Pike — no street-parking hunt.",
+      "text": "The property has a free parking lot at 10519 Old National Pike, just off I-70.",
       "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
       "confidence": "medium",
       "last_verified": "2026-06-15"
     },
     "insider": [
       {
-        "text": "Late hours for the area: open Wed-Sun from 11 AM, until midnight Wed/Thu/Sun and until 2 AM Fri/Sat; closed Mon-Tue. Listed under both 'New Market' and 'Ijamsville' (21774) — same spot at 10519 Old National Pike. Phone (240) 915-2682.",
+        "text": "Posted hours begin at 11 AM Wednesday through Sunday. Closing is listed as midnight Wednesday, Thursday, and Sunday and 2 AM Friday and Saturday; the business is closed Monday and Tuesday. 'New Market' and 'Ijamsville' listings both refer to 10519 Old National Pike, 21774. The phone number is (240) 915-2682.",
         "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
         "confidence": "medium",
         "last_verified": "2026-06-15"
@@ -1368,7 +1368,7 @@
     ],
     "deals": [
       {
-        "text": "$2 off draft beers during happy hour (stated on the official site).",
+        "text": "The official site states that draft beers are $2 off during happy hour.",
         "source_url": "https://roasthousepubfrederick.com/",
         "confidence": "high"
       },
@@ -1380,7 +1380,7 @@
     ],
     "happy_hour": {
       "schedule": "Mon-Fri 3-6pm",
-      "details": "$2 off full pours (rotating craft draft) and 50% off wings.",
+      "details": "Happy hour takes $2 off full pours from the rotating craft draft list and 50% off wings.",
       "source_url": "https://roasthousepubfrederick.com/",
       "confidence": "high",
       "last_verified": "2026-06-20"
@@ -1467,7 +1467,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Crabs also available by the dozen; lunch specials offered.",
+        "text": "Crabs are also available by the dozen, and lunch specials are offered.",
         "source_url": "https://rubescrabshack.com/all-you-can-eat-specials",
         "confidence": "medium",
         "last_verified": "2026-06-15"
@@ -1477,7 +1477,7 @@
   "simple-theory-wine-co-frederick": {
     "happy_hour": {
       "schedule": "Mon, Wed, Thu 3-6 PM",
-      "details": "Half off all wines by the glass.",
+      "details": "All wines by the glass are half-price during happy hour.",
       "source_url": "https://simpletheorywines.com/visit-us/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -1504,7 +1504,7 @@
     ],
     "deals": [
       {
-        "text": "Wine Wednesday: 15% off all bottles of wine every Wednesday.",
+        "text": "Wine Wednesday takes 15% off all bottles of wine.",
         "source_url": "https://simpletheorywines.com/visit-us/",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -1591,7 +1591,7 @@
   },
   "springfield-manor-thurmont": {
     "parking": {
-      "text": "Free parking onsite at 11836 Auburn Rd. The lot is grass/gravel on a 130-acre working estate, so wear appropriate shoes and expect a short walk to the tasting room. During the Maryland Lavender Festival (mid-June) and lavender field-visit weekends parking fills fast and is managed by event staff; arrive early. No public-transit option, this is a rural Rt 15 destination, so plan to drive.",
+      "text": "Free parking is available on site at 11836 Auburn Rd. The lot is grass and gravel on a 130-acre working estate, so wear appropriate shoes and expect a short walk to the tasting room. During the Maryland Lavender Festival in mid-June and lavender field-visit weekends, parking fills quickly and event workers manage the lot; arrive early. No public-transit option is listed, so plan to drive to this rural Route 15 property.",
       "source_url": "https://www.springfieldmanor.com/lavender-festival.html",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -1661,7 +1661,7 @@
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Pup cups available for dogs.",
+        "text": "Pup cups are available for dogs.",
         "source_url": "https://sweetbabescreamery.com/visit-urbana",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -1834,13 +1834,13 @@
     ],
     "deals": [
       {
-        "text": "Taco specials on Tuesdays (part of a rotating weekly dine-in specials lineup).",
+        "text": "Tuesday's rotating dine-in lineup includes taco specials.",
         "source_url": "https://www.upperdeckmtairy.com/menus/weekly-dine-in-only-specials",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Pour House Trivia every Tuesday at 7:00 PM.",
+        "text": "Pour House Trivia starts at 7:00 PM every Tuesday.",
         "source_url": "https://www.pourhousetrivia.com/upper-deck.html",
         "confidence": "high",
         "last_verified": "2026-06-15"
@@ -1929,7 +1929,7 @@
   "white-rabbit-gastropub": {
     "happy_hour": {
       "schedule": "All day Monday; 3-6pm Tuesday-Friday",
-      "details": "$5 16oz drafts, $6 margaritas and crushes, plus discounted apps.",
+      "details": "Happy hour offers $5 16-ounce drafts, $6 margaritas and crushes, and discounted appetizers.",
       "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -1942,7 +1942,7 @@
     },
     "insider": [
       {
-        "text": "It is a hidden-gem location: tucked at the end of a nondescript alleyway behind the Church Street Garage. First-timers routinely walk past it, so look for the alley rather than a street-front entrance.",
+        "text": "The entrance sits at the end of an alley behind the Church Street Garage. Look for the alley rather than a street-front entrance.",
         "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
         "confidence": "high"
       },
@@ -1954,7 +1954,7 @@
     ],
     "deals": [
       {
-        "text": "Brunch served Saturday and Sunday, 11am-3pm (stated on official site).",
+        "text": "The official site states that brunch is served from 11 AM to 3 PM on Saturday and Sunday.",
         "source_url": "https://www.whiterabbitgastropub.com/readme",
         "confidence": "high"
       },
@@ -2012,7 +2012,7 @@
   "the-wine-kitchen-frederick": {
     "happy_hour": {
       "schedule": "Tue-Fri 3-6 PM",
-      "details": "$3 beer, discounted wines, plus app and oyster deals.",
+      "details": "Happy hour includes $3 beer, discounted wines, and deals on appetizers and oysters.",
       "source_url": "https://www.thewinekitchen.com/location/frederick/",
       "last_verified": "2026-06-16",
       "confidence": "medium"
@@ -2039,7 +2039,7 @@
   "pride-on-the-patio": {
     "happy_hour": {
       "schedule": "Tuesdays 5:30-9 PM (at Showroom, 882 N East St)",
-      "details": "Happy-hour pricing on cocktails, wine, and beer.",
+      "details": "The venue offers happy-hour pricing on cocktails, wine, and beer.",
       "source_url": "https://www.eventbrite.com/e/lgbtq-social-mixer-pride-on-the-patio-at-showroom-registration-796200335637",
       "last_verified": "2026-06-16",
       "confidence": "medium"
@@ -2057,7 +2057,7 @@
   "the-tasting-room-frederick": {
     "happy_hour": {
       "schedule": "Mon-Fri 4-6 PM",
-      "details": "Food and beverage specials.",
+      "details": "The venue offers food and beverage specials during happy hour.",
       "source_url": "https://trrestaurant.com/",
       "last_verified": "2026-06-16",
       "confidence": "high"
@@ -2111,7 +2111,7 @@
   "maxwells-burgers-shakes-frederick": {
     "happy_hour": {
       "schedule": "Frank's Franks happy hour Tue-Fri & Sun 3-5 PM",
-      "details": "Frank's Franks specialty hot dogs at the bar.",
+      "details": "Frank's Franks serves specialty hot dogs at the bar.",
       "source_url": "https://www.eatatmaxwells.com/menu/red-and-yellow-hotdog-bar-menu/",
       "last_verified": "2026-06-16",
       "confidence": "medium"
@@ -2129,7 +2129,7 @@
   "the-orchard-frederick": {
     "happy_hour": {
       "schedule": "Happy hour Mon-Thu 4-6 PM",
-      "details": "Half-price draft beer, wine, and kombucha.",
+      "details": "Draft beer, wine, and kombucha are half-price during happy hour.",
       "source_url": "https://www.theorchardrestaurant.com/contact-us",
       "last_verified": "2026-06-16",
       "confidence": "high"
@@ -2189,7 +2189,7 @@
     },
     "deals": [
       {
-        "text": "Monday: Margarita Monday / Service Industry Night, $5 margaritas all day.",
+        "text": "Margarita Monday and Service Industry Night offer $5 margaritas all day.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       },
@@ -2199,27 +2199,27 @@
         "confidence": "high"
       },
       {
-        "text": "Wednesday: Wing & Beer Wednesday, 75c wings (8-count, dine-in) and $4 domestic beers.",
+        "text": "Wing & Beer Wednesday offers 75-cent wings in eight-count dine-in orders and $4 domestic beers.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       },
       {
-        "text": "Thursday: Thank You Thursday, 30% off for first responders, medical workers, and teachers.",
+        "text": "Thank You Thursday gives first responders, medical workers, and teachers 30% off.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       },
       {
-        "text": "Friday: Friday Flight Night, 25% off tequila and mezcal flights, 6-10pm.",
+        "text": "Friday Flight Night takes 25% off tequila and mezcal flights from 6 to 10 PM.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       },
       {
-        "text": "Saturday: half-off drafts, 11am-4pm.",
+        "text": "Saturday's special offers half-price drafts from 11 AM to 4 PM.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       },
       {
-        "text": "Sunday: all-day brunch specials, half-off domestic bottles, and 75c wings (dine-in).",
+        "text": "Sunday offers all-day brunch specials, half-price domestic bottles, and 75-cent wings for dine-in guests.",
         "source_url": "https://www.agave137.com/specials",
         "confidence": "high"
       }
@@ -2228,7 +2228,7 @@
   "rockwell-brewery-frederick": {
     "happy_hour": {
       "schedule": "Mon-Fri 3-6pm",
-      "details": "Taproom happy hour at the Riverside location.",
+      "details": "The Riverside taproom offers happy hour from Monday through Friday.",
       "source_url": "https://www.rockwellbrewery.com/",
       "confidence": "medium",
       "last_verified": "2026-06-20"
@@ -2245,7 +2245,7 @@
   "the-cellar-door": {
     "insider": [
       {
-        "text": "Karaoke every Thursday at 9:30pm.",
+        "text": "Karaoke starts at 9:30 PM every Thursday.",
         "source_url": "https://www.cellardoorfrederick.com/entertainment-1",
         "confidence": "high",
         "last_verified": "2026-06-20"
@@ -2261,13 +2261,13 @@
   "steinhardt-brewing-company-frederick": {
     "insider": [
       {
-        "text": "Pour House Trivia every Thursday, 7-9pm.",
+        "text": "Pour House Trivia runs from 7 to 9 PM every Thursday.",
         "source_url": "https://www.steinhardtbrewing.com/live-music-events",
         "confidence": "high",
         "last_verified": "2026-06-20"
       },
       {
-        "text": "Bluegrass jam every Wednesday, 7-9pm.",
+        "text": "The bluegrass jam runs from 7 to 9 PM every Wednesday.",
         "source_url": "https://www.steinhardtbrewing.com/live-music-events",
         "confidence": "high",
         "last_verified": "2026-06-20"
@@ -2277,13 +2277,13 @@
   "sandbox-brewhouse-frederick": {
     "insider": [
       {
-        "text": "Pour House Trivia every Monday at 6:30pm.",
+        "text": "Pour House Trivia starts at 6:30 PM every Monday.",
         "source_url": "https://www.sandboxbrewhouse.com/",
         "confidence": "high",
         "last_verified": "2026-06-20"
       },
       {
-        "text": "Board game night every Thursday at 6pm.",
+        "text": "Board game night starts at 6 PM every Thursday.",
         "source_url": "https://www.sandboxbrewhouse.com/",
         "confidence": "high",
         "last_verified": "2026-06-20"
@@ -2303,7 +2303,7 @@
   "prospect-point-brewing-frederick": {
     "insider": [
       {
-        "text": "Pour House Trivia every Wednesday at 6:30pm.",
+        "text": "Pour House Trivia starts at 6:30 PM every Wednesday.",
         "source_url": "https://www.pourhousetrivia.com/prospect-point-brewing.html",
         "confidence": "high",
         "last_verified": "2026-06-20"
@@ -2313,7 +2313,7 @@
   "dragon-distillery-frederick": {
     "insider": [
       {
-        "text": "Pour House Trivia every Friday at 7pm.",
+        "text": "Pour House Trivia starts at 7 PM every Friday.",
         "source_url": "https://www.pourhousetrivia.com/dragon-distillery-friday.html",
         "confidence": "high",
         "last_verified": "2026-06-20"
@@ -2323,7 +2323,7 @@
   "river-bar-grill": {
     "happy_hour": {
       "schedule": "Mon-Fri 3-5pm",
-      "details": "Happy hour specials (itemized prices on the venue's cocktail menu).",
+      "details": "The venue's cocktail menu lists the current happy-hour specials and prices.",
       "source_url": "https://riverbargrillfrederick.com/happy-hour",
       "confidence": "medium",
       "last_verified": "2026-06-20"

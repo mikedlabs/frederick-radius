@@ -90,7 +90,7 @@ export default function MunicipalEvents({
 
       <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
         {filtered.length === 0
-          ? "No matches. Try a different word or municipality."
+          ? "There are no matches. Try a different word or municipality."
           : `${filtered.length.toLocaleString()} programs${filtered.length > 50 ? " · showing first 50" : ""}`}
       </p>
 
