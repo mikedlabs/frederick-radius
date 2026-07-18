@@ -109,6 +109,11 @@ export type MapDockProps = {
   parkingCount: number;
   showParking: boolean;
   setShowParking: SetState<boolean>;
+  showRadar: boolean;
+  setShowRadar: SetState<boolean>;
+  /** Newest radar frame's unix seconds — stamps "radar as of 9:42 PM" so
+   *  minutes-old tiles are never mistaken for real time. */
+  radarFrameEpoch: number | null;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
@@ -415,6 +420,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showAerial) layerBits.push("Aerial photos");
   if (props.showCemeteries) layerBits.push("Cemeteries");
   if (props.showParking) layerBits.push("Parking");
+  if (props.showRadar) layerBits.push("Radar");
   for (const k of props.activeOverlays) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
@@ -431,7 +437,8 @@ export default function MapDock(props: MapDockProps) {
     (props.showTrails ? 1 : 0) +
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0) +
-    (props.showParking ? 1 : 0);
+    (props.showParking ? 1 : 0) +
+    (props.showRadar ? 1 : 0);
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -498,6 +505,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowAerial(false);
     props.setShowCemeteries(false);
     props.setShowParking(false);
+    props.setShowRadar(false);
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
@@ -551,6 +559,17 @@ export default function MapDock(props: MapDockProps) {
       first.focus();
     }
   };
+
+  // "Radar as of 9:42 PM" — the newest frame's Eastern clock time. Radar
+  // tiles are minutes old; the stamp keeps the layer honest about it.
+  const radarClock =
+    props.showRadar && props.radarFrameEpoch != null
+      ? new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(props.radarFrameEpoch * 1000))
+      : null;
 
   const paneTitle =
     pane === "what" ? "Kinds of places"
@@ -1018,6 +1037,14 @@ export default function MapDock(props: MapDockProps) {
                       Parking
                     </Chip>
                   )}
+                  <Chip
+                    on={props.showRadar}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowRadar((v) => !v)}
+                    title="Animated precipitation radar from RainViewer. Frames run a few minutes behind real time"
+                  >
+                    Radar
+                  </Chip>
                   {OVERLAYS.map((o) => (
                     <Chip
                       key={o.key}
@@ -1032,6 +1059,12 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   ))}
                 </div>
+                {radarClock && (
+                  <p className="dock-hint" role="status">
+                    Radar as of <span className="font-mono">{radarClock}</span> Eastern.
+                    Frames arrive a few minutes behind real time.
+                  </p>
+                )}
                 {amenExpanded && props.amenityCount > 0 && (
                   <HeadRow
                     color="var(--app-cool)"
