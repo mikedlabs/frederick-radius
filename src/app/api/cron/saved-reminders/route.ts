@@ -2,6 +2,12 @@
  * Saved-event reminders (critic-1) — the "one hour before something you saved
  * starts" push that the app advertises but never sent.
  *
+ * Also the plans-changed watcher: when a saved upcoming event flips to
+ * cancelled/postponed (feed status or the owner's event-notices override),
+ * the devices that saved it get one "Plans changed" push instead of a
+ * now-wrong "starting soon" reminder. Decision logic is pure and tested in
+ * lib/saved-cancellations.
+ *
  * GATED: does nothing unless SAVED_REMINDERS_ENABLED === "1". It ships OFF so
  * the feature is safe to land inert — no reminder can reach a real user until
  * the flag is set in the Vercel env AND verified on prod (the saved_events table
@@ -23,6 +29,8 @@ import { sendPush, configurePush } from "@/lib/push";
 import { getEventBySlug } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
+import { noticeForEvent } from "@/lib/events/notices";
+import { cancellationPush, effectiveEventStatus } from "@/lib/saved-cancellations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,22 +42,24 @@ export const maxDuration = 60;
 const LEAD_MIN_MS = 50 * 60_000;
 const LEAD_MAX_MS = 75 * 60_000;
 
-type Resolved = { title: string; startsAt: string } | null;
+type Resolved = { title: string; startsAt: string; status?: string } | null;
 
-/** Resolve a saved slug to its title + start, in the same order /events/[slug]
- *  uses: curated seed (sync) → cached live feed → cached ingested. Fail-soft. */
+/** Resolve a saved slug to its title + start + status, in the same order
+ *  /events/[slug] uses: curated seed (sync) → cached live feed → cached
+ *  ingested. Fail-soft. Status rides along so the cancellation pass and the
+ *  reminder gate read the same claim the event page shows. */
 async function resolveEvent(slug: string): Promise<Resolved> {
   const seed = getEventBySlug(slug);
-  if (seed?.starts_at) return { title: seed.title, startsAt: seed.starts_at };
+  if (seed?.starts_at) return { title: seed.title, startsAt: seed.starts_at, status: seed.status };
   try {
     const live = await getLiveCardEventBySlug(slug);
-    if (live?.starts_at) return { title: live.title, startsAt: live.starts_at };
+    if (live?.starts_at) return { title: live.title, startsAt: live.starts_at, status: live.status };
   } catch {
     /* fall through */
   }
   try {
     const ing = await getIngestedCardBySlug(slug);
-    if (ing?.starts_at) return { title: ing.title, startsAt: ing.starts_at };
+    if (ing?.starts_at) return { title: ing.title, startsAt: ing.starts_at, status: ing.status };
   } catch {
     /* fall through */
   }
@@ -92,31 +102,29 @@ export async function GET(request: Request) {
   }>;
 
   const now = Date.now();
+  const nowDate = new Date(now);
   const startCache = new Map<string, Resolved>();
   let sent = 0;
   let gone = 0;
   let inWindow = 0;
+  let cancelSent = 0;
 
-  for (const row of rows) {
-    let ev = startCache.get(row.event_slug);
-    if (ev === undefined) {
-      ev = await resolveEvent(row.event_slug);
-      startCache.set(row.event_slug, ev);
-    }
-    if (!ev) continue;
-    const lead = new Date(ev.startsAt).getTime() - now;
-    if (lead < LEAD_MIN_MS || lead > LEAD_MAX_MS) continue;
-    inWindow++;
-
-    // Claim the (device, event) dedupe slot; only send if THIS insert created it.
+  // Shared dedupe-claim + send. push_log's (topic, dedupe_key) uniqueness is
+  // the "exactly once per device per event" guarantee for BOTH message kinds.
+  const claimAndSend = async (
+    row: (typeof rows)[number],
+    topic: string,
+    key: string,
+    msg: { title: string; body: string; tag: string },
+  ): Promise<boolean> => {
     let claimed = false;
     try {
       const claim = await db
         .insert(push_log)
         .values({
-          topic: "saved-events",
-          dedupe_key: dedupeKey(row.event_slug, row.endpoint),
-          title: ev.title,
+          topic,
+          dedupe_key: key,
+          title: msg.title,
           url: `/events/${row.event_slug}`,
         })
         .onConflictDoNothing({ target: [push_log.topic, push_log.dedupe_key] })
@@ -125,19 +133,14 @@ export async function GET(request: Request) {
     } catch {
       claimed = false;
     }
-    if (!claimed) continue;
+    if (!claimed) return false;
 
     try {
       await sendPush(
         { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        {
-          title: "Starting soon",
-          body: `${ev.title} starts in about an hour.`,
-          url: `/events/${row.event_slug}`,
-          tag: `saved:${row.event_slug}`,
-        },
+        { ...msg, url: `/events/${row.event_slug}` },
       );
-      sent++;
+      return true;
     } catch (err) {
       if (err instanceof Error && err.message === "subscription_gone") {
         gone++;
@@ -154,8 +157,49 @@ export async function GET(request: Request) {
           /* best-effort */
         }
       }
+      return false;
     }
+  };
+
+  for (const row of rows) {
+    let ev = startCache.get(row.event_slug);
+    if (ev === undefined) {
+      ev = await resolveEvent(row.event_slug);
+      startCache.set(row.event_slug, ev);
+    }
+    if (!ev) continue;
+
+    // Plans-changed pass: the event this device saved got cancelled or
+    // postponed (feed status, or the owner's event-notices override). The
+    // status is part of the dedupe key so postponed → cancelled re-alerts.
+    const noticeStatus = noticeForEvent(row.event_slug, nowDate)?.status;
+    const change = cancellationPush(ev, noticeStatus, nowDate);
+    if (change) {
+      const ok = await claimAndSend(
+        row,
+        "saved-cancelled",
+        `${change.status}:${dedupeKey(row.event_slug, row.endpoint)}`,
+        { title: change.title, body: change.body, tag: `cancelled:${row.event_slug}` },
+      );
+      if (ok) cancelSent++;
+      // A dead event gets no "starting soon" nudge — the reminder below
+      // would contradict the alert we just decided to send.
+      continue;
+    }
+    const status = effectiveEventStatus(ev.status, noticeStatus);
+    if (status === "cancelled" || status === "postponed") continue;
+
+    const lead = new Date(ev.startsAt).getTime() - now;
+    if (lead < LEAD_MIN_MS || lead > LEAD_MAX_MS) continue;
+    inWindow++;
+
+    const ok = await claimAndSend(row, "saved-events", dedupeKey(row.event_slug, row.endpoint), {
+      title: "Starting soon",
+      body: `${ev.title} starts in about an hour.`,
+      tag: `saved:${row.event_slug}`,
+    });
+    if (ok) sent++;
   }
 
-  return NextResponse.json({ enabled: true, candidates: rows.length, inWindow, sent, gone });
+  return NextResponse.json({ enabled: true, candidates: rows.length, inWindow, sent, cancelSent, gone });
 }
