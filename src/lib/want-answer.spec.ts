@@ -117,6 +117,18 @@ describe("buildWantAnswer context", () => {
       "open-chain",
     ]);
   });
+
+  it("returns the complete open brewery set for the Beer page filter", () => {
+    const answer = buildWantAnswer(
+      "breweries",
+      null,
+      null,
+      new Date("2026-07-18T00:00:00Z"),
+    );
+    expect(answer?.open).toBeDefined();
+    expect(answer?.open?.length).toBeGreaterThan(5);
+    expect(new Set(answer?.open?.map((row) => row.slug)).size).toBe(answer?.open?.length);
+  });
 });
 
 // ── approxHeroIndex — the coarse-origin hero rule ────────────────────

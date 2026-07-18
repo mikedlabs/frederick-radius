@@ -1,3 +1,5 @@
+import { summarizeAirQualityAlert } from "@/lib/air-quality";
+
 export type PulseAlertSignal = {
   event: string;
   headline: string;
@@ -13,10 +15,18 @@ export function pulseAlertPriority(a: PulseAlertSignal): number {
       && /warning|emergency/i.test(copy)) return 0;
   if (a.severity === "Extreme") return 1;
   if (a.severity === "Severe" && !/air quality/i.test(copy)) return 2;
-  if (/code\s*maroon|hazardous|code\s*purple|very unhealthy/i.test(copy)) return 3;
+  const air = summarizeAirQualityAlert(a);
+  if (air) {
+    if (air.level === "maroon" || air.level === "purple") return 3;
+    if (air.level === "red") return 5;
+    if (air.level === "orange") return 6;
+    // Descriptive severity is a fallback only when there is no operative
+    // issued code. A Code Orange bulletin may discuss an earlier Purple period.
+    if (!air.level && /hazardous|very unhealthy/i.test(copy)) return 3;
+    if (!air.level && /\bunhealthy\b.*general population/i.test(copy)) return 5;
+    return 6;
+  }
   if (/\bwarning\b/i.test(copy)) return 4;
-  if (/code\s*red|\bunhealthy\b.*general population/i.test(copy)) return 5;
-  if (/air quality|smoke|ozone|code\s*orange/i.test(copy)) return 6;
   return 7;
 }
 

@@ -1,368 +1,105 @@
-.wall {
-  position: relative;
-  overflow: hidden;
-  border-bottom: 1px solid rgb(52 38 23 / 14%);
-  background:
-    radial-gradient(circle at 18% 0%, rgb(201 143 57 / 16%), transparent 25rem),
-    linear-gradient(180deg, rgb(255 255 255 / 44%), transparent 42%),
-    repeating-linear-gradient(90deg, transparent 0 93px, rgb(77 53 28 / 3%) 94px 95px),
-    #eadfc9;
-  box-shadow: inset 0 18px 35px rgb(86 57 23 / 8%);
-}
-
-.wall::after {
-  position: absolute;
-  z-index: 4;
-  inset: 0;
-  background: linear-gradient(90deg, #eadfc9 0, transparent 24px, transparent calc(100% - 24px), #eadfc9 100%);
-  content: "";
-  pointer-events: none;
-}
-
-.backbar {
-  position: absolute;
-  z-index: 0;
-  top: 122px;
-  right: 0;
-  left: 0;
-  height: 18px;
-  border-top: 1px solid rgb(255 255 255 / 32%);
-  border-bottom: 1px solid rgb(0 0 0 / 78%);
-  background:
-    linear-gradient(180deg, #b9b2a4 0%, #68635b 23%, #2a2927 62%, #111 100%);
-  box-shadow:
-    0 9px 18px rgb(0 0 0 / 58%),
-    inset 0 2px 2px rgb(255 255 255 / 18%);
-}
-
-.backbar::before {
-  position: absolute;
-  inset: 3px 0 auto;
-  height: 1px;
-  background: rgb(255 255 255 / 22%);
-  content: "";
-}
-
-.scroller {
-  position: relative;
-  z-index: 2;
+.rail {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 18px 20px 12px;
-  scroll-padding-inline: 20px;
+  padding: 14px 12px 16px;
+  scroll-padding-inline: 12px;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
 
-.scroller::-webkit-scrollbar {
+.rail::-webkit-scrollbar {
   display: none;
 }
 
-.tapButton {
+.choice {
   position: relative;
+  display: flex;
   width: 104px;
   min-width: 104px;
-  min-height: 264px;
+  min-height: 126px;
   flex: 0 0 104px;
-  padding: 0 2px 12px;
-  border: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   color: #2b2117;
   background: transparent;
   scroll-snap-align: center;
-  cursor: pointer;
-  outline: none;
+  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
-.tapButton:focus-visible::before {
+.choice:hover {
+  background: rgb(255 255 255 / 44%);
+}
+
+.choice:focus-visible {
+  border-color: #8a5528;
+  outline: 2px solid rgb(138 85 40 / 20%);
+  outline-offset: 2px;
+}
+
+.choiceSelected {
+  border-color: rgb(112 69 31 / 22%);
+  background: rgb(255 255 255 / 72%);
+  box-shadow: 0 10px 24px -20px rgb(47 30 15 / 65%);
+  transform: translateY(-2px);
+}
+
+.choiceSelected::after {
   position: absolute;
-  z-index: 8;
-  inset: -2px 0 2px;
-  border: 2px solid #9a5c26;
-  border-radius: 16px;
+  right: 24px;
+  bottom: -1px;
+  left: 24px;
+  height: 2px;
+  border-radius: 999px;
+  background: #8a5528;
   content: "";
-  box-shadow: 0 0 0 4px rgb(154 92 38 / 14%);
 }
 
-.tapAssembly {
-  position: relative;
-  display: block;
-  height: 205px;
-  perspective: 420px;
-}
-
-.handle {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  left: 50%;
+.logoFrame {
   display: grid;
-  width: 84px;
-  height: 112px;
+  width: 58px;
+  height: 58px;
   place-items: center;
-  padding: 7px;
-  border: 1px solid rgb(255 255 255 / 24%);
-  transform: translateX(-50%);
-  transform-origin: 50% 128px;
-  transition:
-    transform 330ms cubic-bezier(.2,.82,.2,1),
-    filter 220ms ease,
-    box-shadow 220ms ease;
-}
-
-.paddle {
-  width: 78px;
-  height: 116px;
-  border-radius: 28px 28px 10px 10px;
-}
-
-.medallion {
-  width: 91px;
-  height: 91px;
-  border-radius: 50%;
-}
-
-.shield {
-  width: 90px;
-  height: 102px;
-  clip-path: polygon(8% 0, 92% 0, 100% 72%, 50% 100%, 0 72%);
-}
-
-.porcelain {
-  width: 82px;
-  height: 104px;
-  border-radius: 46% 46% 32% 32% / 36% 36% 23% 23%;
-}
-
-.walnut {
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 7%), transparent 28%, rgb(0 0 0 / 18%) 72%),
-    repeating-linear-gradient(84deg, #3c2617 0 4px, #51331e 5px 9px, #342015 10px 13px);
-  box-shadow: 0 13px 24px rgb(0 0 0 / 45%), inset 0 0 0 2px rgb(19 10 4 / 35%);
-}
-
-.maple {
-  background:
-    linear-gradient(100deg, rgb(255 255 255 / 16%), transparent 35%, rgb(91 50 17 / 12%)),
-    repeating-linear-gradient(88deg, #b88042 0 6px, #cf9957 7px 12px, #ad7338 13px 17px);
-  box-shadow: 0 13px 24px rgb(0 0 0 / 38%), inset 0 0 0 2px rgb(77 39 12 / 25%);
-}
-
-.blackened {
-  background:
-    radial-gradient(circle at 28% 20%, rgb(255 255 255 / 9%), transparent 35%),
-    linear-gradient(145deg, #373531, #11110f 72%);
-  box-shadow: 0 13px 26px rgb(0 0 0 / 52%), inset 0 0 0 2px rgb(255 255 255 / 5%);
-}
-
-.brass {
-  background:
-    linear-gradient(120deg, rgb(255 255 255 / 22%), transparent 25% 54%, rgb(58 31 5 / 22%)),
-    linear-gradient(145deg, #c99a4b, #76501f 72%);
-  box-shadow: 0 13px 24px rgb(0 0 0 / 44%), inset 0 0 0 2px rgb(255 238 187 / 18%);
-}
-
-.logoWell {
-  position: absolute;
-  inset: 8px;
-  display: grid;
   overflow: hidden;
-  border: 1px solid rgb(30 22 14 / 18%);
-  border-radius: inherit;
-  background: #f7f0e4;
-  box-shadow: inset 0 0 0 2px rgb(74 48 21 / 9%);
-}
-
-.shield .logoWell {
-  inset: 8px 9px 19px;
-  clip-path: polygon(5% 0, 95% 0, 100% 70%, 50% 100%, 0 70%);
+  border: 1px solid rgb(40 30 20 / 10%);
+  border-radius: 50%;
+  background: #fffdf8;
 }
 
 .logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 6px;
+  padding: 5px;
 }
 
-.handleNeck {
-  position: absolute;
-  top: calc(100% - 1px);
-  left: 50%;
-  width: 13px;
-  height: 38px;
-  border-right: 1px solid rgb(0 0 0 / 62%);
-  border-left: 1px solid rgb(255 255 255 / 26%);
-  background: linear-gradient(90deg, #40362b, #b7aa94 45%, #4a4238 72%, #25221e);
-  box-shadow: 3px 4px 8px rgb(0 0 0 / 42%);
-  transform: translateX(-50%);
-}
-
-.medallion .handleNeck {
-  height: 59px;
-}
-
-.shield .handleNeck {
-  height: 48px;
-}
-
-.porcelain .handleNeck {
-  height: 46px;
-}
-
-.faucet {
-  position: absolute;
-  z-index: 2;
-  top: 126px;
-  left: 50%;
-  width: 58px;
-  height: 57px;
-  transform: translateX(-50%);
-}
-
-.ferrule {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 31px;
-  height: 16px;
-  border: 1px solid rgb(255 255 255 / 30%);
-  border-radius: 6px;
-  background: linear-gradient(180deg, #9c978d, #2e2d2a 72%);
-  box-shadow: 0 5px 9px rgb(0 0 0 / 50%);
-  transform: translateX(-50%);
-}
-
-.ferrule::after {
-  position: absolute;
-  inset: 4px 7px;
-  border-radius: 999px;
-  content: "";
-}
-
-.ferruleOpen::after {
-  background: #b9e6b0;
-  box-shadow: 0 0 9px rgb(142 219 129 / 82%);
-}
-
-.ferruleUnknown::after {
-  background: #817d74;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
-}
-
-.faucetBody {
-  position: absolute;
-  top: 13px;
-  left: 50%;
-  width: 22px;
-  height: 27px;
-  border-radius: 3px 3px 8px 8px;
-  background: linear-gradient(90deg, #373633, #b9b7af 44%, #55534e 70%, #242321);
-  box-shadow: 3px 5px 8px rgb(0 0 0 / 50%);
-  transform: translateX(-50%);
-}
-
-.spout {
-  position: absolute;
-  top: 32px;
-  left: 50%;
-  width: 34px;
-  height: 17px;
-  border-right: 8px solid #4e4d48;
-  border-bottom: 7px solid #77756e;
-  border-radius: 0 0 8px;
-  transform: translateX(-2px);
-}
-
-.tapButton:hover .handle,
-.tapButton:focus-visible .handle {
-  filter: brightness(1.08);
-  transform: translateX(-50%) translateY(-3px) rotate(-1deg);
-}
-
-.tapButtonSelected .handle,
-.tapButtonSelected:hover .handle,
-.tapButtonSelected:focus-visible .handle {
-  filter: brightness(1.07) drop-shadow(0 16px 16px rgb(0 0 0 / 38%));
-  transform: translateX(-50%) translateY(8px) rotate(7deg);
-}
-
-.tapName {
+.choiceName {
   display: -webkit-box;
-  min-height: 2.55em;
-  margin-top: 4px;
+  min-height: 2.35em;
+  margin-top: 7px;
   overflow: hidden;
-  color: rgb(43 33 23 / 68%);
-  font-size: 12px;
-  font-weight: 720;
-  line-height: 1.22;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.18;
   text-align: center;
-  transition: color 180ms ease;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.tapButtonSelected .tapName {
-  color: #21170f;
-}
-
-.tapMeta {
+.choiceMeta {
   display: block;
-  margin-top: 5px;
+  max-width: 100%;
+  margin-top: 4px;
   overflow: hidden;
-  color: rgb(43 33 23 / 54%);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .07em;
+  color: rgb(43 33 23 / 48%);
+  font-size: 8.5px;
+  font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
-}
-
-.tastingGlass {
-  position: absolute;
-  z-index: 6;
-  top: 174px;
-  left: calc(50% + 12px);
-  width: 24px;
-  height: 29px;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 52%);
-  border-top: 0;
-  border-radius: 1px 1px 7px 7px;
-  background: rgb(255 255 255 / 5%);
-  box-shadow: inset 3px 0 4px rgb(255 255 255 / 10%), 0 8px 10px rgb(0 0 0 / 35%);
-  transform: translateX(-50%);
-  animation: glass-rise 360ms cubic-bezier(.2,.8,.2,1) both;
-}
-
-.tastingGlassFill {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  left: 2px;
-  height: 21px;
-  border-radius: 0 0 5px 5px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--tap-pour) 78%, #2f1708), var(--tap-pour) 52%, color-mix(in srgb, var(--tap-pour) 74%, #fff));
-  box-shadow: inset 4px 0 5px rgb(255 255 255 / 13%);
-  transform: scaleY(0);
-  transform-origin: 50% 100%;
-  animation: glass-fill 520ms 140ms cubic-bezier(.22,.85,.28,1) forwards;
-}
-
-.tastingGlassFoam {
-  position: absolute;
-  z-index: 2;
-  right: 2px;
-  bottom: 20px;
-  left: 2px;
-  height: 4px;
-  border-radius: 999px;
-  background: #f8ebc9;
-  opacity: 0;
-  animation: foam-show 180ms 580ms ease forwards;
 }
 
 .navButton {
@@ -370,71 +107,99 @@
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid rgb(52 38 23 / 18%);
+  border: 1px solid rgb(52 38 23 / 16%);
   border-radius: 999px;
-  color: rgb(43 33 23 / 72%);
-  background: rgb(255 252 245 / 58%);
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  color: rgb(43 33 23 / 68%);
+  background: rgb(255 252 245 / 56%);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
 }
 
 .navButton:hover,
 .navButton:focus-visible {
-  border-color: rgb(154 92 38 / 62%);
+  border-color: rgb(112 69 31 / 52%);
   color: #21170f;
-  background: rgb(255 248 235 / 88%);
+  background: #fffaf2;
   outline: none;
 }
 
-@keyframes glass-rise {
-  from { opacity: 0; transform: translate(-50%, 7px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+.detail {
+  border-top: 1px solid rgb(40 30 20 / 10%);
+  animation: detail-in 220ms ease both;
 }
 
-@keyframes glass-fill {
-  to { transform: scaleY(1); }
+.selectedLogo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  padding: 5px;
+  border: 1px solid rgb(40 30 20 / 12%);
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 10px 24px -20px rgb(0 0 0 / 65%);
+  object-fit: contain;
 }
 
-@keyframes foam-show {
-  to { opacity: .9; }
+.detailBody {
+  display: grid;
+  gap: 24px;
+  padding: 20px;
+}
+
+.pours {
+  padding-top: 20px;
+  border-top: 1px solid rgb(40 30 20 / 12%);
+}
+
+@keyframes detail-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (min-width: 40rem) {
-  .scroller {
-    gap: 12px;
-    padding-inline: 32px;
-    scroll-padding-inline: 32px;
+  .rail {
+    gap: 10px;
+    padding: 18px 16px 20px;
+    scroll-padding-inline: 16px;
   }
 
-  .tapButton {
-    width: 116px;
-    min-width: 116px;
-    flex-basis: 116px;
+  .choice {
+    width: 112px;
+    min-width: 112px;
+    flex-basis: 112px;
+  }
+
+  .detailBody {
+    padding: 28px;
+  }
+}
+
+@media (min-width: 64rem) {
+  .detailBody {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, .7fr);
+    align-items: start;
+    padding: 32px;
+  }
+
+  .pours {
+    padding-top: 0;
+    padding-left: 24px;
+    border-top: 0;
+    border-left: 1px solid rgb(40 30 20 / 12%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .handle,
-  .tapName,
+  .choice,
   .navButton {
     transition: none;
   }
 
-  .tastingGlass,
-  .tastingGlassFill,
-  .tastingGlassFoam {
-    animation: none;
-    opacity: 1;
-  }
-
-  .tastingGlass {
-    transform: translateX(-50%);
-  }
-
-  .tastingGlassFill {
-    transform: scaleY(1);
-  }
-
-  .tastingGlassFoam {
+  .choiceSelected {
     transform: none;
+  }
+
+  .detail {
+    animation: none;
   }
 }

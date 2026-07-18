@@ -4290,45 +4290,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .stamp-press { animation: none; opacity: 1; transform: none; }
 }
 
-/* ── Frederick beer guide: editorial cover + physical tap wall ─────────
-   The beer page keeps Radius's warm paper surface while using real brewery
-   photography, local marks, brass, and wood for character. */
+/* Frederick beer guide: the cover uses one real taproom photograph and a
+   restrained warm-paper frame. The brewery rail owns its local interaction. */
 .beer-cover {
-  box-shadow: 0 30px 70px -38px rgba(56, 37, 23, 0.42);
+  box-shadow: 0 22px 48px -38px rgba(56, 37, 23, 0.38);
   isolation: isolate;
-}
-.beer-cover-light {
-  background:
-    radial-gradient(75% 85% at 86% 30%, rgba(187, 116, 31, 0.16), transparent 64%),
-    linear-gradient(112deg, rgba(255,255,255,0.28), transparent 38%),
-    repeating-linear-gradient(90deg, transparent 0 54px, rgba(79,51,25,0.022) 55px 56px);
-  opacity: 0.9;
-}
-.beer-tap-detail {
-  color: #281e14;
-  background:
-    linear-gradient(112deg, color-mix(in srgb, var(--beer-accent) 8%, #f3ead9) 0%, #f4ead7 78%),
-    #f4ead7;
-}
-.beer-tap-detail-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(50% 130% at 90% 0%, color-mix(in srgb, var(--beer-accent) 13%, transparent), transparent 70%),
-    repeating-linear-gradient(90deg, transparent 0 82px, rgba(72,48,24,0.025) 83px 84px);
-}
-
-.beer-event-poster {
-  box-shadow: 0 20px 38px -26px rgba(28, 18, 10, 0.78);
-  transition: transform 240ms var(--app-ease-out), box-shadow 240ms var(--app-ease-out);
-}
-.beer-event-poster:hover {
-  transform: translateY(-3px) rotate(-0.35deg);
-  box-shadow: 0 30px 52px -28px rgba(28, 18, 10, 0.88);
-}
-@media (prefers-reduced-motion: reduce) {
-  .beer-event-poster { transition: none; }
 }
 
 /* ── Layers at the map's foot (owner ask, 2026-07-17): a quiet state

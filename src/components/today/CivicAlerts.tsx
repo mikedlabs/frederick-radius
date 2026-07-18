@@ -2,6 +2,7 @@ import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
 import { activeEventNotices } from "@/lib/events/notices";
+import { summarizeAirQualityAlert } from "@/lib/air-quality";
 
 type UnifiedAlert = {
   source: "NWS" | "NPS";
@@ -60,8 +61,15 @@ function firstSentence(body: string): string {
 export function nwsDisplaySeverity(a: NwsAlert): UnifiedAlert["severity"] {
   const copy = `${a.event} ${a.headline} ${a.description}`;
   if (/air quality|smoke|ozone/i.test(copy)) {
-    if (/code\s*(purple|maroon)|very unhealthy|hazardous/i.test(copy)) return "emergency";
-    if (/code\s*red|unhealthy for (?:the )?general population/i.test(copy)) return "warning";
+    const declared = summarizeAirQualityAlert(a)?.level;
+    if (declared === "purple" || declared === "maroon") return "emergency";
+    if (declared === "red") return "warning";
+    if (declared === "orange") return "advisory";
+    // Fall back to descriptive severity only when the bulletin does not carry
+    // an explicit issued code. A Code Orange product can mention an earlier
+    // Purple period later in its body without becoming a Code Purple alert.
+    if (!declared && /very unhealthy|hazardous/i.test(copy)) return "emergency";
+    if (!declared && /unhealthy for (?:the )?general population/i.test(copy)) return "warning";
     // Code Orange and any other active official air-quality product are still
     // consequence-bearing health notices, never routine "info."
     return "advisory";

@@ -23,7 +23,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
-import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
+import { airQualityObservedAt, getAirQuality, isFreshAqiObservation, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
@@ -40,6 +40,7 @@ import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
 import { pulseAlertPriority, shouldAqiLead } from "@/lib/pulse/signal-priority";
+import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -65,13 +66,16 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/** AirNow's local observation hour (0-23) → "2 PM", so the AQI reads as a
- *  timestamped measurement, not a bare number. */
-function aqiClock(h: number): string {
-  const hr = ((h % 24) + 24) % 24;
-  const ampm = hr < 12 ? "AM" : "PM";
-  const h12 = hr % 12 === 0 ? 12 : hr % 12;
-  return `${h12} ${ampm}`;
+/** Give the observation its date as well as its hour. Around midnight, a bare
+ * "12 AM" can make a fresh reading look like yesterday's value. */
+function aqiClock(observation: AqiObservation): string {
+  const observedAt = airQualityObservedAt(observation);
+  if (!observedAt) return `${observation.dateObserved} · ${observation.hourObserved}:00`;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "numeric",
+  }).format(observedAt);
 }
 
 function nowClock(): string {
@@ -86,9 +90,15 @@ function nowClock(): string {
 /** Plain, deterministic local guidance for the alert families NWS publishes.
  * This deliberately avoids speculative AI copy: the alert type selects a
  * short action, while the official NWS record remains one tap away. */
-function alertGuidance(event: string, description = ""): string {
+function alertGuidance(
+  event: string,
+  headline = "",
+  description = "",
+  observations: AqiObservation[] = [],
+  now: Date,
+): string {
   const name = event.toLowerCase();
-  const copy = `${event} ${description}`;
+  const copy = `${event} ${headline} ${description}`;
   if (name.includes("tornado")) return "Move indoors, keep emergency alerts on, and be ready to use a lower interior room.";
   if (name.includes("severe thunderstorm")) return "Outdoor plans may need to move inside. Secure loose items and keep weather alerts on.";
   if (name.includes("flood")) return "Avoid low-water crossings and never drive through flooded roads. Check your route before leaving.";
@@ -96,13 +106,41 @@ function alertGuidance(event: string, description = ""): string {
   if (name.includes("winter") || name.includes("snow") || name.includes("ice")) return "Allow extra travel time and check road conditions before heading out.";
   if (name.includes("wind")) return "Secure loose outdoor items and use extra care around trees and power lines.";
   if (/air quality|smoke|ozone/i.test(copy)) {
-    if (/code\s*maroon|hazardous/i.test(copy)) {
+    const summary = summarizeAirQualityAlert({ event, headline, description });
+    if (summary?.levelLabel) {
+      const period = summary.forecastPeriod ? ` ${summary.forecastPeriod}` : "";
+      const coverageGap = !hasObservationForAlert(summary, observations.map((observation) => observation.parameter));
+      const elevatedNow = isElevatedAirQualityPeriodActive(summary, now);
+      const action = elevatedNow
+        ? "Everyone should avoid strenuous activity outside during this window."
+        : summary.level === "maroon"
+        ? "Avoid outdoor activity and follow official guidance."
+        : summary.level === "purple"
+          ? "Everyone should avoid strenuous activity outside."
+          : summary.level === "red"
+            ? "Everyone should reduce prolonged or heavy activity outside."
+            : "Sensitive groups should reduce strenuous activity outside.";
+      if (coverageGap && summary.pollutant === "pm25") {
+        const smokeTiming = summary.elevatedRange && summary.elevatedPeriod
+          ? ` could make PM2.5 unhealthy to very unhealthy ${summary.elevatedPeriod}`
+          : " may raise PM2.5 levels";
+        const improvement = summary.improvementPeriod
+          ? `, with improvement expected ${summary.improvementPeriod}`
+          : "";
+        const observation = observations.length > 0
+          ? "AirNow’s latest observations do not include PM2.5 and cannot measure that smoke"
+          : "AirNow has not returned a fresh PM2.5 observation for Frederick";
+        return `The MDE notice says wildfire smoke${smokeTiming}${improvement}. ${observation}, so ${action.charAt(0).toLowerCase()}${action.slice(1)}`;
+      }
+      return `MDE forecasts Code ${summary.levelLabel}${period}. ${action}`;
+    }
+    if (/hazardous/i.test(copy)) {
       return "The official alert warns of hazardous air. Avoid outdoor activity and follow official guidance.";
     }
-    if (/code\s*purple|very unhealthy/i.test(copy)) {
+    if (/very unhealthy/i.test(copy)) {
       return "The official alert warns of very unhealthy air. Avoid strenuous activity outside.";
     }
-    if (/code\s*red|unhealthy for (?:the )?general population/i.test(copy)) {
+    if (/unhealthy for (?:the )?general population/i.test(copy)) {
       return "The official alert warns of unhealthy air. Everyone should avoid prolonged or heavy outdoor activity.";
     }
     return "The official alert warns that air may be unhealthy for sensitive groups. Take it easier outside.";
@@ -335,6 +373,9 @@ export default async function PulsePage() {
   const allClear = !hasActive && !urgentDegraded;
 
   const leadAlert = activeAlerts[0];
+  const leadAirSummary = leadAlert ? summarizeAirQualityAlert(leadAlert) : null;
+  const activeAirAlert = activeAlerts.find((alert) => summarizeAirQualityAlert(alert) !== null);
+  const activeAirSummary = activeAirAlert ? summarizeAirQualityAlert(activeAirAlert) : null;
   const leadTraffic = traffic[0];
   const leadSchool = schoolAlerts[0];
   const leadSafety = safety[0];
@@ -351,21 +392,25 @@ export default async function PulsePage() {
     heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Pulse will retry automatically.";
   } else if (aqiLeads && aqiWorst) {
     heroLeadKey = "air";
-    heroLine = `Air quality is ${aqiWorst.category.name.toLowerCase()}.`;
+    heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
     heroSub = aqiGuidance(aqiWorst.category.id);
-    heroLeadMeta = `AQI ${aqiWorst.aqi} · as of ${aqiClock(aqiWorst.hourObserved)}`;
+    heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
     heroActionLabel = "See the air-quality reading";
   } else if (leadAlert) {
     heroLeadKey = "alerts";
-    heroLine = `${leadAlert.event} for Frederick County.`;
-    heroSub = alertGuidance(leadAlert.event, leadAlert.description);
-    heroLeadMeta = alertEndLabel(leadAlert.ends_at);
+    heroLine = leadAirSummary?.levelLabel
+      ? `MDE Code ${leadAirSummary.levelLabel} air-quality alert for Frederick County.`
+      : `${leadAlert.event} for Frederick County.`;
+    heroSub = alertGuidance(leadAlert.event, leadAlert.headline, leadAlert.description, freshAqiObs, marcNow);
+    heroLeadMeta = leadAirSummary
+      ? [leadAirSummary.forecastPeriod, alertEndLabel(leadAlert.ends_at)].filter(Boolean).join(" · ")
+      : alertEndLabel(leadAlert.ends_at);
     heroActionLabel = "Read the Frederick alert";
   } else if (aqiActive && aqiWorst) {
     heroLeadKey = "air";
-    heroLine = `Air quality is ${aqiWorst.category.name.toLowerCase()}.`;
+    heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
     heroSub = aqiGuidance(aqiWorst.category.id);
-    heroLeadMeta = `AQI ${aqiWorst.aqi} · as of ${aqiClock(aqiWorst.hourObserved)}`;
+    heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
     heroActionLabel = "See the air-quality reading";
   } else if (outagesActive) {
     heroLeadKey = "power";
@@ -560,6 +605,12 @@ export default async function PulsePage() {
         : aqiWorst.category.id === 2
           ? "var(--app-accent)"
           : "var(--app-cool)";
+  const aqiPollutant = aqiWorst ? aqiParameterLabel(aqiWorst.parameter) : null;
+  const aqiPollutantTitle = aqiPollutant?.replace(/^./, (c) => c.toUpperCase()) ?? null;
+  const missingAlertObservation = Boolean(
+    activeAirSummary?.pollutant
+    && !hasObservationForAlert(activeAirSummary, freshAqiObs.map((observation) => observation.parameter)),
+  );
   const aqiBody = aqiWorst ? (
     <div className="space-y-3">
       <div
@@ -572,24 +623,32 @@ export default async function PulsePage() {
         <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           <span className="font-semibold" style={{ color: "var(--app-ink)" }}>{aqiWorst.category.name}</span>
           <br />
-          {aqiWorst.parameter} · {aqiWorst.reportingArea} · as of {aqiClock(aqiWorst.hourObserved)}
+          {aqiPollutantTitle} · {aqiWorst.reportingArea} · observed {aqiClock(aqiWorst)}
         </span>
       </div>
-      {aqiObs && aqiObs.length > 1 && (
+      {missingAlertObservation && activeAirSummary?.pollutant === "pm25" && (
+        <p
+          className="rounded-[var(--app-radius-sm)] border px-3 py-2 text-[11px] leading-relaxed"
+          style={{ borderColor: "var(--app-warning)", background: "var(--app-warning-tint-6)", color: "var(--app-ink-2)" }}
+        >
+          The latest AirNow observations do not include PM2.5, so they do not measure the smoke named in the MDE alert.
+        </p>
+      )}
+      {freshAqiObs.length > 1 && (
         <div className="space-y-1.5">
-          {aqiObs.map((o) => (
+          {freshAqiObs.map((o) => (
             <Row
               key={o.parameter}
               tone={o.category.id >= 4 ? "danger" : o.category.id >= 3 ? "warning" : o.category.id === 2 ? "cool" : "muted"}
-              title={o.parameter}
+              title={aqiParameterLabel(o.parameter).replace(/^./, (c) => c.toUpperCase())}
               body={`AQI ${o.aqi} · ${o.category.name}`}
-              meta={[o.reportingArea]}
+              meta={[o.reportingArea, `Observed ${aqiClock(o)}`]}
             />
           ))}
         </div>
       )}
       <p className="px-1 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Readings come from the nearest EPA monitors within 25 miles and update hourly.
+        Latest preliminary AirNow reporting-area observation. Values are pollutant-specific and update hourly.
       </p>
     </div>
   ) : null;
@@ -656,7 +715,7 @@ export default async function PulsePage() {
             hl: wxHl,
           },
           sourceLabel: "NWS · weather.gov",
-          body: <PulseWeatherPanel forecast={forecast} aqiObs={aqiObs} />,
+          body: <PulseWeatherPanel forecast={forecast} aqiObs={freshAqiObs} />,
         } as PulseTile]
       : []),
     // ── Numeric feeds → animated gauge rings ──
@@ -665,14 +724,14 @@ export default async function PulsePage() {
     ...(aqiWorst
       ? [{
           key: "air",
-          label: "Air quality",
+          label: aqiPollutantTitle ? `Current ${aqiPollutant}` : "Current AQI",
           iconName: "Wind",
-          countLabel: `AQI ${aqiWorst.aqi}`,
+          countLabel: aqiObservationLabel(aqiWorst.parameter, aqiWorst.aqi),
           accent: aqiAccent,
           active: aqiActive,
           attention: situationActive.air,
           kind: "gauge",
-          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `AQI · ${aqiShort(aqiWorst.category.id)}` },
+          gauge: { value: aqiWorst.aqi, pct: aqiPct, unit: `Latest ${aqiPollutant ?? "AQI"} · ${aqiShort(aqiWorst.category.id)}` },
           sourceLabel: "AirNow · EPA",
           body: aqiBody,
         } as PulseTile]
@@ -891,7 +950,7 @@ export default async function PulsePage() {
                 <Row
                   tone={tone}
                   title={a.event}
-                  body={alertGuidance(a.event, a.description)}
+                  body={alertGuidance(a.event, a.headline, a.description, freshAqiObs, marcNow)}
                   meta={["Frederick County", alertEndLabel(a.ends_at)]}
                 />
                 <a
@@ -1220,10 +1279,10 @@ export default async function PulsePage() {
         key: "alerts",
       });
     }
-    if (aqiActive && aqiWorst && !/air quality/i.test(leadAlert?.event ?? "")) {
+    if (aqiWorst && (aqiActive || Boolean(activeAirSummary))) {
       addHeroChip({
-        tone: aqiWorst.category.id >= 4 ? "danger" : "warning",
-        label: `Air ${aqiWorst.category.name.toLowerCase()} · AQI ${aqiWorst.aqi}`,
+        tone: aqiWorst.category.id >= 4 ? "danger" : aqiWorst.category.id >= 3 ? "warning" : "cool",
+        label: `${aqiObservationLabel(aqiWorst.parameter, aqiWorst.aqi)} · ${aqiClock(aqiWorst)}`,
         key: "air",
       });
     }
