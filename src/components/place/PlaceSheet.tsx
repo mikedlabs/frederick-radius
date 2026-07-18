@@ -218,7 +218,8 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         )}
 
         {/* Below-hero content lives inside the standard padding. */}
-        <div className="px-5 pt-4">
+        {/* reveal-up: same settle-in cascade as the event sheet. */}
+        <div className="reveal-up px-5 pt-4">
           {/* Title row only appears when there is NO photo — when a
            *  photo exists the name is overlaid above. We still surface
            *  the category eyebrow + name here for the photoless case

@@ -151,7 +151,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
           </div>
         ) : null}
 
-        <div className="px-5 pt-4">
+        {/* reveal-up: the sheet's blocks settle top-to-bottom on open —
+         *  the one cascade grammar every surface shares. */}
+        <div className="reveal-up px-5 pt-4">
           {!event.hero_image && (
             <header className="flex items-start gap-3">
               <span

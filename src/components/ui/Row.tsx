@@ -34,7 +34,7 @@ export function RowList({
 }) {
   return (
     <ul
-      className={`overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&>li:last-child>*]:border-b-0 ${className}`.trim()}
+      className={`reveal-up overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&>li:last-child>*]:border-b-0 ${className}`.trim()}
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
