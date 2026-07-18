@@ -202,6 +202,12 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // missing records and swaps in the stable loading region until one request
   // resolves them.
   const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData>>(() => new Map());
+  // Which slugsKey the by-slugs request has ANSWERED (success or collapse).
+  // Pending must key off this, not off every slug being present in the map:
+  // the API quietly drops unknown slugs, so a single stale ref (a place
+  // later removed from the catalog) would otherwise pin the whole page on
+  // the loading skeleton forever.
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mounted) return;
@@ -217,6 +223,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         const m = new Map<string, PlaceCardData>();
         for (const p of data.places) m.set(p.slug, p);
         setPlacesBySlug(m);
+        setResolvedKey(slugsKey);
       })
       .catch((err) => {
         // AbortError = navigated/unmounted; ignore. Anything else,
@@ -224,6 +231,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
         // than spinning forever.
         if (err && err.name !== "AbortError") {
           setPlacesBySlug(new Map());
+          setResolvedKey(slugsKey);
         }
       });
     return () => ctrl.abort();
@@ -573,7 +581,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
     return m;
   }, [items]);
 
-  const placesPending = slugsToFetch.some((slug) => !placesBySlug.has(slug));
+  const placesPending = slugsToFetch.length > 0 && resolvedKey !== slugsKey;
   if (placesPending) {
     return (
       <div aria-busy="true" className="min-h-[34rem] space-y-4">
