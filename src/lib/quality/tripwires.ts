@@ -6,6 +6,8 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { askFrederick } from "@/lib/ask/answer";
 import ENRICHMENT from "@/data/places-enrichment.json" with { type: "json" };
+import BUSINESS_INFO from "@/data/business-info.json" with { type: "json" };
+import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 
 /**
  * End-to-end tripwires — the daily checks for the failure classes that
@@ -147,6 +149,55 @@ export async function askCanaryTripwire(): Promise<Anomaly[]> {
   }
 }
 
+/**
+ * The scheduled extraction agents (business deep-info, venue lineups)
+ * commit their output to the repo — so a HEALTHY pipeline means the
+ * bundled JSON carries recent fetchedAt stamps. When the newest stamp
+ * ages past the window, the agent has stopped extracting, whatever its
+ * workflow badge claims: the business-info agent ran 49 straight GREEN
+ * no-ops over seven weeks with an empty ANTHROPIC_API_KEY secret before
+ * a human noticed the data was frozen (July 2026). This makes "the moat
+ * stopped growing" a red line on the same channel as everything else.
+ *
+ * Windows are generous multiples of each agent's daily schedule so a
+ * few no-runner days (account-level Actions limits) don't flap.
+ */
+export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
+  const out: Anomaly[] = [];
+  const check = (
+    name: string,
+    stamps: Array<string | undefined>,
+    maxDays: number,
+    hint: string,
+  ) => {
+    const newest = stamps.filter(Boolean).sort().at(-1);
+    if (!newest) return; // dataset empty/never run — nothing to measure
+    const days = Math.floor((now.getTime() - Date.parse(newest)) / 86_400_000);
+    if (Number.isFinite(days) && days > maxDays) {
+      out.push({
+        source: name,
+        kind: "ingest_stale",
+        detail: `${name} newest fetchedAt is ${days}d old (window ${maxDays}d) — the extraction agent has stopped committing. ${hint}`,
+      });
+    }
+  };
+  check(
+    "business-info",
+    Object.values(BUSINESS_INFO as Record<string, { source?: { fetchedAt?: string } }>).map(
+      (v) => v.source?.fetchedAt,
+    ),
+    10,
+    "Check the ingest-business-info workflow and the ANTHROPIC_API_KEY repo secret.",
+  );
+  check(
+    "venue-events",
+    (VENUE_EVENTS as Array<{ source?: { fetchedAt?: string } }>).map((v) => v.source?.fetchedAt),
+    10,
+    "Check the ingest-venues workflow and the ANTHROPIC_API_KEY repo secret.",
+  );
+  return out;
+}
+
 export type TripwireReport = {
   anomalies: Anomaly[];
   /** One line per check: name + green/red. */
@@ -161,13 +212,15 @@ export async function runTripwires(now: Date = new Date()): Promise<TripwireRepo
     eventsTripwire(now),
     askCanaryTripwire(),
   ]);
+  const ingest = ingestFreshnessTripwire(now);
   return {
-    anomalies: [...photos, ...transit, ...events, ...ask],
+    anomalies: [...photos, ...transit, ...events, ...ask, ...ingest],
     checks: [
       { name: "photos", green: photos.length === 0 },
       { name: "transit", green: transit.length === 0 },
       { name: "events-today", green: events.length === 0 },
       { name: "ask-canary", green: ask.length === 0 },
+      { name: "ingest-freshness", green: ingest.length === 0 },
     ],
   };
 }

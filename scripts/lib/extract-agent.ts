@@ -300,18 +300,29 @@ export const nowISO = () => new Date().toISOString();
  * Preflight: verify the API key exists AND is accepted, with a clear,
  * actionable message — so a missing/invalid key in CI shows an obvious
  * one-liner instead of a buried stack trace. Returns true if good;
- * prints guidance + returns false otherwise (caller exits 0, not a crash,
- * so the workflow reads as "nothing to do" rather than a hard failure).
+ * prints guidance otherwise.
+ *
+ * In CI a bad key EXITS 1 so the workflow shows RED. The original
+ * design returned false and let the caller exit 0 ("nothing to do") —
+ * and the business-info agent then ran 49 straight GREEN no-ops over
+ * seven weeks with an empty secret before anyone noticed the data had
+ * stopped moving. A silent skip is the one failure mode a scheduled
+ * agent must not have. Local runs still exit soft.
  */
+function failPreflight(msg: string): boolean {
+  console.error(msg);
+  if (process.env.CI) process.exit(1);
+  return false;
+}
+
 export async function preflightKey(): Promise<boolean> {
   if (!API_KEY) {
-    console.error(
+    return failPreflight(
       "\n✗ ANTHROPIC_API_KEY is not set.\n" +
         "  → Add it as a GitHub repo secret: Settings → Secrets and variables\n" +
         "    → Actions → New repository secret → name it exactly ANTHROPIC_API_KEY.\n" +
-        "  The agent can't extract anything without it; skipping this run.\n",
+        "  The agent can't extract anything without it.\n",
     );
-    return false;
   }
   // Cheap liveness ping so an INVALID or out-of-credit key reports
   // precisely, instead of failing 60 times mid-run.
@@ -329,16 +340,13 @@ export async function preflightKey(): Promise<boolean> {
     }),
   });
   if (r.status === 401) {
-    console.error("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n");
-    return false;
+    return failPreflight("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n");
   }
   if (r.status === 429) {
-    console.error("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n");
-    return false;
+    return failPreflight("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n");
   }
   if (!r.ok && r.status !== 400) {
-    console.error(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`);
-    return false;
+    return failPreflight(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`);
   }
   console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
   return true;
