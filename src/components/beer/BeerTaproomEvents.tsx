@@ -164,7 +164,7 @@ export default async function BeerTaproomEvents() {
         </header>
 
         {tonight.length > 0 && (
-          <ol className="mt-5 divide-y divide-black/10 border-y border-black/12">
+          <ol className="reveal-up mt-5 divide-y divide-black/10 border-y border-black/12">
             {tonight.map(({ event, brewerySlug }) => {
               const starts = new Date(event.starts_at);
               const started = starts <= now;
@@ -192,7 +192,7 @@ export default async function BeerTaproomEvents() {
         )}
 
         {weekRows.length > 0 ? (
-          <ol className={`${tonight.length > 0 ? "mt-3 border-b" : "mt-5 border-y"} divide-y divide-black/10 border-black/12`}>
+          <ol className={`reveal-up ${tonight.length > 0 ? "mt-3 border-b" : "mt-5 border-y"} divide-y divide-black/10 border-black/12`}>
             {weekRows.map(({ event, brewerySlug }) => {
               const starts = new Date(event.starts_at);
               return (
