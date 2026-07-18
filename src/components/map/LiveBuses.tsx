@@ -62,7 +62,13 @@ const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
 );
 
 const POLL_MS = 15_000;
-const GLIDE_MS = 1400;
+// Glide paced to the poll: with a 1.4s glide against a 15s poll, buses
+// sprinted for a moment and then sat frozen for ~13s - burst-and-freeze
+// (owner report, 2026-07-19: the motion could look better). Easing across
+// (just under) the whole window reads as continuous driving at believable
+// speed, still only ever toward genuinely reported fixes along the real
+// route shape - paced presentation, never extrapolation.
+const GLIDE_MS = 14_000;
 
 // --- Route-polyline geometry (snap-to-route glide) --------------------------
 // Distances are in lat-corrected degrees: cheap, and only ever compared to
@@ -262,7 +268,10 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const step = (now: number) => {
       const t = dur === 0 ? 1 : Math.min(1, (now - start) / dur);
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
+      // Long glides read as steady driving only when LINEAR; easeInOut
+      // over 14s looks like a bus lurching between every fix. Short
+      // glides (reduced-data snaps) keep the soft ease.
+      const e = dur >= 5_000 ? t : t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const next: Record<string, Pos> = {};
       for (const tw of tweens) {
         if (tw.mode === "route") {
