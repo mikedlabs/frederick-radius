@@ -534,6 +534,27 @@ function listItemSentence(value: string): string {
 
 /** Normalize model output for Ask Radius surfaces, which render plain text. */
 export function normalizePlainTextAnswer(s: string): string {
+  return houseDashes(normalizePlainTextAnswerInner(s));
+}
+
+/**
+ * No em dashes in user-facing copy (docs/VOICE.md) — every other surface
+ * converts them at the boundary (cleanFeedText); model prose must clear
+ * the same bar. Digit ranges were already normalized to hyphens and
+ * SPACED dashes to sentences inside the inner pass, but the model also
+ * glues dashes to words ("7:00 PM—a live comedy show", measured live on
+ * prod) and those survived. A comma is the house substitute that reads
+ * correctly in the appositive constructions the model actually produces.
+ */
+function houseDashes(s: string): string {
+  return s
+    .replace(/\s*[–—]\s*/g, ", ")
+    .replace(/,\s*,/g, ",")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function normalizePlainTextAnswerInner(s: string): string {
   const lines = stripInlineMarkdown(s)
     .split(/\r?\n/)
     .map((line) => line.trim())

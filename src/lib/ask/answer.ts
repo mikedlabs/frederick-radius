@@ -1465,10 +1465,24 @@ export async function askFrederick(
   }
 
   let eventsBlock = "";
+  // Every event the PROMPT shows the model, kept for citation matching.
+  // The response `sources` list holds only the top-ranked slice, but the
+  // model reads the whole block and often (correctly) recommends an event
+  // from outside that slice — and the citation filter then found nothing
+  // to keep, so a good answer rendered with ZERO source cards (measured
+  // live: "what should i do tonight" named two real events, sources: 0).
+  let eventCitationPool: AskSource[] = [];
   if (anchor && scopedLoadedEventPool) {
     try {
       const ctx = eventContextLines(scopedLoadedEventPool, anchor, now, q);
       eventsBlock = `${ctx.block}\n`;
+      eventCitationPool = ctx.picked.map((e) => ({
+        slug: e.slug,
+        name: e.title,
+        category: "event",
+        city: e.municipality_name ?? "",
+        href: `/events/${e.slug}`,
+      }));
       for (const e of rankForSources(ctx.picked, q).slice(0, answerSourceLimit)) {
         sources.push({ slug: e.slug, name: e.title, category: "event", city: e.municipality_name ?? "", href: `/events/${e.slug}` });
       }
@@ -1810,12 +1824,19 @@ export async function askFrederick(
     }
   }
   const renderedAnswer = answer ?? deterministicAnswer({ count: sources.length });
+  // Citation candidates = everything the prompt actually showed the model,
+  // not just the ranked response slice — a named pick must always find its
+  // card. Response-slice entries keep priority on slug collisions.
+  const citationCandidates = [
+    ...sources,
+    ...eventCitationPool.filter((e) => !sources.some((s) => s.slug === e.slug)),
+  ];
   return {
     status: answer ? "answered" : sources.length > 0 ? "matches" : "empty",
     configured: hasKey(),
     usedModel: Boolean(answer),
     answer: renderedAnswer,
-    sources: answer ? filterCitedSources(sources, renderedAnswer) : sources,
+    sources: answer ? filterCitedSources(citationCandidates, renderedAnswer) : sources,
     context: retrieval.meta.contextLabel,
     intent,
     actions: responseActions,
