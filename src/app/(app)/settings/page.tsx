@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, LogOut, Mail } from "lucide-react";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
+import DataBackup from "@/components/settings/DataBackup";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
 
@@ -138,6 +139,11 @@ export default async function SettingsPage() {
       </section>
 
       <PreferencesPanel />
+
+      {/* Device-only data escape hatch: download / restore the fr:*
+          localStorage set as a plain JSON file. Sits below preferences —
+          it's insurance, not a daily control. */}
+      <DataBackup />
     </div>
   );
 }
