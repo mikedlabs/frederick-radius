@@ -25,6 +25,7 @@ export type IntentMatchable = Pick<
   "slug" | "name" | "category" | "subcategories" | "short_blurb" | "primary_type"
 >;
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
+import { isPizzaPlace } from "@/data/cravings";
 import { cuisinesOf } from "@/lib/cuisine";
 import { ACCENTS } from "@/data/categories";
 
@@ -385,21 +386,18 @@ export const INTENTS: Intent[] = [
     preferOpen: true,
     subIntents: [
       { key: "restaurants", type: "category", label: "Restaurants", icon: "Utensils", match: (p) => p.category === "restaurant" },
-      // Pizza: match places categorized as pizza OR places with
-      // "pizza" / "pizzeria" / "pie" in the name (Pretzel & Pizza
-      // Creations, Wine Kitchen's pizza menu, etc.). Strict category
-      // matching alone was hiding ~half the actual pizza places
-      // because Google's primary_type lands most of them in
-      // "restaurant" and only a few in "pizza_restaurant".
+      // Pizza: the canonical matcher (isPizzaPlace) — category, curated
+      // subcategory, pizza/pizzeria name, or a pizza_* Google type. Strict
+      // category matching alone was hiding ~half the actual pizza places
+      // because Google's primary_type lands most of them in "restaurant"
+      // and only a few in "pizza_restaurant". Shared with /category/pizza
+      // and the want answer so the surfaces can never disagree.
       {
         key: "pizza",
         type: "category",
         label: "Pizza",
         icon: "Pizza",
-        match: (p) =>
-          p.category === "pizza" ||
-          (p.subcategories ?? []).includes("pizza") ||
-          /\b(pizza|pizzeria)\b/i.test(p.name),
+        match: (p) => isPizzaPlace(p),
       },
       { key: "bars",        type: "category", label: "Bars",        icon: "Wine",     match: (p) => p.category === "bar" },
       { key: "breweries",   type: "category", label: "Breweries",   icon: "Beer",     match: (p) => p.category === "brewery" && !isWinery(p) },

@@ -4,6 +4,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
+import { isPizzaPlace } from "@/data/cravings";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
@@ -1400,8 +1401,17 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     // for them. See CATEGORY_CHILDREN.
     const children = CATEGORY_CHILDREN.get(ctx.category) ?? [];
     const match = new Set<string>([ctx.category, ...children]);
+    // Pizza is name-evidenced, not just category-evidenced: Google's
+    // primary_type files most local pizzerias under "restaurant" /
+    // "italian_restaurant", so /category/pizza showed 17 of the catalog's
+    // 23 pizza places. Same canonical matcher the map's Pizza facet uses
+    // (isPizzaPlace) — a no-op for every other category.
+    const wantsPizza = match.has("pizza");
     results = results.filter(
-      (p) => match.has(p.category) || (p.subcategories ?? []).some((s) => match.has(s)),
+      (p) =>
+        match.has(p.category) ||
+        (p.subcategories ?? []).some((s) => match.has(s)) ||
+        (wantsPizza && isPizzaPlace(p)),
     );
   }
   if (ctx.municipality) {
