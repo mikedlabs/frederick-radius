@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildIcs } from "@/lib/ics";
+import { buildIcs, buildIcsFeed } from "@/lib/ics";
 
 describe("buildIcs", () => {
   it("emits a valid timed VEVENT with CRLF joins and UTC stamps", () => {
@@ -72,5 +72,37 @@ describe("buildIcs", () => {
     expect(ics).not.toContain("LOCATION:");
     expect(ics).not.toContain("DESCRIPTION:");
     expect(ics).not.toContain("URL:");
+  });
+});
+
+describe("buildIcsFeed", () => {
+  const ev = (uid: string) => ({
+    uid,
+    title: `Event ${uid}`,
+    starts_at: "2026-07-20T22:00:00Z",
+    ends_at: "2026-07-21T00:00:00Z",
+  });
+
+  it("emits one calendar with a name, refresh hints, and every VEVENT", () => {
+    const ics = buildIcsFeed("Frederick County events", [ev("a"), ev("b"), ev("c")]);
+    expect(ics.match(/BEGIN:VCALENDAR/g)).toHaveLength(1);
+    expect(ics.match(/END:VCALENDAR/g)).toHaveLength(1);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(3);
+    expect(ics).toContain("X-WR-CALNAME:Frederick County events");
+    expect(ics).toContain("REFRESH-INTERVAL;VALUE=DURATION:PT6H");
+    expect(ics).toContain("X-PUBLISHED-TTL:PT6H");
+    expect(ics).toContain("UID:b@frederickradius.app");
+  });
+
+  it("escapes the calendar name like any other TEXT field", () => {
+    const ics = buildIcsFeed("Music, markets; more", [ev("a")]);
+    expect(ics).toContain("X-WR-CALNAME:Music\\, markets\\; more");
+  });
+
+  it("stays a valid empty calendar with zero events", () => {
+    const ics = buildIcsFeed("Quiet week", []);
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).not.toContain("BEGIN:VEVENT");
+    expect(ics.endsWith("END:VCALENDAR")).toBe(true);
   });
 });

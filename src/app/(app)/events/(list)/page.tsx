@@ -364,6 +364,51 @@ async function EventsBoard({
           <MunicipalEvents series={civicSeries} summary={ingestedSummary} />
         </CollapsibleSection>
       )}
+
+      {/* ── 8. SUBSCRIBE — the county in your own calendar app. webcal://
+          is the subscription protocol every major calendar client claims
+          (Apple/Outlook natively; Google via "from URL"), backed by
+          /api/calendar/[feed]. The feed refreshes itself, so additions and
+          cancellations arrive without reopening the app. */}
+      <section aria-labelledby="events-subscribe-heading" className="border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+        <h2
+          id="events-subscribe-heading"
+          className="text-[11px] font-bold uppercase tracking-[0.12em]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Put the county on your calendar
+        </h2>
+        <p className="mt-1.5 max-w-[46ch] text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Subscribe once and your calendar keeps itself current, new events and cancellations
+          included. Works with Apple, Google, and Outlook calendars.
+        </p>
+        <ul className="mt-3 space-y-1.5">
+          <li>
+            <a
+              href="webcal://frederickradius.app/api/calendar/all.ics"
+              className="tap-44-y inline-flex items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
+              style={{ color: "var(--app-ink)" }}
+            >
+              All county events
+              <span className="font-mono text-[10.5px] font-normal" style={{ color: "var(--app-ink-3)" }}>
+                next 30 days
+              </span>
+            </a>
+          </li>
+          <li>
+            <a
+              href="webcal://frederickradius.app/api/calendar/live-music.ics"
+              className="tap-44-y inline-flex items-center gap-2 text-[13px] font-semibold underline decoration-[var(--app-brand)] underline-offset-4"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Live music only
+              <span className="font-mono text-[10.5px] font-normal" style={{ color: "var(--app-ink-3)" }}>
+                next 30 days
+              </span>
+            </a>
+          </li>
+        </ul>
+      </section>
     </>
   );
 }
