@@ -1902,18 +1902,67 @@ function deterministicAnswer({
       : contextLabel.replace(/^ranked from\s+/i, "");
     return `Here ${count === 1 ? "is" : "are"} the ${count} closest verified match${count === 1 ? "" : "es"} from ${anchor}.`;
   }
-  if (downtown) {
-    return `I found ${count} verified catalog match${count === 1 ? "" : "es"} near downtown Frederick${openNow ? " with confirmed open hours" : ""}.`;
+  const sourceList = sources ?? [];
+  if (eventIntent) {
+    if (sourceList.length > 0) {
+      const top = sourceList[0];
+      return count > 1
+        ? `${top.name} is the closest fit, with ${count - 1} more in the window below.`
+        : `${top.name} is the one current match, so the card below has the details.`;
+    }
+    return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
   }
-  if (eventIntent) return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
+  if (sourceList.length > 0) {
+    return pickLead(sourceList, category?.toLowerCase() ?? null, { downtown });
+  }
+  if (downtown) {
+    return `I found ${count} verified match${count === 1 ? "" : "es"} near downtown Frederick${openNow ? " with confirmed open hours" : ""}.`;
+  }
   if (category) {
     const subject = category.toLowerCase();
-    if (count === 1) {
-      return `I found one Radius listing with evidence for ${subject}${openNow ? " and confirmed open hours" : ""}.`;
-    }
-    return `I found ${count} Radius listings with evidence for ${subject}${openNow ? " and confirmed open hours" : ""}.`;
+    return `I found ${count} verified match${count === 1 ? "" : "es"} for ${subject}${openNow ? " with confirmed open hours" : ""}.`;
   }
-  return `I found ${count} catalog result${count === 1 ? "" : "s"} that match the wording of your request.`;
+  return `I found ${count} result${count === 1 ? "" : "s"} that match the wording of your request.`;
+}
+
+/**
+ * Source-led answer lines. The old templates narrated the RETRIEVAL —
+ * "I found 4 Radius listings with evidence for family fun" — which is
+ * accurate, and exactly how a database talks. The reader asked about
+ * their Saturday; the first sentence has to answer with the actual
+ * pick, in the calm-local-expert voice. Every word here is read off
+ * the verified source rows (name, city, live open status) — composed,
+ * never invented, and the honest caveat branches above this stay
+ * untouched.
+ */
+function pickLead(
+  sources: readonly AskSource[],
+  subject: string | null,
+  opts: { downtown?: boolean } = {},
+): string {
+  const top = sources[0];
+  const where = top.city ? ` in ${top.city}` : "";
+  const status = top.status ?? "";
+  let liveFact = "";
+  let m = status.match(/^Open until\s+(.+)$/i);
+  if (m) liveFact = ` It's open until ${m[1]}.`;
+  else if (/^Open now\b/i.test(status) || /^Open\b\s*$/i.test(status)) liveFact = " It's open now.";
+  else if ((m = status.match(/^Opens\s+(.+)$/i))) liveFact = ` It opens ${m[1]}.`;
+
+  const subjectTail = subject ? ` for ${subject}` : "";
+  const lead = `${top.name}${where} is the strongest verified pick${subjectTail} on file.`;
+
+  const rest = sources.length - 1;
+  const nearTail = opts.downtown ? " near downtown" : "";
+  let more = "";
+  if (rest === 1) {
+    more = ` ${sources[1].name} is the other verified match${nearTail}, below.`;
+  } else if (rest > 1) {
+    more = ` ${rest} more verified picks${nearTail} are below, led by ${sources[1].name}.`;
+  } else {
+    more = " It's the only verified match, so the card below has the details.";
+  }
+  return `${lead}${liveFact}${more}`;
 }
 
 function regionalAnswer(regions: readonly CountyRegion[], sources: readonly AskSource[]): string {
