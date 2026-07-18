@@ -27,7 +27,7 @@ export default function BeerHero({ photos }: { photos: BreweryPhotoMap }) {
               id="beer-hero-title"
               className="mt-3 max-w-none font-serif text-[44px] font-semibold leading-[0.82] tracking-[-0.055em] sm:mt-5 sm:max-w-[9ch] sm:text-[clamp(4rem,12vw,7.8rem)] sm:leading-[0.8]"
             >
-              Frederick beer,<br />
+              Frederick beer,<br />{" "}
               <span className="text-[#85501f]">on tap.</span>
             </h1>
             <p className="mt-3 max-w-[33rem] text-[13px] leading-[1.45] text-black/66 sm:mt-6 sm:text-[16px] sm:leading-relaxed">

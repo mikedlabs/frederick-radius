@@ -62,6 +62,19 @@ const QUESTIONS = [
     q: "good breakfast spot downtown",
     must: [{ re: /breakfast|brunch|coffee|caf[eé]|bak(ery|ed)|diner/i, why: "the ranked breakfast picks are routed in now" }],
   },
+  {
+    // A show can be a fixed appointment, not something Radius was asked to
+    // discover. This once fell into the live-music fallback and ignored the
+    // dinner job entirely.
+    q: "I need a quiet dinner downtown before a 7:30 show tonight",
+    must: [
+      { re: /dinner|restaurant/i, why: "answers the dinner job" },
+      { re: /7:30|before (?:the |a )?show/i, why: "keeps the fixed show deadline" },
+    ],
+    mustNot: [
+      { re: /live[- ]music|music calendar/i, why: "does not invent a live-music request" },
+    ],
+  },
 ];
 
 import { readFileSync } from "node:fs";
@@ -83,7 +96,7 @@ function cookieHeaderFromJar(path) {
 const cookie = process.env.COOKIE_JAR ? cookieHeaderFromJar(process.env.COOKIE_JAR) : "";
 
 let failures = 0;
-for (const { q, must = [] } of QUESTIONS) {
+for (const { q, must = [], mustNot = [] } of QUESTIONS) {
   const started = Date.now();
   let d;
   try {
@@ -110,6 +123,7 @@ for (const { q, must = [] } of QUESTIONS) {
   if (d.answer) {
     for (const { re, why } of NEVER) if (re.test(d.answer)) problems.push(`NEVER: ${why}`);
     for (const { re, why } of must) if (!re.test(d.answer)) problems.push(`MISSING: ${why}`);
+    for (const { re, why } of mustNot) if (re.test(d.answer)) problems.push(`FORBIDDEN: ${why}`);
   }
   if (problems.length) {
     failures++;

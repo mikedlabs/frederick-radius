@@ -114,6 +114,7 @@ describe("weatherVerdict safety overrides", () => {
     }));
     expect(v.tone).toBe("rough");
     expect(v.line).toMatch(/very unhealthy.*air|air.*very unhealthy/i);
+    expect(v.line).toMatch(/official air-quality alert/i);
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 
@@ -124,6 +125,7 @@ describe("weatherVerdict safety overrides", () => {
     }));
     expect(v.tone).toBe("rough");
     expect(v.line).toMatch(/unhealthy.*air|air.*unhealthy/i);
+    expect(v.line).toMatch(/current air/i);
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 

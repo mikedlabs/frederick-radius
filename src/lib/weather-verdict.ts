@@ -144,15 +144,18 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   const airAlert = activeAlerts.find((a) => AIR_ALERT.test(`${a.event} ${a.headline ?? ""} ${a.description ?? ""}`));
   const airCopy = `${airAlert?.event ?? ""} ${airAlert?.headline ?? ""} ${airAlert?.description ?? ""}`;
   const measuredAqi = airQuality && Number.isFinite(airQuality.aqi) ? airQuality.aqi : null;
-  const hazardousAir = /code\s*maroon|hazardous/i.test(airCopy)
-    || (measuredAqi !== null && measuredAqi >= 301);
-  const veryUnhealthyAir = /code\s*purple|very unhealthy/i.test(airCopy)
-    || (measuredAqi !== null && measuredAqi >= 201);
-  const unhealthyAir = /code\s*red|\bunhealthy\b.*general population/i.test(airCopy)
-    || (measuredAqi !== null && measuredAqi >= 151);
-  const sensitiveAir = Boolean(airAlert)
-    || /code\s*orange|sensitive groups/i.test(airCopy)
-    || (measuredAqi !== null && measuredAqi >= 101);
+  const hazardousAirAlert = /code\s*maroon|hazardous/i.test(airCopy);
+  const veryUnhealthyAirAlert = /code\s*purple|very unhealthy/i.test(airCopy);
+  const unhealthyAirAlert = /code\s*red|\bunhealthy\b.*general population/i.test(airCopy);
+  const sensitiveAirAlert = Boolean(airAlert) || /code\s*orange|sensitive groups/i.test(airCopy);
+  const hazardousAirMeasured = measuredAqi !== null && measuredAqi >= 301;
+  const veryUnhealthyAirMeasured = measuredAqi !== null && measuredAqi >= 201;
+  const unhealthyAirMeasured = measuredAqi !== null && measuredAqi >= 151;
+  const sensitiveAirMeasured = measuredAqi !== null && measuredAqi >= 101;
+  const hazardousAir = hazardousAirAlert || hazardousAirMeasured;
+  const veryUnhealthyAir = veryUnhealthyAirAlert || veryUnhealthyAirMeasured;
+  const unhealthyAir = unhealthyAirAlert || unhealthyAirMeasured;
+  const sensitiveAir = sensitiveAirAlert || sensitiveAirMeasured;
 
   // Immediate/severe non-air hazards lead lower-severity air products. A Code
   // Orange notice must never hide a Tornado or Flash Flood Warning simply
@@ -179,25 +182,33 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   }
   if (hazardousAir) {
     return {
-      line: "The air is hazardous today. Avoid outdoor activity and follow official guidance.",
+      line: hazardousAirMeasured
+        ? "The current air is hazardous. Avoid outdoor activity and follow official guidance."
+        : "An official air-quality alert warns of hazardous conditions today. Avoid outdoor activity and follow official guidance.",
       tone: "rough",
     };
   }
   if (veryUnhealthyAir) {
     return {
-      line: "The air is very unhealthy today. Avoid strenuous activity outside.",
+      line: veryUnhealthyAirMeasured
+        ? "The current air is very unhealthy. Avoid strenuous activity outside."
+        : "An official air-quality alert warns of very unhealthy conditions today. Avoid strenuous activity outside.",
       tone: "rough",
     };
   }
   if (unhealthyAir) {
     return {
-      line: "The air is unhealthy today. Avoid prolonged or heavy activity outside.",
+      line: unhealthyAirMeasured
+        ? "The current air is unhealthy. Avoid prolonged or heavy activity outside."
+        : "An official air-quality alert warns of unhealthy conditions today. Avoid prolonged or heavy activity outside.",
       tone: "rough",
     };
   }
   if (sensitiveAir) {
     return {
-      line: "Air quality is unhealthy for sensitive groups. Reduce strenuous activity outside.",
+      line: sensitiveAirMeasured
+        ? "The current air is unhealthy for sensitive groups. Reduce strenuous activity outside."
+        : "An official air-quality alert warns of unhealthy conditions for sensitive groups. Reduce strenuous activity outside.",
       tone: "rough",
     };
   }
