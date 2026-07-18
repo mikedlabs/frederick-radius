@@ -215,6 +215,8 @@ import {
 } from "./constants";
 import MapOverlays from "./MapOverlays";
 import LiveBuses from "./LiveBuses";
+import LiveMarcTrains from "./LiveMarcTrains";
+import WeatherRadar from "./WeatherRadar";
 import {
   parseLayersParam,
   serializeLayers,
@@ -651,6 +653,12 @@ export default function AppMap({
   // the feed is configured, otherwise the markers stay neutral (no fake count).
   const [showParking, setShowParking] = useState(() => layerPrefs.parking ?? false);
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
+  // Animated weather radar (RainViewer) — opt-in raster drape under the
+  // pins. OFF by default; the tray's toggle stamps the newest frame's time
+  // so nobody mistakes minutes-old radar for real time.
+  const [showRadar, setShowRadar] = useState(() => layerPrefs.radar ?? false);
+  // Newest radar frame's unix seconds — the honesty stamp in the tray.
+  const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -711,8 +719,9 @@ export default function AppMap({
       aerial: showAerial,
       cemeteries: showCemeteries,
       parking: showParking,
+      radar: showRadar,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -2011,6 +2020,11 @@ export default function AppMap({
             />
           </Source>
 
+          {/* Animated weather radar — raster frames slotted BENEATH the
+              muni labels via beforeId, so precipitation drapes the basemap
+              but never covers a line, pin, or label. */}
+          <WeatherRadar show={showRadar} beforeId="muni-label" onNewestFrame={setRadarFrameEpoch} />
+
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
               user opts in; base map unchanged by default. */}
@@ -2113,6 +2127,10 @@ export default function AppMap({
               old always-on vehicles made the dock say "No layers" while buses
               were visibly moving on the map. */}
           <LiveBuses show={showTransit} />
+          {/* MARC trains ride the SAME Transit toggle — one honest layer.
+              DOM markers sit above the canvas, so a train at Point of Rocks
+              never hides beneath its marc-station pin. */}
+          <LiveMarcTrains show={showTransit} />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"
@@ -3195,6 +3213,9 @@ export default function AppMap({
             parkingCount={parking.length}
             showParking={showParking}
             setShowParking={setShowParking}
+            showRadar={showRadar}
+            setShowRadar={setShowRadar}
+            radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
             scrubHour={scrubHour}

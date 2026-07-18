@@ -36,9 +36,9 @@ describe("mapLayerPrefs", () => {
   });
 
   it("keeps only the truthy flags", () => {
-    writeMapLayerPrefs({ cats: ["food"], civic: false, aerial: true, cemeteries: true });
+    writeMapLayerPrefs({ cats: ["food"], civic: false, aerial: true, cemeteries: true, radar: true });
     const p = readMapLayerPrefs();
-    expect(p).toEqual({ cats: ["food"], aerial: true, cemeteries: true });
+    expect(p).toEqual({ cats: ["food"], aerial: true, cemeteries: true, radar: true });
     expect(p.civic).toBeUndefined();
   });
 

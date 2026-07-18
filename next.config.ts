@@ -30,6 +30,11 @@ const contentSecurityPolicy = [
     "https://api.mapbox.com",
     "https://events.mapbox.com",
     "https://*.tiles.mapbox.com",
+    // RainViewer weather radar (the map's Radar layer): the frame index
+    // lives on api., the tiles on tilecache. — and Mapbox GL fetches
+    // raster tiles via XHR, so they need connect-src, not img-src.
+    "https://api.rainviewer.com",
+    "https://tilecache.rainviewer.com",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://plausible.io",
