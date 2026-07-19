@@ -4,7 +4,7 @@ import {
   MessageSquare, Inbox, Store, Flag, MapPin, CalendarClock, RadioTower,
   LayoutDashboard, KeyRound, StickyNote, Receipt, Activity, MapPinned, Mail,
   PenLine, Copy, GitCompare, Sparkles, Database, Megaphone,
-  ChevronRight, CircleCheck, TrendingUp, TrendingDown,
+  ChevronRight, CircleCheck, TrendingUp, TrendingDown, BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { sql } from "drizzle-orm";
@@ -504,6 +504,10 @@ export default async function AdminDesk() {
           <KeyChip label="Blob storage" on={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} />
           <KeyChip label="Resend email" on={Boolean(process.env.RESEND_API_KEY)} />
           <KeyChip label="Beta wall" on={Boolean(process.env.BETA_PASSWORD)} />
+          {/* Two lights on purpose: the tracker (public, collects) and the
+              Stats API (server, reads back) turn on independently. */}
+          <KeyChip label="Plausible tracker" on={Boolean(process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN)} />
+          <KeyChip label="Plausible stats" on={Boolean(process.env.PLAUSIBLE_API_KEY && process.env.PLAUSIBLE_SITE_ID)} />
         </div>
       </section>
 
@@ -511,6 +515,7 @@ export default async function AdminDesk() {
       <section className="mt-7 space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>Doors</h2>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <ActionTile href="/admin/traffic" title="Traffic" icon={BarChart3} />
           <ActionTile href="/admin/beta" title="Beta" icon={LayoutDashboard} />
           <ActionTile href="/admin/beta-codes" title="Codes" icon={KeyRound} />
           <ActionTile href="/admin/claims" title="Submissions" icon={Inbox} />
