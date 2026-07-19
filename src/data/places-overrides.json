@@ -31,7 +31,8 @@
     "moms-kitchen-thurmont": "thurmont-kountry-kitchen-thurmont",
     "food-lion-bakery-thurmont": "food-lion-thurmont",
     "safeway-bakery-middletown": "safeway-middletown",
-    "enforme-interactive": "celerate"
+    "enforme-interactive": "celerate",
+    "cvs-thurmont": "cvs-pharmacy-thurmont"
   },
   "remove": [
     "drug-detox-frederick",
@@ -57,7 +58,10 @@
     "the-alley-wagon",
     "top-secret-tap-room-thurmont",
     "caudles-free-library-woodsboro",
-    "catoctin-creek-llc-myersville"
+    "catoctin-creek-llc-myersville",
+    "acacia-house-frederick",
+    "tabu-frederick",
+    "el-rancho-frederick"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -77,7 +81,9 @@
     "united-states-postal-service-66",
     "wastlers-barber-shop",
     "rockwell-brewery-frederick",
-    "rockwell-brewery-frederick-2"
+    "rockwell-brewery-frederick-2",
+    "baker-park-frederick",
+    "baker-park-bandshell"
   ],
   "patch": {
     "wye-oak-tavern-frederick": {
@@ -191,7 +197,10 @@
       "category": "agritourism"
     },
     "bold-love-farm-and-bakery-mount-airy": {
-      "category": "agritourism"
+      "category": "agritourism",
+      "subcategories": [
+        "bakery"
+      ]
     },
     "pleasant-hill-produce-walkersville": {
       "category": "agritourism"
@@ -340,7 +349,13 @@
       "category": "winery"
     },
     "springfield-manor-thurmont": {
-      "category": "winery"
+      "category": "winery",
+      "subcategories": [
+        "winery",
+        "food",
+        "distillery",
+        "brewery"
+      ]
     },
     "links-bridge-vineyards-thurmont": {
       "category": "winery"
@@ -779,7 +794,12 @@
       "name": "Bill and Earl's Auto Services Center"
     },
     "brewers-alley-frederick": {
-      "category": "restaurant"
+      "category": "restaurant",
+      "subcategories": [
+        "restaurant",
+        "bar",
+        "brewery"
+      ]
     },
     "oscars-alehouse": {
       "name": "Oscar's Alehouse"
@@ -827,6 +847,7 @@
       "category": "services"
     },
     "sos-safe-ride": {
+      "name": "SOS Safe Ride",
       "category": "services"
     },
     "cruise-holidays": {
@@ -1062,28 +1083,44 @@
       "category": "restaurant"
     },
     "bollingers-restaurant-and-uncle-dirtys-brew-works-thurmont": {
-      "subcategories": ["brewery"]
+      "subcategories": [
+        "brewery"
+      ]
     },
     "10tavern-thurmont": {
-      "subcategories": ["bar"]
+      "subcategories": [
+        "bar"
+      ]
     },
     "habanero-mexican-food-bar-grill-new-market": {
-      "subcategories": ["bar"]
+      "subcategories": [
+        "bar"
+      ]
     },
     "vesuvius-italian-wine-bar-urbana": {
-      "subcategories": ["bar"]
+      "subcategories": [
+        "bar"
+      ]
     },
     "jubilee-foods-emmitsburg": {
-      "subcategories": ["grocery"]
+      "subcategories": [
+        "grocery"
+      ]
     },
     "trouts-market-woodsboro": {
-      "subcategories": ["grocery"]
+      "subcategories": [
+        "grocery"
+      ]
     },
     "superfoods-cafe-market-mount-airy": {
-      "subcategories": ["grocery"]
+      "subcategories": [
+        "grocery"
+      ]
     },
     "myersville-market-crown-gas-station-myersville": {
-      "subcategories": ["grocery"]
+      "subcategories": [
+        "grocery"
+      ]
     },
     "starbucks-844": {
       "name": "Starbucks"
@@ -1107,53 +1144,66 @@
       "name": "Rockwell Brewery Riverside"
     },
     "pistarros": {
-      "subcategories": ["pizza"]
-    },
-    "brewers-alley-frederick": {
-      "category": "restaurant",
-      "subcategories": ["restaurant", "bar", "brewery"]
-    },
-    "springfield-manor-thurmont": {
-      "category": "winery",
-      "subcategories": ["winery", "food", "distillery", "brewery"]
+      "subcategories": [
+        "pizza"
+      ]
     },
     "south-mountain-creamery-middletown": {
-      "subcategories": ["food", "ice-cream"]
+      "subcategories": [
+        "food",
+        "ice-cream"
+      ]
     },
     "lil-cakes-creamery-new-market": {
-      "subcategories": ["ice-cream"]
+      "subcategories": [
+        "ice-cream"
+      ]
     },
     "moo-cow-creamerywalnut-ridge-farm-middletown": {
-      "subcategories": ["ice-cream"]
+      "subcategories": [
+        "ice-cream"
+      ]
     },
     "roggenart-european-bakery-bistro-cafe-frederick": {
-      "subcategories": ["bakery"]
+      "subcategories": [
+        "bakery"
+      ]
     },
     "ggs-pastry-shop-mount-airy": {
-      "subcategories": ["bakery"]
-    },
-    "bold-love-farm-and-bakery-mount-airy": {
-      "category": "agritourism",
-      "subcategories": ["bakery"]
+      "subcategories": [
+        "bakery"
+      ]
     },
     "tous-les-jours-bakery-cafe-frederick": {
-      "subcategories": ["coffee"]
+      "subcategories": [
+        "coffee"
+      ]
     },
     "juno-bakery-cafe-frederick": {
-      "subcategories": ["coffee"]
+      "subcategories": [
+        "coffee"
+      ]
     },
     "artistangle-gallery": {
-      "subcategories": ["gallery"]
+      "subcategories": [
+        "gallery"
+      ]
     },
     "myron-martin-peace-hollow-farm-market-burkittsville": {
-      "subcategories": ["market"]
+      "subcategories": [
+        "market"
+      ]
     },
     "walkersville-community-park-playground-walkersville": {
-      "subcategories": ["playground"]
+      "subcategories": [
+        "playground"
+      ]
     },
-    "sos-safe-ride": {
-      "name": "SOS Safe Ride",
-      "category": "services"
+    "sapporo-ii-japanese-restaurant": {
+      "name": "Sapporo II Japanese Restaurant"
+    },
+    "rides-for-good": {
+      "short_blurb": "This volunteer program matches Frederick County residents who need rides with community volunteers for essential appointments and services."
     }
   }
 }
