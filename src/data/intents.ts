@@ -399,11 +399,15 @@ export const INTENTS: Intent[] = [
         icon: "Pizza",
         match: (p) => isPizzaPlace(p),
       },
-      { key: "bars",        type: "category", label: "Bars",        icon: "Wine",     match: (p) => p.category === "bar" },
-      { key: "breweries",   type: "category", label: "Breweries",   icon: "Beer",     match: (p) => p.category === "brewery" && !isWinery(p) },
+      // Curated subcategories count alongside the primary category — a
+      // brewpub filed as a restaurant (Brewer's Alley) is still a brewery
+      // stop. Same evidence /category pages accept, so map facets and
+      // category pages can never disagree (July 2026 category audit).
+      { key: "bars",        type: "category", label: "Bars",        icon: "Wine",     match: (p) => p.category === "bar" || (p.subcategories ?? []).includes("bar") },
+      { key: "breweries",   type: "category", label: "Breweries",   icon: "Beer",     match: (p) => (p.category === "brewery" || (p.subcategories ?? []).includes("brewery")) && !isWinery(p) },
       { key: "wineries",    type: "category", label: "Wineries",    icon: "Wine",     match: (p) => isWinery(p) },
-      { key: "bakeries",    type: "category", label: "Bakeries",    icon: "Cookie",   match: (p) => p.category === "bakery" },
-      { key: "trucks",      type: "category", label: "Food trucks", icon: "Truck",    match: (p) => p.category === "food-truck" },
+      { key: "bakeries",    type: "category", label: "Bakeries",    icon: "Cookie",   match: (p) => p.category === "bakery" || (p.subcategories ?? []).includes("bakery") },
+      { key: "trucks",      type: "category", label: "Food trucks", icon: "Truck",    match: (p) => p.category === "food-truck" || (p.subcategories ?? []).includes("food-truck") },
       // Cuisine subs — the depth that turns "Eat" from a category into a
       // real craving. Derived from name + blurb by the cuisine classifier
       // (there is no structured cuisine field), so they reach DFP rows too.

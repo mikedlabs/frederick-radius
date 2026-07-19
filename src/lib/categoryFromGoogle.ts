@@ -52,8 +52,11 @@ const MAP: Record<string, string> = {
   ramen_restaurant: "restaurant",
   sushi_restaurant: "restaurant",
   vegetarian_restaurant: "restaurant",
-  ice_cream_shop: "restaurant",
-  dessert_shop: "restaurant",
+  // The guide has a first-class "Ice cream & treats" category; sending
+  // these to "restaurant" would hide every future-enriched scoop shop
+  // from it (found in the July 2026 category audit after the pizza gap).
+  ice_cream_shop: "ice-cream",
+  dessert_shop: "ice-cream",
   donut_shop: "bakery",
   // Lodging
   lodging: "lodging",
