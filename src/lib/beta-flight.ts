@@ -126,7 +126,15 @@ export function buildFlightSlides(now: Date = new Date()): FlightSlide[] {
     return [];
   }
   if (picked.length === 0) return [];
-  const counts = nearbyOpenCounts(picked, HALF_MILE_M, now);
+  // The decorate pass can throw at request time (bad hours data, etc.),
+  // and this runs synchronously in the page body — fail to the static
+  // plate, never to a 500 on the gate.
+  let counts: { total: number; open: number }[];
+  try {
+    counts = nearbyOpenCounts(picked, HALF_MILE_M, now);
+  } catch {
+    return [];
+  }
   return picked.map((e, i) => ({
     src: e.src,
     coordLabel: coordLabel(e.lat, e.lng),
@@ -134,4 +142,28 @@ export function buildFlightSlides(now: Date = new Date()): FlightSlide[] {
     total: counts[i]?.total ?? 0,
     open: counts[i]?.open ?? 0,
   }));
+}
+
+/** Size of the aerial archive, for the contents row's PHOTOS figure. */
+export function aerialCount(): number {
+  try {
+    return (AERIAL_RAW as AerialEntry[]).length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Frames for the contents row's film strip — drawn from the same ordered
+ * pick as the rotation but AFTER its seven slides, so the strip never
+ * repeats a frame the flight above it is already showing.
+ */
+export function stripFrames(now: Date = new Date(), count = 4): string[] {
+  try {
+    return pickAerials(AERIAL_RAW as AerialEntry[], now, MAX_SLIDES + count)
+      .slice(MAX_SLIDES)
+      .map((e) => e.src);
+  } catch {
+    return [];
+  }
 }

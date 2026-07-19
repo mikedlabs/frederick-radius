@@ -1379,6 +1379,10 @@ export function openNowHighlights(
               p.source === "manual" ||
               !looksLikeBarePersonName(p.name, p.primary_type, p.category),
           )
+          // The named SAMPLE stays visitable: a late-night taxi service is
+          // honestly open (and stays in the count) but cannot headline a
+          // line that promises restaurants, shops, trails, and parks.
+          .filter((p) => p.category !== "services")
           .sort((a, b) => b.feature_score - a.feature_score)
           .slice(0, limit)
           .map((p) => p.name)
