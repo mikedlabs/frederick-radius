@@ -206,20 +206,31 @@ sources:
   - id: dfp_events
     name: Downtown Frederick Partnership
     owner: Downtown Frederick Partnership
-    url: https://downtownfrederick.org/upcoming-events
-    endpoint_type: scrape
+    url: https://downtownfrederick.org/wp-json/wp/v2/vibemap_event
+    endpoint_type: rest
     format: json
-    refresh_cadence: daily
+    refresh_cadence: hourly (request-time, 1h fetch cache)
     license: unknown, confirm with owner
     contact: https://downtownfrederick.org
-    status: scaffold
-    last_validated: null
-    last_success: null
+    status: active
+    last_validated: 2026-07-19
+    last_success: 2026-07-19
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/ical-live.ts
     notes: |
-      Scrape class. Events and a merchant directory. Expect this to be
-      one of the more fragile sources. License needs confirmation.
+      Live via the no-DB path in src/lib/integrations/ical-live.ts
+      (FEEDS, source "dfp", format "vibemap"). NOT a scrape: DFP's
+      WordPress runs the Vibemap plugin and exposes vibemap_event
+      through the standard public wp/v2 REST (robots.txt allows;
+      fetch-verified 2026-07-19: 383 rows, 153 in the 30-day window,
+      per-event venue name/address/lat/lng and real clock times). The
+      rows are DFP's curated downtown slice synced from Visit
+      Frederick, so each event links out to its visitfrederick.org
+      detail page. Their old ?ical=1 export is dead (page cache
+      serves HTML for any query string). Predicted recurring
+      instances that lost their clock time (00:00:00 + not all-day)
+      are dropped at parse for honesty. URL overridable with
+      DFP_VIBEMAP_URL.
 
   - id: celebrate_frederick
     name: Celebrate Frederick
