@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
@@ -42,47 +43,74 @@ export default async function BetaPage({
         backgroundImage: "var(--app-paper-light)",
       }}
     >
-      <BetaBackdrop />
-
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[68rem] flex-col px-5 sm:px-8">
         <section className="grid flex-1 items-center gap-10 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-16 lg:py-16">
-          <div className="mx-auto w-full max-w-[36rem] text-center lg:mx-0 lg:text-left">
-            <RadiusMark />
-
+          {/* The COVER, set like a printed field guide (owner ask,
+              2026-07-19: "make it look like a real field guide"): a
+              double-ruled cover plate, the series band across the top, the
+              title block in the display serif, one photographic plate with
+              an italic caption, and the edition line at the foot. */}
+          <div
+            className="mx-auto w-full max-w-[30rem] overflow-hidden rounded-[10px] border text-center"
+            style={{
+              borderColor: "var(--app-ink)",
+              background: "var(--app-bg-elevated-solid)",
+              boxShadow:
+                "inset 0 0 0 3px var(--app-bg-elevated-solid), inset 0 0 0 4px color-mix(in srgb, var(--app-ink) 35%, transparent), 0 24px 60px -40px color-mix(in srgb, var(--app-ink) 50%, transparent)",
+            }}
+          >
+            {/* series band — the colored strap a printed series wears */}
             <p
-              className="mt-6 font-mono text-[11px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: "var(--app-brand-press)" }}
+              className="px-6 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.26em] text-white"
+              style={{ background: "var(--app-brand-press)" }}
             >
-              Early-access beta
+              Frederick Radius
             </p>
 
-            <h1
-              className="mt-3 font-serif font-semibold leading-[1.02] tracking-tight"
-              style={{
-                color: "var(--app-ink)",
-                fontSize: "clamp(38px, 7vw, 64px)",
-              }}
-            >
-              Plan your day in Frederick County.
-            </h1>
+            <div className="px-6 pb-7 pt-6 sm:px-9 sm:pb-8">
+              <p
+                className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                A field guide, updated through the day
+              </p>
 
-            <p
-              className="mx-auto mt-5 max-w-[32rem] text-[17px] leading-relaxed lg:mx-0"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              Check what is open and what is happening before you head out.
-            </p>
+              <h1
+                className="mt-3 font-serif font-semibold leading-[1.04] tracking-tight [text-wrap:balance]"
+                style={{
+                  color: "var(--app-ink)",
+                  fontSize: "clamp(32px, 6vw, 46px)",
+                }}
+              >
+                Plan your day in Frederick County.
+              </h1>
 
-            <Suspense fallback={<ProofLineShell />}>
-              <ProofLine />
-            </Suspense>
+              <p
+                className="mx-auto mt-3.5 max-w-[28rem] text-[15.5px] leading-relaxed"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Check what is open and what is happening before you head out.
+              </p>
 
-            <p
-              className="mt-5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Current hours and events across the county
-            </p>
+              <CoverPhoto />
+
+              {/* foot matter: the live contents line + the edition line,
+                  separated from the plate by one hairline rule */}
+              <div
+                className="mt-6 border-t pt-4"
+                style={{ borderColor: "var(--app-border-strong)" }}
+              >
+                <Suspense fallback={<ProofLineShell />}>
+                  <ProofLine />
+                </Suspense>
+                <p
+                  className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Early-access edition · {editionSeason()}
+                </p>
+              </div>
+            </div>
           </div>
 
           <section
@@ -211,52 +239,53 @@ export default async function BetaPage({
   );
 }
 
-function RadiusMark() {
-  return (
-    <div
-      aria-hidden
-      className="relative mx-auto grid h-[72px] w-[72px] place-items-center rounded-full lg:mx-0"
-      style={{ border: "1.5px solid var(--app-brand)" }}
-    >
-      <span
-        className="absolute inset-[13px] rounded-full"
-        style={{
-          border:
-            "1px solid color-mix(in srgb, var(--app-brand) 45%, transparent)",
-        }}
-      />
-      <span
-        className="h-5 w-5 rounded-full"
-        style={{
-          background: "var(--app-brand)",
-          boxShadow:
-            "0 4px 14px -4px color-mix(in srgb, var(--app-brand) 70%, transparent)",
-        }}
-      />
-    </div>
-  );
+/** Current season + year for the cover's edition line, Eastern time. */
+function editionSeason(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "numeric",
+    year: "numeric",
+  }).formatToParts(new Date());
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? "1");
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  const season =
+    month >= 3 && month <= 5 ? "Spring" :
+    month >= 6 && month <= 8 ? "Summer" :
+    month >= 9 && month <= 11 ? "Fall" : "Winter";
+  return `${season} ${year}`;
 }
 
-function BetaBackdrop() {
+/**
+ * The cover plate — Carroll Creek in downtown Frederick, mid-festival,
+ * framed in a hairline rule with the caption set beneath in italic serif,
+ * the way a printed guide captions its plates. The cover shows the real
+ * PLACE, full of people, not an abstract mark or a drawing. (Replaced a
+ * generic bullseye + radar-ring backdrop, then a line-art pass the owner
+ * also turned down; owner asks, 2026-07-19.)
+ */
+function CoverPhoto() {
   return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute -left-[24rem] -top-[25rem] h-[58rem] w-[58rem]"
-      viewBox="0 0 800 800"
-      fill="none"
-    >
-      {[120, 220, 320].map((radius) => (
-        <circle
-          key={radius}
-          cx="400"
-          cy="400"
-          r={radius}
-          stroke="var(--app-brand)"
-          strokeOpacity={0.055}
-          strokeWidth={1.5}
+    <figure className="mx-auto mt-6 w-full">
+      <div
+        className="relative overflow-hidden border"
+        style={{ borderColor: "var(--app-ink-tint-12, rgba(22,20,14,.25))", aspectRatio: "16 / 10" }}
+      >
+        <Image
+          src="/images/seasons/summer/084.jpg"
+          alt="Carroll Creek promenade in downtown Frederick during a festival, seen from above"
+          fill
+          priority
+          sizes="(min-width: 640px) 28rem, 100vw"
+          className="object-cover"
         />
-      ))}
-    </svg>
+      </div>
+      <figcaption
+        className="mt-2 text-center font-serif text-[13.5px] italic"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        Carroll Creek, downtown Frederick.
+      </figcaption>
+    </figure>
   );
 }
 
@@ -277,22 +306,20 @@ async function ProofLine() {
 
   if (facts.length === 0) return null;
 
+  // A live ledger line, not a marketing pill: mono digits, the green dot
+  // as the only ornament. The counts are the page's proof it is a real,
+  // current read on the county.
   return (
     <p
-      className="mt-6 inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-semibold"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
-        color: "var(--app-ink-2)",
-        boxShadow: "var(--app-hi)",
-      }}
+      className="mt-5 inline-flex items-center gap-2 font-mono text-[12.5px] font-semibold tabular-nums"
+      style={{ color: "var(--app-ink-2)" }}
     >
       <span
         aria-hidden
         className="h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ background: "var(--app-positive)" }}
       />
-      {facts.join(" · ")}
+      {facts.join("  ·  ")}
     </p>
   );
 }
@@ -301,11 +328,8 @@ function ProofLineShell() {
   return (
     <span
       aria-hidden
-      className="mt-6 inline-block h-[38px] w-[16rem] max-w-full rounded-full border"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-sunken)",
-      }}
+      className="mt-5 inline-block h-[19px] w-[15rem] max-w-full rounded-[4px]"
+      style={{ background: "var(--app-bg-sunken)" }}
     />
   );
 }
