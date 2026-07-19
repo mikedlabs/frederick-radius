@@ -57,7 +57,7 @@ export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
   const nextIdx = (active + 1) % slides.length;
 
   return (
-    <figure className="mx-auto mt-6 w-full">
+    <figure className="mx-auto mt-3 w-full">
       <div
         className="relative overflow-hidden border"
         style={{ borderColor: "var(--app-ink-tint-12, rgba(22,20,14,.25))", aspectRatio: "16 / 10" }}

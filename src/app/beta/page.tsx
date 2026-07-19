@@ -45,8 +45,20 @@ export default async function BetaPage({
         backgroundImage: "var(--app-paper-light)",
       }}
     >
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-[28rem] flex-col px-5 sm:px-0">
-        <section className="flex-1 py-9 sm:py-12">
+      {/* A quiet warm wash behind the masthead — the same atmosphere the
+          app's sky hero gives /today, at a whisper. Ends well above the
+          access card so the forms sit on plain paper. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[19rem]"
+        style={{
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--app-brand) 9%, transparent), color-mix(in srgb, var(--app-accent, #B8860B) 4%, transparent) 55%, transparent)",
+        }}
+      />
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[28rem] flex-col px-5 sm:px-0 lg:max-w-[60rem] lg:px-8">
+        <section className="flex-1 py-9 sm:py-12 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-14">
+          <div className="stagger-children">
           {/* The gate wears the APP's own identity — the exact TopBar
               lockup (red disc, serif Frederick over tracked RADIUS), the
               app's masthead typography, the app's calm cream. No book
@@ -110,6 +122,9 @@ export default async function BetaPage({
                 name="password"
                 required
                 defaultValue={prefillCode}
+                // A wrong code or a shared ?code= link means the user's
+                // very next act is this field — put the cursor there.
+                autoFocus={Boolean(error || prefillCode)}
                 autoComplete="off"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -138,21 +153,36 @@ export default async function BetaPage({
             </form>
 
             <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
-              <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 No code yet? Get one by email right away.
               </p>
               <BetaEmailField />
             </div>
           </section>
+          </div>
 
-          {/* Below the gate, the proof: the county from the guide's own
-              drone, each frame stating what Radius knows about the ground
-              in it. This is the product, demonstrating itself. */}
-          <FlightOrPlate />
-          <div className="mt-3 text-center">
-            <Suspense fallback={<ProofLineShell />}>
-              <ProofLine />
-            </Suspense>
+          {/* Below the gate (beside it on wide screens), the proof: the
+              county from the guide's own drone, each frame stating what
+              Radius knows about the ground in it. The product,
+              demonstrating itself. */}
+          <div className="stagger-children mt-9 lg:mt-1">
+            <p
+              className="flex items-baseline gap-2.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              <span
+                aria-hidden
+                className="block h-[3px] w-7 translate-y-[-2px] rounded-full"
+                style={{ background: "var(--app-brand)" }}
+              />
+              The county, right now
+            </p>
+            <FlightOrPlate />
+            <div className="mt-3 text-center">
+              <Suspense fallback={<ProofLineShell />}>
+                <ProofLine />
+              </Suspense>
+            </div>
           </div>
         </section>
 
