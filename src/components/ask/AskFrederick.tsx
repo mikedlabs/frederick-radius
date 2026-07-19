@@ -938,6 +938,12 @@ export default function AskFrederick({
         if (next.status !== "empty") {
           lastQueryRef.current = effectiveQuery;
           setQ("");
+        } else {
+          // The question Radius could not answer IS the roadmap: the query
+          // text goes with the event so the dashboard shows what was wanted
+          // and missed. Queries here are place-seeking text ("vegan brunch
+          // thurmont"), not identity; clamped and case-folded all the same.
+          track("ask_empty", { query: effectiveQuery.toLowerCase().slice(0, 80) });
         }
       }
     } catch (error) {
