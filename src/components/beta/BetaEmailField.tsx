@@ -42,11 +42,7 @@ export default function BetaEmailField() {
 
       {state !== "done" ? (
         <form onSubmit={submit} className="space-y-2.5">
-          <label
-            htmlFor="beta-email"
-            className="block text-[12px] font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
-          >
+          <label htmlFor="beta-email" className="sr-only">
             Email address
           </label>
           <div className="flex gap-2">
@@ -66,15 +62,18 @@ export default function BetaEmailField() {
                 color: "var(--app-ink)",
               }}
             />
+            {/* Quiet outline, not a second vermilion slab: the card keeps
+                ONE primary action (Enter Radius). This is the fallback
+                path for people who arrived without a code. */}
             <button
               type="submit"
               disabled={state === "busy"}
-              className="tap-44 shrink-0 rounded-[var(--app-radius-md)] px-3.5 text-[13px] font-semibold disabled:opacity-60"
+              className="tactile-interactive tap-44 shrink-0 rounded-[var(--app-radius-md)] border px-3.5 text-[13px] font-semibold disabled:opacity-60"
               style={{
-                background: "var(--app-brand-press)",
-                color: "var(--app-on-brand)",
-                boxShadow:
-                  "0 8px 20px -10px color-mix(in srgb, var(--app-brand) 70%, transparent), var(--app-hi)",
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-ink)",
+                borderColor: "var(--app-border-strong)",
+                boxShadow: "var(--app-hi)",
               }}
             >
               {state === "busy" ? "Sending…" : "Send my code"}
@@ -87,27 +86,40 @@ export default function BetaEmailField() {
             </p>
           ) : null}
 
-          <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-            We use your email to send and manage your beta access. We don&rsquo;t
-            sell it. Ask us to remove it anytime. By requesting a code, you
-            agree to our{" "}
-            <Link
-              href="/terms"
-              className="font-semibold underline underline-offset-2"
-              style={{ color: "var(--app-ink-2)" }}
+          {/* One quiet line; the full email policy sits one tap away
+              instead of four gray lines pushing the page down. */}
+          <details className="group">
+            <summary
+              className="tap-44-y flex cursor-pointer list-none items-center gap-1 text-[12px] [&::-webkit-details-marker]:hidden"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              Terms
-            </Link>{" "}
-            and acknowledge our{" "}
-            <Link
-              href="/privacy"
-              className="font-semibold underline underline-offset-2"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              Privacy Policy
-            </Link>
-            .
-          </p>
+              <span className="font-semibold underline underline-offset-2">How we handle your email</span>
+              <span aria-hidden className="transition-transform group-open:rotate-45" style={{ color: "var(--app-ink-3)" }}>
+                +
+              </span>
+            </summary>
+            <p className="mt-1.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              We use your email to send and manage your beta access. We don&rsquo;t
+              sell it. Ask us to remove it anytime. By requesting a code, you
+              agree to our{" "}
+              <Link
+                href="/terms"
+                className="font-semibold underline underline-offset-2"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Terms
+              </Link>{" "}
+              and acknowledge our{" "}
+              <Link
+                href="/privacy"
+                className="font-semibold underline underline-offset-2"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </details>
         </form>
       ) : null}
     </div>
