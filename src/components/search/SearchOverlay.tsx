@@ -209,6 +209,24 @@ export default function SearchOverlay({
     };
   }, [query, coords]);
 
+  // Report zero-result searches. The queries people type and get nothing
+  // for are the app's real backlog, so the query text rides with the event
+  // (place-seeking text, clamped + case-folded — same posture as ask_empty).
+  // The 1.4s settle delay keeps mid-typing states ("pizz…" narrowed past a
+  // match) from firing; the per-session set keeps backspace-and-retype from
+  // double-counting the same miss.
+  const emptyReportedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (status !== "done" || results.length !== 0 || q.length < 3) return;
+    if (emptyReportedRef.current.has(q)) return;
+    const t = setTimeout(() => {
+      emptyReportedRef.current.add(q);
+      track("search_empty", { query: q.slice(0, 80) });
+    }, 1400);
+    return () => clearTimeout(t);
+  }, [query, results, status]);
+
   // Focus the input when overlay opens; also read any ALREADY-granted location
   // fix (no prompt) so place results can show distance. If there's no cached
   // fix, distance simply isn't shown — search never nags for permission.
