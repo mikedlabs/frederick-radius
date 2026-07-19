@@ -60,6 +60,10 @@ const ROUTES = [
   "/emergency-vet",
   "/numbers",
   "/reserve",
+  // The front door. Every visitor sees it before anything else, and it
+  // drifted through three rejected design drafts while ungated (owner
+  // review, 2026-07-19) — it holds to the same bar as what it gates.
+  "/beta",
 ];
 
 type AxeViolation = {
