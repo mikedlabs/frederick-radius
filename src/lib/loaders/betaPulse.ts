@@ -20,6 +20,10 @@ export type BetaPulse = {
   places: number;
   towns: number;
   eventsToday: number | null;
+  /** The first three of today's events (soonest first) so the contents
+   *  row can show the calendar itself, not just count it. Null exactly
+   *  when eventsToday is null (the same timed fetch produces both). */
+  eventsSample: { title: string; startsAt: string; venue: string | null }[] | null;
   /** County-wide open-right-now: the shared countOpenNow population, plus
    *  a few real names so the proof strip can say who, not just how many. */
   openNow: { count: number; names: string[] } | null;
@@ -52,15 +56,33 @@ export async function getBetaPulse(now: Date = new Date()): Promise<BetaPulse> {
   const [events, keys, trout] = await Promise.all([
     // Canonical unified set (cached), windowed to today and not-yet-ended.
     withTimeout(
-      assembleUnifiedEvents(now).then(({ publicEvents }) =>
-        publicEvents.filter((e) => isEventToday(e.starts_at, now) && !isEventEnded(e, now)).length,
-      ),
+      assembleUnifiedEvents(now).then(({ publicEvents }) => {
+        const today = publicEvents
+          .filter((e) => isEventToday(e.starts_at, now) && !isEventEnded(e, now))
+          .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+        return {
+          count: today.length,
+          sample: today.slice(0, 3).map((e) => ({
+            title: e.title,
+            startsAt: e.starts_at,
+            venue: e.venue_name && e.venue_name.trim() ? e.venue_name : null,
+          })),
+        };
+      }),
       3000,
-      null as number | null,
+      null as { count: number; sample: { title: string; startsAt: string; venue: string | null }[] } | null,
     ),
     withTimeout(getKeysScoreToday(now), 2500, null as KeysScore | null),
     withTimeout(getFrederickStockings(7).then((s) => s.length > 0), 2500, false),
   ]);
 
-  return { places, towns, eventsToday: events, openNow, keys, troutThisWeek: trout };
+  return {
+    places,
+    towns,
+    eventsToday: events?.count ?? null,
+    eventsSample: events?.sample ?? null,
+    openNow,
+    keys,
+    troutThisWeek: trout,
+  };
 }

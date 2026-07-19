@@ -1150,6 +1150,10 @@
     },
     "walkersville-community-park-playground-walkersville": {
       "subcategories": ["playground"]
+    },
+    "sos-safe-ride": {
+      "name": "SOS Safe Ride",
+      "category": "services"
     }
   }
 }

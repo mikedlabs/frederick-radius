@@ -64,3 +64,19 @@ describe("labels", () => {
     expect(flightLabel(null, "2024-10-06T19:23:08.000Z")).toBe("Oct 2024");
   });
 });
+
+describe("stripFrames (the contents-row film strip)", () => {
+  it("never repeats a frame the seven-slide rotation is showing", async () => {
+    const { stripFrames, buildFlightSlides } = await import("./beta-flight");
+    const now = new Date("2026-07-19T16:00:00Z");
+    const rotation = new Set(buildFlightSlides(now).map((s) => s.src));
+    for (const src of stripFrames(now)) {
+      expect(rotation.has(src)).toBe(false);
+    }
+  });
+
+  it("returns at most the requested count", async () => {
+    const { stripFrames } = await import("./beta-flight");
+    expect(stripFrames(new Date("2026-07-19T16:00:00Z"), 4).length).toBeLessThanOrEqual(4);
+  });
+});

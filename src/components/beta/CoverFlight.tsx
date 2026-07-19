@@ -23,13 +23,13 @@ const DWELL_MS = 7_000;
 const FADE_MS = 900;
 
 function openLine(s: FlightSlide): string {
-  if (s.total === 0) return "Radius keeps watch over the whole county from here.";
+  if (s.total === 0) return "No listed places sit within a half mile of this spot.";
   const places = s.total === 1 ? "1 place" : `${s.total} places`;
   const open =
     s.open === 0 ? "None are open right now."
     : s.open === 1 ? "1 is open right now."
     : `${s.open} are open right now.`;
-  return `Radius knows the ${places} within a half mile of this frame. ${open}`;
+  return `Radius knows the ${places} within a half mile of this spot. ${open}`;
 }
 
 export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
@@ -64,8 +64,11 @@ export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
       >
         {slides.map((s, i) => {
           const isActive = i === (reduced ? 0 : active);
-          // Mount only the frame on screen and the one about to arrive.
-          if (!isActive && !(i === nextIdx && !reduced)) return null;
+          // Mount the frame on screen, the one leaving (so the crossfade is
+          // frame-to-frame, never a dip to bare paper), and the one about
+          // to arrive (so it is decoded before its fade).
+          const prevIdx = (active - 1 + slides.length) % slides.length;
+          if (!isActive && !((i === nextIdx || i === prevIdx) && !reduced)) return null;
           return (
             <div
               key={s.src}
