@@ -67,6 +67,18 @@ export const liveEventSchema = z
     venue_name: z.string().min(2).max(160),
     address: z.string().max(220),
     geom: lngLatSchema,
+    /** True for date-only rows (iCal VALUE=DATE, Vibemap all-day). Zod
+     *  objects STRIP unknown keys, so leaving this out of the schema
+     *  silently deleted the flag the parsers set — every live-feed
+     *  all-day event then rendered its ET-noon anchor as a fake
+     *  "12:00 PM" clock instead of "All day", and Ask's evening filter
+     *  (`e.is_all_day || hour >= 16`) missed them. Keep in sync with
+     *  the optional fields on LiveEvent in ical-live.ts. */
+    is_all_day: z.boolean().optional(),
+    /** Positional-precision hint (see LiveEvent). Vouched per-event
+     *  coordinates (DFP Vibemap venue lat/lng) set "geocoded" so cards
+     *  may show a real distance; same strip risk as is_all_day. */
+    placement: z.enum(["geocoded", "venue"]).optional(),
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),

@@ -92,9 +92,9 @@ type Feed = {
   default_category: string;
 };
 
-type FeedFormat = "ical" | "rss" | "tribe" | "moderncampus" | "presence";
+type FeedFormat = "ical" | "rss" | "tribe" | "moderncampus" | "presence" | "vibemap";
 
-type FeedSpec = Feed & {
+export type FeedSpec = Feed & {
   format: FeedFormat;
   /** tribe only: drop events whose venue.state isn't this (e.g. "MD" to keep
    *  a museum's DC-satellite events out of the county set). */
@@ -104,32 +104,6 @@ type FeedSpec = Feed & {
 };
 
 const FEEDS: FeedSpec[] = [
-  {
-    // Downtown Frederick Partnership iCal. Already pulled daily via
-    // the cron at /api/ingest/all, which writes to the ingested
-    // events table — but that path surfaces as the quiet MunicipalEvents
-    // strip on /events, not as a primary signal. Adding DFP here joins
-    // it to the same WeekStrip / TonightRail / Explorer that Celebrate,
-    // the county RSS, and Hood already flow through, so a downtown
-    // shop crawl, First Saturday, or Alive @ Five run lands on the
-    // page the moment it's published instead of the next morning.
-    source: "dfp",
-    source_label: "Downtown Frederick Partnership",
-    // DFP's public iCal (`/upcoming-events?ical=1`) now 404s and their
-    // site exposes no working Tribe export, so this live feed is gated
-    // OFF by default (empty url → skipped). DFP events still flow via
-    // the /api/ingest/all pipeline → ingested events table. Set
-    // DFP_ICAL_URL to re-enable a live feed the moment a good one exists.
-    url: process.env.DFP_ICAL_URL ?? "",
-    format: "ical",
-    default_venue: "Downtown Frederick",
-    default_geom: { lng: -77.4109, lat: 39.4137 },
-    default_municipality: "frederick",
-    // DFP events span community / arts / market / food across the
-    // year. "community" is the honest fallback; the keyword inference
-    // above tags Alive @ Five → music, First Saturday → arts, etc.
-    default_category: "community",
-  },
   {
     source: "celebrate",
     source_label: "Celebrate Frederick",
@@ -419,6 +393,36 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Mount St. Mary's University",
     default_geom: { lng: -77.3236, lat: 39.6473 }, // 16300 Old Emmitsburg Rd
     default_municipality: "emmitsburg",
+    default_category: "community",
+  },
+  {
+    // Downtown Frederick Partnership — the street-level downtown calendar
+    // (owner ask 2026-07-19: "as i walk around downtown frederick, i see a
+    // lot of events and things going on that arent mentioned on the app").
+    // DFP's WordPress runs Vibemap: the vibemap_event post type is exposed
+    // through the standard wp/v2 REST (fetch-verified 2026-07-19: 383 rows,
+    // 153 in the 30-day window, per-event venue name + address + lat/lng +
+    // real clock times; robots.txt allows). Their old Tribe iCal export is
+    // dead — the site's page cache serves HTML for any ?ical=1 query — so
+    // this REST read replaced it. The rows are DFP's curated downtown slice
+    // synced from Visit Frederick, which also brings the tourism calendar's
+    // downtown listings (Baker Park concerts, walking tours, taproom nights)
+    // that no other wired feed carries.
+    //
+    // Placed LAST in the registry on purpose: many downtown venues (MET,
+    // Delaplaine, Civil War Med) also publish first-party feeds above with
+    // richer descriptions, and the cross-feed dedupe keeps the FIRST copy
+    // it sees — specialist feeds should win those ties.
+    source: "dfp",
+    source_label: "Downtown Frederick Partnership",
+    url: process.env.DFP_VIBEMAP_URL ?? "https://downtownfrederick.org/wp-json/wp/v2/vibemap_event",
+    format: "vibemap",
+    default_venue: "Downtown Frederick",
+    default_geom: { lng: -77.4109, lat: 39.4137 },
+    default_municipality: "frederick",
+    // DFP events span community / arts / market / food across the year.
+    // "community" is the honest fallback; the keyword inference tags
+    // Alive @ Five → music, First Saturday → arts, etc.
     default_category: "community",
   },
   // NOTE on live-music venues (Tenth Ward, Monocacy, Bentztown, …):
@@ -1262,10 +1266,181 @@ async function fetchJsonArrayFeed(feed: FeedSpec, windowDays: number): Promise<F
   }
 }
 
+/** One row of a Vibemap-for-WordPress wp/v2/vibemap_event payload. Only the
+ *  fields we read are typed; `meta` carries ~80 vibemap_* keys. */
+export type VibemapRow = {
+  title?: { rendered?: string };
+  link?: string;
+  excerpt?: { rendered?: string };
+  meta?: Record<string, unknown>;
+};
+
+/**
+ * Map raw vibemap_event rows to validated LiveEvents. Pure — exported for
+ * tests. Honesty rules specific to this source:
+ *   - Vibemap expands recurring series into per-instance rows, and some
+ *     predicted instances lose their clock time (start "…00:00:00" with
+ *     is_all_day false). A midnight stamp on an evening game night is a
+ *     fabricated time, and calling it "All day" would be a different
+ *     fabrication — those rows are DROPPED (~1/4 of the feed; the rest
+ *     carry real venue-local times).
+ *   - Per-event venue lat/lng from the feed is a vouched, distinct
+ *     coordinate, so placement:"geocoded" lets cards show a real distance
+ *     (same contract as the Visit Frederick JSON-LD note on LiveEvent).
+ */
+export function parseVibemapEvents(
+  rows: VibemapRow[],
+  feed: FeedSpec,
+  now: Date,
+  horizon: Date,
+  fetchedAt: string,
+): LiveEvent[] {
+  const events: LiveEvent[] = [];
+  for (const row of rows) {
+    const m = row.meta ?? {};
+    const str = (k: string): string => (typeof m[k] === "string" ? (m[k] as string) : "");
+    const rawTitle = cleanFeedText(row.title?.rendered ?? "").trim();
+    if (!rawTitle) continue;
+    if (m["vibemap_event_is_online"] === true) continue;
+    const startRaw = str("vibemap_event_start_date");
+    const allDay = m["vibemap_event_is_all_day"] === true;
+    // Predicted recurring instances arrive date-only ("… 00:00:00",
+    // is_all_day false): the real clock time was lost upstream. Drop.
+    if (!allDay && /[T ]00:00(:00)?$/.test(startRaw.trim())) continue;
+    // All-day rows anchor to ET noon / end 23:59, same as the iCal path,
+    // so the row lands on the right Eastern day with no fabricated clock.
+    const dm = startRaw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const startsAtISO = allDay
+      ? dm
+        ? easternWallToUtcISO(+dm[1], +dm[2], +dm[3], 12, 0)
+        : null
+      : jsonEventDateToISO(undefined, startRaw);
+    if (!startsAtISO) continue;
+    const effectiveStart = new Date(startsAtISO);
+    if (effectiveStart < now || effectiveStart > horizon) continue;
+    const endISO = allDay ? null : jsonEventDateToISO(undefined, str("vibemap_event_end_date"));
+    const endsAtISO = allDay
+      ? easternWallToUtcISO(+dm![1], +dm![2], +dm![3], 23, 59)
+      : endISO && Date.parse(endISO) > effectiveStart.getTime()
+        ? endISO
+        : new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
+    // Cancellation is a first-class flag here, not a title sniff.
+    const status: EventStatus =
+      m["vibemap_event_is_canceled"] === true ? "cancelled" : deriveEventStatus(rawTitle);
+    const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
+    const description = (row.excerpt?.rendered ?? "").replace(/<[^>]+>/g, " ").trim();
+    const cleanedDesc = clampDescription(cleanDescription(description), 300);
+    const venue = str("vibemap_event_venue_name").trim() || feed.default_venue;
+    const address = str("vibemap_event_venue_address").trim();
+    const lat = Number(m["vibemap_event_venue_latitude"]);
+    const lng = Number(m["vibemap_event_venue_longitude"]);
+    const hasGeo =
+      Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0);
+    const metaUrl = str("vibemap_event_url");
+    const candidate = {
+      id: `${feed.source}:${dedupeKey(title, effectiveStart, venue)}`,
+      title,
+      status,
+      description: cleanedDesc,
+      starts_at: startsAtISO,
+      ends_at: endsAtISO,
+      is_all_day: allDay,
+      venue_name: venue,
+      address,
+      geom: hasGeo ? { lat, lng } : feed.default_geom,
+      ...(hasGeo ? { placement: "geocoded" as const } : {}),
+      municipality: inferMunicipality(address, feed.default_municipality),
+      category: feedCategory(feed, title, description),
+      organizer: str("vibemap_event_organizer").trim() || feed.source_label,
+      source: feed.source,
+      source_label: feed.source_label,
+      url: /^https?:\/\//i.test(metaUrl) ? metaUrl : row.link || feed.url,
+      is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+      last_verified_at: fetchedAt,
+    };
+    const validated = validateLiveEvent(candidate, feed.source);
+    if (validated) events.push(validated);
+  }
+  return events;
+}
+
+// wp/v2 cannot filter or sort by the event-start meta field, so the whole
+// registry is paged through and windowed client-side. 4 pages × 100 rows
+// covers the full registry today (383) with headroom; a growth past the cap
+// is logged so it never truncates silently.
+const VIBEMAP_MAX_PAGES = 4;
+const VIBEMAP_FIELDS = [
+  "id", "title", "link", "excerpt",
+  "meta.vibemap_event_start_date", "meta.vibemap_event_end_date",
+  "meta.vibemap_event_is_all_day", "meta.vibemap_event_is_canceled",
+  "meta.vibemap_event_is_online", "meta.vibemap_event_organizer",
+  "meta.vibemap_event_url", "meta.vibemap_event_venue_name",
+  "meta.vibemap_event_venue_address", "meta.vibemap_event_venue_latitude",
+  "meta.vibemap_event_venue_longitude",
+].join(",");
+
+/** Fetch a Vibemap-for-WordPress events registry (wp/v2/vibemap_event).
+ *  Same window + fail-soft + validate contract as the other paths. */
+async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  try {
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + windowDays);
+    const sep = feed.url.includes("?") ? "&" : "?";
+    const pageUrl = (page: number) =>
+      `${feed.url}${sep}per_page=100&page=${page}&_fields=${VIBEMAP_FIELDS}`;
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+      Accept: "application/json",
+    };
+    const first = await fetch(pageUrl(1), { signal: ctrl.signal, headers, next: { revalidate: 3600 } });
+    if (!first.ok) {
+      if (first.status === 410 || first.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${first.status})`);
+      } else {
+        console.warn(`[ical-live] ${feed.source}: HTTP ${first.status} (fail-soft, skipped)`);
+      }
+      return { events: [], ok: false };
+    }
+    const totalPages = Number(first.headers.get("x-wp-totalpages") ?? "1");
+    if (totalPages > VIBEMAP_MAX_PAGES) {
+      console.warn(`[ical-live] ${feed.source}: ${totalPages} pages upstream, reading first ${VIBEMAP_MAX_PAGES}`);
+    }
+    const firstRows = (await first.json()) as VibemapRow[];
+    const restPages = Math.min(totalPages, VIBEMAP_MAX_PAGES);
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, restPages - 1) }, (_, i) =>
+        fetch(pageUrl(i + 2), { signal: ctrl.signal, headers, next: { revalidate: 3600 } })
+          .then((r) => (r.ok ? (r.json() as Promise<VibemapRow[]>) : []))
+          .catch(() => [] as VibemapRow[]),
+      ),
+    );
+    const rows = [firstRows, ...rest].flat().filter((r) => r && typeof r === "object");
+    const events = parseVibemapEvents(rows, feed, now, horizon, fetchedAt);
+    console.log(`[ical-live] ${feed.source}: parsed ${events.length} vibemap events in window`);
+    recordSnapshot(feed.source, events);
+    return { events, ok: true };
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.warn(
+      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
+      err instanceof Error ? err.message : err,
+    );
+    return { events: [], ok: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
   if (feed.format === "moderncampus" || feed.format === "presence") return fetchJsonArrayFeed(feed, windowDays);
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
+  if (feed.format === "vibemap") return fetchVibemapFeed(feed, windowDays);
   return fetchIcalFeed(feed, windowDays);
 }
 
