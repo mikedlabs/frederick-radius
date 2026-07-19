@@ -1108,6 +1108,48 @@
     },
     "pistarros": {
       "subcategories": ["pizza"]
+    },
+    "brewers-alley-frederick": {
+      "category": "restaurant",
+      "subcategories": ["restaurant", "bar", "brewery"]
+    },
+    "springfield-manor-thurmont": {
+      "category": "winery",
+      "subcategories": ["winery", "food", "distillery", "brewery"]
+    },
+    "south-mountain-creamery-middletown": {
+      "subcategories": ["food", "ice-cream"]
+    },
+    "lil-cakes-creamery-new-market": {
+      "subcategories": ["ice-cream"]
+    },
+    "moo-cow-creamerywalnut-ridge-farm-middletown": {
+      "subcategories": ["ice-cream"]
+    },
+    "roggenart-european-bakery-bistro-cafe-frederick": {
+      "subcategories": ["bakery"]
+    },
+    "ggs-pastry-shop-mount-airy": {
+      "subcategories": ["bakery"]
+    },
+    "bold-love-farm-and-bakery-mount-airy": {
+      "category": "agritourism",
+      "subcategories": ["bakery"]
+    },
+    "tous-les-jours-bakery-cafe-frederick": {
+      "subcategories": ["coffee"]
+    },
+    "juno-bakery-cafe-frederick": {
+      "subcategories": ["coffee"]
+    },
+    "artistangle-gallery": {
+      "subcategories": ["gallery"]
+    },
+    "myron-martin-peace-hollow-farm-market-burkittsville": {
+      "subcategories": ["market"]
+    },
+    "walkersville-community-park-playground-walkersville": {
+      "subcategories": ["playground"]
     }
   }
 }
