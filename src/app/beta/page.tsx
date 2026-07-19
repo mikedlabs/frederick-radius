@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
+import CoverFlight from "@/components/beta/CoverFlight";
+import { buildFlightSlides } from "@/lib/beta-flight";
 import { getBetaPulse } from "@/lib/loaders/betaPulse";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
@@ -92,7 +94,7 @@ export default async function BetaPage({
                 Check what is open and what is happening before you head out.
               </p>
 
-              <CoverPhoto />
+              <FlightOrPlate />
 
               {/* foot matter: the live contents line + the edition line,
                   separated from the plate by one hairline rule */}
@@ -256,12 +258,20 @@ function editionSeason(): string {
 }
 
 /**
- * The cover plate — Carroll Creek in downtown Frederick, mid-festival,
- * framed in a hairline rule with the caption set beneath in italic serif,
- * the way a printed guide captions its plates. The cover shows the real
- * PLACE, full of people, not an abstract mark or a drawing. (Replaced a
- * generic bullseye + radar-ring backdrop, then a line-art pass the owner
- * also turned down; owner asks, 2026-07-19.)
+ * The plate slot: the drone-library cover flight when the aerial
+ * manifest yields slides (the normal case — see lib/beta-flight), the
+ * static Carroll Creek plate as the fail-soft fallback.
+ */
+function FlightOrPlate() {
+  const slides = buildFlightSlides(new Date());
+  return slides.length > 0 ? <CoverFlight slides={slides} /> : <CoverPhoto />;
+}
+
+/**
+ * The static cover plate — Carroll Creek in downtown Frederick,
+ * mid-festival, framed in a hairline rule with the caption set beneath
+ * in italic serif, the way a printed guide captions its plates. Kept as
+ * the cover-flight's fail-soft fallback.
  */
 function CoverPhoto() {
   return (

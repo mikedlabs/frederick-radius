@@ -1386,6 +1386,32 @@ export function openNowHighlights(
   return { count: open.length, names };
 }
 
+/**
+ * Total + open-right-now counts of public recommendable places within
+ * `radiusM` of each point. One decorate pass over the catalog, then a
+ * cheap haversine per point — built for the /beta cover flight, where
+ * every drone frame states what Radius knows about the ground below it.
+ */
+export function nearbyOpenCounts(
+  points: ReadonlyArray<{ lat: number; lng: number }>,
+  radiusM: number,
+  now: Date = new Date(),
+): { total: number; open: number }[] {
+  const decorated = publicPlaces()
+    .filter(isRecommendable)
+    .map((p) => decoratePlace(p, undefined, now));
+  return points.map((pt) => {
+    let total = 0;
+    let open = 0;
+    for (const p of decorated) {
+      if (haversineMeters({ lng: pt.lng, lat: pt.lat }, p.geom) > radiusM) continue;
+      total++;
+      if (isOpenNow(p.open_status)) open++;
+    }
+    return { total, open };
+  });
+}
+
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
   let results = publicPlaces()
