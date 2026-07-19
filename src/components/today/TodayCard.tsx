@@ -135,6 +135,9 @@ export default async function TodayCard() {
   // Always run the verdict: official alerts/AQI must still surface if the
   // ordinary forecast fails. Placeholder weather fields cannot produce a
   // positive read because weatherAvailable explicitly fails closed below.
+  // The hero takes the BRIEF (one observation), never the full advice
+  // line — the greeting already spends words here, and the counsel lives
+  // in NowIntel below (owner report, 2026-07-19: too much text up top).
   const mood = weatherVerdict({
     temp: cur?.temperature ?? 70,
     shortForecast: cur?.shortForecast ?? "",
@@ -148,7 +151,7 @@ export default async function TodayCard() {
     weatherAvailable: Boolean(cur && forecast),
     hourly: forecast?.hourly ?? [],
     now,
-  }).line;
+  }).brief;
 
   // Daytime by real sun times (the glyph's sun/moon depends on it).
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;

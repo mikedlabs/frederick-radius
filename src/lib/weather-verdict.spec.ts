@@ -271,3 +271,41 @@ Fine particulate matter due to wildfire smoke may be Unhealthy (Red Alert) to Ve
     expect(v.line).toMatch(/very unhealthy.*air|air.*very unhealthy/i);
   });
 });
+
+describe("weatherVerdict brief (the hero-length observation)", () => {
+  it("keeps the storm fact and drops the shelter directive", () => {
+    const v = weatherVerdict(input({ shortForecast: "Thunderstorms", now: LATE }));
+    expect(v.line).toBe("Storms are nearby, so stay close to shelter.");
+    expect(v.brief).toBe("Storms are close by.");
+  });
+
+  it("names an active warning without the check-conditions counsel", () => {
+    const v = weatherVerdict(input({
+      activeAlerts: [{ event: "Severe Thunderstorm Warning", severity: "Severe", description: "" }],
+    }));
+    expect(v.brief).toBe("Severe Thunderstorm Warning is active.");
+    expect(v.line).toContain("check official conditions");
+  });
+
+  it("stays a complete short sentence on a fine day", () => {
+    const v = weatherVerdict(input({
+      alertsAvailable: true,
+      airQualityAvailable: true,
+      weatherAvailable: true,
+    }));
+    expect(v.brief).toBe("It is clear and comfortable.");
+  });
+
+  it("never smuggles an advice clause into the brief", () => {
+    const cases = [
+      input({ shortForecast: "Thunderstorms" }),
+      input({ shortForecast: "Snow" }),
+      input({ temp: 30, shortForecast: "Cloudy" }),
+      input({ temp: 92, shortForecast: "Sunny" }),
+      input({ shortForecast: "Fog" }),
+    ];
+    for (const c of cases) {
+      expect(weatherVerdict(c).brief).not.toMatch(/, so |Plan |Limit |Avoid |Reduce /);
+    }
+  });
+});
