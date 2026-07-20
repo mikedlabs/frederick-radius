@@ -20,6 +20,7 @@ import {
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { readCachedPosition, useGeolocation } from "@/hooks/useGeolocation";
+import { answerCanLocalize } from "@/lib/ask/localize";
 import { useSavedList } from "@/hooks/useSaved";
 import { contextualizeAskQuery } from "@/lib/ask/followup";
 import type {
@@ -1002,6 +1003,28 @@ export default function AskFrederick({
     geolocation.request();
   }
 
+  /** Localize the answer ALREADY on screen: re-run the on-screen query with the
+   *  user's location so proximity ranking applies. The bike-rental miss
+   *  (owner, 2026-07-20): a query without "near me" wording never offered
+   *  location, so Ask answered county-wide and buried the closest option.
+   *  Reuses the device-location path; the pending-query ref makes the grant
+   *  (or a cached fix) re-run THIS query. */
+  function localizeAnswer(): void {
+    if (!submittedQuery) return;
+    const cached = readCachedPosition();
+    if (cached) {
+      setScope("nearme");
+      setCurrentScope("nearme");
+      setHasCachedPosition(true);
+      void ask(submittedQuery, { position: cached, scope: "nearme", skipNearbyGate: true });
+      return;
+    }
+    // No cached fix: request the device location. On grant, the geolocation
+    // effect re-runs this pending query with the position and re-ranks.
+    pendingNearbyQueryRef.current = submittedQuery;
+    geolocation.request();
+  }
+
   function runAction(action: AskAction): void {
     if (action.query) void ask(action.query);
   }
@@ -1054,6 +1077,18 @@ export default function AskFrederick({
     (action) => !res?.plan || action.href !== res.plan.href,
   );
   const collapsedSourceCount = 2;
+
+  // Offer to localize a county-wide place answer: the answer named real places
+  // but Radius has no location and no town is set, so the closest option can't
+  // lead. A one-tap prompt re-ranks by proximity (the bike-rental miss fix).
+  const canLocalizeAnswer = answerCanLocalize({
+    hasResult: Boolean(res),
+    requestFailure: Boolean(requestFailure),
+    hasPlaceMatch: (res?.sources ?? []).some((s) => s.href.startsWith("/places/")),
+    hasDevicePosition,
+    townScoped: Boolean(scopeTownSlug(currentScope)),
+    hasQuery: Boolean(submittedQuery),
+  });
 
   return (
     <section
@@ -1451,6 +1486,29 @@ export default function AskFrederick({
                 >
                   Answering: {submittedQuery}
                 </p>
+              ) : null}
+              {canLocalizeAnswer ? (
+                <button
+                  type="button"
+                  onClick={localizeAnswer}
+                  disabled={geolocation.state.status === "loading"}
+                  className="mb-3 flex w-full items-center gap-2.5 rounded-[13px] border px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-60"
+                  style={{
+                    borderColor: "var(--app-brand)",
+                    background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated-solid))",
+                  }}
+                >
+                  <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      {geolocation.state.status === "loading" ? "Finding you…" : "These are county-wide picks."}
+                    </span>
+                    <span className="block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                      Share your location to put the closest ones first.
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                </button>
               ) : null}
               {res.answer ? (
                 <p
