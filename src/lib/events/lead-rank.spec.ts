@@ -83,7 +83,7 @@ describe("compareForLead + pickLeadEvent", () => {
     const concert = ev({
       title: "Summer Concert",
       category: "music",
-      hero_image: null,
+      // No hero image on purpose: prominence must beat the library talk's photo.
       venue_name: "Sky Stage",
       ticket_url: "https://tickets.example.com/show",
       is_free: false,
