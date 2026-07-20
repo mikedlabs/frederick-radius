@@ -60,6 +60,7 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
+import CravingStrip from "@/components/now/CravingStrip";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 
 /**
@@ -363,6 +364,25 @@ export default async function HomePage() {
           dinner right now" answer). Rows built server-side; self-hides when
           nothing in the daypart is open. */}
       <DaypartNeeds rows={buildDaypartRows(now)} />
+
+      {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
+          (CravingStrip), restored to Today but TUCKED behind a disclosure
+          (owner ask 2026-07-20: "where did all place buttons go… added on the
+          today page but hidden until user needs it"). DaypartNeeds answers
+          "what's open right now"; this is the on-demand "let me pick a
+          category" entry point, so it sits here, one tap away, not weighing on
+          the first screen. The markup ships in the HTML (display:none), so it
+          opens instantly with no fetch. */}
+      <CollapsibleSection
+        title="Browse places by what you want"
+        storageKey="fr.today.want"
+        defaultOpen={false}
+        className="border-t pt-2"
+      >
+        <div className="mt-2">
+          <CravingStrip />
+        </div>
+      </CollapsibleSection>
 
       <Suspense
         fallback={
