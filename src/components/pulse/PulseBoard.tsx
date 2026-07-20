@@ -153,11 +153,12 @@ function GroupHeading({
 }) {
   return (
     <div className="min-w-0">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-brand-press)" }}>
+        <span aria-hidden className="inline-block h-2.5 w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
         {eyebrow}
       </p>
-      <div className="mt-0.5 flex min-w-0 items-end justify-between gap-3">
-        <h2 id={id} className="min-w-0 break-words font-serif text-[23px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+      <div className="mt-1 flex min-w-0 items-end justify-between gap-3">
+        <h2 id={id} className="min-w-0 break-words font-serif text-[25px] font-semibold leading-[1.05] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
         {note && <span className="max-w-[45%] shrink pb-0.5 text-right text-[11px] leading-tight [overflow-wrap:anywhere]" style={{ color: "var(--app-ink-3)" }}>{note}</span>}
