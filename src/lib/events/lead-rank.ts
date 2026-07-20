@@ -24,6 +24,11 @@ export type LeadRankable = {
   category?: string;
   hero_image?: string | null;
   starts_at: string;
+  // Size/prominence signals (all optional so lighter shapes still rank).
+  ticket_url?: string | null;
+  is_free?: boolean;
+  price_text?: string | null;
+  venue_name?: string | null;
 };
 
 // Standing programs that recur on a calendar and aren't a "come out tonight"
@@ -43,11 +48,36 @@ export function eventLeadTier(e: LeadRankable): number {
   return 0;
 }
 
-/** Comparator: lead tier, then has-imagery, then soonest. Stable, pure. */
+// Categories that read as a real "come out tonight" draw. Kept broad but
+// title/category-only, like the rest of this module.
+const MARQUEE_CATEGORY = /music|concert|festival|fair|carnival|market|sport|theat|comedy|nightlife|film|movie|dance|show/i;
+
+/**
+ * Prominence within a tier — a rough "how big a draw is this" so the /today
+ * headliner leads with the night's actual event, not whichever library
+ * program happened to start earliest. Higher leads. A ticketed show, a music
+ * or festival category, or a paid event all read as bigger; a program in a
+ * library room reads as smaller. Signals only, never a value judgment beyond
+ * "this is the kind of thing a county turns out for."
+ */
+export function eventProminence(e: LeadRankable): number {
+  let score = 0;
+  if (e.ticket_url) score += 3;
+  if (MARQUEE_CATEGORY.test(e.category ?? "")) score += 2;
+  if (e.is_free === false || (e.price_text && e.price_text.trim().length > 0)) score += 1;
+  if (/\b(library|branch)\b/i.test(e.venue_name ?? "")) score -= 3;
+  return score;
+}
+
+/** Comparator: lead tier, then prominence (bigger draw), then has-imagery,
+ *  then soonest. Stable, pure. */
 export function compareForLead(a: LeadRankable, b: LeadRankable): number {
   const ta = eventLeadTier(a);
   const tb = eventLeadTier(b);
   if (ta !== tb) return ta - tb;
+  const pa = eventProminence(a);
+  const pb = eventProminence(b);
+  if (pa !== pb) return pb - pa;
   const ia = a.hero_image ? 0 : 1;
   const ib = b.hero_image ? 0 : 1;
   if (ia !== ib) return ia - ib;
