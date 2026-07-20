@@ -66,9 +66,12 @@ export default function BeerMosaic({
                   {b.flagship && <Star className="mt-[3px] h-2.5 w-2.5 shrink-0 text-[#c7841f]" strokeWidth={2} fill="currentColor" aria-label="Flagship" />}
                   <span className="font-serif text-[14px] font-semibold leading-tight text-[#281e14] line-clamp-2">{b.name}</span>
                 </span>
-                <span className="mt-auto truncate font-mono text-[9.5px] uppercase tracking-[0.06em] text-[#6b5a45]">
-                  {b.style}
-                  {b.abv != null && ` · ${b.abv.toFixed(1)}%`}
+                <span className="mt-auto flex flex-col gap-0.5">
+                  <span className="truncate text-[11px] font-semibold text-[#5e3a15]">{b.breweryName}</span>
+                  <span className="truncate font-mono text-[9.5px] uppercase tracking-[0.06em] text-[#6b5a45]">
+                    {b.style}
+                    {b.abv != null && ` · ${b.abv.toFixed(1)}%`}
+                  </span>
                 </span>
               </span>
             </button>
