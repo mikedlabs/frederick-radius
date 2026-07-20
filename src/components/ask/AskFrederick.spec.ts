@@ -6,6 +6,7 @@ import {
   hasResolvedNearbyArea,
   nearbyQueryNeedsAreaChoice,
   queryNeedsNearbyContext,
+  queryIsLocalDiscovery,
   sourceHasDistinctDetail,
   sourceSaveTarget,
 } from "./AskFrederick";
@@ -50,6 +51,24 @@ describe("Ask Radius nearby context", () => {
       ),
     ).toBe(false);
     expect(nearbyQueryNeedsAreaChoice("Breakfast near me", null, true)).toBe(false);
+  });
+
+  it("treats inherently-local discovery as needing an area, even without 'near me'", () => {
+    // Owner: a bare "pizza" wants pizza NEAR you — ask for an area first.
+    expect(queryIsLocalDiscovery("pizza")).toBe(true);
+    expect(queryIsLocalDiscovery("where can I get good coffee")).toBe(true);
+    expect(queryIsLocalDiscovery("breweries")).toBe(true);
+    // Informational / civic / event questions are NOT local hunts.
+    expect(queryIsLocalDiscovery("what events are this weekend")).toBe(false);
+    expect(queryIsLocalDiscovery("how do I pay my water bill")).toBe(false);
+    expect(queryIsLocalDiscovery("what's the weather tomorrow")).toBe(false);
+
+    // The gate now fires for "pizza" with no location and no town...
+    expect(nearbyQueryNeedsAreaChoice("pizza", null, false)).toBe(true);
+    // ...but not once a town is named, a device fix exists, or the county is chosen.
+    expect(nearbyQueryNeedsAreaChoice("pizza in Brunswick", null, false)).toBe(false);
+    expect(nearbyQueryNeedsAreaChoice("pizza", null, true)).toBe(false);
+    expect(nearbyQueryNeedsAreaChoice("what events are this weekend", null, false)).toBe(false);
   });
 
   it("respects a place named in the question", () => {

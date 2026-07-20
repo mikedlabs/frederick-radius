@@ -171,6 +171,23 @@ export function queryNeedsNearbyContext(query: string): boolean {
   return NEARBY_LANGUAGE.test(query);
 }
 
+// Inherently-local discovery: "pizza", "coffee", "where can I get tacos" — the
+// user wants it NEAR them even without saying "near me", so a county-wide
+// answer buries the closest option (owner, 2026-07-20: "if the user hasn't
+// given location permission, can it ask before answering"). These prompt for
+// an area first. Informational / civic / event / weather queries are NOT local
+// in this sense and must never be gated.
+const LOCAL_DISCOVERY =
+  /\b(?:pizza|tacos?|taqueria|sushi|ramen|pho|burgers?|sandwich(?:es)?|bbq|barbecue|wings?|coffee|espresso|latte|cafe|café|brunch|breakfast|lunch|dinner|bakery|bagels?|donuts?|ice cream|gelato|dessert|beer|brewery|breweries|taproom|bars?|cocktails?|wine|winery|cidery|distillery|pub|gastropub|restaurants?|dining|parks?|trails?|hikes?|playground|gym|yoga|museum|thrift|bookstore|ice rink|bowling|arcade|barber|salons?)\b/i;
+const NON_LOCAL_MARKERS =
+  /\b(?:events?|festival|concert|shows?|weather|forecast|rain|snow|pay|bill|register|permit|license|vote|voting|trash|recycl|pothole|how do i|phone number|hours of|contact|county council|schools?)\b/i;
+
+/** True when a query is an inherently-local place hunt (so it should ask for an
+ *  area before answering) rather than an informational or civic question. */
+export function queryIsLocalDiscovery(query: string): boolean {
+  return LOCAL_DISCOVERY.test(query) && !NON_LOCAL_MARKERS.test(query);
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -200,7 +217,7 @@ export function nearbyQueryNeedsAreaChoice(
   selectedScope: Scope | null,
   hasDevicePosition: boolean,
 ): boolean {
-  if (!queryNeedsNearbyContext(query)) return false;
+  if (!queryNeedsNearbyContext(query) && !queryIsLocalDiscovery(query)) return false;
   const explicitScope = explicitAreaInQuery(query);
   // Naming the county in this question is a deliberate area choice. A county
   // value left over from an earlier visit is not precise enough for "near me."
