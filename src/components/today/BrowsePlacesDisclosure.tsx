@@ -62,13 +62,8 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
         >
           <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            What are you in the mood for?
-          </span>
-          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Browse places by category, from food and coffee to parks and shops.
-          </span>
+        <span className="min-w-0 flex-1 text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+          Browse by category
         </span>
         <ChevronDown
           className="h-5 w-5 shrink-0 transition-transform duration-200"
