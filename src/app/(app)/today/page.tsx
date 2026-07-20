@@ -45,7 +45,8 @@ import { eventDateBlock } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, isRoutineProgram } from "@/lib/events/lead-rank";
-import { isValidCoord } from "@/lib/geo";
+import { isValidCoord, type LngLat } from "@/lib/geo";
+import { isDowntownFrederick } from "@/lib/geo/downtown";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
@@ -576,13 +577,18 @@ export default async function HomePage() {
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
-/** Town label for an event, avoiding the editorial "Downtown Frederick"
- *  overclaim (the many City-of-Frederick venues that aren't downtown) — the
- *  same call the place labels make. Null when the town is unknown. */
-function eventTown(ev: { municipality_name?: string }): string | null {
+/** Town label for an event. Downtown-aware (owner call, 2026-07-20:
+ *  "downtown only when true"): a Frederick-city event whose point falls inside
+ *  the historic-core geofence reads "Downtown Frederick"; anywhere else in the
+ *  city stays "Frederick" (no overclaim for Golden Mile / west-side venues).
+ *  Other towns pass through. Null when the town is unknown. */
+function eventTown(ev: { municipality_name?: string; municipality?: string; geom?: LngLat | null }): string | null {
   const t = ev.municipality_name?.trim();
   if (!t) return null;
-  return t === "Downtown Frederick" ? "Frederick" : t;
+  if (ev.municipality === "frederick") {
+    return isDowntownFrederick(ev.geom ?? null) ? "Downtown Frederick" : "Frederick";
+  }
+  return t;
 }
 
 /** A walk time is only honest for a venue we KNOW the position of — the loader
