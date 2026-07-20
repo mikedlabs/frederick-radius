@@ -69,9 +69,10 @@ export default function DearFrederickIndex() {
         </p>
       </section>
 
-      {/* The letters, framed like documents, in a two-column mason on wide
-          screens so mixed portrait and landscape scans sit together. */}
-      <ul className="columns-1 gap-4 sm:columns-2 [&>li]:mb-4 [&>li]:break-inside-avoid">
+      {/* The letters, framed like documents, in a plain responsive grid so
+          the mixed portrait and landscape scans read in order (No. 7, 5, 4…)
+          left to right. */}
+      <ul className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
         {PUBLISHED_LETTERS.map((l) => (
           <li key={l.slug}>
             <Link
