@@ -150,6 +150,199 @@ export function dedupeChartIncidents(incidents: ChartIncident[]): ChartIncident[
   return [...byKey.values()];
 }
 
+// ---------------------------------------------------------------------------
+// Human-facing formatting. Boundary cleaning per CLAUDE.md: a CHART machine
+// string ("RAMP 8 FR US 15 SB TO US 40 WB [Traffic Control Signal]") must
+// never reach a hero or an alert card raw. These pure helpers decode the
+// codes into plain language once, so every surface renders the same clean
+// text. Kept unit-testable (time-based helpers take an explicit `now`).
+// ---------------------------------------------------------------------------
+
+/** Cardinal direction word from a CHART direction code ("SB" -> "South",
+ *  "(WB/L)" -> "West"). Empty string when unknown, so callers can drop it. */
+export function chartDirectionWord(dir?: string): string {
+  if (!dir) return "";
+  const key = dir.toLowerCase().replace(/[()]/g, "").replace(/\/[lrc]$/, "").trim();
+  const map: Record<string, string> = {
+    nb: "North", sb: "South", eb: "East", wb: "West",
+    n: "North", s: "South", e: "East", w: "West",
+    north: "North", south: "South", east: "East", west: "West",
+    northbound: "North", southbound: "South", eastbound: "East", westbound: "West",
+    "inner loop": "Inner Loop", "outer loop": "Outer Loop",
+  };
+  return map[key] ?? "";
+}
+
+/** "US 15 North" from a route + direction; bare route when direction unknown. */
+export function chartRoad(incident: Pick<ChartIncident, "road" | "direction">): string {
+  const road = incident.road?.trim();
+  if (!road) return "";
+  const dir = chartDirectionWord(incident.direction);
+  return dir ? `${road} ${dir}` : road;
+}
+
+// Local street name for a state route number, so a reader who knows "Patrick
+// Street" but not "US 40" still gets it. Small and hand-verified — a wrong
+// alias is worse than none, so only include unambiguous county-wide names.
+const ROAD_ALIASES: Record<string, string> = {
+  "US 40": "W Patrick St",
+  "MD 26": "Liberty Rd",
+  "MD 355": "Urbana Pike",
+  "MD 85": "Buckeystown Pike",
+  "MD 144": "Old National Pike",
+};
+
+/** Local street name for a route number ("US 40" -> "W Patrick St"), if known. */
+export function roadAlias(road: string): string | undefined {
+  if (!road) return undefined;
+  return ROAD_ALIASES[road.toUpperCase().replace(/\s+/g, " ").trim()];
+}
+
+const BOUND: Record<string, string> = {
+  nb: "northbound", sb: "southbound", eb: "eastbound", wb: "westbound",
+};
+const LANE: Record<string, string> = { l: "left lane", r: "right lane", c: "center lane" };
+
+/** Expand a ramp endpoint ("US 15 SB" -> "US 15 South"). */
+function humanizeSegment(seg: string): string {
+  return seg
+    .trim()
+    .replace(/\b([NSEW]B)\b/gi, (m) => chartDirectionWord(m) || m)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Decode a raw CHART description into plain language: ramp grammar, direction
+ * and lane codes, and bracketed device tags. Safe on already-clean text.
+ */
+export function humanizeChartText(text: string): string {
+  if (!text) return "";
+  let t = text;
+  // "RAMP 8 FR US 15 SB TO US 40 WB" -> "the ramp from US 15 South to US 40 West"
+  t = t.replace(
+    /\bRAMP\s*\d*\s*FR\s+(.+?)\s+TO\s+(.+?)(?=[.,;]|$)/gi,
+    (_m, from: string, to: string) => `the ramp from ${humanizeSegment(from)} to ${humanizeSegment(to)}`,
+  );
+  // "(WB/L)" -> "westbound, left lane"; "(NB)" -> "northbound"
+  t = t.replace(/\(([NSEW]B)(?:\/([LRC]))?\)/gi, (_m, d: string, lane?: string) => {
+    const bound = BOUND[d.toLowerCase()] ?? "";
+    const laneWord = lane ? LANE[lane.toLowerCase()] : "";
+    return [bound, laneWord].filter(Boolean).join(", ");
+  });
+  // Strip bracketed device tags: "[Traffic Control Signal]".
+  t = t.replace(/\[[^\]]*\]/g, "");
+  return t.replace(/\s+/g, " ").trim();
+}
+
+/** A plain sentence describing what kind of event this is, chosen from the
+ *  type plus description keywords (so a "Special" row never renders "Special."). */
+export function chartTypeSentence(incident: Pick<ChartIncident, "type" | "description">): string {
+  const text = `${incident.description} ${incident.type}`.toLowerCase();
+  if (/signal|traffic control/.test(text)) return "A traffic signal issue is reported.";
+  if (/crash|collision|overturn|accident|fatal/.test(text)) return "A crash is blocking lanes.";
+  if (/disabled|stalled|breakdown/.test(text)) return "A disabled vehicle is on the road.";
+  if (/flood|snow|ice|weather/.test(text)) return "Weather is affecting the road.";
+  if (/construction|roadwork|work zone|road work/.test(text)) return "Road work is under way.";
+  switch (incident.type) {
+    case "Construction": return "Road work is under way.";
+    case "Disabled": return "A disabled vehicle is on the road.";
+    case "Weather": return "Weather is affecting the road.";
+    case "Special": return "A special event is affecting traffic.";
+    case "Incident": return "An incident is affecting traffic.";
+    default: return "A traffic event is reported.";
+  }
+}
+
+/** Subject-led hero sentence: "US 40 West (W Patrick St) has a reported incident." */
+export function chartHeroSentence(incident: Pick<ChartIncident, "road" | "direction" | "type" | "description">): string {
+  const road = chartRoad(incident);
+  const alias = incident.road ? roadAlias(incident.road) : undefined;
+  const subject = road ? (alias ? `${road} (${alias})` : road) : "A Frederick County road";
+  const text = `${incident.description} ${incident.type}`.toLowerCase();
+  let predicate: string;
+  if (/signal|traffic control/.test(text)) predicate = "has a reported signal issue.";
+  else if (/crash|collision|overturn|accident|fatal/.test(text)) predicate = "has a reported crash.";
+  else if (/disabled|stalled|breakdown/.test(text)) predicate = "has a disabled vehicle.";
+  else if (/flood|snow|ice|weather/.test(text)) predicate = "is affected by weather.";
+  else if (/construction|roadwork|work zone|road work/.test(text) || incident.type === "Construction")
+    predicate = "has road work under way.";
+  else if (incident.type === "Incident") predicate = "has a reported incident.";
+  else predicate = "has an active traffic event.";
+  return `${subject} ${predicate}`;
+}
+
+/** Short title for a compact alert row: "Crash on US 15 North". */
+export function chartTodayTitle(incident: Pick<ChartIncident, "road" | "direction" | "type" | "description">): string {
+  const road = chartRoad(incident);
+  const text = `${incident.description} ${incident.type}`.toLowerCase();
+  let noun: string;
+  if (/crash|collision|overturn|accident|fatal/.test(text)) noun = "Crash";
+  else if (/signal|traffic control/.test(text)) noun = "Signal issue";
+  else if (/disabled|stalled|breakdown/.test(text)) noun = "Disabled vehicle";
+  else if (/flood|snow|ice|weather/.test(text) || incident.type === "Weather") noun = "Weather closure";
+  else if (incident.type === "Construction") noun = "Road work";
+  else noun = "Traffic incident";
+  return road ? `${noun} on ${road}` : noun;
+}
+
+function fmtEastern(t: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(t);
+}
+
+/** Freshness tail with the one fact a reader wants: when it clears, else how
+ *  long it has been running. "Clears ~5:00 PM" / "Started 25m ago". */
+export function chartFreshnessTail(
+  incident: Pick<ChartIncident, "started_at" | "expected_end">,
+  now: Date,
+): string {
+  if (incident.expected_end) {
+    const end = new Date(incident.expected_end);
+    if (!Number.isNaN(end.getTime()) && end > now) return `Clears ~${fmtEastern(end)}`;
+  }
+  const start = new Date(incident.started_at);
+  if (!Number.isNaN(start.getTime())) {
+    const mins = Math.round((now.getTime() - start.getTime()) / 60000);
+    if (mins < 1) return "Just reported";
+    if (mins < 60) return `Started ${mins}m ago`;
+    return `Started ${Math.round(mins / 60)}h ago`;
+  }
+  return "Active now";
+}
+
+// The only routes plan-changing enough to interrupt /today. An incident on a
+// side street stays pulse-only; these are the arteries a trip actually uses.
+const TODAY_ROADS = new Set([
+  "I-70", "I-270", "US 15", "US 40", "US 340", "MD 26", "MD 85", "MD 144", "MD 355",
+]);
+
+/**
+ * Strict allowlist for surfacing a traffic incident on /today's Heads up slot.
+ * ALL must hold: High severity, an Incident/Weather type (not planned work or a
+ * signal glitch), a major route, started within 12h, and not already cleared.
+ * A typical day qualifies nothing; only an I-70-closed / fatal-crash class
+ * event interrupts. Exported + unit-tested so the threshold stays honest.
+ */
+export function qualifiesForToday(incident: ChartIncident, now: Date = new Date()): boolean {
+  if (incident.severity !== "High") return false;
+  if (incident.type !== "Incident" && incident.type !== "Weather") return false;
+  const road = incident.road?.toUpperCase().replace(/\s+/g, " ").trim();
+  if (!road || !TODAY_ROADS.has(road)) return false;
+  const start = Date.parse(incident.started_at);
+  if (!Number.isFinite(start)) return false;
+  const age = now.getTime() - start;
+  if (age < 0 || age > 12 * 60 * 60 * 1000) return false;
+  if (incident.expected_end) {
+    const end = Date.parse(incident.expected_end);
+    if (Number.isFinite(end) && end < now.getTime()) return false;
+  }
+  return true;
+}
+
 export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
   try {
     const res = await fetch(ENDPOINT, {

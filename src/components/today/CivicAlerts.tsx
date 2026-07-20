@@ -1,11 +1,18 @@
 import { AlertCircle, AlertTriangle, ArrowRight, CalendarX, Clock, Info } from "lucide-react";
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { getNpsAlerts, type NpsAlert } from "@/lib/integrations/nps";
+import {
+  getChartIncidentsFrederick,
+  qualifiesForToday,
+  chartTodayTitle,
+  chartFreshnessTail,
+  chartRoad,
+} from "@/lib/integrations/mdot-chart";
 import { activeEventNotices } from "@/lib/events/notices";
 import { summarizeAirQualityAlert } from "@/lib/air-quality";
 
 type UnifiedAlert = {
-  source: "NWS" | "NPS";
+  source: "NWS" | "NPS" | "MDOT";
   severity: "info" | "advisory" | "warning" | "emergency";
   title: string;
   /** Short one-line tail under the title (e.g. "Until 8:00 PM" or
@@ -15,6 +22,9 @@ type UnifiedAlert = {
    *  Replaces the old raw `areaDesc` semicolon dump. */
   scope: string;
   url?: string;
+  /** When true the url is an external site (open in a new tab). Internal
+   *  deep links (e.g. a traffic row → /pulse?open=traffic) stay in-app. */
+  external?: boolean;
 };
 
 /** Pull "Until 8:00 PM" out of an ISO expiry. The single most
@@ -79,7 +89,11 @@ export function nwsDisplaySeverity(a: NwsAlert): UnifiedAlert["severity"] {
     a.severity === "Moderate" ? "advisory" : "info";
 }
 
-function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
+function normalize(
+  nws: NwsAlert[],
+  nps: NpsAlert[],
+  traffic: UnifiedAlert[],
+): UnifiedAlert[] {
   const out: UnifiedAlert[] = [];
   for (const a of nws) {
     const severity = nwsDisplaySeverity(a);
@@ -95,6 +109,7 @@ function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
       tail: until || firstSentence(a.headline || a.description),
       scope: summarizeArea(a.area),
       url: a.url,
+      external: true,
     });
   }
   for (const a of nps) {
@@ -109,14 +124,38 @@ function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
       tail: firstSentence(a.description),
       scope: a.parkName,
       url: a.url,
+      external: true,
     });
   }
+  // Traffic rows (MDOT CHART) are pre-filtered to the strict qualifiesForToday
+  // allowlist and slotted at the "warning" tier, so an NWS emergency always
+  // outranks them and extras still collapse into the quiet "+N more → /pulse".
+  out.push(...traffic);
   const order = { emergency: 0, warning: 1, advisory: 2, info: 3 } as const;
   // Heads up is a HIGH-SIGNAL interruption layer, not a feed: drop "info"
   // (low-confidence/routine) so it never cries wolf. Sort worst-first.
   return out
     .filter((a) => a.severity !== "info")
     .sort((a, b) => order[a.severity] - order[b.severity]);
+}
+
+/** Map the qualifying CHART incidents to at most one Heads-up traffic row.
+ *  Cleaned title, mono freshness tail, road scope chip, in-app deep link. */
+function trafficAlerts(now: Date, incidents: Awaited<ReturnType<typeof getChartIncidentsFrederick>>): UnifiedAlert[] {
+  const qualifying = incidents.filter((i) => qualifiesForToday(i, now));
+  if (qualifying.length === 0) return [];
+  const top = qualifying[0];
+  return [
+    {
+      source: "MDOT",
+      severity: "warning",
+      title: chartTodayTitle(top),
+      tail: chartFreshnessTail(top, now),
+      scope: chartRoad(top) || "Major route",
+      url: "/pulse?open=traffic",
+      external: false,
+    },
+  ];
 }
 
 const STYLES = {
@@ -143,11 +182,12 @@ const STYLES = {
  * moment a real feed exists — absent until then, never faked.
  */
 export default async function CivicAlerts({ includeWeather = true }: { includeWeather?: boolean } = {}) {
-  const [nws, nps] = await Promise.all([
+  const [nws, nps, chart] = await Promise.all([
     includeWeather ? getNwsAlerts() : Promise.resolve([]),
     getNpsAlerts(),
+    getChartIncidentsFrederick(),
   ]);
-  const alerts = normalize(nws, nps);
+  const alerts = normalize(nws, nps, trafficAlerts(new Date(), chart));
   // Owner event notices (event-notices.json) — "Alive @ Five is cancelled
   // tonight" is exactly the news this slot exists for. They render as their
   // OWN rows below the weather alert (never folded into the one-alert
@@ -162,7 +202,7 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const more = alerts.length - 1;
   const s = top ? STYLES[top.severity] : null;
   const Icon = s?.icon ?? Info;
-  const TailIcon = top?.tail.startsWith("Until") ? Clock : null;
+  const TailIcon = top && /^(Until|Clears|Started|Just )/.test(top.tail) ? Clock : null;
 
   return (
     <section className="space-y-1.5" aria-label="Heads up">
@@ -194,8 +234,8 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
       {top && s && (
       <a
         href={top.url ?? "#"}
-        target={top.url ? "_blank" : undefined}
-        rel="noopener noreferrer"
+        target={top.url && top.external ? "_blank" : undefined}
+        rel={top.external ? "noopener noreferrer" : undefined}
         className="block rounded-[var(--app-radius-md)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.985]"
         style={{ background: s.bg, color: s.fg }}
       >
