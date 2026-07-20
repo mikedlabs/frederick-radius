@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, Layers as LayersIcon, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
+import { Clock, Layers as LayersIcon, LayoutGrid, List, LocateFixed, Map as MapIcon, MapPin, Music, NotebookPen, Search as SearchIcon, Tag, X, Zap } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -837,10 +837,11 @@ export default function MapDock(props: MapDockProps) {
               aria-expanded={pane === "what"}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
+              aria-label={`What: ${what.main}`}
               className={`dock-seg dock-seg-what${pane === "what" ? " active" : ""}`}
               onClick={() => toggle("what")}
             >
-              <span className="dock-seg-k">What</span>
+              <LayoutGrid aria-hidden className="dock-seg-i" strokeWidth={2} />
               <span className="dock-seg-v" style={{ color: whatColor }}>
                 {what.main}
               </span>
@@ -850,10 +851,11 @@ export default function MapDock(props: MapDockProps) {
               aria-expanded={pane === "when"}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
+              aria-label={`When: ${when.text}`}
               className={`dock-seg dock-seg-when${pane === "when" ? " active" : ""}`}
               onClick={() => toggle("when")}
             >
-              <span className="dock-seg-k">When</span>
+              <Clock aria-hidden className="dock-seg-i" strokeWidth={2} />
               <span className={`dock-seg-v${when.mono ? " mono" : ""}`} style={{ color: whenColor }}>
                 {when.text}
               </span>
@@ -863,10 +865,11 @@ export default function MapDock(props: MapDockProps) {
               aria-expanded={pane === "where"}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
+              aria-label={`Where: ${whereText}`}
               className={`dock-seg dock-seg-where${pane === "where" ? " active" : ""}`}
               onClick={() => toggle("where")}
             >
-              <span className="dock-seg-k">Where</span>
+              <MapPin aria-hidden className="dock-seg-i" strokeWidth={2} />
               <span className="dock-seg-v" style={{ color: whereColor }}>
                 {whereText}
               </span>
