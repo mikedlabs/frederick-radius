@@ -40,6 +40,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/ask", title: "Ask Radius", blurb: "Ask a local question and get a source-backed answer with the next action or a plan when it fits.", keywords: ["ask radius", "help me decide", "recommendation", "what should i do", "plan something"] },
   { href: "/plan", title: "Plan a day", blurb: "Choose a time and mood to build an itinerary from listed stops.", keywords: ["itinerary", "plan my day", "day plan"] },
   { href: "/open-now", title: "Open right now", blurb: "Find places whose posted hours indicate they are open, ranked from your selected town.", keywords: ["open now", "open late", "still open", "whats open"] },
+  { href: "/nearby", title: "Nearby", blurb: "Rank useful places from a real location or a chosen town.", keywords: ["near me", "closest", "around me", "nearby"] },
 
   // ── Live county status ──
   { href: "/pulse", title: "County pulse", blurb: "Check current county status feeds and public-service links on one screen.", keywords: ["traffic", "power outage", "outage", "school closings", "road conditions", "pulse"] },
@@ -58,7 +59,11 @@ export const APP_PAGES: AppPage[] = [
   { href: "/history", title: "County history", blurb: "Review Frederick County history through dated moments tied to local places.", keywords: ["history", "historic"] },
   { href: "/nonprofits", title: "Nonprofits", blurb: "Browse county nonprofit records from the IRS dataset.", keywords: ["nonprofit", "nonprofits", "charity", "charities", "volunteer"] },
   { href: "/collections", title: "Collections", blurb: "Browse local shortlists for different situations.", keywords: ["collections", "shortlist", "curated", "lists"] },
+  { href: "/archive", title: "Archive Lens", blurb: "Archive Lens shows curated Frederick maps, surveys, newspaper pages, and documentary photographs.", keywords: ["archive", "old maps", "newspapers", "historic photos", "library of congress"] },
+  { href: "/dear-frederick", title: "Dear Frederick", blurb: "Read handwritten letters mailed to Frederick and gathered here.", keywords: ["dear frederick", "letters", "community letters"] },
+  { href: "/from-above/preview", title: "From Above", blurb: "See Frederick County through Mike's drone archive.", keywords: ["from above", "aerial", "drone", "photography"] },
   { href: "/emergency-vet", title: "Pet emergency care", blurb: "Find listed emergency animal care and poison-help contacts.", keywords: ["emergency vet", "animal hospital", "pet emergency", "pet poison"] },
+  { href: "/submit/event", title: "Add an event", blurb: "Submit a local event for review.", keywords: ["add event", "submit event", "post an event"] },
 
   // ── Yours ──
   { href: "/my-radius", title: "Saved", blurb: "Review what you saved on this device.", keywords: ["saved", "favorites", "bookmarks"] },

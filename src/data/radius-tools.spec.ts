@@ -15,6 +15,9 @@ const SPECIAL_ROUTE_FILES: Record<string, string> = {
   "/report": "src/app/report/page.tsx",
   "/submit/event": "src/app/submit/event/page.tsx",
   "/submit/place": "src/app/submit/place/page.tsx",
+  // From Above lives outside the (app) route group so the full-bleed book
+  // experience runs without the app chrome.
+  "/from-above/preview": "src/app/from-above/preview/page.tsx",
 };
 
 function routeFile(href: string): string {

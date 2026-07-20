@@ -63,6 +63,7 @@ import { formatEasternDateline } from "@/lib/format/easternClock";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
 import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
+import ToolboxTeaser from "@/components/nav/ToolboxTeaser";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 
 /**
@@ -452,6 +453,12 @@ export default async function HomePage() {
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
+      {/* THE TOOLBOX — a calm door into the full Compass directory, low on the
+          page. Every subject group is one tap away, so the useful tools that
+          were only reachable through Ask or the header Compass button are now
+          named on the front door too. */}
+      <ToolboxTeaser />
+
       {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
           default so the first screen is weather + the day's program. Depth
           is one tap away, not the opening wall. Reversible: flip

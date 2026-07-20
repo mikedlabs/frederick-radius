@@ -287,7 +287,9 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.getByRole("button", { name: /Show all \d+ tools/ }).click();
     const allTools = page.locator("#all-radius-tools a");
-    await expect(allTools).toHaveCount(46);
+    // Every registered tool except the six featured cards (which the "all"
+    // list hides while unfiltered). Update alongside the tool registry.
+    await expect(allTools).toHaveCount(48);
     const featuredHrefs = await featured.getByRole("link").evaluateAll((links) =>
       links.map((link) => link.getAttribute("href")),
     );
