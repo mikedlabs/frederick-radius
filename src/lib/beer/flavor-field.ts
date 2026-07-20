@@ -39,6 +39,13 @@ export type FieldDot = {
   wellRated: boolean;
 };
 
+export type RidgePaths = {
+  /** Filled area under the density curve (SVG path in a 100 x RIDGE_H space). */
+  area: string;
+  /** The top curve only, for a crisp stroke. */
+  line: string;
+};
+
 export type FieldRow = {
   key: StyleFamily;
   label: string;
@@ -46,7 +53,53 @@ export type FieldRow = {
   deep: string;
   count: number;
   dots: FieldDot[];
+  /** Ridgeline paths — the family's ABV distribution as a smooth hill. */
+  ridge: RidgePaths;
 };
+
+/** Viewbox height for a ridge (paired with preserveAspectRatio="none": x
+ *  stretches to the strip width, y stays true). */
+export const RIDGE_H = 40;
+const RIDGE_SAMPLES = 56;
+// Gaussian bandwidth in xFrac units (~0.6 ABV over the 9.5-wide scale) — wide
+// enough to read as a smooth hill, tight enough to keep two clusters distinct.
+const RIDGE_BW = 0.6 / (ABV_MAX - ABV_MIN);
+
+/**
+ * A light gaussian KDE over the family's ABVs, rendered as an SVG area + line.
+ * Height is normalized per family (its own peak fills the row) so a 5-beer
+ * shelf still shows a hill next to the 56-beer one; the count label carries the
+ * volume. Pure + deterministic — same dots in, same path out.
+ */
+export function ridgePaths(xFracs: number[]): RidgePaths {
+  const H = RIDGE_H;
+  if (xFracs.length === 0) {
+    const flat = `M 0 ${H} L 100 ${H}`;
+    return { area: `${flat} Z`, line: flat };
+  }
+  const ys: number[] = [];
+  let max = 0;
+  for (let i = 0; i < RIDGE_SAMPLES; i++) {
+    const x = i / (RIDGE_SAMPLES - 1);
+    let d = 0;
+    for (const xf of xFracs) {
+      const z = (x - xf) / RIDGE_BW;
+      d += Math.exp(-0.5 * z * z);
+    }
+    ys.push(d);
+    if (d > max) max = d;
+  }
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const px = (i: number) => round((i / (RIDGE_SAMPLES - 1)) * 100);
+  // Leave 3px headroom at the top; a floor keeps a sparse family visible.
+  const py = (d: number) => round(H - (max > 0 ? d / max : 0) * (H - 3));
+  let line = `M ${px(0)} ${py(ys[0])}`;
+  for (let i = 1; i < ys.length; i++) line += ` L ${px(i)} ${py(ys[i])}`;
+  const area = `M 0 ${H} L ${px(0)} ${py(ys[0])}` +
+    ys.slice(1).map((d, i) => ` L ${px(i + 1)} ${py(d)}`).join("") +
+    ` L 100 ${H} Z`;
+  return { area, line };
+}
 
 /** FNV-1a → [0,1). Deterministic so the beeswarm is identical every render. */
 function hash01(s: string): number {
@@ -88,6 +141,7 @@ export function buildFieldRows(beers: BeerWithBrewery[] = ALL_BEERS): FieldRow[]
       deep: family.deep,
       count: list.length,
       dots,
+      ridge: ridgePaths(dots.map((d) => d.xFrac)),
     };
   });
   // Count desc; key breaks ties so the three 10-count families keep a stable order.

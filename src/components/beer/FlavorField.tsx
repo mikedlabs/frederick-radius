@@ -6,6 +6,7 @@ import type { StyleFamily } from "@/data/beers";
 import {
   buildFieldRows,
   abvFraction,
+  RIDGE_H,
   FIELD_ABV_BANDS,
   FLAVOR_INSIGHTS,
   type FlavorInsight,
@@ -24,7 +25,6 @@ import {
  */
 
 const ROW_H = 44; // px per family row
-const DOT = 7; // px dot diameter (r=3.5)
 
 export type FlavorFieldProps = {
   families: StyleFamily[];
@@ -106,34 +106,44 @@ export default function FlavorField({
                 </span>
                 <span className="pl-4 font-mono text-[10px] tabular-nums text-[#6b5a45]">{row.count}</span>
               </span>
-              {/* Dot strip, right */}
+              {/* Ridgeline — the family's ABV distribution as a filled hill. */}
               <span className="relative flex-1" style={{ minHeight: ROW_H }} aria-hidden>
                 {bandSpan && (
                   <span
-                    className="absolute inset-y-0"
+                    className="absolute inset-y-0 z-10"
                     style={{
                       left: `${bandSpan.left * 100}%`,
                       width: `${(bandSpan.right - bandSpan.left) * 100}%`,
                       background: "rgba(94,58,21,0.10)",
-                      borderLeft: "1px solid rgba(94,58,21,0.22)",
-                      borderRight: "1px solid rgba(94,58,21,0.22)",
+                      borderLeft: "1px solid rgba(94,58,21,0.28)",
+                      borderRight: "1px solid rgba(94,58,21,0.28)",
                     }}
                   />
                 )}
-                {row.dots.map((d) => (
-                  <span
-                    key={d.key}
-                    className="absolute rounded-full"
-                    style={{
-                      left: `calc(${d.xFrac * 100}% - ${DOT / 2}px)`,
-                      top: 5 + d.yFrac * (ROW_H - 10 - DOT),
-                      width: DOT,
-                      height: DOT,
-                      background: d.wellRated ? row.deep : row.base,
-                      boxShadow: d.flagship ? "0 0 0 1px #281e14" : "none",
-                    }}
+                <svg
+                  viewBox={`0 0 100 ${RIDGE_H}`}
+                  preserveAspectRatio="none"
+                  width="100%"
+                  height={ROW_H}
+                  className="block"
+                  aria-hidden
+                >
+                  <defs>
+                    <linearGradient id={`ridge-${row.key}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={row.base} stopOpacity={on ? 0.95 : 0.82} />
+                      <stop offset="100%" stopColor={row.deep} stopOpacity={0.45} />
+                    </linearGradient>
+                  </defs>
+                  <path d={row.ridge.area} fill={`url(#ridge-${row.key})`} />
+                  <path
+                    d={row.ridge.line}
+                    fill="none"
+                    stroke={row.deep}
+                    strokeWidth={1.5}
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
                   />
-                ))}
+                </svg>
               </span>
             </button>
           );
