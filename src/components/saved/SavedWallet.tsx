@@ -170,8 +170,15 @@ function Card({
       className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
       style={
         {
-          // Darkened brand ground so cream text always clears AA — never the raw hue.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          // Two registers so the resting deck stays CALM (owner: the wallet
+          // stacked 12 loud jewel-tone cards). A tucked card is mostly ink with
+          // just a hint of its hue — the serif name carries it, field-guide
+          // calm. RAISING a card brings its full brand color to life. Both are
+          // darkened grounds, so cream text always clears AA (the tucked, more-
+          // ink ground only raises contrast further).
+          background: open
+            ? `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`
+            : `linear-gradient(152deg, color-mix(in srgb, ${hue} 15%, #16140E), color-mix(in srgb, ${hue} 8%, #0c0a06))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
         } as CSSProperties
