@@ -1,23 +1,7 @@
 import type { ReactNode } from "react";
 import { currentMeal } from "@/lib/meal";
-import { easternParts } from "@/lib/tz";
+import { defaultWant } from "@/lib/today/craving-lead";
 import WantsAccordion from "./WantsAccordion";
-
-/**
- * Which main category starts expanded, by the moment — a smart default, NOT a
- * reshuffle (the 7 mains keep fixed positions; only the open one changes). Late
- * night and Fri/Sat evenings lead with Drink, weekend afternoons with Outdoors,
- * everything else with Eat (the universal default + its time-aware meal lead).
- */
-function defaultWant(now: Date): string {
-  const { hour, weekday } = easternParts(now);
-  const weekend = weekday === 0 || weekday === 6;
-  const friOrSat = weekday === 5 || weekday === 6;
-  if (hour >= 22 || hour < 5) return "drink"; // late night
-  if (weekend && hour >= 9 && hour < 16) return "outdoors"; // weekend daytime
-  if (friOrSat && hour >= 16) return "drink"; // Fri/Sat evening
-  return "eat";
-}
 
 /**
  * CravingStrip — the "I want…" fast lane on Today.

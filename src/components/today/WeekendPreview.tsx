@@ -64,7 +64,7 @@ export default async function WeekendPreview({
   });
 
   return (
-    <section aria-labelledby="weekend-preview-heading" className="mt-4">
+    <section aria-labelledby="weekend-preview-heading" className="mt-6">
       <Link
         href="/events?lens=weekend"
         className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] border p-3.5"

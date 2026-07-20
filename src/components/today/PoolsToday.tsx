@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, Waves } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { poolsStatus } from "@/lib/pools";
 
 /**
@@ -20,23 +21,8 @@ export default function PoolsToday({ now }: { now: Date }) {
   const openPools = pools.filter((pool) => pool.openNow);
 
   return (
-    <section className="mt-4 space-y-2.5" aria-labelledby="pools-today-heading">
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="inline-flex h-6 w-6 items-center justify-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-cool) 16%, var(--app-bg-elevated))", color: "var(--app-cool)" }}
-        >
-          <Waves className="h-3.5 w-3.5" strokeWidth={2.2} />
-        </span>
-        <h2
-          id="pools-today-heading"
-          className="font-serif text-[18px] font-semibold leading-none tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Pools
-        </h2>
-      </div>
+    <section className="mt-6 space-y-2.5" aria-label="Pools">
+      <SectionHeading size="sm" title="Pools" accent="var(--app-cool)" />
 
       {anyOpen ? (
       <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
@@ -49,13 +35,13 @@ export default function PoolsToday({ now }: { now: Date }) {
               <span
                 aria-hidden
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: p.openNow ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3, #7A7975)" }}
+                style={{ background: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                   {p.name}
                 </span>
-                <span className="block text-[12px]" style={{ color: p.openNow ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3)" }}>
+                <span className="block text-[12px]" style={{ color: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}>
                   {p.line}
                 </span>
               </span>

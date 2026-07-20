@@ -23,6 +23,7 @@ import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import SectionHeading from "@/components/ui/SectionHeading";
 import Skeleton from "@/components/ui/Skeleton";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import HourlyDisclosure from "@/components/today/HourlyDisclosure";
@@ -377,16 +378,31 @@ export default async function HomePage() {
         </>
       )}
 
+      {/* ── LOWER PAGE, reordered with an argument (Jul 2026 rework): open-now
+          places → your own saved → an idea → the day's pick → sometimes-on
+          context → good-to-have utilities → weather depth. Each section reads at
+          one of two type registers (SectionHeading lg/sm), so hierarchy comes
+          from typography, not five competing header styles. ─────────────────── */}
+
       {/* RIGHT NOW, AROUND HERE — the daypart's most-wanted PLACES, open now
-          (owner ask 2026-07-20: list the common AM / midday / evening needs;
-          the page was event-heavy and buried the "where do I get coffee /
-          dinner right now" answer). Rows built server-side; self-hides when
-          nothing in the daypart is open. */}
+          (owner ask 2026-07-20: list the common AM / midday / evening needs).
+          Rows built server-side; self-hides when nothing in the daypart is open.
+          Its lead rail de-dupes against the CravingStrip "I want…" lead above,
+          so the page never says "dinner" twice back-to-back (buildDaypartRows). */}
       <DaypartNeeds rows={buildDaypartRows(now)} />
 
+      {/* FROM YOUR SAVED + the save-derived shortcut, kept together (both read
+          the user's own saves): the returning user's open-now saved places, then
+          the one quiet "you keep a lot of ___" nudge. Each self-hides
+          independently, so an honest empty state never shows a box. */}
+      <FromYourSaved />
+      <TasteNudge />
+
+      {/* NEED AN IDEA — the editorial collections rail (one of the two rails, now
+          separated from the daypart rail by the saved list above). */}
       <Suspense
         fallback={
-          <section className="mt-5" aria-label="Need an idea?">
+          <section className="mt-6" aria-label="Need an idea?">
             <Skeleton.Block height={120} round="var(--app-radius-lg)" />
           </section>
         }
@@ -394,91 +410,64 @@ export default async function HomePage() {
         <CuratedPicks />
       </Suspense>
 
-      {/* Keep rare dated context without interrupting the primary mobile path.
-          Weather now hands directly to the day's program; holiday, school,
-          creek, and community notes follow the first useful answers. */}
-      <MastheadNotes now={now} />
-
-      {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
-          the live layer): a returning user's own saved places that are open
-          RIGHT NOW are a high-intent answer, so they sit just under the day's
-          events. Client section
-          (saves are client state); renders nothing unless something's open, so
-          a first-timer or anyone with no open saves never sees a box. */}
-      <FromYourSaved />
-
-      {/* ── LOOKING AHEAD — the weekend teaser on Thu/Fri mornings (the hours
-          a resident actually decides the weekend; TomorrowPreview owns the
-          late-night slot). Self-hides every other daypart and when the
-          weekend calendar is still thin. Part of the return-visit loop. */}
-      <Suspense fallback={null}>
-        <WeekendPreview now={now} eventsPromise={eventsPromise} />
-      </Suspense>
-
-      {/* Seasonal pools (summer only; self-hides out of season) — placed BELOW
-          the day's events and the happy-hour / on-now layer (owner call):
-          swimming is a resident utility, not the headline, so it follows the
-          draws instead of leading them. */}
-      <PoolsToday now={now} />
-
-      {/* ── WORTH A LOOK — the daily discovery rail, PROMOTED out of the
-          collapsed briefing (return-visit audit, Jul 2026): it is the one
-          module deliberately rotated every morning, and it sat behind the
-          page's only fold — the returning visitor never saw the thing built
-          for them. Six typographic tiles, new lineup each Eastern day. */}
+      {/* WORTH A LOOK — the daily rotation, demoted from a third swipe rail to a
+          calm vertical list so the eye doesn't hit three rails in a row. */}
       <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
         <WorthALook />
       </Suspense>
 
-      {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
-          places (their dominant craving), linking into /nearby for it. Client +
-          self-hiding (renders nothing until the saves show a clear pattern), so
-          it never weighs on a first-timer and never touches the I-want grid's
-          first-paint path. Finding from the user's own signal, not telling. */}
-      <TasteNudge />
+      {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
+          "here sometimes" context sits together instead of interrupting the core
+          sections. Each self-hides out of its window. */}
+      {/* LOOKING AHEAD — the weekend teaser on Thu/Fri mornings. */}
+      <Suspense fallback={null}>
+        <WeekendPreview now={now} eventsPromise={eventsPromise} />
+      </Suspense>
+      {/* Seasonal pools (summer only; self-hides out of season). */}
+      <PoolsToday now={now} />
+      {/* Rare dated context: holiday, school, creek, and community notes. */}
+      <MastheadNotes now={now} />
 
       {/* "What's happening around you" (NearbyNow) was removed from /today
           (owner call): the craving grid + Today's Deals already answer "near
           me now," and the around-you geo surface duplicated that. It still
           lives on the map. */}
 
-      {/* (HEADS UP / CivicAlerts moved UP to just under the masthead — an active
-          warning belongs before anyone plans, not below the whole moat.) */}
+      {/* GOOD TO HAVE — the standing local utilities, lifted OUT of the old
+          "More weather & local tools" drawer (they were never weather, and a
+          visitor never found "where to stay" behind a weather label). One
+          VISIBLE zone under a single secondary heading, then the toolbox door,
+          so the bottom of the page reads as a calm "good to have" shelf. */}
+      <section aria-label="Good to have" className="mt-6">
+        <SectionHeading size="sm" title="Good to have" />
+        <div className="mt-3 space-y-3">
+          {/* Where to stay, the food-truck roster, and the parking /
+              reservations hand-offs — real visitor utilities, now standing
+              in the open instead of hiding behind a weather collapse. */}
+          <VisitorStayPrompt />
+          <FoodTruckToday />
+          <PartnerAppsRow />
+        </div>
+      </section>
 
-      {/* RESPONSIVE SPLIT (desktop only):
-       *   mobile  : everything stacks single-column (space-y-6).
-       *   lg+     : two-column grid — LEFT carries the day/weather
-       *             stack (the "what's it like outside" answer);
-       *             RIGHT carries the action stack (mood tiles,
-       *             partner apps, WorthALook, events, From Above).
-       * Each column keeps its own internal space-y-6 spine so the
-       * vertical rhythm doesn't collapse at the breakpoint. */}
-      {/* THE TOOLBOX — a calm door into the full Compass directory, low on the
-          page. Every subject group is one tap away, so the useful tools that
-          were only reachable through Ask or the header Compass button are now
-          named on the front door too. */}
+      {/* THE TOOLBOX — the calm door into the full Compass directory, part of
+          the same good-to-have zone. Every subject group is one tap away. */}
       <ToolboxTeaser />
 
-      {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
-          default so the first screen is weather + the day's program. Depth
-          is one tap away, not the opening wall. Reversible: flip
-          defaultOpen, or lift any module back above to taste. */}
+      {/* WEATHER DETAILS — the one honest collapse, now weather-only: the
+          hourly / 7-day disclosure pills and the forecast/almanac hand-off.
+          The utilities that used to share this drawer moved up into "Good to
+          have"; the label now says exactly what is inside. */}
       <CollapsibleSection
-        title="More weather & local tools"
+        title="Weather details"
         storageKey="fr.today.briefing"
         defaultOpen={false}
-        className="mt-5 border-t pt-2"
+        className="mt-6 border-t pt-2"
       >
-      <div className="mt-2 flex flex-col gap-4">
-        {/* ── LEFT column: the weather block. Leads on mobile (weather
-            at the top, per the premium-refresh direction) and sits in
-            the left column at lg+. ───────────────────────────────── */}
-        <div className="space-y-4">
-      {/* The sky-tinted weather hero (SkyHero + TodayCard) moved to the TOP
-          of the page (owner call). This briefing column now holds the
-          DETAILED forecast — the hourly / 7-day / more-details panel + the
-          multi-day NowDayStrip — for readers who want depth. CivicAlerts
-          lives in its own top-level "Heads up" slot above. */}
+      <div className="mt-2 space-y-3">
+      {/* /today keeps the cinematic sky at the top of the page; this collapse
+          holds the DETAILED forecast — the hourly / 7-day pills — for readers
+          who want depth, then hands off to /pulse for the full almanac. */}
       <div className="relative">
         {(() => {
           // Sky-aware wash on the weather sub-card stack so the
@@ -552,44 +541,17 @@ export default async function HomePage() {
         <ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} aria-hidden />
       </Link>
 
-        </div>{/* /LEFT column */}
-
-        {/* ── RIGHT column: the action stack. Follows the weather on
-            mobile; second column at lg+. stagger-children makes the
-            section assemble itself — each card breathes in just after
-            the last, so the page feels alive on arrival. ──────────── */}
-        <div className="space-y-4 stagger-children">
-
-      {/* The right column is now the SECONDARY stack: quick needs + the
-       *  collapsed "more for today." "What's on" (the events answer) was
-       *  lifted to a top-level section above the full briefing so the page
-       *  reads Ask → best move → what's on → details, not a stacked
-       *  dashboard with the answer buried in a column. */}
-
-      {/* "Where to stay" door — now shown to everyone (the Resident/Visitor
-          gate came out with the toggle). A local sending an out-of-town guest
-          the link wants this too, so it's a standing card, not mode-gated. */}
-      <VisitorStayPrompt />
-
-      {/* Secondary beats — partner apps, the surprise-me pick, the photography
-          exit — render DIRECTLY here, no longer wrapped in their own "More for
-          today" collapsible. They were a disclosure INSIDE the collapsed "full
-          briefing", so reaching them took two separate expands (2026-07-12
-          audit: disclosure-inside-disclosure). Now "The full briefing" is the
-          single secondary disclosure the whole page hands off to. */}
-      <div className="space-y-4">
-        <FoodTruckToday />
-        <PartnerAppsRow />
-        {/* WorthALook moved UP into the visible flow (return-visit audit) —
-            a daily rotation behind the page's only fold defeated itself.
-            Local news moved to /pulse (the civic dashboard that owns it) and
-            the From Above drone-book doorway moved off the front door — both
-            are "check when curious," not "find something to do today." */}
       </div>
-
-        </div>{/* /RIGHT column */}
-      </div>{/* /responsive split */}
       </CollapsibleSection>
+
+      {/* Closing beat — a quiet brand sign-off so the page ends on purpose
+          instead of dropping straight from a collapsed row into the footer. */}
+      <div className="mt-8 flex flex-col items-center gap-2 pb-2 text-center">
+        <span aria-hidden className="h-[3px] w-8 rounded-full" style={{ background: "var(--app-brand)" }} />
+        <p className="font-serif text-[15px]" style={{ color: "var(--app-ink-3)" }}>
+          Around here.
+        </p>
+      </div>
     </EventSheetBoundary>
   );
 }

@@ -42,7 +42,7 @@ export default function ToolboxTeaser() {
   return (
     <section
       aria-labelledby="toolbox-teaser-heading"
-      className="mt-5 rounded-[var(--app-radius-lg)] border p-4"
+      className="mt-6 rounded-[var(--app-radius-lg)] border p-4"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)" }}
     >
       <div className="flex items-baseline justify-between gap-3">
