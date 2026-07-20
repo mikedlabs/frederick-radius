@@ -58,6 +58,8 @@ import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
+import DaypartNeeds from "@/components/today/DaypartNeeds";
+import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 
 /**
  * Now — the daily briefing.
@@ -353,6 +355,13 @@ export default async function HomePage() {
           {whatsOn}
         </>
       )}
+
+      {/* RIGHT NOW, AROUND HERE — the daypart's most-wanted PLACES, open now
+          (owner ask 2026-07-20: list the common AM / midday / evening needs;
+          the page was event-heavy and buried the "where do I get coffee /
+          dinner right now" answer). Rows built server-side; self-hides when
+          nothing in the daypart is open. */}
+      <DaypartNeeds rows={buildDaypartRows(now)} />
 
       <Suspense
         fallback={
