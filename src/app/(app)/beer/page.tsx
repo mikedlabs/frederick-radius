@@ -47,7 +47,7 @@ export default function BeerPage() {
           county's palate, and the family/ABV filter control) leading the pour
           list it filters. Owner ask 2026-07-20: "impressive to beer lovers, a
           real tool," "less like a directory." */}
-      <BeerIndex />
+      <BeerIndex photos={breweryPhotos} />
 
       {/* Zone 4 — the taprooms as PHOTOGRAPHS, not a logo directory. */}
       <BreweryStrip photos={breweryPhotos} />
