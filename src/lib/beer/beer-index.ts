@@ -1,4 +1,5 @@
-import { ALL_BEERS, type BeerWithBrewery, type StyleFamily } from "@/data/beers";
+import { ALL_BEERS, STYLE_FAMILIES, type BeerWithBrewery, type StyleFamily } from "@/data/beers";
+import { beerColor, colorLuminance } from "@/lib/beer/beer-color";
 
 /**
  * The Frederick Beer Index engine — the pure filter/sort/facet core behind
@@ -12,7 +13,7 @@ import { ALL_BEERS, type BeerWithBrewery, type StyleFamily } from "@/data/beers"
  * deliver.
  */
 
-export type BeerSort = "rating" | "abv-desc" | "abv-asc" | "name";
+export type BeerSort = "mix" | "color" | "rating" | "abv-desc" | "abv-asc" | "name";
 
 export type BeerFilter = {
   /** Free text over beer name, brewery, style, and taste note. */
@@ -85,7 +86,10 @@ export function filterBeers(beers: BeerWithBrewery[], f: BeerFilter): BeerWithBr
   return beers.filter((b) => matchesExceptFamily(b, f) && matchesFamily(b, f.families));
 }
 
-const SORTERS: Record<BeerSort, (a: BeerWithBrewery, b: BeerWithBrewery) => number> = {
+const beerLum = (b: BeerWithBrewery) => colorLuminance(beerColor(b.style, b.family));
+const SORTERS: Record<Exclude<BeerSort, "mix">, (a: BeerWithBrewery, b: BeerWithBrewery) => number> = {
+  // By real beer color, palest first — the gradient wall of the mosaic.
+  color: (a, b) => beerLum(b) - beerLum(a) || a.name.localeCompare(b.name),
   // Highest Untappd rating first; unrated sink to the bottom. Name breaks ties
   // so the order is deterministic (SSR-stable).
   rating: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || a.name.localeCompare(b.name),
@@ -94,7 +98,37 @@ const SORTERS: Record<BeerSort, (a: BeerWithBrewery, b: BeerWithBrewery) => numb
   name: (a, b) => a.name.localeCompare(b.name),
 };
 
+/**
+ * Round-robin the beers across their style families (each family internally
+ * rating-first), so the color mosaic spreads all nine family hues through the
+ * grid — a vibrant quilt where every screen shows gold, amber, dark, and sour,
+ * instead of a gradient that piles near-identical pale lagers at the top.
+ */
+export function interleaveByFamily(beers: BeerWithBrewery[]): BeerWithBrewery[] {
+  const byFam = new Map<StyleFamily, BeerWithBrewery[]>();
+  for (const b of beers) {
+    const arr = byFam.get(b.family) ?? [];
+    arr.push(b);
+    byFam.set(b.family, arr);
+  }
+  const fams = STYLE_FAMILIES.map((f) => f.key).filter((k) => byFam.has(k));
+  for (const k of fams) byFam.get(k)!.sort(SORTERS.rating);
+  const out: BeerWithBrewery[] = [];
+  for (let i = 0, added = true; added; i++) {
+    added = false;
+    for (const k of fams) {
+      const list = byFam.get(k)!;
+      if (i < list.length) {
+        out.push(list[i]);
+        added = true;
+      }
+    }
+  }
+  return out;
+}
+
 export function sortBeers(beers: BeerWithBrewery[], sort: BeerSort): BeerWithBrewery[] {
+  if (sort === "mix") return interleaveByFamily(beers);
   return [...beers].sort(SORTERS[sort]);
 }
 

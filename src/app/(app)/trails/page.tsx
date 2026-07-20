@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Mountain, Footprints, Bike, Dog, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Mountain, Footprints, Bike, Dog, ExternalLink, ArrowRight } from "lucide-react";
 import {
   getFrederickTrails,
   getFrederickTrailShapes,
@@ -109,6 +110,32 @@ export default async function TrailsPage() {
         countyBoundary={countyBoundary}
         segmentCount={trailLines.features.length}
       />
+
+      <Link
+        href="/collections/where-to-ride"
+        className="flex min-h-11 items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3 transition active:scale-[0.99]"
+        style={{
+          borderColor: "color-mix(in srgb, var(--app-brand-2) 35%, var(--app-border))",
+          background: "color-mix(in srgb, var(--app-brand-2) 7%, var(--app-bg-elevated))",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand-2) 16%, transparent)", color: "var(--app-brand-2)" }}
+        >
+          <Bike className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Where to ride
+          </span>
+          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            The best bike paths, from the C&amp;O towpath to the watershed singletrack.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+      </Link>
 
       {trails.length === 0 ? (
         <section

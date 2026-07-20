@@ -216,7 +216,7 @@ export default function CompassHub() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {/* Field-guide plate masthead — the wayfinding hub speaks the same
           paper-cream plate language as every sibling surface (eyebrow +
           serif title + brand rule) instead of a one-off dark gradient hero.
@@ -343,15 +343,19 @@ function SectionHeading({
   return (
     <div>
       <div className="flex items-center gap-2.5 px-0.5">
-        <span aria-hidden className="font-mono text-[11px] font-bold tracking-[0.08em]" style={{ color: "var(--app-brand-press)" }}>
-          {numeral}.
+        <span
+          aria-hidden
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] font-mono text-[10px] font-bold tabular-nums"
+          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+        >
+          {numeral}
         </span>
-        <h2 id={id} className="font-serif text-[21px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h2 id={id} className="font-serif text-[24px] font-semibold leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
         <div className="fg-rule flex-1" />
       </div>
-      {description ? <p className="mt-1.5 px-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{description}</p> : null}
+      {description ? <p className="mt-2 pl-[2.1rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{description}</p> : null}
     </div>
   );
 }
@@ -385,7 +389,7 @@ function LedgerList({
             href={item.href}
             prefetch={false}
             {...intentProps(item.href)}
-            className="tactile-interactive group flex min-h-[68px] items-center gap-3 px-1 py-3 transition hover:bg-black/[0.025] sm:px-3"
+            className="tactile-interactive group flex min-h-[58px] items-center gap-3 px-1 py-2.5 transition hover:bg-black/[0.025] sm:px-3"
           >
             <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 10%, transparent)` }}>
               <item.icon className="h-[17px] w-[17px]" strokeWidth={2} />

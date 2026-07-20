@@ -68,6 +68,31 @@ describe("compareForLead + pickLeadEvent", () => {
     expect(pickLeadEvent([])).toBeNull();
   });
 
+  it("the bigger draw leads over a small library program, even if it starts later", () => {
+    // The July report: a photo-backed library talk headlined /today ahead of
+    // the night's real event. Prominence (ticketed + music, and NOT in a
+    // library room) now leads within the draw tier.
+    const libraryTalk = ev({
+      title: "Author Talk",
+      category: "community",
+      hero_image: "lib.jpg",
+      venue_name: "Thurmont Regional Library",
+      is_free: true,
+      starts_at: "2026-06-20T18:00:00Z",
+    });
+    const concert = ev({
+      title: "Summer Concert",
+      category: "music",
+      // No hero image on purpose: prominence must beat the library talk's photo.
+      venue_name: "Sky Stage",
+      ticket_url: "https://tickets.example.com/show",
+      is_free: false,
+      starts_at: "2026-06-20T23:00:00Z",
+    });
+    expect([libraryTalk, concert].sort(compareForLead)[0]).toBe(concert);
+    expect(pickLeadEvent([libraryTalk, concert])).toBe(concert);
+  });
+
   it("an owner-featured slug beats the heuristic (UX-05)", () => {
     const storytime = ev({ title: "Family Storytime", starts_at: "2026-06-20T14:00:00Z", slug: "storytime" });
     const photo = ev({ title: "Sky Stage Show", hero_image: "p.jpg", starts_at: "2026-06-20T23:00:00Z", slug: "sky-stage" });

@@ -95,6 +95,19 @@ function midpoint(coords: unknown): [number, number] | null {
   return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
 }
 
+/** Collapse the county's messy surface strings to paved | unpaved | unknown. */
+export function pavedClass(surface: string | undefined): "paved" | "unpaved" | "unknown" {
+  const s = (surface ?? "").toLowerCase();
+  if (!s) return "unknown";
+  if (s.includes("unpaved") || s.includes("natural") || s.includes("dirt") || s.includes("gravel")) {
+    return "unpaved";
+  }
+  if (s.includes("paved") || s.includes("bridge") || s.includes("asphalt") || s.includes("concrete")) {
+    return "paved";
+  }
+  return "unknown";
+}
+
 /**
  * Pure: ArcGIS GeoJSON FeatureCollection → Trail[]. Drops nameless,
  * geometry-less, and out-of-county features (never guessed). Exported
@@ -205,12 +218,18 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
       if (!pt) continue;
       const [lng, lat] = pt;
       if (lat < s || lat > n || lng < w || lng > e) continue;
+      const surface = str(p.PavementClassification) ?? str(p.Surface_Type) ?? "";
       out.push({
         type: "Feature",
         geometry: g,
         properties: {
           name,
-          surface: str(p.PavementClassification) ?? str(p.Surface_Type) ?? "",
+          surface,
+          // Normalized surface class the map colors on: paved (smooth, good
+          // for bikes / strollers / wheelchairs), unpaved (dirt / natural), or
+          // unknown. The county feed spells it several ways ("Paved Trail",
+          // "Paved", a "PAved" typo, "Bridge") plus blanks — collapse them here.
+          paved: pavedClass(surface),
           park: park ?? "",
         },
       });

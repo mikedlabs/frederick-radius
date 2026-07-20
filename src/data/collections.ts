@@ -197,6 +197,23 @@ export const COLLECTIONS: CollectionDef[] = [
       // Add owner/community-verified welcoming + LGBTQ-owned venues here.
     ],
   },
+  {
+    slug: "where-to-ride",
+    title: "Where to ride",
+    blurb:
+      "These are the county's bike paths, from the flat C&O towpath and the paved creek trails downtown to the singletrack up in the watershed.",
+    accent: "var(--app-brand-2)",
+    places: [
+      "c-and-o-canal-brunswick",
+      "ballenger-creek-trail-frederick",
+      "carroll-creek-linear-park-frederick",
+      "thurmont-trolley-trail-thurmont",
+      "monocacy-river-trail-frederick",
+      "frederick-watershed-frederick",
+      "gambrill-state-park-trailhead-middletown",
+      "emmitsburg-new-beginner-loops-biking-trail-emmitsburg",
+    ],
+  },
 ];
 
 /** O(1) lookup by slug, with the same data the array carries. */
