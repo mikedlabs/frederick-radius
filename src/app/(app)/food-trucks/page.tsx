@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Truck, IceCream, MapPin, Globe, Instagram, Facebook, ExternalLink, ArrowUpRight } from "lucide-react";
 import { FOOD_TRUCKS, trucksByKind, truckFeedUrl, type FoodTruck } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
+import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
+import type { TruckBeacon } from "@/lib/food-trucks/beacon";
 import TruckHomeStatus from "@/components/food-trucks/TruckHomeStatus";
+import TruckLiveStatus from "@/components/food-trucks/TruckLiveStatus";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
@@ -21,7 +25,11 @@ import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 const FOOD_ACCENT = CATEGORY_BY_SLUG["food-truck"]?.color ?? "var(--app-brand)";
 const TREATS_ACCENT = CATEGORY_BY_SLUG["ice-cream"]?.color ?? "var(--app-brand)";
 
-export const revalidate = 86400;
+// Rendered per request: the live operator-beacon layer must reflect a beacon
+// dropped moments ago, so this page reads fresh instead of serving a day-old
+// ISR snapshot. The read is one indexed query and fails soft (no DB -> no live
+// layer, static roster unchanged), so the cost of going dynamic is small.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Food trucks & carts in Frederick County",
@@ -50,10 +58,28 @@ function LinkChip({ href, label, Icon }: { href: string; label: string; Icon: ty
   );
 }
 
-function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
+function TruckCard({ truck, accent, beacon }: { truck: FoodTruck; accent: string; beacon?: TruckBeacon }) {
   const feed = truckFeedUrl(truck);
   const Icon = truck.kind === "treats" ? IceCream : Truck;
   const homeBase = resolveHomeBase(truck.homeBase);
+
+  // The honest default for the status slot: a live home-base reading, else the
+  // static "usually at" line, else nothing. A live beacon (below) wins over it.
+  const statusFallback = homeBase ? (
+    <TruckHomeStatus
+      venueName={homeBase.name}
+      venueSlug={homeBase.slug}
+      hours={homeBase.hours}
+      verified={homeBase.verified}
+      accent={accent}
+    />
+  ) : truck.homeBase ? (
+    <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: accent }} />
+      Usually at {truck.homeBase}
+    </p>
+  ) : null;
+
   return (
     <li
       className="tactile flex h-full w-[min(82vw,20rem)] shrink-0 snap-start flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 sm:w-auto"
@@ -83,24 +109,16 @@ function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
         </p>
       )}
 
-      {/* A truck that parks permanently at a brewery gets a LIVE reading
-          off that venue's verified hours ("Out now at Monocacy, open till
-          10"); an unresolved home base keeps the static line. */}
-      {homeBase ? (
-        <TruckHomeStatus
-          venueName={homeBase.name}
-          venueSlug={homeBase.slug}
-          hours={homeBase.hours}
-          verified={homeBase.verified}
-          accent={accent}
-        />
+      {/* Live layer wins: when an approved operator has dropped a beacon that is
+          genuinely live, show "Out now, ..." + the spot. Otherwise fall back to
+          the home-base reading (a brewery kitchen's verified hours) or the
+          static "usually at" line. */}
+      {beacon ? (
+        <TruckLiveStatus beacon={beacon} accent={accent}>
+          {statusFallback}
+        </TruckLiveStatus>
       ) : (
-        truck.homeBase && (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-            <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: accent }} />
-            Usually at {truck.homeBase}
-          </p>
-        )
+        statusFallback
       )}
 
       {feed && (
@@ -130,9 +148,11 @@ function TruckCard({ truck, accent }: { truck: FoodTruck; accent: string }) {
   );
 }
 
-export default function FoodTrucksPage() {
+export default async function FoodTrucksPage() {
   const food = trucksByKind("food");
   const treats = trucksByKind("treats");
+  // Freshest live beacon per truck (fail-soft: empty map when no DB / on error).
+  const beaconByTruck = await getFreshestBeaconByTruck();
 
   const collectionJsonLd = {
     "@context": "https://schema.org",
@@ -181,7 +201,7 @@ export default function FoodTrucksPage() {
         <SectionHeading title="Food trucks" count={food.length} accent={FOOD_ACCENT} />
         <ul className="shelf-rail shelf-grid-sm -mx-4 gap-3 px-4 pb-2 sm:mx-0 sm:grid-cols-2 sm:px-0">
           {food.map((t) => (
-            <TruckCard key={t.slug} truck={t} accent={FOOD_ACCENT} />
+            <TruckCard key={t.slug} truck={t} accent={FOOD_ACCENT} beacon={beaconByTruck.get(t.slug)} />
           ))}
         </ul>
       </section>
@@ -191,14 +211,18 @@ export default function FoodTrucksPage() {
           <SectionHeading title="Ice cream & treats on wheels" count={treats.length} accent={TREATS_ACCENT} />
             <ul className="shelf-rail shelf-grid-sm -mx-4 gap-3 px-4 pb-2 sm:mx-0 sm:grid-cols-2 sm:px-0">
             {treats.map((t) => (
-              <TruckCard key={t.slug} truck={t} accent={TREATS_ACCENT} />
+              <TruckCard key={t.slug} truck={t} accent={TREATS_ACCENT} beacon={beaconByTruck.get(t.slug)} />
             ))}
           </ul>
         </section>
       )}
 
       <p className="text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Run a truck? Reach out to get listed or opt in to a live location pin.
+        Run a truck?{" "}
+        <Link href="/food-trucks/claim" className="font-semibold underline" style={{ color: "var(--app-ink-2)" }}>
+          Claim your truck
+        </Link>{" "}
+        to post a live location pin when you are out.
       </p>
     </div>
   );

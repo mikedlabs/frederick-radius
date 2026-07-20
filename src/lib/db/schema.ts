@@ -733,6 +733,78 @@ export const community_reports = pgTable(
   }),
 );
 
+/**
+ * Food-truck operator claims — the owner-approved gate on the beacon layer.
+ *
+ * A roaming truck's operator asks to claim their truck (by FoodTruck.slug);
+ * the request lands here as status='pending'. The owner approves it in
+ * /admin/food-trucks, which mints a random opaque `token` and stores it. That
+ * token is the capability credential: it is the ONLY thing that lets an
+ * operator drop a live beacon, and it is validated against an APPROVED row for
+ * that exact truck_slug on every write. Same no-account, no-FK posture as
+ * `submissions.manage_token`; RLS deny-all (server BYPASSRLS role only).
+ *
+ * `contact` is free text (email or phone) so the owner can reach the operator
+ * out of band before approving. `decided_at` stamps the approve/reject moment.
+ */
+export const food_truck_claims = pgTable(
+  "food_truck_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    truck_slug: text("truck_slug").notNull(),
+    operator_name: text("operator_name").notNull(),
+    contact: text("contact").notNull(),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    // Null until approved; a random opaque capability token when approved.
+    token: text("token"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    decided_at: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("food_truck_claims_status_idx").on(t.status),
+    truckIdx: index("food_truck_claims_truck_idx").on(t.truck_slug),
+    // The token is looked up on every beacon write; unique so one token maps
+    // to exactly one claim. Partial so many pending rows (null token) coexist.
+    tokenUq: uniqueIndex("food_truck_claims_token_uq")
+      .on(t.token)
+      .where(sql`${t.token} is not null`),
+  }),
+);
+
+/**
+ * Food-truck live beacons — an approved operator's "I'm out here now" drop.
+ *
+ * Each row is a location + a self-expiring window. The honest-expiry invariant
+ * lives in the pure read layer (src/lib/food-trucks/beacon.ts): a beacon is
+ * only ever shown while `now` sits inside [started_at, expires_at). The write
+ * path (/api/food-trucks/beacon) CAPS expires_at server-side (max 8 hours out)
+ * so a stale beacon can never linger, county-locks the coordinates, and
+ * requires a valid token matching an approved claim for `truck_slug`.
+ *
+ * No FK to a trucks table — the roster is the static file src/data/food-trucks.ts
+ * and `truck_slug` is the loose string key (same posture as every other table
+ * here). RLS deny-all; every read/write goes through the BYPASSRLS server role.
+ */
+export const food_truck_beacons = pgTable(
+  "food_truck_beacons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    truck_slug: text("truck_slug").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    spot: text("spot"),
+    note: text("note"),
+    started_at: timestamp("started_at", { withTimezone: true }).notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    truckIdx: index("food_truck_beacons_truck_idx").on(t.truck_slug),
+    // The display loader reads "live now" = expires_at > now(); index it.
+    expiresIdx: index("food_truck_beacons_expires_idx").on(t.expires_at),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),
