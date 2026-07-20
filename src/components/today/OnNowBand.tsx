@@ -125,11 +125,21 @@ export default async function OnNowBand({
     dealCurrentCount > 0 ? `${dealCurrentCount} special${dealCurrentCount === 1 ? "" : "s"}` : null,
     marketCurrentCount > 0 ? `${marketCurrentCount} market${marketCurrentCount === 1 ? "" : "s"}` : null,
   ].filter(Boolean);
+  // When nothing is live yet, the tally used to read a bare "27 scheduled" —
+  // 27 of WHAT? (external audit, 2026-07). Itemize the later/today counts the
+  // same way the live tally does, so the number always names its own nouns.
+  const laterSummary = [
+    happy.laterCount > 0 ? `${happy.laterCount} happy hour${happy.laterCount === 1 ? "" : "s"}` : null,
+    dealLaterCount > 0 ? `${dealLaterCount} special${dealLaterCount === 1 ? "" : "s"}` : null,
+    marketLaterCount > 0 ? `${marketLaterCount} market${marketLaterCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+  const todaySummary = [
+    dealTodayCount > 0 ? `${dealTodayCount} special${dealTodayCount === 1 ? "" : "s"}` : null,
+    marketTodayCount > 0 ? `${marketTodayCount} market${marketTodayCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
   const summary = currentCount > 0
     ? [...currentSummary, laterCount > 0 ? `${laterCount} later today` : null].filter(Boolean).join(" · ")
-    : laterCount > 0
-      ? `${laterCount} scheduled`
-      : `${todayCount} listed`;
+    : (laterSummary.length > 0 ? laterSummary : todaySummary).join(" · ");
 
   return (
     <section className="mt-5 space-y-3" aria-label={label}>
@@ -143,9 +153,11 @@ export default async function OnNowBand({
           )}
           {label}
         </h2>
-        <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-          {summary}
-        </span>
+        {summary && (
+          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
+            {summary}
+          </span>
+        )}
       </div>
       <div className="fg-rule" aria-hidden />
       <div className="space-y-4">
