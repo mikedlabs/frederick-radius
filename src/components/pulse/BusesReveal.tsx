@@ -127,21 +127,35 @@ export default function BusesReveal() {
             </span>
           </span>
         </span>
-        {open ? (
-          <ChevronUp className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-        ) : (
-          <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-        )}
+        <span className="flex shrink-0 items-center gap-2.5">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+            TransIT
+          </span>
+          {open ? (
+            <ChevronUp className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          )}
+        </span>
       </button>
 
       {open ? (
-        <div id="pulse-live-buses" className="space-y-2.5">
+        // One bordered card, zones top-to-bottom: the two scannable route
+        // boards first, then the heavy map LAST (owner: hard to see everything
+        // when the map splits the boards). Map still fetches on the same tap.
+        <div
+          id="pulse-live-buses"
+          className="space-y-3 rounded-[var(--app-radius-md)] border p-3"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
           <RoutePearls />
+
+          <NextStopsBoard />
 
           {shapesState.status === "ready" ? (
             <TransitMap
               shapes={shapesState.shapes}
-              height={300}
+              height={260}
               center={[-77.4105, 39.4143]}
               zoom={12.5}
               liveBuses
@@ -192,8 +206,6 @@ export default function BusesReveal() {
               </span>
             </div>
           )}
-
-          <NextStopsBoard />
         </div>
       ) : null}
     </section>
