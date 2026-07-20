@@ -53,6 +53,7 @@ const ROUTES = [
   "/amenities",
   "/towns",
   "/markers",
+  "/trails",
   "/history",
   "/my-radius",
   "/settings",

@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
 import { Mountain, Footprints, Bike, Dog, ExternalLink } from "lucide-react";
-import { getFrederickTrails, type Trail } from "@/lib/integrations/fcTrails";
+import {
+  getFrederickTrails,
+  getFrederickTrailShapes,
+  type Trail,
+} from "@/lib/integrations/fcTrails";
+import { getCountyBoundary } from "@/lib/integrations/fcGis";
+import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import TrailsMap from "@/components/trails/TrailsMap";
+
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -50,7 +59,20 @@ function TrailRow({ t }: { t: Trail }) {
 }
 
 export default async function TrailsPage() {
-  const trails = await getFrederickTrails();
+  // The list (curated), the map's trail geometry (county Parks GIS), and the
+  // county outline all load together; each degrades to empty on a feed hiccup
+  // so a slow county server never blocks the page.
+  const [trails, trailLines, countyBoundary] = await Promise.all([
+    getFrederickTrails(),
+    getFrederickTrailShapes().catch(() => EMPTY_FC),
+    getCountyBoundary().catch(() => EMPTY_FC),
+  ]);
+
+  // Tappable trailhead pins for the map: our own trail records (the trail
+  // category plus Sugarloaf, which is a natural area tagged with a trail).
+  const trailPoints = publicPlaces()
+    .filter((p) => p.category === "trail" || (p.subcategories ?? []).includes("trail"))
+    .map((p) => decoratePlace(p));
 
   const byMuni = new Map<string, Trail[]>();
   for (const t of trails) {
@@ -80,6 +102,13 @@ export default async function TrailsPage() {
           to see its mapped location.
         </p>
       </header>
+
+      <TrailsMap
+        places={trailPoints}
+        trailLines={trailLines}
+        countyBoundary={countyBoundary}
+        segmentCount={trailLines.features.length}
+      />
 
       {trails.length === 0 ? (
         <section

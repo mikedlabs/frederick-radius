@@ -66,6 +66,7 @@ export default function AppMapClient({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_FC,
+  trailsLayerDefault = false,
   transitLines = EMPTY_FC,
   municipalBoundaries = EMPTY_FC,
   countyBoundary = EMPTY_FC,
@@ -104,6 +105,8 @@ export default function AppMapClient({
   amenities?: Amenity[];
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
+  /** Open the Trails layer ON at first paint (the /trails surface). */
+  trailsLayerDefault?: boolean;
   transitLines?: MapLineFC;
   /** County GIS municipal boundary polygons — quiet always-on outline. */
   municipalBoundaries?: MapLineFC;
@@ -174,6 +177,7 @@ export default function AppMapClient({
           extraAmenities={extraAmenities}
           amenities={amenities}
           trailLines={trailLines}
+          trailsLayerDefault={trailsLayerDefault}
           transitLines={transitLines}
           municipalBoundaries={municipalBoundaries}
           countyBoundary={countyBoundary}
@@ -200,7 +204,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }

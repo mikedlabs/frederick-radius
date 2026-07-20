@@ -328,6 +328,10 @@ type Props = {
    *  GeoJSON FeatureCollections; default off, so the base map is
    *  unchanged unless the user opts in. */
   trailLines?: MapLineFC;
+  /** Open the Trails line layer ON at first paint (no saved pref yet) —
+   *  set by the /trails surface, whose whole job is the trail network.
+   *  Everywhere else it stays off so the base map is unchanged. */
+  trailsLayerDefault?: boolean;
   transitLines?: MapLineFC;
   /** County GIS municipal boundary polygons, rendered as a quiet
    *  always-on outline. Server-fetched (fcGis.getMunicipalBoundaries),
@@ -399,6 +403,7 @@ export default function AppMap({
   extraAmenities = [],
   amenities = [],
   trailLines = EMPTY_LINE_FC,
+  trailsLayerDefault = false,
   transitLines = EMPTY_LINE_FC,
   municipalBoundaries = EMPTY_LINE_FC,
   countyBoundary = EMPTY_LINE_FC,
@@ -633,7 +638,7 @@ export default function AppMap({
   const [userLoc, setUserLoc] = useState<LngLat | null>(cachedPosition);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
-  const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? false);
+  const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? trailsLayerDefault);
   const [showTransit, setShowTransit] = useState(
     () => layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit"),
   );
