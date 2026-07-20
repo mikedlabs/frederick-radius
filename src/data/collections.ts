@@ -90,10 +90,15 @@ export const COLLECTIONS: CollectionDef[] = [
     ],
   },
   {
+    // Expanded 2026-07-20 (same audit as kid-energy-burners): the list was
+    // six downtown, adult-leaning stops. Adds kid-friendly indoor energy
+    // (trampolines, skating, pinball, pottery, bowling in three towns) and
+    // two museums, so a wet Saturday with kids has real answers county-wide.
+    // Every slug verified against places-client.json.
     slug: "rainy-day-frederick",
     title: "Rainy day Frederick",
     blurb:
-      "These indoor stops work for a wet afternoon when you want enough room to stay awhile.",
+      "These indoor stops work for a wet afternoon, whether you want a quiet gallery or somewhere the kids can burn a rainy day off.",
     accent: "var(--app-cool)",
     places: [
       "national-museum-civil-war-medicine-frederick",
@@ -102,18 +107,44 @@ export const COLLECTIONS: CollectionDef[] = [
       "c-burr-artz-public-library-frederick",
       "the-curious-iguana-frederick",
       "hidden-hills-farm-vineyard-frederick",
+      "urban-air-adventure-park-frederick",
+      "skate-frederick",
+      "spinners-pinball-arcade",
+      "i-made-this-pottery-frederick",
+      "rose-hill-manor-park-museums-frederick",
+      "brunswick-heritage-museum",
+      "walkersville-bowling-center-inc-walkersville",
+      "mount-airy-bowling-lanes-mount-airy",
     ],
   },
   {
+    // Rebuilt 2026-07-20 (owner: "doesnt show all the things frederick
+    // county has to offer" - the list was three downtown stops). Now a
+    // county-wide sweep: playgrounds, adventure parks, petting farms, the
+    // big slide at Rocky Ridge, and a town park in nearly every town.
+    // Every slug verified against places-client.json (operational).
     slug: "kid-energy-burners",
     title: "Kid energy burners",
     blurb:
-      "These places give young kids room to run and have parking close enough to keep the trip manageable.",
+      "These places give kids real room to run, climb, and wear themselves out. The list reaches every corner of the county, so one of them is close to you.",
     accent: "var(--app-brand-2)",
     places: [
       "baker-park-frederick",
-      "carroll-creek-linear-park-frederick",
-      "monocacy-national-battlefield-frederick",
+      "sophie-madigans-playground-frederick",
+      "urban-air-adventure-park-frederick",
+      "catoctin-wildlife-preserve-thurmont",
+      "the-big-slide-mount-tabor-park-at-rocky-ridge-thurmont",
+      "cunningham-falls-state-park-thurmont",
+      "adventure-park-usa-new-market",
+      "gaver-farm-new-market",
+      "green-meadows-petting-farm-ijamsville",
+      "urbana-district-park-new-market",
+      "brunswick-city-park-brunswick",
+      "middletown-park-middletown",
+      "fountain-rock-nature-center-walkersville",
+      "greenbrier-state-park-myersville",
+      "e-eugene-myers-community-park-emmitsburg",
+      "prospect-park-mount-airy",
     ],
   },
   {
