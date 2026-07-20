@@ -586,6 +586,10 @@ export default function AppMap({
   // Whether a dock pane is open — mirrored onto the host container so
   // CSS can hide the zoom corner furniture while the dock is expanded.
   const [dockPaneOpen, setDockPaneOpen] = useState(false);
+  // While the map is actively panning/zooming, the floating filter dock fades
+  // back so it's not in the way of the map you're reading; it returns the
+  // moment the map settles. Never fades while a pane is open (you're mid-edit).
+  const [mapMoving, setMapMoving] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   // DOM pins outside the camera must not remain in the keyboard sequence.
   // This set refreshes after every settled move and on the initial load.
@@ -1970,7 +1974,9 @@ export default function AppMap({
             markMapOnLoad();
             emitInView();
           }}
+          onMoveStart={() => setMapMoving(true)}
           onMoveEnd={(e) => {
+            setMapMoving(false);
             markMapIdleOnce();
             emitInView();
             // Persist the camera to the URL so the view is shareable and
@@ -3185,6 +3191,10 @@ export default function AppMap({
         {/* ── The dock: one instrument for the browse map. Scrim + card;
             collapsed face is the What · When · Where caption. ── */}
         {dock && (
+          <div
+            className="transition-opacity duration-200 motion-reduce:transition-none"
+            style={{ opacity: mapMoving && !dockPaneOpen ? 0.35 : 1 }}
+          >
           <MapDock
             browse={dock}
             placeCount={inViewPlaces.length}
@@ -3259,6 +3269,7 @@ export default function AppMap({
             }}
             onPaneOpenChange={setDockPaneOpen}
           />
+          </div>
         )}
 
         {/* Persistent "near me" locate button — locate is the most-used
