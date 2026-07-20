@@ -316,6 +316,23 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
+      {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
+          (CravingStrip). Kept a tap-to-open disclosure (owner: hidden until
+          needed) but moved HIGH, right under the weather (owner, 2026-07-20:
+          "I want needs to be closer to the top"), so it's the first thing after
+          "here's the day." Markup ships in the HTML (display:none), so it opens
+          instantly with no fetch. */}
+      <CollapsibleSection
+        title="Browse places by what you want"
+        storageKey="fr.today.want"
+        defaultOpen={false}
+        className="border-t pt-2"
+      >
+        <div className="mt-2">
+          <CravingStrip />
+        </div>
+      </CollapsibleSection>
+
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
           themselves before seeing any value, and most people never touch a
@@ -364,25 +381,6 @@ export default async function HomePage() {
           dinner right now" answer). Rows built server-side; self-hides when
           nothing in the daypart is open. */}
       <DaypartNeeds rows={buildDaypartRows(now)} />
-
-      {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
-          (CravingStrip), restored to Today but TUCKED behind a disclosure
-          (owner ask 2026-07-20: "where did all place buttons go… added on the
-          today page but hidden until user needs it"). DaypartNeeds answers
-          "what's open right now"; this is the on-demand "let me pick a
-          category" entry point, so it sits here, one tap away, not weighing on
-          the first screen. The markup ships in the HTML (display:none), so it
-          opens instantly with no fetch. */}
-      <CollapsibleSection
-        title="Browse places by what you want"
-        storageKey="fr.today.want"
-        defaultOpen={false}
-        className="border-t pt-2"
-      >
-        <div className="mt-2">
-          <CravingStrip />
-        </div>
-      </CollapsibleSection>
 
       <Suspense
         fallback={
