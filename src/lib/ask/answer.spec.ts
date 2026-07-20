@@ -404,7 +404,11 @@ describe("askFrederick structured answers", () => {
     });
     expect(result.answer).toContain("can’t see live OpenTable inventory");
     expect(result.answer).toContain("7:30 PM");
-    expect(result.sources.map((source) => source.slug)).toEqual(["averys-maryland-grille-frederick"]);
+    expect(result.sources.map((source) => source.slug)).toEqual([
+      "miyako-japanese-steak-and-seafood-frederick",
+      "matsutake-sushi-and-steak-frederick",
+      "averys-maryland-grille-frederick",
+    ]);
     expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
     expect(result.actions?.[0]).toMatchObject({
       kind: "open",

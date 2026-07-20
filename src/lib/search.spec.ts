@@ -182,7 +182,14 @@ describe("qualifiedSearch — Ask uses place context by default", () => {
     const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
 
     expect(meta.qualifiers.cleanedQuery).toBe("a steak dinner");
-    expect(places.map((place) => place.slug)).toEqual(["averys-maryland-grille-frederick"]);
+    // Real Japanese steakhouses (hibachi) now sit in the catalog alongside
+    // Avery's grille; all three are genuine steak matches, which is the
+    // opposite of the invented match this guards against.
+    expect(places.map((place) => place.slug)).toEqual([
+      "miyako-japanese-steak-and-seafood-frederick",
+      "matsutake-sushi-and-steak-frederick",
+      "averys-maryland-grille-frederick",
+    ]);
     expect(places.every((place) => place.category === "restaurant")).toBe(true);
   });
 });
