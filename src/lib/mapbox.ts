@@ -1,23 +1,22 @@
 /**
  * Mapbox public token, resolved once.
  *
- * NEXT_PUBLIC_MAPBOX_TOKEN takes precedence, so setting it in Vercel
- * cleanly supersedes this committed fallback with no conflict or
- * rotation issue. The fallback exists only because the env var was not
- * set in Vercel production, which left the entire map blank. A Mapbox
- * "pk." token is publishable by design (it ships in the client bundle
- * wherever the map renders), so this is not a secret leak; still,
- * moving it to Vercel env and rotating it when convenient is cleaner.
+ * DELIBERATELY IGNORES NEXT_PUBLIC_MAPBOX_TOKEN for now (2026-07-20).
+ * The Vercel env var holds a DEAD token (verified live: 401 "Not
+ * Authorized - Invalid Token"), and because the old precedence read the
+ * env var first, it silently overrode the valid committed token below
+ * and kept the whole map blank through TWO code-side rotations. Until
+ * the owner deletes or updates that env var in Vercel (Settings →
+ * Environment Variables → NEXT_PUBLIC_MAPBOX_TOKEN), the committed
+ * token below is the single source of truth. Once the env var carries
+ * a validated token again, restore the `process.env... ||` precedence.
+ *
+ * This token is validated live (200 on api.mapbox.com with the prod
+ * Referer, with localhost, and with none). A Mapbox "pk." token is
+ * publishable by design - it ships in the client bundle wherever the
+ * map renders - so this is not a secret leak.
  */
 export const MAPBOX_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-  // Rotated 2026-07-20: the prior committed token started returning
-  // "401 Not Authorized - Invalid Token" and took the entire map down on
-  // prod (owner report: "the map wont load"). This replacement is
-  // validated live (200 on api.mapbox.com with and without the prod
-  // Referer). Publishable `pk.` token by design; set NEXT_PUBLIC_MAPBOX_TOKEN
-  // in Vercel to supersede this, and consider a frederickradius.app URL
-  // restriction on the Mapbox side to limit abuse.
   "pk.eyJ1IjoibWlrZS0tZCIsImEiOiJjbXJ0OHMxOXMwMGh2MnlvdTU3aDF0YmNjIn0.y3TJYII52CH6MbRVQs9-IQ";
 
 /**
