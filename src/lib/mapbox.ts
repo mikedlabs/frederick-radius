@@ -11,7 +11,14 @@
  */
 export const MAPBOX_TOKEN =
   process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-  "pk.eyJ1IjoibWlrZS0tZCIsImEiOiJjbWc4ajU5MTEwN3l1MmlwcmJvZ2VjejV6In0.ma_LGFI0RCGfj42DnNUCcA";
+  // Rotated 2026-07-20: the prior committed token started returning
+  // "401 Not Authorized - Invalid Token" and took the entire map down on
+  // prod (owner report: "the map wont load"). This replacement is
+  // validated live (200 on api.mapbox.com with and without the prod
+  // Referer). Publishable `pk.` token by design; set NEXT_PUBLIC_MAPBOX_TOKEN
+  // in Vercel to supersede this, and consider a frederickradius.app URL
+  // restriction on the Mapbox side to limit abuse.
+  "pk.eyJ1IjoibWlrZS0tZCIsImEiOiJjbXJ0OHMxOXMwMGh2MnlvdTU3aDF0YmNjIn0.y3TJYII52CH6MbRVQs9-IQ";
 
 /**
  * Required on EVERY server-side fetch to api.mapbox.com.
