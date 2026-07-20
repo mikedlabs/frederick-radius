@@ -852,6 +852,18 @@ function hasKey(): boolean {
   );
 }
 
+/**
+ * Cost control: set ASK_AI_PROVIDER=anthropic to bill Ask's tokens to YOUR
+ * Anthropic account (direct api.anthropic.com) instead of routing through the
+ * Vercel AI Gateway, which puts the same tokens on the Vercel invoice. Vercel
+ * auto-injects VERCEL_OIDC_TOKEN whenever the Gateway is enabled, so without
+ * this flag the Gateway path always wins in production even with a direct key
+ * present. Leave unset to keep the Gateway (default, unchanged).
+ */
+function forceDirectAnthropic(): boolean {
+  return process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic";
+}
+
 async function callModel(userContent: string): Promise<string | null> {
   // One user-visible deadline across every provider attempt. A stalled gateway
   // must not consume the full 30-second function ceiling before the direct
@@ -860,12 +872,13 @@ async function callModel(userContent: string): Promise<string | null> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 3_500);
   try {
-  // 1) Vercel AI Gateway — the preferred path. A plain "provider/model"
-  // string routes through the gateway, authenticated by AI_GATEWAY_API_KEY
-  // if set, else the keyless VERCEL_OIDC_TOKEN that Vercel injects when the
-  // Gateway is enabled. One toggle, swap models without a code change. If
-  // the model slug ever drifts, this throws and we fall through.
-  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
+  // 1) Vercel AI Gateway — the preferred path UNLESS ASK_AI_PROVIDER pins us to
+  // direct Anthropic (to keep AI spend off the Vercel bill). A plain
+  // "provider/model" string routes through the gateway, authenticated by
+  // AI_GATEWAY_API_KEY if set, else the keyless VERCEL_OIDC_TOKEN Vercel injects
+  // when the Gateway is enabled. If the model slug ever drifts, this throws and
+  // we fall through to the direct provider below.
+  if (!forceDirectAnthropic() && (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)) {
     try {
       const { generateText } = await import("ai");
       const { text } = await generateText({

@@ -19,6 +19,11 @@ type DbRow = {
 const EMBEDDING_MODEL = process.env.RADIUS_EMBEDDING_MODEL || "openai/text-embedding-3-small";
 
 export function hybridSearchConfigured(): boolean {
+  // Query embeddings run through the Vercel AI Gateway (Anthropic has no
+  // embeddings API). When ASK_AI_PROVIDER pins Ask to direct Anthropic to keep
+  // spend off the Vercel bill, hybrid search is off and lexical Radius search
+  // handles retrieval — the same graceful fallback a Gateway outage triggers.
+  if (process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic") return false;
   return Boolean(
     process.env.RADIUS_HYBRID_SEARCH !== "0" &&
       (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) &&
