@@ -118,6 +118,8 @@ function placeSource(
     region: region ?? undefined,
     confidence: p.is_verified && (p.hours_verified || p.open_status.state === "unknown") ? "high" : "medium",
     photo_url: p.google_photo_url || p.hero_image,
+    rating: typeof p.google_rating === "number" ? p.google_rating : undefined,
+    ratingCount: typeof p.google_rating_count === "number" ? p.google_rating_count : undefined,
   };
 }
 
@@ -852,6 +854,19 @@ function hasKey(): boolean {
   );
 }
 
+/**
+ * Set ASK_AI_PROVIDER=anthropic to route Ask's single-shot TEXT generation
+ * straight to YOUR Anthropic account (direct api.anthropic.com) instead of the
+ * Vercel AI Gateway. This is a routing/control preference, NOT a cost fix: the
+ * July 2026 bill showed AI Gateway spend is negligible, so this no longer
+ * disables hybrid search or the agent (those stay on for recall/quality).
+ * Vercel auto-injects VERCEL_OIDC_TOKEN when the Gateway is enabled, so without
+ * this flag the Gateway path wins by default. Leave unset to keep the Gateway.
+ */
+function forceDirectAnthropic(): boolean {
+  return process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic";
+}
+
 async function callModel(userContent: string): Promise<string | null> {
   // One user-visible deadline across every provider attempt. A stalled gateway
   // must not consume the full 30-second function ceiling before the direct
@@ -860,12 +875,13 @@ async function callModel(userContent: string): Promise<string | null> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 3_500);
   try {
-  // 1) Vercel AI Gateway — the preferred path. A plain "provider/model"
-  // string routes through the gateway, authenticated by AI_GATEWAY_API_KEY
-  // if set, else the keyless VERCEL_OIDC_TOKEN that Vercel injects when the
-  // Gateway is enabled. One toggle, swap models without a code change. If
-  // the model slug ever drifts, this throws and we fall through.
-  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
+  // 1) Vercel AI Gateway — the preferred path UNLESS ASK_AI_PROVIDER pins us to
+  // direct Anthropic (to keep AI spend off the Vercel bill). A plain
+  // "provider/model" string routes through the gateway, authenticated by
+  // AI_GATEWAY_API_KEY if set, else the keyless VERCEL_OIDC_TOKEN Vercel injects
+  // when the Gateway is enabled. If the model slug ever drifts, this throws and
+  // we fall through to the direct provider below.
+  if (!forceDirectAnthropic() && (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)) {
     try {
       const { generateText } = await import("ai");
       const { text } = await generateText({
@@ -959,8 +975,16 @@ const cachedCallModel = unstable_cache(
     // once here, pre-cache, so every surface renders on-voice text.
     return normalizePlainTextAnswer(answer);
   },
-  ["ask-answer-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 3600, tags: ["ask"] },
+  // Cost: the key deliberately DROPS the per-commit SHA (it used to include
+  // VERCEL_GIT_COMMIT_SHA, so every deploy wiped every cached answer — brutal on
+  // a repo that ships many times a day, since each Ask question then re-paid the
+  // model). The cache key is the full userContent (query + the retrieved data
+  // block), so an answer can never drift out of sync with its data without the
+  // key changing. Only a change to the SYSTEM prompt or answer-shaping code
+  // isn't reflected in the key — bump this manual version tag (v3 -> v4) when
+  // you change those. 24h TTL: even a novel question pays at most once a day.
+  ["ask-answer-v3"],
+  { revalidate: 86400, tags: ["ask"] },
 );
 
 /** The verified downtown-parking block: the five city garages plus the one
@@ -1036,7 +1060,7 @@ function wantContextBlock(
   query: string,
   dietary: AskIntent["dietary"] = [],
   availabilityLabel?: string,
-): { block: string; picks: WantRow[]; label: string } | null {
+): { block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]
@@ -1115,6 +1139,9 @@ function wantContextBlock(
       block: `RANKED PICKS: ${what}${areaText} (no matching places in the catalog)\n`,
       picks: [],
       label: wa.label,
+      total: 0,
+      browseHref: wa.browseHref,
+      what,
     };
   }
 
@@ -1138,10 +1165,22 @@ function wantContextBlock(
   if (availabilityLabel && open.length === 0) {
     parts.push(`No match has verified hours showing it open around ${availabilityLabel}.`);
   }
+  const picks = availabilityLabel ? open : [...open, ...later, ...notable];
+  // Completeness: tell the model the TOTAL so it never implies the few it names
+  // are all there is, and hand back the browse URL so the caller can add a
+  // "See all N nearby" action (owner: Ask "isn't finding everything within my
+  // radius"). The named picks stay a curated few; nothing is hidden.
+  const moreCount = Math.max(0, wa.total - picks.length);
+  const totalLine = moreCount > 0
+    ? `(this guide lists ${wa.total} ${what.toLowerCase()}${areaText} in total; ${picks.length} named below, ${moreCount} more on the full list)`
+    : `(this guide's own list, strongest first, ${availabilityLabel ? `hours evaluated around ${availabilityLabel}` : "current hours shown"})`;
   return {
-    block: `RANKED PICKS: ${what}${areaText} (this guide's own list, strongest first, ${availabilityLabel ? `hours evaluated around ${availabilityLabel}` : "current hours shown"}):\n${parts.join("\n")}\n`,
-    picks: availabilityLabel ? open : [...open, ...later, ...notable],
+    block: `RANKED PICKS: ${what}${areaText} ${totalLine}:\n${parts.join("\n")}\n`,
+    picks,
     label: wa.label,
+    total: wa.total,
+    browseHref: wa.browseHref,
+    what,
   };
 }
 
@@ -1463,6 +1502,16 @@ export async function askFrederick(
       )
     : null;
   const wantBlock = want ? `${want.block}\n` : "";
+  // "See all N nearby": when the guide holds more matches than Ask names, lead
+  // the actions with a link to the complete list so nothing is hidden behind
+  // the curated few (owner: Ask "isn't finding everything within my radius").
+  if (want && want.total > (want.picks?.length ?? 0) && want.browseHref) {
+    actions.unshift({
+      label: `See all ${want.total} ${want.what.toLowerCase()}`,
+      kind: "open",
+      href: want.browseHref,
+    });
+  }
   const wantSlugs = new Set((want?.picks ?? []).map((r) => r.slug));
   for (const r of (want?.picks ?? []).slice(0, answerSourceLimit)) {
     const place = clientPlaceBySlug(r.slug);

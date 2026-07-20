@@ -51,6 +51,11 @@ export type RadiusAgentAnswer = {
 };
 
 export function radiusAgentConfigured(): boolean {
+  // The agent's ToolLoopAgent makes multiple model calls per query through the
+  // Vercel AI Gateway. Kept ON even when ASK_AI_PROVIDER pins TEXT generation to
+  // direct Anthropic: the July 2026 bill showed AI Gateway spend is negligible
+  // (the real cost was Vercel Agent + build minutes), so the agent's richer
+  // answers are worth keeping. Set ASK_RADIUS_AGENT=0 to force it off.
   return Boolean(
     process.env.ASK_RADIUS_AGENT !== "0" &&
       (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
@@ -83,6 +88,8 @@ function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
     phone: place.phone || undefined,
     confidence: place.is_verified && (place.hours_verified || place.open_status.state === "unknown") ? "high" : "medium",
     photo_url: place.google_photo_url || place.hero_image,
+    rating: typeof place.google_rating === "number" ? place.google_rating : undefined,
+    ratingCount: typeof place.google_rating_count === "number" ? place.google_rating_count : undefined,
   };
 }
 

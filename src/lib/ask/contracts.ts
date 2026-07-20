@@ -16,6 +16,10 @@ export type AskSource = {
   region?: CountyRegion;
   confidence?: "high" | "medium";
   photo_url?: string;
+  /** Google rating (0-5) + review count — the strongest trust signal, shown on
+   *  the source card. ~90% of places carry one. */
+  rating?: number;
+  ratingCount?: number;
 };
 
 export type AskAction =

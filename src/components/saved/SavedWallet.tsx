@@ -170,7 +170,11 @@ function Card({
       className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
       style={
         {
-          // Darkened brand ground so cream text always clears AA — never the raw hue.
+          // The card wears its brand hue as a darkened gradient so cream text
+          // always clears AA — never the raw hue, never near-black (owner:
+          // "can the cards not be so dark"). The calm comes from the deck
+          // starting fully CLOSED (no card raised until tapped), not from
+          // draining the color.
           background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
@@ -337,7 +341,10 @@ export default function SavedWallet({
   return (
     <div className="sw-stack" role="list" aria-label="Saved places, as a card wallet">
       {places.map((p, i) => {
-        const open = openValid ? p.slug === current : i === 0;
+        // Start fully CLOSED — no card raised until the user taps one (owner:
+        // "cards should start closed"). A card only opens via an explicit tap
+        // or the parent's controlled openSlug (the On-now line).
+        const open = openValid ? p.slug === current : false;
         return (
           // The SLOT carries the stack geometry (the -124px tuck and the
           // raise). It must live on this wrapper, not .sw-card: each card is
