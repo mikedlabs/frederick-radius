@@ -70,12 +70,18 @@ export default async function ClaimsReviewPage() {
 }
 
 function Queue({ rows }: { rows: Row[] }) {
-  const pending = rows.filter((r) => r.status === "pending");
+  // A queue is answered oldest-first: the longest-waiting submitter is the
+  // one being let down right now. (The fetch is newest-first for the decided
+  // log below; pending flips.)
+  const pending = rows
+    .filter((r) => r.status === "pending")
+    .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
   const decided = rows.filter((r) => r.status !== "pending");
+  const oldestDays = pending.length > 0 ? daysWaiting(pending[0].created_at) : 0;
 
   return (
     <>
-      {/* Lead with the answer: how many are waiting, how many are settled. */}
+      {/* Lead with the answer: how many are waiting, and for how long. */}
       <div className="mt-5">
         <StatStrip
           items={[
@@ -84,6 +90,13 @@ function Queue({ rows }: { rows: Row[] }) {
               label: "pending",
               tone: pending.length > 0 ? "brand" : "neutral",
             },
+            ...(pending.length > 0
+              ? [{
+                  value: oldestDays >= 1 ? `${oldestDays}d` : "today",
+                  label: "oldest waiting",
+                  tone: waitTone(oldestDays),
+                }]
+              : []),
             { value: decided.length, label: "decided" },
           ]}
         />
@@ -93,13 +106,16 @@ function Queue({ rows }: { rows: Row[] }) {
         {pending.length === 0 ? (
           <AllClear>No claims are waiting for review.</AllClear>
         ) : (
-          <ul className="space-y-3">
-            {pending.map((s) => (
-              <li key={s.id}>
-                <SubmissionCard row={s} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <SectionLabel>Oldest first</SectionLabel>
+            <ul className="space-y-3">
+              {pending.map((s) => (
+                <li key={s.id}>
+                  <SubmissionCard row={s} />
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
@@ -154,13 +170,19 @@ function Queue({ rows }: { rows: Row[] }) {
 
 function SubmissionCard({ row }: { row: Row }) {
   const entries = fieldEntries(row.payload);
+  const days = daysWaiting(row.created_at);
   return (
     <article
       className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <Tag tone="brand">{kindLabel(row.kind)}</Tag>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Tag tone="brand">{kindLabel(row.kind)}</Tag>
+          <StatusPill tone={waitTone(days)}>
+            {days >= 1 ? `waiting ${days}d` : "arrived today"}
+          </StatusPill>
+        </div>
         <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
         </span>
@@ -215,6 +237,18 @@ function statusTone(status: string): Tone {
   if (status === "approved") return "positive";
   if (status === "rejected") return "danger";
   return "neutral";
+}
+
+/** Whole days an item has been waiting. Nothing waits a negative day. */
+function daysWaiting(created: Date | string | null): number {
+  if (!created) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(created).getTime()) / 86_400_000));
+}
+
+/** Shared urgency scale for waiting work: calm under 3 days, warning at 3,
+ *  danger at 7. Matches /admin/reports so the desk speaks one language. */
+function waitTone(days: number): Tone {
+  return days >= 7 ? "danger" : days >= 3 ? "warning" : "neutral";
 }
 
 function fieldEntries(payload: unknown): [string, string][] {

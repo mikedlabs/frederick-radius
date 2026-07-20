@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
@@ -15,6 +16,7 @@ const MAX_PULL = 110;        // px cap on visual stretch
  * Touch-only (no mouse). Honors `prefers-reduced-motion`.
  */
 export default function PullToRefresh() {
+  const router = useRouter();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef<number | null>(null);
@@ -59,11 +61,16 @@ export default function PullToRefresh() {
       if (fired) {
         setRefreshing(true);
         haptic("success");
-        // Stay visible briefly, then trigger a hard refresh of server data
-        await new Promise((r) => setTimeout(r, 400));
-        // Use a full reload — Next.js server components re-render on cache TTL,
-        // and Today's revalidate is 60s, so a fresh load gives the latest pulse/weather.
-        window.location.reload();
+        // Soft in-place refresh: router.refresh() re-runs the server
+        // components and revalidates, so the pulse/weather update without a
+        // full white document reload (a full reload is the most website-like
+        // moment in the daily loop). Keep the spinner up briefly so the
+        // gesture reads as deliberate, then settle.
+        router.refresh();
+        await new Promise((r) => setTimeout(r, 650));
+        setRefreshing(false);
+        setPull(0);
+        triggered.current = false;
       } else {
         setPull(0);
       }
@@ -77,7 +84,7 @@ export default function PullToRefresh() {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [pull]);
+  }, [pull, router]);
 
   const progress = Math.min(1, pull / PULL_THRESHOLD);
   const showSpinner = refreshing || pull > 0;

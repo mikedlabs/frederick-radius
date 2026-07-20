@@ -56,6 +56,88 @@ function statusTone(status: string): Tone {
   return "neutral";
 }
 
+/** Whole days an item has been waiting. Nothing waits a negative day. */
+function daysWaiting(created: Date | string | null): number {
+  if (!created) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(created).getTime()) / 86_400_000));
+}
+
+/** Shared urgency scale for waiting work: calm under 3 days, warning at 3,
+ *  danger at 7. Matches /admin/claims so the desk speaks one language. */
+function waitTone(days: number): Tone {
+  return days >= 7 ? "danger" : days >= 3 ? "warning" : "neutral";
+}
+
+/** One report row: the category lead, note, geo line, and the decision
+ *  buttons. `showAge` adds the waiting-time pill for the pending section. */
+function ReportRow({ r, first, showAge }: { r: Row; first: boolean; showAge?: boolean }) {
+  const cat = REPORT_CATEGORY_BY_KEY[r.category];
+  const sub = cat?.subtypes.find((s) => s.key === r.subtype);
+  const days = daysWaiting(r.created_at);
+  return (
+    <li style={first ? undefined : { borderTop: "1px solid var(--app-border)" }}>
+      <div className="bg-[var(--app-bg-elevated)] px-3 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
+                {cat?.glyph} {cat?.label ?? r.category}
+              </span>
+              {sub ? <Tag tone="neutral">{sub.label}</Tag> : null}
+              <StatusPill tone={statusTone(r.status)}>{r.status}</StatusPill>
+              {showAge ? (
+                <StatusPill tone={waitTone(days)}>
+                  {days >= 1 ? `waiting ${days}d` : "arrived today"}
+                </StatusPill>
+              ) : null}
+            </div>
+            {r.note ? (
+              <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                {r.note}
+              </p>
+            ) : null}
+            <p className="mt-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              {r.lat.toFixed(5)}, {r.lng.toFixed(5)}
+              {r.municipality ? ` · ${r.municipality}` : ""}
+              {r.reported_by ? ` · by ${r.reported_by}` : ""}
+              {r.created_at ? ` · ${new Date(r.created_at).toLocaleString()}` : ""}
+            </p>
+          </div>
+          {r.photo_url ? <ReportThumbnail src={r.photo_url} /> : null}
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {r.status !== "approved" && (
+            <form action={reviewReport}>
+              <input type="hidden" name="id" value={r.id} />
+              <input type="hidden" name="decision" value="approved" />
+              <AdminButton type="submit" variant="positive" icon={Check}>
+                Approve
+              </AdminButton>
+            </form>
+          )}
+          {r.status !== "rejected" && (
+            <form action={reviewReport}>
+              <input type="hidden" name="id" value={r.id} />
+              <input type="hidden" name="decision" value="rejected" />
+              <AdminButton type="submit" variant="ghost" icon={EyeOff}>
+                Reject
+              </AdminButton>
+            </form>
+          )}
+          <form action={reviewReport}>
+            <input type="hidden" name="id" value={r.id} />
+            <input type="hidden" name="decision" value="delete" />
+            <AdminButton type="submit" variant="ghost" icon={Trash2}>
+              Delete
+            </AdminButton>
+          </form>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 /**
  * ReportThumbnail — 64x64 preview of a blob-hosted report photo. Kept local
  * (not a kit primitive): a raw <img> is intentional for arbitrary external
@@ -76,9 +158,16 @@ function ReportThumbnail({ src }: { src: string }) {
 export default async function ReportsReviewPage() {
   const result = await loadRows();
   const rows = result.ok ? result.rows : [];
-  const pending = rows.filter((r) => r.status === "pending");
+  // Triage order: the waiting reports first, oldest at the top (a stale
+  // hazard report is the worst thing this page can hide), then the decided
+  // log in the newest-first order the fetch already has.
+  const pending = rows
+    .filter((r) => r.status === "pending")
+    .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+  const decided = rows.filter((r) => r.status !== "pending");
   const approved = rows.filter((r) => r.status === "approved").length;
   const rejected = rows.filter((r) => r.status === "rejected").length;
+  const oldestDays = pending.length > 0 ? daysWaiting(pending[0].created_at) : 0;
 
   return (
     <AdminShell
@@ -103,79 +192,40 @@ export default async function ReportsReviewPage() {
             <StatStrip
               items={[
                 { value: pending.length, label: "pending", tone: pending.length > 0 ? "warning" : "neutral" },
-                { value: approved, label: "approved", tone: "positive" },
-                { value: rejected, label: "rejected", tone: "muted" },
-                { value: rows.length, label: "total", tone: "neutral" },
+                ...(pending.length > 0
+                  ? [{
+                      value: oldestDays >= 1 ? `${oldestDays}d` : "today",
+                      label: "oldest waiting",
+                      tone: waitTone(oldestDays),
+                    }]
+                  : []),
+                { value: approved, label: "approved", tone: "positive" as Tone },
+                { value: rejected, label: "rejected", tone: "muted" as Tone },
               ]}
             />
           </div>
 
-          <section className="mt-7">
-            <SectionLabel>Newest first</SectionLabel>
-            <HairlineList>
-              {rows.map((r, i) => {
-                const cat = REPORT_CATEGORY_BY_KEY[r.category];
-                const sub = cat?.subtypes.find((s) => s.key === r.subtype);
-                return (
-                  <li key={r.id} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
-                    <div className="bg-[var(--app-bg-elevated)] px-3 py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
-                              {cat?.glyph} {cat?.label ?? r.category}
-                            </span>
-                            {sub ? <Tag tone="neutral">{sub.label}</Tag> : null}
-                            <StatusPill tone={statusTone(r.status)}>{r.status}</StatusPill>
-                          </div>
-                          {r.note ? (
-                            <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                              {r.note}
-                            </p>
-                          ) : null}
-                          <p className="mt-1.5 font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                            {r.lat.toFixed(5)}, {r.lng.toFixed(5)}
-                            {r.municipality ? ` · ${r.municipality}` : ""}
-                            {r.reported_by ? ` · by ${r.reported_by}` : ""}
-                            {r.created_at ? ` · ${new Date(r.created_at).toLocaleString()}` : ""}
-                          </p>
-                        </div>
-                        {r.photo_url ? <ReportThumbnail src={r.photo_url} /> : null}
-                      </div>
+          {pending.length > 0 && (
+            <section className="mt-7">
+              <SectionLabel>Waiting · oldest first</SectionLabel>
+              <HairlineList>
+                {pending.map((r, i) => (
+                  <ReportRow key={r.id} r={r} first={i === 0} showAge />
+                ))}
+              </HairlineList>
+            </section>
+          )}
 
-                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                        {r.status !== "approved" && (
-                          <form action={reviewReport}>
-                            <input type="hidden" name="id" value={r.id} />
-                            <input type="hidden" name="decision" value="approved" />
-                            <AdminButton type="submit" variant="positive" icon={Check}>
-                              Approve
-                            </AdminButton>
-                          </form>
-                        )}
-                        {r.status !== "rejected" && (
-                          <form action={reviewReport}>
-                            <input type="hidden" name="id" value={r.id} />
-                            <input type="hidden" name="decision" value="rejected" />
-                            <AdminButton type="submit" variant="ghost" icon={EyeOff}>
-                              Reject
-                            </AdminButton>
-                          </form>
-                        )}
-                        <form action={reviewReport}>
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="decision" value="delete" />
-                          <AdminButton type="submit" variant="ghost" icon={Trash2}>
-                            Delete
-                          </AdminButton>
-                        </form>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </HairlineList>
-          </section>
+          {decided.length > 0 && (
+            <section className="mt-7">
+              <SectionLabel>Recently decided</SectionLabel>
+              <HairlineList>
+                {decided.map((r, i) => (
+                  <ReportRow key={r.id} r={r} first={i === 0} />
+                ))}
+              </HairlineList>
+            </section>
+          )}
         </>
       )}
     </AdminShell>

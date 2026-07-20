@@ -42,7 +42,10 @@ function noStore() {
 // A 4 MiB image expands to roughly 5.34 MiB as base64. This leaves room for
 // its data-URL prefix and the remaining fields while bounding retained JSON.
 const MAX_COLLECT_BODY_BYTES = 6 * 1024 * 1024;
-const COLLECT_RATE_LIMIT = 60;
+// Ride mode tags one point per tap, so a productive collection run can
+// beat the old 60/hour. 240/hour still bounds a leaked passcode's blast
+// radius while never throttling a real ride.
+const COLLECT_RATE_LIMIT = 240;
 const COLLECT_RATE_WINDOW_SECONDS = 60 * 60;
 
 type ValidFieldPhoto = Extract<ParsedFieldPhoto, { status: "valid" }>;
