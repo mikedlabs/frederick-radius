@@ -61,6 +61,7 @@ import TodayAsk from "@/components/today/TodayAsk";
 import { todayFrame } from "@/lib/today/masthead";
 import DaypartNeeds from "@/components/today/DaypartNeeds";
 import CravingStrip from "@/components/now/CravingStrip";
+import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
 
 /**
@@ -316,22 +317,20 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
+      {/* ASK RADIUS — the compact handoff into the decision workspace, moved
+          directly BELOW the weather (owner, 2026-07-20: "move ask radius to
+          below the weather") so the day's headline is immediately followed by
+          "ask me anything about Frederick." */}
+      <TodayAsk />
+
       {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
-          (CravingStrip). Kept a tap-to-open disclosure (owner: hidden until
-          needed) but moved HIGH, right under the weather (owner, 2026-07-20:
-          "I want needs to be closer to the top"), so it's the first thing after
-          "here's the day." Markup ships in the HTML (display:none), so it opens
-          instantly with no fetch. */}
-      <CollapsibleSection
-        title="Browse places by what you want"
-        storageKey="fr.today.want"
-        defaultOpen={false}
-        className="border-t pt-2"
-      >
-        <div className="mt-2">
-          <CravingStrip />
-        </div>
-      </CollapsibleSection>
+          (CravingStrip), high under the weather. Now behind an OBVIOUS tappable
+          launcher card (owner: the plain text title "didn't make it clear what
+          it is or that it's clickable"). Markup ships in the HTML (display:none
+          until opened), so it opens instantly with no fetch. */}
+      <BrowsePlacesDisclosure>
+        <CravingStrip />
+      </BrowsePlacesDisclosure>
 
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
@@ -353,21 +352,18 @@ export default async function HomePage() {
       </Suspense>
 
       {/* The two gears — see the EVENING GEAR note above. Same sections, same
-          Suspense boundaries, different order. TodayAsk (the compact handoff
-          into the decision workspace, not an embedded conversation) rides
-          along: directly under the hero by day, after the tonight block in
-          the evening. GoldenHourCard self-hides outside its window. */}
+          Suspense boundaries, different order. TodayAsk moved OUT of the gears
+          to sit directly below the weather (owner call); GoldenHourCard
+          self-hides outside its window. */}
       {eveningGear ? (
         <>
           {headliner}
           {whatsOn}
           {availableNow}
-          <TodayAsk />
           <GoldenHourCard now={now} />
         </>
       ) : (
         <>
-          <TodayAsk />
           {availableNow}
           {headliner}
           <GoldenHourCard now={now} />
