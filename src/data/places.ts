@@ -457,6 +457,54 @@ export const PLACES: Place[] = [
     is_verified: false, hours_verified: false, is_operational: "operational",
     feature_score: 8.0, source: "manual", updated_at: "2026-07-20",
   },
+  // Bike paths — the best of the county's cycling, added for the "where to
+  // ride" collection. Real geocoded trailheads; blurbs name biking so a bike
+  // search finds them.
+  {
+    slug: "frederick-watershed-frederick",
+    name: "Frederick Watershed",
+    category: "trail",
+    subcategories: ["trail"],
+    tags: ["outdoor", "mountain-biking", "hiking", "year-round"],
+    short_blurb: "This municipal forest north of Frederick, next to Gambrill State Park, holds the county's main mountain biking network of singletrack off Hamburg Road.",
+    address: "Hamburg Rd",
+    city: "Frederick", state: "MD", postal_code: "21702",
+    municipality: "frederick",
+    // Nominatim for Hamburg Rd (the watershed / "the Shed" access).
+    geom: { lng: -77.4977054, lat: 39.5158424 },
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 8.0, source: "manual", updated_at: "2026-07-20",
+  },
+  {
+    slug: "thurmont-trolley-trail-thurmont",
+    name: "Thurmont Trolley Trail",
+    category: "trail",
+    subcategories: ["trail"],
+    tags: ["outdoor", "biking", "paved", "year-round"],
+    short_blurb: "This paved rail trail runs about a mile along the old trolley bed through Thurmont, level and easy for walking and biking, from the East Main Street substation to the library.",
+    address: "E Main St",
+    city: "Thurmont", state: "MD", postal_code: "21788",
+    municipality: "thurmont",
+    // Nominatim for the Thurmont Trolley Trail (East Main St substation).
+    geom: { lng: -77.4087025, lat: 39.6224329 },
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.2, source: "manual", updated_at: "2026-07-20",
+  },
+  {
+    slug: "monocacy-river-trail-frederick",
+    name: "Monocacy River Trail",
+    category: "trail",
+    subcategories: ["trail"],
+    tags: ["outdoor", "biking", "hiking", "year-round"],
+    short_blurb: "This riverside trail follows the Monocacy near Riverside Park, an easy and mostly flat out and back that is popular for walking and biking.",
+    address: "Rivermist Park",
+    city: "Frederick", state: "MD", postal_code: "21701",
+    municipality: "frederick",
+    // Nominatim for Rivermist Park (Monocacy River Trail access).
+    geom: { lng: -77.3642499, lat: 39.4467357 },
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.0, source: "manual", updated_at: "2026-07-20",
+  },
   // ──── Frederick — Parks & Outdoor ────────────────────────────────────
   {
     slug: "carroll-creek-linear-park-frederick",
