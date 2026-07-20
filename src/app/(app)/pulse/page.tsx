@@ -12,7 +12,14 @@ import Link from "next/link";
 import {
   ExternalLink, MapPin, Clock, ChevronRight,
 } from "lucide-react";
-import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
+import {
+  getChartIncidentsFrederick,
+  chartHeroSentence,
+  chartTypeSentence,
+  chartTodayTitle,
+  chartFreshnessTail,
+  humanizeChartText,
+} from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
@@ -420,11 +427,15 @@ export default async function PulsePage() {
     heroActionLabel = "See affected areas";
   } else if (leadTraffic) {
     heroLeadKey = "traffic";
-    heroLine = `${leadTraffic.road}${leadTraffic.direction ? ` ${leadTraffic.direction}` : ""} has a reported incident.`;
-    heroSub = leadTraffic.lanes_affected
-      ? `${leadTraffic.type}: ${leadTraffic.lanes_affected}. Check the location before choosing your route.`
-      : `${leadTraffic.type}. Check the location and expected clearing time before choosing your route.`;
-    heroLeadMeta = leadTraffic.location;
+    // Humanized at the boundary: no raw CHART enum or ramp code reaches the
+    // hero. chartHeroSentence adds the local street alias; chartTypeSentence
+    // replaces the bare "Special."/"Incident." enum with a plain sentence.
+    heroLine = chartHeroSentence(leadTraffic);
+    const trafficLanes = leadTraffic.lanes_affected ? humanizeChartText(leadTraffic.lanes_affected) : "";
+    heroSub = trafficLanes
+      ? `${chartTypeSentence(leadTraffic)} ${trafficLanes}. Check the location before choosing your route.`
+      : `${chartTypeSentence(leadTraffic)} Check the location and expected clearing time before choosing your route.`;
+    heroLeadMeta = humanizeChartText(leadTraffic.location);
     heroActionLabel = "Check the road impact";
   } else if (leadSchool) {
     heroLeadKey = "schools";
@@ -1272,11 +1283,15 @@ export default async function PulsePage() {
     heroChips.push(chip);
   };
   if (!allClear) {
+    // Active mode = the Active alerts ledger. Only live situations here; the
+    // "No X reported" positives are dropped so the reader never has to sort
+    // good news from bad in one list (they return in the all-clear branch).
     if (leadAlert && heroLeadKey !== "alerts" && !/air quality|smoke|ozone/i.test(`${leadAlert.event} ${leadAlert.description}`)) {
       addHeroChip({
         tone: pulseAlertPriority(leadAlert) <= 4 ? "danger" : "warning",
         label: leadAlert.event,
         key: "alerts",
+        meta: alertEndLabel(leadAlert.ends_at) || undefined,
       });
     }
     if (aqiWorst && (aqiActive || Boolean(activeAirSummary))) {
@@ -1287,10 +1302,15 @@ export default async function PulsePage() {
       });
     }
     if (outagesActive) {
-      addHeroChip({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power" });
+      addHeroChip({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power", meta: "Potomac Edison area" });
     }
     if (leadTraffic) {
-      addHeroChip({ tone: "warning", label: `${leadTraffic.road}${leadTraffic.direction ? ` ${leadTraffic.direction}` : ""}`, key: "traffic" });
+      addHeroChip({
+        tone: "warning",
+        label: chartTodayTitle(leadTraffic),
+        key: "traffic",
+        meta: chartFreshnessTail(leadTraffic, new Date(nowMs)),
+      });
     }
     if (leadSafety) {
       addHeroChip({ tone: "danger", label: leadSafety.type, key: "safety" });
@@ -1304,12 +1324,6 @@ export default async function PulsePage() {
     }
     if (urgentDegraded) {
       addHeroChip({ tone: "warning", label: "Some feeds unavailable" });
-    } else {
-      if (!leadTraffic) addHeroChip({ tone: "positive", label: "No major road incidents reported", key: "traffic" });
-      if (!outagesActive) addHeroChip({ tone: "positive", label: "No significant outage reported", key: "power" });
-      if (!leadSchool) addHeroChip({ tone: "positive", label: "No closure or delay reported", key: "schools" });
-      if (!leadSafety) addHeroChip({ tone: "positive", label: "No active fire or rescue calls reported", key: "safety" });
-      if (!leadAlert) addHeroChip({ tone: "positive", label: "No active weather alerts reported", key: "alerts" });
     }
   } else {
     addHeroChip({ tone: "positive", label: "No major road incidents reported", key: "traffic" });
@@ -1337,18 +1351,13 @@ export default async function PulsePage() {
         breaking={breakingPolice ? <PoliceBreakingStrip item={breakingPolice} now={nowMs} /> : undefined}
       />
 
-      {/* The live bus map stays behind intent because it is the heaviest client
-          surface on Pulse. It is part of getting around, not a second dashboard. */}
-      <section aria-labelledby="transit-map-eyebrow" className="min-w-0 space-y-2.5">
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <h2 id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-cool)" }} />
-            Buses right now
-          </h2>
-          <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>TransIT · free</span>
-        </div>
-        <BusesReveal />
-      </section>
+      {/* The live bus tools stay behind intent because they are the heaviest
+          client surface on Pulse — part of getting around, not a second
+          dashboard. The reveal button IS the section: the old "Buses right now"
+          h2 with a pulsing dot duplicated the button and implied liveness
+          before anything had polled, so it was removed (owner: the bus section
+          "feels messy and hard to see everything"). */}
+      <BusesReveal />
       {/* Footer — disclaimer + sources at a glance */}
       <footer
         className="min-w-0 border-t px-1 pt-4 text-[11px]"

@@ -65,6 +65,10 @@ export type PulseHeroChip = {
   tone: "danger" | "warning" | "cool" | "positive";
   label: string;
   key?: string;
+  /** Mono meta line for the active-alerts ledger: the clock/scope a reader
+   *  wants ("clears ~5 PM", "until 8:00 PM"). The severity word is prepended
+   *  automatically, so this is just the fact after it. */
+  meta?: string;
 };
 
 const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
@@ -72,6 +76,15 @@ const CHIP_TONE: Record<PulseHeroChip["tone"], string> = {
   warning: "var(--app-warning)",
   cool: "var(--app-cool)",
   positive: "var(--app-positive)",
+};
+
+// A severity WORD always sits beside the color, so state never relies on tint
+// alone (axe/contrast safe) and reads at arm's length.
+const TONE_WORD: Record<PulseHeroChip["tone"], string> = {
+  danger: "High",
+  warning: "Elevated",
+  cool: "Watch",
+  positive: "Clear",
 };
 
 export type PulseHero = {
@@ -153,8 +166,59 @@ function GroupHeading({
   );
 }
 
+/**
+ * The under-hero readout. Two modes, so the eye never has to sort good news
+ * from bad inside one grid (owner: "can alerts be more clear"):
+ *   - Anything live (a danger/warning chip present) → an Active alerts LEDGER:
+ *     one bordered row per live situation, a 3px severity bar in its tone, an
+ *     Inter title, and a mono "<severity word> · <clock>" meta. Positive
+ *     "No X reported" chips are dropped here — a live board shows only what's
+ *     live. Tapping a row opens that tile's drawer.
+ *   - All clear → the calm fact grid (the positive/informational chips).
+ */
+function AlertLedgerRow({ chip, onOpen, last }: { chip: PulseHeroChip; onOpen: (key: string) => void; last: boolean }) {
+  const color = CHIP_TONE[chip.tone];
+  const meta = [TONE_WORD[chip.tone], chip.meta].filter(Boolean).join(" · ");
+  const inner = (
+    <>
+      <span aria-hidden className="w-[3px] shrink-0 self-stretch rounded-full" style={{ background: color }} />
+      <span className="min-w-0 flex-1 py-2">
+        <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{chip.label}</span>
+        <span className="mt-0.5 block truncate font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>{meta}</span>
+      </span>
+      {chip.key && <ArrowRight aria-hidden className="h-3.5 w-3.5 shrink-0 self-center opacity-45" />}
+    </>
+  );
+  const cls = `flex min-h-11 w-full items-stretch gap-2.5 pl-1 pr-1 text-left${last ? "" : " border-b"}`;
+  const border = { borderColor: "var(--app-border)" };
+  return (
+    <li>
+      {chip.key ? (
+        <button type="button" onClick={() => onOpen(chip.key!)} className={cls} style={border}>{inner}</button>
+      ) : (
+        <span className={`${cls} items-center`} style={border}>{inner}</span>
+      )}
+    </li>
+  );
+}
+
 function HeroFacts({ chips, onOpen, dark = false }: { chips: PulseHeroChip[]; onOpen: (key: string) => void; dark?: boolean }) {
   if (chips.length === 0) return null;
+  const hasLive = chips.some((chip) => chip.tone === "danger" || chip.tone === "warning");
+
+  if (hasLive) {
+    // Only live situations; positives never sit next to a real alert.
+    const rows = chips.filter((chip) => chip.tone !== "positive").slice(0, 4);
+    return (
+      <ul className="overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+        {rows.map((chip, index) => (
+          <AlertLedgerRow key={`${chip.key ?? "row"}-${index}`} chip={chip} onOpen={onOpen} last={index === rows.length - 1} />
+        ))}
+      </ul>
+    );
+  }
+
+  // All clear: the calm fact grid (positive + informational).
   return (
     <ul className="grid border-y sm:grid-cols-2" style={{ borderColor: dark ? "rgba(255,255,255,.12)" : "var(--app-border)" }}>
       {chips.slice(0, 4).map((chip, index) => {
@@ -457,7 +521,7 @@ export default function PulseBoard({
           <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-[0.17em] text-black/65">
             <span>Frederick County status</span>
             <span aria-hidden className="text-black/30">·</span>
-            <span className="flex items-center gap-1.5" style={{ color: heroColor }}>
+            <span className="flex items-center gap-1.5 text-[10px]" style={{ color: heroColor }}>
               <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: heroColor }} />
               {statusWord}
             </span>
