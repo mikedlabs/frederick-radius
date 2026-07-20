@@ -151,3 +151,29 @@ export function fractionAlong(routeId: string, p: Pt): number | null {
   const pr = projectToShape(shape, p);
   return Math.min(1, Math.max(0, pr.s / shape.total));
 }
+
+/**
+ * Routes that serve a stop: every route whose published shape passes within
+ * the on-route threshold (~44 m, the same membership test the pearls use) of
+ * the stop. Built lazily on first tap and cached, so the stop-detail popup
+ * resolves instantly with no feed. Route ids are transit.json route ids; the
+ * caller maps them to a chip. The stop-id space is transit.json's, which is
+ * the GTFS stop_id the realtime feed also keys on.
+ */
+let routesByStop: Map<string, string[]> | null = null;
+export function routesForStop(stopId: string): string[] {
+  if (!routesByStop) {
+    const built = new Map<string, string[]>();
+    const shapes = Object.entries(SHAPE_BY_ROUTE);
+    for (const s of STOPS) {
+      const hits: string[] = [];
+      for (const [rid, shape] of shapes) {
+        if (shape.total <= 0) continue;
+        if (projectToShape(shape, { lat: s.lat, lng: s.lng }).d <= STOP_ON_ROUTE) hits.push(rid);
+      }
+      built.set(String(s.id), hits);
+    }
+    routesByStop = built;
+  }
+  return routesByStop.get(String(stopId)) ?? [];
+}

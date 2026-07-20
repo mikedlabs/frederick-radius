@@ -184,7 +184,25 @@ export type MarcDeparture = {
   /** Minutes late (positive) or early (negative); absent when no live data. */
   delayMin?: number;
   live: boolean;
+  /** Unix seconds of the effective departure: the predicted instant when the
+   *  realtime feed has it, otherwise the scheduled one. Lets a client count
+   *  down without re-deriving Eastern time. */
+  epoch?: number;
 };
+
+/**
+ * Minutes until a MARC departure, read from a client clock (`nowMs`, from the
+ * 1s tick) so there is never a Date.now() in render. `epoch` is unix SECONDS.
+ * Mirrors NextStopsBoard's etaMins: null when there is no epoch, the clock has
+ * not ticked yet, or the value is stale/implausible, so the caller shows a
+ * clock time instead of a countdown.
+ */
+export function marcCountdownMins(epoch: number | undefined, nowMs: number): number | null {
+  if (epoch == null || nowMs === 0) return null;
+  const mins = Math.round((epoch * 1000 - nowMs) / 60000);
+  if (mins < 0 || mins > 24 * 60) return null;
+  return mins;
+}
 
 export type MarcStationBoard = {
   station: MarcStation;
@@ -254,12 +272,16 @@ export async function getMarcBoard(
 
   const overlay = (dep: NextDeparture, stopId: string): MarcDeparture => {
     const scheduled = formatMarcClock(dep.t);
-    const predictedSec = predictions.get(`${dep.trip}|${stopId}`);
-    if (predictedSec == null) {
-      return { scheduled, headsign: dep.headsign, live: false };
-    }
+    // Absolute scheduled instant, computed for every departure so the client
+    // countdown works even when the realtime feed has no prediction. GTFS may
+    // carry after-midnight hours >= 24; easternWallToUtcISO/Date.UTC roll them
+    // into the next day correctly.
     const [hh, mm] = dep.t.split(":").map(Number);
     const scheduledSec = Date.parse(easternWallToUtcISO(year, month, day, hh, mm)) / 1000;
+    const predictedSec = predictions.get(`${dep.trip}|${stopId}`);
+    if (predictedSec == null) {
+      return { scheduled, headsign: dep.headsign, live: false, epoch: scheduledSec };
+    }
     const delayMin = Math.round((predictedSec - scheduledSec) / 60);
     return {
       scheduled,
@@ -267,6 +289,7 @@ export async function getMarcBoard(
       predicted: etClock(predictedSec),
       delayMin,
       live: true,
+      epoch: predictedSec,
     };
   };
 

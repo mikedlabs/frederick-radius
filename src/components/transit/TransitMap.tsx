@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Map, { Source, Layer, AttributionControl } from "react-map-gl/mapbox";
+import Map, { Source, Layer, AttributionControl, Popup, type MapMouseEvent } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { ACCENTS } from "@/data/categories";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import LiveBuses from "@/components/map/LiveBuses";
+import LiveMarcTrains from "@/components/map/LiveMarcTrains";
+import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
+import { haptic } from "@/lib/haptics";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import TRANSIT from "@/data/transit.json";
@@ -16,6 +19,12 @@ import "mapbox-gl/dist/mapbox-gl.css";
 type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
 const SHAPES = TRANSIT.shapes as Record<string, number[][]>;
+// The 386 static GTFS stops. These carry the stop_id the realtime feed keys
+// on, so a tapped stop can be joined to its live arrivals — unlike the Socrata
+// stops (different id space) the map used to render for decoration only.
+const STOPS_JSON: TransitStop[] = (
+  TRANSIT.stops as Array<{ id: string | number; name: string; lat: number; lng: number }>
+).map((s) => ({ id: String(s.id), name: s.name, lng: s.lng, lat: s.lat }));
 
 /**
  * The transit SERVICE AREA — the bounding box of every route polyline (the real
@@ -86,6 +95,7 @@ export default function TransitMap({
   highlightRoutes = false,
   hideBadge = false,
   lockToService = false,
+  interactiveStops = false,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -113,6 +123,10 @@ export default function TransitMap({
    *  Frederick); without one it frames the whole service area on load. Used by
    *  the /pulse live-bus map. */
   lockToService?: boolean;
+  /** Render the 386 static GTFS stops as tappable dots. A tap opens the stop's
+   *  name, the routes that serve it, and its live inbound arrivals. Off by
+   *  default (the /pulse map stays a clean live-bus view). */
+  interactiveStops?: boolean;
 }) {
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
@@ -136,6 +150,30 @@ export default function TransitMap({
       properties: {},
     };
   }, [route]);
+
+  // Stop-tap detail (interactiveStops only): the tapped stop, resolved to its
+  // arrivals in a Popup. Cleared by a tap on empty map or the Popup close.
+  const [selectedStop, setSelectedStop] = useState<SelectedStop | null>(null);
+  const [cursor, setCursor] = useState("");
+  // Render the real GTFS stops when interactive (so a tap can resolve arrivals);
+  // otherwise keep the decorative prop-driven dots the other callers pass.
+  const renderStops = interactiveStops ? STOPS_JSON : stops;
+
+  const onMapClick = (e: MapMouseEvent) => {
+    const f = e.features?.find((ft) => ft.layer?.id === "transit-stops-hit");
+    if (!f || f.geometry.type !== "Point") {
+      setSelectedStop(null);
+      return;
+    }
+    const props = (f.properties ?? {}) as { id?: string; name?: string };
+    const [lng, lat] = f.geometry.coordinates as [number, number];
+    if (props.id != null) {
+      setSelectedStop({ id: String(props.id), name: String(props.name ?? "Bus stop"), lng, lat });
+      haptic("light");
+    } else {
+      setSelectedStop(null);
+    }
+  };
 
   // No routes means the upstream feed failed. Render a quiet empty
   // state instead of a blank map.
@@ -214,6 +252,11 @@ export default function TransitMap({
         attributionControl={false}
         maxBounds={lockToService ? SERVICE_BOUNDS : undefined}
         minZoom={lockToService ? 10.5 : undefined}
+        interactiveLayerIds={interactiveStops ? ["transit-stops-hit"] : undefined}
+        cursor={cursor}
+        onMouseEnter={interactiveStops ? () => setCursor("pointer") : undefined}
+        onMouseLeave={interactiveStops ? () => setCursor("") : undefined}
+        onClick={interactiveStops ? onMapClick : undefined}
         onLoad={(e) => {
           applyFrederickPalette(e.target);
           // With an explicit center (e.g. /pulse → downtown Frederick) we open
@@ -297,13 +340,13 @@ export default function TransitMap({
             tile background. Tiny radius + zoom-scaled so the network
             looks clean at county zoom and stops become readable when
             the user zooms into a single corridor. */}
-        {stops.length > 0 && (
+        {renderStops.length > 0 && (
           <Source
             id="transit-stops"
             type="geojson"
             data={{
               type: "FeatureCollection",
-              features: stops.map((s) => ({
+              features: renderStops.map((s) => ({
                 type: "Feature",
                 properties: { name: s.name, id: s.id },
                 geometry: { type: "Point", coordinates: [s.lng, s.lat] },
@@ -330,6 +373,27 @@ export default function TransitMap({
                 "circle-opacity": 0.92,
               }}
             />
+            {/* Invisible, zoom-scaled hit target so a small stop dot is easy to
+                tap once the rider has zoomed into their corridor. Kept modest at
+                county zoom so a tap there doesn't grab a far-off stop. */}
+            {interactiveStops && (
+              <Layer
+                id="transit-stops-hit"
+                type="circle"
+                paint={{
+                  "circle-radius": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    9, 7,
+                    12, 12,
+                    15, 18,
+                  ],
+                  "circle-color": ACCENTS.slate,
+                  "circle-opacity": 0,
+                }}
+              />
+            )}
           </Source>
         )}
 
@@ -380,6 +444,25 @@ export default function TransitMap({
         {/* Real-time vehicle positions — route-colored badges that glide
             between polls. Self-hides when the feed reports zero. */}
         <LiveBuses show={liveBuses} highlightRouteId={route ?? undefined} />
+
+        {/* Live MARC trains ride the same live toggle as the buses, so the
+            rail corridor moves too instead of sitting as static pins. */}
+        <LiveMarcTrains show={liveBuses} />
+
+        {/* Stop-tap detail — name, routes here, and live inbound arrivals. */}
+        {selectedStop && (
+          <Popup
+            longitude={selectedStop.lng}
+            latitude={selectedStop.lat}
+            anchor="bottom"
+            offset={14}
+            closeOnClick={false}
+            onClose={() => setSelectedStop(null)}
+            maxWidth="250px"
+          >
+            <StopArrivalsPopup key={selectedStop.id} stop={selectedStop} />
+          </Popup>
+        )}
       </Map>
 
       {/* Editorial badge — top-left. Tells the user what the painted
@@ -394,7 +477,7 @@ export default function TransitMap({
             style={{ background: "var(--app-cool)" }}
           />
           TransIT Frederick · {shapes.features.length} routes
-          {stops.length > 0 && ` · ${stops.length} stops`}
+          {renderStops.length > 0 && ` · ${renderStops.length} stops`}
         </span>
       )}
       </div>
