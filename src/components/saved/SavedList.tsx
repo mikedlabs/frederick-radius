@@ -25,7 +25,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { MapPin, Calendar, Search, Settings, ArrowRight, Layers } from "lucide-react";
+import { MapPin, Calendar, Search, Settings, ArrowRight, Layers, Map as MapIcon, Compass } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -1103,38 +1103,58 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
 
 /**
  * EmptyState — honest, never a dead end (voice rule): the blank page of the
- * guide, stated plainly. A serif line, a ruled list of what this page keeps
- * (places / events / routes), and four confident doorways to the surfaces
- * that fill it. No fake shelf, no pre-stuffed seeds, no box art.
+ * guide, stated plainly. A serif line that says what this page BECOMES (not
+ * just that it's empty), a ruled list of what it keeps, and four confident
+ * doorways to the surfaces that fill it. No fake shelf, no pre-stuffed seeds,
+ * no box art.
  */
 function EmptyState() {
+  // What this page actually keeps — the real set, not a rhetorical trio.
+  const KEEPS: { label: string; desc: string }[] = [
+    { label: "Places", desc: "Restaurants, parks, and shops you want to remember." },
+    { label: "Events", desc: "Shows and things to do, kept until they pass." },
+    { label: "Notes", desc: "Your own notes and tags, and the places you have been." },
+  ];
   const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
     { href: "/search", label: "Search", Icon: Search },
-    { href: "/nearby", label: "Nearby", Icon: MapPin },
+    { href: "/map", label: "Map", Icon: MapIcon },
     { href: "/events", label: "Events", Icon: Calendar },
+    { href: "/guide", label: "Ask", Icon: Compass },
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="sv-empty-hero">
-        <h2>You have not saved anything yet.</h2>
+        <h2>Your corner of the county, kept in one place.</h2>
         <p>
-          Save any place or event to keep it here.
+          Save any place or event and it lands here, grouped by town and ready to
+          plan. Add a note or mark somewhere you have been, and this becomes your
+          own record of Frederick County.
         </p>
       </div>
 
-      <nav
-        className="sv-doors"
-        aria-label="Find something to save"
-        style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
-      >
-        {DOORS.map(({ href, label, Icon }) => (
-          <Link key={href} href={href} className="tactile-interactive">
-            <Icon strokeWidth={2} aria-hidden />
-            <span>{label}</span>
-          </Link>
+      <ul className="sv-empty-keeps" aria-label="What Saved keeps">
+        {KEEPS.map(({ label, desc }) => (
+          <li key={label}>
+            <b>{label}</b>
+            <span>{desc}</span>
+          </li>
         ))}
-      </nav>
+      </ul>
+
+      <div className="space-y-2">
+        <p className="px-0.5 text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          Start here
+        </p>
+        <nav className="sv-doors" aria-label="Find something to save">
+          {DOORS.map(({ href, label, Icon }) => (
+            <Link key={href} href={href} className="tactile-interactive">
+              <Icon strokeWidth={2} aria-hidden />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
     </div>
   );
 }
