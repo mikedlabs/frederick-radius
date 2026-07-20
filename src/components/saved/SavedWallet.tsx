@@ -170,15 +170,12 @@ function Card({
       className={`sw-card${open ? " is-open" : ""}${live ? " sw-live-card" : ""}`}
       style={
         {
-          // Two registers so the resting deck stays CALM (owner: the wallet
-          // stacked 12 loud jewel-tone cards). A tucked card is mostly ink with
-          // just a hint of its hue — the serif name carries it, field-guide
-          // calm. RAISING a card brings its full brand color to life. Both are
-          // darkened grounds, so cream text always clears AA (the tucked, more-
-          // ink ground only raises contrast further).
-          background: open
-            ? `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`
-            : `linear-gradient(152deg, color-mix(in srgb, ${hue} 15%, #16140E), color-mix(in srgb, ${hue} 8%, #0c0a06))`,
+          // The card wears its brand hue as a darkened gradient so cream text
+          // always clears AA — never the raw hue, never near-black (owner:
+          // "can the cards not be so dark"). The calm comes from the deck
+          // starting fully CLOSED (no card raised until tapped), not from
+          // draining the color.
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
         } as CSSProperties
@@ -344,7 +341,10 @@ export default function SavedWallet({
   return (
     <div className="sw-stack" role="list" aria-label="Saved places, as a card wallet">
       {places.map((p, i) => {
-        const open = openValid ? p.slug === current : i === 0;
+        // Start fully CLOSED — no card raised until the user taps one (owner:
+        // "cards should start closed"). A card only opens via an explicit tap
+        // or the parent's controlled openSlug (the On-now line).
+        const open = openValid ? p.slug === current : false;
         return (
           // The SLOT carries the stack geometry (the -124px tuck and the
           // raise). It must live on this wrapper, not .sw-card: each card is
