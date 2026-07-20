@@ -51,6 +51,11 @@ export type RadiusAgentAnswer = {
 };
 
 export function radiusAgentConfigured(): boolean {
+  // The agent's ToolLoopAgent makes multiple model calls per query through the
+  // Vercel AI Gateway — the most expensive Ask path. When ASK_AI_PROVIDER pins
+  // Ask to direct Anthropic (to keep spend off the Vercel bill), the Gateway
+  // agent is off; the direct single-shot answer in answer.ts handles the query.
+  if (process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic") return false;
   return Boolean(
     process.env.ASK_RADIUS_AGENT !== "0" &&
       (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
