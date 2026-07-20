@@ -74,6 +74,21 @@ export default function TrailsMap({
             trailsLayerDefault
             fullBleed
           />
+          {/* Surface legend for the trail lines. Bottom-left, out of the way
+              of the map's own controls (top-right layer tray, bottom nav). */}
+          <div
+            className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-1 rounded-[var(--app-radius-sm)] px-2.5 py-2 text-[11px] font-medium shadow-[var(--app-shadow-1)]"
+            style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)", color: "var(--app-ink-2)" }}
+          >
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="h-[3px] w-5 rounded-full" style={{ background: "#1E6B3A" }} />
+              Paved
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className="h-[3px] w-5 rounded-full" style={{ background: "#B4712A" }} />
+              Unpaved
+            </span>
+          </div>
         </div>
       ) : (
         <button

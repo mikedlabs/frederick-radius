@@ -2142,10 +2142,18 @@ export default function AppMap({
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#1E6B3A",
-                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 14, 2.5, 17, 4],
-                "line-opacity": 0.7,
-                "line-dasharray": [2, 1.5],
+                // Color by surface so the network reads at a glance: green =
+                // paved (bikes, strollers, wheelchairs), ochre = unpaved dirt
+                // trail, muted when the county didn't record a surface.
+                "line-color": [
+                  "match",
+                  ["get", "paved"],
+                  "paved", "#1E6B3A",
+                  "unpaved", "#B4712A",
+                  "#6E6552",
+                ],
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 14, 2.8, 17, 4.5],
+                "line-opacity": 0.8,
               }}
             />
           </Source>
