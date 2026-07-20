@@ -1057,7 +1057,7 @@ function wantContextBlock(
   query: string,
   dietary: AskIntent["dietary"] = [],
   availabilityLabel?: string,
-): { block: string; picks: WantRow[]; label: string } | null {
+): { block: string; picks: WantRow[]; label: string; total: number; browseHref: string; what: string } | null {
   const queryTown = intent.area?.kind === "town" ? MUNICIPALITY_BY_SLUG[intent.area.slug] : null;
   const scopedTown = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]
@@ -1136,6 +1136,9 @@ function wantContextBlock(
       block: `RANKED PICKS: ${what}${areaText} (no matching places in the catalog)\n`,
       picks: [],
       label: wa.label,
+      total: 0,
+      browseHref: wa.browseHref,
+      what,
     };
   }
 
@@ -1159,10 +1162,22 @@ function wantContextBlock(
   if (availabilityLabel && open.length === 0) {
     parts.push(`No match has verified hours showing it open around ${availabilityLabel}.`);
   }
+  const picks = availabilityLabel ? open : [...open, ...later, ...notable];
+  // Completeness: tell the model the TOTAL so it never implies the few it names
+  // are all there is, and hand back the browse URL so the caller can add a
+  // "See all N nearby" action (owner: Ask "isn't finding everything within my
+  // radius"). The named picks stay a curated few; nothing is hidden.
+  const moreCount = Math.max(0, wa.total - picks.length);
+  const totalLine = moreCount > 0
+    ? `(this guide lists ${wa.total} ${what.toLowerCase()}${areaText} in total; ${picks.length} named below, ${moreCount} more on the full list)`
+    : `(this guide's own list, strongest first, ${availabilityLabel ? `hours evaluated around ${availabilityLabel}` : "current hours shown"})`;
   return {
-    block: `RANKED PICKS: ${what}${areaText} (this guide's own list, strongest first, ${availabilityLabel ? `hours evaluated around ${availabilityLabel}` : "current hours shown"}):\n${parts.join("\n")}\n`,
-    picks: availabilityLabel ? open : [...open, ...later, ...notable],
+    block: `RANKED PICKS: ${what}${areaText} ${totalLine}:\n${parts.join("\n")}\n`,
+    picks,
     label: wa.label,
+    total: wa.total,
+    browseHref: wa.browseHref,
+    what,
   };
 }
 
@@ -1484,6 +1499,16 @@ export async function askFrederick(
       )
     : null;
   const wantBlock = want ? `${want.block}\n` : "";
+  // "See all N nearby": when the guide holds more matches than Ask names, lead
+  // the actions with a link to the complete list so nothing is hidden behind
+  // the curated few (owner: Ask "isn't finding everything within my radius").
+  if (want && want.total > (want.picks?.length ?? 0) && want.browseHref) {
+    actions.unshift({
+      label: `See all ${want.total} ${want.what.toLowerCase()}`,
+      kind: "open",
+      href: want.browseHref,
+    });
+  }
   const wantSlugs = new Set((want?.picks ?? []).map((r) => r.slug));
   for (const r of (want?.picks ?? []).slice(0, answerSourceLimit)) {
     const place = clientPlaceBySlug(r.slug);
