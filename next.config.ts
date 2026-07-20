@@ -152,6 +152,8 @@ const nextConfig: NextConfig = {
       // Brewery logo marks (the breweries' own site icons, committed with
       // provenance in src/data/brewery-marks.json) — the /beer passport.
       { pathname: "/brewery-marks/**", search: "" },
+      // Dear Frederick letter scans (public/dear-frederick/*.jpg).
+      { pathname: "/dear-frederick/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

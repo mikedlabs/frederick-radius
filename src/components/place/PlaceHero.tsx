@@ -135,7 +135,6 @@ export default function PlaceHero({
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className={`absolute inset-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
-          style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
         />
       )}
 

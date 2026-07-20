@@ -6,6 +6,7 @@ import {
   AdminShell,
   SectionLabel,
   HairlineList,
+  StatStrip,
   StatusPill,
   Notice,
   ExternalLink,
@@ -113,6 +114,31 @@ export default async function CostsAdmin() {
       .filter((r) => r.upstream === key && (sinceDay === null || r.day >= sinceDay))
       .reduce((a, r) => a + r.count, 0);
 
+  // The month model: what has this Eastern calendar month cost so far, and
+  // where does it land if the rest of the month runs at the recent pace?
+  // Pace is the MEDIAN of the last seven full days (today is partial, and a
+  // median shrugs off a one-day spike that would wreck an average).
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const dayOfMonth = Number(today.slice(8, 10));
+  const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate();
+  const remainingDays = daysInMonth - dayOfMonth;
+  const last7Keys = Array.from({ length: 7 }, (_, i) => dayKeyEastern(new Date(nowMs - (i + 1) * 86_400_000)));
+  const monthMath = UPSTREAMS.map((u) => {
+    const byDay = new Map(rows.filter((r) => r.upstream === u.key).map((r) => [r.day, r.count]));
+    // Days with no counter row are real zero-call days; they must weigh in.
+    const daily = last7Keys.map((k) => byDay.get(k) ?? 0).sort((a, b) => a - b);
+    const medianDaily = daily[3];
+    const todayCalls = byDay.get(today) ?? 0;
+    const mtdEst = (sum(u.key, monthStart) / 1000) * u.per1000;
+    const projectedEst = mtdEst + (medianDaily / 1000) * u.per1000 * remainingDays;
+    // Same alarm rule as the desk's cost sentinel: real volume, 3x the median.
+    const hot = todayCalls >= 50 && todayCalls > 3 * Math.max(1, medianDaily);
+    return { key: u.key, mtdEst, projectedEst, hot };
+  });
+  const totalMtd = monthMath.reduce((a, m) => a + m.mtdEst, 0);
+  const totalProjected = monthMath.reduce((a, m) => a + m.projectedEst, 0);
+  const hotCount = monthMath.filter((m) => m.hot).length;
+
   // Cost-control posture — read live from env so the checklist is honest.
   const controls: Array<{ label: string; ok: boolean; why: string }> = [
     { label: "Rate limiting (Vercel KV)", ok: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), why: "Without KV, isRateLimited() silently passes everything through and every paid upstream is unmetered." },
@@ -145,8 +171,24 @@ export default async function CostsAdmin() {
         </div>
       )}
 
-      {/* Per-upstream meter — the answer (estimated spend) leads each row, counts support. */}
+      {/* The month, answered first: spent so far, where it lands, what's hot. */}
       <section className="mt-6">
+        <SectionLabel>This month</SectionLabel>
+        <StatStrip
+          items={[
+            { value: `~$${totalMtd.toFixed(2)}`, label: "est so far" },
+            { value: `~$${totalProjected.toFixed(2)}`, label: `projected by day ${daysInMonth}` },
+            {
+              value: hotCount,
+              label: "running hot",
+              tone: hotCount > 0 ? "danger" : "positive",
+            },
+          ]}
+        />
+      </section>
+
+      {/* Per-upstream meter — the answer (estimated spend) leads each row, counts support. */}
+      <section className="mt-7">
         <SectionLabel>Metered calls</SectionLabel>
         <HairlineList>
           {UPSTREAMS.map((u, i) => {
@@ -154,16 +196,24 @@ export default async function CostsAdmin() {
             const d7 = sum(u.key, sevenAgo);
             const d30 = sum(u.key, null);
             const est30 = (d30 / 1000) * u.per1000;
+            const month = monthMath.find((m) => m.key === u.key);
             return (
               <li key={u.key} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
                 <div className="flex items-start justify-between gap-3 bg-[var(--app-bg-elevated)] px-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
-                      {u.label}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-[14px] font-medium leading-tight" style={{ color: "var(--app-ink)" }}>
+                        {u.label}
+                      </p>
+                      {month?.hot && <StatusPill tone="danger">running hot today</StatusPill>}
+                    </div>
                     <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
                       today {d1.toLocaleString()} · 7d {d7.toLocaleString()} · 30d {d30.toLocaleString()}
                       <span style={{ color: "var(--app-ink-3)" }}> · ~${u.per1000}/1k</span>
+                    </p>
+                    <p className="mt-0.5 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                      month ~${(month?.mtdEst ?? 0).toFixed(2)}
+                      <span style={{ color: "var(--app-ink-3)" }}> · projected ~${(month?.projectedEst ?? 0).toFixed(2)}</span>
                     </p>
                     <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
                       {u.note}
@@ -215,7 +265,9 @@ export default async function CostsAdmin() {
         Counts are an upper bound on billable calls: platform fetch caching means
         some metered requests never reach the network. Unit prices are estimates
         pinned in code (src/app/admin/costs/page.tsx); update them when provider
-        pricing changes.
+        pricing changes. The month projection extends what has already been spent
+        at the median daily rate of the last seven full days, so one spiky day
+        does not distort it.
       </p>
     </AdminShell>
   );

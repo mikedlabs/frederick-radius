@@ -209,7 +209,10 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block max-w-[7.5rem] truncate text-[11.5px] font-semibold text-[#5e3a15]">{b.breweryName}</span>
-                      <span className="mt-0.5 flex items-center justify-end gap-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[#85501f]">Details <ChevronRight className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden /></span>
+                      <span className="mt-0.5 flex items-center justify-end gap-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-[#85501f]">
+                        Details
+                        <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                      </span>
                     </span>
                   </button>
                 </li>

@@ -60,6 +60,10 @@ const SCAN_FILES = [
 const EXCLUDED_COPY_FILES = new Set([
   "src/data/loc-archive.ts",
   "src/data/town-websites.ts",
+  // Verbatim community letters (Dear Frederick). These are the senders' own
+  // handwritten words, transcribed faithfully; they are never rewritten to
+  // the house voice, so they are exempt from the copy lint by nature.
+  "src/data/dear-frederick.ts",
 ]);
 
 // Only these JSON files contain owner-authored prose that ships directly to a

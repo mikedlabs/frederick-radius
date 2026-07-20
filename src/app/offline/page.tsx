@@ -27,8 +27,8 @@ export default function OfflinePage() {
         You are offline
       </h1>
       <p className="mt-2 max-w-xs text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-        Frederick Radius needs a connection for live conditions and events. Pages
-        you have already opened may still load offline.
+        Frederick Radius runs on live conditions and events, so it needs a
+        connection. Once you are back online, tap Try again.
       </p>
       <button
         type="button"

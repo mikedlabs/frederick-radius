@@ -5,33 +5,33 @@ import Link from "next/link";
 import { Suspense } from "react";
 import BetaEmailField from "@/components/beta/BetaEmailField";
 import CoverFlight from "@/components/beta/CoverFlight";
+import LiveEasternTime from "@/components/beta/LiveEasternTime";
 import { GuideContents, GuideContentsLive } from "@/components/beta/GuideContents";
 import { buildFlightSlides } from "@/lib/beta-flight";
+import { formatEasternClock } from "@/lib/format/easternClock";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Frederick Radius: early-access beta",
-  description: "A local guide to places and events across Frederick County. The beta is open by personal code.",
+  description: "A local guide to Frederick, kept live to the minute. The beta is open by personal code.",
   openGraph: {
-    title: "A local guide to Frederick County",
-    description: "A local guide to places and events across Frederick County. The beta is open by personal code.",
+    title: "Frederick, the way a local knows it",
+    description: "A local guide to Frederick, kept live to the minute. The beta is open by personal code.",
     images: [{ url: "/api/og?type=beta", width: 1200, height: 630 }],
   },
   twitter: { card: "summary_large_image" },
 };
 
 /**
- * /beta — the gate, redesigned as the guide's own table of contents,
- * rendered live ("Contents, Live"; four-concept design workflow +
- * three-judge panel, 2026-07-19, after the owner's report that the page
- * did not explain what Frederick Radius is).
+ * /beta — the gate, framed as the guide's own table of contents rendered
+ * live. A new visitor reads a title for what Frederick Radius is, the way
+ * in (a personal code, or a code by email), then the county proving itself:
+ * "The county, right now" over the drone flight, and "In the guide", whose
+ * every figure the server computed on this request.
  *
- * Structure: the app's own lockup and a mono dateline, the locked
- * descriptor as the headline, the access card (code first, always
- * open), then the proof — "The county, right now" over the drone
- * flight, and "In the guide": chaptered contents rows whose every
- * figure the server computed on this request.
+ * Owner calls, 2026-07: the code and the email sit at the top so the way in
+ * is never buried; the title leads with what the guide is before the proof.
  *
  * This route must STAY dynamic (it already awaits searchParams): the
  * dateline, the briefing minute, and every live figure are honest only
@@ -58,14 +58,10 @@ export default async function BetaPage({
   const dateline = `${part("weekday")} · ${part("month")} ${part("day")} · Frederick, MD`.toUpperCase();
   const dateISO = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(now);
   const briefingWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long" }).format(now);
-  const briefingTime = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-    .format(now)
-    .replace(":00", "")
-    .replace(/\s?(AM|PM)/, (_, m: string) => m.toLowerCase());
+  // The minute is honest per request (this route stays dynamic, no ISR);
+  // LiveEasternTime keeps it honest while the tab sits open. Same formatter
+  // both places so the SSR seed and the first client tick never disagree.
+  const briefingTime = formatEasternClock(now);
 
   return (
     <main
@@ -114,19 +110,18 @@ export default async function BetaPage({
           </time>
         </div>
 
-        <section className="flex-1 pb-6 lg:grid lg:grid-cols-[minmax(0,25rem)_1px_minmax(0,1fr)] lg:items-stretch lg:gap-x-12">
-          {/* Left column: the descriptor and the gate. Sticky on desktop
-              so the way in stays on screen while the contents scroll. */}
+        <section className="flex-1 pb-6 lg:grid lg:grid-cols-[minmax(0,25rem)_1px_minmax(0,1fr)] lg:items-start lg:gap-x-12">
+          {/* Left column: the title and the way in (code, then email). Sticky
+              on desktop so the way in stays on screen while the proof scrolls. */}
           <div className="stagger-children lg:sticky lg:top-10 lg:self-start">
             <h1
               className="mt-2 font-serif font-semibold leading-[1.08] tracking-tight [text-wrap:balance]"
               style={{ color: "var(--app-ink)", fontSize: "clamp(30px, 6.5vw, 42px)" }}
             >
-              A local guide to places and events across Frederick County.
+              Frederick, the way a local knows it.
             </h1>
             <p className="mt-2.5 max-w-[34rem] text-[15px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
-              The hours are live and the events cover the whole county, so you can check what is
-              on before you head out. The beta is open by personal code.
+              A local guide to Frederick, kept live to the minute.
             </p>
 
             <section
@@ -140,7 +135,7 @@ export default async function BetaPage({
               }}
             >
               <h2 id="beta-access-heading" className="sr-only">
-                Beta access
+                The way in
               </h2>
               <form action="/api/beta" method="post" className="space-y-2.5">
                 <input type="hidden" name="next" value={safeNext} />
@@ -189,33 +184,22 @@ export default async function BetaPage({
 
               <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
                 <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                  No code yet? Get one by email right away.
+                  No code yet? Leave your email and one comes right back.
                 </p>
                 <BetaEmailField />
               </div>
             </section>
           </div>
 
-          {/* Plain editorial column rule between the gate and the proof. */}
+          {/* Plain editorial column rule between the way in and the proof. */}
           <div aria-hidden className="hidden lg:block lg:w-px" style={{ background: "var(--app-border)" }} />
 
           {/* Right column: the county proving itself, then the contents. */}
           <div className="stagger-children lg:min-w-0">
             <section aria-labelledby="beta-now-heading" className="mt-9 lg:mt-1">
-              <h2
-                id="beta-now-heading"
-                className="flex items-baseline gap-2.5 text-[11px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-brand-press)" }}
-              >
-                <span aria-hidden className="block h-[3px] w-7 translate-y-[-2px] rounded-full" style={{ background: "var(--app-brand)" }} />
-                The county, right now
-              </h2>
+              <Eyebrow id="beta-now-heading">Frederick, right now</Eyebrow>
               <p className="mt-3 font-serif text-[19px] font-semibold [text-wrap:balance]" style={{ color: "var(--app-ink)" }}>
-                It is {briefingWeekday} at <time dateTime={now.toISOString()}>{briefingTime}</time> in Frederick County.
-              </p>
-              <p className="mt-1.5 max-w-[34rem] text-[13.5px] leading-[1.55]" style={{ color: "var(--app-ink-2)" }}>
-                The guide cannot use your location until you are inside. The counts under the
-                photograph below are for the spot where it was taken.
+                It is {briefingWeekday} at <LiveEasternTime initial={briefingTime} iso={now.toISOString()} /> in Frederick.
               </p>
               <FlightOrPlate now={now} />
             </section>
@@ -224,10 +208,10 @@ export default async function BetaPage({
               <GuideContentsLive now={now} />
             </Suspense>
 
-            {/* Mobile only: after the whole contents, the way back in. */}
+            {/* Mobile only: after the whole proof, the way back up to the gate. */}
             <div className="mt-8 lg:hidden">
               <p className="text-[13.5px]" style={{ color: "var(--app-ink-2)" }}>
-                Your code works in the box at the top of the page.
+                Your code goes in the box at the top of the page.
               </p>
               <a
                 href="#beta-access"
@@ -243,9 +227,10 @@ export default async function BetaPage({
               </a>
             </div>
 
+            {/* Maker note closes the proof column at every width. */}
             <p className="mt-8 text-[13px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
-              One person in Frederick makes this guide, and the photographs are his, flown by drone
-              over the county. Questions and code requests reach him at{" "}
+              One person in Frederick makes this guide, and every aerial photo is his own. Reach him
+              with a question or a code request at{" "}
               <a
                 href="mailto:hello@frederickradius.app"
                 className="tap-44-y inline-flex items-center font-mono text-[12px] underline underline-offset-2"
@@ -286,6 +271,23 @@ export default async function BetaPage({
         </footer>
       </div>
     </main>
+  );
+}
+
+/** The section eyebrow shared by "The county, right now" and any other
+ *  labelled section: a short vermilion rule and an uppercase mono label.
+ *  Rendered as the labelled heading for its section (pass the id its
+ *  aria-labelledby wants). */
+function Eyebrow({ id, children }: { id?: string; children: React.ReactNode }) {
+  return (
+    <h2
+      id={id}
+      className="flex items-baseline gap-2.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+      style={{ color: "var(--app-brand-press)" }}
+    >
+      <span aria-hidden className="block h-[3px] w-7 translate-y-[-2px] rounded-full" style={{ background: "var(--app-brand)" }} />
+      {children}
+    </h2>
   );
 }
 
