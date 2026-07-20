@@ -853,12 +853,13 @@ function hasKey(): boolean {
 }
 
 /**
- * Cost control: set ASK_AI_PROVIDER=anthropic to bill Ask's tokens to YOUR
- * Anthropic account (direct api.anthropic.com) instead of routing through the
- * Vercel AI Gateway, which puts the same tokens on the Vercel invoice. Vercel
- * auto-injects VERCEL_OIDC_TOKEN whenever the Gateway is enabled, so without
- * this flag the Gateway path always wins in production even with a direct key
- * present. Leave unset to keep the Gateway (default, unchanged).
+ * Set ASK_AI_PROVIDER=anthropic to route Ask's single-shot TEXT generation
+ * straight to YOUR Anthropic account (direct api.anthropic.com) instead of the
+ * Vercel AI Gateway. This is a routing/control preference, NOT a cost fix: the
+ * July 2026 bill showed AI Gateway spend is negligible, so this no longer
+ * disables hybrid search or the agent (those stay on for recall/quality).
+ * Vercel auto-injects VERCEL_OIDC_TOKEN when the Gateway is enabled, so without
+ * this flag the Gateway path wins by default. Leave unset to keep the Gateway.
  */
 function forceDirectAnthropic(): boolean {
   return process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic";
