@@ -40,8 +40,16 @@ const RE_REMINDER =
 // even LEADING it. Still NOT a bare "board"/"council" (would catch
 // "Arts Council", "skateboard"); a stray civic item is preferable to a
 // festival hidden, but a meeting must never lead "What's on".
+// "board meeting" and "board of directors" are added explicitly: an
+// external audit (2026-07) found "Loats Board Meeting" and bare "Board
+// Meeting" leading public discovery, because the pattern deliberately
+// avoids bare "board" (to spare "Arts Council", "skateboard", "board
+// game night") and so missed the "<org> Board Meeting" governance form.
+// "board meeting"/"board of directors" are unambiguous governance phrases;
+// "board" alone stays out. Online-meeting synonyms (zoom/teams/webex)
+// join "virtual" for the same reason a "Zoom Meeting" is not an outing.
 const RE_MEETING =
-  /\badvisory\s+board\b|\bboard\s+of\s+(education|county\s+commissioners|appeals|zoning|elections|health|trustees)\b|\b(commission|committee|subcommittee)\b|\bpublic\s+hearing\b|\bcouncil\s+(meeting|workshop|work\s*session|legislative|session)\b|\b(city|town)\s+council\b|\bwork\s*session\b|\btown\s+hall\s+meeting\b|\btown\s+meeting\b|\bvirtual\s+meeting\b/i;
+  /\badvisory\s+board\b|\bboard\s+of\s+(education|county\s+commissioners|appeals|zoning|elections|health|trustees|directors)\b|\bboard\s+meeting\b|\b(commission|committee|subcommittee)\b|\bpublic\s+hearing\b|\bcouncil\s+(meeting|workshop|work\s*session|legislative|session)\b|\b(city|town)\s+council\b|\bwork\s*session\b|\btown\s+hall\s+meeting\b|\btown\s+meeting\b|\b(?:virtual|online|zoom|teams|webex)\s+meeting\b/i;
 
 const RE_CANCELLED = /\bcancell?ed\b|\bpostponed\b/i;
 
