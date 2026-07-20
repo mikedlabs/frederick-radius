@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { Check, X, Mail, KeyRound, Inbox, Flag } from "lucide-react";
-import { getDb } from "@/lib/db/client";
-import {
-  beta_codes,
-  beta_emails,
-  community_reports,
-  follows,
-  push_subscriptions,
-  saved_events,
-  submissions,
-} from "@/lib/db/schema";
+import { getDb, getSql } from "@/lib/db/client";
+import { beta_codes, beta_emails, submissions } from "@/lib/db/schema";
 import { easternDayKey } from "@/lib/tz";
 import OwnerAlertsCard from "@/components/admin/OwnerAlertsCard";
 import {
@@ -61,16 +54,17 @@ type Data = {
 async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: string }> {
   const now = Date.now();
   const db = getDb();
-  if (!db) {
+  const raw = getSql();
+  if (!db || !raw) {
     return { ok: false, reason: "DATABASE_URL is not configured for this environment." };
   }
-  const n = sql<number>`count(*)::int`;
   try {
     // Sequential on purpose: getDb() talks to Supavisor transaction pooling
     // with max:1 + prepare:false, and concurrent queries (Promise.all) get
     // pipelined down the one pooled connection, which Supavisor does not
-    // answer — the render hangs forever. One-at-a-time always completes,
-    // and seven small reads cost well under a second on this admin page.
+    // answer — the render hangs forever. One-at-a-time always completes.
+    // The three row reads stay separate; the four counts that used to be
+    // four more round trips travel as one statement.
     const feedback = await db
       .select()
       .from(submissions)
@@ -92,23 +86,25 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
       })
       .from(beta_codes)
       .orderBy(desc(beta_codes.last_seen_at));
-    const push = await db.select({ n }).from(push_subscriptions);
-    const followRows = await db.select({ n }).from(follows);
-    const saves = await db.select({ n }).from(saved_events);
-    const reports = await db
-      .select({ n })
-      .from(community_reports)
-      .where(eq(community_reports.status, "pending"));
+    const counts = (
+      await raw`
+        select
+          (select count(*)::int from push_subscriptions) as push_devices,
+          (select count(*)::int from follows) as follow_count,
+          (select count(*)::int from saved_events) as save_count,
+          (select count(*)::int from community_reports where status = 'pending') as reports_pending
+      `
+    )[0] as Record<string, number>;
     return {
       ok: true,
       data: {
         feedback,
         signups,
         codes,
-        pushDevices: push[0]?.n ?? 0,
-        followCount: followRows[0]?.n ?? 0,
-        saveCount: saves[0]?.n ?? 0,
-        reportsPending: reports[0]?.n ?? 0,
+        pushDevices: counts.push_devices ?? 0,
+        followCount: counts.follow_count ?? 0,
+        saveCount: counts.save_count ?? 0,
+        reportsPending: counts.reports_pending ?? 0,
         now,
       },
     };
@@ -121,23 +117,46 @@ async function load(): Promise<{ ok: true; data: Data } | { ok: false; reason: s
   }
 }
 
-export default async function BetaDashboard() {
-  const result = await load();
-
+/** The shell paints immediately; the data block streams in behind Suspense
+ *  (same speed model as the /admin hub). */
+export default function BetaDashboard() {
   return (
     <AdminShell
       eyebrow="Beta program"
       title="Beta dashboard"
       intro="Signups, tester feedback, and activity in one place. Notes from the in-app widget land here the moment a tester sends them."
     >
-      {!result.ok ? (
-        <div className="mt-6">
-          <Notice tone="warning">{result.reason}</Notice>
-        </div>
-      ) : (
-        <Dashboard data={result.data} />
-      )}
+      <Suspense fallback={<BetaSkeleton />}>
+        <BetaData />
+      </Suspense>
     </AdminShell>
+  );
+}
+
+async function BetaData() {
+  const result = await load();
+  if (!result.ok) {
+    return (
+      <div className="mt-6">
+        <Notice tone="warning">{result.reason}</Notice>
+      </div>
+    );
+  }
+  return <Dashboard data={result.data} />;
+}
+
+function BetaSkeleton() {
+  return (
+    <div className="mt-6 animate-pulse space-y-6" aria-hidden>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[74px] rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }} />
+        ))}
+      </div>
+      {[0, 1].map((i) => (
+        <div key={i} className="h-28 rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }} />
+      ))}
+    </div>
   );
 }
 
@@ -147,7 +166,11 @@ function Dashboard({ data }: { data: Data }) {
     (s) => s.created_at && easternDayKey(s.created_at) === todayKey,
   ).length;
 
-  const pending = data.feedback.filter((f) => f.status === "pending");
+  // The inbox is a queue: oldest note first, so the tester who has waited
+  // longest is answered first (the fetch is newest-first for the resolved log).
+  const pending = data.feedback
+    .filter((f) => f.status === "pending")
+    .sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
   const resolved = data.feedback.filter((f) => f.status !== "pending");
 
   return (
@@ -178,7 +201,7 @@ function Dashboard({ data }: { data: Data }) {
         </div>
       </section>
 
-      <FeedbackInbox pending={pending} resolved={resolved} />
+      <FeedbackInbox pending={pending} resolved={resolved} now={data.now} />
       <Signups signups={data.signups} now={data.now} />
       <Activity
         codes={data.codes}
@@ -233,7 +256,7 @@ function Dashboard({ data }: { data: Data }) {
 
 /* ---------------------------------------------------------------- feedback */
 
-function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved: FeedbackRow[] }) {
+function FeedbackInbox({ pending, resolved, now }: { pending: FeedbackRow[]; resolved: FeedbackRow[]; now: number }) {
   return (
     <Section title="Feedback inbox">
       {pending.length === 0 ? (
@@ -242,7 +265,7 @@ function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved
         <ul className="mt-3 space-y-3">
           {pending.map((f) => (
             <li key={f.id}>
-              <FeedbackCard row={f} />
+              <FeedbackCard row={f} now={now} />
             </li>
           ))}
         </ul>
@@ -274,8 +297,9 @@ function FeedbackInbox({ pending, resolved }: { pending: FeedbackRow[]; resolved
   );
 }
 
-function FeedbackCard({ row }: { row: FeedbackRow }) {
+function FeedbackCard({ row, now }: { row: FeedbackRow; now: number }) {
   const p = feedbackPayload(row);
+  const days = daysWaiting(row.created_at, now);
   return (
     <article
       className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
@@ -297,6 +321,9 @@ function FeedbackCard({ row }: { row: FeedbackRow }) {
         className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
+        <StatusPill tone={waitTone(days)}>
+          {days >= 1 ? `waiting ${days}d` : "arrived today"}
+        </StatusPill>
         <span>{fmt(row.created_at)}</span>
         {p.pathname ? (
           <>
@@ -411,7 +438,9 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
           <span className="tabular-nums">
             {windowTotal} in the last {SIGNUP_WINDOW_DAYS} days
           </span>
-          <span style={{ color: "var(--app-brand)" }}>today</span>
+          {/* brand-press, not brand: this is 10.5px TEXT on the elevated card,
+              and raw vermilion only clears AA at icon/large sizes (3.7:1). */}
+          <span style={{ color: "var(--app-brand-press)" }}>today</span>
         </div>
       </div>
 
@@ -438,6 +467,7 @@ function Signups({ signups, now }: { signups: SignupRow[]; now: number }) {
 /* ---------------------------------------------------------------- activity */
 
 const ACTIVE_WINDOW_MS = 7 * 86_400_000;
+const QUIET_WINDOW_MS = 14 * 86_400_000;
 
 function Activity({
   codes,
@@ -454,6 +484,13 @@ function Activity({
   const activeCodes = codes.filter(
     (c) => !c.revoked && c.last_seen_at && c.last_seen_at.getTime() >= cutoff,
   );
+  // The churn signals: testers who tried the app and drifted away (used the
+  // code, silent for 14 days) and codes handed out but never redeemed. Both
+  // are follow-up lists, not vanity counts.
+  const quietCodes = codes.filter(
+    (c) => !c.revoked && c.uses > 0 && c.last_seen_at && c.last_seen_at.getTime() < now - QUIET_WINDOW_MS,
+  );
+  const neverUsed = codes.filter((c) => !c.revoked && c.uses === 0);
 
   return (
     <Section title="Tester activity">
@@ -462,11 +499,22 @@ function Activity({
           cols={3}
           items={[
             { value: activeCodes.length, label: "Codes active, 7d" },
+            { value: quietCodes.length, label: "Gone quiet, 14d", tone: quietCodes.length > 0 ? "warning" : "positive" },
+            { value: neverUsed.length, label: "Never used", tone: neverUsed.length > 0 ? "muted" : "positive" },
             { value: followCount, label: "Follows" },
             { value: saveCount, label: "Event saves" },
           ]}
         />
       </div>
+      {quietCodes.length > 0 && (
+        <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+          Worth a nudge:{" "}
+          <span className="font-medium" style={{ color: "var(--app-ink)" }}>
+            {quietCodes.slice(0, 5).map((c) => c.label || c.code).join(", ")}
+          </span>
+          {quietCodes.length > 5 ? ` and ${quietCodes.length - 5} more` : ""}. They used the app and have not been back in two weeks.
+        </p>
+      )}
 
       {codes.length === 0 ? (
         <EmptyState>
@@ -478,8 +526,10 @@ function Activity({
           to see who is actually using the app.
         </EmptyState>
       ) : (
-        // Matches the kit HairlineList look, but kept local so revoked rows can
-        // dim to 0.55 — a per-row opacity the shared HairlineRow doesn't carry.
+        // Matches the kit HairlineList look, kept local for the revoked mark.
+        // Revoked rows used to dim to opacity 0.55, which pushed their text to
+        // 2.4:1 against AA's 4.5 floor; a muted pill says "revoked" outright
+        // and every row stays readable.
         <ul
           className="mt-3 overflow-hidden rounded-[var(--app-radius-md)] border"
           style={{ borderColor: "var(--app-border)" }}
@@ -488,13 +538,13 @@ function Activity({
             <li
               key={c.code}
               className="flex items-center justify-between gap-2 bg-[var(--app-bg-elevated)] px-3 py-2.5"
-              style={{
-                borderTop: i > 0 ? "1px solid var(--app-border)" : undefined,
-                opacity: c.revoked ? 0.55 : 1,
-              }}
+              style={{ borderTop: i > 0 ? "1px solid var(--app-border)" : undefined }}
             >
-              <span className="truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
-                {c.label || c.code}
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
+                  {c.label || c.code}
+                </span>
+                {c.revoked && <StatusPill tone="neutral">revoked</StatusPill>}
               </span>
               <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                 {c.last_seen_at ? `last seen ${fmt(c.last_seen_at)}` : "never used"}
@@ -560,6 +610,18 @@ function Stat({
       ) : null}
     </div>
   );
+}
+
+/** Whole days a note has been waiting, read against the load-time clock. */
+function daysWaiting(created: Date | null, now: number): number {
+  if (!created) return 0;
+  return Math.max(0, Math.floor((now - created.getTime()) / 86_400_000));
+}
+
+/** Shared urgency scale for waiting work: calm under 3 days, warning at 3,
+ *  danger at 7. Matches /admin/claims and /admin/reports. */
+function waitTone(days: number): "neutral" | "warning" | "danger" {
+  return days >= 7 ? "danger" : days >= 3 ? "warning" : "neutral";
 }
 
 function fmt(d: Date | null): string {

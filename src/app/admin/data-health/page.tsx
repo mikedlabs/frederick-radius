@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Copy, PenLine } from "lucide-react";
 import { PLACES } from "@/data/places";
 import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
@@ -28,6 +29,7 @@ import {
   StatusDot,
   Tag,
   EmptyState,
+  AllClear,
   Callout,
   Disclosure,
   Table,
@@ -37,6 +39,7 @@ import {
   Tr,
   Td,
   toneTint,
+  toneInkOnTint,
 } from "@/components/admin/kit";
 
 export const metadata: Metadata = {
@@ -48,7 +51,48 @@ export const dynamic = "force-dynamic";
 const SCORES = SCORES_RAW as { computed_at: string; counts: Record<string, number> };
 const DEDUP = DEDUP_RAW as Record<string, { canonical: string }>;
 
-export default async function DataHealth() {
+/** The shell paints immediately; the board streams in behind Suspense. This
+ *  page's loads are the heaviest on the admin surface (a live iCal fetch plus
+ *  snapshot hydration from Postgres), so without the split the owner stared
+ *  at a blank shell for the whole wait. */
+export default function DataHealth() {
+  return (
+    <AdminShell
+      eyebrow="Phase 1 data quality"
+      title="Data health"
+      intro={
+        <>
+          Copy scores computed {new Date(SCORES.computed_at).toLocaleString()}. The nightly
+          cron at /api/cron/data-health recomputes and reports these numbers.
+        </>
+      }
+    >
+      <Suspense fallback={<BoardSkeleton />}>
+        <Board />
+      </Suspense>
+    </AdminShell>
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div className="mt-6 animate-pulse space-y-6" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-28 rounded-[var(--app-radius-lg)] border" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }} />
+      ))}
+    </div>
+  );
+}
+
+/** Whole days since the last vetting sweep; null when none is recorded. */
+function sweepAgeDays(lastSweepAt: string | null | undefined): number | null {
+  if (!lastSweepAt) return null;
+  const ms = Date.parse(lastSweepAt);
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor((Date.now() - ms) / 86_400_000);
+}
+
+async function Board() {
   const all = rankPlaces({});
   const coverage = hoursCoverage(all);
   const folded = Object.entries(DEDUP).filter(([s, v]) => v.canonical !== s).length;
@@ -127,17 +171,102 @@ export default async function DataHealth() {
     ["RADIUS_EVENTS_BY_TOWN", process.env.RADIUS_EVENTS_BY_TOWN === "1" ? "on" : "off", "default off = today's production"],
   ];
 
+  // ── The action digest: every red and amber condition on this board,
+  // gathered into one list so the operator diagnoses at the top instead
+  // of scanning ten sections. Rows exist only when something is wrong.
+  const badRuns = ingestRuns.filter(
+    (r) => r.source !== "tripwires" && (r.status === "error" || r.recordsFailed > 0 || r.stale),
+  );
+  const flaggedCoords = reviewPlaces.length + reviewEvents.length;
+  const sweepDays = sweepAgeDays(drift.last_sweep_at);
+  const actions: { label: string; fix: string }[] = [];
+  if (tripwire && tripwire.status !== "ok") {
+    actions.push({
+      label: `${tripwire.recordsFailed} of ${tripwire.recordsIn} tripwire gates are red`,
+      fix: "The Tripwires section names them; each maps to a failure class that degrades politely.",
+    });
+  }
+  if (tripwire?.stale) {
+    actions.push({
+      label: "The tripwire run is stale",
+      fix: "The data-health cron itself may have stopped firing. Check /api/cron/data-health.",
+    });
+  }
+  if (dark > 0) {
+    actions.push({
+      label: `${dark} keyed feed${dark === 1 ? " is" : "s are"} dark`,
+      fix: "Set the missing keys listed under Live feed connectivity in the Vercel project env.",
+    });
+  }
+  if (badRuns.length > 0) {
+    actions.push({
+      label: `${badRuns.length} ingest source${badRuns.length === 1 ? " is" : "s are"} red or stale`,
+      fix: "See Ingest runs. A dead cron means that source's events go quietly stale.",
+    });
+  }
+  if (anomalies.length > 0) {
+    actions.push({
+      label: `${anomalies.length} feed anomal${anomalies.length === 1 ? "y" : "ies"} flagged`,
+      fix: "Compare the flagged sources against the Distribution snapshot before trusting the batch.",
+    });
+  }
+  if (flaggedCoords > 0) {
+    actions.push({
+      label: `${flaggedCoords} coordinate${flaggedCoords === 1 ? "" : "s"} flagged for review`,
+      fix: "Fix the source rows in src/data/places.ts or src/data/events.ts; they clear next build.",
+    });
+  }
+  if (hiddenNotable.length > 0) {
+    actions.push({
+      label: `${hiddenNotable.length} notable place${hiddenNotable.length === 1 ? "" : "s"} hidden from discovery`,
+      fix: "Rescue false positives with a places-overrides patch: clearGoogle, hero_image, or short_blurb.",
+    });
+  }
+  if (drift.undecided > 0) {
+    actions.push({
+      label: `${drift.undecided} drift change${drift.undecided === 1 ? "" : "s"} undecided`,
+      fix: "Decide them at /admin/drift-review so the catalog stays honest.",
+    });
+  }
+  if (sweepDays !== null && sweepDays >= 14) {
+    actions.push({
+      label: `The vetting sweep is ${sweepDays} days old`,
+      fix: "Run npm run vet to re-pull Google and refresh the drift diff.",
+    });
+  }
+  if (unparseableTotal > 0) {
+    actions.push({
+      label: `${unparseableTotal.toLocaleString()} location${unparseableTotal === 1 ? "" : "s"} could not be geocoded`,
+      fix: "They ship on feed-default centroids until a parser rule or an upstream address fix lands.",
+    });
+  }
+
   return (
-    <AdminShell
-      eyebrow="Phase 1 data quality"
-      title="Data health"
-      intro={
-        <>
-          Copy scores computed {new Date(SCORES.computed_at).toLocaleString()}. The nightly
-          cron at /api/cron/data-health recomputes and reports these numbers.
-        </>
-      }
-    >
+    <>
+      <Section
+        title="What needs action"
+        aside={
+          actions.length > 0 ? (
+            <StatusPill tone="warning">{actions.length}</StatusPill>
+          ) : (
+            <StatusPill tone="positive">all green</StatusPill>
+          )
+        }
+        description="Every red and amber condition on this board, in one list. Each row says where to look and what fixes it."
+      >
+        {actions.length === 0 ? (
+          <AllClear>Every check on this board is green.</AllClear>
+        ) : (
+          <div className="mt-3">
+            <HairlineList>
+              {actions.map((a, i) => (
+                <HairlineRow key={a.label} index={i} dot="warning" title={a.label} subtitle={a.fix} />
+              ))}
+            </HairlineList>
+          </div>
+        )}
+      </Section>
+
       {/* ── Tripwires — the one number. Written nightly by the data-health
           cron; red means a politely-degrading failure class (photo rot,
           transit zero-routes, dead event assembly, degraded ask) or a
@@ -213,7 +342,7 @@ export default async function DataHealth() {
                   ) : (
                     <code
                       className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{ background: toneTint("warning", 14), color: "var(--app-warning-press)" }}
+                      style={{ background: toneTint("warning", 14), color: toneInkOnTint("warning") }}
                     >
                       set {f.env}
                     </code>
@@ -584,6 +713,6 @@ export default async function DataHealth() {
           <HairlineRow index={1} href="/admin/copy-review" icon={PenLine} title="Copy review" />
         </HairlineList>
       </section>
-    </AdminShell>
+    </>
   );
 }
