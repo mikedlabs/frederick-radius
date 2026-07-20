@@ -6,7 +6,7 @@ import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
 import BeerMasthead from "@/components/beer/BeerMasthead";
 import BeerIndex from "@/components/beer/BeerIndex";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
-import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
+import BreweryStrip from "@/components/beer/BreweryStrip";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
 import OnTapNow from "@/components/beer/OnTapNow";
 import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
@@ -49,7 +49,8 @@ export default function BeerPage() {
           real tool," "less like a directory." */}
       <BeerIndex />
 
-      <BeerTaproomBoard places={breweryCards} />
+      {/* Zone 4 — the taprooms as PHOTOGRAPHS, not a logo directory. */}
+      <BreweryStrip photos={breweryPhotos} />
 
       <BeerTasteFlight />
 
