@@ -118,6 +118,8 @@ function placeSource(
     region: region ?? undefined,
     confidence: p.is_verified && (p.hours_verified || p.open_status.state === "unknown") ? "high" : "medium",
     photo_url: p.google_photo_url || p.hero_image,
+    rating: typeof p.google_rating === "number" ? p.google_rating : undefined,
+    ratingCount: typeof p.google_rating_count === "number" ? p.google_rating_count : undefined,
   };
 }
 

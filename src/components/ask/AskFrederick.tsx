@@ -16,6 +16,7 @@ import {
   Phone,
   Search,
   Share2,
+  Star,
 } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -398,6 +399,15 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
             className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px]"
             style={{ color: "var(--app-ink-3)" }}
           >
+            {typeof source.rating === "number" ? (
+              <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                <Star className="h-3 w-3" fill="currentColor" strokeWidth={0} aria-hidden style={{ color: "var(--app-brand)" }} />
+                {source.rating.toFixed(1)}
+                {source.ratingCount ? (
+                  <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>({source.ratingCount.toLocaleString()})</span>
+                ) : null}
+              </span>
+            ) : null}
             {source.distance ? (
               <span className="inline-flex items-center gap-1">
                 <Navigation className="h-3 w-3" aria-hidden />
