@@ -425,6 +425,38 @@ export const PLACES: Place[] = [
     is_verified: false, hours_verified: false, is_operational: "operational",
     feature_score: 6.6, source: "manual", updated_at: "2026-07-20",
   },
+  {
+    slug: "mariachi-restaurant-frederick",
+    name: "Mariachi Restaurant",
+    category: "restaurant",
+    short_blurb: "This Mexican restaurant on Urbana Pike serves Tex-Mex and Latin American plates, with live mariachi on weekends.",
+    address: "5854 Urbana Pike",
+    city: "Frederick", state: "MD", postal_code: "21704",
+    municipality: "frederick",
+    // Nominatim for 5854 Urbana Pike (Frederick County).
+    geom: { lng: -77.4071049, lat: 39.3949133 },
+    phone: "(301) 418-6367",
+    website: "https://www.mariachirestaurant.com",
+    price_band: 2,
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 7.1, source: "manual", updated_at: "2026-07-20",
+  },
+  {
+    slug: "sugarloaf-mountain-urbana",
+    name: "Sugarloaf Mountain",
+    category: "park",
+    subcategories: ["trail"],
+    tags: ["outdoor", "hiking", "year-round"],
+    short_blurb: "This privately managed mountain south of Frederick draws hikers to its Northern Peaks and Mountain Loop trails and its summit overlooks.",
+    address: "7901 Comus Rd",
+    city: "Urbana", state: "MD", postal_code: "21704",
+    municipality: "urbana",
+    // Nominatim for Sugarloaf Mountain (summit, Frederick County side).
+    geom: { lng: -77.3900826, lat: 39.2717498 },
+    website: "https://www.sugarloafmd.com",
+    is_verified: false, hours_verified: false, is_operational: "operational",
+    feature_score: 8.0, source: "manual", updated_at: "2026-07-20",
+  },
   // ──── Frederick — Parks & Outdoor ────────────────────────────────────
   {
     slug: "carroll-creek-linear-park-frederick",
