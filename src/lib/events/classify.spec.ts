@@ -15,6 +15,14 @@ describe("classifyEvent", () => {
       "Virtual Meeting",
       "Board of Education",
       "Public Hearing on the Budget",
+      // 2026-07 external audit: these "<org> Board Meeting" / online-meeting
+      // governance forms were leading public discovery.
+      "Loats Board Meeting",
+      "Board Meeting",
+      "Monthly Board Meeting",
+      "Board of Directors Meeting",
+      "Zoom Meeting",
+      "Teams Meeting",
     ]) {
       expect(classifyEvent({ title }), title).toBe("civic_meeting");
       expect(isPublicEvent({ title }), title).toBe(false);
@@ -50,6 +58,10 @@ describe("classifyEvent", () => {
       "Punch Brothers",
       "Frederick Arts Council Gallery Opening",
       "Dinner reservations open for Restaurant Week",
+      // Guards for the board-meeting widening: "board" alone (game night,
+      // a bare council) must never lane out of public discovery.
+      "Board Game Night at the Library",
+      "Keyboard Concert",
     ]) {
       expect(classifyEvent({ title }), title).toBe("public");
       expect(isPublicEvent({ title }), title).toBe(true);
