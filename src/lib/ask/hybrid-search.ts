@@ -20,10 +20,12 @@ const EMBEDDING_MODEL = process.env.RADIUS_EMBEDDING_MODEL || "openai/text-embed
 
 export function hybridSearchConfigured(): boolean {
   // Query embeddings run through the Vercel AI Gateway (Anthropic has no
-  // embeddings API). When ASK_AI_PROVIDER pins Ask to direct Anthropic to keep
-  // spend off the Vercel bill, hybrid search is off and lexical Radius search
-  // handles retrieval — the same graceful fallback a Gateway outage triggers.
-  if (process.env.ASK_AI_PROVIDER?.toLowerCase() === "anthropic") return false;
+  // embeddings API). Kept ON even when ASK_AI_PROVIDER pins TEXT generation to
+  // direct Anthropic: the July 2026 bill showed AI Gateway is a negligible line
+  // item (the real cost was Vercel Agent + build minutes), so disabling
+  // semantic search saved ~nothing while hurting recall for the many queries
+  // that aren't a structured food/craving match ("bars", "a gym", vibe asks).
+  // Set RADIUS_HYBRID_SEARCH=0 to force it off.
   return Boolean(
     process.env.RADIUS_HYBRID_SEARCH !== "0" &&
       (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) &&
