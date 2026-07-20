@@ -163,6 +163,9 @@
       "municipality": "urbana",
       "category": "market"
     },
+    "urbana-district-park-new-market": {
+      "city": "Urbana"
+    },
     "pumpernickel-rye-urbana": {
       "subcategories": [
         "coffee"
@@ -1080,7 +1083,14 @@
       "category": "antiques"
     },
     "cafe-nola": {
-      "category": "restaurant"
+      "category": "restaurant",
+      "subcategories": [
+        "cafe",
+        "coffee"
+      ]
+    },
+    "fifty-fifty-smash-burger": {
+      "name": "BackSlash Burger"
     },
     "bollingers-restaurant-and-uncle-dirtys-brew-works-thurmont": {
       "subcategories": [
