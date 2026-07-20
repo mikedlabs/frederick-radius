@@ -41,6 +41,7 @@ vi.mock("@/lib/loaders/eventThumb", () => ({ withVenueThumbs: vi.fn((events: unk
 
 import { assembleRaw } from "@/lib/loaders/unifiedEvents";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
 
 const NOW = new Date("2026-07-15T16:00:00.000Z");
@@ -91,5 +92,17 @@ describe("assembleRaw — assembly seam", () => {
     expect(r.sourceHealth.unavailable).toContain("municipal calendars");
     // The curated seeds still assemble; a dead feed never yields a dead board.
     expect(Array.isArray(r.unified)).toBe(true);
+  });
+
+  it("survives a throwing tail decoration instead of taking the board down", async () => {
+    // One cached assembleRaw call feeds today/events/live-music/check-a-date, so
+    // a throw in a post-dedupe decoration (here the venue-photo join) must
+    // degrade to the pre-decoration set, not reject and error-boundary all four.
+    vi.mocked(withVenueThumbs).mockImplementationOnce(() => {
+      throw new Error("thumb join blew up");
+    });
+    const r = await assembleRaw(NOW);
+    expect(Array.isArray(r.unified)).toBe(true);
+    expect(r.sourceHealth).toBeDefined();
   });
 });

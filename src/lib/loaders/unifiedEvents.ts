@@ -212,23 +212,47 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     const t = stripFacilityPrefix(e.title);
     return v === e.venue_name && t === e.title ? e : { ...e, venue_name: v, title: t };
   });
-  const positioned = await upgradeEventGeoms(
-    dedupeCrossSourceShows(
-      dedupeKeysHomeGames(
-        dedupeCuratedClusters(
-          venueCleaned.sort(
-            (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-          ),
+  // Dedupe + time-sort produces the floor every surface can fall back to.
+  const deduped = dedupeCrossSourceShows(
+    dedupeKeysHomeGames(
+      dedupeCuratedClusters(
+        venueCleaned.sort(
+          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
         ),
       ),
     ),
   );
 
-  // Owner event-notices stamp LAST, after every dedupe, so a cancellation
-  // wins no matter which source's row survived the merge. A cancelled/
-  // postponed stamp flows from here to every surface: classify.ts lanes it
-  // out of "What's on", cards badge it, the detail banner reads it.
-  const unified = applyEventNotices(withVenueThumbs(positioned), now);
+  // Three tail decorations follow: the geocode upgrade, the venue-photo join,
+  // and the owner event-notices stamp. assembleRaw feeds /today, /events,
+  // /live-music and /check-a-date off ONE cached call, and each op has a throw
+  // path, so an unguarded failure would take all four surfaces to the error
+  // boundary at once. Each is wrapped to degrade to its input — a missing
+  // pin-upgrade, thumbnail, or notice is invisible; a dead board is not.
+  let positioned = deduped;
+  try {
+    positioned = await upgradeEventGeoms(deduped);
+  } catch {
+    // Geocode upgrade failed — pins stay at their pre-upgrade geom.
+  }
+
+  let decorated = positioned;
+  try {
+    decorated = withVenueThumbs(positioned);
+  } catch {
+    // Photo join failed — cards render without the venue thumb.
+  }
+
+  // Owner event-notices stamp LAST, after every dedupe, so a cancellation wins
+  // no matter which source's row survived the merge. A cancelled/postponed
+  // stamp flows to every surface: classify.ts lanes it out of "What's on",
+  // cards badge it, the detail banner reads it.
+  let unified = decorated;
+  try {
+    unified = applyEventNotices(decorated, now);
+  } catch {
+    // Notice stamp failed — cards render without cancel/postpone badges.
+  }
 
   return {
     unified,
