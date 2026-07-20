@@ -18,7 +18,7 @@ export default function BeerMasthead() {
         Beer in Frederick County.
       </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-black/64">
-        {`${breweries} breweries, ${beers} signature beers. Tap the field below to filter the whole county’s list by style or strength.`}
+        {`${breweries} breweries, ${beers} signature beers. Every pour below is a tile in its own color; filter by style or strength, or tap one for the beer.`}
       </p>
     </header>
   );
