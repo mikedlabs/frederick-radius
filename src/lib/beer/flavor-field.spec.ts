@@ -3,6 +3,8 @@ import { ALL_BEERS } from "@/data/beers";
 import {
   abvFraction,
   buildFieldRows,
+  ridgePaths,
+  RIDGE_H,
   FLAVOR_INSIGHTS,
   ABV_MIN,
   ABV_MAX,
@@ -37,6 +39,30 @@ describe("buildFieldRows", () => {
     const plotted = rows.reduce((n, r) => n + r.dots.length, 0);
     const withAbv = ALL_BEERS.filter((b) => b.abv != null).length;
     expect(plotted).toBe(withAbv);
+  });
+});
+
+describe("ridgePaths", () => {
+  it("returns a flat baseline for an empty family", () => {
+    const { area, line } = ridgePaths([]);
+    expect(line).toBe(`M 0 ${RIDGE_H} L 100 ${RIDGE_H}`);
+    expect(area.endsWith("Z")).toBe(true);
+  });
+
+  it("rises above the baseline where beers cluster and is deterministic", () => {
+    const a = ridgePaths([0.5, 0.52, 0.48]);
+    const b = ridgePaths([0.5, 0.52, 0.48]);
+    expect(a.line).toBe(b.line); // SSR-stable
+    // The peak near x=50 sits well above the RIDGE_H baseline (smaller y = higher).
+    const ys = a.line.match(/ \d+(\.\d+)? (\d+(\.\d+)?)/g)?.map((m) => Number(m.trim().split(" ")[1])) ?? [];
+    expect(Math.min(...ys)).toBeLessThan(RIDGE_H * 0.5);
+  });
+
+  it("every family row carries a non-empty ridge", () => {
+    for (const row of buildFieldRows()) {
+      expect(row.ridge.area).toContain("Z");
+      expect(row.ridge.line.length).toBeGreaterThan(0);
+    }
   });
 });
 
