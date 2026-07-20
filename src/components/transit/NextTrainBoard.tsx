@@ -55,7 +55,7 @@ function DirectionRow({
   const next = deps[0];
   return (
     <div className="flex items-center gap-2.5">
-      <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
+      <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-accent)" }} aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
           {next.live && next.predicted ? next.predicted : next.scheduled}
@@ -96,7 +96,7 @@ export default async function NextTrainBoard({
           className="inline-flex items-center gap-1.5 font-serif text-[20px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          <TrainFront className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+          <TrainFront className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-accent)" }} aria-hidden />
           Next MARC trains
         </h2>
         <span className="ml-auto text-[11px]" style={{ color: "var(--app-ink-3)" }}>

@@ -14,8 +14,6 @@
  */
 
 export type TodayFrame = {
-  /** Short mono kicker naming the moment. */
-  kicker: string;
   /** The page's daypart-aware h1. */
   title: string;
   /** One honest sentence framing what the page leads with now. */
@@ -34,27 +32,23 @@ export function todayFrame(easternHour: number): TodayFrame {
   const h = ((easternHour % 24) + 24) % 24;
   if (h >= 5 && h < 12) {
     return {
-      kicker: "Morning",
       title: "This morning in Frederick",
       sub: "Here is the shape of your day.",
     };
   }
   if (h >= 12 && h < 17) {
     return {
-      kicker: "Afternoon",
       title: "This afternoon in Frederick",
       sub: "Here is what is still ahead today.",
     };
   }
   if (h >= 17 && h < 21) {
     return {
-      kicker: "Tonight",
       title: "Tonight in Frederick",
       sub: "Here is what is on around here tonight.",
     };
   }
   return {
-    kicker: "Late",
     title: "Late in Frederick",
     sub: "The night is winding down. Tomorrow is on deck below.",
   };

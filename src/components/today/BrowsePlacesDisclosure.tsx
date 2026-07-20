@@ -42,7 +42,7 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
   const panelId = "browse-places-panel";
 
   return (
-    <section aria-label="Browse places by category">
+    <section aria-label="Browse places by category" className="mt-3">
       <button
         type="button"
         onClick={toggle}

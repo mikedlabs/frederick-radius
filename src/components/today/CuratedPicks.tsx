@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Wine, Baby, CloudRain, Sparkles, ArrowRight, CalendarCheck, Footprints, type LucideIcon } from "lucide-react";
+import { ArrowRight, Wine, Baby, CloudRain, Sparkles, CalendarCheck, Footprints, type LucideIcon } from "lucide-react";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { COLLECTION_BY_SLUG } from "@/data/collections";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -79,30 +80,14 @@ export default async function CuratedPicks() {
   if (picks.length === 0) return null;
 
   return (
-    <section className="mt-5" aria-labelledby="curated-picks-heading">
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-0.5">
-        <h2
-          id="curated-picks-heading"
-          className="font-serif text-[17px] font-semibold leading-snug tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Need an idea?
-        </h2>
-        <Link
-          href="/collections"
-          className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          All ideas
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </Link>
-      </div>
+    <section className="mt-6" aria-label="Need an idea?">
+      <SectionHeading title="Need an idea?" cta="All ideas" href="/collections" />
 
       {/* Horizontal scroller on phones (each card ~72% viewport so the next
           peeks), settling into a tidy grid at sm+. Scrollbar hidden; snap so
           swipes land on a card. */}
       <ul
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+        className="mt-3 -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {picks.map(({ slug, Icon, c }) => (
           <li key={slug} className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
@@ -111,7 +96,7 @@ export default async function CuratedPicks() {
               className="tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
               style={{
                 borderColor: "var(--app-border)",
-                boxShadow: "var(--app-hi)",
+                boxShadow: "var(--app-edge), var(--app-hi)",
               }}
             >
               <div

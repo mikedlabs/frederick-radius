@@ -5,6 +5,8 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight, liveMusicAhead } from "@/lib/events/live-music";
 import { cleanVenueName } from "@/lib/events/normalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { LIVE_MUSIC_VENUES } from "@/data/live-music-venues";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
@@ -112,6 +114,26 @@ export default async function LiveMusicPage() {
   const dateline = `${part("weekday")} · ${part("month")} ${part("day")}`;
   const nothingAnywhere = tonight.length === 0 && ahead.length === 0;
 
+  // The curated stages directory: the honest answer to "where is there live
+  // music?" even when the wire is quiet. Resolve each verified venue slug to
+  // its place name + town, drop any that fell out of the dataset, de-dupe by
+  // name (a couple of venues carry two slugs), and sort A-Z. Only needed for
+  // the empty state, so it's computed lazily below.
+  const stages = nothingAnywhere
+    ? LIVE_MUSIC_VENUES.map((v) => {
+        const p = clientPlaceBySlug(v.slug);
+        if (!p) return null;
+        return {
+          slug: v.slug,
+          name: p.name,
+          town: p.municipality ? MUNICIPALITY_BY_SLUG[p.municipality]?.name : undefined,
+        };
+      })
+        .filter((s): s is { slug: string; name: string; town: string | undefined } => s !== null)
+        .filter((s, i, arr) => arr.findIndex((o) => o.name === s.name) === i)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
   return (
     // Lean-surface sheet boundary: a tap on any show opens the event
     // sheet on demand (skeleton + single-event fetch) instead of a page
@@ -162,27 +184,61 @@ export default async function LiveMusicPage() {
       </header>
 
       {nothingAnywhere ? (
-        <div
-          className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p className="font-serif text-[19px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-            No live shows are on the wire right now.
-          </p>
-          <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-            We track verified venue calendars and ticketed listings. Some
-            neighborhood spots post only to Facebook, so a quiet wire here
-            doesn&rsquo;t always mean a quiet county.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold">
-            <Link href="/nearby?c=music" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
-              See where the stages are <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
-            </Link>
-            <Link href="/events" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-ink-3)" }}>
-              The full board
-            </Link>
+        <>
+          <div
+            className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <p className="font-serif text-[19px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+              No live shows are on the wire right now.
+            </p>
+            <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              We track verified venue calendars and ticketed listings. Some
+              neighborhood spots post only to Facebook, so a quiet wire here
+              doesn&rsquo;t always mean a quiet county.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold">
+              <Link href="/events" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-brand-press)" }}>
+                The full board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+              </Link>
+            </div>
           </div>
-        </div>
+
+          {/* A quiet wire still answers "where does music happen here?" — the
+              curated stages directory, each venue linked to its place page so a
+              reader can check its own calendar. Turns a dead end into a map of
+              the scene. */}
+          {stages.length > 0 && (
+            <section aria-labelledby="lm-stages" className="mt-6">
+              <h2 id="lm-stages" className="font-serif text-[19px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                Where the stages are
+              </h2>
+              <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                The breweries, wineries, distilleries, and bars around the county
+                that regularly host live music. Open a venue to see its own
+                calendar.
+              </p>
+              <ul className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+                {stages.map((s) => (
+                  <li key={s.slug}>
+                    <Link
+                      href={`/places/${s.slug}`}
+                      className="tap-44-y flex items-baseline justify-between gap-3 border-b py-2 text-[14px]"
+                      style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+                    >
+                      <span className="font-medium leading-snug">{s.name}</span>
+                      {s.town && (
+                        <span className="shrink-0 font-mono text-[11px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+                          {s.town}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       ) : (
         <>
           {/* ── Tonight ── */}

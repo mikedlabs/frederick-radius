@@ -252,8 +252,8 @@ export default function WantsAccordion({
 
   return (
     <div className="space-y-2.5">
-      <div className="-mx-4 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex w-max gap-1.5" role="group" aria-label="Quick actions">
+      <div className="pb-0.5">
+        <div className="flex flex-wrap gap-x-1.5 gap-y-2" role="group" aria-label="Quick actions">
           {WANTS.map((cat) => {
             const active = cat.key === openCat.key;
             return (
@@ -287,8 +287,8 @@ export default function WantsAccordion({
       {/* The active category's answers form one second, quieter row. A
           /nearby-style chip answers INLINE below; the active one reads as
           pressed. Curated-page chips (/brunch, /parks) navigate as ever. */}
-      <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex w-max gap-1.5" role="group" aria-label={`${openCat.label} choices`}>
+      <div className="pb-1">
+        <div className="flex flex-wrap gap-x-1.5 gap-y-2" role="group" aria-label={`${openCat.label} choices`}>
         {visibleSubs.map((sub: WantSub) => {
           const w = inlineWantFor(sub.href);
           const active = Boolean(

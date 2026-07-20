@@ -19,6 +19,7 @@ export default function SectionHeading({
   onCtaClick,
   trailing,
   accent,
+  size = "lg",
 }: {
   title: string;
   count?: number;
@@ -30,27 +31,37 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
+  /** Heading register. `lg` is the primary section title (serif 22 + full
+   *  tick); `sm` is the one lighter subhead register for secondary sections
+   *  (serif 16 + a shorter tick), so hierarchy reads from type, not per-section
+   *  invention. */
+  size?: "lg" | "sm";
 }) {
   const tickColor = accent ?? "var(--section-accent, var(--app-brand))";
   // The tick is decorative and keeps the true accent; the CTA is 12px TEXT
   // and must hold 4.5:1 — the raw brand red (3.7:1 on cream) fails, so the
   // text color is the accent pulled 40% toward ink (axe-verified, Jul 2026).
   const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
+  const small = size === "sm";
   return (
     <header className="flex items-end justify-between gap-3">
       <h2
-        className="flex items-center gap-2 font-serif text-[22px] font-semibold leading-none tracking-tight"
+        className={
+          small
+            ? "flex items-center gap-2 font-serif text-[16px] font-semibold leading-none tracking-tight"
+            : "flex items-center gap-2 font-serif text-[22px] font-semibold leading-none tracking-tight"
+        }
         style={{ color: "var(--app-ink)" }}
       >
         <span
           aria-hidden
-          className="inline-block h-4 w-1 rounded-full"
+          className={small ? "inline-block h-3 w-1 rounded-full" : "inline-block h-4 w-1 rounded-full"}
           style={{ background: tickColor }}
         />
         {title}
         {count !== undefined && (
           <span
-            className="text-base font-normal tabular-nums"
+            className={small ? "text-sm font-normal tabular-nums" : "text-base font-normal tabular-nums"}
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}

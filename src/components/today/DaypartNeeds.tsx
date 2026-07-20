@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import SectionHeading from "@/components/ui/SectionHeading";
 import type { DaypartRow } from "@/lib/loaders/daypartPicks";
 
 /**
@@ -18,17 +19,13 @@ export default function DaypartNeeds({ rows }: { rows: DaypartRow[] }) {
   if (rows.length === 0) return null;
 
   return (
-    <section aria-labelledby="daypart-needs-heading" className="mt-6">
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-0.5">
-        <h2 id="daypart-needs-heading" className="font-serif text-[19px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Right now, around here
-        </h2>
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-          Open now
-        </span>
-      </div>
+    <section aria-label="Right now, around here" className="mt-6">
+      {/* Primary section register. The old serif-19 + mono "Open now" tag
+          competed with the title and duplicated the per-card "Open" dot; the
+          title carries the section and each card says "Open" honestly. */}
+      <SectionHeading title="Right now, around here" />
 
-      <div className="space-y-3">
+      <div className="mt-3 space-y-3">
         {rows.map((row) => (
           <div key={row.category + row.label}>
             <div className="flex items-baseline justify-between gap-3 px-0.5">
@@ -45,7 +42,7 @@ export default function DaypartNeeds({ rows }: { rows: DaypartRow[] }) {
                     href={`/places/${p.slug}`}
                     prefetch={false}
                     className="flex min-h-11 w-[9.5rem] flex-col justify-center rounded-[var(--app-radius-md)] border px-3 py-2 transition hover:bg-[var(--app-bg-sunken)]"
-                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-edge), var(--app-hi)" }}
                   >
                     <span className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{p.name}</span>
                     <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>

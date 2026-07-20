@@ -40,13 +40,6 @@ export default function FeedbackWidget() {
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
-  // Yield to any open bottom sheet / modal (the radius sheet, place sheet,
-  // search overlay, our own feedback sheet). The beta reviewer (Jul 2026)
-  // caught the trigger fighting the radius sheet for the same corner; a modal
-  // is a full-attention surface, so the tab hides while one is up and returns
-  // when it closes. Detected structurally (any visible aria-modal dialog) so
-  // no cross-component wiring is needed.
-  const [modalUp, setModalUp] = useState(false);
 
   // Only reveal for unlocked beta visitors. Reads document.cookie (an external
   // system unavailable during SSR) once after mount; both the server and first
@@ -54,17 +47,6 @@ export default function FeedbackWidget() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from document.cookie, which only exists client-side
     setShow(hasBetaCookie());
-  }, []);
-
-  // Watch the DOM for any open modal dialog and hide the tab while one is up.
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const check = () =>
-      setModalUp(document.querySelector('[role="dialog"][aria-modal="true"]') != null);
-    check();
-    const mo = new MutationObserver(check);
-    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["role", "aria-modal"] });
-    return () => mo.disconnect();
   }, []);
 
   function close() {
@@ -135,9 +117,10 @@ export default function FeedbackWidget() {
     <>
       {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
           the pill overlapped content and fought the bottom controls). 44px so
-          the tap target stays comfortable; hides entirely while any modal /
-          bottom sheet is open so it never competes for the same corner. */}
-      {!modalUp && (
+          the tap target stays comfortable. During beta the owner wants feedback
+          reachable on every screen (owner call, 2026-07-20), so the tab stays up
+          over other bottom sheets and only steps aside for its OWN open sheet. */}
+      {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
