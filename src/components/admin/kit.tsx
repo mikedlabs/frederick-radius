@@ -320,12 +320,21 @@ export function CountBadge({ n, tone = "brand" }: { n: number; tone?: Tone }) {
 
 // ── Status pills + dots ───────────────────────────────────────────────────────
 
+/** Tone ink deepened for text sitting ON the tone's own tint. The raw tone
+ *  inks hold AA against plain cream, but the pill's 14% tint background
+ *  absorbs just enough of that margin to fail 4.5:1 (axe measured 4.43 for
+ *  warning and 4.48 for brand). Folding a shade of app ink into the tone
+ *  clears the bar without visibly shifting the hue. */
+function toneInkOnTint(tone: Tone): string {
+  return `color-mix(in srgb, ${toneInk(tone === "neutral" ? "muted" : tone)} 84%, var(--app-ink))`;
+}
+
 /** A soft, tinted status pill (e.g. "Live", "3 dark", "accepted"). */
 export function StatusPill({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span
       className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-      style={{ background: toneTint(tone, 14), color: toneInk(tone === "neutral" ? "muted" : tone) }}
+      style={{ background: toneTint(tone, 14), color: toneInkOnTint(tone) }}
     >
       {children}
     </span>
