@@ -57,6 +57,7 @@ import GoldenHourCard from "@/components/today/GoldenHourCard";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
+import { todayFrame } from "@/lib/today/masthead";
 
 /**
  * Now — the daily briefing.
@@ -250,18 +251,33 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* ── TITLE — the field-guide statement as a real page title, on its own
-          plate above the weather (owner call, 2026-07-13 pm: off the sky, and
-          make it look like a title). Serif line + a short brand rule; the
-          "Around here" tagline eyebrow was dropped per owner (2026-07-13). Sits
-          below an active civic alert (alerts still lead) and above the weather.
-          This is also the real document h1: the visible and accessible page
-          title should be the same sentence. */}
-      <header className="mb-3 px-0.5">
-        <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
-          Today in Frederick
-        </h1>
-      </header>
+      {/* ── TITLE — a TIME-AWARE masthead (owner call, 2026-07-20: make /today
+          "time-aware"). The page already reorders itself across the day (the
+          evening gear below flips the lead to tonight at 17:00), but the title
+          used to read a static "Today in Frederick" at every hour, so the shift
+          was invisible. The h1 + one-line frame now change with the Eastern
+          daypart (todayFrame, pinned to the same 17:00 boundary), so the page
+          NAMES the moment it is leading with. Server-computed on the Eastern
+          clock; the page ISRs every 300s so a boundary rolls within minutes.
+          This is the real document h1. Sits below an active civic alert (alerts
+          still lead) and above the weather. */}
+      {(() => {
+        const frame = todayFrame(easternStartHour(now.toISOString()));
+        return (
+          <header className="mb-3 px-0.5">
+            <div aria-hidden className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+              <span className="h-[3px] w-7 rounded-full" style={{ background: "var(--app-brand)" }} />
+              {frame.kicker}
+            </div>
+            <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
+              {frame.title}
+            </h1>
+            <p className="mt-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {frame.sub}
+            </p>
+          </header>
+        );
+      })()}
 
       {/* ── WEATHER HERO — the time-of-day gradient sky and today's weather
           lead the page. Now a COMPACT, CONTAINED card (owner

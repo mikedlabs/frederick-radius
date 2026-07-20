@@ -1,0 +1,61 @@
+/**
+ * The /today masthead is time-aware: its title and one-line frame change
+ * with the Eastern daypart, so the page's identity matches the reorder the
+ * page already performs (the "evening gear" in the /today route flips the
+ * lead from the day ahead to tonight at 17:00). Before this, the title read
+ * a static "Today in Frederick" at every hour, so the adaptive behavior was
+ * invisible and the front door felt generic.
+ *
+ * Pure + unit-tested. The route computes the Eastern hour and calls this;
+ * the page ISRs every 300s, so a daypart boundary rolls the masthead within
+ * minutes. Boundaries are pinned to the app's existing daypart model — 17:00
+ * is "evening" everywhere in the codebase (eventDaypart, the evening gear),
+ * so "Tonight" leads here at the same instant the sections reorder.
+ */
+
+export type TodayFrame = {
+  /** Short mono kicker naming the moment. */
+  kicker: string;
+  /** The page's daypart-aware h1. */
+  title: string;
+  /** One honest sentence framing what the page leads with now. */
+  sub: string;
+};
+
+/**
+ * Map an Eastern wall-clock hour (0-23) to the masthead frame.
+ *
+ *   05:00-11:59  morning   — the day ahead
+ *   12:00-16:59  afternoon — what's still ahead today
+ *   17:00-20:59  evening   — what's on tonight (matches the evening gear)
+ *   21:00-04:59  late      — winding down; tomorrow is on deck
+ */
+export function todayFrame(easternHour: number): TodayFrame {
+  const h = ((easternHour % 24) + 24) % 24;
+  if (h >= 5 && h < 12) {
+    return {
+      kicker: "Morning",
+      title: "This morning in Frederick",
+      sub: "Here is the shape of your day.",
+    };
+  }
+  if (h >= 12 && h < 17) {
+    return {
+      kicker: "Afternoon",
+      title: "This afternoon in Frederick",
+      sub: "Here is what is still ahead today.",
+    };
+  }
+  if (h >= 17 && h < 21) {
+    return {
+      kicker: "Tonight",
+      title: "Tonight in Frederick",
+      sub: "Here is what is on around here tonight.",
+    };
+  }
+  return {
+    kicker: "Late",
+    title: "Late in Frederick",
+    sub: "The night is winding down. Tomorrow is on deck below.",
+  };
+}
