@@ -88,6 +88,8 @@ function placeSource(place: PlaceCardData, showDistance: boolean): AskSource {
     phone: place.phone || undefined,
     confidence: place.is_verified && (place.hours_verified || place.open_status.state === "unknown") ? "high" : "medium",
     photo_url: place.google_photo_url || place.hero_image,
+    rating: typeof place.google_rating === "number" ? place.google_rating : undefined,
+    ratingCount: typeof place.google_rating_count === "number" ? place.google_rating_count : undefined,
   };
 }
 
