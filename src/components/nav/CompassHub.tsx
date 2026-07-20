@@ -255,10 +255,20 @@ export default function CompassHub() {
           serif title + brand rule) instead of a one-off dark gradient hero.
           The compass motif rides as a small eyebrow mark, not a banner. */}
       <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 py-8 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:py-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
-        <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-[#e14328]/28" aria-hidden>
+        <div
+          className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border"
+          style={{ borderColor: "color-mix(in srgb, var(--app-brand) 28%, transparent)" }}
+          aria-hidden
+        >
           <span className="absolute inset-10 rounded-full border border-black/7" />
-          <span className="absolute inset-[5.2rem] rounded-full border border-[#e14328]/20" />
-          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e14328] shadow-[0_0_0_8px_rgba(225,67,40,.12)]" />
+          <span
+            className="absolute inset-[5.2rem] rounded-full border"
+            style={{ borderColor: "color-mix(in srgb, var(--app-brand) 20%, transparent)" }}
+          />
+          <span
+            className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ background: "var(--app-brand)", boxShadow: "0 0 0 8px color-mix(in srgb, var(--app-brand) 12%, transparent)" }}
+          />
         </div>
         <p className="relative font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--app-brand-press)]">
           <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
@@ -275,7 +285,7 @@ export default function CompassHub() {
           Open a Radius guide, map, calendar, or practical tool without hunting through the app.
         </p>
         <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--app-ink-3)]">
-          <span className="h-px w-10 bg-[#e14328]" aria-hidden />
+          <span className="h-px w-10" style={{ background: "var(--app-brand)" }} aria-hidden />
           Open a tool
         </div>
       </header>
