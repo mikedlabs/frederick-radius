@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ArrowRight } from "lucide-react";
 import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
 import BeerHero from "@/components/beer/BeerHero";
+import BeerIndex from "@/components/beer/BeerIndex";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BeerTaproomBoard from "@/components/beer/BeerTaproomBoard";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
@@ -46,6 +47,13 @@ export default function BeerPage() {
           chapter, active chapter inked, chapters that aren't rendered
           (live taps pre-pilot) hide themselves. */}
       <BeerSectionRail />
+
+      {/* THE INDEX — the page's real tool: all 174 pours in one filterable,
+          sortable board (owner ask 2026-07-20: "impressive to beer lovers, a
+          real tool"). Leads the guide, above the editorial browse sections,
+          because a beer lover's first question is "show me what to drink,"
+          answerable from our own data (style / ABV / Untappd rating / notes). */}
+      <BeerIndex />
 
       <BeerTaproomBoard places={breweryCards} />
 
