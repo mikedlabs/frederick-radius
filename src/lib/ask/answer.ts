@@ -972,8 +972,16 @@ const cachedCallModel = unstable_cache(
     // once here, pre-cache, so every surface renders on-voice text.
     return normalizePlainTextAnswer(answer);
   },
-  ["ask-answer-v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 3600, tags: ["ask"] },
+  // Cost: the key deliberately DROPS the per-commit SHA (it used to include
+  // VERCEL_GIT_COMMIT_SHA, so every deploy wiped every cached answer — brutal on
+  // a repo that ships many times a day, since each Ask question then re-paid the
+  // model). The cache key is the full userContent (query + the retrieved data
+  // block), so an answer can never drift out of sync with its data without the
+  // key changing. Only a change to the SYSTEM prompt or answer-shaping code
+  // isn't reflected in the key — bump this manual version tag (v3 -> v4) when
+  // you change those. 24h TTL: even a novel question pays at most once a day.
+  ["ask-answer-v3"],
+  { revalidate: 86400, tags: ["ask"] },
 );
 
 /** The verified downtown-parking block: the five city garages plus the one
