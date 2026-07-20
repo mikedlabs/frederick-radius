@@ -3119,43 +3119,53 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* The caption row: three labeled cells + the clear ×. Each cell is a
    ≥44px tab; the active one carries a brand rule along its BOTTOM (the
    pane drops down from there). */
+/* v3 "calm consolidation" (owner ask 2026-07-20: the map "feels messy").
+   The readout was three hard-boxed segments with uppercase micro-labels
+   and vertical dividers — the loudest chrome on the map. It is now a row
+   of soft, icon-led chips: the leading icon carries the axis (grid=what,
+   clock=when, pin=where), so the uppercase WHAT/WHEN/WHERE kickers are
+   gone (the axis lives in each button's aria-label for a11y) and a bare
+   value like "All day" is no longer floating without context. Active =
+   a soft brand tint, not an underline. */
 .dock-readout {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 0;
 }
 .dock-seg {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 52px;
-  padding: 7px 9px 5px;
+  min-height: 40px;
+  padding: 0 11px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
   text-align: left;
-  position: relative;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-seg:active {
+  transform: scale(0.97);
 }
 .dock-seg-what {
-  flex: 1.25 1 0;
+  flex: 1.3 1 0;
 }
 .dock-seg-where {
-  flex: 1.15 1 0;
+  flex: 1.1 1 0;
 }
-.dock-seg-layers {
-  flex: 1.05 1 0;
-}
-.dock-seg + .dock-seg {
-  border-left: 1px solid var(--app-border);
-}
-.dock-seg-k {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 8.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.dock-seg-i {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
   color: var(--app-ink-3);
 }
 .dock-seg-v {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--app-ink);
@@ -3165,6 +3175,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-seg-v.mono {
   font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
 }
 .dock-seg-plus {
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -3172,39 +3183,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 500;
   color: var(--app-ink-3);
 }
-.dock-seg.active::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 0;
-  height: 2.5px;
-  background: var(--app-brand);
-  border-radius: 3px 3px 0 0;
+.dock-seg.active {
+  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
+}
+.dock-seg.active .dock-seg-i {
+  color: var(--app-brand-press);
 }
 .dock-clear {
-  flex: 0 0 44px;
-  min-height: 52px;
+  flex: 0 0 40px;
+  min-height: 40px;
   display: grid;
   place-items: center;
   color: var(--app-ink-3);
-  border-left: 1px solid var(--app-border);
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
 }
 
-/* The foot: the living count line + the map ↔ list toggle, on one row
-   under a hairline rule. */
+/* The foot: the living count line + the map ↔ list toggle, on one calm row.
+   No top rule now — the icon-chip readout above already reads as its own
+   band, so the cluster stays one uninterrupted card. */
 .dock-foot {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid var(--app-border);
-  padding-right: 8px;
+  padding: 6px 8px 7px;
 }
 /* The living mono count line — also the polite live region. */
 .dock-countline {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 5px 12px 6px;
+  padding: 0 4px;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9.5px;
   color: var(--app-ink-3);
@@ -3258,13 +3268,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-readout {
     flex: 1 1 auto;
     min-width: 0;
+    padding: 6px 6px;
+    align-items: center;
   }
   .dock-seg {
-    min-height: 52px;
-    padding-block: 5px 4px;
-  }
-  .dock-seg-k {
-    font-size: 7.5px;
+    min-height: 40px;
   }
   .dock-seg-v {
     font-size: 11px;
