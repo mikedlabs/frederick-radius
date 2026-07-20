@@ -5,12 +5,24 @@ what a Google/Yelp/AllTrails search returns, across food, drinks, cafes, and
 outdoors. Every name below was web-verified as **real and currently open**
 (closed names were deliberately excluded — see the tail).
 
-These are NET-NEW places. They need the enrichment pipeline (real coords,
-ratings, hours from Google Places) — do NOT hand-key coordinates. Run them
-through the normal ingest/enrich path, then `npm run build:client-places`.
+## STATUS — most of this is now SHIPPED
 
-Fixes to EXISTING records were already shipped (PR #1307): BackSlash Burger
-rename, Cafe Nola coffee tag, Urbana District Park town.
+The food and cafe/sweets gaps below were added as curated records with real
+Nominatim-geocoded coordinates (PRs #1309, #1310) — 23 places: every restaurant
+and cafe in the two tables, plus Mariachi and Sugarloaf Mountain. Fixes to
+existing records shipped in #1307 (BackSlash Burger rename, Cafe Nola coffee
+tag, Urbana District Park town). The tables are kept as the provenance record;
+the enrichment pass can later replace the manual coords with Google ratings,
+hours, and photos, but discovery already works today.
+
+Verified as ALREADY covered (no action): the entertainment vertical — The
+Boulder Yard (climbing), Urban Air (trampoline), Adventure Park USA, Spinners
+(arcade), bowling and escape rooms are all present under the family-fun tag.
+Smoketown Creekside (closed) was never in our data; we carry only the open
+Brunswick location.
+
+STILL OPEN: the marquee trail geometry (see Outdoors), which wants real GIS
+polylines, not point records.
 
 ## Food (weighted to Indian + sit-down Japanese — our thinnest verticals)
 
