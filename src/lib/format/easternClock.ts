@@ -19,3 +19,18 @@ export function formatEasternClock(date: Date): string {
   // Hours are 1-12 with no leading zero, so ":00" can only be the minutes.
   return label.replace(":00", "").replace(/\s?(AM|PM)/, (_, m: string) => m.toLowerCase());
 }
+
+/**
+ * The /today masthead dateline: "Monday, July 20", in Eastern time. A real
+ * date the reader can trust on the front door, and the field-guide way to
+ * date the page. Eastern-pinned so a late-evening UTC render never dates the
+ * page a day ahead.
+ */
+export function formatEasternDateline(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}

@@ -4,18 +4,18 @@ import { todayFrame } from "./masthead";
 describe("todayFrame", () => {
   it("names each daypart, pinned to the 17:00 evening boundary", () => {
     expect(todayFrame(5).title).toBe("This morning in Frederick");
-    expect(todayFrame(8).kicker).toBe("Morning");
+    expect(todayFrame(8).title).toBe("This morning in Frederick");
     expect(todayFrame(11).title).toBe("This morning in Frederick");
     expect(todayFrame(12).title).toBe("This afternoon in Frederick");
-    expect(todayFrame(16).kicker).toBe("Afternoon");
+    expect(todayFrame(16).title).toBe("This afternoon in Frederick");
     // 17:00 is "evening" everywhere in the app; the masthead flips to Tonight
     // at the same instant the sections reorder.
     expect(todayFrame(17).title).toBe("Tonight in Frederick");
-    expect(todayFrame(20).kicker).toBe("Tonight");
+    expect(todayFrame(20).title).toBe("Tonight in Frederick");
     expect(todayFrame(21).title).toBe("Late in Frederick");
-    expect(todayFrame(23).kicker).toBe("Late");
+    expect(todayFrame(23).title).toBe("Late in Frederick");
     expect(todayFrame(2).title).toBe("Late in Frederick");
-    expect(todayFrame(4).kicker).toBe("Late");
+    expect(todayFrame(4).title).toBe("Late in Frederick");
   });
 
   it("wraps out-of-range hours safely", () => {
