@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search, Star, X, ArrowUpDown } from "lucide-react";
-import { ALL_BEERS, FAMILY_BY_KEY, type StyleFamily } from "@/data/beers";
+import { ALL_BEERS, FAMILY_BY_KEY, type StyleFamily, type BeerWithBrewery } from "@/data/beers";
 import {
   EMPTY_BEER_FILTER,
   isEmptyBeerFilter,
@@ -12,6 +12,8 @@ import {
 } from "@/lib/beer/beer-index";
 import { FIELD_ABV_BANDS, type FlavorInsight } from "@/lib/beer/flavor-field";
 import FlavorField from "@/components/beer/FlavorField";
+import BeerSheet from "@/components/beer/BeerSheet";
+import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 
 /**
  * The Frederick Beer Index — the /beer page's real tool, now led by the Flavor
@@ -39,10 +41,11 @@ function ratingTone(rating: number | null): { bg: string; fg: string } {
   return { bg: "#ece3d2", fg: "#5e3a15" };
 }
 
-export default function BeerIndex() {
+export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap }) {
   const [filter, setFilter] = useState<BeerFilter>(EMPTY_BEER_FILTER);
   const [sort, setSort] = useState<BeerSort>("rating");
   const [limit, setLimit] = useState(40);
+  const [openBeer, setOpenBeer] = useState<BeerWithBrewery | null>(null);
 
   const results = useMemo(() => queryBeers(filter, sort), [filter, sort]);
   const active = !isEmptyBeerFilter(filter);
@@ -178,14 +181,12 @@ export default function BeerIndex() {
             {shown.map((b) => {
               const fam = FAMILY_BY_KEY[b.family];
               const tone = ratingTone(b.rating);
-              const href = b.untappd ?? `/places/${b.brewerySlug}`;
-              const external = Boolean(b.untappd);
               return (
                 <li key={`${b.brewerySlug}::${b.name}`} className="border-b border-black/8 last:border-b-0">
-                  <a
-                    href={href}
-                    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    className="flex items-center gap-3 px-3 py-3 transition hover:bg-[#f2e9d8]"
+                  <button
+                    type="button"
+                    onClick={() => setOpenBeer(b)}
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-[#f2e9d8]"
                   >
                     <span
                       className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] font-mono text-[13px] font-bold tabular-nums"
@@ -208,9 +209,9 @@ export default function BeerIndex() {
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block max-w-[7.5rem] truncate text-[11.5px] font-semibold text-[#5e3a15]">{b.breweryName}</span>
-                      {external && <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.1em] text-[#85501f]">Untappd ↗</span>}
+                      <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.1em] text-[#85501f]">Details ›</span>
                     </span>
-                  </a>
+                  </button>
                 </li>
               );
             })}
@@ -232,6 +233,12 @@ export default function BeerIndex() {
           </button>
         )}
       </div>
+
+      <BeerSheet
+        beer={openBeer}
+        photo={openBeer ? photos[openBeer.brewerySlug] ?? null : null}
+        onClose={() => setOpenBeer(null)}
+      />
     </section>
   );
 }
