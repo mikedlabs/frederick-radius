@@ -290,6 +290,99 @@ function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
   );
 }
 
+/** Bento surface helpers — active tiles wear a faint wash of their own accent
+ *  so a live situation reads as color at a glance, calm ones stay paper. */
+function tileBg(accent: string, active: boolean): string {
+  return active ? `color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated))` : "var(--app-bg-elevated)";
+}
+function tileBorder(accent: string, active: boolean): string {
+  return active ? `color-mix(in srgb, ${accent} 42%, var(--app-border))` : "var(--app-border)";
+}
+
+/** The weather feature: the most-asked live question, so it leads the board as
+ *  a wide tile with the temperature set large. */
+function FeatureTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  const f = tile.feature;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="col-span-2 flex items-center gap-4 rounded-[var(--app-radius-md)] border p-4 text-left transition active:scale-[0.99]"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+    >
+      <span className="font-serif text-[40px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+        {f ? `${f.temp}°` : tile.countLabel}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          {tile.label}
+        </span>
+        {f?.condition && <span className="block truncate text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.condition}</span>}
+        {f?.hl && <span className="block font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{f.hl}</span>}
+      </span>
+      {createElement(iconFor(tile), { className: "h-7 w-7 shrink-0", strokeWidth: 1.75, style: { color: tile.accent }, "aria-hidden": true })}
+    </button>
+  );
+}
+
+/** A compact stat card: icon, label, the live datum set as the value. Fills a
+ *  single grid cell; tapping opens the tile's full body in the drawer. */
+function StatTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex min-h-[98px] flex-col rounded-[var(--app-radius-md)] border p-3 text-left transition active:scale-[0.98]"
+      style={{ borderColor: tileBorder(tile.accent, tile.active), background: tileBg(tile.accent, tile.active) }}
+    >
+      <span
+        aria-hidden
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+        style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 12%, transparent)` }}
+      >
+        {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
+      </span>
+      <span className="mt-auto pt-2.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+        {tile.label}
+      </span>
+      <span className="mt-0.5 line-clamp-2 text-[14.5px] font-semibold leading-tight" style={{ color: tile.active ? tile.accent : "var(--app-ink)" }}>
+        {tile.countLabel}
+      </span>
+    </button>
+  );
+}
+
+/** An attention tile: a live situation, so it spans the row with its accent on
+ *  a left rule and carries the one-line peek the compact stat cards omit. */
+function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group col-span-2 flex items-center gap-3 rounded-[var(--app-radius-md)] border border-l-[3px] px-3.5 py-3 text-left transition active:scale-[0.99]"
+      style={{
+        borderColor: tileBorder(tile.accent, true),
+        borderLeftColor: tile.accent,
+        background: `color-mix(in srgb, ${tile.accent} 7%, var(--app-bg-elevated))`,
+      }}
+    >
+      <span
+        aria-hidden
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+        style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 13%, transparent)` }}
+      >
+        {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{tile.label}</span>
+        <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-ink-2)" }}>{tile.peek ?? tile.countLabel}</span>
+      </span>
+      {tile.peek && <span className="shrink-0 text-right text-[11px] font-semibold" style={{ color: tile.accent }}>{tile.countLabel}</span>}
+      <ArrowRight aria-hidden className="h-4 w-4 shrink-0 opacity-40 transition-transform group-hover:translate-x-0.5" />
+    </button>
+  );
+}
+
 export default function PulseBoard({
   hero,
   chips,
@@ -397,16 +490,22 @@ export default function PulseBoard({
           {attention.length > 0 && (
             <section aria-labelledby="pulse-attention-heading" className="min-w-0 space-y-2.5">
               <GroupHeading id="pulse-attention-heading" eyebrow="Needs attention" title="Happening now" note={`${attention.length} live`} />
-              <div className="min-w-0 border-l-[3px] px-4" style={{ borderColor: "var(--app-danger)", background: "var(--app-bg-elevated)" }}>
-                <ul className="min-w-0">{attention.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+              <div className="grid min-w-0 grid-cols-2 gap-2.5">
+                {attention.map((tile) => <AttentionTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}
               </div>
             </section>
           )}
 
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
-            <GroupHeading id="pulse-live-board-heading" eyebrow="At a glance" title="County status" note="tap any row" />
-            <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border)" }}>
-              <ul className="min-w-0">{[...conditions, ...gettingAround].map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+            <GroupHeading id="pulse-live-board-heading" eyebrow="At a glance" title="County status" note="tap any tile" />
+            <div className="grid min-w-0 grid-cols-2 gap-2.5">
+              {[...conditions, ...gettingAround].map((tile) =>
+                tile.kind === "feature" ? (
+                  <FeatureTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                ) : (
+                  <StatTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                ),
+              )}
             </div>
           </section>
         </div>
