@@ -114,7 +114,7 @@ export default function CoverFlight({ slides }: { slides: FlightSlide[] }) {
         {openLine(current)}
       </figcaption>
       <span className="sr-only">
-        Aerial photographs of Frederick County taken by the guide&apos;s own drone, with live
+        Aerial photographs of Frederick taken by the guide&apos;s own drone, with live
         counts of nearby places.
       </span>
     </figure>

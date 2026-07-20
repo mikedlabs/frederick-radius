@@ -5,6 +5,7 @@ import { BREWERIES } from "@/data/beers";
 import { TABS } from "@/components/nav/tabs";
 import { aerialCount, stripFrames } from "@/lib/beta-flight";
 import { getBetaPulse, type BetaPulse } from "@/lib/loaders/betaPulse";
+import { formatEasternClock } from "@/lib/format/easternClock";
 
 /**
  * GuideContents — the "In the guide" section of /beta: the guide's own
@@ -25,14 +26,11 @@ import { getBetaPulse, type BetaPulse } from "@/lib/loaders/betaPulse";
 
 const PLACES_COUNT = (CLIENT_RAW as { places?: unknown[] }).places?.length ?? (CLIENT_RAW as unknown[]).length ?? 0;
 
-/** "7pm" / "6:35pm" — Eastern, lowercase meridiem, minutes dropped at :00. */
+/** "7pm" / "6:35pm" — Eastern, lowercase meridiem, minutes dropped at :00.
+ *  Delegates to the shared formatter so event times and the /beta clock
+ *  read identically. */
 function formatEasternTime(iso: string): string {
-  const label = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
-  return label.replace(":00", "").replace(/\s?(AM|PM)/, (_, m: string) => m.toLowerCase());
+  return formatEasternClock(new Date(iso));
 }
 
 /** "A and B" / "A, B, and C". */
@@ -55,8 +53,8 @@ export function openNowLine(
       lead: "",
       rest:
         count === 1
-          ? "The guide counts one place open across the county at this minute."
-          : `The guide counts ${count.toLocaleString()} places open across the county at this minute.`,
+          ? "The guide counts one place open across Frederick at this minute."
+          : `The guide counts ${count.toLocaleString()} places open across Frederick at this minute.`,
     };
   }
   const joined = joinNames(names);
@@ -64,9 +62,9 @@ export function openNowLine(
   const others = count - names.length;
   const tail =
     others >= 2
-      ? `, along with ${others.toLocaleString()} other places across the county.`
+      ? `, along with ${others.toLocaleString()} other places across Frederick.`
       : others === 1
-        ? ", along with one other place across the county."
+        ? ", along with one other place across Frederick."
         : ".";
   return { lead: joined, rest: ` ${verb} open at this minute${tail}` };
 }
@@ -180,7 +178,7 @@ export function GuideContents({
       <ul className="mt-4 list-none">
         <Row
           title="Places, with live hours"
-          description="The guide covers restaurants, shops, trails, and parks across the county, with hours it keeps current."
+          description="The guide covers restaurants, shops, trails, and parks, with current hours."
           figures={
             <>
               <MonoFigure>{PLACES_COUNT.toLocaleString()} PLACES</MonoFigure>
@@ -202,7 +200,7 @@ export function GuideContents({
 
         <Row
           title="Events, in one calendar"
-          description="The guide pulls every public event it can find in the county into one list, from dozens of separate calendars."
+          description="The guide keeps every public event in a single list, out of dozens of separate calendars."
           figures={
             pending ? (
               <FigureSlot />
@@ -236,21 +234,21 @@ export function GuideContents({
 
         <Row
           title="The live map"
-          description="TransIT buses, MARC trains, and the weather radar move on the county map as they move in the world."
+          description="TransIT buses, MARC trains, and the weather radar move on the map as they move outside."
           figures={<MonoFigure>{MUNICIPALITIES.length} TOWNS</MonoFigure>}
         />
 
         <Row
           title="The beer guide"
-          description="Every brewery in the county is here, with tap lists and the day's hours."
+          description="Every brewery is here, with its tap list and the day's hours."
           figures={<MonoFigure>{BREWERIES.length} BREWERIES</MonoFigure>}
         />
 
-        <Row title="Live music" description="The guide tracks who is playing where, tonight and over the next four weeks." />
+        <Row title="Live music" description="The guide tracks who is playing where, tonight and the weeks ahead." />
 
         <Row
-          title="The county from above"
-          description="These aerial photographs were shot by drone over the county, and each one is fixed to the spot where it was taken."
+          title="Frederick from above"
+          description="Each drone photograph is pinned to the exact spot it was taken."
           figures={photos > 0 ? <MonoFigure>{photos} PHOTOS</MonoFigure> : undefined}
         >
           {strip.length >= 2 && (
@@ -276,7 +274,7 @@ export function GuideContents({
         {showSmallChecks && (
           <Row
             title="The small checks"
-            description="These are the scoreboard-sized facts a local keeps half an eye on."
+            description="The scoreboard-sized facts a local keeps half an eye on."
             figures={
               pulse!.keys &&
               (pulse!.keys.state === "live" || pulse!.keys.state === "final") &&
@@ -290,7 +288,7 @@ export function GuideContents({
           >
             <div className="mt-1.5 space-y-1 text-[14px] leading-[1.55]" style={{ color: "var(--app-ink-2)" }}>
               {pulse!.keys && <p>{keysLine(pulse!.keys)}</p>}
-              {pulse!.troutThisWeek && <p>Maryland DNR stocked trout in Frederick County waters this week.</p>}
+              {pulse!.troutThisWeek && <p>Local creeks got fresh trout from the state this week.</p>}
             </div>
           </Row>
         )}
