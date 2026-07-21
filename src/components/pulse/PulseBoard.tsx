@@ -320,8 +320,12 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
     <section aria-labelledby="pulse-systems-heading" className="min-w-0 border-y py-3" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex min-w-0 items-center gap-2">
         <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>No major changes reported</h2>
-        <span className="ml-auto shrink-0 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Checked recently</span>
+        {/* A neutral section label, not an all-clear assertion: a steady tile
+            whose own feed is degraded (countLabel "Feed unavailable") still
+            lists here, so the header must not claim "nothing changed / all
+            checked" on its behalf. Per-tile degraded gating is a follow-up
+            (needs a degraded flag threaded onto PulseTile). */}
+        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
       </div>
       <ul className="mt-2.5 grid min-w-0 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         {tiles.map((tile) => (
