@@ -224,7 +224,7 @@ import MapParkingPeek from "./MapParkingPeek";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, LocateFixed } from "lucide-react";
+import { ArrowRight, ChevronRight, LoaderCircle, LocateFixed, Shrink } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -618,6 +618,11 @@ export default function AppMap({
       setListView(true);
     }
   }, []);
+  // True once the camera has moved off the county overview (the county opens at
+  // ~z9.6; past ~z10.6 the user has zoomed or panned in). Drives the "show the
+  // whole county" reset FAB so it only appears when there is somewhere to go
+  // back from, and hides again once fitCounty() returns to the overview.
+  const [offOverview, setOffOverview] = useState(false);
   const updateListView = (next: boolean) => {
     setListView(next);
     try {
@@ -1235,9 +1240,19 @@ export default function AppMap({
     setCivicTown(null); // any tap dismisses a prior town sheet
     const feature = e.features?.[0];
     if (!feature) {
-      setSelectedSlug(null);
-      // Tap empty map -> which town am I in? Point-in-polygon against the
-      // municipal boundaries already drawn, then open a compact civic sheet.
+      // An empty tap is a DISMISS first. If a pin peek, a parking peek, or a
+      // selected pin is open, closing it IS the whole gesture — no town bubble,
+      // no haptic. (The map used to grab every empty tap and pop an unrequested
+      // "which town?" sheet, so you could never simply tap away to clear a card.)
+      if (peekPlace || parkingPeek || selectedSlug) {
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setSelectedSlug(null);
+        return;
+      }
+      // Nothing was open, so this is a deliberate tap on empty land -> which
+      // town am I in? Point-in-polygon against the municipal boundaries already
+      // drawn, then open a compact civic sheet.
       const { lng, lat } = e.lngLat;
       const hit = municipalBoundaries.features.find(
         (f) => f.geometry && pointInPolygonGeom(lng, lat, f.geometry as GeoJSON.Geometry),
@@ -1659,6 +1674,20 @@ export default function AppMap({
     );
   };
 
+  // Reframe the whole county. Shared by the dock's Where control and the
+  // map-surface reset FAB so "get me un-lost" is one tap from either place,
+  // not buried three levels into Filters. cameraIntentRef stays false: this is
+  // a return to the default frame, not a user pan the leash should preserve.
+  const fitCounty = () => {
+    cameraIntentRef.current = false;
+    mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+      padding: countyFitPadding(),
+      duration: prefersReducedMotion() ? 0 : 900,
+      easing: CAM_EASE,
+      essential: true,
+    });
+  };
+
   // Per-event Frederick hour-of-day + day key, derived once from the events
   // prop (deterministic over fixed timestamps). The scrubber filters same-day
   // events to those live/soon at the chosen hour; other-day events stay put so
@@ -1808,11 +1837,16 @@ export default function AppMap({
             </div>
           </div>
         )}
-        {/* Geolocation notes surface inside the dock's Where pane when the
-            dock owns locate; the floating toast serves dock-less embeds. */}
-        {geoMsg && !dock && (
+        {/* A geolocation denial or failure has to be visible where the user
+            just tapped locate. On the dock surface it anchors above the locate
+            FAB (bottom-right); dock-less embeds keep the centered toast. Before,
+            it was gated to the no-dock case only, so on /map browse a denial
+            was silent (it lived inside the collapsed Where pane). */}
+        {geoMsg && (
           <div
-            className="absolute bottom-3 left-1/2 z-[var(--z-map-control)] flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            className={`z-[var(--z-map-control)] flex items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+              dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
+            }`}
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             role="status"
           >
@@ -1982,12 +2016,20 @@ export default function AppMap({
             installCountySpotlight(e.target);
             markMapOnLoad();
             emitInView();
+            // A restored `?c=` camera can open already zoomed in without ever
+            // firing moveend, so seed the reset FAB's visibility from the
+            // initial frame too.
+            setOffOverview(e.target.getZoom() > 10.6);
           }}
           onMoveStart={() => setMapMoving(true)}
           onMoveEnd={(e) => {
             setMapMoving(false);
             markMapIdleOnce();
             emitInView();
+            // The reset FAB only earns its place once the user has left the
+            // county overview (see offOverview). Settled zoom > 10.6 means they
+            // zoomed or panned in and might want one tap back out.
+            setOffOverview(e.target.getZoom() > 10.6);
             // Persist the camera to the URL so the view is shareable and
             // survives reload. moveend is already debounced by Mapbox, so
             // this writes once per settled move; replaceState preserves the
@@ -3247,24 +3289,34 @@ export default function AppMap({
                 essential: true,
               });
             }}
-            fitCounty={() => {
-              cameraIntentRef.current = false;
-              mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
-                padding: countyFitPadding(),
-                duration: prefersReducedMotion() ? 0 : 900,
-                easing: CAM_EASE,
-                essential: true,
-              });
-            }}
+            fitCounty={fitCounty}
             onPaneOpenChange={setDockPaneOpen}
           />
           </div>
         )}
 
+        {/* "Show the whole county" reset — one tap back to the overview when a
+            user has zoomed or panned in and lost the lay of the land. Getting
+            un-lost used to be buried under Filters → Where → Whole county.
+            Stacked just above the locate FAB; only shown once off the overview
+            so the default county view stays uncluttered. */}
+        {dock && !listView && offOverview && (
+          <button
+            type="button"
+            className="map-reset-fab tap-44"
+            onClick={fitCounty}
+            aria-label="Show the whole county"
+          >
+            <Shrink className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+          </button>
+        )}
+
         {/* Persistent "near me" locate button — locate is the most-used
             map gesture, so it lives ON the map (above the zoom cluster),
             not only inside the Where pane. Dock surface only; hidden while
-            a dock pane or the list is open. */}
+            a dock pane or the list is open. While locating, the icon swaps to
+            a spinner (static under reduced motion) so the ~8s geolocation wait
+            reads as working, not stuck. */}
         {dock && !listView && (
           <button
             type="button"
@@ -3274,7 +3326,15 @@ export default function AppMap({
             aria-busy={locating || undefined}
             data-on={userLoc ? true : undefined}
           >
-            <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+            {locating ? (
+              <LoaderCircle
+                className="h-5 w-5 animate-spin motion-reduce:animate-none"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            ) : (
+              <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+            )}
           </button>
         )}
 

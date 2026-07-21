@@ -3332,6 +3332,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-host .map-locate-fab {
     bottom: 62px;
   }
+  /* Keep the stacked reset FAB and the geo-error toast on-screen in the short
+     landscape map, riding above the lowered locate FAB. */
+  .dock-host .map-reset-fab {
+    bottom: 116px;
+  }
+  .dock-host .map-geo-toast {
+    bottom: 170px;
+  }
 }
 
 /* ── Persistent "near me" locate FAB — above the zoom cluster ── */
@@ -3375,6 +3383,60 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @media (min-width: 1024px) {
   .map-locate-fab {
     bottom: 68px;
+  }
+}
+
+/* ── "Show the whole county" reset FAB — stacks one step above the locate FAB,
+   shown only once the camera has left the county overview (offOverview in
+   AppMap). Reuses the locate FAB's frosted 44px look; border-radius: 50% keeps
+   it a true circle without the pill radius value. ── */
+.map-reset-fab {
+  position: absolute;
+  right: 10px;
+  /* One 44px FAB + a ~10px gap above the locate FAB (150 → 204 mobile). */
+  bottom: calc(204px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-map-control);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--app-shadow-2);
+  color: var(--app-ink-2);
+  transition: opacity 0.25s, transform 0.08s;
+}
+.map-reset-fab:active {
+  transform: scale(0.94);
+}
+/* Hidden while a dock pane is open (the scrim owns the surface), mirroring the
+   locate FAB. */
+.dock-host[data-dock-pane="open"] .map-reset-fab {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (min-width: 1024px) {
+  .map-reset-fab {
+    bottom: 122px;
+  }
+}
+
+/* ── Geolocation error toast on the dock surface — pinned above the FAB stack
+   (bottom-right) so a denial is visible on /map browse, not only inside the
+   collapsed Where pane. Dock-less embeds keep the centered toast instead. ── */
+.map-geo-toast {
+  position: absolute;
+  right: 10px;
+  bottom: calc(258px + env(safe-area-inset-bottom, 0px));
+  max-width: min(19rem, 72vw);
+  z-index: var(--z-map-control);
+}
+@media (min-width: 1024px) {
+  .map-geo-toast {
+    bottom: 176px;
   }
 }
 
