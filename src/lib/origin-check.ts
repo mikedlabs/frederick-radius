@@ -345,19 +345,24 @@ export async function isRateLimited(
 }
 
 /**
- * Best-effort client IP extraction. Vercel sets `x-forwarded-for` (the
- * first entry is the original client) and `x-real-ip` (the immediate
- * peer). On localhost both will be empty — we return null and the
- * rate limiter treats that as "no IP to bucket against" and lets the
- * request through.
+ * Best-effort client IP extraction. On Vercel, `x-real-ip` is set by the
+ * platform edge to the peer it actually saw and OVERWRITES any inbound value,
+ * so a caller cannot forge it. `x-forwarded-for` is a list whose LEFTMOST entry
+ * is client-supplied — trusting it first let anyone rotate their rate-limit
+ * bucket by sending `X-Forwarded-For: <random>`, sidestepping the per-IP caps
+ * on the paid Google/Mapbox and LLM-spend routes. So we prefer x-real-ip and
+ * fall back to XFF only when it is absent (non-Vercel/local). On localhost both
+ * are empty — we return null and the limiter treats that as "no IP to bucket
+ * against" and lets the request through. The Vercel Firewall remains the
+ * authoritative edge defense; this just stops the trivial in-app bypass.
  */
 function clientIp(req: Request): string | null {
+  const real = req.headers.get("x-real-ip");
+  if (real?.trim()) return real.trim();
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const first = xff.split(",")[0]?.trim();
     if (first) return first;
   }
-  const real = req.headers.get("x-real-ip");
-  if (real) return real.trim();
   return null;
 }
