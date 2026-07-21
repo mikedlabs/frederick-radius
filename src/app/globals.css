@@ -2694,12 +2694,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. It pins to the TOP of the map, directly beneath the search bar,
-   mirroring the /events masthead-dock: the What · When · Where caption is
-   the tab bar + clear-all, and each word drops its pane DOWN over the
-   scrim-dimmed map. Living at the top permanently clears the floating
-   BottomNav (which owned the bottom edge and used to collide with the old
-   bottom dock).
+   dock-*. A "maps-app" top layout: a slim control bar pins to the TOP of the
+   map (search row, then a single Filters button + a Map ↔ list toggle). The
+   Filters button drops a panel DOWN over the scrim-dimmed map; that panel
+   carries the four sub-tabs (Places · When · Where · Layers), a mono count
+   line, and Done / clear-all. The bottom of the map is left clean for the
+   pins, the zoom cluster, and the locate FAB. Living at the top permanently
+   clears the floating BottomNav (which owns the bottom edge).
    ========================================================================== */
 
 /* Host marker on the map container: with the dock now at the TOP, the map's
@@ -2716,17 +2717,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* Mobile: the browse map is full-bleed and the BottomNav is a floating pill
-   fixed at bottom-0 (z-nav 40, above the dock's z-sticky 30). Lift the zoom
-   pair clear of the nav, matching the FeedbackWidget's ~76px lift. Desktop
-   (>=lg) has a SideRail, not a bottom pill, so it keeps the tighter 96px.
+   fixed at bottom-0. Lift the zoom pair to a small clearance above that nav,
+   matching the FeedbackWidget's lift. Desktop (>=lg) has a SideRail, not a
+   bottom pill, so it keeps the tighter 14px above.
    NOTE: never give the top-anchored .dock wrapper a `bottom` here — a stale
    bottom-era override stretched the wrapper the full height of the map, so
-   .dock-pane (top:100%) opened as a detached sheet ~440px below the caption
-   and overflowed the phone viewport. The wrapper must hug .dock-head. */
+   .dock-pane (top:100%) opened as a detached sheet far below the head and
+   overflowed the phone viewport. The wrapper must hug .dock-head. */
 @media (max-width: 1023.98px) {
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
-    bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
@@ -2753,12 +2754,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    positioned pane. */
 .dock {
   position: absolute;
-  /* v3: the dock is thumb-anchored at the BOTTOM of the map, above the app's
-     floating tab bar, so the top of the map is clear to read and the filters
-     are where the hand is. Its pane opens UPWARD (see .dock-pane). The map
-     container (.dock-host) already stops above the floating nav, so a small
-     inset sits the dock just above the nav with no gap. */
-  bottom: 8px;
+  /* Top-anchored "maps-app" layout: the control bar pins just under the app
+     TopBar and its panel opens DOWNWARD (see .dock-pane). The map container
+     (.dock-host) already starts below the TopBar, so a small inset sits the
+     bar just inside the map's top edge. The wrapper carries no paint of its
+     own and must hug .dock-head so the panel drops from directly beneath it. */
+  top: 8px;
+  bottom: auto;
   left: 10px;
   right: 10px;
   z-index: var(--z-sticky);
@@ -2889,22 +2891,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock.dock-open .dock-head {
   box-shadow: var(--app-shadow-3);
-  /* Pane opens ABOVE the head now, so the head squares its TOP corners to
-     meet it seamlessly. */
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  /* The panel drops DOWN from the head, so the head squares its BOTTOM
+     corners to meet it seamlessly and keeps its top corners rounded. */
+  border-top-left-radius: var(--app-radius-md);
+  border-top-right-radius: var(--app-radius-md);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
-/* The top-sheet pane — drops DOWN from directly under the caption bar
+/* The filter panel — drops DOWN from directly under the control bar
    (top: 100% of the dock wrapper) over the dimmed map. Collapsed via
    max-height so the head above it never shifts. Reduced motion is covered
    by the global gate; the explicit rule below keeps the intent obvious if
    that gate ever narrows. */
 .dock-pane {
   position: absolute;
-  /* Bottom-anchored dock: the pane rises UP from directly above the caption
-     bar (bottom: 100% of the dock wrapper) over the dimmed map. */
-  bottom: 100%;
+  /* Top-anchored dock: the panel hangs BELOW the control bar (top: 100% of
+     the dock wrapper) over the dimmed map. */
+  top: 100%;
+  bottom: auto;
   left: 0;
   right: 0;
   z-index: 3;
@@ -2914,8 +2919,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--app-border);
-  border-bottom: none;
-  border-radius: var(--app-radius-md) var(--app-radius-md) 0 0;
+  border-top: none;
+  border-radius: 0 0 var(--app-radius-md) var(--app-radius-md);
   box-shadow: var(--app-shadow-3);
   transition: max-height 0.32s ease;
 }
@@ -2998,7 +3003,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-chip[data-on] {
   background: var(--c, var(--app-brand));
   border-color: var(--c, var(--app-brand));
-  color: #fff;
+  color: var(--app-on-brand);
 }
 .dock-chip[data-on] .dock-chip-dot {
   background: rgba(255, 255, 255, 0.85);
@@ -3089,11 +3094,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-opennow[data-on] {
   background: var(--app-positive);
   border-color: var(--app-positive);
-  color: #fff;
+  color: var(--app-on-brand);
 }
 .dock-opennow[data-on] .dock-opennow-n {
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: var(--app-on-brand);
 }
 
 /* Where pane: Find me — the pane's single primary action. */
@@ -3122,79 +3127,104 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 0 2px;
 }
 
-/* The caption row: three labeled cells + the clear ×. Each cell is a
-   ≥44px tab; the active one carries a brand rule along its BOTTOM (the
-   pane drops down from there). */
-/* v3 "calm consolidation" (owner ask 2026-07-20: the map "feels messy").
-   The readout was three hard-boxed segments with uppercase micro-labels
-   and vertical dividers — the loudest chrome on the map. It is now a row
-   of soft, icon-led chips: the leading icon carries the axis (grid=what,
-   clock=when, pin=where), so the uppercase WHAT/WHEN/WHERE kickers are
-   gone (the axis lives in each button's aria-label for a11y) and a bare
-   value like "All day" is no longer floating without context. Active =
-   a soft brand tint, not an underline. */
-.dock-readout {
+/* Row 2 of the control bar: the single Filters button on the left, the
+   Map ↔ list toggle pushed to the right. One instrument, one primary
+   action — the old three-segment readout is gone; its axes are now the
+   panel's sub-tabs (owner ask 2026-07-21: the map "feels messy"). */
+.dock-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 8px 0;
+  gap: 8px;
+  padding: 8px;
 }
-.dock-seg {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 40px;
-  padding: 0 11px;
-  display: flex;
-  flex-direction: row;
+.dock-bar > .dock-viewtoggle {
+  margin-left: auto;
+}
+/* The Filters button — icon-led pill. Carries an active-filter count and a
+   soft brand tint when any filter is on. */
+.dock-filters {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 7px;
-  text-align: left;
+  min-height: 44px;
+  padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--app-border);
   background: var(--app-bg-elevated);
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 600;
   transition: background 0.14s, border-color 0.14s, transform 0.08s;
 }
-.dock-seg:active {
+.dock-filters:active {
   transform: scale(0.97);
 }
-.dock-seg-what {
-  flex: 1.3 1 0;
-}
-.dock-seg-where {
-  flex: 1.1 1 0;
-}
-.dock-seg-i {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-  color: var(--app-ink-3);
-}
-.dock-seg-v {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--app-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dock-seg-v.mono {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11.5px;
-}
-.dock-seg-plus {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--app-ink-3);
-}
-.dock-seg.active {
+.dock-filters[data-on] {
   background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
   border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
-}
-.dock-seg.active .dock-seg-i {
   color: var(--app-brand-press);
+}
+.dock-filters-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-brand) 16%, var(--app-bg-elevated));
+  color: var(--app-brand-press);
+}
+
+/* The panel's sub-tabs (Places · When · Where · Layers) + the Done button,
+   sitting on the panel's top rule. The active tab is inked in brand and
+   carries a 2.5px brand rule along the BOTTOM, sitting on that container
+   border. The tablist scrolls sideways if space is tight; Done stays put. */
+.dock-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 -2px 6px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--app-border);
+}
+.dock-tablist {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dock-tablist::-webkit-scrollbar {
+  display: none;
+}
+.dock-tab {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-ink-2);
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.dock-tab[aria-selected="true"] {
+  color: var(--app-brand-press);
+  border-bottom-color: var(--app-brand);
+}
+.dock-tabs .dock-done {
+  margin-left: auto;
+  align-self: center;
+}
+
+/* The count row inside the panel: the living mono count line + the clear ×. */
+.dock-countbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 .dock-clear {
   flex: 0 0 40px;
@@ -3207,16 +3237,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-bg-elevated);
 }
 
-/* The foot: the living count line + the map ↔ list toggle, on one calm row.
-   No top rule now — the icon-chip readout above already reads as its own
-   band, so the cluster stays one uninterrupted card. */
-.dock-foot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px 7px;
-}
-/* The living mono count line — also the polite live region. */
+/* The living mono count line — also the polite live region. It lives in the
+   panel's count row (.dock-countbar) now, not a head foot. */
 .dock-countline {
   flex: 1 1 auto;
   min-width: 0;
@@ -3229,7 +3251,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Map ↔ list toggle — a small pill in the foot. */
+/* Map ↔ list toggle — a small pill in the top control bar. */
 .dock-viewtoggle {
   flex: 0 0 auto;
   display: inline-flex;
@@ -3247,41 +3269,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-viewtoggle[aria-pressed="true"] {
   background: var(--app-brand);
   border-color: var(--app-brand);
-  color: #fff;
+  color: var(--app-on-brand);
 }
 
-/* A phone in landscape has only ~235px of map height. Stack the full three-row
-   instrument there and no camera can honestly show the whole county beneath
-   it. Keep every primary filter available in one horizontal strip; only the
-   secondary count/list foot yields until the phone returns to portrait. */
+/* A phone in landscape has only ~235px of map height. Top anchoring and the
+   downward panel are already the default now, so landscape only lays the head
+   out as one horizontal strip (search beside the Filters / toggle bar) to
+   spend as little vertical space as possible, and drops the zoom + locate
+   chrome low. */
 @media (max-width: 1023.98px) and (max-height: 520px) and (orientation: landscape) {
-  /* Portrait anchors the dock at the BOTTOM (bottom: 8px). A phone in
-     landscape has almost no map height, so there the instrument returns to
-     the TOP and its pane drops DOWN — reset the portrait bottom-anchor so the
-     absolute box doesn't stretch top-to-bottom. */
   .dock {
     top: 4px;
-    bottom: auto;
-  }
-  .dock-pane {
-    top: 100%;
-    bottom: auto;
-    border-top: none;
-    border-bottom: 1px solid var(--app-border);
-    border-radius: 0 0 var(--app-radius-md) var(--app-radius-md);
-  }
-  .dock.dock-open .dock-head {
-    border-top-left-radius: var(--app-radius-md);
-    border-top-right-radius: var(--app-radius-md);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
   }
   .dock-head {
     display: flex;
     align-items: stretch;
   }
   .dock-search-wrap {
-    flex: 0 1 220px;
+    flex: 0 1 240px;
     min-width: 170px;
   }
   .dock-search {
@@ -3289,27 +3294,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-readout {
+  .dock-bar {
     flex: 1 1 auto;
     min-width: 0;
-    padding: 6px 6px;
-    align-items: center;
-  }
-  .dock-seg {
-    min-height: 40px;
-  }
-  .dock-seg-v {
-    font-size: 11px;
-  }
-  .dock-foot {
-    display: none;
   }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
     bottom: 10px !important;
   }
   .dock-host .map-locate-fab {
-    bottom: 10px;
+    bottom: 62px;
   }
 }
 
@@ -3317,10 +3311,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .map-locate-fab {
   position: absolute;
   right: 10px;
-  /* v3 bottom-anchored dock: the zoom cluster sits at bottom: 160px just above
-     the dock, so the locate FAB stacks ABOVE the zoom pair (its 44px + an 8px
-     gap → 266px). The safe-area inset keeps it clear of the home indicator. */
-  bottom: calc(266px + env(safe-area-inset-bottom, 0px));
+  /* Top-anchored dock: the zoom pair returns to the map's bottom-right (96px
+     on mobile, 14px on desktop), so the locate FAB stacks just ABOVE it (its
+     44px + a ~10px gap → 150px mobile; a desktop override drops it to 68px).
+     The safe-area inset keeps it clear of the home indicator. */
+  bottom: calc(150px + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-map-control);
   display: grid;
   place-items: center;
@@ -3347,6 +3342,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-host[data-dock-pane="open"] .map-locate-fab {
   opacity: 0;
   pointer-events: none;
+}
+/* Desktop keeps the zoom pair at the tight 14px, so the locate FAB sits just
+   above it (14 + 44 + a ~10px gap → 68px). */
+@media (min-width: 1024px) {
+  .map-locate-fab {
+    bottom: 68px;
+  }
 }
 
 /* ── Parking layer marker — a "P" glyph pin tinted by live availability.
@@ -4447,78 +4449,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   isolation: isolate;
 }
 
-/* ── Layers at the map's foot (owner ask, 2026-07-17): a quiet state
-   pill bottom-left that reads the current layer state; tapping opens
-   the bottom sheet. The caption row is back to three segs. ── */
-.dock-lfab {
-  /* Absolute inside the map host — the SAME coordinate system as the dock and
-     the zoom cluster — so it tracks the dock's bottom baseline exactly instead
-     of guessing at the nav reserve. Mirrors the zoom pair (bottom: 160px) on
-     the left, sitting just above the bottom-anchored dock. */
-  position: absolute;
-  left: 10px;
-  bottom: calc(160px + env(safe-area-inset-bottom, 0px));
-  z-index: var(--z-sticky);
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--app-border-strong, var(--app-border));
-  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
-  color: var(--app-ink-2);
-  box-shadow: var(--app-elev-1), var(--app-hi);
-  font-size: 12px;
-  font-weight: 600;
-}
-.dock-lfab-v {
-  max-width: 34vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dock-ltray {
-  /* Absolute-in-host (like the pill it springs from); opens upward from just
-     above the layers pill (160px + the pill's 44px + an 8px gap → 212px). */
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  max-width: 470px;
-  bottom: calc(212px + env(safe-area-inset-bottom, 0px));
-  z-index: var(--z-sticky);
-  border-radius: var(--app-radius-md);
-  border: 1px solid var(--app-border-strong, var(--app-border));
-  background: var(--app-bg-elevated-solid, var(--app-bg-elevated));
-  box-shadow: var(--app-elev-2, 0 10px 28px rgba(22, 20, 14, 0.16)), var(--app-hi);
-  opacity: 0;
-  transform: translateY(8px);
-  pointer-events: none;
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-.dock-ltray.open {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-.dock-ltray-scroll {
-  max-height: 38vh;
-  overflow-y: auto;
-  padding: 10px 12px 12px;
-}
-.dock-lfab[data-on] {
-  background: color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-elevated-solid, var(--app-bg-elevated)));
-  border-color: var(--app-brand-2);
-}
-/* While a What/When/Where pane is open the scrim owns the surface — retire the
-   layers pill (and its tray) the same way the locate FAB steps aside. */
-.dock-host[data-dock-pane="open"] .dock-lfab,
-.dock-host[data-dock-pane="open"] .dock-ltray {
-  opacity: 0;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .dock-ltray {
-    transition: none;
-  }
-}
+/* The map's Layers surface used to be a detached bottom-left pill (.dock-lfab)
+   plus its own bottom sheet (.dock-ltray). It is now a sub-tab inside the top
+   Filters panel (MapDock, 2026-07-21), so those rules were removed with the
+   JSX and the map's bottom-left corner is clear again. */
