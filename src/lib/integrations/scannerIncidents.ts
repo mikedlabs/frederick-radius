@@ -31,9 +31,62 @@ const DIRECT_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
 
 export type ScannerIncident = PublicIncident & {
-  /** Message timestamp (ISO) so callers can sort and age it out. */
+  /** LATEST dispatch post for this call (ISO) — drives freshness sort and the
+   *  "updated X ago" label. A quiet call and a busy one both age out by this. */
   at: string;
+  /** EARLIEST post for this call (ISO) — when it was first dispatched. Equal to
+   *  `at` for a one-post call; earlier for an active call that's still updating. */
+  firstAt: string;
+  /** How many dispatch posts this call has produced (>=1). A growing count is
+   *  the honest, unit-free signal that a call is active and escalating. */
+  updates: number;
 };
+
+/** One parsed post plus its wall-clock time, before we fold it into a call. */
+export type IncidentEntry = { inc: PublicIncident; atMs: number };
+
+/**
+ * Fold a stream of individual dispatch posts into live calls. The public feed
+ * posts the SAME call several times as it develops (a working fire gets a new
+ * line each time the response grows); collapsing those to one entry threw that
+ * lifecycle away. Here we group by kind+location, keep the earliest and latest
+ * post times and the post count, and let the latest post drive the display. No
+ * unit or radio codes are ever exposed — a count and a time span are the only
+ * lifecycle signals, and both are already public-safe.
+ */
+export function aggregate(entries: IncidentEntry[]): ScannerIncident[] {
+  const now = Date.now();
+  const groups = new Map<
+    string,
+    { inc: PublicIncident; first: number; last: number; count: number }
+  >();
+  for (const { inc, atMs } of entries) {
+    if (now - atMs > MAX_AGE_MS) continue;
+    const key = `${inc.kind}|${inc.location}`;
+    const g = groups.get(key);
+    if (!g) {
+      groups.set(key, { inc, first: atMs, last: atMs, count: 1 });
+      continue;
+    }
+    g.count += 1;
+    if (atMs < g.first) g.first = atMs;
+    if (atMs >= g.last) {
+      g.last = atMs;
+      g.inc = inc; // newest post drives the shown time/kind
+    }
+  }
+  const out: ScannerIncident[] = [];
+  for (const g of groups.values()) {
+    out.push({
+      ...g.inc,
+      at: new Date(g.last).toISOString(),
+      firstAt: new Date(g.first).toISOString(),
+      updates: g.count,
+    });
+  }
+  out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return out;
+}
 
 const token = () => process.env.SCANNER_SLACK_BOT_TOKEN || "";
 const channel = () => process.env.SCANNER_INCIDENTS_CHANNEL || "";
@@ -92,27 +145,19 @@ async function fetchFromSlack(): Promise<ScannerIncident[]> {
     const data = (await res.json()) as { ok?: boolean; messages?: SlackMessage[] };
     if (!data.ok || !Array.isArray(data.messages)) return [];
 
-    const now = Date.now();
-    const seen = new Set<string>();
-    const out: ScannerIncident[] = [];
+    const entries: IncidentEntry[] = [];
     for (const m of data.messages) {
       const tsSec = Number(m.ts);
       if (!Number.isFinite(tsSec)) continue;
       const atMs = tsSec * 1000;
-      if (now - atMs > MAX_AGE_MS) continue;
 
       const line = lineFromMessage(m);
       if (!line) continue;
       const inc = publicIncident(line);
       if (!inc) continue;
-
-      const key = `${inc.kind}|${inc.location}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ ...inc, at: new Date(atMs).toISOString() });
+      entries.push({ inc, atMs });
     }
-    out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-    return out;
+    return aggregate(entries);
   } catch {
     return [];
   }
@@ -146,8 +191,7 @@ async function fetchFromRss(): Promise<ScannerIncident[]> {
     const items = xml.split(/<item[\s>]/i).slice(1);
 
     const now = Date.now();
-    const seen = new Set<string>();
-    const out: ScannerIncident[] = [];
+    const entries: IncidentEntry[] = [];
     for (const chunk of items) {
       const title = rssTag(chunk, "title");
       const desc = rssTag(chunk, "description");
@@ -167,16 +211,11 @@ async function fetchFromRss(): Promise<ScannerIncident[]> {
       const inc = classifyPublicIncident(type, location, time);
       if (!inc) continue;
 
-      const atMs = pub ? Date.parse(pub) : now;
-      if (Number.isFinite(atMs) && now - atMs > MAX_AGE_MS) continue;
-
-      const key = `${inc.kind}|${inc.location}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ ...inc, at: new Date(Number.isFinite(atMs) ? atMs : now).toISOString() });
+      const parsed = pub ? Date.parse(pub) : now;
+      const atMs = Number.isFinite(parsed) ? parsed : now;
+      entries.push({ inc, atMs });
     }
-    out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-    return out;
+    return aggregate(entries);
   } catch {
     return [];
   }
@@ -222,20 +261,14 @@ async function fetchFromDirect(): Promise<ScannerIncident[] | null> {
       .slice(0, 120); // newest-first; only the recent head matters
 
     const now = Date.now();
-    const seen = new Set<string>();
-    const out: ScannerIncident[] = [];
+    const entries: IncidentEntry[] = [];
     for (const line of lines) {
       const inc = publicIncident(line);
       if (!inc) continue;
       const atMs = directTimestamp(line, inc.time) ?? now;
-      if (now - atMs > MAX_AGE_MS) continue;
-      const key = `${inc.kind}|${inc.location}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ ...inc, at: new Date(atMs).toISOString() });
+      entries.push({ inc, atMs });
     }
-    out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-    return out;
+    return aggregate(entries);
   } catch {
     return null;
   }

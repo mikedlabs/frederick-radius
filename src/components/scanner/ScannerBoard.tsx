@@ -13,6 +13,8 @@ import type { ScannerIncident } from "@/lib/integrations/scannerIncidents";
  */
 
 const POLL_MS = 45_000;
+/** A multi-post call updated within this window is still being worked. */
+const ACTIVE_MS = 12 * 60 * 1000;
 
 const KIND_TONE: Record<string, string> = {
   Crash: "var(--app-brand)",
@@ -24,20 +26,55 @@ const KIND_TONE: Record<string, string> = {
 };
 const toneOf = (kind: string) => KIND_TONE[kind] ?? "var(--app-brand)";
 
-function IncidentRow({ inc }: { inc: ScannerIncident }) {
+function agoLabel(iso: string, now: number): string {
+  const mins = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
+
+/** A call is "active" when it has posted more than once and its latest post is
+ *  recent — the honest, unit-free sign that units are still on it. */
+function isActive(inc: ScannerIncident, now: number): boolean {
+  return inc.updates > 1 && now > 0 && now - Date.parse(inc.at) < ACTIVE_MS;
+}
+
+function IncidentRow({ inc, now }: { inc: ScannerIncident; now: number }) {
+  const active = isActive(inc, now);
+  const tone = toneOf(inc.kind);
   return (
     <div
       className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      style={{
+        borderColor: active ? tone : "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+      }}
     >
-      <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: toneOf(inc.kind) }} />
+      <span
+        aria-hidden
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${active ? "motion-safe:animate-pulse" : ""}`}
+        style={{ background: tone }}
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-          {inc.kind}
+        <p className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+          <span className="truncate">{inc.kind}</span>
+          {active && (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase leading-none tracking-wide text-white"
+              style={{ background: tone }}
+            >
+              Active
+            </span>
+          )}
         </p>
         <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {inc.location}
         </p>
+        {inc.updates > 1 && now > 0 && (
+          <p className="mt-1 font-mono text-[10.5px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Updated {agoLabel(inc.at, now)} · {inc.updates} updates
+          </p>
+        )}
       </div>
       <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
         {inc.time}
@@ -50,6 +87,9 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
   const [incidents, setIncidents] = useState<ScannerIncident[]>(initial);
   const [live, setLive] = useState(false);
   const [kind, setKind] = useState<string | null>(null);
+  // Wall-clock now (ms) for "updated X ago" / active detection, stamped on poll
+  // and a slow tick so no Date.now() runs during render (react-hooks purity).
+  const [nowMs, setNowMs] = useState(0);
 
   // Poll the live feed. Keeps the last good set on a hiccup.
   useEffect(() => {
@@ -62,6 +102,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
         if (alive && Array.isArray(d.incidents)) {
           setIncidents(d.incidents);
           setLive(true);
+          setNowMs(Date.now());
         }
       } catch {
         /* keep last known */
@@ -69,9 +110,11 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
     };
     load();
     const poll = setInterval(load, POLL_MS);
+    const tick = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => {
       alive = false;
       clearInterval(poll);
+      clearInterval(tick);
     };
   }, []);
 
@@ -84,6 +127,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
 
   const kinds = useMemo(() => [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0)), [counts]);
   const shown = kind ? incidents.filter((i) => i.kind === kind) : incidents;
+  const activeCount = useMemo(() => incidents.filter((i) => isActive(i, nowMs)).length, [incidents, nowMs]);
 
   return (
     <div className="space-y-3">
@@ -94,6 +138,14 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
             {incidents.length}
           </span>{" "}
           {incidents.length === 1 ? "public call" : "public calls"} in the last hour
+          {activeCount > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>
+                {activeCount} active
+              </span>
+            </>
+          )}
         </p>
         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
           <span
@@ -142,7 +194,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
       {shown.length > 0 ? (
         <div className="space-y-2">
           {shown.map((inc) => (
-            <IncidentRow key={`${inc.kind}:${inc.location}:${inc.at}`} inc={inc} />
+            <IncidentRow key={`${inc.kind}:${inc.location}:${inc.at}`} inc={inc} now={nowMs} />
           ))}
         </div>
       ) : (
