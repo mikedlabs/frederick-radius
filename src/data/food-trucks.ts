@@ -200,6 +200,20 @@ export const FOOD_TRUCKS: FoodTruck[] = [
   },
 ];
 
+/**
+ * Slug lookup for the claim + beacon write paths. A Map (not a plain object)
+ * so a hostile slug like "__proto__" can never match through the prototype
+ * chain: only a real roster slug returns a truck.
+ */
+export const FOOD_TRUCK_BY_SLUG: ReadonlyMap<string, FoodTruck> = new Map(
+  FOOD_TRUCKS.map((t) => [t.slug, t]),
+);
+
+/** True only for a slug that names a truck in the roster. */
+export function isFoodTruckSlug(slug: unknown): slug is string {
+  return typeof slug === "string" && FOOD_TRUCK_BY_SLUG.has(slug);
+}
+
 /** Trucks of one kind, in roster (alphabetical) order. */
 export function trucksByKind(kind: FoodTruckKind): FoodTruck[] {
   return FOOD_TRUCKS.filter((t) => t.kind === kind);

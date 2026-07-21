@@ -90,6 +90,12 @@
       "sha256": "f3bfeed66ce138dbc88db08b302c222ce07372dceecf29d190dadc409128f0ca",
       "applied_at": null,
       "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0026_food_truck_beacons.sql",
+      "sha256": "a88a14db1c7bd85a0314149b7637fb41005fd3f076dd4c4cc939ec7d5cb65e87",
+      "applied_at": null,
+      "note": "food-truck operator-beacon layer (claims + beacons, RLS deny-all); apply BY HAND in Supabase SQL editor"
     }
   ]
 }
