@@ -116,6 +116,8 @@ export type MapDockProps = {
   radarFrameEpoch: number | null;
   showIncidents: boolean;
   setShowIncidents: SetState<boolean>;
+  showCameras: boolean;
+  setShowCameras: SetState<boolean>;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
@@ -424,6 +426,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showParking) layerBits.push("Parking");
   if (props.showRadar) layerBits.push("Radar");
   if (props.showIncidents) layerBits.push("Incidents");
+  if (props.showCameras) layerBits.push("Cameras");
   for (const k of props.activeOverlays) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
@@ -442,7 +445,8 @@ export default function MapDock(props: MapDockProps) {
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
     (props.showRadar ? 1 : 0) +
-    (props.showIncidents ? 1 : 0);
+    (props.showIncidents ? 1 : 0) +
+    (props.showCameras ? 1 : 0);
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -511,6 +515,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowParking(false);
     props.setShowRadar(false);
     props.setShowIncidents(false);
+    props.setShowCameras(false);
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
@@ -1060,6 +1065,14 @@ export default function MapDock(props: MapDockProps) {
                     title="Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
                   >
                     Incidents
+                  </Chip>
+                  <Chip
+                    on={props.showCameras}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowCameras((v) => !v)}
+                    title="Maryland CHART traffic cameras on I-70, US-15, US-340 and other main routes. Tap a camera to watch its live feed"
+                  >
+                    Cameras
                   </Chip>
                   {OVERLAYS.map((o) => (
                     <Chip

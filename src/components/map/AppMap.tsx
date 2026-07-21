@@ -218,6 +218,7 @@ import LiveBuses from "./LiveBuses";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LiveIncidents from "./LiveIncidents";
+import TrafficCameras from "./TrafficCameras";
 import {
   parseLayersParam,
   serializeLayers,
@@ -672,6 +673,8 @@ export default function AppMap({
   // Live public scanner incidents (crashes, wires down, fires) — opt-in,
   // OFF by default. Empty until the FredScanner feed is configured.
   const [showIncidents, setShowIncidents] = useState(() => layerPrefs.incidents ?? false);
+  // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
+  const [showCameras, setShowCameras] = useState(() => layerPrefs.cameras ?? false);
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -734,8 +737,9 @@ export default function AppMap({
       parking: showParking,
       radar: showRadar,
       incidents: showIncidents,
+      cameras: showCameras,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -2046,6 +2050,10 @@ export default function AppMap({
               FredScanner feed is configured; polls only while its toggle is on. */}
           <LiveIncidents show={showIncidents} />
 
+          {/* MDOT CHART traffic cameras — pinned where they are; tap to watch
+              the live feed. Fetches once when the layer turns on. */}
+          <TrafficCameras show={showCameras} />
+
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
               user opts in; base map unchanged by default. */}
@@ -3250,6 +3258,8 @@ export default function AppMap({
             setShowRadar={setShowRadar}
             showIncidents={showIncidents}
             setShowIncidents={setShowIncidents}
+            showCameras={showCameras}
+            setShowCameras={setShowCameras}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
