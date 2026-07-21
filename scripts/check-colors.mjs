@@ -1,21 +1,31 @@
 #!/usr/bin/env node
 /**
- * Color-token guard — lightweight. Keeps the palette tokens
- * (globals.css --app-*) the single source of truth for app UI color, so a
- * surface can't quietly grow its own hardcoded palette again (the way /beer
- * did). `style-lint.ts` enforces VOICE; this enforces COLOR — they're
- * separate concerns and there was no automated color check before.
+ * Color-token guard — lightweight. Keeps the palette tokens (the --app- family
+ * in globals.css) the single source of truth for app UI color, so a surface
+ * can't quietly grow its own hardcoded palette again (the way /beer did).
+ * `style-lint.ts` enforces VOICE; this enforces COLOR — they're separate
+ * concerns and there was no automated color check before.
  *
- * Flags, in app .tsx/.ts: Tailwind arbitrary color classes with a bare hex,
- *   bg-[#..]  text-[#..]  border-[#..]  from/to/via-[#..]  ring/fill/stroke-[#..]
- * Use a token instead: bg-[var(--app-*)], or the tolerated fallback form
- *   bg-[var(--app-ink,#0e0e0e)]  (a var() with a hex FALLBACK is allowed —
- *   it still resolves to the token when present).
+ * Flags, in app .tsx/.ts: a Tailwind arbitrary color utility whose value is a
+ * bare hex — one of the bg / text / border / from / to / via / ring / fill /
+ * stroke / decoration / outline / caret / accent / divide / shadow prefixes
+ * carrying a hex value that starts right after the opening bracket. Use a
+ * palette token in the arbitrary value instead (a var(--app-token) reference),
+ * or the tolerated fallback form where the var() carries a hex fallback — that
+ * still resolves to the token when the token is present.
+ *
+ * IMPORTANT — no example utility syntax in this file. Tailwind v4's content
+ * scanner reads this script too, and it will mint a real (and sometimes
+ * invalid) utility from any literal "prefix-[value]" it finds in a comment or
+ * string here, which can break the generated stylesheet at build time. So the
+ * shapes above are described in words, and the one place a bracket appears is
+ * the detection regex below, where the brackets are escaped and cannot be read
+ * as a class candidate. Keep it that way.
  *
  * Intentionally NOT flagged here:
  *   - inline style hex that must mirror Mapbox GL paint (GL can't read CSS
  *     vars); those are a documented, contained exception.
- *   - the var(--x,#hex) fallback form (has "var(" before the hex).
+ *   - the var() with a hex fallback form (has "var(" before the hex).
  *
  * ALLOWLISTED surfaces (own palette, on purpose or as tracked debt):
  *   - marketing / pitch — the deliberately separate dark marketing world.
@@ -37,9 +47,11 @@ const EXCLUDE = [
   "src/app/(app)/beer/",
 ];
 
-// Tailwind arbitrary color utility with a bare hex value: `bg-[#abc]`,
-// `text-[#112233]`, `ring-[#aabbccdd]`, etc. The `#` immediately after `[`
-// is what makes it bare — `bg-[var(--x,#fff)]` has `var(` first and is skipped.
+// Matches an arbitrary color utility whose value is a bare hex — the "#" sits
+// immediately inside the bracket. A value that begins with "var(" (a token
+// reference, with or without a hex fallback) has var( before the hex and is
+// skipped. The brackets here are escaped so the content scanner can't read
+// this pattern as a real class candidate.
 const BARE_HEX_UTILITY =
   /\b(?:bg|text|border|from|to|via|ring|fill|stroke|decoration|outline|caret|accent|divide|shadow)-\[#[0-9a-fA-F]{3,8}\]/;
 
@@ -66,7 +78,8 @@ for (const file of files) {
 if (hits.length > 0) {
   console.error(
     `check-colors: ${hits.length} bare-hex color utilit(ies) in app UI.\n` +
-      `Use a palette token: bg-[var(--app-*)] (or the var(--app-*,#hex) fallback form).\n`,
+      `Use a palette token in the arbitrary value (a var(--app-token) reference), ` +
+      `or the var() hex-fallback form.\n`,
   );
   for (const h of hits) console.error("  " + h);
   process.exit(1);
