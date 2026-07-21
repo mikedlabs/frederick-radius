@@ -3424,6 +3424,42 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
 }
 
+/* ── CHART traffic-camera marker — a small spruce disc with a camera glyph.
+   Reads as "watch here", distinct from the vermilion incident pins. ── */
+.fr-camera-marker {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+.fr-camera-marker::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--app-brand-2, #2f5d50);
+  border: 2px solid #fff;
+  box-shadow: var(--app-shadow-2);
+}
+.fr-camera-marker > svg {
+  position: relative;
+  z-index: 1;
+}
+.fr-camera-marker:active {
+  transform: scale(0.94);
+}
+.fr-camera-marker:focus-visible {
+  outline: 3px solid var(--app-brand);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
 /* ── Pin peek card — the compact bottom card a tapped pin raises ── */
 .map-peek {
   position: absolute;
