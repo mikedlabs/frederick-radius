@@ -1,0 +1,212 @@
+[
+ {
+  "name": "Ballenger Creek Park",
+  "address": "5420 Ballenger Creek Pike",
+  "town": "Frederick",
+  "lng": -77.44718,
+  "lat": 39.38301
+ },
+ {
+  "name": "Buckeystown Park",
+  "address": "7221 Michaels Mill Rd",
+  "town": "Buckeystown",
+  "lng": -77.41507,
+  "lat": 39.32672
+ },
+ {
+  "name": "Calico Rocks Regional Park",
+  "address": "2141 Ballenger Creek Pike",
+  "town": "Point Of Rocks",
+  "lng": -77.51873,
+  "lat": 39.28207
+ },
+ {
+  "name": "Catoctin Creek Park",
+  "address": "2929 Sumantown Rd",
+  "town": "Middletown",
+  "lng": -77.56478,
+  "lat": 39.39186
+ },
+ {
+  "name": "Centerville Recreation Center",
+  "address": "3601 Carriage Hill Dr",
+  "town": "Frederick",
+  "lng": -77.33412,
+  "lat": 39.33494
+ },
+ {
+  "name": "Creagerstown Park",
+  "address": "12014 Penterra Manor Ln",
+  "town": "Thurmont",
+  "lng": -77.35251,
+  "lat": 39.56512
+ },
+ {
+  "name": "Deer Crossing Recreation Center",
+  "address": "10601 Finn Dr",
+  "town": "New Market",
+  "lng": -77.29182,
+  "lat": 39.40358
+ },
+ {
+  "name": "Fountain Rock Park",
+  "address": "8511 Nature Center Pl",
+  "town": "Walkersville",
+  "lng": -77.36969,
+  "lat": 39.47564
+ },
+ {
+  "name": "Fountaindale Park",
+  "address": "7213 Beechtree Dr",
+  "town": "Middletown",
+  "lng": -77.51415,
+  "lat": 39.43117
+ },
+ {
+  "name": "Green Hill Park",
+  "address": "2810 Decatur Dr",
+  "town": "Adamstown",
+  "lng": -77.47113,
+  "lat": 39.31122
+ },
+ {
+  "name": "Kemptown Park",
+  "address": "3456-b Kemptown Church Rd",
+  "town": "Monrovia",
+  "lng": -77.23629,
+  "lat": 39.33338
+ },
+ {
+  "name": "Libertytown Park",
+  "address": "12201 Liberty Rd",
+  "town": "Libertytown",
+  "lng": -77.23721,
+  "lat": 39.48316
+ },
+ {
+  "name": "Loys Station Park",
+  "address": "3600 Old Frederick Rd",
+  "town": "Thurmont",
+  "lng": -77.35203,
+  "lat": 39.60885
+ },
+ {
+  "name": "Middletown Park",
+  "address": "7628 Coblentz Rd",
+  "town": "Middletown",
+  "lng": -77.52956,
+  "lat": 39.44586
+ },
+ {
+  "name": "Middletown Recreation Center",
+  "address": "403 Franklin St",
+  "town": "Middletown",
+  "lng": -77.53959,
+  "lat": 39.43695
+ },
+ {
+  "name": "Oakdale Recreation Center",
+  "address": "9850 Old National Pike",
+  "town": "Ijamsville",
+  "lng": -77.31875,
+  "lat": 39.3957
+ },
+ {
+  "name": "Old National Pike Park",
+  "address": "12406 Old National Pike",
+  "town": "Mount Airy",
+  "lng": -77.22746,
+  "lat": 39.38014
+ },
+ {
+  "name": "Othello Regoinal Park",
+  "address": "1901a Jefferson Pike",
+  "town": "Knoxville",
+  "lng": -77.60394,
+  "lat": 39.34498
+ },
+ {
+  "name": "Pinecliff Park",
+  "address": "8350 Pinecliff Park Rd",
+  "town": "Frederick",
+  "lng": -77.3774,
+  "lat": 39.38978
+ },
+ {
+  "name": "Point Of Rocks Park",
+  "address": "1637 Ballenger Creek Pike",
+  "town": "Point Of Rocks",
+  "lng": -77.53638,
+  "lat": 39.27796
+ },
+ {
+  "name": "Richard W. Kanode Farm Park",
+  "address": "8213a Stevens Rd",
+  "town": "Thurmont",
+  "lng": -77.38008,
+  "lat": 39.55475
+ },
+ {
+  "name": "Rock Creek Recreation Center",
+  "address": "55-b West Frederick St",
+  "town": "Walkersville",
+  "lng": -77.35428,
+  "lat": 39.48067
+ },
+ {
+  "name": "Roddy Road Park",
+  "address": "14760 Roddy Rd",
+  "town": "Thurmont",
+  "lng": -77.39429,
+  "lat": 39.6412
+ },
+ {
+  "name": "Rose Hill Manor Park",
+  "address": "1611 N Market St",
+  "town": "Frederick",
+  "lng": -77.40554,
+  "lat": 39.43634
+ },
+ {
+  "name": "Thurmont Recreation Center",
+  "address": "408 E Main St",
+  "town": "Thurmont",
+  "lng": -77.40435,
+  "lat": 39.62088
+ },
+ {
+  "name": "Tuscarora Recreation Center",
+  "address": "6321 Lambert Dr",
+  "town": "Frederick",
+  "lng": -77.44418,
+  "lat": 39.37038
+ },
+ {
+  "name": "Urbana Community Park",
+  "address": "3636 Urbana Pike",
+  "town": "Frederick",
+  "lng": -77.36162,
+  "lat": 39.32768
+ },
+ {
+  "name": "Urbana District Park",
+  "address": "3805 Urbana Pike",
+  "town": "Frederick",
+  "lng": -77.36331,
+  "lat": 39.33981
+ },
+ {
+  "name": "Utica District Park",
+  "address": "10200-b Old Frederick Rd",
+  "town": "Frederick",
+  "lng": -77.40271,
+  "lat": 39.51591
+ },
+ {
+  "name": "Walkersville Recreation Center",
+  "address": "87 Frederick St",
+  "town": "Walkersville",
+  "lng": -77.36258,
+  "lat": 39.4743
+ }
+]

@@ -129,6 +129,8 @@ export type MapDockProps = {
   setShowCameras: SetState<boolean>;
   showFireStations: boolean;
   setShowFireStations: SetState<boolean>;
+  showCivicPlaces: boolean;
+  setShowCivicPlaces: SetState<boolean>;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
@@ -440,6 +442,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showIncidents) layerBits.push("Incidents");
   if (props.showCameras) layerBits.push("Cameras");
   if (props.showFireStations) layerBits.push("Fire stations");
+  if (props.showCivicPlaces) layerBits.push("Parks & libraries");
   for (const k of props.activeOverlays) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
@@ -460,7 +463,8 @@ export default function MapDock(props: MapDockProps) {
     (props.showRadar ? 1 : 0) +
     (props.showIncidents ? 1 : 0) +
     (props.showCameras ? 1 : 0) +
-    (props.showFireStations ? 1 : 0);
+    (props.showFireStations ? 1 : 0) +
+    (props.showCivicPlaces ? 1 : 0);
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -530,6 +534,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowIncidents(false);
     props.setShowCameras(false);
     props.setShowFireStations(false);
+    props.setShowCivicPlaces(false);
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
@@ -1102,6 +1107,14 @@ export default function MapDock(props: MapDockProps) {
                     title="Frederick County fire & rescue companies from county GIS. Each pin is the station number, the root of its call signs"
                   >
                     Fire stations
+                  </Chip>
+                  <Chip
+                    on={props.showCivicPlaces}
+                    color="var(--app-brand-2)"
+                    onClick={() => props.setShowCivicPlaces((v) => !v)}
+                    title="County parks and public libraries from county GIS. Tap a pin for the address and, for libraries, the hours page"
+                  >
+                    Parks & libraries
                   </Chip>
                   {OVERLAYS.map((o) => (
                     <Chip
