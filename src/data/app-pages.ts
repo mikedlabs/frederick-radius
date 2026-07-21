@@ -63,6 +63,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/dear-frederick", title: "Dear Frederick", blurb: "Read handwritten letters mailed to Frederick and gathered here.", keywords: ["dear frederick", "letters", "community letters"] },
   { href: "/from-above/preview", title: "From Above", blurb: "See Frederick County through Mike's drone archive.", keywords: ["from above", "aerial", "drone", "photography"] },
   { href: "/emergency", title: "Emergency & urgent care", blurb: "Call 911, the county ER, urgent care, and the poison and crisis lines.", keywords: ["emergency", "911", "hospital", "emergency room", "er", "urgent care", "poison control", "frederick health hospital", "ambulance", "crisis line"] },
+  { href: "/scanner", title: "County scanner", blurb: "Live public dispatch calls in plain language: crashes, fires, wires down.", keywords: ["scanner", "police scanner", "fire scanner", "dispatch", "911 calls", "incidents", "crashes", "fires", "wires down", "frederick scanner"] },
   { href: "/emergency-vet", title: "Pet emergency care", blurb: "Find listed emergency animal care and poison-help contacts.", keywords: ["emergency vet", "animal hospital", "pet emergency", "pet poison"] },
   { href: "/submit/event", title: "Add an event", blurb: "Submit a local event for review.", keywords: ["add event", "submit event", "post an event"] },
 
