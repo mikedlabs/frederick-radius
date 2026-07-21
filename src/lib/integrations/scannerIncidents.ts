@@ -14,7 +14,7 @@
  * Unset → empty result, every surface self-hides.
  */
 import { unstable_cache } from "next/cache";
-import { publicIncident, geocodableAddress, type PublicIncident } from "@/lib/scanner/incidentFeed";
+import { publicIncident, geocodableAddress, parseIncidentLine, type PublicIncident } from "@/lib/scanner/incidentFeed";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 
 export type ScannerIncident = PublicIncident & {
@@ -35,14 +35,38 @@ export function scannerConfigured(): boolean {
 type SlackMessage = {
   ts?: string;
   text?: string;
-  attachments?: { text?: string; fallback?: string; pretext?: string }[];
+  attachments?: { text?: string; fallback?: string; pretext?: string; title?: string }[];
+  blocks?: unknown;
 };
 
-/** The IFTTT bot puts the dispatch line in an attachment; fall back to text. */
+/** Every string a Slack message might carry the dispatch line in, in priority
+ *  order: message text, then each attachment's text/fallback/pretext/title,
+ *  then any string found inside blocks. Robust to however IFTTT nests it. */
+export function messageCandidates(m: SlackMessage): string[] {
+  const out: string[] = [];
+  if (typeof m.text === "string") out.push(m.text);
+  for (const a of m.attachments ?? []) {
+    for (const v of [a.text, a.fallback, a.pretext, a.title]) {
+      if (typeof v === "string") out.push(v);
+    }
+  }
+  // Blocks can nest text arbitrarily; pull every string out defensively.
+  const walk = (v: unknown) => {
+    if (typeof v === "string") out.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  if (m.blocks) walk(m.blocks);
+  return out;
+}
+
+/** The dispatch line from a message: the first candidate that PARSES as one
+ *  (whatever field it lives in), else the first non-empty candidate. */
 function lineFromMessage(m: SlackMessage): string | null {
-  const att = m.attachments?.find((a) => a.text || a.fallback || a.pretext);
-  const raw = (att?.text || att?.fallback || att?.pretext || m.text || "").trim();
-  return raw || null;
+  const cands = messageCandidates(m).map((s) => s.replace(/^attachment:\s*/i, "").trim());
+  const parsed = cands.find((s) => parseIncidentLine(s));
+  if (parsed) return parsed;
+  return cands.find((s) => s.length > 0) ?? null;
 }
 
 async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
