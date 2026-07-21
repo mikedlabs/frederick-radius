@@ -9,11 +9,16 @@
  *
  * This module turns that raw stream into safe, de-identified, public-safety
  * incidents. The allowlist mirrors the philosophy of pulsepoint.ts: only known
- * public, non-medical, road/fire/hazard call types survive; EVERYTHING else —
- * every medical (BLS/ALS person-down, odor inside a home, welfare check), fire
- * ALARM (false-heavy), service call, mutual aid, standby — is dropped by
- * default. A wrong call here is a privacy harm, so the list is conservative
- * and unit-tested against real lines (see incidentFeed.spec.ts).
+ * public road/fire/hazard call types survive — crashes, a pedestrian or cyclist
+ * struck (a road collision, not private medical), vehicle fires, wires down,
+ * gas leaks outside, structure and outside fires, hazmat, water rescue and
+ * entrapment. EVERYTHING else — every private medical (BLS/ALS person-down,
+ * chest pain, fall, odor inside a home, welfare check), every crime, fire ALARM
+ * (false-heavy), service call, mutual aid, standby — is dropped by default. The
+ * line is public-road-event vs private-person: a person hit on a public road is
+ * the former; a person having a medical emergency is the latter. A wrong call
+ * here is a privacy harm, so the list is conservative and unit-tested against
+ * real lines (see incidentFeed.spec.ts).
  *
  * The feed is already block-level (no house numbers); we never add precision,
  * never surface unit/radio codes, and callers age incidents out fast.
@@ -21,11 +26,17 @@
 
 export type PublicIncidentKind =
   | "Crash"
+  | "Pedestrian struck"
+  | "Vehicle fire"
   | "Wires down"
   | "Gas leak"
+  | "Hazmat"
   | "Structure fire"
   | "Outside fire"
-  | "Water rescue";
+  | "Water rescue"
+  | "Rescue"
+  | "Medevac"
+  | "Flooding";
 
 export type ParsedIncidentLine = {
   /** Clock time as posted, e.g. "8:23 pm". */
@@ -75,14 +86,25 @@ export function parseIncidentLine(raw: string): ParsedIncidentLine | null {
   return { time, type, location };
 }
 
-/** Public, non-medical, non-personal kinds only. First match wins. */
+/** Public, non-medical, non-personal kinds only. First match wins, so the more
+ *  specific road-collision kinds (pedestrian, vehicle fire) come before Crash. */
 const PUBLIC_KINDS: { re: RegExp; kind: PublicIncidentKind; road: boolean }[] = [
-  { re: /vehicle accident|collision|overturn|vehicle fire|\bcrash\b/i, kind: "Crash", road: true },
+  // A person hit on a public road IS a road collision — block-level, no name.
+  // The medical unit riding along doesn't make it private (see the guard below).
+  { re: /pedestrian struck|ped(?:estrian)? struck|bicyclist struck|cyclist struck|struck by (?:a |an )?(?:vehicle|car|auto|truck|train)/i, kind: "Pedestrian struck", road: true },
+  { re: /vehicle fire|car fire|auto fire|truck fire/i, kind: "Vehicle fire", road: true },
+  { re: /(?:vehicle|motorcycle|motorcyle) accident|collision|overturn|\bcrash\b/i, kind: "Crash", road: true },
   { re: /wires? down|arcing|transformer fire|pole fire/i, kind: "Wires down", road: true },
   { re: /gas leak outside|gas main|gas odor outside/i, kind: "Gas leak", road: true },
+  { re: /hazmat|hazardous materials?|hazardous spill|fuel spill|fuel leak|chemical spill/i, kind: "Hazmat", road: true },
+  { re: /flooding|water over (?:the )?road|road(?:way)? flooded|highway flooded|high water/i, kind: "Flooding", road: true },
   { re: /(structure|building|commercial|residential|dwelling|working|house|apartment) fire/i, kind: "Structure fire", road: false },
-  { re: /(brush|field|outside|woods|grass|mulch) fire/i, kind: "Outside fire", road: false },
+  { re: /(brush|field|outside|woods|grass|mulch|dumpster|trash|rubbish) fire|machinery on fire|equipment fire/i, kind: "Outside fire", road: false },
   { re: /water rescue|swift water/i, kind: "Water rescue", road: false },
+  { re: /entrapment|extrication|building collapse|structure collapse|person trapped|people trapped|trapped (?:in|inside|under)/i, kind: "Rescue", road: false },
+  // A scene medevac / landing zone means a serious incident and often a road
+  // shut for the helicopter. Routine hospital-helipad standby was dropped above.
+  { re: /medevac|medivac|med-?evac|landing zone|helicopter landing/i, kind: "Medevac", road: true },
 ];
 
 /** Title-case a shouted block-level location for display, keeping BLOCK etc. */
@@ -112,9 +134,17 @@ export function classifyPublicIncident(
 
   // Fire ALARMS are overwhelmingly false; never surface them as fires.
   if (/\balarm\b/i.test(type)) return null;
-  // A bare medical response (BLS/ALS) that is NOT a vehicle crash is a person's
-  // medical emergency — drop it. A "VEHICLE ACCIDENT - BLS" keeps (it's a crash).
-  if (/\b(bls|als)\b/i.test(type) && !/vehicle accident|crash|collision|overturn/i.test(type)) {
+  // "Standby" is routine cover / hospital-helipad prep, not a scene incident —
+  // this also keeps a hospital "standby for helicopter landing" out while a
+  // real scene MEDEVAC / LANDING ZONE below still lands.
+  if (/\bstandby\b/i.test(type)) return null;
+  // A bare medical response (BLS/ALS) that is NOT a road collision is a person's
+  // private medical emergency — drop it. A crash or a pedestrian/cyclist struck
+  // keeps: those are public road events that happen to carry a medical unit.
+  if (
+    /\b(bls|als)\b/i.test(type) &&
+    !/vehicle accident|crash|collision|overturn|pedestrian|struck|bicyclist|cyclist|medevac|medivac|landing zone|helicopter/i.test(type)
+  ) {
     return null;
   }
 
