@@ -417,7 +417,7 @@ function AmenityReveal({
   intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
 }) {
   const openAll = RADIUS_TOOLS.find((tool) => tool.id === "public-essentials");
-  const rows = ["amenities-guide", "emergency-vet"]
+  const rows = ["emergency", "amenities-guide", "emergency-vet"]
     .map((id) => RADIUS_TOOLS.find((tool) => tool.id === id))
     .filter((tool): tool is RadiusTool => Boolean(tool))
     .map(toDirectoryItem);

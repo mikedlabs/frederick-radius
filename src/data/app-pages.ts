@@ -62,6 +62,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/archive", title: "Archive Lens", blurb: "Archive Lens shows curated Frederick maps, surveys, newspaper pages, and documentary photographs.", keywords: ["archive", "old maps", "newspapers", "historic photos", "library of congress"] },
   { href: "/dear-frederick", title: "Dear Frederick", blurb: "Read handwritten letters mailed to Frederick and gathered here.", keywords: ["dear frederick", "letters", "community letters"] },
   { href: "/from-above/preview", title: "From Above", blurb: "See Frederick County through Mike's drone archive.", keywords: ["from above", "aerial", "drone", "photography"] },
+  { href: "/emergency", title: "Emergency & urgent care", blurb: "Call 911, the county ER, urgent care, and the poison and crisis lines.", keywords: ["emergency", "911", "hospital", "emergency room", "er", "urgent care", "poison control", "frederick health hospital", "ambulance", "crisis line"] },
   { href: "/emergency-vet", title: "Pet emergency care", blurb: "Find listed emergency animal care and poison-help contacts.", keywords: ["emergency vet", "animal hospital", "pet emergency", "pet poison"] },
   { href: "/submit/event", title: "Add an event", blurb: "Submit a local event for review.", keywords: ["add event", "submit event", "post an event"] },
 

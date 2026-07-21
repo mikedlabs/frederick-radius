@@ -32,6 +32,7 @@ import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
+import EmergencyPrompt from "@/components/today/EmergencyPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -441,9 +442,11 @@ export default async function HomePage() {
       <section aria-label="Good to have" className="mt-6">
         <SectionHeading size="sm" title="Good to have" />
         <div className="mt-3 space-y-3">
-          {/* Where to stay, the food-truck roster, and the parking /
-              reservations hand-offs — real visitor utilities, now standing
-              in the open instead of hiding behind a weather collapse. */}
+          {/* Emergency essentials lead the shelf — the one utility a visitor
+              most needs to have found BEFORE the moment they need it (beta
+              safety request). Where to stay, the food-truck roster, and the
+              parking / reservations hand-offs follow. */}
+          <EmergencyPrompt />
           <VisitorStayPrompt />
           <FoodTruckToday />
           <PartnerAppsRow />
