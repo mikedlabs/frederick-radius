@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Star, X, ArrowUpDown } from "lucide-react";
+import { Search, Star, X, ArrowUpDown, ChevronDown } from "lucide-react";
 import { ALL_BEERS, STYLE_FAMILIES, type StyleFamily, type BeerWithBrewery } from "@/data/beers";
 import {
   EMPTY_BEER_FILTER,
@@ -43,9 +43,18 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
   const [filter, setFilter] = useState<BeerFilter>(EMPTY_BEER_FILTER);
   const [sort, setSort] = useState<BeerSort>("mix");
   const [openBeer, setOpenBeer] = useState<BeerWithBrewery | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const results = useMemo(() => queryBeers(filter, sort), [filter, sort]);
   const active = !isEmptyBeerFilter(filter);
+
+  // The mosaic is a taste of the color wall, not the whole 174-deep scroll —
+  // capped so the sections below (breweries, taproom events, the map) stay
+  // reachable without a marathon (owner ask). One tap opens the full wall;
+  // a narrow filter that already fits shows everything with no button.
+  const COLLAPSED_COUNT = 10;
+  const capped = !expanded && results.length > COLLAPSED_COUNT;
+  const shown = capped ? results.slice(0, COLLAPSED_COUNT) : results;
 
   const toggleFamily = (key: StyleFamily) =>
     setFilter((f) => ({
@@ -188,10 +197,35 @@ export default function BeerIndex({ photos = {} }: { photos?: BreweryPhotoMap })
         )}
       </div>
 
-      {/* The mosaic — every beer a tile in its own color. */}
-      <div className="mt-4">
-        <BeerMosaic beers={results} onOpen={setOpenBeer} />
+      {/* The mosaic — every beer a tile in its own color. Capped by default so
+          the wall reads as a taste, not an endless scroll; the fade + button
+          reveal the rest inline. */}
+      <div className="relative mt-4">
+        <BeerMosaic beers={shown} onOpen={setOpenBeer} />
+        {capped && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#f5eee2] to-transparent"
+          />
+        )}
       </div>
+      {results.length > COLLAPSED_COUNT && (
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-black/15 bg-[#faf5ea] px-5 text-[13px] font-semibold text-[#382517] transition active:scale-[0.97]"
+          >
+            {expanded ? "Show fewer" : `Show all ${results.length}`}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+              strokeWidth={2.4}
+              aria-hidden
+            />
+          </button>
+        </div>
+      )}
 
       <BeerSheet
         beer={openBeer}
