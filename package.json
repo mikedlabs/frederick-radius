@@ -12,6 +12,7 @@
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "audit:pages": "tsx --tsconfig tsconfig.json scripts/page-quality-audit.ts",
     "lint:zindex": "node scripts/check-zindex.mjs",
+    "lint:colors": "node scripts/check-colors.mjs",
     "scan:devibe": "python3 scripts/devibe_scan.py src",
     "build:photo-suppress": "tsx --tsconfig tsconfig.json scripts/build-photo-suppress.ts",
     "build:place-hues": "tsx --tsconfig tsconfig.json scripts/build-place-hues.ts",

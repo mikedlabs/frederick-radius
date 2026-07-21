@@ -51,7 +51,7 @@ function TrailRow({ t }: { t: Trail }) {
   return (
     <Row
       href={`/map?at=${t.lat},${t.lng}`}
-      leading={<IconTile icon={Icon} tone="#1E6B3A" />}
+      leading={<IconTile icon={Icon} tone="var(--app-positive)" />}
       title={t.name}
       subtitle={bits.length ? bits.join(" · ") : undefined}
       meta={t.lengthMi != null ? `${t.lengthMi} mi` : undefined}
