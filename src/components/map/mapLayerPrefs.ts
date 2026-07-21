@@ -25,6 +25,7 @@ export type MapLayerPrefs = {
   cemeteries?: boolean;
   parking?: boolean;
   radar?: boolean;
+  incidents?: boolean;
 };
 
 export function readMapLayerPrefs(): MapLayerPrefs {

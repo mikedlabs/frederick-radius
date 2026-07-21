@@ -114,6 +114,8 @@ export type MapDockProps = {
   /** Newest radar frame's unix seconds — stamps "radar as of 9:42 PM" so
    *  minutes-old tiles are never mistaken for real time. */
   radarFrameEpoch: number | null;
+  showIncidents: boolean;
+  setShowIncidents: SetState<boolean>;
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
@@ -421,6 +423,7 @@ export default function MapDock(props: MapDockProps) {
   if (props.showCemeteries) layerBits.push("Cemeteries");
   if (props.showParking) layerBits.push("Parking");
   if (props.showRadar) layerBits.push("Radar");
+  if (props.showIncidents) layerBits.push("Incidents");
   for (const k of props.activeOverlays) {
     const o = OVERLAYS.find((x) => x.key === k);
     if (o) layerBits.push(o.label);
@@ -438,7 +441,8 @@ export default function MapDock(props: MapDockProps) {
     (props.showAerial ? 1 : 0) +
     (props.showCemeteries ? 1 : 0) +
     (props.showParking ? 1 : 0) +
-    (props.showRadar ? 1 : 0);
+    (props.showRadar ? 1 : 0) +
+    (props.showIncidents ? 1 : 0);
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -506,6 +510,7 @@ export default function MapDock(props: MapDockProps) {
     props.setShowCemeteries(false);
     props.setShowParking(false);
     props.setShowRadar(false);
+    props.setShowIncidents(false);
     props.setShowSavedOnly(false);
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
@@ -1047,6 +1052,14 @@ export default function MapDock(props: MapDockProps) {
                     title="Animated precipitation radar from RainViewer. Frames run a few minutes behind real time"
                   >
                     Radar
+                  </Chip>
+                  <Chip
+                    on={props.showIncidents}
+                    color="var(--app-brand)"
+                    onClick={() => props.setShowIncidents((v) => !v)}
+                    title="Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
+                  >
+                    Incidents
                   </Chip>
                   {OVERLAYS.map((o) => (
                     <Chip
