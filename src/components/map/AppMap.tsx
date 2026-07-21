@@ -63,7 +63,6 @@ import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import { CLUSTER_FAMILIES } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -125,21 +124,10 @@ function hasWebGL(): boolean {
   }
 }
 
-// Dominant-family cluster tint, generated from the ONE family table so the
-// tally (clusterProperties) and the paint can never disagree. First family
-// to hit the max wins ties (food > drink > coffee > ... — deliberate: the
-// order reflects what a browsing user most likely cares about).
-const CLUSTER_TINT: mapboxgl.ExpressionSpecification = [
-  "let",
-  "mx",
-  ["max", ...CLUSTER_FAMILIES.map((f) => ["get", f.key])],
-  [
-    "case",
-    ["==", ["var", "mx"], 0], "#E14328",
-    ...CLUSTER_FAMILIES.flatMap((f) => [["==", ["get", f.key], ["var", "mx"]], f.color]),
-    "#E14328",
-  ],
-] as unknown as mapboxgl.ExpressionSpecification;
+// Curated places render UNCLUSTERED — every place is its own pin, shown all
+// at once (owner call 2026-07-21: clustering into numbered bubbles hid real
+// places and read as a bad experience). The dominant-family cluster tint that
+// used to color the count discs is gone with them.
 
 // ── Tap-a-town: which municipality is under a tapped point ──────────
 // Ray-cast point-in-polygon. Even-odd across all rings handles holes
@@ -1958,7 +1946,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -2519,88 +2507,7 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             promoteId="slug"
-            cluster
-            clusterRadius={64}
-            clusterMaxZoom={15}
-            // Tally EVERY bucket via the seven macro families (was: five raw
-            // buckets, so brewery/wine/coffee/bar/music/family/etc counted
-            // toward nothing and an all-brewery cluster fell to the generic
-            // fallback). One table (CLUSTER_FAMILIES) drives tally + tint.
-            clusterProperties={Object.fromEntries(
-              CLUSTER_FAMILIES.map((f) => [
-                f.key,
-                ["+", ["case", ["in", ["get", "bucket"], ["literal", [...f.buckets]]], 1, 0]],
-              ]),
-            )}
           >
-            {/* Dominant-category tint, shared by the glow + the disk. */}
-            <Layer
-              id="curated-cluster-glow"
-              type="circle"
-              filter={["has", "point_count"]}
-              paint={{
-                "circle-color": CLUSTER_TINT,
-                "circle-opacity": 0.18,
-                "circle-blur": 1,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 18, 50, 26, 300, 34,
-                ],
-              }}
-            />
-            <Layer
-              id="curated-clusters"
-              type="circle"
-              filter={["has", "point_count"]}
-              paint={{
-                // Tint by the cluster's dominant category so a glance reads
-                // "this dense area is mostly food / arts / civic".
-                "circle-color": CLUSTER_TINT,
-                // Calm category tint. The count label below restores
-                // "how many places" without a hard black outline; the
-                // disk itself stays soft and the dominant-category color
-                // still reads at a glance. Wider radius scale gives
-                // dense clusters real visual weight at the county view.
-                "circle-opacity": 0.62,
-                "circle-blur": 0.25,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 10, 10, 14, 50, 18, 150, 22, 400, 26,
-                ],
-                "circle-stroke-color": "#FFFFFF",
-                "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.4,
-              }}
-            />
-            {/* Count label on top of the cluster disc — small, white,
-                no halo'd pill, just numbers. The earlier "no number"
-                rule was right that big black count chips were loud;
-                but losing the count entirely meant a 12-pin cluster
-                read identical to an 80-pin one. A subtle white numeric
-                label restores the cardinality signal while keeping
-                the calm visual register. Hidden on tiny clusters (3 or
-                fewer) since the disc itself already reads as small. */}
-            <Layer
-              id="curated-cluster-counts"
-              type="symbol"
-              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
-              layout={{
-                "text-field": ["get", "point_count_abbreviated"],
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  4, 10, 50, 12, 200, 13,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
-                "text-allow-overlap": true,
-                "text-ignore-placement": true,
-              }}
-              paint={{
-                "text-color": "#FFFFFF",
-                "text-halo-color": "rgba(0,0,0,0.25)",
-                "text-halo-width": 1.2,
-                "text-halo-blur": 0.5,
-              }}
-            />
             {/* Last call — a soft amber halo under places open now but
                 closing within the hour. Calm by design (a warm glow, no
                 countdown, no pulse): a glance catches what's about to
@@ -2771,13 +2678,13 @@ export default function AppMap({
             <Layer
               id="ring-fill"
               type="fill"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               paint={{ "fill-color": "#E14328", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               paint={{
                 "line-color": "#E14328",
                 "line-width": 2,
@@ -2807,7 +2714,7 @@ export default function AppMap({
             <Layer
               id="route-line"
               type="line"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
                 "line-color": "#20506A",
