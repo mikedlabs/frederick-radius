@@ -4,45 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Search, Compass, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
+import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
+import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
 
-/**
- * Auto-hide on scroll: the bar slides up out of view when the user
- * scrolls down past a threshold and slides back in the instant they
- * scroll up — the iOS / Mobile-Safari standard. Hides ~56px of chrome
- * while reading and lets the user reclaim it with a small upward swipe.
- * Always pinned at the top of the document (no flicker at top of page)
- * and during a search overlay.
- */
-function useHideOnScroll(disabled: boolean) {
-  // Track only what scroll position says; the disabled override is
-  // applied at render time below so we don't cascade a setState from
-  // an effect when `disabled` flips (search overlay open / close).
-  const [scrollHidden, setScrollHidden] = useState(false);
-  const lastY = useRef(0);
-  const ticking = useRef(false);
-  useEffect(() => {
-    const onScroll = () => {
-      if (ticking.current) return;
-      ticking.current = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const dy = y - lastY.current;
-        if (y < 80) setScrollHidden(false);
-        else if (dy > 6) setScrollHidden(true);
-        else if (dy < -4) setScrollHidden(false);
-        lastY.current = y;
-        ticking.current = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return disabled ? false : scrollHidden;
-}
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -184,12 +152,15 @@ export default function TopBar() {
               className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
+              {/* The Ripple, on its brick tile — the same mark as the app icon
+                  and browser tab, so the header and the home screen agree on
+                  what the logo is. rounded-[7px] tracks the squircle's 23.3%
+                  radius at 28px so the shadow hugs the tile. */}
               <span
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-[var(--app-shadow-1)]"
-                style={{ background: "var(--app-brand)" }}
+                className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-[7px] shadow-[var(--app-shadow-1)]"
                 aria-hidden
               >
-                <Disc />
+                <RippleMark size={28} tile />
               </span>
               {/* Wordmark hides on the narrowest phones so the search
                   pill gets real room (it was clipping to "Se…"); the
@@ -309,11 +280,3 @@ export default function TopBar() {
   );
 }
 
-function Disc() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
-      <circle cx="12" cy="12" r="9" fill="none" stroke="white" strokeWidth="2" />
-      <circle cx="12" cy="12" r="3" fill="white" />
-    </svg>
-  );
-}

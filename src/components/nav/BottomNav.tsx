@@ -6,10 +6,12 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
+import { useHideOnScroll } from "./useHideOnScroll";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const hidden = useHideOnScroll(false);
 
   // Real index from the current route, or -1 when the page isn't under
   // any tab (a place detail, /settings, /about…). We deliberately do
@@ -120,11 +122,20 @@ export default function BottomNav() {
       // clipped by the notch. max() keeps the 0.75rem base on every
       // non-notched device (and in portrait, where the side insets are 0),
       // so it only ever adds room where the notch would otherwise clip.
+      // In-and-out on scroll, breathing WITH the TopBar (one shared scroll
+      // signal): reading pushes both bars away, a small upward swipe brings
+      // them back. The pill dips below the safe-area inset with a spring ease
+      // and a touch of scale, so the return reads as a rise, not a teleport.
       style={{
         zIndex: "var(--z-nav)",
         paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
         paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
         paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
+        transform: hidden
+          ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 14px)) scale(0.98)"
+          : "translateY(0) scale(1)",
+        transition: "transform var(--app-dur-med) var(--app-ease-spring)",
+        willChange: "transform",
       }}
     >
       <nav

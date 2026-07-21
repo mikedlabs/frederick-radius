@@ -19,7 +19,30 @@ export type DaypartNeed = {
   href: string;
 };
 
-export function daypartNeeds(easternHour: number): DaypartNeed[] {
+/** Weather-leaned additions (see lib/today/weatherLean): on a wet day the
+ *  shelf leads with indoor browsing; on a 92°+ day, with cool-down treats.
+ *  Never duplicates a category the daypart already carries. */
+const WET_NEEDS: DaypartNeed[] = [
+  { label: "Museums & indoors", category: "museum", href: "/category/museum" },
+  { label: "Bookstores & cozy corners", category: "book-store", href: "/category/book-store" },
+];
+const HOT_NEEDS: DaypartNeed[] = [
+  { label: "Ice cream & cool treats", category: "ice-cream", href: "/category/ice-cream" },
+];
+
+export function daypartNeeds(
+  easternHour: number,
+  lean: "wet" | "hot" | null = null,
+): DaypartNeed[] {
+  const base = baseDaypartNeeds(easternHour);
+  if (!lean) return base;
+  const extras = (lean === "wet" ? WET_NEEDS : HOT_NEEDS).filter(
+    (need) => !base.some((b) => b.category === need.category),
+  );
+  return [...extras, ...base];
+}
+
+function baseDaypartNeeds(easternHour: number): DaypartNeed[] {
   const h = ((easternHour % 24) + 24) % 24;
   // Morning 5–11: the first-cup + breakfast window.
   if (h >= 5 && h < 11) {

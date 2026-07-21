@@ -18,18 +18,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { track } from "@/lib/track";
+import LiveCountdown from "@/components/ui/LiveCountdown";
 import type { KeysScore as Score } from "@/lib/integrations/keysScore";
 
 const POLL_MS = 45_000;
 
 // Frederick Keys team palette — the deliberate branded exception (a team card's
-// whole point is the team's own navy/red/gold, which the app tokens don't
+// whole point is the team's own orange/black, which the app tokens don't
 // carry). Kept in sync with KeysCard.
-const NAVY = "#13284B";
-const NAVY_DEEP = "#0B182F";
-const KEYS_RED = "#C8102E";
-const KEYS_GOLD = "#FDB927";
-const CREAM = "#F3ECDC";
+// The Keys in their HOME WHITES: a warm-white plate carrying the team's
+// orange (owner call — the dark plate fought the cream page; white-and-orange
+// is the look everyone knows from the ballpark). DEEP is the text-safe orange
+// (AA on the white plate, and the fill under white text); the pure brand
+// orange carries the graphic moments (pennant, stitches, watermark).
+const PLATE = "#FFFCF5";
+const PLATE_DEEP = "#F5EEDF";
+const KEYS_ORANGE = "#DF4601";
+const KEYS_ORANGE_DEEP = "#C23D00";
+const INK = "#1A150E";
 
 /** The official Keys ticket page — the stable fallback when a game has no
  *  per-game Ticketmaster link (the score payload carries none). */
@@ -88,7 +94,7 @@ function ScoreRow({
   runs: number | null;
   won: boolean;
   final: boolean;
-  /** The Keys' own row reads in gold — the home identity — vs cream for the opponent. */
+  /** The Keys' own row reads in orange — the home identity — vs cream for the opponent. */
   isKeys?: boolean;
 }) {
   const lost = final && !won;
@@ -97,7 +103,7 @@ function ScoreRow({
       <span
         className="min-w-0 truncate text-[14px]"
         style={{
-          color: isKeys ? KEYS_GOLD : CREAM,
+          color: isKeys ? KEYS_ORANGE_DEEP : INK,
           fontWeight: won || isKeys ? 700 : 500,
           opacity: lost ? 0.58 : 1,
         }}
@@ -107,7 +113,7 @@ function ScoreRow({
       <span
         className="shrink-0 font-mono text-[21px] tabular-nums"
         style={{
-          color: CREAM,
+          color: INK,
           fontWeight: won ? 700 : 500,
           opacity: lost ? 0.58 : 1,
         }}
@@ -162,26 +168,26 @@ export default function KeysScore() {
     <div
       className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
       style={{
-        background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
-        color: CREAM,
-        boxShadow: "var(--app-elev-1), var(--app-edge)",
+        background: `linear-gradient(152deg, ${PLATE} 0%, ${PLATE_DEEP} 100%)`,
+        color: INK,
+        boxShadow: "var(--app-elev-1), inset 0 0 0 1px rgba(223,70,1,0.22)",
       }}
     >
-      {/* Red→gold pennant rule along the top edge — the team-color signature. */}
+      {/* Orange pennant rule along the top edge — the team-color signature. */}
       <span
         aria-hidden
         className="absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, ${KEYS_RED} 0%, ${KEYS_GOLD} 100%)` }}
+        style={{ background: `linear-gradient(90deg, ${KEYS_ORANGE} 0%, ${KEYS_ORANGE_DEEP} 100%)` }}
       />
       {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
-      <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: CREAM, opacity: 0.09 }}>
+      <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: INK, opacity: 0.09 }}>
         <BaseballGlyph size={112} />
       </span>
 
       <div className="relative mb-2 flex items-center justify-between gap-2">
         <span
           className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: KEYS_GOLD }}
+          style={{ color: KEYS_ORANGE_DEEP }}
         >
           <BaseballGlyph size={13} />
           Frederick Keys {vs} {score.opponent.name}
@@ -190,8 +196,8 @@ export default function KeysScore() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
           style={
             chip.live
-              ? { background: KEYS_RED, color: "#fff" }
-              : { background: "rgba(243,236,220,0.15)", color: CREAM }
+              ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
+              : { background: "rgba(26,21,14,0.15)", color: "rgba(26,21,14,0.75)" }
           }
         >
           {chip.live && (
@@ -209,8 +215,16 @@ export default function KeysScore() {
         <ScoreRow name={score.opponent.name} runs={score.opponent.runs} won={oppWon} final={score.state === "final"} />
       </div>
 
-      <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(243,236,220,0.72)" }}>
+      <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
         {detailLine(score)}
+        {score.state === "pre" && (
+          <LiveCountdown
+            targetIso={score.startsAt}
+            prefix=" · in"
+            className="font-semibold"
+            style={{ color: KEYS_ORANGE_DEEP }}
+          />
+        )}
       </p>
 
       {/* Pre-game only: tickets are the decision fact before first pitch.
@@ -221,7 +235,7 @@ export default function KeysScore() {
           target="_blank"
           rel="noopener noreferrer"
           className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ borderColor: KEYS_GOLD, color: KEYS_GOLD }}
+          style={{ borderColor: KEYS_ORANGE_DEEP, color: KEYS_ORANGE_DEEP }}
         >
           Get tickets
         </a>

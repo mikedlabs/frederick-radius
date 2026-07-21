@@ -58,6 +58,9 @@ import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import GoldenHourCard from "@/components/today/GoldenHourCard";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import { leanFromForecast } from "@/lib/today/weatherLean";
 import EventWalkTime from "@/components/today/EventWalkTime";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import TodayAsk from "@/components/today/TodayAsk";
@@ -165,6 +168,19 @@ export default async function HomePage() {
   // single awaited promise yields one result). (Audit: unified-events
   // cold-miss streaming gap.)
   const eventsPromise = assembleUnifiedEvents(now);
+
+  // WEATHER-CONDITIONAL COMPOSITION — the page already knows the sky; let it
+  // reshape the answer, not just the headline. A wet hour sits the golden-hour
+  // beat down (no golden hour in a thunderstorm) and leads the daypart shelf
+  // with indoor picks; a 92°+ hour adds cool-down picks. Bounded await: the
+  // NWS forecast rides Next's fetch cache, so this is ~0ms warm, and the 800ms
+  // race means a slow feed can never hold the shell hostage — it just means an
+  // ordinary-day composition.
+  const forecastForLean = await Promise.race([
+    getNwsForecast(FREDERICK_CENTER).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+  ]);
+  const lean = leanFromForecast(forecastForLean, now);
 
   // ── EVENING GEAR ────────────────────────────────────────────────────────
   // After 5 PM Eastern the page shifts what leads: the reader's question is
@@ -380,7 +396,7 @@ export default async function HomePage() {
           {headliner}
           {whatsOn}
           {availableNow}
-          <GoldenHourCard now={now} />
+          {lean !== "wet" && <GoldenHourCard now={now} />}
         </>
       ) : (
         <>
@@ -402,7 +418,16 @@ export default async function HomePage() {
           Rows built server-side; self-hides when nothing in the daypart is open.
           Its lead rail de-dupes against the CravingStrip "I want…" lead above,
           so the page never says "dinner" twice back-to-back (buildDaypartRows). */}
-      <DaypartNeeds rows={buildDaypartRows(now)} />
+      <DaypartNeeds
+        rows={buildDaypartRows(now, lean)}
+        note={
+          lean === "wet"
+            ? "Storms are close by, so indoor picks lead."
+            : lean === "hot"
+              ? "It is a hot one, so cool-down picks lead."
+              : null
+        }
+      />
 
       {/* FROM YOUR SAVED + the save-derived shortcut, kept together (both read
           the user's own saves): the returning user's open-now saved places, then
