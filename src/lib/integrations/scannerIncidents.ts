@@ -21,6 +21,7 @@ import {
   type PublicIncident,
 } from "@/lib/scanner/incidentFeed";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 /** The REAL-TIME public source: frederickscanner.com's own dispatch page. One
  *  <p> per call, in the exact pipe format the parser already handles. No auth,
@@ -233,15 +234,19 @@ async function fetchFromRss(): Promise<ScannerIncident[]> {
 }
 
 /** Timestamp (ms) for a direct-page line from its "(posted MM/DD/YYYY)" date +
- *  the clock time. Frederick is Eastern; July is EDT (-04:00). */
+ *  the clock time. The page prints Eastern wall-clock, so resolve it through
+ *  America/New_York — DST-aware. A hardcoded -04:00 (the old code) read every
+ *  EST-months call an hour early, which mislabels "how long ago" and can flip
+ *  a call across the 1h recent/stale boundary. */
 function directTimestamp(line: string, clock: string): number | null {
   const dm = line.match(/posted\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
   const tm = clock.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
   if (!dm || !tm) return null;
   let h = parseInt(tm[1], 10) % 12;
   if (/pm/i.test(tm[3])) h += 12;
-  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${tm[2]}:00-04:00`;
-  const ms = Date.parse(iso);
+  const ms = Date.parse(
+    easternWallToUtcISO(+dm[3], +dm[1], +dm[2], h, parseInt(tm[2], 10)),
+  );
   return Number.isFinite(ms) ? ms : null;
 }
 

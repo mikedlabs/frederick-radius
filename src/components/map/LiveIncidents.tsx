@@ -125,9 +125,19 @@ export default function LiveIncidents({ show }: { show: boolean }) {
               {selected.location}
             </p>
             {selected.updates > 1 && (
-              <p className="mt-1 text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
-                Active · {selected.updates} updates
-              </p>
+              (() => {
+                // "Active" only while the call is still recent; an hours-old
+                // call with multiple posts is history, not a live scene.
+                const selectedIsPast = nowMs > 0 && nowMs - Date.parse(selected.at) > RECENT_INCIDENT_MS;
+                return (
+                  <p
+                    className="mt-1 text-[11px] font-semibold"
+                    style={{ color: selectedIsPast ? "var(--app-ink-3)" : "var(--app-brand-press)" }}
+                  >
+                    {selectedIsPast ? `${selected.updates} updates` : `Active · ${selected.updates} updates`}
+                  </p>
+                );
+              })()
             )}
             <p className="mt-1 font-mono text-[10px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
               {nowMs ? `${agoLabel(selected.at, nowMs)} · ` : ""}via FrederickScanner

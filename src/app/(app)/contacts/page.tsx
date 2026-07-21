@@ -14,19 +14,19 @@ export const metadata: Metadata = {
 export const revalidate = 86_400;
 
 /**
- * /contacts — the government directory as a FIND surface.
+ * /contacts — the government directory as a FIND surface, organized by NEED.
  *
- * It used to stack all 39 departments as full text cards under four
- * jurisdiction headings plus a "How do I…" block, so finding one number
- * meant scrolling forever. Now the whole directory is one search box
- * (over department names, their "call us about" line, and the civic
- * tasks) with emergency pinned, the nine common requests one tap away,
- * and the rest behind a jurisdiction lens as dense one-line rows. The
- * interaction lives in ContactsDirectory; this shell is just the header,
- * the directory, and the sourcing note.
+ * One search box over department names, their "call us about" line, and the
+ * civic tasks. Under it: a "Most important numbers" card you can text, email,
+ * copy, or add to your phone's contacts in one tap; a home-town line that
+ * resolves the City-vs-County question for services like trash and water; and
+ * the rest of the directory grouped by what you need (Home & property, Pets,
+ * Getting around, and so on) rather than by which office owns it, with a small
+ * jurisdiction tag kept on each row. The interaction lives in ContactsDirectory.
  *
- * Sourcing honesty: phone numbers are populated only where confirmed from
- * an official .gov page. Unverified phones are omitted, never guessed.
+ * Sourcing honesty: phone numbers are populated only where confirmed from an
+ * official .gov page, and the 24/7 badge only where the official page says the
+ * line answers around the clock. Unverified details are omitted, never guessed.
  */
 export default function ContactsPage() {
   // Flatten the civic "How do I…" corpus into the shape the directory's
@@ -55,8 +55,8 @@ export default function ContactsPage() {
           className="text-[15px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Search for a service, or tap a common request. Emergency lines are
-          pinned at the top.
+          Search for a service, or scan by what you need. Keep the most important
+          numbers on your phone, and reach an emergency line right from the top.
         </p>
       </header>
 

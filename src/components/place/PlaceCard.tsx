@@ -11,7 +11,7 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star, NotebookPen } from "lucide-react";
+import { Star, NotebookPen, PawPrint } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
@@ -533,9 +533,21 @@ export default function PlaceCard({
   ) : null;
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 rounded-[var(--app-radius-lg)] px-2.5 py-2"
-      style={{ background: "var(--app-bg-elevated-solid)" }}
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] py-2 pl-3.5 pr-2.5"
+      style={{
+        // Field-guide "pass" material: the warm paper texture behind the
+        // existing emboss (--app-hi/--app-edge from .tactile), with a category
+        // color cap down the left edge — the same color-band language the
+        // feature/answer/tile variants already carry, now on the workhorse row.
+        backgroundColor: "var(--app-bg-elevated-solid)",
+        backgroundImage: "var(--app-paper-light)",
+      }}
     >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
+        style={{ background: color }}
+      />
       <button
         type="button"
         onClick={openDetail}
@@ -561,9 +573,19 @@ export default function PlaceCard({
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {cat?.name ?? place.category}
-          {kf && <> · {kf}</>}
+        <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {(place.tags ?? []).includes("dog-friendly") && (
+            <PawPrint
+              className="h-3 w-3 shrink-0"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-brand-2)" }}
+              aria-label="Dog-friendly"
+            />
+          )}
+          <span className="truncate">
+            {cat?.name ?? place.category}
+            {kf && <> · {kf}</>}
+          </span>
         </p>
         {place.market_day && (
           <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>

@@ -38,10 +38,11 @@ describe("aggregate — call-lifecycle grouping", () => {
     expect(out.every((o) => o.updates === 1)).toBe(true);
   });
 
-  it("drops posts older than the one-hour window", () => {
+  it("drops posts older than the aging window", () => {
     const now = Date.now();
+    const HR = 60 * MIN;
     const out = aggregate([
-      { inc: inc("Crash", "Old Rd"), atMs: now - 90 * MIN },
+      { inc: inc("Crash", "Old Rd"), atMs: now - 13 * HR }, // past the 12h window
       { inc: inc("Crash", "Fresh Rd"), atMs: now - 5 * MIN },
     ]);
     expect(out).toHaveLength(1);
@@ -50,13 +51,14 @@ describe("aggregate — call-lifecycle grouping", () => {
 
   it("counts only in-window posts toward a call's update total", () => {
     const now = Date.now();
+    const HR = 60 * MIN;
     const out = aggregate([
-      { inc: inc("Structure fire", "Main St"), atMs: now - 70 * MIN }, // aged out
-      { inc: inc("Structure fire", "Main St"), atMs: now - 40 * MIN },
+      { inc: inc("Structure fire", "Main St"), atMs: now - 13 * HR }, // aged out (>12h)
+      { inc: inc("Structure fire", "Main St"), atMs: now - 4 * HR },
       { inc: inc("Structure fire", "Main St"), atMs: now - 3 * MIN },
     ]);
     expect(out).toHaveLength(1);
     expect(out[0].updates).toBe(2);
-    expect(Date.parse(out[0].firstAt)).toBe(now - 40 * MIN);
+    expect(Date.parse(out[0].firstAt)).toBe(now - 4 * HR);
   });
 });

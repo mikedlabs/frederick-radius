@@ -376,6 +376,90 @@ export const DEPARTMENTS: readonly DepartmentContact[] = [
 ];
 
 /**
+ * Browse-by-NEED taxonomy. Residents think "I have a problem with my
+ * [house / pet / car / trash]," not "which level of government owns this."
+ * Each non-emergency department is filed under a life-area topic so the
+ * directory can be scanned by need, with the jurisdiction kept only as a
+ * small tag on the row. Kept as a slug→topic map (not a field on every
+ * object) so the department records stay a clean verified source of truth.
+ */
+export type TopicId =
+  | "home" | "utilities" | "pets" | "transport"
+  | "safety" | "money" | "health" | "parks" | "govt";
+
+/** Ordered for display: the everyday, high-frequency needs first. `icon` is a
+ *  lucide-react component name resolved in the directory. */
+export const TOPICS: readonly { id: TopicId; label: string; icon: string }[] = [
+  { id: "home",      label: "Home & property",       icon: "House" },
+  { id: "utilities", label: "Trash, water & recycling", icon: "Trash2" },
+  { id: "pets",      label: "Pets & animals",        icon: "PawPrint" },
+  { id: "transport", label: "Getting around",        icon: "Bus" },
+  { id: "safety",    label: "Police, fire & safety", icon: "ShieldCheck" },
+  { id: "health",    label: "Health & family",       icon: "HeartPulse" },
+  { id: "money",     label: "Money, taxes & records", icon: "Landmark" },
+  { id: "parks",     label: "Parks & recreation",    icon: "Trees" },
+  { id: "govt",      label: "Government & voting",    icon: "Vote" },
+];
+
+const TOPIC_BY_SLUG: Record<string, TopicId> = {
+  // Home & property
+  "city-public-works": "home", "city-code-enforcement": "home",
+  "city-building-permits": "home", "city-planning": "home",
+  "city-sustainability": "home", "city-urban-forestry": "home",
+  "county-planning-permitting": "home", "county-public-works": "home",
+  // Trash, water & recycling
+  "county-solid-waste": "utilities", "city-utility-billing": "utilities",
+  "county-water-sewer": "utilities",
+  // Pets & animals
+  "county-animal-control": "pets",
+  // Getting around
+  "city-parking": "transport", "county-transit": "transport", "state-mva": "transport",
+  // Police, fire & safety
+  "city-frederick-police": "safety", "city-emergency-management": "safety",
+  "county-sheriff": "safety", "county-fire-rescue": "safety",
+  "county-emergency-management": "safety",
+  // Health & family
+  "county-health": "health", "county-aging": "health",
+  "county-family-services": "health", "city-housing-human-services": "health",
+  "county-housing": "health",
+  // Money, taxes & records
+  "city-finance": "money", "county-courts": "money",
+  // Parks & recreation
+  "city-parks-recreation": "parks", "county-parks-rec": "parks",
+  // Government & voting
+  "county-main": "govt", "county-executive": "govt",
+  "county-council": "govt", "city-public-affairs": "govt",
+};
+
+/** The life-area topic a department belongs to, or null for the pinned
+ *  emergency lines (which are never filed under a browse topic). */
+export function topicOf(slug: string): TopicId | null {
+  return TOPIC_BY_SLUG[slug] ?? null;
+}
+
+/** The curated "most important numbers" set — the lines worth pinning and
+ *  worth being able to text or email to family in one tap. */
+const ESSENTIAL_SLUGS: readonly string[] = [
+  "emergency-911", "suicide-crisis-988", "poison-control",
+  "city-frederick-police", "county-sheriff", "county-animal-control", "county-main",
+];
+export function isEssential(slug: string): boolean {
+  return ESSENTIAL_SLUGS.includes(slug);
+}
+
+/** Lines answered around the clock (dispatch, national crisis/poison, ERs).
+ *  Only slugs verified 24/7 from the official page are listed, so the badge
+ *  never overclaims that a regular office is open. */
+const OPEN_24_7: ReadonlySet<string> = new Set([
+  "emergency-911", "suicide-crisis-988", "poison-control",
+  "frederick-health-hospital", "pet-emergency",
+  "city-frederick-police", "county-sheriff", "city-public-works",
+]);
+export function isOpen24_7(slug: string): boolean {
+  return OPEN_24_7.has(slug);
+}
+
+/**
  * Plain-language → department routing. The answer engine ("ask
  * Frederick") uses this to turn a buried-gov question ("when's
  * recycling", "report a pothole", "dog at large", "building permit")

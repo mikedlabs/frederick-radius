@@ -24,6 +24,7 @@ import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 import trafficCounts from "@/data/traffic-counts.json";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** How far back the archive read reaches. A year of local memory is plenty. */
@@ -212,17 +213,20 @@ function etDateKey(ms: number): string {
     day: "2-digit",
   }).format(ms);
 }
-/** Eastern wall-clock ("07/20/2026" + "9:10 pm") → UTC ms. EDT/EST by month;
- *  a DST-boundary hour can be off by one, which the pattern view tolerates. */
+/** Eastern wall-clock ("07/20/2026" + "9:10 pm") → UTC ms, DST-aware via the
+ *  shared tz helper. This MUST resolve the same instant the live-feed path
+ *  (directTimestamp) computes for an identical call: the archive dedupe_key is
+ *  built from `toISOString()`, so a month-based offset here that disagreed with
+ *  the live path by an hour (every DST-transition week, and all winter under
+ *  the old hardcoded live offset) banked the same call twice. */
 function etWallToMs(dateMDY: string, clock: string): number | null {
   const dm = dateMDY.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   const h = hourOf(clock);
   const min = clock.match(/:(\d{2})/);
   if (!dm || h === null || !min) return null;
-  const month = parseInt(dm[1], 10);
-  const offset = month >= 3 && month <= 11 ? "-04:00" : "-05:00";
-  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${min[1]}:00${offset}`;
-  const ms = Date.parse(iso);
+  const ms = Date.parse(
+    easternWallToUtcISO(+dm[3], +dm[1], +dm[2], h, parseInt(min[1], 10)),
+  );
   return Number.isFinite(ms) ? ms : null;
 }
 
@@ -300,8 +304,51 @@ async function fetchArchiveRecords(): Promise<PatternRecord[]> {
   }
 }
 
+/** A working call is reposted to the dispatch page every few minutes as the
+ *  response grows; reposts of one incident span up to a few hours. */
+const REPOST_WINDOW_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Collapse the repeated dispatch POSTS of one working call into a single call.
+ *
+ * The page carries a live incident several times as units are added, and the
+ * archive stores each post as its own row (its dedupe_key is per-timestamp).
+ * Counting every post inflates the totals, over-weights the hour/weekday
+ * rhythm, and — worst — multiplies a single crash into a phantom hotspot and a
+ * runaway crashes-per-vehicle rate. A call is the same KIND at the same
+ * block-LOCATION; posts within REPOST_WINDOW_MS of the running call belong to
+ * it, and a later post at the same place (hours or days on) starts a fresh
+ * call, so two real crashes on one road still count as two. The earliest post
+ * represents the call, since its start time is the honest hour/weekday signal.
+ */
+export function dedupeCalls(records: PatternRecord[]): PatternRecord[] {
+  const groups = new Map<string, PatternRecord[]>();
+  for (const r of records) {
+    const key = `${r.kind}|${r.location}`;
+    const g = groups.get(key);
+    if (g) g.push(r);
+    else groups.set(key, [r]);
+  }
+  const out: PatternRecord[] = [];
+  for (const group of groups.values()) {
+    const timed = group
+      .filter((r) => r.atMs !== null && Number.isFinite(r.atMs))
+      .sort((a, b) => (a.atMs as number) - (b.atMs as number));
+    let lastMs = -Infinity;
+    for (const r of timed) {
+      const ms = r.atMs as number;
+      if (ms - lastMs > REPOST_WINDOW_MS) out.push(r); // first post of a new call
+      lastMs = ms;
+    }
+    // Untimed reposts can't be windowed; collapse them to one call for the key.
+    if (timed.length === 0) out.push(group[0]);
+  }
+  return out;
+}
+
 /** Reduce a set of records to the patterns the page renders. */
-function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
+function aggregateRecords(rawRecords: PatternRecord[]): ScannerPatterns {
+  const records = dedupeCalls(rawRecords);
   const days = new Set<string>();
   const crashes = new Map<string, number>();
   const wires = new Map<string, number>();
@@ -387,9 +434,10 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
 export const getScannerPatterns = unstable_cache(
   fetchScannerPatterns,
   // v2: shape gained trafficAdjusted + byWeekday/peakWeekday. v3: dropped 85
-  // survey-year-as-AADT entries from traffic-counts.json and floored AADT at
-  // MIN_AADT, so the hotspot rates change — bump the key so a durable cache
-  // can't serve the old, inflated hotspots across deploys (PR #509 lesson).
-  ["scanner-patterns-v3"],
+  // survey-year-as-AADT entries + floored AADT. v4: dedupeCalls collapses
+  // repeated dispatch posts of one incident, so totals/hotspots/rhythm all
+  // drop to true call counts — bump the key so a durable cache can't serve the
+  // old, post-inflated numbers across deploys (PR #509 lesson).
+  ["scanner-patterns-v4"],
   { revalidate: 3600, tags: ["scanner-patterns"] },
 );

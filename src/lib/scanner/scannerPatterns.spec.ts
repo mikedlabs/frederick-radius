@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { cleanSpot, hourOf, roadKey } from "./scannerPatterns";
+import { cleanSpot, dedupeCalls, hourOf, roadKey } from "./scannerPatterns";
+import type { PatternRecord } from "./scannerPatterns";
 import trafficCounts from "@/data/traffic-counts.json";
 
 describe("cleanSpot — road-level hotspot key", () => {
@@ -59,6 +60,48 @@ describe("traffic-counts.json — no survey-year contamination", () => {
       expect(Number.isInteger(v), `${road}=${v}`).toBe(true);
       expect(v, road).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("dedupeCalls — repeated dispatch posts collapse to one call", () => {
+  const HR = 60 * 60 * 1000;
+  const rec = (kind: PatternRecord["kind"], location: string, atMs: number | null): PatternRecord => ({
+    kind,
+    location,
+    roadImpact: kind === "Crash",
+    atMs,
+    hour: null,
+    dateKey: "",
+  });
+
+  it("folds reposts of one working call within the repost window", () => {
+    const t = 1_700_000_000_000;
+    const out = dedupeCalls([
+      rec("Crash", "100 block Main St", t),
+      rec("Crash", "100 block Main St", t + 7 * 60_000), // +7 min, same call
+      rec("Crash", "100 block Main St", t + 20 * 60_000), // +20 min, same call
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].atMs).toBe(t); // earliest post represents the call
+  });
+
+  it("keeps two real crashes on the same road far apart as two calls", () => {
+    const t = 1_700_000_000_000;
+    const out = dedupeCalls([
+      rec("Crash", "100 block Main St", t),
+      rec("Crash", "100 block Main St", t + 6 * HR), // a separate crash hours later
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("does not merge different kinds or different locations", () => {
+    const t = 1_700_000_000_000;
+    const out = dedupeCalls([
+      rec("Crash", "100 block Main St", t),
+      rec("Wires down", "100 block Main St", t + 60_000),
+      rec("Crash", "200 block Main St", t + 60_000),
+    ]);
+    expect(out).toHaveLength(3);
   });
 });
 
