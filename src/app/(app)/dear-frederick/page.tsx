@@ -58,7 +58,7 @@ export default function DearFrederickIndex() {
           Write your own
         </h2>
         <p className="mt-1 text-[13.5px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
-          Put it on paper and mail it. Sign it or leave it anonymous.
+          Put it on paper and mail it, or send us a photo of the page. Sign it or leave it anonymous.
         </p>
         <p className="mt-2 font-mono text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
           Dear Frederick
@@ -67,6 +67,14 @@ export default function DearFrederickIndex() {
           <br />
           Frederick, MD 21705
         </p>
+        <Link
+          href="/dear-frederick/submit"
+          className="tap-44 mt-3 inline-flex items-center gap-1.5 text-[14px] font-semibold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Submit a letter
+          <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
       </section>
 
       {/* The letters, framed like documents, in a plain responsive grid so

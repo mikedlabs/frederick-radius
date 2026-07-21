@@ -58,7 +58,9 @@ const ROUTES = [
   "/my-radius",
   "/settings",
   "/plan",
+  "/emergency",
   "/emergency-vet",
+  "/scanner",
   "/numbers",
   "/reserve",
   // The front door. Every visitor sees it before anything else, and it

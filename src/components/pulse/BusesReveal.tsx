@@ -5,20 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bus, ChevronDown, ChevronUp, LoaderCircle, RotateCcw } from "lucide-react";
 import type { LineFC } from "@/lib/integrations/transitFrederick";
 
-// None of the live transit views belong in the closed-state bundle. The map
-// already code-splits Mapbox internally; the two boards also carry the route
-// catalog, geometry helpers, polling hook, and animation code, so defer them
-// until the rider explicitly asks for this part of Pulse.
+// The live bus map is heavy (Mapbox), so defer it until the rider opens this
+// part of Pulse. The detailed route + arrival boards moved to /transit; Pulse
+// shows just the live buses on the map.
 const loadTransitMap = () => import("@/components/transit/TransitMap");
 const TransitMap = dynamic(loadTransitMap, {
-  ssr: false,
-  loading: () => null,
-});
-const RoutePearls = dynamic(() => import("@/components/transit/RoutePearls"), {
-  ssr: false,
-  loading: () => null,
-});
-const NextStopsBoard = dynamic(() => import("@/components/transit/NextStopsBoard"), {
   ssr: false,
   loading: () => null,
 });
@@ -140,28 +131,24 @@ export default function BusesReveal() {
       </button>
 
       {open ? (
-        // One bordered card, zones top-to-bottom: the two scannable route
-        // boards first, then the heavy map LAST (owner: hard to see everything
-        // when the map splits the boards). Map still fetches on the same tap.
+        // Just the live buses on Pulse: the map with live vehicle positions.
+        // The detailed route + arrival boards live on /transit now.
         <div
           id="pulse-live-buses"
           className="space-y-3 rounded-[var(--app-radius-md)] border p-3"
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
-          <RoutePearls />
-
-          <NextStopsBoard />
-
           {shapesState.status === "ready" ? (
             <TransitMap
               shapes={shapesState.shapes}
-              height={260}
+              height={280}
               center={[-77.4105, 39.4143]}
               zoom={12.5}
               liveBuses
               highlightRoutes
               hideBadge
               lockToService
+              showTrains={false}
             />
           ) : shapesState.status === "error" ? (
             <div
@@ -174,7 +161,7 @@ export default function BusesReveal() {
               }}
             >
               <p className="max-w-[290px] text-[13px] leading-relaxed">
-                The route map did not load. Live bus progress may still be available above.
+                The live bus map did not load. Try again in a moment.
               </p>
               <button
                 type="button"

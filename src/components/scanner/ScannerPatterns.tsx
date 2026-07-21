@@ -1,0 +1,135 @@
+import type { ScannerPatterns as Patterns, SpotCount } from "@/lib/scanner/scannerPatterns";
+
+/**
+ * ScannerPatterns — the memory of the wire. Where crashes cluster, where wires
+ * come down, and when crashes peak, aggregated from the public feed's rolling
+ * window. Server-rendered from cached data; renders nothing until there's a
+ * window worth summarizing. Aggregate and block-level only — the same public
+ * calls as the live board, counted instead of listed.
+ */
+
+function to12h(h: number): string {
+  const period = h < 12 ? "AM" : "PM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour} ${period}`;
+}
+
+function SpotList({ spots, unit }: { spots: SpotCount[]; unit: string }) {
+  const max = Math.max(...spots.map((s) => s.count), 1);
+  return (
+    <ul className="space-y-1.5">
+      {spots.map((s) => (
+        <li key={s.spot} className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: "var(--app-ink)" }}>
+            {s.spot}
+          </span>
+          <span
+            aria-hidden
+            className="hidden h-1.5 rounded-full sm:block"
+            style={{ width: `${Math.round((s.count / max) * 72)}px`, background: "var(--app-brand-tint-2, var(--app-brand))", opacity: 0.55 }}
+          />
+          <span
+            className="shrink-0 font-mono text-[12px] tabular-nums"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {s.count} {unit}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function HourStrip({ byHour, peakHour }: { byHour: number[]; peakHour: number }) {
+  const max = Math.max(...byHour, 1);
+  return (
+    <div>
+      <div
+        className="flex h-16 items-end gap-[3px]"
+        role="img"
+        aria-label={`Crashes by hour of day; busiest around ${to12h(peakHour)}.`}
+      >
+        {byHour.map((c, h) => (
+          <span
+            key={h}
+            className="flex-1 rounded-t-[2px]"
+            style={{
+              height: `${Math.max(6, Math.round((c / max) * 100))}%`,
+              background: h === peakHour ? "var(--app-brand)" : "var(--app-ink-tint-2, var(--app-ink))",
+              opacity: h === peakHour ? 1 : 0.22,
+            }}
+          />
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between font-mono text-[9.5px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+        <span>12a</span>
+        <span>6a</span>
+        <span>12p</span>
+        <span>6p</span>
+        <span>11p</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
+  const { days, total, crashSpots, wireSpots, byHour, peakHour } = patterns;
+  if (total === 0 || days === 0) return null;
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="font-serif text-[20px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+          The pattern
+        </h2>
+        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Over the last {days} days, {total} public calls came across the wire. Here
+          is where they land and when.
+        </p>
+      </div>
+
+      {crashSpots.length > 0 && (
+        <div
+          className="rounded-[var(--app-radius-md)] border p-3.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Where crashes cluster
+          </p>
+          <SpotList spots={crashSpots} unit="crashes" />
+        </div>
+      )}
+
+      {peakHour !== null && byHour.some((c) => c > 0) && (
+        <div
+          className="rounded-[var(--app-radius-md)] border p-3.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <p className="mb-2 flex items-baseline justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            <span>When crashes happen</span>
+            <span style={{ color: "var(--app-brand-press)" }}>Busiest around {to12h(peakHour)}</span>
+          </p>
+          <HourStrip byHour={byHour} peakHour={peakHour} />
+        </div>
+      )}
+
+      {wireSpots.length > 0 && (
+        <div
+          className="rounded-[var(--app-radius-md)] border p-3.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Where wires come down
+          </p>
+          <SpotList spots={wireSpots} unit="times" />
+        </div>
+      )}
+
+      <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Counted from public dispatch calls over a rolling window, grouped by road.
+        Preliminary and block-level, a picture of the pattern rather than an exact
+        tally.
+      </p>
+    </section>
+  );
+}

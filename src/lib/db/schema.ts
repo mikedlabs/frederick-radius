@@ -455,6 +455,62 @@ export const push_log = pgTable(
 );
 
 /**
+ * Archive of PUBLIC scanner incidents, one row per distinct call, banked by
+ * the scanner-archive cron so the ephemeral live feed becomes a history the
+ * trend surfaces can read. Only the same public, non-medical calls the live
+ * layer shows are ever written (the allowlist runs before insert), and the
+ * columns are already de-identified (kind + block-level location) — no units,
+ * radio codes, or personal detail. `dedupe_key` (kind|location|occurred_at)
+ * keeps the same call from banking twice across cron cycles. RLS deny-all,
+ * server-role only, matching the rest of the schema.
+ */
+export const scanner_incidents = pgTable(
+  "scanner_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dedupe_key: text("dedupe_key").notNull(),
+    kind: text("kind").notNull(),
+    location: text("location").notNull(),
+    road_impact: boolean("road_impact").notNull().default(false),
+    // When the call was dispatched (from the feed message timestamp).
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    inserted_at: timestamp("inserted_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    dedupeIdx: uniqueIndex("scanner_incidents_dedupe_idx").on(t.dedupe_key),
+    occurredIdx: index("scanner_incidents_occurred_idx").on(t.occurred_at),
+    kindIdx: index("scanner_incidents_kind_idx").on(t.kind),
+  }),
+);
+
+/**
+ * Search & Ask MISSES — the app's own record of what it was asked for and
+ * couldn't answer. One row each time a search returns nothing or an Ask
+ * answer lands with no real place to point at. `query_key` is the normalized
+ * form (lowercased, punctuation-stripped) so repeats group; `query` keeps a
+ * readable sample. This is the data-gaps flywheel: the honest, evidence-based
+ * answer to "what data is missing." Server-role only, RLS deny-all. Stores
+ * only the query text, its kind, and when — no visitor identifier.
+ */
+export const search_misses = pgTable(
+  "search_misses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Raw query as typed (trimmed, capped) — a readable sample for the board. */
+    query: text("query").notNull(),
+    /** Normalized grouping key (lowercased, punctuation-stripped, collapsed). */
+    query_key: text("query_key").notNull(),
+    /** 'search' (zero results) | 'ask' (answer with no grounded sources). */
+    kind: text("kind").notNull(),
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    keyIdx: index("search_misses_key_idx").on(t.query_key),
+    occurredIdx: index("search_misses_occurred_idx").on(t.occurred_at),
+  }),
+);
+
+/**
  * User-submitted content awaiting review: place suggestions, event
  * suggestions, and business-owner claims. One row per submission;
  * `kind` selects the shape stored in `payload`, `status` drives the
@@ -802,6 +858,42 @@ export const food_truck_beacons = pgTable(
     truckIdx: index("food_truck_beacons_truck_idx").on(t.truck_slug),
     // The display loader reads "live now" = expires_at > now(); index it.
     expiresIdx: index("food_truck_beacons_expires_idx").on(t.expires_at),
+  }),
+);
+
+/**
+ * Dear Frederick submissions — the public letter-submission intake.
+ *
+ * Dear Frederick is a community project of handwritten letters mailed to a PO
+ * box and published as CURATED static data (src/data/dear-frederick.ts). This
+ * table only captures DIGITAL submissions: a member of the public uploads a
+ * scan of a letter through /dear-frederick/submit, and it lands here pending
+ * for the owner to review in /admin/dear-frederick. Approving a row just marks
+ * it approved; the owner then transcribes it into the static file by hand, so
+ * publishing stays curated and the published letters are never DB-dynamic.
+ *
+ * `image_url` is the scan in Vercel Blob. `signature`, `contact`, and `note`
+ * are all optional (a signature defaults to "Anonymous" for display; `contact`
+ * is a private email/phone for owner follow-up and MUST NOT be public). No FK
+ * to a letters table — published letters are file-sourced and a submission may
+ * never be published. RLS deny-all; every read/write goes through the BYPASSRLS
+ * server role, so the anon key can never read a sender's contact details.
+ */
+export const dear_frederick_submissions = pgTable(
+  "dear_frederick_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    image_url: text("image_url").notNull(),
+    signature: text("signature"),
+    contact: text("contact"),
+    note: text("note"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    decided_at: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("dear_frederick_submissions_status_idx").on(t.status),
+    createdIdx: index("dear_frederick_submissions_created_idx").on(t.created_at),
   }),
 );
 

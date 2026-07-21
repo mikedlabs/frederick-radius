@@ -96,6 +96,12 @@
       "sha256": "a88a14db1c7bd85a0314149b7637fb41005fd3f076dd4c4cc939ec7d5cb65e87",
       "applied_at": null,
       "note": "food-truck operator-beacon layer (claims + beacons, RLS deny-all); apply BY HAND in Supabase SQL editor"
+    },
+    {
+      "file": "0027_dear_frederick_submissions.sql",
+      "sha256": "40266ff4fd963b44c72d8ec48e1a19a756543a7a9b35b6508d9e532f2bcc7069",
+      "applied_at": null,
+      "note": "public Dear Frederick letter submissions (one table, RLS deny-all so contact info stays server-only); apply BY HAND in Supabase SQL editor"
     }
   ]
 }

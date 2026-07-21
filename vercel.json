@@ -29,6 +29,14 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/cron/notify-traffic-alerts",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/scanner-archive",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/business-status",
       "schedule": "0 7 * * *"
     },

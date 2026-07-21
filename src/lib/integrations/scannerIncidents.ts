@@ -1,0 +1,324 @@
+/**
+ * Frederick County live incidents — returns only the safe, public,
+ * non-medical calls, from a source that needs NO account of ours.
+ *
+ * Primary source: the public RSS mirror the University of Maryland news-apps
+ * program publishes from frederickscanner.com (latest.rss) — open data, no
+ * auth, no token, no dependency on anyone's Slack workspace. We read it
+ * directly, apply the same allowlist, age out, and de-dupe.
+ *
+ * Optional override: if a Slack bot token IS configured
+ * (SCANNER_SLACK_BOT_TOKEN + SCANNER_INCIDENTS_CHANNEL), we prefer the direct
+ * channel read (more real-time). Neither is required — the RSS keeps it live
+ * with zero setup. Cached ~60s, fail-soft to empty like every other feed.
+ */
+import { unstable_cache } from "next/cache";
+import {
+  publicIncident,
+  classifyPublicIncident,
+  geocodableAddress,
+  parseIncidentLine,
+  type PublicIncident,
+} from "@/lib/scanner/incidentFeed";
+import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
+
+/** The REAL-TIME public source: frederickscanner.com's own dispatch page. One
+ *  <p> per call, in the exact pipe format the parser already handles. No auth,
+ *  no lag, no token — this is the live wire. */
+const DIRECT_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
+/** Lagged public fallback (UMD news-apps RSS mirror), only if the direct page
+ *  is unreachable. */
+const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
+
+export type ScannerIncident = PublicIncident & {
+  /** LATEST dispatch post for this call (ISO) — drives freshness sort and the
+   *  "updated X ago" label. A quiet call and a busy one both age out by this. */
+  at: string;
+  /** EARLIEST post for this call (ISO) — when it was first dispatched. Equal to
+   *  `at` for a one-post call; earlier for an active call that's still updating. */
+  firstAt: string;
+  /** How many dispatch posts this call has produced (>=1). A growing count is
+   *  the honest, unit-free signal that a call is active and escalating. */
+  updates: number;
+};
+
+/** One parsed post plus its wall-clock time, before we fold it into a call. */
+export type IncidentEntry = { inc: PublicIncident; atMs: number };
+
+/**
+ * Fold a stream of individual dispatch posts into live calls. The public feed
+ * posts the SAME call several times as it develops (a working fire gets a new
+ * line each time the response grows); collapsing those to one entry threw that
+ * lifecycle away. Here we group by kind+location, keep the earliest and latest
+ * post times and the post count, and let the latest post drive the display. No
+ * unit or radio codes are ever exposed — a count and a time span are the only
+ * lifecycle signals, and both are already public-safe.
+ */
+export function aggregate(entries: IncidentEntry[]): ScannerIncident[] {
+  const now = Date.now();
+  const groups = new Map<
+    string,
+    { inc: PublicIncident; first: number; last: number; count: number }
+  >();
+  for (const { inc, atMs } of entries) {
+    if (now - atMs > MAX_AGE_MS) continue;
+    const key = `${inc.kind}|${inc.location}`;
+    const g = groups.get(key);
+    if (!g) {
+      groups.set(key, { inc, first: atMs, last: atMs, count: 1 });
+      continue;
+    }
+    g.count += 1;
+    if (atMs < g.first) g.first = atMs;
+    if (atMs >= g.last) {
+      g.last = atMs;
+      g.inc = inc; // newest post drives the shown time/kind
+    }
+  }
+  const out: ScannerIncident[] = [];
+  for (const g of groups.values()) {
+    out.push({
+      ...g.inc,
+      at: new Date(g.last).toISOString(),
+      firstAt: new Date(g.first).toISOString(),
+      updates: g.count,
+    });
+  }
+  out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return out;
+}
+
+const token = () => process.env.SCANNER_SLACK_BOT_TOKEN || "";
+const channel = () => process.env.SCANNER_INCIDENTS_CHANNEL || "";
+
+/** Hard cap: nothing older than this ever surfaces, whatever the caller does. */
+const MAX_AGE_MS = 60 * 60 * 1000;
+
+export function scannerConfigured(): boolean {
+  return Boolean(token() && channel());
+}
+
+type SlackMessage = {
+  ts?: string;
+  text?: string;
+  attachments?: { text?: string; fallback?: string; pretext?: string; title?: string }[];
+  blocks?: unknown;
+};
+
+/** Every string a Slack message might carry the dispatch line in, in priority
+ *  order: message text, then each attachment's text/fallback/pretext/title,
+ *  then any string found inside blocks. Robust to however IFTTT nests it. */
+export function messageCandidates(m: SlackMessage): string[] {
+  const out: string[] = [];
+  if (typeof m.text === "string") out.push(m.text);
+  for (const a of m.attachments ?? []) {
+    for (const v of [a.text, a.fallback, a.pretext, a.title]) {
+      if (typeof v === "string") out.push(v);
+    }
+  }
+  // Blocks can nest text arbitrarily; pull every string out defensively.
+  const walk = (v: unknown) => {
+    if (typeof v === "string") out.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  if (m.blocks) walk(m.blocks);
+  return out;
+}
+
+/** The dispatch line from a message: the first candidate that PARSES as one
+ *  (whatever field it lives in), else the first non-empty candidate. */
+function lineFromMessage(m: SlackMessage): string | null {
+  const cands = messageCandidates(m).map((s) => s.replace(/^attachment:\s*/i, "").trim());
+  const parsed = cands.find((s) => parseIncidentLine(s));
+  if (parsed) return parsed;
+  return cands.find((s) => s.length > 0) ?? null;
+}
+
+async function fetchFromSlack(): Promise<ScannerIncident[]> {
+  try {
+    const res = await fetch(
+      `https://slack.com/api/conversations.history?channel=${encodeURIComponent(channel())}&limit=80`,
+      { headers: { Authorization: `Bearer ${token()}` }, next: { revalidate: 60 } },
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { ok?: boolean; messages?: SlackMessage[] };
+    if (!data.ok || !Array.isArray(data.messages)) return [];
+
+    const entries: IncidentEntry[] = [];
+    for (const m of data.messages) {
+      const tsSec = Number(m.ts);
+      if (!Number.isFinite(tsSec)) continue;
+      const atMs = tsSec * 1000;
+
+      const line = lineFromMessage(m);
+      if (!line) continue;
+      const inc = publicIncident(line);
+      if (!inc) continue;
+      entries.push({ inc, atMs });
+    }
+    return aggregate(entries);
+  } catch {
+    return [];
+  }
+}
+
+/** Pull one tag's inner text from an RSS <item> chunk (handles CDATA). */
+function rssTag(chunk: string, tag: string): string {
+  const m = chunk.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
+  if (!m) return "";
+  return decodeEntities(m[1].replace(/^<!\[CDATA\[/, "").replace(/\]\]>$/, "").trim());
+}
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+}
+
+/**
+ * Read the public RSS mirror. Each item: title = "TYPE: 8:23 pm",
+ * description = "LOCATION, Bldg:… Radio: 9C Units: E31". We split those into
+ * the parts the shared allowlist expects, then classify.
+ */
+async function fetchFromRss(): Promise<ScannerIncident[]> {
+  try {
+    const res = await fetch(RSS_URL, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items = xml.split(/<item[\s>]/i).slice(1);
+
+    const now = Date.now();
+    const entries: IncidentEntry[] = [];
+    for (const chunk of items) {
+      const title = rssTag(chunk, "title");
+      const desc = rssTag(chunk, "description");
+      const pub = rssTag(chunk, "pubDate");
+      // "BUILDING FIRE: 8:45 pm" → type + clock time.
+      const tm = title.match(/^(.*?):\s*(\d{1,2}:\d{2}\s*(?:am|pm))\s*$/i);
+      if (!tm) continue;
+      const type = tm[1].trim();
+      const time = tm[2].trim();
+      // Location = everything before Radio:/Units:, minus Bldg/Apt noise.
+      const location = desc
+        .split(/\b(?:radio|units)\s*:/i)[0]
+        .replace(/,?\s*(?:bldg|apt\/unit)\s*:[^,]*/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const inc = classifyPublicIncident(type, location, time);
+      if (!inc) continue;
+
+      const parsed = pub ? Date.parse(pub) : now;
+      const atMs = Number.isFinite(parsed) ? parsed : now;
+      entries.push({ inc, atMs });
+    }
+    return aggregate(entries);
+  } catch {
+    return [];
+  }
+}
+
+/** Timestamp (ms) for a direct-page line from its "(posted MM/DD/YYYY)" date +
+ *  the clock time. Frederick is Eastern; July is EDT (-04:00). */
+function directTimestamp(line: string, clock: string): number | null {
+  const dm = line.match(/posted\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  const tm = clock.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (!dm || !tm) return null;
+  let h = parseInt(tm[1], 10) % 12;
+  if (/pm/i.test(tm[3])) h += 12;
+  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${tm[2]}:00-04:00`;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Read frederickscanner.com's live dispatch page directly. Returns the public
+ * incidents on success (even [] on a quiet hour), or null if the page is
+ * unreachable — so a real fetch failure falls back, but a genuinely quiet
+ * window doesn't show stale data.
+ */
+async function fetchFromDirect(): Promise<ScannerIncident[] | null> {
+  try {
+    const res = await fetch(DIRECT_URL, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const lines = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map((m) =>
+        m[1]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&#?\w+;/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      )
+      .filter(Boolean)
+      .slice(0, 120); // newest-first; only the recent head matters
+
+    const now = Date.now();
+    const entries: IncidentEntry[] = [];
+    for (const line of lines) {
+      const inc = publicIncident(line);
+      if (!inc) continue;
+      const atMs = directTimestamp(line, inc.time) ?? now;
+      entries.push({ inc, atMs });
+    }
+    return aggregate(entries);
+  } catch {
+    return null;
+  }
+}
+
+/** Live from frederickscanner.com directly; a configured Slack token or the
+ *  lagged RSS mirror only stand in if the direct page is unreachable. */
+async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
+  const direct = await fetchFromDirect();
+  if (direct !== null) return direct; // fetch worked (even a quiet []), trust it
+  if (scannerConfigured()) {
+    const slack = await fetchFromSlack();
+    if (slack.length > 0) return slack;
+  }
+  return fetchFromRss();
+}
+
+/**
+ * Recent public scanner incidents, cached ~60s. Live with zero setup off the
+ * public RSS; a configured Slack token takes over for real-time.
+ * (v2: source now RSS-by-default, not Slack-only.)
+ */
+export const getScannerIncidents = unstable_cache(
+  fetchScannerIncidents,
+  ["scanner-incidents-v3"],
+  { revalidate: 60, tags: ["scanner-incidents"] },
+);
+
+export type GeocodedIncident = ScannerIncident & { lng: number; lat: number };
+
+/**
+ * Recent public incidents that resolved to a real in-county coordinate — the
+ * data behind the live map layer. Geocoding runs through the shared, 30-day
+ * cached, county-gated Mapbox geocoder, so recurring roads cost nothing after
+ * the first hit and an unresolvable block simply gets no pin (never a wrong
+ * one). Capped per call so a cold cache can't fan out unboundedly.
+ */
+export async function getGeocodedScannerIncidents(): Promise<GeocodedIncident[]> {
+  const incidents = await getScannerIncidents();
+  if (incidents.length === 0) return [];
+
+  const out: GeocodedIncident[] = [];
+  await Promise.all(
+    incidents.slice(0, 24).map(async (inc) => {
+      const addr = geocodableAddress(inc.location);
+      if (!addr) return;
+      const coord = await geocodeAddressInCounty(addr);
+      if (coord) out.push({ ...inc, lng: coord.lng, lat: coord.lat });
+    }),
+  );
+  out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return out;
+}

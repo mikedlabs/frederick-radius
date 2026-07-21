@@ -25,6 +25,9 @@ export type MapLayerPrefs = {
   cemeteries?: boolean;
   parking?: boolean;
   radar?: boolean;
+  incidents?: boolean;
+  cameras?: boolean;
+  firestations?: boolean;
 };
 
 export function readMapLayerPrefs(): MapLayerPrefs {
@@ -54,6 +57,7 @@ export function writeMapLayerPrefs(p: MapLayerPrefs): void {
     if (p.cemeteries) slim.cemeteries = true;
     if (p.parking) slim.parking = true;
     if (p.radar) slim.radar = true;
+    if (p.firestations) slim.firestations = true;
     if (Object.keys(slim).length === 0) window.localStorage.removeItem(KEY);
     else window.localStorage.setItem(KEY, JSON.stringify(slim));
   } catch {

@@ -57,6 +57,13 @@ export function isBetaExempt(pathname: string): boolean {
     pathname.startsWith("/sitemap") ||
     pathname.startsWith("/icons/") ||
     pathname.startsWith("/opengraph") ||
+    // Food-truck operator surfaces: a truck owner claiming their truck and an
+    // approved operator dropping a live beacon are NOT beta users, so these two
+    // pages must be reachable without a code. The /food-trucks browse directory
+    // itself stays gated. (The beacon/claim API routes are already exempt via
+    // /api/ above.)
+    pathname === "/food-trucks/claim" ||
+    pathname === "/food-trucks/out" ||
     /\.[a-z0-9]+$/i.test(pathname) // sw.js, manifest.webmanifest, robots.txt, *.png, ...
   );
 }

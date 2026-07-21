@@ -96,6 +96,7 @@ export default function TransitMap({
   hideBadge = false,
   lockToService = false,
   interactiveStops = false,
+  showTrains = true,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -127,6 +128,9 @@ export default function TransitMap({
    *  name, the routes that serve it, and its live inbound arrivals. Off by
    *  default (the /pulse map stays a clean live-bus view). */
   interactiveStops?: boolean;
+  /** Overlay live MARC train positions alongside the buses. On by default so
+   *  /transit shows rail; /pulse sets it false to stay a pure live-bus view. */
+  showTrains?: boolean;
 }) {
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
@@ -447,7 +451,7 @@ export default function TransitMap({
 
         {/* Live MARC trains ride the same live toggle as the buses, so the
             rail corridor moves too instead of sitting as static pins. */}
-        <LiveMarcTrains show={liveBuses} />
+        <LiveMarcTrains show={liveBuses && showTrains} />
 
         {/* Stop-tap detail — name, routes here, and live inbound arrivals. */}
         {selectedStop && (

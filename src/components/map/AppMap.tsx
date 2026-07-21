@@ -63,7 +63,6 @@ import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import { CLUSTER_FAMILIES } from "./categoryMarkers";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -125,21 +124,10 @@ function hasWebGL(): boolean {
   }
 }
 
-// Dominant-family cluster tint, generated from the ONE family table so the
-// tally (clusterProperties) and the paint can never disagree. First family
-// to hit the max wins ties (food > drink > coffee > ... — deliberate: the
-// order reflects what a browsing user most likely cares about).
-const CLUSTER_TINT: mapboxgl.ExpressionSpecification = [
-  "let",
-  "mx",
-  ["max", ...CLUSTER_FAMILIES.map((f) => ["get", f.key])],
-  [
-    "case",
-    ["==", ["var", "mx"], 0], "#E14328",
-    ...CLUSTER_FAMILIES.flatMap((f) => [["==", ["get", f.key], ["var", "mx"]], f.color]),
-    "#E14328",
-  ],
-] as unknown as mapboxgl.ExpressionSpecification;
+// Curated places render UNCLUSTERED — every place is its own pin, shown all
+// at once (owner call 2026-07-21: clustering into numbered bubbles hid real
+// places and read as a bad experience). The dominant-family cluster tint that
+// used to color the count discs is gone with them.
 
 // ── Tap-a-town: which municipality is under a tapped point ──────────
 // Ray-cast point-in-polygon. Even-odd across all rings handles holes
@@ -217,6 +205,9 @@ import MapOverlays from "./MapOverlays";
 import LiveBuses from "./LiveBuses";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
+import LiveIncidents from "./LiveIncidents";
+import TrafficCameras from "./TrafficCameras";
+import FireStations from "./FireStations";
 import {
   parseLayersParam,
   serializeLayers,
@@ -234,7 +225,7 @@ import MapParkingPeek from "./MapParkingPeek";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
-import { ArrowRight, ChevronRight, LocateFixed } from "lucide-react";
+import { ArrowRight, ChevronRight, LoaderCircle, LocateFixed, Shrink } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
 import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
@@ -628,6 +619,11 @@ export default function AppMap({
       setListView(true);
     }
   }, []);
+  // True once the camera has moved off the county overview (the county opens at
+  // ~z9.6; past ~z10.6 the user has zoomed or panned in). Drives the "show the
+  // whole county" reset FAB so it only appears when there is somewhere to go
+  // back from, and hides again once fitCounty() returns to the overview.
+  const [offOverview, setOffOverview] = useState(false);
   const updateListView = (next: boolean) => {
     setListView(next);
     try {
@@ -668,6 +664,14 @@ export default function AppMap({
   const [showRadar, setShowRadar] = useState(() => layerPrefs.radar ?? false);
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
+  // Live public scanner incidents (crashes, wires down, fires) — opt-in,
+  // OFF by default. Empty until the FredScanner feed is configured.
+  const [showIncidents, setShowIncidents] = useState(() => layerPrefs.incidents ?? false);
+  // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
+  const [showCameras, setShowCameras] = useState(() => layerPrefs.cameras ?? false);
+  // Frederick County fire & rescue companies (GIS, static) — opt-in, OFF by
+  // default. Each pin is the station number, the root of its call signs.
+  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? false);
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -735,8 +739,11 @@ export default function AppMap({
       cemeteries: showCemeteries,
       parking: showParking,
       radar: showRadar,
+      incidents: showIncidents,
+      cameras: showCameras,
+      firestations: showFireStations,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras, showFireStations]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -1112,7 +1119,14 @@ export default function AppMap({
         slug: p.slug,
         name: p.name,
         category: p.category,
-        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#E14328",
+        // Category color as a literal hex on the feature (GL paint can't
+        // read var(--app-*)). Mirrors colorOf() in categoryMarkers.ts —
+        // leaf color, else the parent category's color, else brand — so the
+        // wide-zoom dot matches the puck it cross-fades into.
+        color:
+          CATEGORY_BY_SLUG[p.category]?.color
+          ?? CATEGORY_BY_SLUG[CATEGORY_BY_SLUG[p.category]?.parent ?? ""]?.color
+          ?? "#E14328",
         bucket: bucketOf(p.category),
         // "Last call" — open now but closing within the hour. Drives a
         // soft amber halo so a glance catches what's about to close.
@@ -1123,6 +1137,11 @@ export default function AppMap({
         // Faded when an active What/Open-now filter doesn't match this pin
         // (interaction: the map reacts to the dock, not just the count).
         dimmed: matchSet ? !matchSet.has(p.slug) : false,
+        // Emphasized: a MATCH while a filter is active. Drives the icon-size
+        // boost so matches grow and dominate over the shrunk, faded rest —
+        // weak contrast (matches at full, rest at 0.28) read as barely
+        // filtered before. false on the clean, unfiltered map.
+        emph: matchSet ? matchSet.has(p.slug) : false,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
@@ -1237,9 +1256,19 @@ export default function AppMap({
     setCivicTown(null); // any tap dismisses a prior town sheet
     const feature = e.features?.[0];
     if (!feature) {
-      setSelectedSlug(null);
-      // Tap empty map -> which town am I in? Point-in-polygon against the
-      // municipal boundaries already drawn, then open a compact civic sheet.
+      // An empty tap is a DISMISS first. If a pin peek, a parking peek, or a
+      // selected pin is open, closing it IS the whole gesture — no town bubble,
+      // no haptic. (The map used to grab every empty tap and pop an unrequested
+      // "which town?" sheet, so you could never simply tap away to clear a card.)
+      if (peekPlace || parkingPeek || selectedSlug) {
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setSelectedSlug(null);
+        return;
+      }
+      // Nothing was open, so this is a deliberate tap on empty land -> which
+      // town am I in? Point-in-polygon against the municipal boundaries already
+      // drawn, then open a compact civic sheet.
       const { lng, lat } = e.lngLat;
       const hit = municipalBoundaries.features.find(
         (f) => f.geometry && pointInPolygonGeom(lng, lat, f.geometry as GeoJSON.Geometry),
@@ -1661,6 +1690,20 @@ export default function AppMap({
     );
   };
 
+  // Reframe the whole county. Shared by the dock's Where control and the
+  // map-surface reset FAB so "get me un-lost" is one tap from either place,
+  // not buried three levels into Filters. cameraIntentRef stays false: this is
+  // a return to the default frame, not a user pan the leash should preserve.
+  const fitCounty = () => {
+    cameraIntentRef.current = false;
+    mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
+      padding: countyFitPadding(),
+      duration: prefersReducedMotion() ? 0 : 900,
+      easing: CAM_EASE,
+      essential: true,
+    });
+  };
+
   // Per-event Frederick hour-of-day + day key, derived once from the events
   // prop (deterministic over fixed timestamps). The scrubber filters same-day
   // events to those live/soon at the chosen hour; other-day events stay put so
@@ -1810,11 +1853,16 @@ export default function AppMap({
             </div>
           </div>
         )}
-        {/* Geolocation notes surface inside the dock's Where pane when the
-            dock owns locate; the floating toast serves dock-less embeds. */}
-        {geoMsg && !dock && (
+        {/* A geolocation denial or failure has to be visible where the user
+            just tapped locate. On the dock surface it anchors above the locate
+            FAB (bottom-right); dock-less embeds keep the centered toast. Before,
+            it was gated to the no-dock case only, so on /map browse a denial
+            was silent (it lived inside the collapsed Where pane). */}
+        {geoMsg && (
           <div
-            className="absolute bottom-3 left-1/2 z-[var(--z-map-control)] flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            className={`z-[var(--z-map-control)] flex items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur ${
+              dock ? "map-geo-toast" : "absolute bottom-3 left-1/2 -translate-x-1/2"
+            }`}
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             role="status"
           >
@@ -1960,7 +2008,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -1984,12 +2032,20 @@ export default function AppMap({
             installCountySpotlight(e.target);
             markMapOnLoad();
             emitInView();
+            // A restored `?c=` camera can open already zoomed in without ever
+            // firing moveend, so seed the reset FAB's visibility from the
+            // initial frame too.
+            setOffOverview(e.target.getZoom() > 10.6);
           }}
           onMoveStart={() => setMapMoving(true)}
           onMoveEnd={(e) => {
             setMapMoving(false);
             markMapIdleOnce();
             emitInView();
+            // The reset FAB only earns its place once the user has left the
+            // county overview (see offOverview). Settled zoom > 10.6 means they
+            // zoomed or panned in and might want one tap back out.
+            setOffOverview(e.target.getZoom() > 10.6);
             // Persist the camera to the URL so the view is shareable and
             // survives reload. moveend is already debounced by Mapbox, so
             // this writes once per settled move; replaceState preserves the
@@ -2046,6 +2102,19 @@ export default function AppMap({
               muni labels via beforeId, so precipitation drapes the basemap
               but never covers a line, pin, or label. */}
           <WeatherRadar show={showRadar} beforeId="muni-label" onNewestFrame={setRadarFrameEpoch} />
+
+          {/* Live public scanner incidents — caution pins (crashes, wires
+              down, fires) that self-refresh and age out. Empty until the
+              FredScanner feed is configured; polls only while its toggle is on. */}
+          <LiveIncidents show={showIncidents} />
+
+          {/* MDOT CHART traffic cameras — pinned where they are; tap to watch
+              the live feed. Fetches once when the layer turns on. */}
+          <TrafficCameras show={showCameras} />
+
+          {/* Frederick County fire & rescue companies — static GIS pins, each
+              its station number. Tap for the company name + call-sign key. */}
+          <FireStations show={showFireStations} />
 
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
@@ -2512,88 +2581,7 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             promoteId="slug"
-            cluster
-            clusterRadius={64}
-            clusterMaxZoom={15}
-            // Tally EVERY bucket via the seven macro families (was: five raw
-            // buckets, so brewery/wine/coffee/bar/music/family/etc counted
-            // toward nothing and an all-brewery cluster fell to the generic
-            // fallback). One table (CLUSTER_FAMILIES) drives tally + tint.
-            clusterProperties={Object.fromEntries(
-              CLUSTER_FAMILIES.map((f) => [
-                f.key,
-                ["+", ["case", ["in", ["get", "bucket"], ["literal", [...f.buckets]]], 1, 0]],
-              ]),
-            )}
           >
-            {/* Dominant-category tint, shared by the glow + the disk. */}
-            <Layer
-              id="curated-cluster-glow"
-              type="circle"
-              filter={["has", "point_count"]}
-              paint={{
-                "circle-color": CLUSTER_TINT,
-                "circle-opacity": 0.18,
-                "circle-blur": 1,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 18, 50, 26, 300, 34,
-                ],
-              }}
-            />
-            <Layer
-              id="curated-clusters"
-              type="circle"
-              filter={["has", "point_count"]}
-              paint={{
-                // Tint by the cluster's dominant category so a glance reads
-                // "this dense area is mostly food / arts / civic".
-                "circle-color": CLUSTER_TINT,
-                // Calm category tint. The count label below restores
-                // "how many places" without a hard black outline; the
-                // disk itself stays soft and the dominant-category color
-                // still reads at a glance. Wider radius scale gives
-                // dense clusters real visual weight at the county view.
-                "circle-opacity": 0.62,
-                "circle-blur": 0.25,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 10, 10, 14, 50, 18, 150, 22, 400, 26,
-                ],
-                "circle-stroke-color": "#FFFFFF",
-                "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.4,
-              }}
-            />
-            {/* Count label on top of the cluster disc — small, white,
-                no halo'd pill, just numbers. The earlier "no number"
-                rule was right that big black count chips were loud;
-                but losing the count entirely meant a 12-pin cluster
-                read identical to an 80-pin one. A subtle white numeric
-                label restores the cardinality signal while keeping
-                the calm visual register. Hidden on tiny clusters (3 or
-                fewer) since the disc itself already reads as small. */}
-            <Layer
-              id="curated-cluster-counts"
-              type="symbol"
-              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
-              layout={{
-                "text-field": ["get", "point_count_abbreviated"],
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  4, 10, 50, 12, 200, 13,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
-                "text-allow-overlap": true,
-                "text-ignore-placement": true,
-              }}
-              paint={{
-                "text-color": "#FFFFFF",
-                "text-halo-color": "rgba(0,0,0,0.25)",
-                "text-halo-width": 1.2,
-                "text-halo-blur": 0.5,
-              }}
-            />
             {/* Last call — a soft amber halo under places open now but
                 closing within the hour. Calm by design (a warm glow, no
                 countdown, no pulse): a glance catches what's about to
@@ -2609,32 +2597,48 @@ export default function AppMap({
                 "circle-blur": 0.55,
               }}
             />
+            {/* Dot → puck density transition. The map is unclustered: every
+                curated place is always shown. At the county/mid view that would
+                be ~1,700 overlapping full pucks (a downtown blob), so wide/mid
+                zoom draws each place as a small category-colored DOT — a legible
+                stipple that still shows everything and still honors the
+                filter's emph/dimmed weighting. As you zoom into a few blocks
+                the dots fade out (12.5 → 13.5) and the full pucks fade in,
+                cross-fading so nothing pops. Under the pucks/labels by JSX order. */}
             <Layer
-              // Street-zoom name labels (map polish batch): once you're in
-              // a few blocks, pins read by NAME like a field-guide plate
-              // instead of forcing a tap per dot. text-optional lets the
-              // collision engine drop labels before it drops pins.
-              id="curated-names"
-              type="symbol"
+              id="curated-dots"
+              type="circle"
               filter={["!", ["has", "point_count"]]}
-              minzoom={15.5}
-              layout={{
-                "text-field": ["get", "name"],
-                "text-size": 10.5,
-                "text-offset": [0, 1.35],
-                "text-anchor": "top",
-                "text-optional": true,
-              }}
+              maxzoom={13.5}
               paint={{
-                "text-color": "#3A362B",
-                "text-halo-color": "#EEE6D4",
-                "text-halo-width": 1.1,
+                "circle-color": ["get", "color"],
+                "circle-radius": [
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 9, 2.2, 11, 3.2, 13, 4.6],
+                  [
+                    "case",
+                    ["==", ["get", "emph"], true], 1.35,
+                    ["==", ["get", "dimmed"], true], 0.7,
+                    1,
+                  ],
+                ],
+                "circle-stroke-color": "#FAF3E2",
+                "circle-stroke-width": 0.8,
+                "circle-opacity": [
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 12.5, 1, 13.5, 0],
+                  ["case", ["==", ["get", "dimmed"], true], 0.35, 1],
+                ],
+                "circle-stroke-opacity": [
+                  "interpolate", ["linear"], ["zoom"], 12.5, 0.9, 13.5, 0,
+                ],
               }}
             />
             <Layer
               id="curated-icons"
               type="symbol"
               filter={["!", ["has", "point_count"]]}
+              minzoom={12.5}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -2648,14 +2652,29 @@ export default function AppMap({
                 // even at street zoom we cap at ~0.95 instead of 1.1
                 // so the user sees more before clutter kicks in.
                 // Clusters carry the density signal at the wide view.
+                //
+                // A filter-contrast multiplier rides ON TOP of the zoom
+                // curve (the stops themselves are unchanged): a match
+                // grows to 1.22×, a non-match shrinks to 0.72×, and a
+                // pin on the clean/unfiltered map stays at 1×. Paired
+                // with the icon-opacity fade below, matches dominate.
                 "icon-size": [
-                  "interpolate", ["linear"], ["zoom"],
-                  9, 0.26,
-                  11, 0.36,
-                  13, 0.5,
-                  15, 0.72,
-                  17, 0.88,
-                  19, 0.95,
+                  "*",
+                  [
+                    "interpolate", ["linear"], ["zoom"],
+                    9, 0.26,
+                    11, 0.36,
+                    13, 0.5,
+                    15, 0.72,
+                    17, 0.88,
+                    19, 0.95,
+                  ],
+                  [
+                    "case",
+                    ["==", ["get", "emph"], true], 1.22,
+                    ["==", ["get", "dimmed"], true], 0.72,
+                    1,
+                  ],
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes
@@ -2676,16 +2695,25 @@ export default function AppMap({
                 //  - the `dimmed` property: doesn't match the active What /
                 //    Open-now filter, so it fades instead of vanishing.
                 // No state + no filter = full opacity, so this stays inert
-                // on the clean map.
+                // on the clean map. Dropped 0.28 → 0.15 so the shrunk
+                // non-matches recede hard and the grown matches carry the eye.
+                //
+                // A zoom ramp (12.5 → 13.2) rides on top so pucks fade IN over
+                // the same handoff where the dots fade out — the two never both
+                // read at full, so the density transition cross-fades cleanly.
                 "icon-opacity": [
-                  "case",
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 12.5, 0, 13.2, 1],
                   [
-                    "any",
-                    ["boolean", ["feature-state", "dim"], false],
-                    ["==", ["get", "dimmed"], true],
+                    "case",
+                    [
+                      "any",
+                      ["boolean", ["feature-state", "dim"], false],
+                      ["==", ["get", "dimmed"], true],
+                    ],
+                    0.15,
+                    1,
                   ],
-                  0.28,
-                  1,
                 ],
               }}
             />
@@ -2707,31 +2735,39 @@ export default function AppMap({
                 "circle-radius": 22,
               }}
             />
-            {/* Names reveal as you get closer — fade in past street zoom */}
+            {/* Names reveal progressively — the ONE curated label layer (the
+                old duplicate curated-names was removed; the two double-drew
+                names between 15.5 and 16.5). From z13 up, only standout pins
+                label: text-optional + collision (allow/ignore-placement false)
+                let the engine draw the highest-priority names first and drop
+                the rest, so mid zoom shows a few verified names and more appear
+                as you zoom. symbol-sort-key uses pri (verified = 0 = drawn
+                first = wins the spot), matching curated-icons. */}
             <Layer
               id="curated-labels"
               type="symbol"
-              minzoom={15}
+              minzoom={13}
               filter={["!", ["has", "point_count"]]}
               layout={{
                 "text-field": ["get", "name"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9.5, 16, 12],
                 "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
                 "text-anchor": "top",
                 "text-offset": [0, 1.15],
                 "text-optional": true,
                 "text-allow-overlap": false,
+                "text-ignore-placement": false,
                 "text-max-width": 9,
                 "symbol-sort-key": ["get", "pri"],
               }}
               paint={{
-                "text-color": "#1A1A1A",
+                "text-color": "#3A362B",
                 "text-halo-color": "#FAFAF7",
-                "text-halo-width": 1.7,
+                "text-halo-width": 1.1,
                 "text-opacity": [
                   "interpolate", ["linear"], ["zoom"],
-                  15.5, 0,
-                  16.5, 1,
+                  13, 0.85,
+                  15, 1,
                 ],
               }}
             />
@@ -2764,13 +2800,13 @@ export default function AppMap({
             <Layer
               id="ring-fill"
               type="fill"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               paint={{ "fill-color": "#E14328", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               paint={{
                 "line-color": "#E14328",
                 "line-width": 2,
@@ -2800,7 +2836,7 @@ export default function AppMap({
             <Layer
               id="route-line"
               type="line"
-              beforeId="curated-clusters"
+              beforeId="curated-lastcall"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
                 "line-color": "#20506A",
@@ -3249,6 +3285,12 @@ export default function AppMap({
             setShowParking={setShowParking}
             showRadar={showRadar}
             setShowRadar={setShowRadar}
+            showIncidents={showIncidents}
+            setShowIncidents={setShowIncidents}
+            showCameras={showCameras}
+            setShowCameras={setShowCameras}
+            showFireStations={showFireStations}
+            setShowFireStations={setShowFireStations}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
@@ -3269,24 +3311,34 @@ export default function AppMap({
                 essential: true,
               });
             }}
-            fitCounty={() => {
-              cameraIntentRef.current = false;
-              mapRef.current?.getMap().fitBounds(FREDERICK_COUNTY_BOUNDS, {
-                padding: countyFitPadding(),
-                duration: prefersReducedMotion() ? 0 : 900,
-                easing: CAM_EASE,
-                essential: true,
-              });
-            }}
+            fitCounty={fitCounty}
             onPaneOpenChange={setDockPaneOpen}
           />
           </div>
         )}
 
+        {/* "Show the whole county" reset — one tap back to the overview when a
+            user has zoomed or panned in and lost the lay of the land. Getting
+            un-lost used to be buried under Filters → Where → Whole county.
+            Stacked just above the locate FAB; only shown once off the overview
+            so the default county view stays uncluttered. */}
+        {dock && !listView && offOverview && (
+          <button
+            type="button"
+            className="map-reset-fab tap-44"
+            onClick={fitCounty}
+            aria-label="Show the whole county"
+          >
+            <Shrink className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+          </button>
+        )}
+
         {/* Persistent "near me" locate button — locate is the most-used
             map gesture, so it lives ON the map (above the zoom cluster),
             not only inside the Where pane. Dock surface only; hidden while
-            a dock pane or the list is open. */}
+            a dock pane or the list is open. While locating, the icon swaps to
+            a spinner (static under reduced motion) so the ~8s geolocation wait
+            reads as working, not stuck. */}
         {dock && !listView && (
           <button
             type="button"
@@ -3296,7 +3348,15 @@ export default function AppMap({
             aria-busy={locating || undefined}
             data-on={userLoc ? true : undefined}
           >
-            <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+            {locating ? (
+              <LoaderCircle
+                className="h-5 w-5 animate-spin motion-reduce:animate-none"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            ) : (
+              <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
+            )}
           </button>
         )}
 
