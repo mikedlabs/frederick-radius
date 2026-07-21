@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Search, Phone, ExternalLink, X, AlertCircle, ChevronDown, ChevronRight,
+  Search, Phone, ExternalLink, X, AlertCircle, ChevronRight,
   Star, MessageSquare, Mail, Copy, Check, Download, Sparkles, ArrowUpRight,
   House, Trash2, PawPrint, Bus, ShieldCheck, HeartPulse, Landmark, Trees, Vote,
   type LucideIcon,
 } from "lucide-react";
+import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import {
   formatPhone, TOPICS, topicOf, isEssential, isOpen24_7,
   type DepartmentContact, type TopicId,
@@ -16,46 +17,43 @@ import { getHomeMuni } from "@/lib/personalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 /**
- * ContactsDirectory — the government directory as a FIND surface built around
- * what a resident actually needs, not which office owns it.
+ * ContactsDirectory — the government directory as a one-SCREEN index built around
+ * what a resident needs, with the depth in a bottom sheet so nothing scrolls
+ * endlessly.
  *
- * Top to bottom:
- *   1. SEARCH — one box over departments, their "call us about" line, and the
- *      civic tasks.
- *   2. MOST IMPORTANT NUMBERS — the pinned essentials (plus anything you star),
- *      with one-tap tools to TEXT, EMAIL, COPY, or add the whole set to your
- *      phone's contacts. This is the "carry these with me" card.
- *   3. WHERE YOU LIVE — if a home town is set, a line that resolves the single
- *      biggest confusion (is my trash/water/police City or County?) for you.
- *   4. BROWSE BY NEED — Home & property, Trash & water, Pets, Getting around,
- *      and so on. Each line keeps a small jurisdiction tag, a 24/7 badge where
- *      the number truly answers around the clock, a star to pin it, tap-to-call,
- *      and its site. The old City / County / State toggle is gone.
+ *   1. SEARCH — one box over departments, their "call us about" line, and tasks.
+ *   2. MOST IMPORTANT NUMBERS — the essentials, numbers LISTED, with one-tap
+ *      Text / Email / Copy / Add-to-Contacts for the whole set. Star any line to
+ *      add it.
+ *   3. WHERE YOU LIVE — if a home town is set, one line resolves the City-vs-
+ *      County question (whose trash/water/police is mine).
+ *   4. BROWSE BY NEED — a grid of need-tiles (Home & property, Pets, Getting
+ *      around…). The whole set of needs fits on about one screen. Tapping a tile
+ *      opens that need in the app's shared BottomSheet, where every office lists
+ *      its number, a jurisdiction tag, a 24/7 badge where the line truly answers
+ *      around the clock, tap-to-call, a star, and its site.
  *   5. Not sure who to call → hand off to Ask.
  *
- * All of it is a plain client filter over data the server already had; no fetch
- * on a keystroke. Phone/verification honesty is inherited from the data: a line
- * shows a number only where one is confirmed, and the 24/7 badge only where the
- * official page says so.
+ * All of it is a plain client filter over data the server already had. Phone
+ * numbers and 24/7 status come only from verified data.
  */
 
 type Task = { id: string; label: string; url: string; verbLabel: string; keywords?: string[] };
 
 const PINNED_KEY = "fr:contacts:pinned:v1";
 
-/** lucide component for a topic's icon name. */
 const TOPIC_ICONS: Record<string, LucideIcon> = {
   House, Trash2, PawPrint, Bus, ShieldCheck, HeartPulse, Landmark, Trees, Vote,
 };
 
-/** Per-jurisdiction accent (row rail) and the WHITE-on-color call pill. The
- *  Signal vermilion fails 4.5:1 under white text, so the city pill uses the
- *  press variant; the rail keeps the true brand red (decorative, exempt). */
+/** Per-jurisdiction accent (row rail) and the WHITE-on-color call chip. The
+ *  Signal vermilion fails 4.5:1 under white, so the city chip uses the press
+ *  variant; the rail keeps the true brand red (decorative, exempt). */
 const RAIL: Record<string, string> = {
   emergency: "var(--app-danger)", city: "var(--app-brand)",
   county: "var(--app-cool)", state: "var(--app-brand-2)",
 };
-const PILL_BG: Record<string, string> = {
+const NUM_COLOR: Record<string, string> = {
   emergency: "var(--app-danger)", city: "var(--app-brand-press)",
   county: "var(--app-cool)", state: "var(--app-brand-2)",
 };
@@ -74,7 +72,6 @@ function taskMatches(t: Task, q: string): boolean {
   );
 }
 
-/** Read/persist the device-local set of starred department slugs. */
 function readPinned(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -99,30 +96,15 @@ function readDevice(): DeviceState {
   return { pinned: readPinned(), homeMuni: getHomeMuni() };
 }
 
-/** One shareable text line per department that has a number. */
-function contactLine(d: DepartmentContact): string {
-  return d.phone ? `${d.name}: ${formatPhone(d.phone)}` : d.name;
-}
-
-/** The plain-text block the Text / Email / Copy tools send. */
 function buildShareText(contacts: DepartmentContact[]): string {
-  const lines = contacts.filter((d) => d.phone).map(contactLine);
+  const lines = contacts.filter((d) => d.phone).map((d) => `${d.name}: ${formatPhone(d.phone!)}`);
   return `Frederick County key numbers\n${lines.join("\n")}\n\nMore at frederickradius.app/contacts`;
 }
-
-/** A multi-entry vCard so the whole set drops into the phone's address book. */
 function buildVCard(contacts: DepartmentContact[]): string {
   return contacts
     .filter((d) => d.phone)
     .map((d) =>
-      [
-        "BEGIN:VCARD",
-        "VERSION:3.0",
-        `FN:Frederick ${d.name}`,
-        "ORG:Frederick Radius",
-        `TEL;TYPE=VOICE:${formatPhone(d.phone!)}`,
-        "END:VCARD",
-      ].join("\n"),
+      ["BEGIN:VCARD", "VERSION:3.0", `FN:Frederick ${d.name}`, "ORG:Frederick Radius", `TEL;TYPE=VOICE:${formatPhone(d.phone!)}`, "END:VCARD"].join("\n"),
     )
     .join("\n");
 }
@@ -135,11 +117,8 @@ export default function ContactsDirectory({
   tasks: readonly Task[];
 }) {
   const [query, setQuery] = useState("");
-  const [tasksOpen, setTasksOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Both device-local reads (starred lines + home town) live in ONE state so
-  // the mount effect makes a single setState — SSR and first paint stay empty,
-  // then hydrate together.
+  const [openTopic, setOpenTopic] = useState<TopicId | null>(null);
   const [device, setDevice] = useState<DeviceState>({ pinned: new Set(), homeMuni: null });
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of localStorage preferences (starred lines + home town); SSR can't read localStorage
@@ -152,8 +131,6 @@ export default function ContactsDirectory({
 
   const bySlug = useMemo(() => new Map(departments.map((d) => [d.slug, d] as const)), [departments]);
   const emergency = useMemo(() => departments.filter((d) => d.jurisdiction === "emergency"), [departments]);
-  // The emergency lines NOT already in the essentials card (the hospital + the
-  // tiered pet ERs) — shown once, below the card, never duplicating 911/988.
   const emergencyCare = useMemo(() => emergency.filter((d) => !isEssential(d.slug)), [emergency]);
 
   function togglePin(slug: string) {
@@ -166,9 +143,6 @@ export default function ContactsDirectory({
     });
   }
 
-  // The "most important numbers": the curated essentials, then anything the
-  // user has starred, de-duped and in a stable order (essentials keep their
-  // curated order; pins follow).
   const importantContacts = useMemo(() => {
     const seen = new Set<string>();
     const out: DepartmentContact[] = [];
@@ -209,8 +183,6 @@ export default function ContactsDirectory({
     }
   }
 
-  // Home-town resolver: name the ambiguous services (trash/water/police) for a
-  // City resident, and reassure everyone else that the County lines serve them.
   const homeName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name ?? null : null;
   const resolver: { title: string; body: string } | null = homeMuni
     ? homeMuni === "frederick"
@@ -221,12 +193,11 @@ export default function ContactsDirectory({
       : homeName
         ? {
             title: `You're in ${homeName}.`,
-            body: `The County lines below serve the whole county, including you. If ${homeName} runs its own trash, water, or police, those are handled by the town.`,
+            body: `The County lines serve the whole county, including you. If ${homeName} runs its own trash, water, or police, those are handled by the town.`,
           }
         : null
     : null;
 
-  // Search: departments then tasks. Off search: the topic groups.
   const deptResults = useMemo(
     () => (searching ? departments.filter((d) => deptMatches(d, q)) : []),
     [departments, q, searching],
@@ -237,7 +208,6 @@ export default function ContactsDirectory({
   );
   const total = deptResults.length + taskResults.length;
 
-  // Non-emergency departments grouped by life-area topic, in TOPICS order.
   const groups = useMemo(() => {
     const byTopic = new Map<TopicId, DepartmentContact[]>();
     for (const d of departments) {
@@ -250,9 +220,11 @@ export default function ContactsDirectory({
     return TOPICS.map((t) => ({ ...t, depts: byTopic.get(t.id) ?? [] })).filter((g) => g.depts.length > 0);
   }, [departments]);
 
+  const openGroup = openTopic ? groups.find((g) => g.id === openTopic) ?? null : null;
+
   return (
     <section aria-label="Find a service" className="space-y-5">
-      {/* Search — the fast path, first thing on the page. */}
+      {/* Search — the fast path. */}
       <div className="relative">
         <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
         <input
@@ -272,7 +244,7 @@ export default function ContactsDirectory({
         )}
       </div>
 
-      {/* ── Most important numbers ─────────────────────────────────────── */}
+      {/* ── Most important numbers — numbers listed + carry tools ───────── */}
       <div
         className="rounded-[var(--app-radius-lg)] border p-3.5"
         style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
@@ -289,11 +261,10 @@ export default function ContactsDirectory({
 
         <ul className="grid gap-1.5 sm:grid-cols-2">
           {importantContacts.map((d) => (
-            <ImportantRow key={d.slug} d={d} />
+            <EssentialRow key={d.slug} d={d} />
           ))}
         </ul>
 
-        {/* Text / Email / Copy / Add to contacts — the carry-it-with-you tools. */}
         <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
           <p className="mb-2 text-[11.5px]" style={{ color: "var(--app-ink-2)" }}>
             Send these to your phone or your family:
@@ -310,11 +281,11 @@ export default function ContactsDirectory({
               {copied ? "Copied" : "Copy"}
             </button>
             <button type="button" onClick={downloadVCard} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-              <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Add to contacts
+              <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Add to phone
             </button>
           </div>
           <p className="mt-2 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Star any line below to add it to this set.
+            Star any line to add it to this set.
           </p>
         </div>
       </div>
@@ -332,10 +303,8 @@ export default function ContactsDirectory({
         </div>
       )}
 
-      {/* Emergency care — the health facilities whose right number depends on
-          the situation (the hospital, the tiered pet ERs), so they link to
-          guidance instead of a single line. The 911 / 988 / Poison numbers live
-          in the card above, not duplicated here. */}
+      {/* Emergency care — the health facilities whose right number depends on the
+          situation. The 911 / 988 / Poison lines live in the card above. */}
       {emergencyCare.length > 0 && (
         <div>
           <p className="mb-1.5 flex items-center gap-1.5 px-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-danger)" }}>
@@ -379,52 +348,54 @@ export default function ContactsDirectory({
         </div>
       ) : (
         <>
-          {/* ── Browse by need ─────────────────────────────────────────── */}
-          {groups.map((g) => {
-            const Icon = TOPIC_ICONS[g.icon] ?? House;
-            return (
-              <div key={g.id}>
-                <p className="mb-2 flex items-center gap-2 px-0.5">
-                  <span aria-hidden className="grid h-6 w-6 place-items-center rounded-[7px]" style={{ background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
-                  </span>
-                  <span className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>{g.label}</span>
-                  <span className="ml-auto font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{g.depts.length}</span>
-                </p>
-                <ul className="space-y-1.5">
-                  {g.depts.map((d) => (
-                    <DeptRow key={d.slug} d={d} pinned={pinned.has(d.slug)} onPin={togglePin} />
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+          {/* ── Browse by need — a one-screen index of tiles ───────────── */}
+          <div>
+            <p className="mb-2 px-0.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+              Find a service by what you need
+            </p>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {groups.map((g) => {
+                const Icon = TOPIC_ICONS[g.icon] ?? House;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setOpenTopic(g.id)}
+                    aria-haspopup="dialog"
+                    className="tactile-interactive flex flex-col items-start gap-2 rounded-[var(--app-radius-lg)] border p-3 text-left active:scale-[0.98]"
+                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
+                  >
+                    <span aria-hidden className="grid h-8 w-8 place-items-center rounded-[9px]" style={{ background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+                      <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
+                    </span>
+                    <span className="font-serif text-[15px] font-semibold leading-[1.1] tracking-tight" style={{ color: "var(--app-ink)" }}>{g.label}</span>
+                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                      {g.depts.length} {g.depts.length === 1 ? "office" : "offices"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* How do I… — the county's task links, folded behind one tap. */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setTasksOpen((v) => !v)}
-              aria-expanded={tasksOpen}
-              className="tap-44-y flex w-full items-center justify-between rounded-[var(--app-radius-md)] border px-3.5 py-2.5 text-left"
+          <details className="group">
+            <summary
+              className="tap-44-y flex w-full cursor-pointer list-none items-center justify-between rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
               style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
             >
               <span className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 How do I&hellip;
                 <span className="ml-2 font-mono text-[11px] font-normal" style={{ color: "var(--app-ink-3)" }}>{tasks.length} tasks</span>
               </span>
-              {tasksOpen
-                ? <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                : <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
-            </button>
-            {tasksOpen && (
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {tasks.map((t) => (
-                  <TaskChip key={t.id} t={t} />
-                ))}
-              </ul>
-            )}
-          </div>
+              <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" strokeWidth={2.2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+            </summary>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {tasks.map((t) => (
+                <TaskChip key={t.id} t={t} />
+              ))}
+            </ul>
+          </details>
 
           {/* Not sure who to call → hand off to Ask. */}
           <Link
@@ -447,37 +418,71 @@ export default function ContactsDirectory({
           </p>
         </>
       )}
+
+      {/* The need sheet — the app's shared BottomSheet, opened by a tile. */}
+      <BottomSheet
+        present={openTopic !== null}
+        onClose={() => setOpenTopic(null)}
+        ariaLabel={openGroup ? `${openGroup.label} contacts` : "Contacts"}
+      >
+        {(dismiss) => {
+          const Icon = openGroup ? TOPIC_ICONS[openGroup.icon] ?? House : House;
+          return (
+            <>
+              <SheetHandle onClose={dismiss} closeLabel="Close" />
+              <div className="flex items-center gap-2.5 px-4 pb-3">
+                <span aria-hidden className="grid h-8 w-8 place-items-center rounded-[9px]" style={{ background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+                  <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
+                </span>
+                <h2 className="font-serif text-[21px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {openGroup?.label}
+                </h2>
+              </div>
+              <ul className="space-y-1.5 overflow-y-auto px-3 pb-6" style={{ overscrollBehavior: "contain" }}>
+                {openGroup?.depts.map((d) => (
+                  <DeptRow key={d.slug} d={d} pinned={pinned.has(d.slug)} onPin={togglePin} />
+                ))}
+              </ul>
+            </>
+          );
+        }}
+      </BottomSheet>
     </section>
   );
 }
 
-/** A compact essentials row inside the "Most important numbers" card. */
-function ImportantRow({ d }: { d: DepartmentContact }) {
+/** A compact essentials row: rail, name, the number LISTED, tap-to-call. */
+function EssentialRow({ d }: { d: DepartmentContact }) {
   const j = d.jurisdiction;
-  return (
-    <li className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] border py-2 pl-2.5 pr-2" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
+  const inner = (
+    <>
       <span aria-hidden className="h-8 w-[3px] shrink-0 rounded-full" style={{ background: RAIL[j] ?? "var(--app-brand)" }} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[12.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</p>
-        <p className="truncate text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{d.about}</p>
-      </div>
-      {d.phone && (
-        <a
-          href={`tel:${d.phone}`}
-          aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`}
-          className="tactile-interactive inline-flex min-h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-white tabular-nums active:scale-[0.97]"
-          style={{ background: PILL_BG[j] ?? "var(--app-brand-press)" }}
-        >
-          <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-          {d.phone.length <= 3 ? d.phone : "Call"}
-        </a>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[12.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</span>
+        {d.phone ? (
+          <span className="mt-0.5 block font-mono text-[12px] font-semibold tabular-nums" style={{ color: NUM_COLOR[j] ?? "var(--app-brand-press)" }}>{formatPhone(d.phone)}</span>
+        ) : (
+          <span className="mt-0.5 block truncate text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{d.about}</span>
+        )}
+      </span>
+      {d.phone && <Phone className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden style={{ color: NUM_COLOR[j] ?? "var(--app-brand-press)" }} />}
+    </>
+  );
+  const cls = "tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border py-2 pl-2.5 pr-3";
+  const style = { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" } as const;
+  return (
+    <li>
+      {d.phone ? (
+        <a href={`tel:${d.phone}`} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className={cls} style={style}>{inner}</a>
+      ) : (
+        <a href={d.website} target={d.website.startsWith("/") ? undefined : "_blank"} rel={d.website.startsWith("/") ? undefined : "noopener noreferrer"} aria-label={`${d.name}: more`} className={cls} style={style}>{inner}</a>
       )}
     </li>
   );
 }
 
-/** A dense one-line department row: rail, name + tags, one-line "about", and
- *  the actions (star, tap-to-call, site) inline on the right. */
+/** A dense department row with the number LISTED: rail, name + tags, the
+ *  formatted number as the tap-to-call action, the "about", a star, and site. */
 function DeptRow({
   d, pinned, onPin,
 }: {
@@ -489,7 +494,7 @@ function DeptRow({
   const rail = RAIL[j] ?? "var(--app-brand)";
   const isGuide = d.website.startsWith("/");
   const emg = j === "emergency";
-  const show247 = isOpen24_7(d.slug) && !emg; // emergency rows are 24/7 by nature
+  const show247 = isOpen24_7(d.slug) && !emg;
   return (
     <li
       className="relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border py-2 pl-3.5 pr-2"
@@ -500,7 +505,7 @@ function DeptRow({
         <p className="flex items-center gap-1.5">
           <span className="truncate text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</span>
           {!emg && (
-            <span className="shrink-0 rounded-[5px] px-1.5 py-[1px] font-mono text-[9px] font-bold uppercase tracking-[0.05em]" style={{ color: PILL_BG[j], background: `color-mix(in srgb, ${rail} 13%, transparent)` }}>
+            <span className="shrink-0 rounded-[5px] px-1.5 py-[1px] font-mono text-[9px] font-bold uppercase tracking-[0.05em]" style={{ color: NUM_COLOR[j], background: `color-mix(in srgb, ${rail} 13%, transparent)` }}>
               {TAG_LABEL[j]}
             </span>
           )}
@@ -510,6 +515,12 @@ function DeptRow({
             </span>
           )}
         </p>
+        {d.phone ? (
+          <a href={`tel:${d.phone}`} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className="tap-44-y mt-0.5 inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold tabular-nums" style={{ color: NUM_COLOR[j] ?? "var(--app-brand-press)" }}>
+            <Phone className="h-3 w-3" strokeWidth={2.6} aria-hidden />
+            {formatPhone(d.phone)}
+          </a>
+        ) : null}
         <p className="truncate text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{d.about}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -523,17 +534,6 @@ function DeptRow({
         >
           <Star className="h-4 w-4" strokeWidth={2} fill={pinned ? "currentColor" : "none"} aria-hidden />
         </button>
-        {d.phone && (
-          <a
-            href={`tel:${d.phone}`}
-            aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`}
-            className="tactile-interactive inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-white active:scale-[0.97]"
-            style={{ background: PILL_BG[j] ?? "var(--app-brand-press)" }}
-          >
-            <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            {d.phone.length <= 3 ? d.phone : "Call"}
-          </a>
-        )}
         {isGuide ? (
           <Link href={d.website} aria-label={`${d.name}: open the guide`} className="tap-44 grid h-9 w-9 place-items-center rounded-full border" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
             <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
