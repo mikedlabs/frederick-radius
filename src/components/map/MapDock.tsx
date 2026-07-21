@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, Church, Clock, Coffee, Heart, Hotel, Landmark, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, SlidersHorizontal, Tag, Trees, Utensils, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Baby, Beer, Church, Clock, Coffee, Heart, Hotel, Landmark, LayoutGrid, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Trees, Utensils, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -703,42 +703,33 @@ export default function MapDock(props: MapDockProps) {
               tab. More (the When/Where/Layers depth) + the map ↔ list toggle
               pin to the right and never scroll. */}
           <div className="dock-cats">
-            <div
-              className="dock-cats-scroll"
-              role="group"
-              aria-label="Kinds of places"
-            >
-              <Chip
-                on={!browse.intentKey}
-                onClick={() => pickIntent(null)}
-                count={browse.everythingCount}
-              >
-                All
-              </Chip>
-              {INTENTS.map((i) => (
-                <Chip
-                  key={i.key}
-                  on={browse.intentKey === i.key}
-                  color={i.color}
-                  onClick={() => pickIntent(i.key)}
-                  count={browse.intentCounts[i.key]}
-                  title={i.blurb}
-                >
-                  {i.label}
-                </Chip>
-              ))}
-            </div>
+            {/* One clear door to the whole guide. Shows the current filter (or
+                "Browse places") and opens the grouped category grid — replacing
+                the horizontal chip strip that only fit a couple of the twelve
+                categories on a phone before the rest scrolled out of sight. */}
             <button
               type="button"
-              className="dock-filters tap-44"
-              data-on={moreCount > 0 || undefined}
+              className="dock-browse tap-44"
+              data-on={pane === "what" || Boolean(intent) || undefined}
               aria-expanded={pane !== null}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
               onClick={toggleFilters}
             >
-              <SlidersHorizontal className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-              More
+              {intent ? (
+                <>
+                  <span aria-hidden className="dock-browse-dot" style={{ background: intent.color }} />
+                  <span className="dock-browse-label">{intent.label}</span>
+                  <span className="dock-browse-n">
+                    {(browse.intentCounts[intent.key] ?? 0).toLocaleString("en-US")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+                  <span className="dock-browse-label">Browse places</span>
+                </>
+              )}
               {moreCount > 0 && <span className="dock-filters-n">{moreCount}</span>}
             </button>
             <button
@@ -855,17 +846,6 @@ export default function MapDock(props: MapDockProps) {
                 only fit a couple) so the range of the guide is finally visible. */}
             {pane === "what" && (
               <div>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={!intent || undefined}
-                  aria-pressed={!intent}
-                  onClick={() => pickIntent(null)}
-                >
-                  <MapIcon className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Everything on the map
-                  <span className="dock-opennow-n">{browse.everythingCount.toLocaleString("en-US")}</span>
-                </button>
                 {CATEGORY_FAMILIES.map((fam) => (
                   <div key={fam.label}>
                     <Sect>{fam.label}</Sect>
@@ -883,7 +863,7 @@ export default function MapDock(props: MapDockProps) {
                             data-on={on || undefined}
                             aria-pressed={on}
                             title={it.blurb}
-                            onClick={() => pickIntent(it.key)}
+                            onClick={() => pickIntent(on ? null : it.key)}
                             style={{ "--c": it.color } as React.CSSProperties}
                           >
                             <span aria-hidden className="dock-cat-ic">

@@ -3264,6 +3264,61 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
+/* The single "Browse places" door: fills the row (view toggle pins right) and
+   shows the active category — a color dot, its label, and count — or a grid
+   icon + "Browse places" when nothing is filtered. Opens the grouped category
+   grid, so the whole guide is one tap away without a cramped scrolling strip. */
+.dock-cats > .dock-browse {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dock-cats > .dock-viewtoggle {
+  flex: 0 0 auto;
+}
+.dock-browse {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-browse:active {
+  transform: scale(0.99);
+}
+.dock-browse[data-on] {
+  background: color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
+}
+.dock-browse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex: none;
+}
+.dock-browse-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.dock-browse-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-ink-3);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
 /* The panel's sub-tabs (Places · When · Where · Layers) + the Done button,
    sitting on the panel's top rule. The active tab is inked in brand and
    carries a 2.5px brand rule along the BOTTOM, sitting on that container
