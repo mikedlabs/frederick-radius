@@ -45,6 +45,23 @@ describe("roadKey — road name to traffic-lookup key", () => {
   });
 });
 
+describe("traffic-counts.json — no survey-year contamination", () => {
+  const t = trafficCounts as Record<string, number>;
+  it("carries no bare survey year as an AADT value", () => {
+    // The source scrape mixed the survey YEAR (2014/2015/2016) into the count
+    // column for 85 roads. A fake ~2016 denominator inflates a real crash load
+    // into a phantom top-of-card hotspot, so those entries were dropped.
+    const yearlike = Object.entries(t).filter(([, v]) => v >= 2013 && v <= 2018);
+    expect(yearlike).toEqual([]);
+  });
+  it("every value is a positive integer", () => {
+    for (const [road, v] of Object.entries(t)) {
+      expect(Number.isInteger(v), `${road}=${v}`).toBe(true);
+      expect(v, road).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("hourOf — clock to hour of day", () => {
   it("maps am/pm clock strings to 0–23", () => {
     expect(hourOf("7:23 pm")).toBe(19);

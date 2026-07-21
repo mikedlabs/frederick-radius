@@ -119,14 +119,20 @@ export function roadKey(name: string): string {
  * a quieter road with the same crash load rises above a busy one. Intersections
  * are skipped (a corridor count doesn't describe a junction), and a road with
  * no county count simply doesn't appear — never a guessed volume.
+ *
+ * Below MIN_AADT the denominator is too small for a per-1,000 rate to mean
+ * anything: those are culvert/pipe survey points and rural spurs (some as low
+ * as 2 vehicles/day), where a single crash would mint a runaway rate and top
+ * the card. We skip them rather than publish denominator noise as a hazard.
  */
+const MIN_AADT = 500;
 function trafficAdjusted(roads: { spot: string; count: number }[]): TrafficAdjusted[] {
   const out: TrafficAdjusted[] = [];
   for (const s of roads) {
     if (s.count < 2) continue; // a rate needs more than a single crash
     if (/\band\b/i.test(s.spot)) continue; // intersection, not a corridor
     const aadt = TRAFFIC[roadKey(s.spot)];
-    if (!aadt || aadt <= 0) continue;
+    if (!aadt || aadt < MIN_AADT) continue;
     out.push({ spot: s.spot, count: s.count, aadt, per1k: Math.round((s.count / (aadt / 1000)) * 10) / 10 });
   }
   out.sort((a, b) => b.per1k - a.per1k);
@@ -380,9 +386,10 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
 /** Public scanner patterns, cached hourly. Empty and honest when unreachable. */
 export const getScannerPatterns = unstable_cache(
   fetchScannerPatterns,
-  // v2: shape gained trafficAdjusted + byWeekday/peakWeekday. Bump the key so a
-  // durable cache from before the shape change can't serve an old-shaped object
-  // across deploys (the unstable_cache persists — PR #509 lesson).
-  ["scanner-patterns-v2"],
+  // v2: shape gained trafficAdjusted + byWeekday/peakWeekday. v3: dropped 85
+  // survey-year-as-AADT entries from traffic-counts.json and floored AADT at
+  // MIN_AADT, so the hotspot rates change — bump the key so a durable cache
+  // can't serve the old, inflated hotspots across deploys (PR #509 lesson).
+  ["scanner-patterns-v3"],
   { revalidate: 3600, tags: ["scanner-patterns"] },
 );
