@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, SlidersHorizontal, Tag, X, Zap } from "lucide-react";
+import { Baby, Beer, Church, Clock, Coffee, Heart, Hotel, Landmark, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, SlidersHorizontal, Tag, Trees, Utensils, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -24,6 +24,23 @@ import {
 } from "./dockCaption";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
+
+/** One Lucide component per intent icon key, so the Places grid renders an
+ *  icon per category straight from the shared INTENTS registry. */
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Coffee, Utensils, Wine, Beer, Trees, Baby, Palette, Heart, Landmark, ShoppingBag, Hotel, Church,
+};
+
+/** The 12 intents, grouped the way a resident thinks about them, so the Places
+ *  pane shows the WHOLE guide at a glance instead of one chip behind "More".
+ *  Order/keys mirror @/data/intents; a new intent must be added to a family
+ *  here (a missing key just won't appear in the grid). */
+const CATEGORY_FAMILIES: ReadonlyArray<{ label: string; keys: string[] }> = [
+  { label: "Food & drink", keys: ["coffee", "eat", "breweries", "wineries"] },
+  { label: "Outdoors & active", keys: ["outdoor", "family"] },
+  { label: "Culture & community", keys: ["arts", "faith"] },
+  { label: "Everyday & services", keys: ["wellness", "shop", "civic", "stay"] },
+];
 
 /** The four filter groups, now the panel's sub-tabs. What is purely KINDS
  *  OF PLACES; the map drapes (trails, transit, aerial, …) and the Yours
@@ -552,9 +569,10 @@ export default function MapDock(props: MapDockProps) {
     restoreRef.current?.focus?.();
   };
   // The "More" button: open the panel when closed, close it when any tab is
-  // open. Opens to the When tab now that the categories (the Places tab's
-  // headline) are surfaced as the top-row chip row — More is the shortcut to
-  // the depth that is NOT already on screen.
+  // open. Opens to the Places tab — the grouped category grid — because the
+  // top-row chip strip only fits a couple of categories before the rest scroll
+  // out of view, so "the whole guide at a glance" has to live one obvious tap
+  // away. When/Where/Layers are a tab away inside the same panel.
   const toggleFilters = () => {
     haptic("light");
     if (pane !== null) {
@@ -562,7 +580,7 @@ export default function MapDock(props: MapDockProps) {
       return;
     }
     restoreRef.current = document.activeElement as HTMLElement | null;
-    setPane("when");
+    setPane("what");
   };
   // Switch sub-tabs while the panel stays open (the trigger to restore was
   // captured on the original open).
@@ -831,47 +849,81 @@ export default function MapDock(props: MapDockProps) {
               )}
             </div>
 
-            {/* ── PLACES — kinds of places only ── */}
+            {/* ── PLACES — the whole guide at a glance: every category, grouped
+                the way a resident thinks about them, one tap to filter the map.
+                Replaces the flat iconless chip wrap (and the top-row scroll that
+                only fit a couple) so the range of the guide is finally visible. */}
             {pane === "what" && (
               <div>
-                <Sect>Kinds of places</Sect>
-                <div className="dock-chips">
-                  <Chip on={!intent} onClick={() => pickIntent(null)} count={browse.everythingCount}>
-                    Everything
-                  </Chip>
-                  {INTENTS.map((i) => (
-                    <Chip
-                      key={i.key}
-                      on={browse.intentKey === i.key}
-                      color={i.color}
-                      onClick={() => pickIntent(i.key)}
-                      count={browse.intentCounts[i.key]}
-                      title={i.blurb}
-                    >
-                      {i.label}
-                    </Chip>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className="dock-opennow"
+                  data-on={!intent || undefined}
+                  aria-pressed={!intent}
+                  onClick={() => pickIntent(null)}
+                >
+                  <MapIcon className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Everything on the map
+                  <span className="dock-opennow-n">{browse.everythingCount.toLocaleString("en-US")}</span>
+                </button>
+                {CATEGORY_FAMILIES.map((fam) => (
+                  <div key={fam.label}>
+                    <Sect>{fam.label}</Sect>
+                    <div className="dock-cat-grid">
+                      {fam.keys.map((k) => {
+                        const it = INTENTS.find((i) => i.key === k);
+                        if (!it) return null;
+                        const Icon = CATEGORY_ICONS[it.icon] ?? Tag;
+                        const on = browse.intentKey === it.key;
+                        return (
+                          <button
+                            key={it.key}
+                            type="button"
+                            className="dock-cat"
+                            data-on={on || undefined}
+                            aria-pressed={on}
+                            title={it.blurb}
+                            onClick={() => pickIntent(it.key)}
+                            style={{ "--c": it.color } as React.CSSProperties}
+                          >
+                            <span aria-hidden className="dock-cat-ic">
+                              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                            </span>
+                            <span className="dock-cat-l">
+                              <span className="dock-cat-t">{it.label}</span>
+                              <span className="dock-cat-n">
+                                {(browse.intentCounts[it.key] ?? 0).toLocaleString("en-US")}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
                 {intent?.subIntents && intent.subIntents.length > 0 && (
-                  <HeadRow
-                    color={intent.color}
-                    ariaLabel={`Narrow ${intent.label}`}
-                    onPick={(k) => pickSub(k === "" ? null : k)}
-                    items={[
-                      {
-                        key: "",
-                        label: "All",
-                        count: browse.intentCounts[intent.key],
-                        on: !browse.subKey,
-                      },
-                      ...intent.subIntents.map((s) => ({
-                        key: s.key,
-                        label: s.label,
-                        count: browse.subCounts[s.key],
-                        on: browse.subKey === s.key,
-                      })),
-                    ]}
-                  />
+                  <>
+                    <Sect>Narrow {intent.label}</Sect>
+                    <HeadRow
+                      color={intent.color}
+                      ariaLabel={`Narrow ${intent.label}`}
+                      onPick={(k) => pickSub(k === "" ? null : k)}
+                      items={[
+                        {
+                          key: "",
+                          label: "All",
+                          count: browse.intentCounts[intent.key],
+                          on: !browse.subKey,
+                        },
+                        ...intent.subIntents.map((s) => ({
+                          key: s.key,
+                          label: s.label,
+                          count: browse.subCounts[s.key],
+                          on: browse.subKey === s.key,
+                        })),
+                      ]}
+                    />
+                  </>
                 )}
               </div>
             )}

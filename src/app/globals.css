@@ -2970,6 +2970,68 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-top: 4px;
 }
 
+/* Category grid — the Places pane's "whole guide at a glance": every intent as
+   a tile (icon chip + label + count), grouped by family. Color per tile via
+   --c; a lit tile tints toward its color. Two columns; each tile clears 44px. */
+.dock-cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.dock-cat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 9px 11px;
+  border-radius: var(--app-radius-md, 14px);
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  text-align: left;
+  transition: transform 0.08s, border-color 0.18s, background 0.18s;
+}
+.dock-cat:active {
+  transform: scale(0.98);
+}
+.dock-cat[data-on] {
+  background: color-mix(in srgb, var(--c) 12%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--c) 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent);
+}
+.dock-cat-ic {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: var(--c);
+}
+.dock-cat-l {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-cat-t {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--app-ink);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-cat-n {
+  margin-top: 2px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-ink-3);
+}
+
 /* Chips. Color arrives per-chip via --c; lit chips fill with it. The
    .tap-44-y extender keeps every ≤44px chip honest about its target. */
 .dock-chips {
