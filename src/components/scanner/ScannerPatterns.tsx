@@ -93,8 +93,12 @@ function HourStrip({ byHour, peakHour }: { byHour: number[]; peakHour: number })
   );
 }
 
+function formatK(n: number): string {
+  return n < 10000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n / 1000)}k`;
+}
+
 export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
-  const { days, total, crashSpots, wireSpots, byHour, peakHour } = patterns;
+  const { days, total, crashSpots, wireSpots, byHour, peakHour, trafficAdjusted } = patterns;
   if (total === 0 || days === 0) return null;
 
   return (
@@ -121,6 +125,37 @@ export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
             )}
           </p>
           <SpotList spots={crashSpots} unit="crashes" />
+        </div>
+      )}
+
+      {trafficAdjusted.length > 0 && (
+        <div
+          className="rounded-[var(--app-radius-md)] border p-3.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Most crashes per vehicle
+          </p>
+          <p className="mb-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            A busy road with many crashes is expected. Set against how many
+            vehicles use it, these roads see the most crashes for their traffic.
+          </p>
+          <ul className="space-y-1.5">
+            {trafficAdjusted.map((r) => (
+              <li key={r.spot} className="flex items-center gap-3">
+                <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: "var(--app-ink)" }}>
+                  {r.spot}
+                </span>
+                <span className="shrink-0 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                  {r.count} / ~{formatK(r.aadt)} a day
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[10.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+            Daily traffic from Frederick County counts, most recent available.
+            Only roads the county has counted appear here.
+          </p>
         </div>
       )}
 

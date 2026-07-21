@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { cleanSpot, hourOf } from "./scannerPatterns";
+import { cleanSpot, hourOf, roadKey } from "./scannerPatterns";
+import trafficCounts from "@/data/traffic-counts.json";
 
 describe("cleanSpot — road-level hotspot key", () => {
   it("drops the house-range block number down to the road", () => {
@@ -29,6 +30,18 @@ describe("cleanSpot — road-level hotspot key", () => {
     const spot = cleanSpot("700 block E Potomac St");
     expect(spot).toBe("E Potomac St");
     expect(spot).not.toMatch(/\d/);
+  });
+});
+
+describe("roadKey — road name to traffic-lookup key", () => {
+  it("normalizes suffixes and case to match the baked lookup", () => {
+    expect(roadKey("Ballenger Creek Pike")).toBe("BALLENGER CREEK PIKE");
+    expect(roadKey("Liberty Road")).toBe("LIBERTY RD");
+    expect(roadKey("Mountaindale Rd")).toBe("MOUNTAINDALE RD");
+  });
+  it("actually resolves a known hotspot road in the baked traffic data", () => {
+    const t = trafficCounts as Record<string, number>;
+    expect(t[roadKey("Ballenger Creek Pike")]).toBeGreaterThan(0);
   });
 });
 
