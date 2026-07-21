@@ -9,16 +9,27 @@
  * when there's no Keys game today — a client island that costs an idle day
  * zero space. Covers home AND away games: an away Keys game is still our team.
  *
- * Voice + palette discipline: scores in the mono data voice, calm cream card,
- * and vermilion reserved for the single live signal (the "LIVE" dot). A final
- * game keeps showing through the rest of the day so fans who missed it get the
- * result; a pre-game shows only the first-pitch time.
+ * Dressed in the TEAM's colors (navy plate, red/gold accents, cream numerals) —
+ * the same deliberate branded exception KeysCard takes, so the live score reads
+ * as a Keys card, not a generic stat box. Scores stay in the mono data voice; a
+ * final game keeps showing through the rest of the day so fans who missed it get
+ * the result; a pre-game shows only the first-pitch time.
  */
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { track } from "@/lib/track";
 import type { KeysScore as Score } from "@/lib/integrations/keysScore";
 
 const POLL_MS = 45_000;
+
+// Frederick Keys team palette — the deliberate branded exception (a team card's
+// whole point is the team's own navy/red/gold, which the app tokens don't
+// carry). Kept in sync with KeysCard.
+const NAVY = "#13284B";
+const NAVY_DEEP = "#0B182F";
+const KEYS_RED = "#C8102E";
+const KEYS_GOLD = "#FDB927";
+const CREAM = "#F3ECDC";
 
 function firstPitch(iso: string): string {
   const t = new Date(iso);
@@ -67,30 +78,34 @@ function ScoreRow({
   runs,
   won,
   final,
+  isKeys = false,
 }: {
   name: string;
   runs: number | null;
   won: boolean;
   final: boolean;
+  /** The Keys' own row reads in gold — the home identity — vs cream for the opponent. */
+  isKeys?: boolean;
 }) {
+  const lost = final && !won;
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span
         className="min-w-0 truncate text-[14px]"
         style={{
-          color: "var(--app-ink)",
-          fontWeight: final && won ? 700 : 500,
-          opacity: final && !won ? 0.6 : 1,
+          color: isKeys ? KEYS_GOLD : CREAM,
+          fontWeight: won || isKeys ? 700 : 500,
+          opacity: lost ? 0.58 : 1,
         }}
       >
         {name}
       </span>
       <span
-        className="shrink-0 font-mono text-[20px] tabular-nums"
+        className="shrink-0 font-mono text-[21px] tabular-nums"
         style={{
-          color: "var(--app-ink)",
+          color: CREAM,
           fontWeight: won ? 700 : 500,
-          opacity: final && !won ? 0.6 : 1,
+          opacity: lost ? 0.58 : 1,
         }}
       >
         {runs ?? "–"}
@@ -144,29 +159,39 @@ export default function KeysScore() {
       href={score.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-[var(--app-radius-lg)] border p-3.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      className="relative block overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
+      style={{
+        background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
+        color: CREAM,
+        boxShadow: "var(--app-elev-1), var(--app-edge)",
+      }}
       aria-label={`Frederick Keys ${vs} ${score.opponent.name}, ${chip.text}`}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
+      {/* Red→gold pennant rule along the top edge — the team-color signature. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[3px]"
+        style={{ background: `linear-gradient(90deg, ${KEYS_RED} 0%, ${KEYS_GOLD} 100%)` }}
+      />
+      {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
+      <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: CREAM, opacity: 0.09 }}>
+        <BaseballGlyph size={112} />
+      </span>
+
+      <div className="relative mb-2 flex items-center justify-between gap-2">
         <span
           className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: "var(--app-ink-3)" }}
+          style={{ color: KEYS_GOLD }}
         >
-          <BaseballGlyph />
+          <BaseballGlyph size={13} />
           Frederick Keys {vs} {score.opponent.name}
         </span>
         <span
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
           style={
             chip.live
-              ? // brand-press, not raw brand: white 10px text on #E14328
-                // sits under WCAG AA (≈3.9:1) — the press variant is the
-                // AA-safe vermilion for exactly this white-on-fill case.
-                // Only renders DURING a live game, which is why the gate
-                // only catches it on game nights.
-                { background: "var(--app-brand-press)", color: "#fff" }
-              : { background: "var(--app-ink-tint-6)", color: "var(--app-ink-2)" }
+              ? { background: KEYS_RED, color: "#fff" }
+              : { background: "rgba(243,236,220,0.15)", color: CREAM }
           }
         >
           {chip.live && (
@@ -179,23 +204,30 @@ export default function KeysScore() {
         </span>
       </div>
 
-      <div className="space-y-1">
-        <ScoreRow name={score.keys.name} runs={score.keys.runs} won={keysWon} final={score.state === "final"} />
+      <div className="relative space-y-1">
+        <ScoreRow name={score.keys.name} runs={score.keys.runs} won={keysWon} final={score.state === "final"} isKeys />
         <ScoreRow name={score.opponent.name} runs={score.opponent.runs} won={oppWon} final={score.state === "final"} />
       </div>
 
-      <p className="mt-2 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(243,236,220,0.72)" }}>
         {detailLine(score)}
       </p>
     </a>
   );
 }
 
-function BaseballGlyph() {
+/** A stitched baseball, drawn in the current text color so it takes the gold
+ *  eyebrow / cream watermark tint from its parent. */
+function BaseballGlyph({ size = 13, style }: { size?: number; style?: CSSProperties }) {
   return (
-    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden style={{ color: "var(--app-brand)" }}>
+    <svg viewBox="0 0 16 16" width={size} height={size} fill="none" aria-hidden style={style}>
       <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M3.4 4.2c1.6 1 2.6 2.4 2.6 3.8s-1 2.8-2.6 3.8M12.6 4.2c-1.6 1-2.6 2.4-2.6 3.8s1 2.8 2.6 3.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      <path
+        d="M3.4 4.2c1.6 1 2.6 2.4 2.6 3.8s-1 2.8-2.6 3.8M12.6 4.2c-1.6 1-2.6 2.4-2.6 3.8s1 2.8 2.6 3.8"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
