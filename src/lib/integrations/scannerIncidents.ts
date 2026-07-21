@@ -22,8 +22,12 @@ import {
 } from "@/lib/scanner/incidentFeed";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 
-/** Public open-data RSS of Frederick County fire/rescue calls (UMD news apps,
- *  scraped from frederickscanner.com; refreshed ~every 30 min). */
+/** The REAL-TIME public source: frederickscanner.com's own dispatch page. One
+ *  <p> per call, in the exact pipe format the parser already handles. No auth,
+ *  no lag, no token — this is the live wire. */
+const DIRECT_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
+/** Lagged public fallback (UMD news-apps RSS mirror), only if the direct page
+ *  is unreachable. */
 const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
 
 export type ScannerIncident = PublicIncident & {
@@ -178,9 +182,70 @@ async function fetchFromRss(): Promise<ScannerIncident[]> {
   }
 }
 
-/** Prefer the direct Slack read when a token is configured (more real-time);
- *  otherwise the public RSS mirror, which needs no setup. */
+/** Timestamp (ms) for a direct-page line from its "(posted MM/DD/YYYY)" date +
+ *  the clock time. Frederick is Eastern; July is EDT (-04:00). */
+function directTimestamp(line: string, clock: string): number | null {
+  const dm = line.match(/posted\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  const tm = clock.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (!dm || !tm) return null;
+  let h = parseInt(tm[1], 10) % 12;
+  if (/pm/i.test(tm[3])) h += 12;
+  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${tm[2]}:00-04:00`;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Read frederickscanner.com's live dispatch page directly. Returns the public
+ * incidents on success (even [] on a quiet hour), or null if the page is
+ * unreachable — so a real fetch failure falls back, but a genuinely quiet
+ * window doesn't show stale data.
+ */
+async function fetchFromDirect(): Promise<ScannerIncident[] | null> {
+  try {
+    const res = await fetch(DIRECT_URL, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const lines = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map((m) =>
+        m[1]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&#?\w+;/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      )
+      .filter(Boolean)
+      .slice(0, 120); // newest-first; only the recent head matters
+
+    const now = Date.now();
+    const seen = new Set<string>();
+    const out: ScannerIncident[] = [];
+    for (const line of lines) {
+      const inc = publicIncident(line);
+      if (!inc) continue;
+      const atMs = directTimestamp(line, inc.time) ?? now;
+      if (now - atMs > MAX_AGE_MS) continue;
+      const key = `${inc.kind}|${inc.location}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...inc, at: new Date(atMs).toISOString() });
+    }
+    out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** Live from frederickscanner.com directly; a configured Slack token or the
+ *  lagged RSS mirror only stand in if the direct page is unreachable. */
 async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
+  const direct = await fetchFromDirect();
+  if (direct !== null) return direct; // fetch worked (even a quiet []), trust it
   if (scannerConfigured()) {
     const slack = await fetchFromSlack();
     if (slack.length > 0) return slack;
@@ -195,7 +260,7 @@ async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
  */
 export const getScannerIncidents = unstable_cache(
   fetchScannerIncidents,
-  ["scanner-incidents-v2"],
+  ["scanner-incidents-v3"],
   { revalidate: 60, tags: ["scanner-incidents"] },
 );
 
