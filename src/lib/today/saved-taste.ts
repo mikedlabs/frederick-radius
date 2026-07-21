@@ -75,8 +75,12 @@ export function cravingToWant(cravingKey: string): string | null {
       return "shop";
     case "wellness":
     case "salon":
-    case "stay":
       return "unwind";
+    // Hotels & B&Bs live under Things to do now (the Self-care rename moved
+    // them out of the old Wind down group), so a saved "stay" taste opens
+    // the group that actually holds the chip.
+    case "stay":
+      return "seedo";
     default:
       return null;
   }
