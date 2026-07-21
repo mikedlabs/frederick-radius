@@ -805,6 +805,42 @@ export const food_truck_beacons = pgTable(
   }),
 );
 
+/**
+ * Dear Frederick submissions — the public letter-submission intake.
+ *
+ * Dear Frederick is a community project of handwritten letters mailed to a PO
+ * box and published as CURATED static data (src/data/dear-frederick.ts). This
+ * table only captures DIGITAL submissions: a member of the public uploads a
+ * scan of a letter through /dear-frederick/submit, and it lands here pending
+ * for the owner to review in /admin/dear-frederick. Approving a row just marks
+ * it approved; the owner then transcribes it into the static file by hand, so
+ * publishing stays curated and the published letters are never DB-dynamic.
+ *
+ * `image_url` is the scan in Vercel Blob. `signature`, `contact`, and `note`
+ * are all optional (a signature defaults to "Anonymous" for display; `contact`
+ * is a private email/phone for owner follow-up and MUST NOT be public). No FK
+ * to a letters table — published letters are file-sourced and a submission may
+ * never be published. RLS deny-all; every read/write goes through the BYPASSRLS
+ * server role, so the anon key can never read a sender's contact details.
+ */
+export const dear_frederick_submissions = pgTable(
+  "dear_frederick_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    image_url: text("image_url").notNull(),
+    signature: text("signature"),
+    contact: text("contact"),
+    note: text("note"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    decided_at: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("dear_frederick_submissions_status_idx").on(t.status),
+    createdIdx: index("dear_frederick_submissions_created_idx").on(t.created_at),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),
