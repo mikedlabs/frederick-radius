@@ -23,7 +23,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "County scanner",
   description:
-    "Live public dispatch calls around Frederick County in plain language: crashes, wires down, fires, rescues. Medical and personal calls are never listed.",
+    "Recent public dispatch calls around Frederick County in plain language: crashes, wires down, fires, rescues. Medical and personal calls are never listed.",
   alternates: { canonical: "/scanner" },
 };
 
@@ -39,7 +39,7 @@ export default async function ScannerPage() {
 
       <header>
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Public safety, right now
+          Recent public safety
         </p>
         <h1
           className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
@@ -48,9 +48,9 @@ export default async function ScannerPage() {
           The county scanner
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Live public dispatch calls around Frederick County, in plain
-          language. Only public calls are listed. Medical and personal calls
-          are never shown.
+          The last several hours of public dispatch calls around Frederick
+          County, in plain language, with the newest at the top. Only public
+          calls are listed. Medical and personal calls are never shown.
         </p>
       </header>
 
