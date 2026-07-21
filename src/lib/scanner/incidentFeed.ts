@@ -92,6 +92,10 @@ const PUBLIC_KINDS: { re: RegExp; kind: PublicIncidentKind; road: boolean }[] = 
   // A person hit on a public road IS a road collision — block-level, no name.
   // The medical unit riding along doesn't make it private (see the guard below).
   { re: /pedestrian struck|ped(?:estrian)? struck|bicyclist struck|cyclist struck|struck by (?:a |an )?(?:vehicle|car|auto|truck|train)/i, kind: "Pedestrian struck", road: true },
+  // A medevac is public ONLY as part of a road collision (its LZ closes the
+  // road). A bare MEDEVAC / LANDING ZONE line is routinely a medical flight
+  // for a patient at home — private, dropped by the deny list below.
+  { re: /(?:medevac|medivac|med-?evac|landing zone|helicopter landing).*(?:accident|crash|collision|overturn|struck)|(?:accident|crash|collision|overturn|struck).*(?:medevac|medivac|med-?evac|landing zone|helicopter landing)/i, kind: "Medevac", road: true },
   { re: /vehicle fire|car fire|auto fire|truck fire/i, kind: "Vehicle fire", road: true },
   { re: /(?:vehicle|motorcycle|motorcyle) accident|collision|overturn|\bcrash\b/i, kind: "Crash", road: true },
   { re: /wires? down|arcing|transformer fire|pole fire/i, kind: "Wires down", road: true },
@@ -101,11 +105,31 @@ const PUBLIC_KINDS: { re: RegExp; kind: PublicIncidentKind; road: boolean }[] = 
   { re: /(structure|building|commercial|residential|dwelling|working|house|apartment) fire/i, kind: "Structure fire", road: false },
   { re: /(brush|field|outside|woods|grass|mulch|dumpster|trash|rubbish) fire|machinery on fire|equipment fire/i, kind: "Outside fire", road: false },
   { re: /water rescue|swift water/i, kind: "Water rescue", road: false },
-  { re: /entrapment|extrication|building collapse|structure collapse|person trapped|people trapped|trapped (?:in|inside|under)/i, kind: "Rescue", road: false },
-  // A scene medevac / landing zone means a serious incident and often a road
-  // shut for the helicopter. Routine hospital-helipad standby was dropped above.
-  { re: /medevac|medivac|med-?evac|landing zone|helicopter landing/i, kind: "Medevac", road: true },
+  // Rescue ONLY with vehicle/structure/technical context. A bare "trapped" or
+  // "extrication" is routinely a medical assist at a home (fall victim,
+  // bariatric lift, stuck elevator) — private, dropped by the deny list.
+  { re: /(?:vehicle|car|truck|machinery|industrial|farm|trench|building|structure|collapse)[^|]*(?:entrapment|extrication|trapped|rescue)|(?:entrapment|extrication|trapped)[^|]*(?:vehicle|car|truck|machinery|industrial|farm|trench)|building collapse|structure collapse|trench rescue|confined space rescue/i, kind: "Rescue", road: false },
 ];
+
+/**
+ * Sanitize a location to BLOCK-LEVEL, whatever the source path:
+ *  - strip dwelling identifiers (Bldg:/Apt/Unit:/Rm:/Suite:/Lot:/Floor:) —
+ *    the RSS reader stripped these but the direct-page and Slack paths did
+ *    not, so unit-level addresses leaked to display and the archive;
+ *  - blur a bare house number (no "BLOCK") down to its hundred block, so an
+ *    exact address can never render, geocode, or bank.
+ */
+export function sanitizeLocation(loc: string): string {
+  let s = loc.replace(
+    /,?\s*\b(?:bldg|building|apt(?:\s*\/\s*unit)?|unit|rm|room|ste|suite|fl|floor|lot)\b\s*[:#]?\s*(?:\d[\w-]*|[A-Za-z]\b)/gi,
+    "",
+  );
+  s = s.replace(/^\s*(\d+)\s+(?!block\b)/i, (_, n: string) => {
+    const num = parseInt(n, 10);
+    return `${Number.isFinite(num) ? Math.floor(num / 100) * 100 : 0} BLOCK `;
+  });
+  return s.replace(/\s*,\s*,/g, ",").replace(/,\s*$/, "").replace(/\s+/g, " ").trim();
+}
 
 /** Title-case a shouted block-level location for display, keeping BLOCK etc. */
 function tidyLocation(loc: string): string {
@@ -134,23 +158,40 @@ export function classifyPublicIncident(
 
   // Fire ALARMS are overwhelmingly false; never surface them as fires.
   if (/\balarm\b/i.test(type)) return null;
-  // "Standby" is routine cover / hospital-helipad prep, not a scene incident —
-  // this also keeps a hospital "standby for helicopter landing" out while a
-  // real scene MEDEVAC / LANDING ZONE below still lands.
-  if (/\bstandby\b/i.test(type)) return null;
+  // "Standby" (one word or two) is routine cover / hospital-helipad prep, not
+  // a scene incident.
+  if (/\bstand\s*by\b/i.test(type)) return null;
+  // HARD medical deny: these words mean a person's medical emergency wherever
+  // they appear, whatever else the type says. Runs BEFORE the allowlist so no
+  // public-looking phrasing ("FALL VICTIM TRAPPED...") can carry one through.
+  if (
+    /\b(fall victim|lift assist|bariatric|patient|sick person|unconscious|chest pain|overdose|seizure|stroke|cpr|cardiac|difficulty breathing|allergic|diabetic|welfare check|psychiatric|suicid)\b/i.test(
+      type,
+    )
+  ) {
+    return null;
+  }
   // A bare medical response (BLS/ALS) that is NOT a road collision is a person's
   // private medical emergency — drop it. A crash or a pedestrian/cyclist struck
   // keeps: those are public road events that happen to carry a medical unit.
+  // (Medevac/landing-zone wording is deliberately NOT excepted here: a medical
+  // flight for a patient at home is private; the Medevac kind above only ever
+  // matches when the same line carries road-collision context.)
   if (
     /\b(bls|als)\b/i.test(type) &&
-    !/vehicle accident|crash|collision|overturn|pedestrian|struck|bicyclist|cyclist|medevac|medivac|landing zone|helicopter/i.test(type)
+    !/vehicle accident|crash|collision|overturn|pedestrian|struck|bicyclist|cyclist/i.test(type)
   ) {
     return null;
   }
 
   for (const k of PUBLIC_KINDS) {
     if (k.re.test(type)) {
-      return { time, kind: k.kind, location: tidyLocation(loc), roadImpact: k.road };
+      let clean = sanitizeLocation(loc);
+      // A water rescue's landmark tail can name a private pool or facility —
+      // a drowning is a medical emergency; keep only the water/road itself.
+      if (k.kind === "Water rescue") clean = clean.split(",")[0].trim();
+      if (!clean) return null;
+      return { time, kind: k.kind, location: tidyLocation(clean), roadImpact: k.road };
     }
   }
   return null;
