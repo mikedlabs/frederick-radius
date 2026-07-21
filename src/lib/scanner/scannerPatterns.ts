@@ -24,6 +24,7 @@ import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 import trafficCounts from "@/data/traffic-counts.json";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** How far back the archive read reaches. A year of local memory is plenty. */
@@ -212,17 +213,20 @@ function etDateKey(ms: number): string {
     day: "2-digit",
   }).format(ms);
 }
-/** Eastern wall-clock ("07/20/2026" + "9:10 pm") → UTC ms. EDT/EST by month;
- *  a DST-boundary hour can be off by one, which the pattern view tolerates. */
+/** Eastern wall-clock ("07/20/2026" + "9:10 pm") → UTC ms, DST-aware via the
+ *  shared tz helper. This MUST resolve the same instant the live-feed path
+ *  (directTimestamp) computes for an identical call: the archive dedupe_key is
+ *  built from `toISOString()`, so a month-based offset here that disagreed with
+ *  the live path by an hour (every DST-transition week, and all winter under
+ *  the old hardcoded live offset) banked the same call twice. */
 function etWallToMs(dateMDY: string, clock: string): number | null {
   const dm = dateMDY.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   const h = hourOf(clock);
   const min = clock.match(/:(\d{2})/);
   if (!dm || h === null || !min) return null;
-  const month = parseInt(dm[1], 10);
-  const offset = month >= 3 && month <= 11 ? "-04:00" : "-05:00";
-  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${min[1]}:00${offset}`;
-  const ms = Date.parse(iso);
+  const ms = Date.parse(
+    easternWallToUtcISO(+dm[3], +dm[1], +dm[2], h, parseInt(min[1], 10)),
+  );
   return Number.isFinite(ms) ? ms : null;
 }
 
