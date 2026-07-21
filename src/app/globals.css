@@ -3679,9 +3679,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Stop the motion but KEEP the active/past hierarchy. Hiding the ring
+     entirely (opacity 0) let the higher-specificity [data-stale] rule below
+     win, so a PAST call kept a faint ring while an ACTIVE one had none —
+     the hierarchy inverted. Instead: a static ring for active, fainter for
+     past, so an active scene still reads as active without any animation. */
   .fr-incident-marker::after {
     animation: none;
-    opacity: 0;
+    opacity: 0.3;
+  }
+  .fr-incident-marker[data-stale="true"]::after {
+    opacity: 0.1;
   }
 }
 

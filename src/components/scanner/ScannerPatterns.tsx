@@ -122,8 +122,8 @@ export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
           The pattern
         </h2>
         <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Over the last {days} days, {total} public calls came across the wire. Here
-          is where they land and when.
+          Across {days} {days === 1 ? "day" : "days"} of dispatches, {total} public calls came
+          across the wire. Here is where they land and when.
         </p>
       </div>
 
