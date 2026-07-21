@@ -363,7 +363,7 @@ export default function ReportClient({
         <p className="text-center text-[10px] leading-[1.35] text-[var(--app-ink)]/60">
           Reports may be public with this exact map point. Don&apos;t include faces or private
           information; only share content you have the right to post. By sending, you agree to the{" "}
-          <Link href="/terms" className="underline underline-offset-2">Terms</Link> and acknowledges the{" "}
+          <Link href="/terms" className="underline underline-offset-2">Terms</Link> and acknowledge our{" "}
           <Link href="/privacy" className="underline underline-offset-2">Privacy Policy</Link>.
         </p>
 

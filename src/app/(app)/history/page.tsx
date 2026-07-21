@@ -137,7 +137,7 @@ export default async function HistoryPage({
             }}
           >
             <Sparkles className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            Today&apos;s Fact
+            Today&apos;s fact
           </span>
         </div>
         <h2

@@ -160,7 +160,7 @@ export default function ArchivePage() {
             Frederick, under the surface.
           </h1>
           <p className="mt-4 max-w-[39rem] text-[14px] leading-relaxed text-[var(--app-ink-2)] sm:text-[16px]">
-            Fire-insurance maps. Measured building surveys. Newspaper pages. Documentary photographs. Inspect the records, then follow every object back to the Library of Congress.
+            The Library of Congress holds Frederick&apos;s fire-insurance maps, measured building surveys, newspaper pages, and documentary photographs. Inspect the records here, then follow any object back to the source.
           </p>
 
           <dl className="mt-6 flex flex-wrap gap-x-7 gap-y-3 border-t border-black/12 pt-4">
