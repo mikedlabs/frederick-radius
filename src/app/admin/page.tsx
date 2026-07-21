@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Inbox, Flag, PenLine, Copy as CopyIcon, GitCompare, Sparkles,
   BarChart3, LayoutDashboard, KeyRound, Mail, Megaphone,
-  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck,
+  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX,
 } from "lucide-react";
 import Link from "next/link";
 import { easternDayKey } from "@/lib/tz";
@@ -70,6 +70,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
     label: "Data & field",
     doors: [
       { href: "/admin/data-health", title: "Data health", icon: Activity },
+      { href: "/admin/data-gaps", title: "Data gaps", icon: SearchX },
       { href: "/admin/coverage", title: "Coverage", icon: MapPinned },
       { href: "/admin/costs", title: "Costs", icon: Receipt },
       { href: "/admin/field-notes", title: "Field notes", icon: StickyNote },

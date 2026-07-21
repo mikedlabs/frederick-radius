@@ -484,6 +484,33 @@ export const scanner_incidents = pgTable(
 );
 
 /**
+ * Search & Ask MISSES — the app's own record of what it was asked for and
+ * couldn't answer. One row each time a search returns nothing or an Ask
+ * answer lands with no real place to point at. `query_key` is the normalized
+ * form (lowercased, punctuation-stripped) so repeats group; `query` keeps a
+ * readable sample. This is the data-gaps flywheel: the honest, evidence-based
+ * answer to "what data is missing." Server-role only, RLS deny-all. Stores
+ * only the query text, its kind, and when — no visitor identifier.
+ */
+export const search_misses = pgTable(
+  "search_misses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Raw query as typed (trimmed, capped) — a readable sample for the board. */
+    query: text("query").notNull(),
+    /** Normalized grouping key (lowercased, punctuation-stripped, collapsed). */
+    query_key: text("query_key").notNull(),
+    /** 'search' (zero results) | 'ask' (answer with no grounded sources). */
+    kind: text("kind").notNull(),
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    keyIdx: index("search_misses_key_idx").on(t.query_key),
+    occurredIdx: index("search_misses_occurred_idx").on(t.occurred_at),
+  }),
+);
+
+/**
  * User-submitted content awaiting review: place suggestions, event
  * suggestions, and business-owner claims. One row per submission;
  * `kind` selects the shape stored in `payload`, `status` drives the
