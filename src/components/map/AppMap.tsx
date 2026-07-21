@@ -217,6 +217,7 @@ import MapOverlays from "./MapOverlays";
 import LiveBuses from "./LiveBuses";
 import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
+import LiveIncidents from "./LiveIncidents";
 import {
   parseLayersParam,
   serializeLayers,
@@ -668,6 +669,9 @@ export default function AppMap({
   const [showRadar, setShowRadar] = useState(() => layerPrefs.radar ?? false);
   // Newest radar frame's unix seconds — the honesty stamp in the tray.
   const [radarFrameEpoch, setRadarFrameEpoch] = useState<number | null>(null);
+  // Live public scanner incidents (crashes, wires down, fires) — opt-in,
+  // OFF by default. Empty until the FredScanner feed is configured.
+  const [showIncidents, setShowIncidents] = useState(() => layerPrefs.incidents ?? false);
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -729,8 +733,9 @@ export default function AppMap({
       cemeteries: showCemeteries,
       parking: showParking,
       radar: showRadar,
+      incidents: showIncidents,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -2036,6 +2041,11 @@ export default function AppMap({
               but never covers a line, pin, or label. */}
           <WeatherRadar show={showRadar} beforeId="muni-label" onNewestFrame={setRadarFrameEpoch} />
 
+          {/* Live public scanner incidents — caution pins (crashes, wires
+              down, fires) that self-refresh and age out. Empty until the
+              FredScanner feed is configured; polls only while its toggle is on. */}
+          <LiveIncidents show={showIncidents} />
+
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
               user opts in; base map unchanged by default. */}
@@ -3238,6 +3248,8 @@ export default function AppMap({
             setShowParking={setShowParking}
             showRadar={showRadar}
             setShowRadar={setShowRadar}
+            showIncidents={showIncidents}
+            setShowIncidents={setShowIncidents}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}

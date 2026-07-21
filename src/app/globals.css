@@ -3387,6 +3387,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   outline-offset: 2px;
 }
 
+/* ── Live scanner-incident marker — a caution disc tinted by kind (crash,
+   wires down, fire…). A real 44px tap target with the glyph centered; the
+   colored disc + white ring reads at a glance over the map. ── */
+.fr-incident-marker {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+.fr-incident-marker::before {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--inc-color, var(--app-brand));
+  border: 2px solid #fff;
+  box-shadow: var(--app-shadow-2);
+}
+.fr-incident-marker > svg {
+  position: relative;
+  z-index: 1;
+}
+.fr-incident-marker:active {
+  transform: scale(0.94);
+}
+.fr-incident-marker:focus-visible {
+  outline: 3px solid var(--app-brand);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
 /* ── Pin peek card — the compact bottom card a tapped pin raises ── */
 .map-peek {
   position: absolute;
