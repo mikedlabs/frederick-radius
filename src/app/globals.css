@@ -3127,18 +3127,45 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 0 2px;
 }
 
-/* Row 2 of the control bar: the single Filters button on the left, the
-   Map ↔ list toggle pushed to the right. One instrument, one primary
-   action — the old three-segment readout is gone; its axes are now the
-   panel's sub-tabs (owner ask 2026-07-21: the map "feels messy"). */
-.dock-bar {
+/* Row 2 of the control bar: an always-visible, horizontally scrolling
+   category chip row — the map's primary action (pick a kind of place) made
+   one tap, Google/Apple-Maps style. A compact More button (the When/Where/
+   Layers depth plus the Places sub-intents) and the Map ↔ list toggle pin to
+   the right and never scroll. Surfacing the categories here replaced the old
+   single Filters button that buried them three taps deep (owner ask
+   2026-07-21: the map "feels messy" / hard to use). */
+.dock-cats {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px;
 }
-.dock-bar > .dock-viewtoggle {
-  margin-left: auto;
+.dock-cats-scroll {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* A soft right-edge fade so the row reads as scrollable: the last chip
+     dissolves into the head instead of being hard-clipped. Static (no scroll
+     listener) — masks use the gradient's ALPHA, so the opaque ink stop just
+     means "fully shown" and the small 24px band stays subtle. */
+  -webkit-mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
+}
+.dock-cats-scroll::-webkit-scrollbar {
+  display: none;
+}
+/* Chips hold their size; the row scrolls under them instead of wrapping. */
+.dock-cats-scroll > .dock-chip {
+  flex: 0 0 auto;
+}
+/* More + the view toggle keep their size at the row's right edge. */
+.dock-cats > .dock-filters,
+.dock-cats > .dock-viewtoggle {
+  flex: 0 0 auto;
 }
 /* The Filters button — icon-led pill. Carries an active-filter count and a
    soft brand tint when any filter is on. */
@@ -3294,7 +3321,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-bar {
+  .dock-cats {
     flex: 1 1 auto;
     min-width: 0;
   }

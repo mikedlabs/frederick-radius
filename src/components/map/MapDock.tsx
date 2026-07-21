@@ -42,13 +42,21 @@ const TOWN_ZOOM = 13.4;
 /**
  * MapDock — ONE instrument for the /map browse surface, "maps-app" top
  * layout. A slim control bar is pinned at the TOP of the map: the folded-in
- * search field, then a single Filters button (with an active-filter count)
- * and a Map ↔ list toggle. Filters drops a panel DOWN over the scrim-dimmed
- * map, and that panel carries four sub-tabs — Places · When · Where · Layers
- * — with a slim mono count line and a Done / clear control. The bottom of the
- * map is left clean: only the pins, the zoom cluster, and the locate FAB.
+ * search field (row 1), then an always-visible category chip row (row 2) —
+ * an "All" chip plus one chip per intent, horizontally scrolling, the
+ * primary "pick a kind of place" action made a single tap (Google/Apple-Maps
+ * pattern). Pinned to that row's right (never scrolling): a compact "More"
+ * button — carrying the count of the When/Where/Layers filters still folded
+ * behind it — and the Map ↔ list toggle. "More" drops a panel DOWN over the
+ * scrim-dimmed map, and that panel carries four sub-tabs — Places · When ·
+ * Where · Layers — with a slim mono count line and a Done / clear control.
+ * The category chips are the shortcut; the Places tab is the same list plus
+ * its sub-intents (the depth), so nothing is lost by surfacing them. The
+ * bottom of the map is left clean: only the pins, the zoom cluster, and the
+ * locate FAB.
  *
- *   - Places — kinds of places (the intent chips + the sub strip).
+ *   - Places — kinds of places (the intent chips + the sub strip); the chip
+ *              row up top is the one-tap shortcut into the same intents.
  *   - When   — Open now, the event windows, the day scrubber.
  *   - Where  — Find me, the towns, Whole county (camera only).
  *   - Layers — the map drapes (Trails, Transit, Roads & alerts,
@@ -482,11 +490,12 @@ export default function MapDock(props: MapDockProps) {
     whereAway: whereSel.kind !== "county",
   });
 
-  // The Filters button's count: how many independent filters are on. Kind of
-  // place counts once (a sub is a refinement of its intent), matching how the
-  // dirty flag treats it.
-  const filterCount =
-    (intent ? 1 : 0) +
+  // The "More" button's count: how many independent filters are on BEHIND
+  // More. The category (intent) is now surfaced as a lit chip in the top row,
+  // so it is deliberately excluded here — the badge counts only the
+  // When/Where/Layers depth still folded away (a sub-intent is a refinement
+  // of its intent, so it never adds on its own, matching the dirty flag).
+  const moreCount =
     (browse.openNow ? 1 : 0) +
     (browse.dealsOn ? 1 : 0) +
     (browse.musicTonight ? 1 : 0) +
@@ -532,8 +541,10 @@ export default function MapDock(props: MapDockProps) {
     setPane(null);
     restoreRef.current?.focus?.();
   };
-  // The Filters button: open the panel (to Places) when closed, close it when
-  // any tab is open.
+  // The "More" button: open the panel when closed, close it when any tab is
+  // open. Opens to the When tab now that the categories (the Places tab's
+  // headline) are surfaced as the top-row chip row — More is the shortcut to
+  // the depth that is NOT already on screen.
   const toggleFilters = () => {
     haptic("light");
     if (pane !== null) {
@@ -541,7 +552,7 @@ export default function MapDock(props: MapDockProps) {
       return;
     }
     restoreRef.current = document.activeElement as HTMLElement | null;
-    setPane("what");
+    setPane("when");
   };
   // Switch sub-tabs while the panel stays open (the trigger to restore was
   // captured on the original open).
@@ -658,20 +669,49 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
-          {/* Row 2 — the one Filters button + the map ↔ list toggle. */}
-          <div className="dock-bar">
+          {/* Row 2 — the always-visible category chip row (the primary
+              action: pick a kind of place in one tap). "All" clears the
+              intent; each chip writes the SAME ?intent= param as the Places
+              tab. More (the When/Where/Layers depth) + the map ↔ list toggle
+              pin to the right and never scroll. */}
+          <div className="dock-cats">
+            <div
+              className="dock-cats-scroll"
+              role="group"
+              aria-label="Kinds of places"
+            >
+              <Chip
+                on={!browse.intentKey}
+                onClick={() => pickIntent(null)}
+                count={browse.everythingCount}
+              >
+                All
+              </Chip>
+              {INTENTS.map((i) => (
+                <Chip
+                  key={i.key}
+                  on={browse.intentKey === i.key}
+                  color={i.color}
+                  onClick={() => pickIntent(i.key)}
+                  count={browse.intentCounts[i.key]}
+                  title={i.blurb}
+                >
+                  {i.label}
+                </Chip>
+              ))}
+            </div>
             <button
               type="button"
               className="dock-filters tap-44"
-              data-on={dirty || undefined}
+              data-on={moreCount > 0 || undefined}
               aria-expanded={pane !== null}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
               onClick={toggleFilters}
             >
               <SlidersHorizontal className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-              Filters
-              {dirty && <span className="dock-filters-n">{filterCount}</span>}
+              More
+              {moreCount > 0 && <span className="dock-filters-n">{moreCount}</span>}
             </button>
             <button
               type="button"

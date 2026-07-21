@@ -1114,6 +1114,11 @@ export default function AppMap({
         // Faded when an active What/Open-now filter doesn't match this pin
         // (interaction: the map reacts to the dock, not just the count).
         dimmed: matchSet ? !matchSet.has(p.slug) : false,
+        // Emphasized: a MATCH while a filter is active. Drives the icon-size
+        // boost so matches grow and dominate over the shrunk, faded rest —
+        // weak contrast (matches at full, rest at 0.28) read as barely
+        // filtered before. false on the clean, unfiltered map.
+        emph: matchSet ? matchSet.has(p.slug) : false,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
@@ -2562,14 +2567,29 @@ export default function AppMap({
                 // even at street zoom we cap at ~0.95 instead of 1.1
                 // so the user sees more before clutter kicks in.
                 // Clusters carry the density signal at the wide view.
+                //
+                // A filter-contrast multiplier rides ON TOP of the zoom
+                // curve (the stops themselves are unchanged): a match
+                // grows to 1.22×, a non-match shrinks to 0.72×, and a
+                // pin on the clean/unfiltered map stays at 1×. Paired
+                // with the icon-opacity fade below, matches dominate.
                 "icon-size": [
-                  "interpolate", ["linear"], ["zoom"],
-                  9, 0.26,
-                  11, 0.36,
-                  13, 0.5,
-                  15, 0.72,
-                  17, 0.88,
-                  19, 0.95,
+                  "*",
+                  [
+                    "interpolate", ["linear"], ["zoom"],
+                    9, 0.26,
+                    11, 0.36,
+                    13, 0.5,
+                    15, 0.72,
+                    17, 0.88,
+                    19, 0.95,
+                  ],
+                  [
+                    "case",
+                    ["==", ["get", "emph"], true], 1.22,
+                    ["==", ["get", "dimmed"], true], 0.72,
+                    1,
+                  ],
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes
@@ -2590,7 +2610,8 @@ export default function AppMap({
                 //  - the `dimmed` property: doesn't match the active What /
                 //    Open-now filter, so it fades instead of vanishing.
                 // No state + no filter = full opacity, so this stays inert
-                // on the clean map.
+                // on the clean map. Dropped 0.28 → 0.15 so the shrunk
+                // non-matches recede hard and the grown matches carry the eye.
                 "icon-opacity": [
                   "case",
                   [
@@ -2598,7 +2619,7 @@ export default function AppMap({
                     ["boolean", ["feature-state", "dim"], false],
                     ["==", ["get", "dimmed"], true],
                   ],
-                  0.28,
+                  0.15,
                   1,
                 ],
               }}
