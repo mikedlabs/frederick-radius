@@ -17,6 +17,39 @@ import {
   isInFrederickCounty,
 } from "@/components/map/constants";
 import { REPORT_CATEGORIES, REPORT_CATEGORY_BY_KEY } from "@/lib/reports/categories";
+import {
+  TriangleAlert, Activity, Lightbulb, MessageSquare, Construction, Footprints,
+  Waves, Snowflake, LightbulbOff, TrafficCone, SquareParking, Mountain, Droplets,
+  Hourglass, Users, Camera, type LucideIcon,
+} from "lucide-react";
+
+// Lucide icons for the report taxonomy. Kept in the UI layer (not the pure,
+// server-shared categories.ts) and keyed by the same keys — DESIGN_TELLS:
+// icons are lucide, never emoji.
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  hazard: TriangleAlert,
+  condition: Activity,
+  tip: Lightbulb,
+  note: MessageSquare,
+};
+const SUBTYPE_ICON: Record<string, LucideIcon> = {
+  pothole: Construction,
+  sidewalk: Footprints,
+  flooding: Waves,
+  ice: Snowflake,
+  light: LightbulbOff,
+  debris: TrafficCone,
+  parking_full: SquareParking,
+  trail_muddy: Mountain,
+  splash_pad_on: Droplets,
+  long_line: Hourglass,
+  crowded: Users,
+};
+
+function GlyphIcon({ Icon, className }: { Icon: LucideIcon | undefined; className?: string }) {
+  const I = Icon ?? MessageSquare;
+  return <I className={className} strokeWidth={2} aria-hidden />;
+}
 
 const PASS_KEY = "fr:collect:passcode";
 const BY_KEY = "fr:collect:by";
@@ -276,7 +309,7 @@ export default function ReportClient({
                   active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
-                <span className="text-base leading-none" aria-hidden="true">{cat.glyph}</span>
+                <GlyphIcon Icon={CATEGORY_ICON[cat.key]} className="h-[18px] w-[18px]" />
                 <span className="text-[10px] font-medium leading-tight">{cat.label}</span>
               </button>
             );
@@ -298,7 +331,7 @@ export default function ReportClient({
                     on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/15 bg-white/70"
                   }`}
                 >
-                  <span aria-hidden="true">{s.glyph}</span>
+                  <GlyphIcon Icon={SUBTYPE_ICON[s.key]} className="h-3.5 w-3.5" />
                   {s.label}
                 </button>
               );
@@ -319,7 +352,7 @@ export default function ReportClient({
             className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
           <label className={`tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#E14328)] text-[var(--app-brand,#E14328)]" : "border-[var(--app-ink)]/15"}`}>
-            <span aria-hidden="true">{"\u{1F4F7}"}</span>
+            <Camera className="h-4 w-4" strokeWidth={2} aria-hidden />
             {def?.photoRequired ? "Photo*" : ""}
             <input type="file" accept="image/*" capture="environment" aria-label={def?.photoRequired ? "Add photo (required)" : "Add photo (optional)"} className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
           </label>
