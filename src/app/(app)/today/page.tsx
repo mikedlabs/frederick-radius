@@ -33,6 +33,7 @@ import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import EmergencyPrompt from "@/components/today/EmergencyPrompt";
+import BeerTeaser from "@/components/today/BeerTeaser";
 import WorthALook from "@/components/today/WorthALook";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -416,6 +417,11 @@ export default async function HomePage() {
       <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
         <WorthALook />
       </Suspense>
+
+      {/* FREDERICK BEER — a signature county draw gets a real door from the home
+          surface (owner ask: the beer page needed a better way to be seen). The
+          color ribbon is the same spectrum that heads /beer. */}
+      <BeerTeaser />
 
       {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
           "here sometimes" context sits together instead of interrupting the core
