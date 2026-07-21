@@ -11,6 +11,7 @@
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
 import { getScannerIncidents } from "@/lib/integrations/scannerIncidents";
+import { fetchPageRecords } from "@/lib/scanner/scannerPatterns";
 
 export async function archiveScannerIncidents(): Promise<{
   seen: number;
@@ -19,29 +20,46 @@ export async function archiveScannerIncidents(): Promise<{
   const db = getDb();
   if (!db) return { seen: 0, inserted: 0 };
 
-  const incidents = await getScannerIncidents();
-  if (incidents.length === 0) return { seen: 0, inserted: 0 };
+  // Bank the FULL public-page window (~3 weeks), not just the last hour. Every
+  // run re-reads the whole page; the unique dedupe_key drops everything already
+  // stored, so only genuinely new posts insert — and as the page rolls forward,
+  // we keep the older rows it has since dropped. That's how the archive grows
+  // past the page's 3-week ceiling. Also fold in the live 1h feed so a call
+  // that's on the wire but not yet on the static page still lands.
+  const [page, live] = await Promise.all([
+    fetchPageRecords().catch(() => []),
+    getScannerIncidents().catch(() => []),
+  ]);
 
-  let inserted = 0;
-  for (const inc of incidents) {
-    try {
-      const rows = await db
-        .insert(scanner_incidents)
-        .values({
-          // The message timestamp makes this stable across cron cycles, so a
-          // call still on the live wire an hour later banks exactly once.
-          dedupe_key: `${inc.kind}|${inc.location}|${inc.at}`,
-          kind: inc.kind,
-          location: inc.location,
-          road_impact: inc.roadImpact,
-          occurred_at: new Date(inc.at),
-        })
-        .onConflictDoNothing({ target: scanner_incidents.dedupe_key })
-        .returning({ id: scanner_incidents.id });
-      if (rows.length) inserted++;
-    } catch {
-      // Table not migrated yet / transient error — skip this row, keep going.
-    }
+  const rows = [
+    ...page
+      .filter((r) => r.atMs !== null)
+      .map((r) => ({
+        dedupe_key: `${r.kind}|${r.location}|${new Date(r.atMs as number).toISOString()}`,
+        kind: r.kind,
+        location: r.location,
+        road_impact: r.roadImpact,
+        occurred_at: new Date(r.atMs as number),
+      })),
+    ...live.map((inc) => ({
+      dedupe_key: `${inc.kind}|${inc.location}|${inc.at}`,
+      kind: inc.kind,
+      location: inc.location,
+      road_impact: inc.roadImpact,
+      occurred_at: new Date(inc.at),
+    })),
+  ];
+  if (rows.length === 0) return { seen: 0, inserted: 0 };
+
+  try {
+    const inserted = await db
+      .insert(scanner_incidents)
+      .values(rows)
+      .onConflictDoNothing({ target: scanner_incidents.dedupe_key })
+      .returning({ id: scanner_incidents.id });
+    return { seen: rows.length, inserted: inserted.length };
+  } catch {
+    // Table not migrated yet / transient error — clean no-op.
+    return { seen: rows.length, inserted: 0 };
   }
-  return { seen: incidents.length, inserted };
 }
