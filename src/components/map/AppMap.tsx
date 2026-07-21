@@ -2257,7 +2257,11 @@ export default function AppMap({
           {/* County boundary — the quiet always-on county edge (6.1).
               Committed static GIS polygon, drawn as an outline UNDER the
               municipal lines and pins so the map reads as a county field
-              guide. A touch heavier than the muni dashes, still calm. */}
+              guide. Colored in Spruce (brand-2 #16352B, "deep county green")
+              rather than warm ink-2 (#423E34), which read as a muddy brown line
+              at low opacity over the cream ground — an intentional green
+              territorial edge, not an accidental brown one. GL can't read CSS
+              vars, so the token value is inlined (documented paint exception). */}
           <Source
             id="county-boundary"
             type="geojson"
@@ -2268,9 +2272,9 @@ export default function AppMap({
               type="line"
               layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
-                "line-color": "#423E34",
+                "line-color": "#16352B",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 13, 2 ],
-                "line-opacity": 0.4,
+                "line-opacity": 0.45,
               }}
             />
           </Source>
@@ -2291,7 +2295,7 @@ export default function AppMap({
               paint={{
                 "line-color": "#5C5A50",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 13, 1.4],
-                "line-opacity": 0.35,
+                "line-opacity": 0.22,
                 "line-dasharray": [3, 2],
               }}
             />
