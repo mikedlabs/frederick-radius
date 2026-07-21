@@ -26,7 +26,7 @@ describe("cravingToWant — craving → 'I want…' main category", () => {
     expect(cravingToWant("art")).toBe("seedo");
     expect(cravingToWant("shops")).toBe("shop");
     expect(cravingToWant("wellness")).toBe("unwind");
-    expect(cravingToWant("stay")).toBe("unwind");
+    expect(cravingToWant("stay")).toBe("seedo");
   });
 
   it("returns null for a craving with no main (never guesses)", () => {

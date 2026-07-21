@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isKeysEvent, keysOpponent } from "./keysEvent";
+import { isKeysEvent, keysOpponent, keysTicketUrl, KEYS_TICKETS_URL } from "./keysEvent";
 
 describe("isKeysEvent — recognizes Frederick Keys home games", () => {
   it("matches on the Stats-API source", () => {
@@ -46,5 +46,24 @@ describe("keysOpponent — parses the opponent from either side of the matchup",
     expect(keysOpponent("Frederick Keys Fireworks Night")).toBeNull();
     expect(keysOpponent("")).toBeNull();
     expect(keysOpponent(null)).toBeNull();
+  });
+});
+
+describe("keysTicketUrl", () => {
+  it("prefers a curated ticket_url", () => {
+    expect(
+      keysTicketUrl({ ticket_url: "https://example.test/game", source_url: "https://www.ticketmaster.com/x" }),
+    ).toBe("https://example.test/game");
+  });
+
+  it("uses the row's Ticketmaster event page when there is no ticket_url", () => {
+    expect(keysTicketUrl({ source_url: "https://www.ticketmaster.com/frederick-keys-tickets/123" })).toBe(
+      "https://www.ticketmaster.com/frederick-keys-tickets/123",
+    );
+  });
+
+  it("falls back to the box office for schedule-feed rows", () => {
+    expect(keysTicketUrl({ source_url: "https://www.milb.com/frederick/schedule" })).toBe(KEYS_TICKETS_URL);
+    expect(keysTicketUrl({})).toBe(KEYS_TICKETS_URL);
   });
 });

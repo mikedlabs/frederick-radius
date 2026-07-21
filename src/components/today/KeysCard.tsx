@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // Data-free formatter (never the loader) so this stays a light leaf.
 import { eventDateBlock } from "@/lib/events/format";
-import { keysOpponent } from "@/lib/today/keysEvent";
+import { keysOpponent, keysTicketUrl } from "@/lib/today/keysEvent";
 import { statusLabel } from "@/lib/event-status";
 
 /**
@@ -56,9 +56,10 @@ export default function KeysCard({
   const compact = variant === "tile";
   const heading = opponent ? `vs ${opponent}` : event.title;
 
-  // Prefer the game's own Ticketmaster link (the merged feed row carries one
-  // when Ticketmaster lists the game); fall back to the official box office.
-  const tickets = event.ticket_url || "https://www.milb.com/frederick/tickets";
+  // Per-game link via keysTicketUrl: curated ticket_url, else the row's own
+  // Ticketmaster event page (feed rows carry it as source_url, never
+  // ticket_url), else the official box office.
+  const tickets = keysTicketUrl(event);
 
   return (
     <div

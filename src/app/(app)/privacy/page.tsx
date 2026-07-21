@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AnalyticsOptOut from "@/components/privacy/AnalyticsOptOut";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
@@ -24,7 +25,7 @@ export default function PrivacyPage() {
           What the app knows and why.
         </h1>
         <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          Effective July 15, 2026
+          Effective July 21, 2026
         </p>
       </header>
 
@@ -93,6 +94,35 @@ export default function PrivacyPage() {
               you have the right to share them.
             </li>
           </ul>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className={headingClass} style={{ color: "var(--app-ink)" }}>
+            Invite cards and in-app activity
+          </h2>
+          <p>
+            Some testers join the beta by tapping a physical card with a phone.
+            Tapping a card assigns this device an anonymous identifier and unlocks
+            the app without any typing. The identifier is a random value. It is
+            not your name, your email, or your account. It stays saved on this
+            device for about a year so a returning device keeps the same
+            identifier, unless you clear this site&rsquo;s data or turn logging
+            off below.
+          </p>
+          <p>
+            The pages you open and a few in-app actions, such as saving a place or
+            opening the map, are recorded to a first-party log tied to that
+            identifier. We do not record what you type into search or Ask in this
+            log. We use it to see how the beta is used and to improve it. This
+            record stays anonymous unless you choose to give us contact
+            information, and we do not attach it to third-party advertising.
+          </p>
+          <p>
+            You can turn this logging off at any time using the control below.
+            Turning it off stops new activity from being recorded on this device
+            and marks the identifier so anything already in transit is dropped.
+          </p>
+          <AnalyticsOptOut />
         </div>
 
         <div className="space-y-2">

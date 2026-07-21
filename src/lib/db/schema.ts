@@ -382,6 +382,71 @@ export const beta_codes = pgTable(
   }),
 );
 
+/**
+ * NFC invite cards + per-member first-party analytics (migration 0030).
+ *
+ * Physical cards carry https://frederickradius.app/j/<code>. A tap validates the
+ * card, assigns the DEVICE an anonymous member (a random url-safe id in a signed
+ * httpOnly `fr_member` cookie), unlocks it past the beta wall the SAME signed way
+ * a redeemed per-user code does, and drops it at /today. In-app activity is then
+ * written to nfc_events so the owner can see, per card, who joined and what they
+ * do. The member cookie is HMAC-signed (so a member can only ever log against
+ * its own id) and grants NO access on its own — the fr_beta cookie is the access
+ * credential. Anonymous by default: name/email stay null unless volunteered, and
+ * opted_out stops all logging. Free-text (search/Ask query) is stripped before
+ * insert, so the behavioral log holds only page paths and categorical props. RLS
+ * deny-all like every table; the BYPASSRLS server role owns all reads/writes, so
+ * the anon key can never read a member's volunteered contact details or the log.
+ */
+export const nfc_cards = pgTable(
+  "nfc_cards",
+  {
+    code: text("code").primaryKey(),
+    label: text("label"),
+    batch: text("batch"),
+    active: boolean("active").notNull().default(true),
+    // Reserved for a future per-card cap; not enforced unless set.
+    max_members: integer("max_members"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    batchIdx: index("nfc_cards_batch_idx").on(t.batch),
+  }),
+);
+
+export const nfc_members = pgTable(
+  "nfc_members",
+  {
+    id: text("id").primaryKey(),
+    card_code: text("card_code").references(() => nfc_cards.code),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
+    name: text("name"),
+    email: text("email"),
+    opted_out: boolean("opted_out").notNull().default(false),
+  },
+  (t) => ({
+    cardIdx: index("nfc_members_card_idx").on(t.card_code),
+    createdIdx: index("nfc_members_created_idx").on(t.created_at),
+  }),
+);
+
+export const nfc_events = pgTable(
+  "nfc_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    member_id: text("member_id").references(() => nfc_members.id),
+    event: text("event").notNull(),
+    path: text("path"),
+    props: jsonb("props"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    memberCreatedIdx: index("nfc_events_member_created_idx").on(t.member_id, t.created_at),
+    createdIdx: index("nfc_events_created_idx").on(t.created_at),
+  }),
+);
+
 export const saved_events = pgTable(
   "saved_events",
   {

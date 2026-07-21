@@ -54,6 +54,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/places", title: "Places, A to Z", blurb: "Browse the place index and switch between list and map views.", keywords: ["directory", "all places", "a to z", "listings"] },
   { href: "/towns", title: "Towns and communities", blurb: "Choose an area to see place counts and upcoming events.", keywords: ["towns", "municipalities", "villages"] },
   { href: "/parks", title: "Parks & open space", blurb: "Browse parks returned by Frederick County GIS, with available maintenance details.", keywords: ["parks", "playground", "playgrounds", "open space", "dog park"] },
+  { href: "/sports", title: "Sports", blurb: "Follow the Frederick Keys with tickets for the next home games, plus county sports events and places to play.", keywords: ["sports", "frederick keys", "keys game", "baseball", "golf", "pickleball", "swimming pool"] },
   { href: "/trails", title: "Trails", blurb: "Browse trails returned by Frederick County GIS, with surface and length where available.", keywords: ["trail", "trails", "hike", "hiking", "biking"] },
   { href: "/markers", title: "Historical markers", blurb: "Read state roadside marker text and browse federal register sites.", keywords: ["historical markers", "covered bridge", "covered bridges", "landmark", "monument"] },
   { href: "/history", title: "County history", blurb: "Review Frederick County history through dated moments tied to local places.", keywords: ["history", "historic"] },

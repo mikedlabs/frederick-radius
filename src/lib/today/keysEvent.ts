@@ -54,3 +54,24 @@ export function keysOpponent(title: string | null | undefined): string | null {
   const opp = parts.map((p) => p.trim()).find((p) => p && !/keys/i.test(p));
   return opp ?? null;
 }
+
+/** The official box office — the honest fallback for any game without a
+ *  per-game ticket page. */
+export const KEYS_TICKETS_URL = "https://www.milb.com/frederick/tickets";
+
+/**
+ * The best ticket link for a Keys game. Curated rows can carry a real
+ * ticket_url; FEED rows never do — the merge maps Ticketmaster's event-page
+ * URL into source_url, not ticket_url (verified against liveToCardEvent), so
+ * a bare `ticket_url ||` fallback silently sent every feed game to the box
+ * office. The Ticketmaster event page IS the per-game ticket page, so use it
+ * when that is where the row came from; everything else gets the box office.
+ */
+export function keysTicketUrl(e: {
+  ticket_url?: string;
+  source_url?: string | null;
+}): string {
+  if (e.ticket_url) return e.ticket_url;
+  if (e.source_url && /ticketmaster\.com/i.test(e.source_url)) return e.source_url;
+  return KEYS_TICKETS_URL;
+}

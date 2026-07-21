@@ -64,7 +64,7 @@ export const CATEGORIES: Category[] = [
 
   { slug: "wellness", name: "Wellness", icon: "Heart", color: "#A02929", display_order: 60, blurb: "Personal care and everyday wellness businesses are collected here: massage, salons and barbers, spas, yoga and fitness." },
   { slug: "yoga", name: "Yoga & fitness", parent: "wellness", icon: "Activity", color: "#A02929", display_order: 61, blurb: "The list covers yoga studios, gyms, and group classes." },
-  { slug: "massage", name: "Massage", parent: "wellness", icon: "HeartPulse", color: "#A02929", display_order: 62, blurb: "Massage therapy and bodywork studios across the county." },
+  { slug: "massage", name: "Massage", parent: "wellness", icon: "HeartPulse", color: "#A02929", display_order: 62, blurb: "Massage therapy and bodywork studios are listed across the county." },
   { slug: "salon", name: "Salon & barber", parent: "wellness", icon: "Scissors", color: "#A02929", display_order: 63, blurb: "Hair salons, barbershops, and nail studios are grouped here." },
   { slug: "spa", name: "Spas", parent: "wellness", icon: "Sparkles", color: "#A02929", display_order: 64, blurb: "Day spas, medspas, and skin-care studios appear in this section." },
 
