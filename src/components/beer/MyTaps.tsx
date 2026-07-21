@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { useSavedList, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { BEER_BY_KEY, FAMILY_BY_KEY, type BeerWithBrewery } from "@/data/beers";
 import { BreweryLogo } from "./BreweryLogo";
-import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
 
 const prettyTown = (slug: string) =>
   slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -15,7 +14,7 @@ const prettyTown = (slug: string) =>
  * (bookmark). Reads the shared saved store, resolves keys back to beers, and
  * self-hides when empty so it is safe to mount on /beer and the Saved page.
  */
-export default function MyTaps({ heading = true, photos = {} }: { heading?: boolean; photos?: BreweryPhotoMap }) {
+export default function MyTaps({ heading = true }: { heading?: boolean }) {
   const mounted = useMounted();
   const list = useSavedList();
 
@@ -55,25 +54,25 @@ export default function MyTaps({ heading = true, photos = {} }: { heading?: bool
       )}
       <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-8 sm:px-8 lg:-mx-10 lg:px-10">
         {beers.map(({ beer, key }, index) => (
-          <TapRow key={key} beer={beer} savedKey={key} index={index} photo={photos[beer.brewerySlug]} />
+          <TapRow key={key} beer={beer} savedKey={key} index={index} />
         ))}
       </ul>
     </section>
   );
 }
 
-function TapRow({ beer, savedKey, index, photo }: { beer: BeerWithBrewery; savedKey: string; index: number; photo?: string | null }) {
+function TapRow({ beer, savedKey, index }: { beer: BeerWithBrewery; savedKey: string; index: number }) {
   const remove = useToggleSave("beer", savedKey);
   const fam = FAMILY_BY_KEY[beer.family];
   return (
     <li
       className="group relative flex min-h-[230px] w-[76vw] max-w-[290px] shrink-0 snap-center flex-col overflow-hidden border border-white/14 p-4 text-white"
-      style={{ background: `linear-gradient(145deg, ${fam.base}, ${fam.deep} 68%, #1c1510)` }}
+      style={{ background: `linear-gradient(150deg, ${fam.base}, ${fam.deep} 62%, #1c1510)` }}
     >
-      <div className="absolute inset-0" aria-hidden>
-        <BreweryPhoto brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} src={photo} decorative sizes="76vw" className="h-full w-full" imageClassName="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
-      </div>
-      <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(12,9,6,.08), color-mix(in srgb, ${fam.deep} 82%, rgba(14,10,8,.95)) 60%, #120e0b)` }} aria-hidden />
+      {/* The pour's own color IS the card — no gamble on an uncurated brewery
+          photo, and it echoes the color mosaic at the top of the page. A soft
+          floor keeps the beer name legible over a pale family color. */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(180deg, transparent, color-mix(in srgb, ${fam.deep} 70%, rgba(14,10,8,.92)) 66%, #120e0b)` }} aria-hidden />
       <div className="relative flex items-start justify-between gap-3">
         <span className="flex items-center gap-2">
           <BreweryLogo brewerySlug={beer.brewerySlug} breweryName={beer.breweryName} decorative sizes="42px" className="h-10 w-10 bg-[#f7f0e4] object-contain p-1 shadow-[0_10px_22px_rgba(0,0,0,.34)]" />
