@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight } from "lucide-react";
-import BeerExplorerLauncher from "@/components/beer/BeerExplorerLauncher";
 import BeerMasthead from "@/components/beer/BeerMasthead";
 import BeerIndex from "@/components/beer/BeerIndex";
 import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
@@ -26,8 +25,8 @@ export const metadata: Metadata = {
 };
 
 export default function BeerPage() {
-  // The complete explorer is secondary and lazy. Its cards still need a slim
-  // place record for town, map, rating, and user-triggered distance tools.
+  // The taproom map + strip need a slim place record per brewery for town,
+  // coordinates, rating, and photo.
   const breweryCards: PlaceCardData[] = BREWERIES.map((brewery) =>
     clientPlaceBySlug(brewery.slug),
   )
@@ -68,8 +67,6 @@ export default function BeerPage() {
       <TaproomMap places={breweryCards} />
 
       <MyTaps photos={breweryPhotos} />
-
-      <BeerExplorerLauncher breweryCards={breweryCards} />
 
       <footer
         className="grid gap-4 border-t border-black/12 py-6 text-[#281e14] sm:grid-cols-[1fr_auto] sm:items-end"
