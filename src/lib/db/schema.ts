@@ -455,6 +455,35 @@ export const push_log = pgTable(
 );
 
 /**
+ * Archive of PUBLIC scanner incidents, one row per distinct call, banked by
+ * the scanner-archive cron so the ephemeral live feed becomes a history the
+ * trend surfaces can read. Only the same public, non-medical calls the live
+ * layer shows are ever written (the allowlist runs before insert), and the
+ * columns are already de-identified (kind + block-level location) — no units,
+ * radio codes, or personal detail. `dedupe_key` (kind|location|occurred_at)
+ * keeps the same call from banking twice across cron cycles. RLS deny-all,
+ * server-role only, matching the rest of the schema.
+ */
+export const scanner_incidents = pgTable(
+  "scanner_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dedupe_key: text("dedupe_key").notNull(),
+    kind: text("kind").notNull(),
+    location: text("location").notNull(),
+    road_impact: boolean("road_impact").notNull().default(false),
+    // When the call was dispatched (from the feed message timestamp).
+    occurred_at: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    inserted_at: timestamp("inserted_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    dedupeIdx: uniqueIndex("scanner_incidents_dedupe_idx").on(t.dedupe_key),
+    occurredIdx: index("scanner_incidents_occurred_idx").on(t.occurred_at),
+    kindIdx: index("scanner_incidents_kind_idx").on(t.kind),
+  }),
+);
+
+/**
  * User-submitted content awaiting review: place suggestions, event
  * suggestions, and business-owner claims. One row per submission;
  * `kind` selects the shape stored in `payload`, `status` drives the
