@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, Church, Clock, Coffee, Heart, Hotel, Landmark, LayoutGrid, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Trees, Utensils, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Baby, Beer, Car, Church, Clock, Coffee, Droplets, Heart, Hotel, Landmark, LayoutGrid, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -40,6 +40,31 @@ const CATEGORY_FAMILIES: ReadonlyArray<{ label: string; keys: string[] }> = [
   { label: "Outdoors & active", keys: ["outdoor", "family"] },
   { label: "Culture & community", keys: ["arts", "faith"] },
   { label: "Everyday & services", keys: ["wellness", "shop", "civic", "stay"] },
+];
+
+type MapNeed =
+  | { kind: "intent"; key: string; label: string; Icon: LucideIcon; color: string }
+  | { kind: "amenity"; key: string; label: string; Icon: LucideIcon; color: string }
+  | { kind: "opennow"; label: string; Icon: LucideIcon; color: string }
+  | { kind: "nearme"; label: string; Icon: LucideIcon; color: string }
+  | { kind: "parking"; label: string; Icon: LucideIcon; color: string };
+
+/** The handful of things most people open the map to find, surfaced as one-tap
+ *  shortcuts ABOVE the full category grid. Mixes categories, the everyday
+ *  amenities (restrooms, water, Wi-Fi, parking), open-now and near-me — so the
+ *  common answer is instant, and a restroom is one tap, not four taps buried in
+ *  a "Layers" tab. Colors are inlined intent/token hues (GL-paint parity). */
+const TOP_NEEDS: ReadonlyArray<MapNeed> = [
+  { kind: "opennow", label: "Open now", Icon: Clock, color: "#1E6B3A" },
+  { kind: "nearme", label: "Near me", Icon: LocateFixed, color: "#20506A" },
+  { kind: "intent", key: "coffee", label: "Coffee", Icon: Coffee, color: "#8B5A2B" },
+  { kind: "intent", key: "eat", label: "Food", Icon: Utensils, color: "#A03A22" },
+  { kind: "amenity", key: "restroom", label: "Restrooms", Icon: Toilet, color: "#20506A" },
+  { kind: "parking", label: "Parking", Icon: Car, color: "#20506A" },
+  { kind: "intent", key: "outdoor", label: "Parks", Icon: Trees, color: "#1E6B3A" },
+  { kind: "amenity", key: "wifi", label: "Wi-Fi", Icon: Wifi, color: "#20506A" },
+  { kind: "amenity", key: "water", label: "Water", Icon: Droplets, color: "#20506A" },
+  { kind: "intent", key: "family", label: "Kids", Icon: Baby, color: "#C99632" },
 ];
 
 /** The four filter groups, now the panel's sub-tabs. What is purely KINDS
@@ -632,6 +657,29 @@ export default function MapDock(props: MapDockProps) {
     : pane === "layers" ? "Map layers"
     : "";
 
+  // The Most-needed shortcuts unify categories, amenities, open-now and near-me
+  // under "what do you need", so the common answer never requires tab-hopping.
+  const isNeedOn = (n: MapNeed): boolean =>
+    n.kind === "intent" ? browse.intentKey === n.key
+    : n.kind === "amenity" ? props.amenityGroups.has(n.key)
+    : n.kind === "opennow" ? browse.openNow
+    : n.kind === "parking" ? props.showParking
+    : whereSel.kind === "nearme";
+  const runNeed = (n: MapNeed) => {
+    haptic("light");
+    if (n.kind === "intent") pickIntent(browse.intentKey === n.key ? null : n.key);
+    else if (n.kind === "opennow") toggleOpenNow();
+    else if (n.kind === "nearme") props.goNearMe();
+    else if (n.kind === "parking") props.setShowParking((v) => !v);
+    else
+      props.setAmenityGroups((prev) => {
+        const next = new Set(prev);
+        if (next.has(n.key)) next.delete(n.key);
+        else next.add(n.key);
+        return next;
+      });
+  };
+
   return (
     <>
       {/* Scrim — dims the map; a tap closes the open panel. */}
@@ -846,6 +894,28 @@ export default function MapDock(props: MapDockProps) {
                 only fit a couple) so the range of the guide is finally visible. */}
             {pane === "what" && (
               <div>
+                <Sect>Most needed</Sect>
+                <div className="dock-needs">
+                  {TOP_NEEDS.map((n) => {
+                    const on = isNeedOn(n);
+                    return (
+                      <button
+                        key={n.kind + ("key" in n ? n.key : n.label)}
+                        type="button"
+                        className="dock-need"
+                        data-on={on || undefined}
+                        aria-pressed={on}
+                        onClick={() => runNeed(n)}
+                        style={{ "--c": n.color } as React.CSSProperties}
+                      >
+                        <span aria-hidden className="dock-need-ic">
+                          <n.Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                        </span>
+                        {n.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 {CATEGORY_FAMILIES.map((fam) => (
                   <div key={fam.label}>
                     <Sect>{fam.label}</Sect>
