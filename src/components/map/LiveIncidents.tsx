@@ -112,6 +112,11 @@ export default function LiveIncidents({ show }: { show: boolean }) {
             <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
               {selected.location}
             </p>
+            {selected.updates > 1 && (
+              <p className="mt-1 text-[11px] font-semibold" style={{ color: "var(--app-brand-press)" }}>
+                Active · {selected.updates} updates
+              </p>
+            )}
             <p className="mt-1 font-mono text-[10px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
               {nowMs ? `${agoLabel(selected.at, nowMs)} · ` : ""}via FrederickScanner
             </p>
