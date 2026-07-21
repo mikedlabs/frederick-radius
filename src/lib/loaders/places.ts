@@ -1,3 +1,9 @@
+// This module pulls the full place dataset + the 8.6MB places-enrichment.json
+// at import time and must NEVER reach a client bundle (the PR #503 footgun).
+// Today every client importer is type-only by convention + a lint rule; this
+// makes it enforced by the compiler — any future value-import from a
+// "use client" module fails the build instead of silently shipping ~9MB.
+import "server-only";
 import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
