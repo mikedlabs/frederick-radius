@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { getScannerIncidents, type ScannerIncident } from "@/lib/integrations/scannerIncidents";
+import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
+import ScannerPatterns from "@/components/scanner/ScannerPatterns";
 import PageBloom from "@/components/ui/PageBloom";
 
 /**
@@ -26,7 +28,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ScannerPage() {
-  const incidents = await getScannerIncidents().catch(() => [] as ScannerIncident[]);
+  const [incidents, patterns] = await Promise.all([
+    getScannerIncidents().catch(() => [] as ScannerIncident[]),
+    getScannerPatterns().catch(() => null),
+  ]);
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
@@ -65,6 +70,8 @@ export default async function ScannerPage() {
           aria-hidden
         />
       </Link>
+
+      {patterns && <ScannerPatterns patterns={patterns} />}
 
       <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
         Public safety calls only, block-level, credited to FrederickScanner.
