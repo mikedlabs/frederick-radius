@@ -1103,7 +1103,14 @@ export default function AppMap({
         slug: p.slug,
         name: p.name,
         category: p.category,
-        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#E14328",
+        // Category color as a literal hex on the feature (GL paint can't
+        // read var(--app-*)). Mirrors colorOf() in categoryMarkers.ts —
+        // leaf color, else the parent category's color, else brand — so the
+        // wide-zoom dot matches the puck it cross-fades into.
+        color:
+          CATEGORY_BY_SLUG[p.category]?.color
+          ?? CATEGORY_BY_SLUG[CATEGORY_BY_SLUG[p.category]?.parent ?? ""]?.color
+          ?? "#E14328",
         bucket: bucketOf(p.category),
         // "Last call" — open now but closing within the hour. Drives a
         // soft amber halo so a glance catches what's about to close.
@@ -2528,32 +2535,48 @@ export default function AppMap({
                 "circle-blur": 0.55,
               }}
             />
+            {/* Dot → puck density transition. The map is unclustered: every
+                curated place is always shown. At the county/mid view that would
+                be ~1,700 overlapping full pucks (a downtown blob), so wide/mid
+                zoom draws each place as a small category-colored DOT — a legible
+                stipple that still shows everything and still honors the
+                filter's emph/dimmed weighting. As you zoom into a few blocks
+                the dots fade out (12.5 → 13.5) and the full pucks fade in,
+                cross-fading so nothing pops. Under the pucks/labels by JSX order. */}
             <Layer
-              // Street-zoom name labels (map polish batch): once you're in
-              // a few blocks, pins read by NAME like a field-guide plate
-              // instead of forcing a tap per dot. text-optional lets the
-              // collision engine drop labels before it drops pins.
-              id="curated-names"
-              type="symbol"
+              id="curated-dots"
+              type="circle"
               filter={["!", ["has", "point_count"]]}
-              minzoom={15.5}
-              layout={{
-                "text-field": ["get", "name"],
-                "text-size": 10.5,
-                "text-offset": [0, 1.35],
-                "text-anchor": "top",
-                "text-optional": true,
-              }}
+              maxzoom={13.5}
               paint={{
-                "text-color": "#3A362B",
-                "text-halo-color": "#EEE6D4",
-                "text-halo-width": 1.1,
+                "circle-color": ["get", "color"],
+                "circle-radius": [
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 9, 2.2, 11, 3.2, 13, 4.6],
+                  [
+                    "case",
+                    ["==", ["get", "emph"], true], 1.35,
+                    ["==", ["get", "dimmed"], true], 0.7,
+                    1,
+                  ],
+                ],
+                "circle-stroke-color": "#FAF3E2",
+                "circle-stroke-width": 0.8,
+                "circle-opacity": [
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 12.5, 1, 13.5, 0],
+                  ["case", ["==", ["get", "dimmed"], true], 0.35, 1],
+                ],
+                "circle-stroke-opacity": [
+                  "interpolate", ["linear"], ["zoom"], 12.5, 0.9, 13.5, 0,
+                ],
               }}
             />
             <Layer
               id="curated-icons"
               type="symbol"
               filter={["!", ["has", "point_count"]]}
+              minzoom={12.5}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -2612,15 +2635,23 @@ export default function AppMap({
                 // No state + no filter = full opacity, so this stays inert
                 // on the clean map. Dropped 0.28 → 0.15 so the shrunk
                 // non-matches recede hard and the grown matches carry the eye.
+                //
+                // A zoom ramp (12.5 → 13.2) rides on top so pucks fade IN over
+                // the same handoff where the dots fade out — the two never both
+                // read at full, so the density transition cross-fades cleanly.
                 "icon-opacity": [
-                  "case",
+                  "*",
+                  ["interpolate", ["linear"], ["zoom"], 12.5, 0, 13.2, 1],
                   [
-                    "any",
-                    ["boolean", ["feature-state", "dim"], false],
-                    ["==", ["get", "dimmed"], true],
+                    "case",
+                    [
+                      "any",
+                      ["boolean", ["feature-state", "dim"], false],
+                      ["==", ["get", "dimmed"], true],
+                    ],
+                    0.15,
+                    1,
                   ],
-                  0.15,
-                  1,
                 ],
               }}
             />
@@ -2642,31 +2673,39 @@ export default function AppMap({
                 "circle-radius": 22,
               }}
             />
-            {/* Names reveal as you get closer — fade in past street zoom */}
+            {/* Names reveal progressively — the ONE curated label layer (the
+                old duplicate curated-names was removed; the two double-drew
+                names between 15.5 and 16.5). From z13 up, only standout pins
+                label: text-optional + collision (allow/ignore-placement false)
+                let the engine draw the highest-priority names first and drop
+                the rest, so mid zoom shows a few verified names and more appear
+                as you zoom. symbol-sort-key uses pri (verified = 0 = drawn
+                first = wins the spot), matching curated-icons. */}
             <Layer
               id="curated-labels"
               type="symbol"
-              minzoom={15}
+              minzoom={13}
               filter={["!", ["has", "point_count"]]}
               layout={{
                 "text-field": ["get", "name"],
-                "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9.5, 16, 12],
                 "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
                 "text-anchor": "top",
                 "text-offset": [0, 1.15],
                 "text-optional": true,
                 "text-allow-overlap": false,
+                "text-ignore-placement": false,
                 "text-max-width": 9,
                 "symbol-sort-key": ["get", "pri"],
               }}
               paint={{
-                "text-color": "#1A1A1A",
+                "text-color": "#3A362B",
                 "text-halo-color": "#FAFAF7",
-                "text-halo-width": 1.7,
+                "text-halo-width": 1.1,
                 "text-opacity": [
                   "interpolate", ["linear"], ["zoom"],
-                  15.5, 0,
-                  16.5, 1,
+                  13, 0.85,
+                  15, 1,
                 ],
               }}
             />
