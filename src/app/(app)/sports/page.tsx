@@ -118,7 +118,7 @@ export default function SportsPage() {
       {/* ── Sports events beyond the Keys ──────────────────────────────── */}
       <section>
         <SectionHeading
-          title="Around the county"
+          title="More games around the county"
           href="/events?intent=sports"
           cta="See all sports events"
         />
