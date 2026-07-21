@@ -1,10 +1,12 @@
 import { BREWERIES, ALL_BEERS } from "@/data/beers";
+import BeerColorRibbon from "@/components/beer/BeerColorRibbon";
 
 /**
- * BeerMasthead — the compact head of /beer, replacing the tall BeerHero so the
- * flavor field is visible almost above the fold. Three lines: a mono kicker, a
- * Fraunces title, and one plain status line assembled from our own counts. No
- * photo, no CTA buttons — the chart directly below is the call to action.
+ * BeerMasthead — the compact head of /beer. A mono kicker, a Fraunces title,
+ * one plain count line, and the color ribbon: the whole 174-pour catalog as a
+ * single pale-to-dark spectrum, so the page is SEEN as beer-by-color before a
+ * word is read (owner ask). The subhead stays short on purpose — the "filter
+ * or tap a pour" instruction lives on the tool right below, not twice.
  */
 export default function BeerMasthead() {
   const breweries = BREWERIES.length;
@@ -18,8 +20,9 @@ export default function BeerMasthead() {
         Beer in Frederick County.
       </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-black/64">
-        {`${breweries} breweries, ${beers} signature beers. Every pour below is a tile in its own color; filter by style or strength, or tap one for the beer.`}
+        {`${breweries} breweries and ${beers} signature beers around the county.`}
       </p>
+      <BeerColorRibbon className="mt-4 rounded-full" height={14} />
     </header>
   );
 }
