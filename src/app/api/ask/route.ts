@@ -1,6 +1,7 @@
 import { meterUsage } from "@/lib/usage-meter";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { askFrederick } from "@/lib/ask/answer";
+import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import { isRateLimited, isSameOriginMutationRequest, readJsonBodyWithLimit } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
@@ -80,5 +81,9 @@ export async function POST(req: NextRequest) {
     fallbackReason: context.fallbackReason,
   }, { taste: body.taste });
   if (result.usedModel) meterUsage("anthropic_ask");
+  // Configured but nothing real to point at = a data gap, not a config gap.
+  if (result.configured !== false && (!result.sources || result.sources.length === 0)) {
+    after(() => recordSearchMiss(query, "ask"));
+  }
   return NextResponse.json(result);
 }

@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { qualifiedSearchIndex } from "@/lib/search/index";
+import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { approxLocation } from "@/lib/ip-geo";
 import { roundCoord } from "@/lib/walkTime";
@@ -73,6 +74,11 @@ export async function GET(request: NextRequest) {
     contextLabel: context.label,
     fallbackReason: context.fallbackReason,
   });
+
+  // A real query that found nothing is a data gap — bank it after responding.
+  if (results.length === 0) {
+    after(() => recordSearchMiss(q, "search"));
+  }
 
   return NextResponse.json(
     { results, meta },
