@@ -5,6 +5,7 @@ import { getScannerIncidents, type ScannerIncident } from "@/lib/integrations/sc
 import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
 import ScannerPatterns from "@/components/scanner/ScannerPatterns";
+import HighwayConditions from "@/components/scanner/HighwayConditions";
 import PageBloom from "@/components/ui/PageBloom";
 
 /**
@@ -55,6 +56,8 @@ export default async function ScannerPage() {
       </header>
 
       <ScannerBoard initial={incidents} />
+
+      <HighwayConditions />
 
       <Link
         href="/map"
