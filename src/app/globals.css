@@ -3391,6 +3391,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    wires down, fire…). A real 44px tap target with the glyph centered; the
    colored disc + white ring reads at a glance over the map. ── */
 .fr-incident-marker {
+  position: relative;
   display: grid;
   place-items: center;
   width: 44px;
@@ -3401,19 +3402,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   cursor: pointer;
   color: #fff;
 }
+/* Radiating pulse — a ring that expands and fades from the incident's exact
+   spot, so an active call reads as "happening HERE" at a glance. Tinted by the
+   incident's kind color. */
+.fr-incident-marker::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 999px;
+  background: var(--inc-color, var(--app-brand));
+  opacity: 0.45;
+  z-index: 0;
+  pointer-events: none;
+  animation: fr-incident-pulse 1.9s ease-out infinite;
+}
+/* The solid disc, centered on the point (margin-centered so the ::after scale
+   animation stays anchored to the same spot). */
 .fr-incident-marker::before {
   content: "";
   position: absolute;
+  top: 50%;
+  left: 50%;
   width: 24px;
   height: 24px;
+  margin: -12px 0 0 -12px;
   border-radius: 999px;
   background: var(--inc-color, var(--app-brand));
   border: 2px solid #fff;
   box-shadow: var(--app-shadow-2);
+  z-index: 1;
 }
 .fr-incident-marker > svg {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 .fr-incident-marker:active {
   transform: scale(0.94);
@@ -3422,6 +3447,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   outline: 3px solid var(--app-brand);
   outline-offset: 2px;
   border-radius: 999px;
+}
+@keyframes fr-incident-pulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fr-incident-marker::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* ── CHART traffic-camera marker — a small spruce disc with a camera glyph.
