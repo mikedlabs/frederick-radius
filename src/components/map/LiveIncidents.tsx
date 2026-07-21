@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { AlertTriangle } from "lucide-react";
-import type { GeocodedIncident } from "@/lib/integrations/scannerIncidents";
+import { RECENT_INCIDENT_MS, type GeocodedIncident } from "@/lib/integrations/scannerIncidents";
 
 /**
  * LiveIncidents — the map's live public-safety layer, fed by the FredScanner
@@ -80,7 +80,11 @@ export default function LiveIncidents({ show }: { show: boolean }) {
 
   return (
     <>
-      {incidents.map((inc) => (
+      {incidents.map((inc) => {
+        // Past calls (older than an hour) show dimmed and still, not pulsing —
+        // so an active scene stands out from the day's earlier calls.
+        const isPast = nowMs > 0 && nowMs - Date.parse(inc.at) > RECENT_INCIDENT_MS;
+        return (
         <Marker
           key={`inc:${inc.kind}:${inc.location}:${inc.at}`}
           longitude={inc.lng}
@@ -93,14 +97,16 @@ export default function LiveIncidents({ show }: { show: boolean }) {
               ev.stopPropagation();
               setSelected(inc);
             }}
-            aria-label={`${inc.kind} near ${inc.location}`}
+            aria-label={`${inc.kind} near ${inc.location}${isPast ? " (past)" : ""}`}
             className="fr-incident-marker"
+            data-stale={isPast ? "true" : undefined}
             style={{ "--inc-color": KIND_COLOR[inc.kind] ?? "var(--app-brand)" } as React.CSSProperties}
           >
             <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
           </button>
         </Marker>
-      ))}
+        );
+      })}
 
       {selected && (
         <Popup

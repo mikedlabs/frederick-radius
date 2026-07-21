@@ -91,8 +91,19 @@ export function aggregate(entries: IncidentEntry[]): ScannerIncident[] {
 const token = () => process.env.SCANNER_SLACK_BOT_TOKEN || "";
 const channel = () => process.env.SCANNER_INCIDENTS_CHANNEL || "";
 
-/** Hard cap: nothing older than this ever surfaces, whatever the caller does. */
-const MAX_AGE_MS = 60 * 60 * 1000;
+/**
+ * How far back the LIST (dispatch board) reaches. Public, non-medical calls are
+ * relatively rare, so a 1-hour window left the board blank most of the day even
+ * though there were real crashes/fires/wires that morning. 12 hours keeps it a
+ * useful "recent public-safety activity" log — rarely empty during the day —
+ * while every row carries its own clock time so nothing reads as more current
+ * than it is. The MAP shows the same window (so past calls are visible where
+ * they happened), but pins older than RECENT_MS render as "past" — dimmed and
+ * not pulsing — so an active scene still stands out (see LiveIncidents).
+ */
+const MAX_AGE_MS = 12 * 60 * 60 * 1000;
+/** A pin newer than this pulses as active; older ones show dimmed as past. */
+export const RECENT_INCIDENT_MS = 60 * 60 * 1000;
 
 export function scannerConfigured(): boolean {
   return Boolean(token() && channel());
