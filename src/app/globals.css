@@ -3441,10 +3441,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-topline {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
     bottom: 10px !important;
