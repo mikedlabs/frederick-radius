@@ -66,7 +66,7 @@ export default function BeerPage() {
 
       <TaproomMap places={breweryCards} />
 
-      <MyTaps photos={breweryPhotos} />
+      <MyTaps />
 
       <footer
         className="grid gap-4 border-t border-black/12 py-6 text-[#281e14] sm:grid-cols-[1fr_auto] sm:items-end"
