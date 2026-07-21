@@ -32,6 +32,8 @@ import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
+import EmergencyPrompt from "@/components/today/EmergencyPrompt";
+import BeerTeaser from "@/components/today/BeerTeaser";
 import WorthALook from "@/components/today/WorthALook";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -416,6 +418,11 @@ export default async function HomePage() {
         <WorthALook />
       </Suspense>
 
+      {/* FREDERICK BEER — a signature county draw gets a real door from the home
+          surface (owner ask: the beer page needed a better way to be seen). The
+          color ribbon is the same spectrum that heads /beer. */}
+      <BeerTeaser />
+
       {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
           "here sometimes" context sits together instead of interrupting the core
           sections. Each self-hides out of its window. */}
@@ -437,13 +444,15 @@ export default async function HomePage() {
           "More weather & local tools" drawer (they were never weather, and a
           visitor never found "where to stay" behind a weather label). One
           VISIBLE zone under a single secondary heading, then the toolbox door,
-          so the bottom of the page reads as a calm "good to have" shelf. */}
-      <section aria-label="Good to have" className="mt-6">
-        <SectionHeading size="sm" title="Good to have" />
+          so the bottom of the page reads as a calm essentials shelf. */}
+      <section aria-label="Essentials" className="mt-6">
+        <SectionHeading size="sm" title="Essentials" />
         <div className="mt-3 space-y-3">
-          {/* Where to stay, the food-truck roster, and the parking /
-              reservations hand-offs — real visitor utilities, now standing
-              in the open instead of hiding behind a weather collapse. */}
+          {/* Emergency essentials lead the shelf — the one utility a visitor
+              most needs to have found BEFORE the moment they need it (beta
+              safety request). Where to stay, the food-truck roster, and the
+              parking / reservations hand-offs follow. */}
+          <EmergencyPrompt />
           <VisitorStayPrompt />
           <FoodTruckToday />
           <PartnerAppsRow />

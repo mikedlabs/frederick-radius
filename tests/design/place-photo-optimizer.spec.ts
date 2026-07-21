@@ -8,7 +8,6 @@ const PROXY_PHOTO_SURFACES = [
   "src/components/deals/DealsBrowser.tsx",
   "src/components/happy/HappyHourBrowser.tsx",
   "src/components/happy/HappyHourGuide.tsx",
-  "src/components/beer/BeerFinder.tsx",
   "src/components/today/PhotoMosaic.tsx",
   "src/components/plan/PlanBuilder.tsx",
 ] as const;
