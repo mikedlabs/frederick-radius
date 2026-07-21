@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { BETA_COOKIE, betaToken, verifyCodeCookie } from "@/lib/beta-gate";
+import { BETA_COOKIE, betaToken, verifyCodeCookie, verifyMemberCookie } from "@/lib/beta-gate";
+import { MEMBER_COOKIE } from "@/lib/nfc-constants";
 
 /**
  * Edge middleware: three independent gates, applied conditionally
@@ -114,12 +115,20 @@ async function betaGate(req: NextRequest): Promise<NextResponse | null> {
     return null;
   }
   const cookie = req.cookies.get(BETA_COOKIE)?.value;
-  // Two ways the cookie unlocks: the shared-password token (owner master key),
-  // or a signed per-user access code. Both are pure crypto checks — no DB.
+  // Two ways the fr_beta cookie unlocks: the shared-password token (owner master
+  // key), or a signed per-user access code. Both are pure crypto checks — no DB.
   if (cookie) {
     if (cookie === (await expectedBetaToken(pw))) return null; // master password
     if (await verifyCodeCookie(cookie)) return null; // valid per-user code
   }
+  // A tapped NFC device also stays in for the ~1-year life of its signed
+  // fr_member cookie, so it isn't locked out when the 12h fr_beta unlock expires
+  // — the whole point of per-member cards is to follow a device over time, which
+  // a same-day lockout would defeat. The member id grants beta access and
+  // nothing more (never admin), and is forgeable only with the server signing
+  // secret, exactly like the code cookie above. Emergency revocation of ALL
+  // access is still a secret rotation, same as the beta codes.
+  if (await verifyMemberCookie(req.cookies.get(MEMBER_COOKIE)?.value)) return null;
   const url = new URL("/beta", req.url);
   url.searchParams.set("next", pathname + req.nextUrl.search);
   return NextResponse.redirect(url);

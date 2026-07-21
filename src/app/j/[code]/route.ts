@@ -123,7 +123,9 @@ export async function GET(
       path: "/",
       maxAge: BETA_CODE_SESSION_SECONDS,
     });
-    // Anonymous member identity — signed, httpOnly, ~1 year.
+    // Anonymous member identity — signed, httpOnly, ~1 year. The middleware also
+    // treats a valid fr_member as beta access, so the device stays in for the
+    // life of this cookie, not just the 12h fr_beta unlock above.
     res.cookies.set(MEMBER_COOKIE, signedMember, {
       httpOnly: true,
       secure: true,
