@@ -59,7 +59,7 @@ describe("scope helpers", () => {
   it("scopeLabel reads the muni name for towns", () => {
     expect(scopeLabel("nearme")).toBe("Near me");
     expect(scopeLabel("county")).toBe("Whole county");
-    expect(scopeLabel("town:frederick")).toBe("Frederick");
+    expect(scopeLabel("town:frederick")).toBe("Frederick City");
     expect(scopeLabel(null)).toBe("Frederick County");
   });
 });

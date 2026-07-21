@@ -54,7 +54,7 @@ describe("resolveMunicipality", () => {
 describe("locationLabel", () => {
   it("labels an inside point as '<Town>, MD'", () => {
     // The scope covers the full city, not only the downtown core.
-    expect(locationLabel(FREDERICK_CENTER)).toBe("Frederick, MD");
+    expect(locationLabel(FREDERICK_CENTER)).toBe("Frederick City, MD");
   });
 
   it("labels a far point as the generic county label", () => {
@@ -95,7 +95,7 @@ describe("nearbyNow", () => {
   it("returns the connected shape with the resolved municipality", () => {
     expect(ctx.municipality.slug).toBe("frederick");
     expect(ctx.inside).toBe(true);
-    expect(ctx.label).toBe("Frederick, MD");
+    expect(ctx.label).toBe("Frederick City, MD");
     expect(ctx.radiusM).toBeGreaterThan(0);
   });
 
