@@ -65,6 +65,10 @@ export type ScannerPatterns = {
   byKind: KindCount[];
   /** Hour of day (0–23) crashes peak at, or null if none. */
   peakHour: number | null;
+  /** Crashes per weekday, index 0 (Sun) – 6 (Sat). */
+  byWeekday: number[];
+  /** Weekday (0–6) crashes peak at, or null if none. */
+  peakWeekday: number | null;
   /** Crash hotspots the county has a traffic count for, ranked by crashes per
    *  vehicle. Empty when no hotspot road matched a count. */
   trafficAdjusted: TrafficAdjusted[];
@@ -78,8 +82,17 @@ const EMPTY: ScannerPatterns = {
   byHour: Array(24).fill(0),
   byKind: [],
   peakHour: null,
+  byWeekday: Array(7).fill(0),
+  peakWeekday: null,
   trafficAdjusted: [],
 };
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** Weekday (0=Sun … 6=Sat) a UTC ms falls on in Eastern time. */
+function etWeekday(ms: number): number {
+  const s = new Intl.DateTimeFormat("en-US", { timeZone: ET, weekday: "short" }).format(ms);
+  return WEEKDAYS.indexOf(s);
+}
 
 const TRAFFIC = trafficCounts as Record<string, number>;
 const ROAD_REPL: Record<string, string> = {
@@ -233,13 +246,15 @@ export async function fetchPageRecords(): Promise<PatternRecord[]> {
       const inc = publicIncident(line);
       if (!inc) continue; // same allowlist as the live board
       const dm = line.match(/posted\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      const atMs = dm ? etWallToMs(dm[1], inc.time) : null;
       out.push({
         kind: inc.kind,
         location: inc.location,
         roadImpact: inc.roadImpact,
-        atMs: dm ? etWallToMs(dm[1], inc.time) : null,
+        atMs,
         hour: hourOf(inc.time),
-        dateKey: dm ? dm[1] : "",
+        // Same YYYY-MM-DD key the archive uses, so distinct-day counts line up.
+        dateKey: atMs !== null ? etDateKey(atMs) : "",
       });
     }
     return out;
@@ -286,6 +301,7 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
   const wires = new Map<string, number>();
   const kinds = new Map<PublicIncidentKind, number>();
   const byHour = Array(24).fill(0);
+  const byWeekday = Array(7).fill(0);
   let total = 0;
 
   for (const r of records) {
@@ -296,6 +312,10 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
       const spot = cleanSpot(r.location);
       if (spot) crashes.set(spot, (crashes.get(spot) ?? 0) + 1);
       if (r.hour !== null) byHour[r.hour] += 1;
+      if (r.atMs !== null && Number.isFinite(r.atMs)) {
+        const wd = etWeekday(r.atMs);
+        if (wd >= 0) byWeekday[wd] += 1;
+      }
     } else if (r.kind === "Wires down") {
       const spot = cleanSpot(r.location);
       if (spot) wires.set(spot, (wires.get(spot) ?? 0) + 1);
@@ -305,6 +325,7 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
   if (total === 0) return EMPTY;
 
   const peak = byHour.reduce((best, c, h) => (c > byHour[best] ? h : best), 0);
+  const peakWd = byWeekday.reduce((best, c, d) => (c > byWeekday[best] ? d : best), 0);
   const byKind = [...kinds.entries()]
     .map(([kind, count]) => ({ kind, count }))
     .sort((a, b) => b.count - a.count);
@@ -317,6 +338,8 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
     byHour,
     byKind,
     peakHour: byHour[peak] > 0 ? peak : null,
+    byWeekday,
+    peakWeekday: byWeekday[peakWd] > 0 ? peakWd : null,
     // Computed over EVERY crash road (not just the top-6 shown), so a quieter
     // road with a bad crash-per-vehicle rate can surface even when it isn't a
     // top hotspot by raw count.
@@ -357,6 +380,9 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
 /** Public scanner patterns, cached hourly. Empty and honest when unreachable. */
 export const getScannerPatterns = unstable_cache(
   fetchScannerPatterns,
-  ["scanner-patterns-v1"],
+  // v2: shape gained trafficAdjusted + byWeekday/peakWeekday. Bump the key so a
+  // durable cache from before the shape change can't serve an old-shaped object
+  // across deploys (the unstable_cache persists — PR #509 lesson).
+  ["scanner-patterns-v2"],
   { revalidate: 3600, tags: ["scanner-patterns"] },
 );
