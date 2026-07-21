@@ -12,7 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { ChevronLeft, MapPin, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, type LucideIcon } from "lucide-react";
 import { RADIUS_TOOL_GROUPS } from "@/data/radius-tools";
 import { TOOL_ICONS, TONE_COLOR } from "@/data/radius-tool-icons";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -394,7 +394,9 @@ export default function FieldWheel() {
                   <span className="fw-sub">{item.description}</span>
                 </span>
                 <span className="fw-cue" aria-hidden>
-                  {item.href ? "Open ›" : "›"}
+                  {item.href ? <>Open<ChevronRight size={12} strokeWidth={2.4} /></> : (
+                    <ChevronRight size={14} strokeWidth={2.4} />
+                  )}
                 </span>
               </>
             );
@@ -551,7 +553,7 @@ function FieldWheelStyles() {
 .fw-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
 .fw-lab{font-size:14.5px;font-weight:600;letter-spacing:-.005em;color:var(--app-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:font-size .2s;}
 .fw-sub{max-height:0;opacity:0;overflow:hidden;font-size:12px;line-height:1.35;color:var(--app-ink-2);transition:max-height .24s,opacity .2s,margin .2s;}
-.fw-cue{flex:none;font-family:var(--font-mono,ui-monospace,monospace);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--fw-tc);opacity:0;transition:opacity .2s;}
+.fw-cue{flex:none;display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono,ui-monospace,monospace);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--fw-tc);opacity:0;transition:opacity .2s;}
 
 .fw-row.fw-sel{margin:6px 10px;padding:12px 14px;border-radius:15px;
   background:linear-gradient(180deg,color-mix(in srgb,var(--fw-tc) 13%,var(--app-bg-elevated-solid)),color-mix(in srgb,var(--fw-tc) 5%,var(--app-bg-elevated-solid)));
