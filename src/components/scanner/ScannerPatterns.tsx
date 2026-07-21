@@ -97,8 +97,22 @@ function formatK(n: number): string {
   return n < 10000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n / 1000)}k`;
 }
 
+const WEEKDAY_FULL = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
 export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
-  const { days, total, crashSpots, wireSpots, byHour, peakHour, trafficAdjusted } = patterns;
+  // Defaults guard against an older-shaped object served from the cache during
+  // a revalidation window (the cache key is bumped on shape changes, but this
+  // keeps the page from ever crashing if a stale entry sneaks through).
+  const {
+    days,
+    total,
+    crashSpots = [],
+    wireSpots = [],
+    byHour = [],
+    peakHour = null,
+    peakWeekday = null,
+    trafficAdjusted = [],
+  } = patterns;
   if (total === 0 || days === 0) return null;
 
   return (
@@ -166,7 +180,9 @@ export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
         >
           <p className="mb-2 flex items-baseline justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
             <span>When crashes happen</span>
-            <span style={{ color: "var(--app-brand-press)" }}>Busiest around {to12h(peakHour)}</span>
+            <span style={{ color: "var(--app-brand-press)" }}>
+              Busiest around {to12h(peakHour)}{peakWeekday !== null ? `, ${WEEKDAY_FULL[peakWeekday]}` : ""}
+            </span>
           </p>
           <HourStrip byHour={byHour} peakHour={peakHour} />
         </div>

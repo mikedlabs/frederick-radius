@@ -143,7 +143,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
           <span className="font-mono font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
             {incidents.length}
           </span>{" "}
-          {incidents.length === 1 ? "public call" : "public calls"} in the last hour
+          {incidents.length === 1 ? "public call" : "public calls"} in the last 12 hours
           {activeCount > 0 && (
             <>
               {" · "}

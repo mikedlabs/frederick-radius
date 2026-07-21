@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Inbox, Flag, PenLine, Copy as CopyIcon, GitCompare, Sparkles,
   BarChart3, LayoutDashboard, KeyRound, Mail, Megaphone,
-  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX,
+  Activity, MapPinned, Receipt, StickyNote, MapPin, Truck, SearchX, Nfc, Radar,
 } from "lucide-react";
 import Link from "next/link";
 import { easternDayKey } from "@/lib/tz";
@@ -62,6 +62,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
       { href: "/admin/traffic", title: "Traffic", icon: BarChart3 },
       { href: "/admin/beta", title: "Beta", icon: LayoutDashboard },
       { href: "/admin/beta-codes", title: "Codes", icon: KeyRound },
+      { href: "/admin/cards", title: "NFC cards", icon: Nfc },
       { href: "/admin/beta-emails", title: "Emails", icon: Mail },
       { href: "/admin/notify", title: "Broadcast", icon: Megaphone },
     ],
@@ -71,6 +72,7 @@ const DOOR_GROUPS: { label: string; doors: { href: string; title: string; icon: 
     doors: [
       { href: "/admin/data-health", title: "Data health", icon: Activity },
       { href: "/admin/data-gaps", title: "Data gaps", icon: SearchX },
+      { href: "/admin/radar", title: "Radar", icon: Radar },
       { href: "/admin/coverage", title: "Coverage", icon: MapPinned },
       { href: "/admin/costs", title: "Costs", icon: Receipt },
       { href: "/admin/field-notes", title: "Field notes", icon: StickyNote },

@@ -72,7 +72,7 @@ export const WANTS: WantCategory[] = [
   },
   {
     key: "outdoors",
-    label: "Outdoors",
+    label: "Get outside",
     icon: "Trees",
     color: "var(--app-positive)",
     subs: [
@@ -90,7 +90,7 @@ export const WANTS: WantCategory[] = [
   },
   {
     key: "seedo",
-    label: "See & do",
+    label: "Things to do",
     icon: "Palette",
     color: "var(--app-accent)",
     subs: [
@@ -99,6 +99,7 @@ export const WANTS: WantCategory[] = [
       { label: "Movies", icon: "Film", href: "/nearby?c=movies" },
       { label: "Arts & museums", icon: "Palette", href: "/nearby?c=art" },
       { label: "Markers & landmarks", icon: "Landmark", href: "/markers" },
+      { label: "Hotels & B&Bs", icon: "Hotel", href: "/nearby?c=stay" },
       { label: "Plan a day", icon: "Route", href: "/plan" },
     ],
   },
@@ -117,10 +118,11 @@ export const WANTS: WantCategory[] = [
   },
   {
     key: "unwind",
-    // Short enough to never truncate in the accordion's two-column cells:
-    // ~10 chars fit at 402px ("Wellness & stay" clipped to "Wellness & …",
-    // a permanent ellipsis in primary nav). Matches the hero title.
-    label: "Wind down",
+    // Keep this label SHORT (~10 chars): long names truncated in the old
+    // two-column cells, and tight names still read best in the wrapped row.
+    // "Self-care" names what actually lives here (owner, 2026-07-21: the old
+    // "Wind down" hid haircuts and gyms — confusing what everything is for).
+    label: "Self-care",
     icon: "Heart",
     color: "var(--app-brand-2)",
     subs: [
@@ -129,7 +131,7 @@ export const WANTS: WantCategory[] = [
       { label: "Gym & fitness", icon: "Activity", href: "/nearby?c=wellness&facet=gym" },
       { label: "Wellness", icon: "Heart", href: "/nearby?c=wellness" },
       { label: "Salons & barbers", icon: "Scissors", href: "/nearby?c=salon" },
-      { label: "Hotels & B&Bs", icon: "Hotel", href: "/nearby?c=stay" },
+      { label: "Pharmacies", icon: "Pill", href: "/category/pharmacy" },
     ],
   },
   {
@@ -140,7 +142,7 @@ export const WANTS: WantCategory[] = [
     subs: [
       { label: "Churches & worship", icon: "Church", href: "/category/worship" },
       { label: "Libraries", icon: "Library", href: "/category/library" },
-      { label: "Pharmacies", icon: "Pill", href: "/category/pharmacy" },
+      { label: "County pulse", icon: "Activity", href: "/pulse" },
       { label: "Contacts", icon: "Building2", href: "/contacts" },
     ],
   },
@@ -154,7 +156,6 @@ export const WANTS: WantCategory[] = [
       { label: "MARC train", icon: "Train", href: "/transit" },
       { label: "Transit bus", icon: "Bus", href: "/transit" },
       { label: "Amenities", icon: "Wrench", href: "/amenities" },
-      { label: "County pulse", icon: "Activity", href: "/pulse" },
     ],
   },
 ];

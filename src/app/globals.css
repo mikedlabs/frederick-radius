@@ -3249,15 +3249,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    the right and never scroll. Surfacing the categories here replaced the old
    single Filters button that buried them three taps deep (owner ask
    2026-07-21: the map "feels messy" / hard to use). */
-.dock-cats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-}
-/* (The old horizontal chip-scroll strip and its "More"/Filters pill were
-   replaced by the single Browse-places door below; their styles are gone.
-   .dock-filters-n survives as the door's active-filter count badge.) */
+/* Row 1 — search takes the room; More + the map/list toggle are compact
+   square icon buttons pinned to its right, OFF the category row so the
+   categories below can use the full width. */
+/* (The old horizontal chip-scroll strip, its "More"/Filters pill, and main's
+   parallel dock-topline/icbtn row experiment were all replaced by the single
+   Browse-places door; their styles are gone. .dock-filters-n survives as the
+   door's active-filter count badge.) */
 .dock-filters-n {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 10.5px;
@@ -3443,7 +3441,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-cats {
+  .dock-topline {
     flex: 1 1 auto;
     min-width: 0;
   }
@@ -3632,6 +3630,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: 0;
   pointer-events: none;
   animation: fr-incident-pulse 1.9s ease-out infinite;
+}
+/* A PAST call (older than an hour): dimmed and still — no pulse ring — so an
+   active scene stands out from the day's earlier calls. Still tappable; the
+   popup gives the time. */
+.fr-incident-marker[data-stale="true"] {
+  opacity: 0.55;
+}
+.fr-incident-marker[data-stale="true"]::after {
+  animation: none;
+  opacity: 0.14;
 }
 /* The solid disc, centered on the point (margin-centered so the ::after scale
    animation stays anchored to the same spot). */

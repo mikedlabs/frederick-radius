@@ -145,7 +145,9 @@ describe("geocodeForwardUncached (mocked fetch — never hits the network)", () 
     expect(url).toContain("proximity=-77.41,39.41");
     expect(url).toContain("country=US");
     expect(url).toContain("limit=1");
-    expect(url).toContain("types=address,street,block");
+    // v6 REJECTS "street"/"block" as types= filter values (422) — the filter
+    // must stay absent; precision is enforced on the response feature_type.
+    expect(url).not.toContain("types=");
     // Load-bearing in prod: the URL-restricted token 403s any server
     // fetch that omits the frederickradius.app Referer (all Mapbox APIs).
     const init = fetchMock.mock.calls[0][1];

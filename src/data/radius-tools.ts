@@ -424,6 +424,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         keywords: ["check a date", "date conflict", "schedule conflict"],
       },
       {
+        id: "sports",
+        label: "Catch a game",
+        description: "Follow the Frederick Keys and find places to play.",
+        href: "/sports",
+        icon: "activity",
+        tone: "accent",
+        keywords: ["sports", "frederick keys", "keys game", "baseball", "golf", "pickleball", "swimming pool"],
+      },
+      {
         id: "plan",
         label: "Plan an outing",
         description: "Build an editable route around your time and mood.",
