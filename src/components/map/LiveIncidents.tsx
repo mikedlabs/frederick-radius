@@ -19,11 +19,17 @@ const POLL_MS = 60_000;
 
 const KIND_COLOR: Record<string, string> = {
   Crash: "var(--app-brand)",
+  "Pedestrian struck": "var(--app-brand)",
+  "Vehicle fire": "var(--app-brand-press)",
   "Wires down": "#B4712A",
   "Gas leak": "#B4712A",
+  Hazmat: "#B4712A",
   "Structure fire": "var(--app-brand-press)",
   "Outside fire": "#B4712A",
   "Water rescue": "var(--app-cool)",
+  Rescue: "var(--app-cool)",
+  Medevac: "var(--app-brand-press)",
+  Flooding: "var(--app-cool)",
 };
 
 function agoLabel(iso: string, now: number): string {

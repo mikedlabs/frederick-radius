@@ -17,6 +17,17 @@ const L = {
   standby: "3:57 pm | FHH STANDBY FOR HELICOPTER LANDING | 400 BLOCK W SEVENTH ST, FHH | Radio: 9C | Units: K33",
   structureFire: "9:10 pm | WORKING STRUCTURE FIRE | 100 BLOCK E CHURCH ST | Radio: 9C | Units: E1, TW1",
   attachmentPrefix: "Attachment: 6:31 pm | VEHICLE ACCIDENT - BLS | 4200 BLOCK BILL MOXLEY RD | Radio: 9B | Units: A259",
+  vehicleFire: "5:12 pm | VEHICLE FIRE | 7000 BLOCK GUILFORD DR | Radio: 9C | Units: E93",
+  hazmat: "10:02 am | FUEL SPILL | 5300 BLOCK BUCKEYSTOWN PIKE | Radio: 9C | Units: E31",
+  entrapment: "8:15 pm | BUILDING COLLAPSE WITH ENTRAPMENT | 100 BLOCK E PATRICK ST | Radio: 9C | Units: R19",
+  medevac: "3:20 pm | MEDEVAC REQUESTED | 9400 BLOCK OLD NATIONAL PIKE | Radio: 9B | Units: TROOPER 3",
+  motorcycle: "4:10 pm | MOTORCYCLE ACCIDENT | 8000 BLOCK BASEBALL BLVD | Radio: 9B | Units: A11",
+  flooding: "7:00 am | FLOODING CONDITION | 300 BLOCK E SOUTH ST | Radio: 9C | Units: E1",
+  // Private medical calls — must NEVER surface, even though they carry a unit.
+  chestPain: "2:11 pm | CHEST PAIN - ALS | 300 BLOCK COLLEGE AVE | Radio: 9D | Units: A1",
+  fall: "6:44 pm | FALL VICTIM - BLS | 200 BLOCK W PATRICK ST | Radio: 9C | Units: A1",
+  sick: "9:30 am | SICK PERSON | 1400 BLOCK NORTH AVE | Radio: 9C | Units: M1",
+  unconscious: "1:05 am | UNCONSCIOUS SUBJECT - ALS | 500 BLOCK MOTTER AVE | Radio: 9D | Units: A2",
 };
 
 describe("parseIncidentLine", () => {
@@ -48,10 +59,26 @@ describe("publicIncident — the privacy allowlist", () => {
     expect(publicIncident(L.structureFire)).toMatchObject({ kind: "Structure fire", roadImpact: false });
   });
 
-  it("DROPS everything medical, personal, or noisy", () => {
-    // These must never reach a user — homes, a retirement facility, a person
-    // struck, false-heavy alarms, and non-incident chatter.
-    for (const line of [L.service, L.mutualAid, L.gasInside, L.pedestrian, L.fireAlarm, L.odorInside, L.standby]) {
+  it("KEEPS a pedestrian struck, vehicle fire, hazmat, entrapment, medevac", () => {
+    // A person hit on a public road is a road collision, not private medical —
+    // even with the medical unit ("- ALS") riding along.
+    expect(publicIncident(L.pedestrian)).toMatchObject({ kind: "Pedestrian struck", roadImpact: true });
+    expect(publicIncident(L.vehicleFire)).toMatchObject({ kind: "Vehicle fire", roadImpact: true });
+    expect(publicIncident(L.hazmat)).toMatchObject({ kind: "Hazmat", roadImpact: true });
+    expect(publicIncident(L.entrapment)).toMatchObject({ kind: "Rescue" });
+    expect(publicIncident(L.medevac)).toMatchObject({ kind: "Medevac", roadImpact: true });
+    expect(publicIncident(L.motorcycle)).toMatchObject({ kind: "Crash", roadImpact: true });
+    expect(publicIncident(L.flooding)).toMatchObject({ kind: "Flooding", roadImpact: true });
+  });
+
+  it("DROPS everything PRIVATE-medical, personal, or noisy", () => {
+    // These must never reach a user — a private medical emergency (chest pain,
+    // a fall, a sick or unconscious person), homes, a retirement facility,
+    // false-heavy alarms, routine standby, mutual aid, and non-incident chatter.
+    for (const line of [
+      L.chestPain, L.fall, L.sick, L.unconscious,
+      L.service, L.mutualAid, L.gasInside, L.fireAlarm, L.odorInside, L.standby,
+    ]) {
       expect(publicIncident(line), line).toBeNull();
     }
   });
@@ -94,7 +121,7 @@ describe("publicIncidents — batch", () => {
   it("keeps only the public subset of a mixed batch", () => {
     const all = [L.service, L.crash, L.mutualAid, L.gasOutside, L.gasInside, L.pedestrian, L.fireAlarm, L.wires, L.transformer, L.odorInside, L.standby, L.crashNoRadio];
     const kept = publicIncidents(all);
-    expect(kept).toHaveLength(5); // 2 crashes, gas leak, wires, transformer
+    expect(kept).toHaveLength(6); // 2 crashes, gas leak, wires, transformer, pedestrian struck
     expect(kept.every((i) => i.location.length > 0)).toBe(true);
   });
 });
