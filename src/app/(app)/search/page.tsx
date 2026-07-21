@@ -249,7 +249,10 @@ export default async function SearchPage({
         <SearchInput defaultValue={query} />
       </header>
 
-      {query ? (
+      {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
+          present below, so the view never stacks two brand-emphasis blocks
+          (one primary action per view). */}
+      {query && !answer ? (
         <Link
           href={`/ask?q=${encodeURIComponent(query)}`}
           className="tactile-interactive flex min-h-12 items-center gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2"
