@@ -2,23 +2,30 @@
  * What the public wire shows OVER TIME — the honest use of old calls.
  *
  * The live board answers "what's happening now"; this answers "where and when
- * things happen around here." We read frederickscanner.com's public page (it
- * carries a rolling ~3 weeks, not just the last hour), run every line through
- * the SAME public-only allowlist as the live feed, and aggregate:
+ * things happen around here." Two sources feed it, and the deeper one wins:
  *
- *   - crash hotspots     — the roads/intersections crashes keep clustering on
- *   - storm corridors    — where wires come down
- *   - the daily rhythm    — crashes by hour of day
+ *   - OUR ARCHIVE (scanner_incidents) — everything the scanner-archive cron has
+ *     banked since the table went live. This is the only way to see PAST the
+ *     ~3 weeks the public page keeps: it grows without limit, day after day.
+ *   - THE PUBLIC PAGE (frederickscanner.com) — a rolling ~3 weeks. The bootstrap
+ *     and the fallback: it's what we show before the archive has depth, and if
+ *     the DB is dormant (not migrated) it's all we ever read.
  *
- * Everything here is aggregate, public, block-level road data (never a medical
- * or personal call — those are dropped upstream, exactly as on the live board).
- * No individual old call is surfaced; only the pattern. Cached hourly because
- * it parses the whole page and the shape barely moves minute to minute.
+ * Both run through the SAME public-only allowlist as the live feed, and both
+ * reduce to the same aggregation: crash hotspots, storm corridors, the daily
+ * rhythm. Everything is aggregate, public, block-level road data (never a
+ * medical or personal call — dropped upstream). No individual old call is
+ * surfaced; only the pattern. Cached hourly.
  */
 import { unstable_cache } from "next/cache";
+import { gte } from "drizzle-orm";
 import { publicIncident, type PublicIncidentKind } from "@/lib/scanner/incidentFeed";
+import { getDb } from "@/lib/db/client";
+import { scanner_incidents } from "@/lib/db/schema";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
+/** How far back the archive read reaches. A year of local memory is plenty. */
+const ARCHIVE_DAYS = 365;
 
 export type SpotCount = { spot: string; count: number };
 export type KindCount = { kind: PublicIncidentKind; count: number };
@@ -89,7 +96,56 @@ function rank(map: Map<string, number>, min: number, limit: number): SpotCount[]
     .slice(0, limit);
 }
 
-async function fetchScannerPatterns(): Promise<ScannerPatterns> {
+/**
+ * One public incident reduced to just what the pattern needs: its kind, the
+ * road it maps to, the hour of day it happened (0–23, Eastern), and the
+ * calendar day (for the distinct-day span). Whether it came from the page or
+ * the archive, aggregation only ever sees this.
+ */
+export type PatternRecord = {
+  kind: PublicIncidentKind;
+  location: string;
+  roadImpact: boolean;
+  /** Dispatch time in ms — used when banking to the archive. */
+  atMs: number | null;
+  hour: number | null;
+  dateKey: string;
+};
+
+const ET = "America/New_York";
+/** Hour of day (0–23) a UTC ms falls on in Eastern time. */
+function etHour(ms: number): number {
+  const h = parseInt(
+    new Intl.DateTimeFormat("en-US", { timeZone: ET, hour: "2-digit", hour12: false }).format(ms),
+    10,
+  );
+  return h % 24;
+}
+/** Eastern calendar day (YYYY-MM-DD) a UTC ms falls on. */
+function etDateKey(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ET,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(ms);
+}
+/** Eastern wall-clock ("07/20/2026" + "9:10 pm") → UTC ms. EDT/EST by month;
+ *  a DST-boundary hour can be off by one, which the pattern view tolerates. */
+function etWallToMs(dateMDY: string, clock: string): number | null {
+  const dm = dateMDY.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const h = hourOf(clock);
+  const min = clock.match(/:(\d{2})/);
+  if (!dm || h === null || !min) return null;
+  const month = parseInt(dm[1], 10);
+  const offset = month >= 3 && month <= 11 ? "-04:00" : "-05:00";
+  const iso = `${dm[3]}-${dm[1].padStart(2, "0")}-${dm[2].padStart(2, "0")}T${String(h).padStart(2, "0")}:${min[1]}:00${offset}`;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Read the public page's full rolling window into pattern records. */
+export async function fetchPageRecords(): Promise<PatternRecord[]> {
   try {
     const res = await fetch(SOURCE_URL, {
       headers: {
@@ -98,7 +154,7 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
       },
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return EMPTY;
+    if (!res.ok) return [];
     const html = await res.text();
     const lines = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)].map((m) =>
       m[1]
@@ -109,52 +165,105 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
         .trim(),
     );
 
-    const days = new Set<string>();
-    const crashes = new Map<string, number>();
-    const wires = new Map<string, number>();
-    const kinds = new Map<PublicIncidentKind, number>();
-    const byHour = Array(24).fill(0);
-    let total = 0;
-
+    const out: PatternRecord[] = [];
     for (const line of lines) {
       const inc = publicIncident(line);
       if (!inc) continue; // same allowlist as the live board
-      total += 1;
-      kinds.set(inc.kind, (kinds.get(inc.kind) ?? 0) + 1);
-
       const dm = line.match(/posted\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
-      if (dm) days.add(dm[1]);
-
-      if (inc.kind === "Crash") {
-        const spot = cleanSpot(inc.location);
-        if (spot) crashes.set(spot, (crashes.get(spot) ?? 0) + 1);
-        const h = hourOf(inc.time);
-        if (h !== null) byHour[h] += 1;
-      } else if (inc.kind === "Wires down") {
-        const spot = cleanSpot(inc.location);
-        if (spot) wires.set(spot, (wires.get(spot) ?? 0) + 1);
-      }
+      out.push({
+        kind: inc.kind,
+        location: inc.location,
+        roadImpact: inc.roadImpact,
+        atMs: dm ? etWallToMs(dm[1], inc.time) : null,
+        hour: hourOf(inc.time),
+        dateKey: dm ? dm[1] : "",
+      });
     }
-
-    if (total === 0) return EMPTY;
-
-    const peak = byHour.reduce((best, c, h) => (c > byHour[best] ? h : best), 0);
-    const byKind = [...kinds.entries()]
-      .map(([kind, count]) => ({ kind, count }))
-      .sort((a, b) => b.count - a.count);
-
-    return {
-      days: days.size,
-      total,
-      crashSpots: rank(crashes, 2, 6),
-      wireSpots: rank(wires, 2, 4),
-      byHour,
-      byKind,
-      peakHour: byHour[peak] > 0 ? peak : null,
-    };
+    return out;
   } catch {
-    return EMPTY;
+    return [];
   }
+}
+
+/** Read the banked archive (empty when the DB is dormant / not migrated). */
+async function fetchArchiveRecords(): Promise<PatternRecord[]> {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const since = new Date(Date.now() - ARCHIVE_DAYS * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        kind: scanner_incidents.kind,
+        location: scanner_incidents.location,
+        road_impact: scanner_incidents.road_impact,
+        occurred_at: scanner_incidents.occurred_at,
+      })
+      .from(scanner_incidents)
+      .where(gte(scanner_incidents.occurred_at, since));
+    return rows.map((r) => {
+      const ms = r.occurred_at instanceof Date ? r.occurred_at.getTime() : Date.parse(String(r.occurred_at));
+      return {
+        kind: r.kind as PublicIncidentKind,
+        location: r.location,
+        roadImpact: r.road_impact,
+        atMs: ms,
+        hour: Number.isFinite(ms) ? etHour(ms) : null,
+        dateKey: Number.isFinite(ms) ? etDateKey(ms) : "",
+      };
+    });
+  } catch {
+    return []; // table missing / transient — fall back to the page
+  }
+}
+
+/** Reduce a set of records to the patterns the page renders. */
+function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
+  const days = new Set<string>();
+  const crashes = new Map<string, number>();
+  const wires = new Map<string, number>();
+  const kinds = new Map<PublicIncidentKind, number>();
+  const byHour = Array(24).fill(0);
+  let total = 0;
+
+  for (const r of records) {
+    total += 1;
+    kinds.set(r.kind, (kinds.get(r.kind) ?? 0) + 1);
+    if (r.dateKey) days.add(r.dateKey);
+    if (r.kind === "Crash") {
+      const spot = cleanSpot(r.location);
+      if (spot) crashes.set(spot, (crashes.get(spot) ?? 0) + 1);
+      if (r.hour !== null) byHour[r.hour] += 1;
+    } else if (r.kind === "Wires down") {
+      const spot = cleanSpot(r.location);
+      if (spot) wires.set(spot, (wires.get(spot) ?? 0) + 1);
+    }
+  }
+
+  if (total === 0) return EMPTY;
+
+  const peak = byHour.reduce((best, c, h) => (c > byHour[best] ? h : best), 0);
+  const byKind = [...kinds.entries()]
+    .map(([kind, count]) => ({ kind, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    days: days.size,
+    total,
+    crashSpots: rank(crashes, 2, 6),
+    wireSpots: rank(wires, 2, 4),
+    byHour,
+    byKind,
+    peakHour: byHour[peak] > 0 ? peak : null,
+  };
+}
+
+async function fetchScannerPatterns(): Promise<ScannerPatterns> {
+  // Prefer the archive — it's the only source that grows past the page's ~3
+  // weeks. The backfill keeps it a superset of the page, so this isn't a union
+  // (no double-count); the page is purely the bootstrap/fallback.
+  const archive = await fetchArchiveRecords();
+  if (archive.length > 0) return aggregateRecords(archive);
+  return aggregateRecords(await fetchPageRecords());
 }
 
 /** Public scanner patterns, cached hourly. Empty and honest when unreachable. */
