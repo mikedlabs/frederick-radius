@@ -3,6 +3,7 @@ import { rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
+import type { WeatherLean } from "@/lib/today/weatherLean";
 import { suppressedDaypartCategories } from "@/lib/today/craving-lead";
 
 /**
@@ -22,14 +23,14 @@ function easternHour(now: Date): number {
   );
 }
 
-export function buildDaypartRows(now: Date): DaypartRow[] {
+export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRow[] {
   // De-dupe against the CravingStrip "I want…" lead above: if CravingStrip is
   // already visibly leading with this daypart's meal (Eat → the "Dinner"/"Lunch"
   // restaurant rail) or drinks (the brewery/bar rails), drop that one rail so the
   // page never says "dinner" twice back-to-back. Never let the de-dupe empty the
   // section: if it would remove every rail, keep the full set.
   const suppressed = suppressedDaypartCategories(now);
-  const allNeeds = daypartNeeds(easternHour(now));
+  const allNeeds = daypartNeeds(easternHour(now), lean);
   const kept = allNeeds.filter((need) => !suppressed.has(need.category));
   const needs = kept.length > 0 ? kept : allNeeds;
   // One ranked, open-preferring pass over the catalog; each need filters it.

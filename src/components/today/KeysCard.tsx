@@ -5,6 +5,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/events/format";
 import { keysOpponent, keysTicketUrl } from "@/lib/today/keysEvent";
 import { statusLabel } from "@/lib/event-status";
+import LiveCountdown from "@/components/ui/LiveCountdown";
 
 /**
  * KeysCard — the Frederick Keys home game, dressed in the TEAM's colors instead
@@ -117,9 +118,18 @@ export default function KeysCard({
         {/* First pitch (gold, the decision fact) + the date. */}
         <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] tabular-nums">
           {date.time && (
-            <span className="font-bold uppercase tracking-[0.04em]" style={{ color: KEYS_ORANGE_DEEP }}>
-              First pitch {date.time}
-            </span>
+            <>
+              <span className="font-bold uppercase tracking-[0.04em]" style={{ color: KEYS_ORANGE_DEEP }}>
+                First pitch {date.time}
+              </span>
+              {/* Quietly ticking time-until — the instrument register. */}
+              <LiveCountdown
+                targetIso={event.starts_at}
+                prefix="in"
+                className="font-bold"
+                style={{ color: "rgba(26,21,14,0.6)" }}
+              />
+            </>
           )}
           <span style={{ color: "rgba(26,21,14,0.55)" }} aria-hidden>·</span>
           <span style={{ color: "rgba(26,21,14,0.82)" }}>

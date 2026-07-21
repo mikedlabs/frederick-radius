@@ -16,7 +16,7 @@ import type { DaypartRow } from "@/lib/loaders/daypartPicks";
  * same isOpenNow the /open-now surface uses), so this never sends someone to a
  * locked door.
  */
-export default function DaypartNeeds({ rows }: { rows: DaypartRow[] }) {
+export default function DaypartNeeds({ rows, note }: { rows: DaypartRow[]; note?: string | null }) {
   if (rows.length === 0) return null;
 
   return (
@@ -25,6 +25,13 @@ export default function DaypartNeeds({ rows }: { rows: DaypartRow[] }) {
           competed with the title and duplicated the per-card "Open" dot; the
           title carries the section and each card says "Open" honestly. */}
       <SectionHeading title="Right now, around here" />
+      {/* When the weather reshaped the shelf, SAY so — visible intelligence,
+          never a silent reorder. */}
+      {note && (
+        <p className="mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          {note}
+        </p>
+      )}
 
       <div className="mt-3 space-y-3">
         {rows.map((row) => (

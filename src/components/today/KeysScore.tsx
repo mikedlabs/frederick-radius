@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { track } from "@/lib/track";
+import LiveCountdown from "@/components/ui/LiveCountdown";
 import type { KeysScore as Score } from "@/lib/integrations/keysScore";
 
 const POLL_MS = 45_000;
@@ -216,6 +217,14 @@ export default function KeysScore() {
 
       <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
         {detailLine(score)}
+        {score.state === "pre" && (
+          <LiveCountdown
+            targetIso={score.startsAt}
+            prefix=" · in"
+            className="font-semibold"
+            style={{ color: KEYS_ORANGE_DEEP }}
+          />
+        )}
       </p>
 
       {/* Pre-game only: tickets are the decision fact before first pitch.

@@ -1,6 +1,7 @@
 import { Sun } from "lucide-react";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { goldenHourWindow } from "@/lib/today/golden-hour";
+import LiveCountdown from "@/components/ui/LiveCountdown";
 
 /**
  * GoldenHourCard — a calm almanac beat in the day's live layer: today's sunset
@@ -50,6 +51,13 @@ export default function GoldenHourCard({ now }: { now: Date }) {
           <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {detail}
           </p>
+          {/* Ticks down to the window, then hides once it opens. */}
+          <LiveCountdown
+            targetIso={win.goldenStart.toISOString()}
+            prefix="Golden hour in"
+            className="mt-0.5 block font-mono text-[11px] font-bold tabular-nums"
+            style={{ color: "var(--app-accent-press)" }}
+          />
         </div>
         <span className="shrink-0 text-right font-mono text-[11px] tabular-nums leading-tight" style={{ color: "var(--app-ink-3)" }}>
           <span className="block uppercase tracking-[0.1em]">Sunset</span>
