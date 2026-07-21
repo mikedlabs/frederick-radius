@@ -15,6 +15,7 @@ import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 // lives at src/components/today/AdaptiveGreeting.tsx if we want to
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
+import WeatherNeeds from "@/components/today/WeatherNeeds";
 import MomentSpotlight from "@/components/today/MomentSpotlight";
 import { activeMoment } from "@/data/civic-moments";
 import MastheadNotes from "@/components/today/MastheadNotes";
@@ -248,6 +249,17 @@ export default async function HomePage() {
       <Suspense fallback={null}>
         <div className="[&:not(:empty)]:mb-4">
           <CivicAlerts />
+        </div>
+      </Suspense>
+
+      {/* ── WEATHER NEEDS — the "what to do" layer that appears ONLY during an
+          active weather warning (storm, snow, flood, heat). The banner above is
+          the alarm; this is the calm safety line plus the actions (river levels,
+          live outage/road board, official closings, the numbers). Self-hides
+          when nothing is active, so it costs the ordinary day zero space. */}
+      <Suspense fallback={null}>
+        <div className="[&:not(:empty)]:mb-4">
+          <WeatherNeeds />
         </div>
       </Suspense>
 
