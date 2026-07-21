@@ -97,28 +97,43 @@ function tidyLocation(loc: string): string {
 }
 
 /**
- * Parse one raw feed line and, if it's a public non-medical call we can
- * honestly show, return the cleaned incident. Returns null for everything
- * else — the safe default.
+ * The allowlist itself, over already-separated parts (type / location / time).
+ * Shared by the pipe-line parser and the RSS reader so BOTH sources apply the
+ * exact same public-only rules. Returns null for anything medical/personal/
+ * noisy — the safe default.
  */
-export function publicIncident(raw: string): PublicIncident | null {
-  const p = parseIncidentLine(raw);
-  if (!p) return null;
+export function classifyPublicIncident(
+  type: string,
+  location: string,
+  time: string,
+): PublicIncident | null {
+  const loc = location.trim();
+  if (!type || !loc) return null;
 
   // Fire ALARMS are overwhelmingly false; never surface them as fires.
-  if (/\balarm\b/i.test(p.type)) return null;
+  if (/\balarm\b/i.test(type)) return null;
   // A bare medical response (BLS/ALS) that is NOT a vehicle crash is a person's
   // medical emergency — drop it. A "VEHICLE ACCIDENT - BLS" keeps (it's a crash).
-  if (/\b(bls|als)\b/i.test(p.type) && !/vehicle accident|crash|collision|overturn/i.test(p.type)) {
+  if (/\b(bls|als)\b/i.test(type) && !/vehicle accident|crash|collision|overturn/i.test(type)) {
     return null;
   }
 
   for (const k of PUBLIC_KINDS) {
-    if (k.re.test(p.type)) {
-      return { time: p.time, kind: k.kind, location: tidyLocation(p.location), roadImpact: k.road };
+    if (k.re.test(type)) {
+      return { time, kind: k.kind, location: tidyLocation(loc), roadImpact: k.road };
     }
   }
   return null;
+}
+
+/**
+ * Parse one raw feed line and, if it's a public non-medical call we can
+ * honestly show, return the cleaned incident.
+ */
+export function publicIncident(raw: string): PublicIncident | null {
+  const p = parseIncidentLine(raw);
+  if (!p) return null;
+  return classifyPublicIncident(p.type, p.location, p.time);
 }
 
 /**

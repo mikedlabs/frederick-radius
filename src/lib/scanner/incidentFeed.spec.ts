@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseIncidentLine, publicIncident, publicIncidents, geocodableAddress } from "./incidentFeed";
+import { parseIncidentLine, publicIncident, publicIncidents, geocodableAddress, classifyPublicIncident } from "./incidentFeed";
 
 // Real lines from the FredScanner #incidents feed (2026-07-19/20).
 const L = {
@@ -60,6 +60,19 @@ describe("publicIncident — the privacy allowlist", () => {
     const inc = publicIncident(L.crash)!;
     expect(inc.location).toBe("12200 block Coppermine Rd");
     expect(JSON.stringify(inc)).not.toMatch(/A179|E172|Radio|9B/);
+  });
+});
+
+describe("classifyPublicIncident — shared by the pipe + RSS sources", () => {
+  it("keeps public, drops medical/alarm — from separated parts (the RSS path)", () => {
+    expect(classifyPublicIncident("HOUSE FIRE", "700 BLOCK E POTOMAC ST", "11:17 pm")).toMatchObject({
+      kind: "Structure fire",
+      time: "11:17 pm",
+    });
+    expect(classifyPublicIncident("VEHICLE ACCIDENT - BLS", "12200 BLOCK COPPERMINE RD", "7:23 pm")).toMatchObject({ kind: "Crash" });
+    expect(classifyPublicIncident("COMMERCIAL FIRE ALARM", "5200 BLOCK BLACK LOCUST DR", "11:06 pm")).toBeNull();
+    expect(classifyPublicIncident("GAS ODOR INSIDE", "1300 BLOCK HOPE FARM CT", "3:14 pm")).toBeNull();
+    expect(classifyPublicIncident("", "somewhere", "1:00 pm")).toBeNull();
   });
 });
 
