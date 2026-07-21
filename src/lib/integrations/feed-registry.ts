@@ -31,6 +31,7 @@ export const KEYED_FEEDS: FeedDef[] = [
   { name: "Hood College", env: "HOOD_CALENDAR_URL", powers: "Hood events calendar" },
   { name: "FCPS", env: "FCPS_FEED_URL", powers: "Frederick County Public Schools calendar" },
   { name: "PulsePoint", env: "PULSEPOINT_AGENCY_ID", powers: "Live fire / EMS incidents" },
+  { name: "FredScanner", env: "SCANNER_SLACK_BOT_TOKEN", powers: "Live public 911/dispatch incidents (also needs SCANNER_INCIDENTS_CHANNEL)" },
 ];
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.
