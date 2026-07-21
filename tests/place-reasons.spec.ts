@@ -51,6 +51,21 @@ describe("placeReasons — extended intent reasons", () => {
     expect(r).toContain("free");
     expect(r).not.toContain("near_landmark");
   });
+
+  it("dog_friendly from the tag, outranking free/landmark but not kid-friendly", () => {
+    // A restaurant carrying the real dog-friendly tag surfaces it.
+    expect(kinds(place({ category: "restaurant", tags: ["dog-friendly"] }))).toContain("dog_friendly");
+    // Outranks "Free": a dog-friendly park shows Dog-friendly, not Free.
+    const park = kinds(place({ category: "park", tags: ["dog-friendly"] }));
+    expect(park).toContain("dog_friendly");
+    expect(park).not.toContain("free");
+    // A kid category still wins the single intent slot.
+    const family = kinds(place({ category: "family", tags: ["dog-friendly"] }));
+    expect(family).toContain("kid_friendly");
+    expect(family).not.toContain("dog_friendly");
+    // No tag, no chip — never a guess.
+    expect(kinds(place({ category: "restaurant" }))).not.toContain("dog_friendly");
+  });
 });
 
 describe("placeReasons — cap & priority unchanged", () => {

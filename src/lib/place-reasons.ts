@@ -27,6 +27,7 @@ export type PlaceReason =
   | "near"
   | "walkable"
   | "kid_friendly"
+  | "dog_friendly"
   | "free"
   | "near_landmark"
   | "top_rated"
@@ -115,10 +116,16 @@ export function placeReasons(
   }
 
   // 3. One intent reason — the single most useful "does this fit?" signal,
-  // derived from data we already have. Capped to ONE (kid-friendly → free →
-  // near a landmark) so it never crowds out open / distance / quality.
+  // derived from data we already have. Capped to ONE (kid-friendly →
+  // dog-friendly → free → near a landmark) so it never crowds out open /
+  // distance / quality. Dog-friendly is a real tag (from the discovered
+  // rows / Google amenities when present), not a guess, and it's a signal
+  // people specifically hunt for — so it outranks the weaker "Free"
+  // (obvious for a park) and "Near {landmark}" fillers.
   if (KID_CATEGORIES.has(p.category)) {
     out.push({ kind: "kid_friendly", label: "Kid-friendly", tone: "neutral" });
+  } else if ((p.tags ?? []).includes("dog-friendly")) {
+    out.push({ kind: "dog_friendly", label: "Dog-friendly", tone: "neutral" });
   } else if (FREE_CATEGORIES.has(p.category)) {
     out.push({ kind: "free", label: "Free", tone: "free" });
   } else {

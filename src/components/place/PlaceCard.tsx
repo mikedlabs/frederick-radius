@@ -11,7 +11,7 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star, NotebookPen } from "lucide-react";
+import { Star, NotebookPen, PawPrint } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
@@ -573,9 +573,19 @@ export default function PlaceCard({
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {cat?.name ?? place.category}
-          {kf && <> · {kf}</>}
+        <p className="mt-0.5 flex items-center gap-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {(place.tags ?? []).includes("dog-friendly") && (
+            <PawPrint
+              className="h-3 w-3 shrink-0"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-brand-2)" }}
+              aria-label="Dog-friendly"
+            />
+          )}
+          <span className="truncate">
+            {cat?.name ?? place.category}
+            {kf && <> · {kf}</>}
+          </span>
         </p>
         {place.market_day && (
           <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
