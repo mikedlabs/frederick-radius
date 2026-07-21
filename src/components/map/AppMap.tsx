@@ -207,6 +207,7 @@ import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LiveIncidents from "./LiveIncidents";
 import TrafficCameras from "./TrafficCameras";
+import FireStations from "./FireStations";
 import {
   parseLayersParam,
   serializeLayers,
@@ -668,6 +669,9 @@ export default function AppMap({
   const [showIncidents, setShowIncidents] = useState(() => layerPrefs.incidents ?? false);
   // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
   const [showCameras, setShowCameras] = useState(() => layerPrefs.cameras ?? false);
+  // Frederick County fire & rescue companies (GIS, static) — opt-in, OFF by
+  // default. Each pin is the station number, the root of its call signs.
+  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? false);
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -731,8 +735,9 @@ export default function AppMap({
       radar: showRadar,
       incidents: showIncidents,
       cameras: showCameras,
+      firestations: showFireStations,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras, showFireStations]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -2096,6 +2101,10 @@ export default function AppMap({
               the live feed. Fetches once when the layer turns on. */}
           <TrafficCameras show={showCameras} />
 
+          {/* Frederick County fire & rescue companies — static GIS pins, each
+              its station number. Tap for the company name + call-sign key. */}
+          <FireStations show={showFireStations} />
+
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
               user opts in; base map unchanged by default. */}
@@ -3269,6 +3278,8 @@ export default function AppMap({
             setShowIncidents={setShowIncidents}
             showCameras={showCameras}
             setShowCameras={setShowCameras}
+            showFireStations={showFireStations}
+            setShowFireStations={setShowFireStations}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}
