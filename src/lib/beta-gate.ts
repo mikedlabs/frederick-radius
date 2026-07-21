@@ -141,3 +141,85 @@ export async function verifyCodeCookie(
 export function isRedeemableBetaCode(row: { revoked: boolean } | null | undefined): boolean {
   return row !== null && row !== undefined && row.revoked === false;
 }
+
+/**
+ * Anonymous NFC member identity.
+ *
+ * A tapped device is assigned a random url-safe member id (generated in
+ * src/lib/nfc.ts) and carries it in a SIGNED httpOnly `fr_member` cookie. The
+ * cookie is HMAC'd (domain-separated by the `fr-member:v1:` label, so a member
+ * signature is never a valid code signature or vice versa) and grants NO access
+ * on its own — the fr_beta cookie is the access credential; this id only
+ * attributes first-party analytics to a member. Forging one therefore buys
+ * nothing but the ability to write analytics against an id you named, and only
+ * with knowledge of the server signing secret.
+ *
+ * Signing key: a DEDICATED `MEMBER_COOKIE_SECRET` when set, else the beta code
+ * secret (so it needs zero new config to run, but can be split off from the
+ * beta password whenever that reuse is undesirable — verification still accepts
+ * cookies signed under the code secret, so introducing the dedicated secret
+ * never logs existing members out).
+ *
+ * Unlike a code cookie it carries no expiry field: the id is a stable identity
+ * for the life of the cookie, so a returning member keeps the same id.
+ */
+function memberSigningSecret(): string | null {
+  return process.env.MEMBER_COOKIE_SECRET || currentCodeSecret();
+}
+
+/** Every key a member cookie might have been signed under, newest first, so a
+ *  dedicated-secret rollout accepts cookies minted under the old code secret. */
+function memberVerificationSecrets(): string[] {
+  const seen = new Set<string>();
+  for (const s of [
+    process.env.MEMBER_COOKIE_SECRET || null,
+    process.env.MEMBER_COOKIE_SECRET_PREVIOUS || null,
+    currentCodeSecret(),
+    previousCodeSecret(),
+  ]) {
+    if (s) seen.add(s);
+  }
+  return [...seen];
+}
+
+const MEMBER_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+const MEMBER_COOKIE_RE = /^m1~([A-Za-z0-9_-]{16,64})~([a-f0-9]{32})$/;
+
+export function isValidMemberId(id: string): boolean {
+  return MEMBER_ID_RE.test(id);
+}
+
+async function memberHmac(key: string, id: string): Promise<string> {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(`fr-member:v1:${id}`));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32);
+}
+
+/** Mint the signed `fr_member` cookie value for a server-generated member id. */
+export async function signMemberId(id: string): Promise<string | null> {
+  const secret = memberSigningSecret();
+  if (!secret || !isValidMemberId(id)) return null;
+  return `m1~${id}~${await memberHmac(secret, id)}`;
+}
+
+/** Recover the member id from a signed cookie, or null when unsigned/tampered. */
+export async function verifyMemberCookie(value: string | undefined): Promise<string | null> {
+  if (!value) return null;
+  const match = MEMBER_COOKIE_RE.exec(value);
+  if (!match) return null;
+  const [, id, sig] = match;
+  for (const secret of memberVerificationSecrets()) {
+    if (safeEqual(sig, await memberHmac(secret, id))) return id;
+  }
+  return null;
+}

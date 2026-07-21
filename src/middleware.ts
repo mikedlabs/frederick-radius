@@ -64,6 +64,10 @@ export function isBetaExempt(pathname: string): boolean {
     // /api/ above.)
     pathname === "/food-trucks/claim" ||
     pathname === "/food-trucks/out" ||
+    // NFC tap endpoint: /j/<code> is the access-GRANTING route. It must reach
+    // its handler while the wall is up so it can validate the card and set the
+    // unlock cookie itself; the wall would otherwise 307 the tap to /beta.
+    pathname.startsWith("/j/") ||
     /\.[a-z0-9]+$/i.test(pathname) // sw.js, manifest.webmanifest, robots.txt, *.png, ...
   );
 }

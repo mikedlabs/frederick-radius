@@ -20,6 +20,13 @@ describe("beta wall exemptions", () => {
     expect(isBetaExempt("/food-trucks/out")).toBe(true);
   });
 
+  it("opens the NFC tap endpoint so a card can grant its own access", () => {
+    expect(isBetaExempt("/j/a3kq-7mtp")).toBe(true);
+    expect(isBetaExempt("/j/frederick-market")).toBe(true);
+    // The bare /j prefix is only exempt WITH a code segment; there is no /j page.
+    expect(isBetaExempt("/j")).toBe(false);
+  });
+
   it("does not open ordinary app routes", () => {
     expect(isBetaExempt("/today")).toBe(false);
     expect(isBetaExempt("/places/privacy-cafe")).toBe(false);

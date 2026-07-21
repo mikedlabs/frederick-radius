@@ -30,6 +30,7 @@ import {
   pruneOldSnapshots,
 } from "@/lib/integrations/feed-snapshot";
 import { prunePushLog } from "@/lib/push-fanout";
+import { pruneNfcEvents } from "@/lib/nfc-retention";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
@@ -112,6 +113,12 @@ export async function GET(request: Request) {
   // window we care about fits well within that.
   const prunedPushRows = await prunePushLog(90).catch((err) => {
     console.error("[cron/data-health] push_log prune failed:", err);
+    return 0;
+  });
+  // nfc_events is append-only (one row per member page view / action). Same 90d
+  // retention floor so the behavioral log can't grow without bound.
+  const prunedNfcEvents = await pruneNfcEvents(90).catch((err) => {
+    console.error("[cron/data-health] nfc_events prune failed:", err);
     return 0;
   });
   // community_reports self-cleans: expired approved + old rejected rows
@@ -206,6 +213,7 @@ export async function GET(request: Request) {
       anomaly_count: anomalies.length,
       pruned_old_snapshots: prunedRows,
       pruned_push_log: prunedPushRows,
+      pruned_nfc_events: prunedNfcEvents,
       alert_sent: allAnomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
     },
     curated_freshness: {

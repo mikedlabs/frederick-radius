@@ -6,6 +6,7 @@ import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import BetaTelemetry from "@/components/beta/BetaTelemetry";
+import PageViewTracker from "@/components/analytics/PageViewTracker";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import { EventSheetProvider } from "@/components/event/EventSheetProvider";
@@ -72,6 +73,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Counts aggregate beta activity and refreshes internal access-use
               timing once per session. No personal code goes to analytics. */}
           <BetaTelemetry />
+          {/* Logs a page_view per route change to the first-party per-member
+              event log (via track(), so opt-out + NFC attribution apply).
+              Renders nothing. */}
+          <PageViewTracker />
           {/* Beta-only "Send feedback" affordance. Self-gates on the fr_beta
               cookie (renders nothing for the public post-beta) and offsets
               clear of the BottomNav pill + the map's bottom-right controls. */}
