@@ -1,0 +1,212 @@
+[
+ {
+  "station": "01",
+  "name": "Independent Hose Company",
+  "town": "Frederick",
+  "lng": -77.43359,
+  "lat": 39.42687
+ },
+ {
+  "station": "02",
+  "name": "Junior Fire Company",
+  "town": "Frederick",
+  "lng": -77.41032,
+  "lat": 39.42133
+ },
+ {
+  "station": "03",
+  "name": "United Steam Fire Engine Company",
+  "town": "Frederick",
+  "lng": -77.41144,
+  "lat": 39.41221
+ },
+ {
+  "station": "04",
+  "name": "Citizens Truck Company",
+  "town": "Frederick",
+  "lng": -77.41256,
+  "lat": 39.41321
+ },
+ {
+  "station": "05",
+  "name": "Brunswick Vol Fire Company",
+  "town": "Brunswick",
+  "lng": -77.63352,
+  "lat": 39.33154
+ },
+ {
+  "station": "06",
+  "name": "Vigilant Hose Company",
+  "town": "Emmitsburg",
+  "lng": -77.32759,
+  "lat": 39.70471
+ },
+ {
+  "station": "07",
+  "name": "Middletown Vol Fire Company",
+  "town": "Middletown",
+  "lng": -77.54118,
+  "lat": 39.4375
+ },
+ {
+  "station": "08",
+  "name": "Myersville Vol Fire Company",
+  "town": "Myersville",
+  "lng": -77.56506,
+  "lat": 39.50608
+ },
+ {
+  "station": "09",
+  "name": "New Midway Vol Fire Company",
+  "town": "New Midway",
+  "lng": -77.29545,
+  "lat": 39.56378
+ },
+ {
+  "station": "10",
+  "name": "Guardian Hose Company",
+  "town": "Thurmont",
+  "lng": -77.41136,
+  "lat": 39.62498
+ },
+ {
+  "station": "11",
+  "name": "Walkersville Vol Fire Company",
+  "town": "Walkersville",
+  "lng": -77.35858,
+  "lat": 39.47585
+ },
+ {
+  "station": "12",
+  "name": "Braddock Heights Vol Fire Company",
+  "town": "Braddock Heights",
+  "lng": -77.50494,
+  "lat": 39.418
+ },
+ {
+  "station": "13",
+  "name": "Rocky Ridge Vol Fire Company",
+  "town": "Rocky Ridge",
+  "lng": -77.3181,
+  "lat": 39.60732
+ },
+ {
+  "station": "14",
+  "name": "Carroll Manor Vol Fire Company",
+  "town": "Adamstown",
+  "lng": -77.47413,
+  "lat": 39.30908
+ },
+ {
+  "station": "15",
+  "name": "New Market Vol Fire/ Rescue Company",
+  "town": "New Market",
+  "lng": -77.27405,
+  "lat": 39.38247
+ },
+ {
+  "station": "16",
+  "name": "Woodsboro Vol Fire Company",
+  "town": "Woodsboro",
+  "lng": -77.31235,
+  "lat": 39.5347
+ },
+ {
+  "station": "17",
+  "name": "Libertytown Vol Fire Company",
+  "town": "Libertytown",
+  "lng": -77.24445,
+  "lat": 39.48328
+ },
+ {
+  "station": "19",
+  "name": "Brunswick Vol Ambulance Company",
+  "town": "Brunswick",
+  "lng": -77.62978,
+  "lat": 39.31326
+ },
+ {
+  "station": "20",
+  "name": "Jefferson Vol Fire Company",
+  "town": "Jefferson",
+  "lng": -77.5311,
+  "lat": 39.36108
+ },
+ {
+  "station": "21",
+  "name": "Wolfsville Vol Fire Company",
+  "town": "Myersville",
+  "lng": -77.55008,
+  "lat": 39.5728
+ },
+ {
+  "station": "22",
+  "name": "Lewistown Dist Vol Fire Dept.",
+  "town": "Thurmont",
+  "lng": -77.41333,
+  "lat": 39.53815
+ },
+ {
+  "station": "23",
+  "name": "Urbana Vol Fire & Rescue Company",
+  "town": "Frederick",
+  "lng": -77.35745,
+  "lat": 39.32795
+ },
+ {
+  "station": "24",
+  "name": "Walkersville Vol Rescue Company",
+  "town": "Walkersville",
+  "lng": -77.35745,
+  "lat": 39.47696
+ },
+ {
+  "station": "25",
+  "name": "Green Valley/ New Market",
+  "town": "Ijamsville",
+  "lng": -77.26721,
+  "lat": 39.34471
+ },
+ {
+  "station": "28",
+  "name": "Point Of Rocks/ Carroll Manor",
+  "town": "Point Of Rocks",
+  "lng": -77.52943,
+  "lat": 39.28459
+ },
+ {
+  "station": "29",
+  "name": "Northgate Fire Station",
+  "town": "Frederick",
+  "lng": -77.40385,
+  "lat": 39.45688
+ },
+ {
+  "station": "30",
+  "name": "Thurmont Community Ambulance Service",
+  "town": "Thurmont",
+  "lng": -77.41121,
+  "lat": 39.62524
+ },
+ {
+  "station": "31",
+  "name": "Westview/ United Fire Company",
+  "town": "Frederick",
+  "lng": -77.42083,
+  "lat": 39.38284
+ },
+ {
+  "station": "33",
+  "name": "Spring Ridge Fire Station",
+  "town": "Frederick",
+  "lng": -77.34775,
+  "lat": 39.39783
+ },
+ {
+  "station": "50",
+  "name": "Fort Detrick",
+  "town": "Frederick",
+  "lng": -77.427,
+  "lat": 39.4376
+ }
+]
