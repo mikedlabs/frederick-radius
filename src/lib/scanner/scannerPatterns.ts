@@ -22,13 +22,33 @@ import { gte } from "drizzle-orm";
 import { publicIncident, type PublicIncidentKind } from "@/lib/scanner/incidentFeed";
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
+import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
+import trafficCounts from "@/data/traffic-counts.json";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** How far back the archive read reaches. A year of local memory is plenty. */
 const ARCHIVE_DAYS = 365;
 
-export type SpotCount = { spot: string; count: number };
+export type SpotCount = {
+  spot: string;
+  count: number;
+  /** Resolved through the county-gated geocoder so the spot can open on the
+   *  map. Absent when the road couldn't be placed (then it renders as text). */
+  lat?: number;
+  lng?: number;
+};
 export type KindCount = { kind: PublicIncidentKind; count: number };
+
+/** A crash hotspot the county has a traffic count for, so crashes can be read
+ *  against how many vehicles actually use the road. */
+export type TrafficAdjusted = {
+  spot: string;
+  count: number;
+  /** Vehicles per day, county count (most recent available). */
+  aadt: number;
+  /** Crashes per 1,000 vehicles/day — the rate the list is ranked by. */
+  per1k: number;
+};
 
 export type ScannerPatterns = {
   /** Distinct calendar days the window covers. */
@@ -45,6 +65,13 @@ export type ScannerPatterns = {
   byKind: KindCount[];
   /** Hour of day (0–23) crashes peak at, or null if none. */
   peakHour: number | null;
+  /** Crashes per weekday, index 0 (Sun) – 6 (Sat). */
+  byWeekday: number[];
+  /** Weekday (0–6) crashes peak at, or null if none. */
+  peakWeekday: number | null;
+  /** Crash hotspots the county has a traffic count for, ranked by crashes per
+   *  vehicle. Empty when no hotspot road matched a count. */
+  trafficAdjusted: TrafficAdjusted[];
 };
 
 const EMPTY: ScannerPatterns = {
@@ -55,7 +82,56 @@ const EMPTY: ScannerPatterns = {
   byHour: Array(24).fill(0),
   byKind: [],
   peakHour: null,
+  byWeekday: Array(7).fill(0),
+  peakWeekday: null,
+  trafficAdjusted: [],
 };
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** Weekday (0=Sun … 6=Sat) a UTC ms falls on in Eastern time. */
+function etWeekday(ms: number): number {
+  const s = new Intl.DateTimeFormat("en-US", { timeZone: ET, weekday: "short" }).format(ms);
+  return WEEKDAYS.indexOf(s);
+}
+
+const TRAFFIC = trafficCounts as Record<string, number>;
+const ROAD_REPL: Record<string, string> = {
+  ROAD: "RD", STREET: "ST", AVENUE: "AVE", DRIVE: "DR", HIGHWAY: "HWY",
+  LANE: "LN", BOULEVARD: "BLVD", COURT: "CT", ROUTE: "RT",
+};
+/** Normalize a road name to the traffic-lookup key (same rules the bake used). */
+export function roadKey(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/@.*$/, "")
+    .replace(/\bBRIDGE\b/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => ROAD_REPL[w] ?? w)
+    .join(" ")
+    .trim();
+}
+
+/**
+ * Read the crash hotspots against county traffic counts: for each hotspot road
+ * we have a count for, crashes per 1,000 vehicles/day. Ranked by that rate, so
+ * a quieter road with the same crash load rises above a busy one. Intersections
+ * are skipped (a corridor count doesn't describe a junction), and a road with
+ * no county count simply doesn't appear — never a guessed volume.
+ */
+function trafficAdjusted(roads: { spot: string; count: number }[]): TrafficAdjusted[] {
+  const out: TrafficAdjusted[] = [];
+  for (const s of roads) {
+    if (s.count < 2) continue; // a rate needs more than a single crash
+    if (/\band\b/i.test(s.spot)) continue; // intersection, not a corridor
+    const aadt = TRAFFIC[roadKey(s.spot)];
+    if (!aadt || aadt <= 0) continue;
+    out.push({ spot: s.spot, count: s.count, aadt, per1k: Math.round((s.count / (aadt / 1000)) * 10) / 10 });
+  }
+  out.sort((a, b) => b.per1k - a.per1k);
+  return out.slice(0, 5);
+}
 
 /** Clock string like "7:23 pm" → hour of day 0–23, or null. */
 export function hourOf(clock: string): number | null {
@@ -170,13 +246,15 @@ export async function fetchPageRecords(): Promise<PatternRecord[]> {
       const inc = publicIncident(line);
       if (!inc) continue; // same allowlist as the live board
       const dm = line.match(/posted\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      const atMs = dm ? etWallToMs(dm[1], inc.time) : null;
       out.push({
         kind: inc.kind,
         location: inc.location,
         roadImpact: inc.roadImpact,
-        atMs: dm ? etWallToMs(dm[1], inc.time) : null,
+        atMs,
         hour: hourOf(inc.time),
-        dateKey: dm ? dm[1] : "",
+        // Same YYYY-MM-DD key the archive uses, so distinct-day counts line up.
+        dateKey: atMs !== null ? etDateKey(atMs) : "",
       });
     }
     return out;
@@ -223,6 +301,7 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
   const wires = new Map<string, number>();
   const kinds = new Map<PublicIncidentKind, number>();
   const byHour = Array(24).fill(0);
+  const byWeekday = Array(7).fill(0);
   let total = 0;
 
   for (const r of records) {
@@ -233,6 +312,10 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
       const spot = cleanSpot(r.location);
       if (spot) crashes.set(spot, (crashes.get(spot) ?? 0) + 1);
       if (r.hour !== null) byHour[r.hour] += 1;
+      if (r.atMs !== null && Number.isFinite(r.atMs)) {
+        const wd = etWeekday(r.atMs);
+        if (wd >= 0) byWeekday[wd] += 1;
+      }
     } else if (r.kind === "Wires down") {
       const spot = cleanSpot(r.location);
       if (spot) wires.set(spot, (wires.get(spot) ?? 0) + 1);
@@ -242,6 +325,7 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
   if (total === 0) return EMPTY;
 
   const peak = byHour.reduce((best, c, h) => (c > byHour[best] ? h : best), 0);
+  const peakWd = byWeekday.reduce((best, c, d) => (c > byWeekday[best] ? d : best), 0);
   const byKind = [...kinds.entries()]
     .map(([kind, count]) => ({ kind, count }))
     .sort((a, b) => b.count - a.count);
@@ -254,7 +338,28 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
     byHour,
     byKind,
     peakHour: byHour[peak] > 0 ? peak : null,
+    byWeekday,
+    peakWeekday: byWeekday[peakWd] > 0 ? peakWd : null,
+    // Computed over EVERY crash road (not just the top-6 shown), so a quieter
+    // road with a bad crash-per-vehicle rate can surface even when it isn't a
+    // top hotspot by raw count.
+    trafficAdjusted: trafficAdjusted([...crashes.entries()].map(([spot, count]) => ({ spot, count }))),
   };
+}
+
+/**
+ * Place each spot on the map via the shared county-gated geocoder (30-day
+ * cached, so recurring roads cost nothing after the first hit). A spot that
+ * can't be resolved simply keeps no coordinate and renders as plain text —
+ * never a wrong pin.
+ */
+async function geocodeSpots(spots: SpotCount[]): Promise<SpotCount[]> {
+  return Promise.all(
+    spots.map(async (s) => {
+      const coord = await geocodeAddressInCounty(s.spot).catch(() => null);
+      return coord ? { ...s, lat: coord.lat, lng: coord.lng } : s;
+    }),
+  );
 }
 
 async function fetchScannerPatterns(): Promise<ScannerPatterns> {
@@ -262,13 +367,22 @@ async function fetchScannerPatterns(): Promise<ScannerPatterns> {
   // weeks. The backfill keeps it a superset of the page, so this isn't a union
   // (no double-count); the page is purely the bootstrap/fallback.
   const archive = await fetchArchiveRecords();
-  if (archive.length > 0) return aggregateRecords(archive);
-  return aggregateRecords(await fetchPageRecords());
+  const patterns = aggregateRecords(archive.length > 0 ? archive : await fetchPageRecords());
+
+  // Give the hotspots coordinates so each one can open on the map.
+  const [crashSpots, wireSpots] = await Promise.all([
+    geocodeSpots(patterns.crashSpots),
+    geocodeSpots(patterns.wireSpots),
+  ]);
+  return { ...patterns, crashSpots, wireSpots };
 }
 
 /** Public scanner patterns, cached hourly. Empty and honest when unreachable. */
 export const getScannerPatterns = unstable_cache(
   fetchScannerPatterns,
-  ["scanner-patterns-v1"],
+  // v2: shape gained trafficAdjusted + byWeekday/peakWeekday. Bump the key so a
+  // durable cache from before the shape change can't serve an old-shaped object
+  // across deploys (the unstable_cache persists — PR #509 lesson).
+  ["scanner-patterns-v2"],
   { revalidate: 3600, tags: ["scanner-patterns"] },
 );

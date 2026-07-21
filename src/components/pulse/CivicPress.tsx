@@ -35,7 +35,7 @@ function since(now: number, iso: string): string {
 function SourceTag({ item }: { item: CivicPressItem }) {
   return (
     <span
-      className="shrink-0 font-mono text-[9px] font-bold uppercase tracking-[0.12em]"
+      className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
       style={{ color: "var(--app-ink-3)" }}
     >
       {item.source}

@@ -19,6 +19,7 @@ import {
 } from "@/lib/search";
 import type { Event } from "@/data/events";
 import { OVERLAYS } from "@/lib/overlays";
+import { matchCivicPlaces } from "./civicPlaces";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
@@ -258,7 +259,11 @@ export function searchIndex(
   // Map layers ride after quick actions: "farmers market" should offer
   // the overlay alongside the market places themselves.
   const layers = matchLayers(query).slice(0, 1);
-  const head = [...actions, ...layers];
+  // Fire companies ride the head: they have no place records behind them, so a
+  // "fire station" / company-name search should surface them, not lose to a
+  // fuzzy place match. Capped tight.
+  const civic = matchCivicPlaces(query).slice(0, 2);
+  const head = [...actions, ...layers, ...civic];
   const headHrefs = new Set(head.map((a) => a.href));
   // Registry pages and quick actions overlap on purpose (both are doors);
   // never render the same door twice.

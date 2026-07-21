@@ -320,8 +320,12 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
     <section aria-labelledby="pulse-systems-heading" className="min-w-0 border-y py-3" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex min-w-0 items-center gap-2">
         <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>No major changes reported</h2>
-        <span className="ml-auto shrink-0 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>Checked recently</span>
+        {/* A neutral section label, not an all-clear assertion: a steady tile
+            whose own feed is degraded (countLabel "Feed unavailable") still
+            lists here, so the header must not claim "nothing changed / all
+            checked" on its behalf. Per-tile degraded gating is a follow-up
+            (needs a degraded flag threaded onto PulseTile). */}
+        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
       </div>
       <ul className="mt-2.5 grid min-w-0 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         {tiles.map((tile) => (
@@ -379,7 +383,7 @@ function FeatureTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) 
         {f ? `${f.temp}°` : tile.countLabel}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+        <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           {tile.label}
         </span>
         {f?.condition && <span className="block truncate text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.condition}</span>}
@@ -407,7 +411,7 @@ function StatTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
       >
         {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
       </span>
-      <span className="mt-auto pt-2.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+      <span className="mt-auto pt-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
         {tile.label}
       </span>
       <span className="mt-0.5 line-clamp-2 text-[14.5px] font-semibold leading-tight" style={{ color: tile.active ? tile.accent : "var(--app-ink)" }}>
@@ -519,7 +523,7 @@ export default function PulseBoard({
           {/* Masthead rule + dateline: the status color lives in one confident
               rule over the wire-desk eyebrow, newspaper fashion. */}
           <div aria-hidden className="mb-3 h-[3px] w-14 rounded-full" style={{ background: heroColor }} />
-          <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-[0.17em] text-black/65">
+          <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.17em] text-black/65">
             <span>Frederick County status</span>
             <span aria-hidden className="text-black/30">·</span>
             <span className="flex items-center gap-1.5 text-[10px]" style={{ color: heroColor }}>
@@ -542,7 +546,7 @@ export default function PulseBoard({
             </div>
           )}
           <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
-          <p className="mt-2 flex items-center gap-1.5 text-[9px] text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
+          <p className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
         </div>
       </header>
 

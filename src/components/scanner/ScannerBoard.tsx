@@ -18,11 +18,17 @@ const ACTIVE_MS = 12 * 60 * 1000;
 
 const KIND_TONE: Record<string, string> = {
   Crash: "var(--app-brand)",
+  "Pedestrian struck": "var(--app-brand)",
+  "Vehicle fire": "var(--app-brand-press)",
   "Wires down": "#B4712A",
   "Gas leak": "#B4712A",
+  Hazmat: "#B4712A",
   "Structure fire": "var(--app-brand-press)",
   "Outside fire": "#B4712A",
   "Water rescue": "var(--app-cool)",
+  Rescue: "var(--app-cool)",
+  Medevac: "var(--app-brand-press)",
+  Flooding: "var(--app-cool)",
 };
 const toneOf = (kind: string) => KIND_TONE[kind] ?? "var(--app-brand)";
 
@@ -137,7 +143,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
           <span className="font-mono font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
             {incidents.length}
           </span>{" "}
-          {incidents.length === 1 ? "public call" : "public calls"} in the last hour
+          {incidents.length === 1 ? "public call" : "public calls"} in the last 12 hours
           {activeCount > 0 && (
             <>
               {" · "}

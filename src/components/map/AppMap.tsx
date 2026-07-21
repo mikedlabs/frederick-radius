@@ -207,6 +207,8 @@ import LiveMarcTrains from "./LiveMarcTrains";
 import WeatherRadar from "./WeatherRadar";
 import LiveIncidents from "./LiveIncidents";
 import TrafficCameras from "./TrafficCameras";
+import FireStations from "./FireStations";
+import CivicPlaces from "./CivicPlaces";
 import {
   parseLayersParam,
   serializeLayers,
@@ -535,6 +537,14 @@ export default function AppMap({
   // of the clean cold open without reversing it: only explicit prior choices
   // restore, a first-timer still gets the clean default, deep-links win below.
   const [layerPrefs] = useState(readMapLayerPrefs);
+  // Layers a deep-link asked to turn on (e.g. /map?at=...&show=firestations),
+  // so a search result can center AND reveal the pin. Read once; stored prefs
+  // still win when present. AppMap is ssr:false, so window is available.
+  const [deepLinkLayers] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    const raw = new URLSearchParams(window.location.search).get("show") ?? "";
+    return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  });
   // The internal category-chip filter (activeCats) retired with the dock:
   // "places by type" merged into the What pane's intent chips, which filter
   // through the URL (?intent/?sub) like every shareable view. Stored cats
@@ -668,6 +678,11 @@ export default function AppMap({
   const [showIncidents, setShowIncidents] = useState(() => layerPrefs.incidents ?? false);
   // MDOT CHART traffic cameras (I-70, US-15, US-340…) — opt-in, OFF by default.
   const [showCameras, setShowCameras] = useState(() => layerPrefs.cameras ?? false);
+  // Frederick County fire & rescue companies (GIS, static) — opt-in, OFF by
+  // default. Each pin is the station number, the root of its call signs.
+  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? deepLinkLayers.has("firestations"));
+  // County parks + public libraries (GIS, static) — opt-in, OFF by default.
+  const [showCivicPlaces, setShowCivicPlaces] = useState(() => layerPrefs.civicplaces ?? deepLinkLayers.has("civicplaces"));
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
@@ -710,7 +725,13 @@ export default function AppMap({
       }
     };
     if (map.isStyleLoaded()) apply();
-    else map.once("idle", apply);
+    else {
+      map.once("idle", apply);
+      // If deps change (or we unmount) before `idle` fires, drop the queued
+      // one-shot so a stale-closure `apply` can't run and the listener can't
+      // accumulate on rapid toggling. No-op if it already fired.
+      return () => { map.off("idle", apply); };
+    }
   }, [showAerial, aerialFade]);
 
   // Remember the user's explicit layer choices (per device) so a customized map
@@ -731,8 +752,10 @@ export default function AppMap({
       radar: showRadar,
       incidents: showIncidents,
       cameras: showCameras,
+      firestations: showFireStations,
+      civicplaces: showCivicPlaces,
     });
-  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras]);
+  }, [amenityGroups, showCivic, showTransit, showTrails, showAerial, showCemeteries, showParking, showRadar, showIncidents, showCameras, showFireStations, showCivicPlaces]);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -1197,7 +1220,12 @@ export default function AppMap({
       }
     };
     if (m.isStyleLoaded()) apply();
-    else m.once("idle", apply);
+    else {
+      m.once("idle", apply);
+      // Drop the queued one-shot if deps change / we unmount before it fires,
+      // so a stale-closure paint can't run and listeners can't accumulate.
+      return () => { m.off("idle", apply); };
+    }
   }, [matchSet]);
 
   // The single selected place — drives a soft glow ring under its icon.
@@ -2095,6 +2123,13 @@ export default function AppMap({
           {/* MDOT CHART traffic cameras — pinned where they are; tap to watch
               the live feed. Fetches once when the layer turns on. */}
           <TrafficCameras show={showCameras} />
+
+          {/* Frederick County fire & rescue companies — static GIS pins, each
+              its station number. Tap for the company name + call-sign key. */}
+          <FireStations show={showFireStations} />
+
+          {/* County parks + public libraries — static GIS pins. */}
+          <CivicPlaces show={showCivicPlaces} />
 
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
@@ -3269,6 +3304,10 @@ export default function AppMap({
             setShowIncidents={setShowIncidents}
             showCameras={showCameras}
             setShowCameras={setShowCameras}
+            showFireStations={showFireStations}
+            setShowFireStations={setShowFireStations}
+            showCivicPlaces={showCivicPlaces}
+            setShowCivicPlaces={setShowCivicPlaces}
             radarFrameEpoch={radarFrameEpoch}
             activeOverlays={activeOverlays}
             toggleOverlay={toggleOverlay}

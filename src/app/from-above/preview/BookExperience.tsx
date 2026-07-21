@@ -417,7 +417,7 @@ const PageFrame = forwardRef<
 const EndPage = forwardRef<HTMLDivElement, { cover: string; onClose: () => void }>(
   function EndPage({ cover, onClose }, ref) {
     return (
-      <div ref={ref} className="grid h-full w-full place-items-center bg-[#0e0e0e] px-6">
+      <div ref={ref} className="grid h-full w-full place-items-center bg-[var(--app-ink,#0e0e0e)] px-6">
         <div className="w-full max-w-[360px] text-center">
           <div
             className="mx-auto mb-4 overflow-hidden rounded-[2px]"

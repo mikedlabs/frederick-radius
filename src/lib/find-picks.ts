@@ -54,7 +54,14 @@ export function isFindFilter(v: string | undefined): v is FindFilter {
  */
 export const getFindPicks = unstable_cache(
   async (filter: FindFilter, bucket: string): Promise<PlaceCardData[]> => {
-    void bucket; // part of the cache key; the time is reconstructed below
+    // `bucket` is a cache-key discriminator only: it rolls every 10 minutes so
+    // the ranking is recomputed at least that often (bounding open-status
+    // staleness to one bucket), and it lets every request inside the window
+    // share one cache entry. The time itself is NOT threaded through here —
+    // getCuratedPicks computes open-status at the cold-miss instant, which sits
+    // inside the same 10-minute noise floor. (now-picks.ts DOES reconstruct via
+    // bucketToDate; aligning the two is a deliberate future pass.)
+    void bucket;
     const cats = new Set<string>(FIND_FILTERS[filter]);
     // Pull a generous ranked set, then keep only the craving's
     // categories. getCuratedPicks already forces preferOpen + the

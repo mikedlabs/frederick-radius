@@ -42,7 +42,7 @@ function etaMins(etaEpoch: number | undefined, nowMs: number): number | null {
 }
 
 export default function NextStopsBoard() {
-  const { vehicles, loaded } = useLiveVehicles();
+  const { vehicles, loaded, stale } = useLiveVehicles();
   const [nowMs, setNowMs] = useState(0);
 
   // The countdowns tick every second between the shared poller's refreshes.
@@ -87,11 +87,15 @@ export default function NextStopsBoard() {
         style={{ borderColor: "var(--app-border)" }}
       >
         <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-          <span aria-hidden className="pulse-dot inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} />
+          <span
+            aria-hidden
+            className={`${stale ? "" : "pulse-dot "}inline-block h-1.5 w-1.5 rounded-full`}
+            style={{ background: stale ? "var(--app-warning)" : "var(--app-positive)" }}
+          />
           Next stops
         </span>
         <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {rows.length} live
+          {stale ? "Delayed" : `${rows.length} live`}
         </span>
       </div>
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
@@ -128,7 +132,10 @@ export default function NextStopsBoard() {
                 )}
               </span>
               <span className="shrink-0 text-right font-mono tabular-nums" style={{ minWidth: 46 }}>
-                {mins == null ? (
+                {stale ? (
+                  // Feed is delayed: don't tick a frozen fix down to "due."
+                  <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }} aria-label="live ETA unavailable, feed delayed">·</span>
+                ) : mins == null ? (
                   <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{v.nextStop ? "soon" : ""}</span>
                 ) : mins === 0 ? (
                   <span className="text-[12px] font-bold" style={{ color: "var(--app-positive, #1E6B3A)" }}>due</span>

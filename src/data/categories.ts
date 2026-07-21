@@ -62,8 +62,11 @@ export const CATEGORIES: Category[] = [
   { slug: "book-store", name: "Book stores", parent: "shopping", icon: "BookOpen", color: "#8B5A2B", display_order: 52, blurb: "Frederick County still has independent booksellers worth seeking out." },
   { slug: "market", name: "Markets", parent: "shopping", icon: "Apple", color: "#1E6B3A", display_order: 53, blurb: "Farmers markets and makers markets include current schedules when available." },
 
-  { slug: "wellness", name: "Wellness", icon: "Heart", color: "#A02929", display_order: 60, blurb: "Fitness, personal care, and other everyday wellness businesses are collected here." },
+  { slug: "wellness", name: "Wellness", icon: "Heart", color: "#A02929", display_order: 60, blurb: "Personal care and everyday wellness businesses are collected here: massage, salons and barbers, spas, yoga and fitness." },
   { slug: "yoga", name: "Yoga & fitness", parent: "wellness", icon: "Activity", color: "#A02929", display_order: 61, blurb: "The list covers yoga studios, gyms, and group classes." },
+  { slug: "massage", name: "Massage", parent: "wellness", icon: "HeartPulse", color: "#A02929", display_order: 62, blurb: "Massage therapy and bodywork studios across the county." },
+  { slug: "salon", name: "Salon & barber", parent: "wellness", icon: "Scissors", color: "#A02929", display_order: 63, blurb: "Hair salons, barbershops, and nail studios are grouped here." },
+  { slug: "spa", name: "Spas", parent: "wellness", icon: "Sparkles", color: "#A02929", display_order: 64, blurb: "Day spas, medspas, and skin-care studios appear in this section." },
 
   { slug: "civic", name: "Civic & public", icon: "Building2", color: "#20506A", display_order: 70, blurb: "Government services, public buildings, and civic infrastructure belong here.", kind: "utility" },
   { slug: "government", name: "Government", parent: "civic", icon: "Building", color: "#20506A", display_order: 71, blurb: "City, town, and county government buildings appear with their public services.", kind: "utility" },

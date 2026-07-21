@@ -3550,6 +3550,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: none;
   animation: fr-incident-pulse 1.9s ease-out infinite;
 }
+/* A PAST call (older than an hour): dimmed and still — no pulse ring — so an
+   active scene stands out from the day's earlier calls. Still tappable; the
+   popup gives the time. */
+.fr-incident-marker[data-stale="true"] {
+  opacity: 0.55;
+}
+.fr-incident-marker[data-stale="true"]::after {
+  animation: none;
+  opacity: 0.14;
+}
 /* The solid disc, centered on the point (margin-centered so the ::after scale
    animation stays anchored to the same spot). */
 .fr-incident-marker::before {

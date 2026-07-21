@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { ingestICal } from "@/lib/ingest/ical";
+import { ingestICal, type IngestResult } from "@/lib/ingest/ical";
 import { verifyCronAuth } from "../_auth";
 
 export const runtime = "nodejs";
@@ -39,7 +39,22 @@ export async function GET(request: Request) {
   if (auth) return auth;
 
   const t0 = Date.now();
-  const results = await Promise.all(SOURCES.map((s) => ingestICal(s)));
+  // allSettled, not all: one source throwing (e.g. its telemetry write rejects
+  // because the DB is the thing that's down) must NOT sink the sibling sources
+  // or skip the revalidation below for the rows that DID upsert. A rejected
+  // source degrades to a zero-count error result instead of 500-ing the run.
+  const settled = await Promise.allSettled(SOURCES.map((s) => ingestICal(s)));
+  const results: IngestResult[] = settled.map((r, i) =>
+    r.status === "fulfilled"
+      ? r.value
+      : {
+          source_slug: SOURCES[i].source_slug,
+          records_in: 0,
+          records_upserted: 0,
+          records_failed: 0,
+          error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        },
+  );
   // isr-1: only bust the event caches when rows ACTUALLY changed (skips the
   // no-op case where DATABASE_URL is unset and ingestICal early-returns having
   // written nothing). Refreshes the DB-backed loader (ingested-events) AND the

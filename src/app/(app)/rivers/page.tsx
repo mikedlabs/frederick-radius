@@ -41,6 +41,18 @@ function timeAgo(iso?: string): string {
   return `${Math.floor(h / 24)} days ago`;
 }
 
+/** USGS instantaneous values normally land every 15-30 min. A reading older
+ *  than this no longer reads as "live" — the status pill drops its trend/Live
+ *  label for a neutral "Stale" so a hours- or days-old height never sits under
+ *  a confident current-status chip. Missing timestamp → treat as stale (we
+ *  can't vouch for currency). The `timeAgo` meta line still shows the exact age. */
+const READING_STALE_MS = 2 * 60 * 60 * 1000;
+function readingIsStale(iso?: string): boolean {
+  if (!iso) return true;
+  const age = Date.now() - +new Date(iso);
+  return !Number.isFinite(age) || age > READING_STALE_MS;
+}
+
 /** Pull the short location label out of the USGS site name:
  *  "MONOCACY RIVER AT JUG BRIDGE NEAR FREDERICK, MD" → "At Jug Bridge near Frederick". */
 function locationOf(name: string): string {
@@ -204,10 +216,17 @@ export default async function RiversPage() {
                   dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
                 const trendLabel =
                   dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Live";
+                // A reading we can't vouch for as current must not wear a
+                // confident "Live"/trend chip. Flood category still leads when
+                // present (safety-forward); otherwise a stale gauge drops to a
+                // neutral "Stale" pill rather than green "Live".
+                const stale = readingIsStale(site.observedAt);
                 const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
                   flood && flood.key !== "normal"
                     ? { label: flood.label, tone: flood.tone }
-                    : { label: trendLabel, tone: trendTone };
+                    : stale
+                      ? { label: "Stale", tone: "neutral" }
+                      : { label: trendLabel, tone: trendTone };
 
                 // Headline reading: prefer gage height (most intuitive),
                 // fall back to streamflow if a gauge only reports flow.
