@@ -13,20 +13,25 @@ import {
   STYLE_URL,
   isInFrederickCounty,
 } from "@/components/map/constants";
+import {
+  Trash2, Recycle, Droplet, Armchair, Zap, Plug, PawPrint, Dog, Toilet, Plus,
+  type LucideIcon,
+} from "lucide-react";
 
 /** Fixed picker types. kind matches the AmenityKind union + /api/collect's
- *  allow-list; glyph + label are the one-tap picker; color tints the dot. */
-const TYPES: { kind: string; label: string; glyph: string; color: string }[] = [
-  { kind: "trash", label: "Trash", glyph: "\u{1F5D1}\u{FE0F}", color: "#4A4A48" },
-  { kind: "recycling", label: "Recycling", glyph: "\u{267B}\u{FE0F}", color: "#1E6B3A" },
-  { kind: "water", label: "Water", glyph: "\u{1F6B0}", color: "#20506A" },
-  { kind: "bench", label: "Bench", glyph: "\u{1FA91}", color: "#7A7975" },
-  { kind: "ev_charging", label: "EV", glyph: "\u{26A1}", color: "#1E6B3A" },
-  { kind: "outlet", label: "Outlet", glyph: "\u{1F50C}", color: "#4A4A48" },
-  { kind: "dog_water", label: "Dog water", glyph: "\u{1F43E}", color: "#20506A" },
-  { kind: "dog_waste", label: "Dog bags", glyph: "\u{1F4A9}", color: "#1E6B3A" },
-  { kind: "restroom", label: "Restroom", glyph: "\u{1F6BB}", color: "#20506A" },
-  { kind: "other", label: "Other", glyph: "\u{2795}", color: "#E14328" },
+ *  allow-list; Icon + label are the one-tap picker; color tints the dot.
+ *  Icons are lucide, never emoji (DESIGN_TELLS). */
+const TYPES: { kind: string; label: string; Icon: LucideIcon; color: string }[] = [
+  { kind: "trash", label: "Trash", Icon: Trash2, color: "#4A4A48" },
+  { kind: "recycling", label: "Recycling", Icon: Recycle, color: "#1E6B3A" },
+  { kind: "water", label: "Water", Icon: Droplet, color: "#20506A" },
+  { kind: "bench", label: "Bench", Icon: Armchair, color: "#7A7975" },
+  { kind: "ev_charging", label: "EV", Icon: Zap, color: "#1E6B3A" },
+  { kind: "outlet", label: "Outlet", Icon: Plug, color: "#4A4A48" },
+  { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "#20506A" },
+  { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "#1E6B3A" },
+  { kind: "restroom", label: "Restroom", Icon: Toilet, color: "#20506A" },
+  { kind: "other", label: "Other", Icon: Plus, color: "#E14328" },
 ];
 const COLOR_FOR = (kind: string) => TYPES.find((t) => t.kind === kind)?.color ?? "#E14328";
 
@@ -882,7 +887,7 @@ export default function CollectClient() {
                 aria-label={`Tag ${t.label} at my location`}
                 className="flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/12 bg-white/80 px-1 py-2 text-center transition-transform active:scale-95"
               >
-                <span className="text-xl leading-none" aria-hidden="true">{t.glyph}</span>
+                <t.Icon className="h-6 w-6" strokeWidth={2} aria-hidden />
                 <span className="text-[10px] font-medium leading-tight">{t.label}</span>
               </button>
             ))}
@@ -904,7 +909,7 @@ export default function CollectClient() {
                       : "border-[var(--app-ink)]/12 bg-white/70"
                   }`}
                 >
-                  <span className="text-lg leading-none" aria-hidden="true">{t.glyph}</span>
+                  <t.Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
                   <span className="text-[9.5px] font-medium leading-tight">{t.label}</span>
                 </button>
               );

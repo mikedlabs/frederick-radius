@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
+import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import type { DaypartRow } from "@/lib/loaders/daypartPicks";
 
 /**
@@ -35,20 +36,41 @@ export default function DaypartNeeds({ rows }: { rows: DaypartRow[] }) {
                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </Link>
             </div>
-            <ul className="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {/* Poster tiles, not plain rows: each open place gets a
+                category-tinted, seed-varied CategoryGraphic (the same poster
+                system PlaceCard/PhotoMosaic use for no-photo places), with the
+                name in the serif over a legibility scrim. Visual + alive at a
+                glance, and still every card is a real OPEN-NOW place, not decor. */}
+            <ul className="mt-2 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none]">
               {row.picks.map((p) => (
                 <li key={p.slug} className="shrink-0">
                   <Link
                     href={`/places/${p.slug}`}
                     prefetch={false}
-                    className="flex min-h-11 w-[9.5rem] flex-col justify-center rounded-[var(--app-radius-md)] border px-3 py-2 transition hover:bg-[var(--app-bg-sunken)]"
-                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+                    aria-label={`${p.name}, open now`}
+                    className="relative flex h-[6.75rem] w-[10.5rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
+                    style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
                   >
-                    <span className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{p.name}</span>
-                    <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                      <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} />
-                      Open
-                      {p.rating ? <span>· {p.rating.toFixed(1)}★</span> : null}
+                    <CategoryGraphic category={row.category} seed={p.slug} />
+                    {/* Bottom scrim so the serif name stays legible over any
+                        category hue (family/amber runs light). */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+                      style={{
+                        background:
+                          "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
+                      }}
+                    />
+                    <span className="relative z-10 min-w-0 px-2.5 pb-2">
+                      <span className="block truncate font-serif text-[14.5px] font-semibold leading-tight" style={{ color: "var(--app-on-brand)" }}>
+                        {p.name}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums" style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}>
+                        <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} />
+                        Open
+                        {p.rating ? <span>· {p.rating.toFixed(1)}★</span> : null}
+                      </span>
                     </span>
                   </Link>
                 </li>

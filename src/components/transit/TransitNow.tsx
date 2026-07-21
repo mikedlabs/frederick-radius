@@ -59,6 +59,12 @@ function arrivalMins(epoch: number | undefined, nowMs: number): number | null {
   return mins;
 }
 
+/** "45s ago" / "3 min ago" for the live-feed freshness caveat. */
+function agoLabel(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 90 ? `${s}s ago` : `${Math.round(s / 60)} min ago`;
+}
+
 function haversineMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 3958.8;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -132,8 +138,11 @@ export default function TransitNow({
   board: { stations: MarcStationBoard[]; serviceToday: boolean };
 }) {
   const { state: geoState, request: requestGeo } = useGeolocation();
-  const { vehicles, loaded } = useLiveVehicles();
+  const { vehicles, loaded, fetchedAt, stale } = useLiveVehicles();
   const [nowMs, setNowMs] = useState(0);
+  // When the feed goes quiet, present the frozen buses as "last seen," not as a
+  // live countdown ticking a stuck fix down to "due."
+  const staleAgo = stale && fetchedAt && nowMs ? agoLabel(nowMs - fetchedAt) : null;
   const [override, setOverride] = useState<string | null>(null);
 
   useEffect(() => {
@@ -284,7 +293,11 @@ export default function TransitNow({
             </p>
           ) : (
             <div className="mt-3">
-              {soonestBus ? (
+              {stale ? (
+                <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                  {vehicles.length} {vehicles.length === 1 ? "bus" : "buses"} last seen on the road
+                </p>
+              ) : soonestBus ? (
                 <>
                   <div className="flex items-center gap-2">
                     <RouteChip route={soonestBus.route} />
@@ -307,7 +320,11 @@ export default function TransitNow({
 
           <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
             {loaded && vehicles.length > 0 && (
-              <span className="font-mono tabular-nums">{vehicles.length} moving now</span>
+              staleAgo ? (
+                <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
+              ) : (
+                <span className="font-mono tabular-nums">{vehicles.length} moving now</span>
+              )
             )}
             {FARE_FREE && <span style={{ color: "var(--app-brand-2)", fontWeight: 600 }}>free to ride</span>}
             {nearCount != null && vehicles.length > 0 && (

@@ -358,7 +358,7 @@ function MapRoom({ maps }: { maps: ArchiveViewRecord[] }) {
                   ? "h-[62dvh] max-h-[46rem] min-h-[24rem] overflow-auto overscroll-contain rounded-[var(--app-radius-md)] border"
                   : "relative aspect-[4/3] overflow-hidden rounded-[var(--app-radius-md)] border"
               }
-              style={{ borderColor: "var(--app-border)", background: "#d8cfbd" }}
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken, #d8cfbd)" }}
               tabIndex={inspect ? 0 : undefined}
               aria-label={inspect ? "High-resolution map detail. Scroll horizontally and vertically to inspect the sheet." : undefined}
             >

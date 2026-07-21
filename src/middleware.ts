@@ -121,7 +121,27 @@ async function betaGate(req: NextRequest): Promise<NextResponse | null> {
   return NextResponse.redirect(url);
 }
 
-function adminBasicAuth(req: NextRequest): NextResponse | null {
+/**
+ * Constant-time string equality for edge (Web Crypto, no Node `crypto`).
+ * Compares SHA-256 digests of the two inputs: the digests are fixed 32-byte
+ * length regardless of input, so this leaks neither the credential length nor
+ * (via an early `!==` exit) how many leading characters matched — closing the
+ * timing side-channel the old `u !== user || p !== pass` compare left open.
+ */
+async function timingSafeEqualStr(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const va = new Uint8Array(da);
+  const vb = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
+async function adminBasicAuth(req: NextRequest): Promise<NextResponse | null> {
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASSWORD;
   if (!user || !pass) return unauthorized();
@@ -136,12 +156,10 @@ function adminBasicAuth(req: NextRequest): NextResponse | null {
     return unauthorized();
   }
 
-  const sep = decoded.indexOf(":");
-  if (sep === -1) return unauthorized();
-  const u = decoded.slice(0, sep);
-  const p = decoded.slice(sep + 1);
-
-  if (u !== user || p !== pass) return unauthorized();
+  // Compare the whole `user:pass` pair in constant time (ADMIN_USER carries no
+  // colon, so the reconstructed expected value is canonical). A mismatch in
+  // either field fails identically, with no per-character timing leak.
+  if (!(await timingSafeEqualStr(decoded, `${user}:${pass}`))) return unauthorized();
   return null; // pass-through
 }
 
@@ -149,7 +167,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (isAdminPath(pathname)) {
-    const block = adminBasicAuth(req);
+    const block = await adminBasicAuth(req);
     if (block) return block;
     // Admin paths skip Supabase session refresh — the admin surface
     // is its own world.

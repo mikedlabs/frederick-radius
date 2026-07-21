@@ -2407,9 +2407,28 @@ const CURATED_SLUGS = new Set(PLACES.map((p) => p.slug));
 export function wellnessCategoryFix(name: string, category: string): string {
   if (category !== "shopping") return category;
   const n = name.toLowerCase();
-  if (/\b(yoga|pilates|barre)\b/.test(n)) return "yoga";
+  // Order matters — the most specific personal-service intent wins, so a name
+  // that says both "salon" and "spa" (Verbena Salon Spa) reads as a salon.
+  // Each finer bucket is its own browsable category under wellness, so a
+  // visitor looking for a massage or a haircut can actually find one instead
+  // of scanning one giant "Wellness" list (owner ask, 2026-07).
+  if (/\bmassage\b/.test(n)) return "massage";
   if (
-    /\b(crossfit|cross fit|gym|fitness|martial arts|taekwondo|karate|dojo|jiu.?jitsu|kickbox(?:ing)?|wellness|massage therapy|chiropractic|wellness center|wellness studio)\b/.test(
+    /\b(yoga|pilates|barre|crossfit|cross fit|gym|fitness|martial arts|taekwondo|karate|dojo|jiu.?jitsu|kickbox(?:ing)?)\b/.test(
+      n,
+    )
+  )
+    return "yoga";
+  if (
+    /\b(salon|barber(?:shop)?|hair|nails?|manicure|pedicure|braid(?:s|ing)?|lash|brow|threading|waxing)\b/.test(
+      n,
+    )
+  )
+    return "salon";
+  if (/\b(med\s?spa|day\s?spa|spa|facial|skin\s?care|skincare|aesthetics?|esthetics?)\b/.test(n))
+    return "spa";
+  if (
+    /\b(chiropract(?:ic|or)|acupunctur(?:e|ist)|wellness|therapy|reiki|cryotherapy|nutrition|weight\s?loss)\b/.test(
       n,
     )
   )

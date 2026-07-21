@@ -6,7 +6,7 @@ import MonthGrid from "@/components/event/MonthGrid";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/events/calendar" },
-  title: "Events Calendar",
+  title: "Events calendar",
   description: "Browse Frederick County events by month and day.",
 };
 
@@ -40,7 +40,7 @@ export default async function CalendarPage({
               Monthly calendar
             </p>
             <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Events Calendar
+              Events calendar
             </h1>
           </div>
           <Link

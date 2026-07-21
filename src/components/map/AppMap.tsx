@@ -714,7 +714,13 @@ export default function AppMap({
       }
     };
     if (map.isStyleLoaded()) apply();
-    else map.once("idle", apply);
+    else {
+      map.once("idle", apply);
+      // If deps change (or we unmount) before `idle` fires, drop the queued
+      // one-shot so a stale-closure `apply` can't run and the listener can't
+      // accumulate on rapid toggling. No-op if it already fired.
+      return () => { map.off("idle", apply); };
+    }
   }, [showAerial, aerialFade]);
 
   // Remember the user's explicit layer choices (per device) so a customized map
@@ -1202,7 +1208,12 @@ export default function AppMap({
       }
     };
     if (m.isStyleLoaded()) apply();
-    else m.once("idle", apply);
+    else {
+      m.once("idle", apply);
+      // Drop the queued one-shot if deps change / we unmount before it fires,
+      // so a stale-closure paint can't run and listeners can't accumulate.
+      return () => { m.off("idle", apply); };
+    }
   }, [matchSet]);
 
   // The single selected place — drives a soft glow ring under its icon.

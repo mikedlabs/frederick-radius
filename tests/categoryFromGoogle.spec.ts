@@ -23,7 +23,7 @@ describe("categoryFromPrimaryType", () => {
     expect(categoryFromPrimaryType("museum")).toBe("museum");
     expect(categoryFromPrimaryType("library")).toBe("library");
     expect(categoryFromPrimaryType("yoga_studio")).toBe("yoga");
-    expect(categoryFromPrimaryType("gym")).toBe("wellness");
+    expect(categoryFromPrimaryType("gym")).toBe("yoga");
     expect(categoryFromPrimaryType("antique_store")).toBe("antiques");
     expect(categoryFromPrimaryType("clothing_store")).toBe("shopping");
   });
@@ -33,14 +33,15 @@ describe("categoryFromPrimaryType", () => {
   });
 
   it("maps the audit-driven uncovered types to real categories", () => {
-    // Health & body → wellness
+    // Health & body → wellness catch-all; personal care → its own buckets
     expect(categoryFromPrimaryType("medical_clinic")).toBe("wellness");
     expect(categoryFromPrimaryType("doctor")).toBe("wellness");
     expect(categoryFromPrimaryType("dentist")).toBe("wellness");
-    expect(categoryFromPrimaryType("hair_salon")).toBe("wellness");
-    expect(categoryFromPrimaryType("beauty_salon")).toBe("wellness");
-    expect(categoryFromPrimaryType("barber_shop")).toBe("wellness");
-    expect(categoryFromPrimaryType("massage")).toBe("wellness");
+    expect(categoryFromPrimaryType("hair_salon")).toBe("salon");
+    expect(categoryFromPrimaryType("beauty_salon")).toBe("salon");
+    expect(categoryFromPrimaryType("barber_shop")).toBe("salon");
+    expect(categoryFromPrimaryType("massage")).toBe("massage");
+    expect(categoryFromPrimaryType("spa")).toBe("spa");
     // Community → civic
     expect(categoryFromPrimaryType("non_profit_organization")).toBe("civic");
     expect(categoryFromPrimaryType("association_or_organization")).toBe("civic");

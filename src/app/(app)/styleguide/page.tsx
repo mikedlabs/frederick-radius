@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Compass, Zap, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Pill from "@/components/ui/Pill";
@@ -60,6 +61,10 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 export default function StyleGuidePage() {
+  // Internal design-system reference. Reachable only in dev/preview, not on the
+  // production deployment — mirrors the /proto prod gate so no orphaned
+  // internal page ships to the public site (noindex alone didn't gate it).
+  if (process.env.VERCEL_ENV === "production") notFound();
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-10 py-6">
       <header className="space-y-2">

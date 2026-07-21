@@ -536,7 +536,7 @@ export default async function PulsePage() {
                   <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
                     {h.title}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+                  <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
                     {h.source} · {timeAgo(h.published_at)}
                   </span>
                 </span>

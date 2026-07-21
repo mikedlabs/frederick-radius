@@ -16,9 +16,17 @@ import { useSyncExternalStore } from "react";
  * tween machinery keyed to poll arrival.)
  *
  * Failure posture matches the boards it replaced: a failed poll keeps the
- * last known vehicles (stale beats blank for 15 s), and `loaded` only flips
+ * last known vehicles (stale beats blank briefly), and `loaded` only flips
  * true after a successful response — so "no buses" is only ever shown when
  * the feed really said zero.
+ *
+ * BUT the last snapshot is only trustworthy for so long. When the feed stops
+ * answering, the poller keeps serving the frozen vehicles indefinitely, and a
+ * consumer counting a stuck fix down to "due" would manufacture certainty the
+ * feed no longer supports. So the snapshot also carries `stale`, flipped true
+ * once the last success is older than STALE_MS and re-evaluated on every poll
+ * tick (so it updates even while the data itself is frozen). Consumers read it
+ * to swap live countdowns for an honest "feed delayed" note.
  */
 
 export type LiveNextStop = { id: string; name: string; lat: number; lng: number; etaEpoch?: number };
@@ -40,15 +48,37 @@ export type LiveVehiclesSnap = {
   loaded: boolean;
   /** Epoch ms of the last successful poll (0 before the first). */
   fetchedAt: number;
+  /** True when the last success is older than STALE_MS — the snapshot has gone
+   *  quiet and consumers should stop presenting it as current. */
+  stale: boolean;
 };
 
 const POLL_MS = 15_000;
+// Two missed polls plus slack: past this, the frozen snapshot is no longer
+// "live" and its countdowns must not keep ticking toward "due".
+const STALE_MS = 40_000;
 
-const EMPTY: LiveVehiclesSnap = { vehicles: [], loaded: false, fetchedAt: 0 };
+const EMPTY: LiveVehiclesSnap = { vehicles: [], loaded: false, fetchedAt: 0, stale: false };
 let snap: LiveVehiclesSnap = EMPTY;
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let inFlight = false;
+
+function emit() {
+  for (const l of listeners) l();
+}
+
+/** Re-evaluate staleness against the wall clock and publish only if it flipped.
+ *  Runs on every poll tick so `stale` updates even while the data is frozen
+ *  (a failing feed never produces a fresh snapshot on its own). */
+function refreshStaleness() {
+  if (!snap.loaded) return;
+  const nextStale = Date.now() - snap.fetchedAt > STALE_MS;
+  if (nextStale !== snap.stale) {
+    snap = { ...snap, stale: nextStale };
+    emit();
+  }
+}
 
 async function load() {
   if (inFlight) return;
@@ -58,13 +88,16 @@ async function load() {
     if (!r.ok) return;
     const d = (await r.json()) as { vehicles?: LiveVehicle[] };
     if (Array.isArray(d.vehicles)) {
-      snap = { vehicles: d.vehicles, loaded: true, fetchedAt: Date.now() };
-      for (const l of listeners) l();
+      snap = { vehicles: d.vehicles, loaded: true, fetchedAt: Date.now(), stale: false };
+      emit();
     }
   } catch {
     /* keep last known */
   } finally {
     inFlight = false;
+    // A failed/short-circuited poll leaves fetchedAt untouched; recheck age so
+    // the feed can go stale without a successful response to trigger it.
+    refreshStaleness();
   }
 }
 

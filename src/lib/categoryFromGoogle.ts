@@ -117,11 +117,13 @@ const MAP: Record<string, string> = {
   supermarket: "market",
   farm: "market",
   market: "market",
-  // Wellness
-  gym: "wellness",
-  fitness_center: "wellness",
+  // Wellness — fitness rolls into "Yoga & fitness"; personal care splits
+  // into its own browsable subcategories (massage / salon / spa) so a visitor
+  // can find a massage or a haircut instead of scanning one giant list.
+  gym: "yoga",
+  fitness_center: "yoga",
   yoga_studio: "yoga",
-  spa: "wellness",
+  spa: "spa",
   wellness_center: "wellness",
   // Transit / parking
   transit_station: "transit",
@@ -149,12 +151,12 @@ const MAP: Record<string, string> = {
   hospital: "wellness",
   physiotherapist: "wellness",
   chiropractor: "wellness",
-  hair_salon: "wellness",
-  beauty_salon: "wellness",
-  barber_shop: "wellness",
-  nail_salon: "wellness",
-  massage: "wellness",
-  tanning_studio: "wellness",
+  hair_salon: "salon",
+  beauty_salon: "salon",
+  barber_shop: "salon",
+  nail_salon: "salon",
+  massage: "massage",
+  tanning_studio: "spa",
   // Community → civic
   association_or_organization: "civic",
   non_profit_organization: "civic",
@@ -267,7 +269,7 @@ const MAP: Record<string, string> = {
   farmers_market: "market",
   garden_center: "shopping",
   // Wellness expansion
-  massage_spa: "wellness",
+  massage_spa: "massage",
   sports_school: "wellness",
   sports_club: "wellness",
   sports_activity_location: "wellness",

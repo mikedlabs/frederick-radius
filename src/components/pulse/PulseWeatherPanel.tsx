@@ -74,7 +74,7 @@ function buildDays(daily: NwsHourly[]): Day[] {
 function Stat({ label, value, valueColor, detail }: { label: string; value: string; valueColor?: string; detail?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
         {label}
       </span>
       <span className="font-mono text-[14px] font-semibold tabular-nums leading-none" style={{ color: valueColor ?? "var(--app-ink)" }}>
@@ -296,7 +296,7 @@ export default async function PulseWeatherPanel({
             <div className="space-y-4 pt-1">
               {/* hourly curve */}
               <div className="space-y-1">
-                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
                   Next 12 hours
                 </p>
                 <HourlyCurve hours={forecast.hourly} />
@@ -313,7 +313,7 @@ export default async function PulseWeatherPanel({
               {/* 7-day */}
               {days.length > 0 && (
                 <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
                     7-day outlook
                   </p>
                   <WeekStrip days={days} />

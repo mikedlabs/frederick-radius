@@ -146,7 +146,7 @@ export default async function LetterPage({ params }: { params: Promise<{ slug: s
         }}
       >
         <h2 id="write-in-heading" className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Add your own
+          Write your own
         </h2>
         <p className="mt-1 text-[13.5px] leading-[1.6]" style={{ color: "var(--app-ink-2)" }}>
           Write it by hand and mail it. Sign it or leave it anonymous.

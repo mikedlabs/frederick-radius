@@ -1,3 +1,11 @@
+// This module pulls the full place dataset + the 8.6MB places-enrichment.json
+// at import time and must NEVER reach a client bundle (the PR #503 footgun).
+// The boundary is held by convention: every client importer uses a type-only
+// import, backed by the no-restricted-imports lint rule. NOTE: do not add
+// `import "server-only"` here — the tsx data scripts (build:client-places in
+// prebuild, coverage, audits) import this loader directly, and server-only's
+// default export throws outside a React Server context, which breaks the
+// build. server-only would need a script-side stub before it could return.
 import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
