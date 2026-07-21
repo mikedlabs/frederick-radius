@@ -23,12 +23,16 @@ import type { KeysScore as Score } from "@/lib/integrations/keysScore";
 const POLL_MS = 45_000;
 
 // Frederick Keys team palette — the deliberate branded exception (a team card's
-// whole point is the team's own navy/red/gold, which the app tokens don't
+// whole point is the team's own orange/black, which the app tokens don't
 // carry). Kept in sync with KeysCard.
-const NAVY = "#13284B";
-const NAVY_DEEP = "#0B182F";
-const KEYS_RED = "#C8102E";
-const KEYS_GOLD = "#FDB927";
+// The 2026 refreshed brand: ORANGE and BLACK, an homage to the Orioles'
+// palette (the Keys returned as their High-A affiliate in 2026). BRIGHT is a
+// tint of the brand orange for small text on the black ground, where the pure
+// brand orange sits just under AA.
+const BLACK = "#171412";
+const BLACK_DEEP = "#080606";
+const KEYS_ORANGE = "#DF4601";
+const KEYS_ORANGE_BRIGHT = "#FF7F45";
 const CREAM = "#F3ECDC";
 
 /** The official Keys ticket page — the stable fallback when a game has no
@@ -88,7 +92,7 @@ function ScoreRow({
   runs: number | null;
   won: boolean;
   final: boolean;
-  /** The Keys' own row reads in gold — the home identity — vs cream for the opponent. */
+  /** The Keys' own row reads in orange — the home identity — vs cream for the opponent. */
   isKeys?: boolean;
 }) {
   const lost = final && !won;
@@ -97,7 +101,7 @@ function ScoreRow({
       <span
         className="min-w-0 truncate text-[14px]"
         style={{
-          color: isKeys ? KEYS_GOLD : CREAM,
+          color: isKeys ? KEYS_ORANGE_BRIGHT : CREAM,
           fontWeight: won || isKeys ? 700 : 500,
           opacity: lost ? 0.58 : 1,
         }}
@@ -162,16 +166,16 @@ export default function KeysScore() {
     <div
       className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
       style={{
-        background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
+        background: `linear-gradient(152deg, ${BLACK} 0%, ${BLACK_DEEP} 100%)`,
         color: CREAM,
         boxShadow: "var(--app-elev-1), var(--app-edge)",
       }}
     >
-      {/* Red→gold pennant rule along the top edge — the team-color signature. */}
+      {/* Orange pennant rule along the top edge — the team-color signature. */}
       <span
         aria-hidden
         className="absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, ${KEYS_RED} 0%, ${KEYS_GOLD} 100%)` }}
+        style={{ background: `linear-gradient(90deg, ${KEYS_ORANGE} 0%, ${KEYS_ORANGE_BRIGHT} 100%)` }}
       />
       {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
       <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: CREAM, opacity: 0.09 }}>
@@ -181,7 +185,7 @@ export default function KeysScore() {
       <div className="relative mb-2 flex items-center justify-between gap-2">
         <span
           className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: KEYS_GOLD }}
+          style={{ color: KEYS_ORANGE_BRIGHT }}
         >
           <BaseballGlyph size={13} />
           Frederick Keys {vs} {score.opponent.name}
@@ -190,7 +194,7 @@ export default function KeysScore() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
           style={
             chip.live
-              ? { background: KEYS_RED, color: "#fff" }
+              ? { background: KEYS_ORANGE, color: "#121110" }
               : { background: "rgba(243,236,220,0.15)", color: CREAM }
           }
         >
@@ -221,7 +225,7 @@ export default function KeysScore() {
           target="_blank"
           rel="noopener noreferrer"
           className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ borderColor: KEYS_GOLD, color: KEYS_GOLD }}
+          style={{ borderColor: KEYS_ORANGE_BRIGHT, color: KEYS_ORANGE_BRIGHT }}
         >
           Get tickets
         </a>

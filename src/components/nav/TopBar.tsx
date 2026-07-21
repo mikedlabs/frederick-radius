@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Search, Compass, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
+import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
@@ -184,12 +185,15 @@ export default function TopBar() {
               className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
+              {/* The Ripple, on its brick tile — the same mark as the app icon
+                  and browser tab, so the header and the home screen agree on
+                  what the logo is. rounded-[7px] tracks the squircle's 23.3%
+                  radius at 28px so the shadow hugs the tile. */}
               <span
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-[var(--app-shadow-1)]"
-                style={{ background: "var(--app-brand)" }}
+                className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-[7px] shadow-[var(--app-shadow-1)]"
                 aria-hidden
               >
-                <Disc />
+                <RippleMark size={28} tile />
               </span>
               {/* Wordmark hides on the narrowest phones so the search
                   pill gets real room (it was clipping to "Se…"); the
@@ -309,11 +313,3 @@ export default function TopBar() {
   );
 }
 
-function Disc() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
-      <circle cx="12" cy="12" r="9" fill="none" stroke="white" strokeWidth="2" />
-      <circle cx="12" cy="12" r="3" fill="white" />
-    </svg>
-  );
-}

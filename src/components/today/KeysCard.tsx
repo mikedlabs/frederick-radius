@@ -8,9 +8,9 @@ import { statusLabel } from "@/lib/event-status";
 
 /**
  * KeysCard — the Frederick Keys home game, dressed in the TEAM's colors instead
- * of the generic sports EventCard. A navy specimen plate carrying the Keys
+ * of the generic sports EventCard. A black specimen plate carrying the Keys
  * identity, the matchup ("vs Brooklyn Cyclones"), first-pitch time, and Nymeo
- * Field — with the red/gold accents and a baseball motif that read as a special
+ * Field — with the orange accents and a baseball motif that read as a special
  * team card sitting inside the paper field guide (not a SaaS box, not a clash).
  *
  * Detection lives in lib/today/keysEvent (isKeysEvent); /today branches to this
@@ -18,15 +18,19 @@ import { statusLabel } from "@/lib/event-status";
  *
  * The Keys palette is a deliberate branded EXCEPTION to the "always var(--app-*)"
  * rule (same license the marketing shell + the Saved wallet's per-issuer hues
- * take): a team card's whole point is the team's own navy/red/gold, which the
+ * take): a team card's whole point is the team's own orange/black, which the
  * app tokens don't carry.
  */
 
 // Frederick Keys team palette.
-const NAVY = "#13284B";
-const NAVY_DEEP = "#0B182F";
-const KEYS_RED = "#C8102E";
-const KEYS_GOLD = "#FDB927";
+// The 2026 refreshed brand: ORANGE and BLACK, an homage to the Orioles'
+// palette (the Keys returned as their High-A affiliate in 2026). BRIGHT is a
+// tint of the brand orange for small text on the black ground, where the pure
+// brand orange sits just under AA.
+const BLACK = "#171412";
+const BLACK_DEEP = "#080606";
+const KEYS_ORANGE = "#DF4601";
+const KEYS_ORANGE_BRIGHT = "#FF7F45";
 const CREAM = "#F3ECDC";
 
 /** A stitched baseball — the card's mark (eyebrow glyph + corner watermark). */
@@ -34,8 +38,8 @@ function Baseball({ className, style }: { className?: string; style?: CSSPropert
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={className} style={style} aria-hidden>
       <circle cx="12" cy="12" r="9.2" />
-      <path d="M5.2 5.6c3 2.6 3 10.2 0 12.8" stroke={KEYS_RED} />
-      <path d="M18.8 5.6c-3 2.6-3 10.2 0 12.8" stroke={KEYS_RED} />
+      <path d="M5.2 5.6c3 2.6 3 10.2 0 12.8" stroke={KEYS_ORANGE} />
+      <path d="M18.8 5.6c-3 2.6-3 10.2 0 12.8" stroke={KEYS_ORANGE} />
     </svg>
   );
 }
@@ -65,13 +69,13 @@ export default function KeysCard({
     <div
       className="tactile-interactive group relative h-full overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{
-        background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
+        background: `linear-gradient(152deg, ${BLACK} 0%, ${BLACK_DEEP} 100%)`,
         color: CREAM,
         boxShadow: "var(--app-elev-1), var(--app-edge)",
       }}
     >
-      {/* Red→gold pennant rule along the top edge — the team-color signature. */}
-      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${KEYS_RED} 0%, ${KEYS_GOLD} 100%)` }} />
+      {/* Orange pennant rule along the top edge — the team-color signature. */}
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${KEYS_ORANGE} 0%, ${KEYS_ORANGE_BRIGHT} 100%)` }} />
       {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
       <span aria-hidden className="pointer-events-none absolute -right-6 -top-4" style={{ color: CREAM, opacity: 0.1 }}>
         <Baseball className={compact ? "h-28 w-28" : "h-36 w-36"} />
@@ -80,13 +84,13 @@ export default function KeysCard({
       <div className={compact ? "relative p-3.5" : "relative p-4"}>
         {/* Identity eyebrow — ball glyph + wordmark in gold, a red HOME tag. */}
         <div className="flex items-center gap-2">
-          <Baseball className="h-4 w-4" style={{ color: KEYS_GOLD }} />
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: KEYS_GOLD }}>
+          <Baseball className="h-4 w-4" style={{ color: KEYS_ORANGE_BRIGHT }} />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: KEYS_ORANGE_BRIGHT }}>
             Frederick Keys
           </span>
           <span
             className="ml-auto shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]"
-            style={{ background: KEYS_RED, color: "#fff" }}
+            style={{ background: KEYS_ORANGE, color: "#121110" }}
           >
             Home
           </span>
@@ -103,7 +107,7 @@ export default function KeysCard({
         {statusText && (
           <span
             className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-            style={{ background: KEYS_RED, color: "#fff" }}
+            style={{ background: KEYS_ORANGE, color: "#121110" }}
           >
             {statusText}
           </span>
@@ -112,7 +116,7 @@ export default function KeysCard({
         {/* First pitch (gold, the decision fact) + the date. */}
         <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11px] tabular-nums">
           {date.time && (
-            <span className="font-bold uppercase tracking-[0.04em]" style={{ color: KEYS_GOLD }}>
+            <span className="font-bold uppercase tracking-[0.04em]" style={{ color: KEYS_ORANGE_BRIGHT }}>
               First pitch {date.time}
             </span>
           )}
@@ -135,7 +139,7 @@ export default function KeysCard({
           target="_blank"
           rel="noopener noreferrer"
           className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-          style={{ borderColor: KEYS_GOLD, color: KEYS_GOLD }}
+          style={{ borderColor: KEYS_ORANGE_BRIGHT, color: KEYS_ORANGE_BRIGHT }}
         >
           Get tickets
         </a>
