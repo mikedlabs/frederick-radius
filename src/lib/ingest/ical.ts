@@ -99,14 +99,23 @@ export async function ingestICal({
     return { source_slug, records_in: 0, records_upserted: 0, records_failed: 0, error: "DATABASE_URL not configured" };
   }
 
-  const runRows = await db.insert(schema.ingestRuns).values({
-    source_slug,
-    status: "running",
-    records_in: 0,
-    records_upserted: 0,
-    records_failed: 0,
-  }).returning({ id: schema.ingestRuns.id });
-  const runId = runRows[0]?.id;
+  // Best-effort run telemetry. If this insert rejects (a DB hiccup), proceed
+  // WITHOUT a run row rather than reject the whole function — the caller fans
+  // several sources out and one down DB must not sink the others. Per-event
+  // upserts below still record failures in the returned counts.
+  let runId: string | undefined;
+  try {
+    const runRows = await db.insert(schema.ingestRuns).values({
+      source_slug,
+      status: "running",
+      records_in: 0,
+      records_upserted: 0,
+      records_failed: 0,
+    }).returning({ id: schema.ingestRuns.id });
+    runId = runRows[0]?.id;
+  } catch {
+    runId = undefined;
+  }
 
   let in_count = 0;
   let upserted = 0;
@@ -204,14 +213,22 @@ category_slug: cat?.slug ?? "community",
       .where(eq(schema.dataSources.slug, source_slug));
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
-    if (runId) {
-      await db.update(schema.ingestRuns)
-        .set({ ended_at: new Date(), status: "error", error: error })
-        .where(eq(schema.ingestRuns.id, runId));
+    // These error-telemetry writes hit the same DB that likely just failed, so
+    // they can reject too. Swallow that: the function must still RETURN its
+    // result (surfaced in the run totals) rather than reject and take the whole
+    // fan-out down with it. The lost row is telemetry, not user data.
+    try {
+      if (runId) {
+        await db.update(schema.ingestRuns)
+          .set({ ended_at: new Date(), status: "error", error: error })
+          .where(eq(schema.ingestRuns.id, runId));
+      }
+      await db.update(schema.dataSources)
+        .set({ last_run_at: new Date(), last_status: `error: ${error.slice(0, 200)}` })
+        .where(eq(schema.dataSources.slug, source_slug));
+    } catch {
+      /* telemetry write failed too (DB down); keep the ingest result intact */
     }
-    await db.update(schema.dataSources)
-      .set({ last_run_at: new Date(), last_status: `error: ${error.slice(0, 200)}` })
-      .where(eq(schema.dataSources.slug, source_slug));
   }
 
   return { source_slug, records_in: in_count, records_upserted: upserted, records_failed: failed, error };
