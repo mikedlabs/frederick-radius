@@ -6,6 +6,7 @@ import { Baby, Beer, Car, Church, Clock, Coffee, Droplets, Heart, Hotel, Landmar
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
+import { orderNeedsForHour } from "./needsOrder";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import type { BrowseDockInfo } from "./types";
 import type { LngLat } from "@/lib/geo";
@@ -301,6 +302,24 @@ export default function MapDock(props: MapDockProps) {
   const sp = useSearchParams();
 
   const [pane, setPane] = useState<Pane | null>(null);
+  // Time-aware needs: lead with what this hour most likely needs (Eastern),
+  // computed once per mount. The Open now / Near me anchors never move — only
+  // the content tail reorders — so habits can form on the top controls.
+  const [needsNow] = useState(() => {
+    let hour: number;
+    try {
+      hour = Number(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          hour: "numeric",
+          hourCycle: "h23",
+        }).format(new Date()),
+      );
+    } catch {
+      hour = new Date().getHours();
+    }
+    return orderNeedsForHour(TOP_NEEDS, hour);
+  });
   // The Layers tab's Key grid is collapsed by default so the panel stays a
   // low strip; one small chip reveals it.
   const [keyOpen, setKeyOpen] = useState(false);
@@ -702,7 +721,12 @@ export default function MapDock(props: MapDockProps) {
                 type="search"
                 value={props.q}
                 onChange={(e) => props.setQ(e.target.value)}
-                placeholder="Search this map"
+                // The placeholder is the manual: concrete examples teach the
+                // box's range (categories, outdoors, towns) at the exact
+                // moment the eye is on it. No questions promised here — the
+                // Ask handoff isn't wired to this box, and a signifier must
+                // not overpromise.
+                placeholder="Find coffee, a trail, a town"
                 aria-label="Search this map"
                 className="dock-search-input"
               />
@@ -894,7 +918,7 @@ export default function MapDock(props: MapDockProps) {
               <div>
                 <Sect>Most needed</Sect>
                 <div className="dock-needs">
-                  {TOP_NEEDS.map((n) => {
+                  {needsNow.map((n) => {
                     const on = isNeedOn(n);
                     return (
                       <button
