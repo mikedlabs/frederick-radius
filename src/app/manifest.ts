@@ -22,11 +22,16 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["lifestyle", "navigation", "travel", "utilities"],
     icons: [
       { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-      { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+      // Maskable uses the FULL-BLEED variant (square brick, no squircle
+      // corners) — the launcher applies its own mask, and transparent corners
+      // would show through it.
+      { src: "/icons/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
       // Raster fallback for engines that don't honor sizes="any" SVG, and a
       // real 192px target for Android home-screen install (audit 2026-07).
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/apple-icon", sizes: "180x180", type: "image/png" },
+      // Static file now (was the generated /apple-icon route) — full-bleed
+      // 180px PNG; iOS masks its own corners.
+      { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
       // start_url is "/today". Ask is a focused decision tool rather than a
