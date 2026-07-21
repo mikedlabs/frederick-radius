@@ -29,8 +29,12 @@ const POLL_MS = 45_000;
 // palette (the Keys returned as their High-A affiliate in 2026). BRIGHT is a
 // tint of the brand orange for small text on the black ground, where the pure
 // brand orange sits just under AA.
-const BLACK = "#171412";
-const BLACK_DEEP = "#080606";
+// "Black" as a warm charcoal, not void-black: a dead #000 plate read as a
+// hole in the cream page (owner call). This stays unmistakably the team's
+// black while sitting in the app's warm-ink family, with enough gradient
+// travel to give the plate depth.
+const BLACK = "#332A1F";
+const BLACK_DEEP = "#171208";
 const KEYS_ORANGE = "#DF4601";
 const KEYS_ORANGE_BRIGHT = "#FF7F45";
 const CREAM = "#F3ECDC";
