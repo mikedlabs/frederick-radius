@@ -1,21 +1,30 @@
 /**
- * FredScanner live incidents — reads the Slack #incidents channel (the IFTTT
- * CAD feed) and returns only the safe, public, non-medical incidents.
+ * Frederick County live incidents — returns only the safe, public,
+ * non-medical calls, from a source that needs NO account of ours.
  *
- * Ingestion is a plain server-side read of the channel history via the Slack
- * Web API, cached ~60s and fail-soft to empty — the same shape as every other
- * feed here (CHART, PulsePoint, USGS). No webhook, no table: the channel IS
- * the store. The privacy allowlist lives in lib/scanner/incidentFeed and is
- * unit-tested; this module only fetches, ages out, and de-dupes.
+ * Primary source: the public RSS mirror the University of Maryland news-apps
+ * program publishes from frederickscanner.com (latest.rss) — open data, no
+ * auth, no token, no dependency on anyone's Slack workspace. We read it
+ * directly, apply the same allowlist, age out, and de-dupe.
  *
- * Config (dormant until BOTH are set, like PulsePoint's agency id):
- *   - SCANNER_SLACK_BOT_TOKEN   a bot token with channels:history on the feed
- *   - SCANNER_INCIDENTS_CHANNEL the #incidents channel id (e.g. C06Q4SH7N3T)
- * Unset → empty result, every surface self-hides.
+ * Optional override: if a Slack bot token IS configured
+ * (SCANNER_SLACK_BOT_TOKEN + SCANNER_INCIDENTS_CHANNEL), we prefer the direct
+ * channel read (more real-time). Neither is required — the RSS keeps it live
+ * with zero setup. Cached ~60s, fail-soft to empty like every other feed.
  */
 import { unstable_cache } from "next/cache";
-import { publicIncident, geocodableAddress, parseIncidentLine, type PublicIncident } from "@/lib/scanner/incidentFeed";
+import {
+  publicIncident,
+  classifyPublicIncident,
+  geocodableAddress,
+  parseIncidentLine,
+  type PublicIncident,
+} from "@/lib/scanner/incidentFeed";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
+
+/** Public open-data RSS of Frederick County fire/rescue calls (UMD news apps,
+ *  scraped from frederickscanner.com; refreshed ~every 30 min). */
+const RSS_URL = "https://newsappsumd.github.io/fredscanner/latest.rss";
 
 export type ScannerIncident = PublicIncident & {
   /** Message timestamp (ISO) so callers can sort and age it out. */
@@ -69,8 +78,7 @@ function lineFromMessage(m: SlackMessage): string | null {
   return cands.find((s) => s.length > 0) ?? null;
 }
 
-async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
-  if (!scannerConfigured()) return [];
+async function fetchFromSlack(): Promise<ScannerIncident[]> {
   try {
     const res = await fetch(
       `https://slack.com/api/conversations.history?channel=${encodeURIComponent(channel())}&limit=80`,
@@ -94,7 +102,6 @@ async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
       const inc = publicIncident(line);
       if (!inc) continue;
 
-      // Collapse the same call reposted / updated within the window.
       const key = `${inc.kind}|${inc.location}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -107,13 +114,88 @@ async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
   }
 }
 
+/** Pull one tag's inner text from an RSS <item> chunk (handles CDATA). */
+function rssTag(chunk: string, tag: string): string {
+  const m = chunk.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
+  if (!m) return "";
+  return decodeEntities(m[1].replace(/^<!\[CDATA\[/, "").replace(/\]\]>$/, "").trim());
+}
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+}
+
 /**
- * Recent public scanner incidents, cached ~60s. Empty (and every surface
- * self-hides) until the bot token + channel are configured.
+ * Read the public RSS mirror. Each item: title = "TYPE: 8:23 pm",
+ * description = "LOCATION, Bldg:… Radio: 9C Units: E31". We split those into
+ * the parts the shared allowlist expects, then classify.
+ */
+async function fetchFromRss(): Promise<ScannerIncident[]> {
+  try {
+    const res = await fetch(RSS_URL, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items = xml.split(/<item[\s>]/i).slice(1);
+
+    const now = Date.now();
+    const seen = new Set<string>();
+    const out: ScannerIncident[] = [];
+    for (const chunk of items) {
+      const title = rssTag(chunk, "title");
+      const desc = rssTag(chunk, "description");
+      const pub = rssTag(chunk, "pubDate");
+      // "BUILDING FIRE: 8:45 pm" → type + clock time.
+      const tm = title.match(/^(.*?):\s*(\d{1,2}:\d{2}\s*(?:am|pm))\s*$/i);
+      if (!tm) continue;
+      const type = tm[1].trim();
+      const time = tm[2].trim();
+      // Location = everything before Radio:/Units:, minus Bldg/Apt noise.
+      const location = desc
+        .split(/\b(?:radio|units)\s*:/i)[0]
+        .replace(/,?\s*(?:bldg|apt\/unit)\s*:[^,]*/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const inc = classifyPublicIncident(type, location, time);
+      if (!inc) continue;
+
+      const atMs = pub ? Date.parse(pub) : now;
+      if (Number.isFinite(atMs) && now - atMs > MAX_AGE_MS) continue;
+
+      const key = `${inc.kind}|${inc.location}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ ...inc, at: new Date(Number.isFinite(atMs) ? atMs : now).toISOString() });
+    }
+    out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** Prefer the direct Slack read when a token is configured (more real-time);
+ *  otherwise the public RSS mirror, which needs no setup. */
+async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
+  if (scannerConfigured()) {
+    const slack = await fetchFromSlack();
+    if (slack.length > 0) return slack;
+  }
+  return fetchFromRss();
+}
+
+/**
+ * Recent public scanner incidents, cached ~60s. Live with zero setup off the
+ * public RSS; a configured Slack token takes over for real-time.
+ * (v2: source now RSS-by-default, not Slack-only.)
  */
 export const getScannerIncidents = unstable_cache(
   fetchScannerIncidents,
-  ["scanner-incidents-v1"],
+  ["scanner-incidents-v2"],
   { revalidate: 60, tags: ["scanner-incidents"] },
 );
 
