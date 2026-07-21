@@ -304,7 +304,9 @@ async function fetchScannerIncidents(): Promise<ScannerIncident[]> {
  */
 export const getScannerIncidents = unstable_cache(
   fetchScannerIncidents,
-  ["scanner-incidents-v3"],
+  // v4: window widened 1h → 12h. Bump so the durable cache can't keep serving
+  // the old 1-hour-computed (near-empty) value across the deploy (PR #509).
+  ["scanner-incidents-v4"],
   { revalidate: 60, tags: ["scanner-incidents"] },
 );
 
