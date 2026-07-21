@@ -2978,58 +2978,70 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+/* Poster tile: a category-tinted gradient ground, a large low-opacity
+   watermark of the category's icon bleeding off the top-right corner, and the
+   label + count layered in front — the same field-guide treatment as the Today
+   shelf, so a category reads by color and mark before you read the word. */
 .dock-cat {
+  position: relative;
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 56px;
-  padding: 9px 11px;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 78px;
+  padding: 11px 13px;
   border-radius: var(--app-radius-md, 14px);
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--c) 20%, var(--app-border));
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--c) 15%, var(--app-bg-elevated)),
+    color-mix(in srgb, var(--c) 4%, var(--app-bg-elevated))
+  );
   text-align: left;
-  transition: transform 0.08s, border-color 0.18s, background 0.18s;
+  transition: transform 0.1s, box-shadow 0.18s, border-color 0.18s, background 0.18s;
 }
 .dock-cat:active {
   transform: scale(0.98);
 }
 .dock-cat[data-on] {
-  background: color-mix(in srgb, var(--c) 12%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--c) 45%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent);
+  border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, transparent),
+    0 10px 22px -13px color-mix(in srgb, var(--c) 65%, transparent);
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--c) 28%, var(--app-bg-elevated)),
+    color-mix(in srgb, var(--c) 10%, var(--app-bg-elevated))
+  );
 }
-.dock-cat-ic {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  color: #fff;
-  background: var(--c);
+.dock-cat-art {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  color: var(--c);
+  opacity: 0.16;
+  pointer-events: none;
+  transform: rotate(-8deg);
 }
-.dock-cat-l {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.dock-cat[data-on] .dock-cat-art {
+  opacity: 0.26;
 }
 .dock-cat-t {
-  font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
+  position: relative;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--app-ink);
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.1;
 }
 .dock-cat-n {
-  margin-top: 2px;
+  position: relative;
+  margin-top: 3px;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 10px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--c) 55%, var(--app-ink-2));
   font-variant-numeric: tabular-nums;
-  color: var(--app-ink-3);
 }
 
 /* Chips. Color arrives per-chip via --c; lit chips fill with it. The

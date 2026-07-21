@@ -866,14 +866,12 @@ export default function MapDock(props: MapDockProps) {
                             onClick={() => pickIntent(on ? null : it.key)}
                             style={{ "--c": it.color } as React.CSSProperties}
                           >
-                            <span aria-hidden className="dock-cat-ic">
-                              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                            <span aria-hidden className="dock-cat-art">
+                              <Icon className="h-16 w-16" strokeWidth={1.5} />
                             </span>
-                            <span className="dock-cat-l">
-                              <span className="dock-cat-t">{it.label}</span>
-                              <span className="dock-cat-n">
-                                {(browse.intentCounts[it.key] ?? 0).toLocaleString("en-US")}
-                              </span>
+                            <span className="dock-cat-t">{it.label}</span>
+                            <span className="dock-cat-n">
+                              {(browse.intentCounts[it.key] ?? 0).toLocaleString("en-US")} places
                             </span>
                           </button>
                         );
