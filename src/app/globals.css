@@ -3255,57 +3255,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   gap: 8px;
   padding: 8px;
 }
-.dock-cats-scroll {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* A soft right-edge fade so the row reads as scrollable: the last chip
-     dissolves into the head instead of being hard-clipped. Static (no scroll
-     listener) — masks use the gradient's ALPHA, so the opaque ink stop just
-     means "fully shown" and the small 24px band stays subtle. */
-  -webkit-mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
-  mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
-}
-.dock-cats-scroll::-webkit-scrollbar {
-  display: none;
-}
-/* Chips hold their size; the row scrolls under them instead of wrapping. */
-.dock-cats-scroll > .dock-chip {
-  flex: 0 0 auto;
-}
-/* More + the view toggle keep their size at the row's right edge. */
-.dock-cats > .dock-filters,
-.dock-cats > .dock-viewtoggle {
-  flex: 0 0 auto;
-}
-/* The Filters button — icon-led pill. Carries an active-filter count and a
-   soft brand tint when any filter is on. */
-.dock-filters {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-ink);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-filters:active {
-  transform: scale(0.97);
-}
-.dock-filters[data-on] {
-  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
-  color: var(--app-brand-press);
-}
+/* (The old horizontal chip-scroll strip and its "More"/Filters pill were
+   replaced by the single Browse-places door below; their styles are gone.
+   .dock-filters-n survives as the door's active-filter count badge.) */
 .dock-filters-n {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 10.5px;

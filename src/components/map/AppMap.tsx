@@ -22,6 +22,7 @@ import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import type { OsmPlace } from "@/lib/integrations/overpass";
@@ -637,6 +638,14 @@ export default function AppMap({
     }
   };
   const [userLoc, setUserLoc] = useState<LngLat | null>(cachedPosition);
+  // Ranking fallback when there's no device fix: the saved home town's
+  // centroid. Privacy-free (client-local preference, no prompt), and it makes
+  // "closest to you first" true for home-town users who never shared location.
+  // Read once per mount — a home-town change lands on the next visit.
+  const homeCentroid = useMemo(() => {
+    const slug = getHomeMuni();
+    return slug ? MUNICIPALITIES.find((m) => m.slug === slug)?.centroid ?? null : null;
+  }, []);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
   const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? trailsLayerDefault);
@@ -928,9 +937,10 @@ export default function AppMap({
     if (!onPlacesInView) return;
     const c = map.getCenter();
     // Rank from the reader's own fix when we have one (cached or granted),
-    // else from the map center. Squared-degree distance is enough to ORDER at
-    // county scale (same metric the center sort has always used).
-    const ref = userLoc ?? { lng: c.lng, lat: c.lat };
+    // else their saved home town's centroid, else the map center. Squared-
+    // degree distance is enough to ORDER at county scale (same metric the
+    // center sort has always used).
+    const ref = userLoc ?? homeCentroid ?? { lng: c.lng, lat: c.lat };
     const inside = filteredPlaces
       .filter(
         (p) =>
