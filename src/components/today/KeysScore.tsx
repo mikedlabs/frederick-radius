@@ -31,6 +31,10 @@ const KEYS_RED = "#C8102E";
 const KEYS_GOLD = "#FDB927";
 const CREAM = "#F3ECDC";
 
+/** The official Keys ticket page — the stable fallback when a game has no
+ *  per-game Ticketmaster link (the score payload carries none). */
+const KEYS_TICKETS_URL = "https://www.milb.com/frederick/tickets";
+
 function firstPitch(iso: string): string {
   const t = new Date(iso);
   if (Number.isNaN(t.getTime())) return "";
@@ -155,17 +159,13 @@ export default function KeysScore() {
   const vs = score.keysHome ? "vs" : "@";
 
   return (
-    <a
-      href={score.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="relative block overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
+    <div
+      className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
       style={{
         background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
         color: CREAM,
         boxShadow: "var(--app-elev-1), var(--app-edge)",
       }}
-      aria-label={`Frederick Keys ${vs} ${score.opponent.name}, ${chip.text}`}
     >
       {/* Red→gold pennant rule along the top edge — the team-color signature. */}
       <span
@@ -212,7 +212,32 @@ export default function KeysScore() {
       <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(243,236,220,0.72)" }}>
         {detailLine(score)}
       </p>
-    </a>
+
+      {/* Pre-game only: tickets are the decision fact before first pitch.
+          Sits ABOVE the stretched box-score link (z-2 vs z-1). */}
+      {score.state === "pre" && (
+        <a
+          href={KEYS_TICKETS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
+          style={{ borderColor: KEYS_GOLD, color: KEYS_GOLD }}
+        >
+          Get tickets
+        </a>
+      )}
+
+      {/* The card's primary action — the official schedule/box score. A
+          stretched link so the whole plate stays tappable without nesting
+          an anchor inside an anchor. */}
+      <a
+        href={score.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Frederick Keys ${vs} ${score.opponent.name}, ${chip.text}`}
+        className="absolute inset-0 z-[1]"
+      />
+    </div>
   );
 }
 

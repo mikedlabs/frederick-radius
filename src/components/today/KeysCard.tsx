@@ -56,11 +56,13 @@ export default function KeysCard({
   const compact = variant === "tile";
   const heading = opponent ? `vs ${opponent}` : event.title;
 
+  // Prefer the game's own Ticketmaster link (the merged feed row carries one
+  // when Ticketmaster lists the game); fall back to the official box office.
+  const tickets = event.ticket_url || "https://www.milb.com/frederick/tickets";
+
   return (
-    <Link
-      href={`/events/${event.slug}`}
-      aria-label={`Frederick Keys ${opponent ? `versus ${opponent}` : "home game"}${date.time ? `, first pitch ${date.time}` : ""}, at ${venue}`}
-      className="tactile-interactive group relative block h-full overflow-hidden rounded-[var(--app-radius-lg)]"
+    <div
+      className="tactile-interactive group relative h-full overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{
         background: `linear-gradient(152deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`,
         color: CREAM,
@@ -123,7 +125,28 @@ export default function KeysCard({
         <p className="mt-1 truncate text-[12px] leading-snug" style={{ color: "rgba(243,236,220,0.7)" }}>
           {venue}
         </p>
+
+        {/* Tickets — the per-game Ticketmaster link when the feed has one,
+            else the official box office. Sits ABOVE the stretched card link
+            (z-2 vs z-1), so it never fights the card tap. */}
+        <a
+          href={tickets}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
+          style={{ borderColor: KEYS_GOLD, color: KEYS_GOLD }}
+        >
+          Get tickets
+        </a>
       </div>
-    </Link>
+
+      {/* The card's primary action — the event page. A stretched link keeps
+          the whole plate tappable without nesting an anchor in an anchor. */}
+      <Link
+        href={`/events/${event.slug}`}
+        aria-label={`Frederick Keys ${opponent ? `versus ${opponent}` : "home game"}${date.time ? `, first pitch ${date.time}` : ""}, at ${venue}`}
+        className="absolute inset-0 z-[1]"
+      />
+    </div>
   );
 }
