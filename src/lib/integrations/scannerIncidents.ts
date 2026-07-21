@@ -14,7 +14,8 @@
  * Unset → empty result, every surface self-hides.
  */
 import { unstable_cache } from "next/cache";
-import { publicIncident, type PublicIncident } from "@/lib/scanner/incidentFeed";
+import { publicIncident, geocodableAddress, type PublicIncident } from "@/lib/scanner/incidentFeed";
+import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 
 export type ScannerIncident = PublicIncident & {
   /** Message timestamp (ISO) so callers can sort and age it out. */
@@ -91,3 +92,29 @@ export const getScannerIncidents = unstable_cache(
   ["scanner-incidents-v1"],
   { revalidate: 60, tags: ["scanner-incidents"] },
 );
+
+export type GeocodedIncident = ScannerIncident & { lng: number; lat: number };
+
+/**
+ * Recent public incidents that resolved to a real in-county coordinate — the
+ * data behind the live map layer. Geocoding runs through the shared, 30-day
+ * cached, county-gated Mapbox geocoder, so recurring roads cost nothing after
+ * the first hit and an unresolvable block simply gets no pin (never a wrong
+ * one). Capped per call so a cold cache can't fan out unboundedly.
+ */
+export async function getGeocodedScannerIncidents(): Promise<GeocodedIncident[]> {
+  const incidents = await getScannerIncidents();
+  if (incidents.length === 0) return [];
+
+  const out: GeocodedIncident[] = [];
+  await Promise.all(
+    incidents.slice(0, 24).map(async (inc) => {
+      const addr = geocodableAddress(inc.location);
+      if (!addr) return;
+      const coord = await geocodeAddressInCounty(addr);
+      if (coord) out.push({ ...inc, lng: coord.lng, lat: coord.lat });
+    }),
+  );
+  out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return out;
+}

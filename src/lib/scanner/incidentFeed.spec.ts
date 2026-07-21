@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseIncidentLine, publicIncident, publicIncidents } from "./incidentFeed";
+import { parseIncidentLine, publicIncident, publicIncidents, geocodableAddress } from "./incidentFeed";
 
 // Real lines from the FredScanner #incidents feed (2026-07-19/20).
 const L = {
@@ -60,6 +60,20 @@ describe("publicIncident — the privacy allowlist", () => {
     const inc = publicIncident(L.crash)!;
     expect(inc.location).toBe("12200 block Coppermine Rd");
     expect(JSON.stringify(inc)).not.toMatch(/A179|E172|Radio|9B/);
+  });
+});
+
+describe("geocodableAddress", () => {
+  it("drops BLOCK and the landmark tail, keeps the street", () => {
+    expect(geocodableAddress("12200 block Coppermine Rd")).toBe("12200 Coppermine Rd");
+    expect(geocodableAddress("200 block N Market St, Bloom Asian Haus")).toBe("200 N Market St");
+  });
+  it("rewrites an intersection", () => {
+    expect(geocodableAddress("FSK Highway / Middleburg Rd")).toBe("FSK Highway and Middleburg Rd");
+  });
+  it("returns null when there's no street token", () => {
+    expect(geocodableAddress("")).toBeNull();
+    expect(geocodableAddress("12345")).toBeNull();
   });
 });
 

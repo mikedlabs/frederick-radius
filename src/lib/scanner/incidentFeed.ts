@@ -121,6 +121,23 @@ export function publicIncident(raw: string): PublicIncident | null {
   return null;
 }
 
+/**
+ * Turn an incident's block-level location into a street string a geocoder can
+ * resolve, or null when there's nothing address-shaped. Drops the CAD "BLOCK"
+ * token (keeping the house-range number as a hint), the landmark/apt tail after
+ * the first comma, and rewrites an "A / B" intersection to "A and B". The
+ * caller feeds this to the county-gated Mapbox geocoder, so a bad string just
+ * yields no pin — never a wrong one.
+ */
+export function geocodableAddress(location: string): string | null {
+  if (!location) return null;
+  let s = location.split(",")[0].trim();          // drop landmark / apt / building tail
+  s = s.replace(/\s*\/\s*/g, " and ");             // intersection → "A and B"
+  s = s.replace(/\bblock\b/gi, " ").replace(/\s+/g, " ").trim();
+  if (!s || !/[a-z]/i.test(s)) return null;        // needs a street-ish token
+  return s;
+}
+
 /** Map a batch of raw lines to the public incidents, dropping the rest. */
 export function publicIncidents(rawLines: readonly string[]): PublicIncident[] {
   const out: PublicIncident[] = [];
