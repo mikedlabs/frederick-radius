@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { MapPin } from "lucide-react";
 import type { ScannerPatterns as Patterns, SpotCount } from "@/lib/scanner/scannerPatterns";
 
 /**
@@ -14,15 +16,34 @@ function to12h(h: number): string {
   return `${hour} ${period}`;
 }
 
+function SpotName({ spot }: { spot: SpotCount }) {
+  if (spot.lat === undefined || spot.lng === undefined) {
+    return (
+      <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: "var(--app-ink)" }}>
+        {spot.spot}
+      </span>
+    );
+  }
+  // Placeable spot → tap to open the map right on it (?at=lat,lng).
+  return (
+    <Link
+      href={`/map?at=${spot.lat.toFixed(5)},${spot.lng.toFixed(5)}`}
+      className="tap-44 group flex min-w-0 flex-1 items-center gap-1.5 text-[13px]"
+      style={{ color: "var(--app-ink)" }}
+    >
+      <span className="truncate underline-offset-2 group-hover:underline">{spot.spot}</span>
+      <MapPin className="h-3 w-3 shrink-0 opacity-40 transition group-hover:opacity-80" strokeWidth={2.25} aria-hidden />
+    </Link>
+  );
+}
+
 function SpotList({ spots, unit }: { spots: SpotCount[]; unit: string }) {
   const max = Math.max(...spots.map((s) => s.count), 1);
   return (
     <ul className="space-y-1.5">
       {spots.map((s) => (
         <li key={s.spot} className="flex items-center gap-3">
-          <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: "var(--app-ink)" }}>
-            {s.spot}
-          </span>
+          <SpotName spot={s} />
           <span
             aria-hidden
             className="hidden h-1.5 rounded-full sm:block"
@@ -93,8 +114,11 @@ export default function ScannerPatterns({ patterns }: { patterns: Patterns }) {
           className="rounded-[var(--app-radius-md)] border p-3.5"
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
-            Where crashes cluster
+          <p className="mb-2 flex items-baseline justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            <span>Where crashes cluster</span>
+            {crashSpots.some((s) => s.lat !== undefined) && (
+              <span style={{ color: "var(--app-ink-3)", fontWeight: 400, textTransform: "none" }}>Tap to map</span>
+            )}
           </p>
           <SpotList spots={crashSpots} unit="crashes" />
         </div>

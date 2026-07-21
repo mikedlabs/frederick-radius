@@ -22,12 +22,20 @@ import { gte } from "drizzle-orm";
 import { publicIncident, type PublicIncidentKind } from "@/lib/scanner/incidentFeed";
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
+import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** How far back the archive read reaches. A year of local memory is plenty. */
 const ARCHIVE_DAYS = 365;
 
-export type SpotCount = { spot: string; count: number };
+export type SpotCount = {
+  spot: string;
+  count: number;
+  /** Resolved through the county-gated geocoder so the spot can open on the
+   *  map. Absent when the road couldn't be placed (then it renders as text). */
+  lat?: number;
+  lng?: number;
+};
 export type KindCount = { kind: PublicIncidentKind; count: number };
 
 export type ScannerPatterns = {
@@ -257,13 +265,34 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
   };
 }
 
+/**
+ * Place each spot on the map via the shared county-gated geocoder (30-day
+ * cached, so recurring roads cost nothing after the first hit). A spot that
+ * can't be resolved simply keeps no coordinate and renders as plain text —
+ * never a wrong pin.
+ */
+async function geocodeSpots(spots: SpotCount[]): Promise<SpotCount[]> {
+  return Promise.all(
+    spots.map(async (s) => {
+      const coord = await geocodeAddressInCounty(s.spot).catch(() => null);
+      return coord ? { ...s, lat: coord.lat, lng: coord.lng } : s;
+    }),
+  );
+}
+
 async function fetchScannerPatterns(): Promise<ScannerPatterns> {
   // Prefer the archive — it's the only source that grows past the page's ~3
   // weeks. The backfill keeps it a superset of the page, so this isn't a union
   // (no double-count); the page is purely the bootstrap/fallback.
   const archive = await fetchArchiveRecords();
-  if (archive.length > 0) return aggregateRecords(archive);
-  return aggregateRecords(await fetchPageRecords());
+  const patterns = aggregateRecords(archive.length > 0 ? archive : await fetchPageRecords());
+
+  // Give the hotspots coordinates so each one can open on the map.
+  const [crashSpots, wireSpots] = await Promise.all([
+    geocodeSpots(patterns.crashSpots),
+    geocodeSpots(patterns.wireSpots),
+  ]);
+  return { ...patterns, crashSpots, wireSpots };
 }
 
 /** Public scanner patterns, cached hourly. Empty and honest when unreachable. */
