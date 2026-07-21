@@ -23,6 +23,7 @@ import { publicIncident, type PublicIncidentKind } from "@/lib/scanner/incidentF
 import { getDb } from "@/lib/db/client";
 import { scanner_incidents } from "@/lib/db/schema";
 import { geocodeAddressInCounty } from "@/lib/integrations/mapboxGeocode";
+import trafficCounts from "@/data/traffic-counts.json";
 
 const SOURCE_URL = "https://frederickscanner.com/fredscannerpro/tweets.html";
 /** How far back the archive read reaches. A year of local memory is plenty. */
@@ -37,6 +38,17 @@ export type SpotCount = {
   lng?: number;
 };
 export type KindCount = { kind: PublicIncidentKind; count: number };
+
+/** A crash hotspot the county has a traffic count for, so crashes can be read
+ *  against how many vehicles actually use the road. */
+export type TrafficAdjusted = {
+  spot: string;
+  count: number;
+  /** Vehicles per day, county count (most recent available). */
+  aadt: number;
+  /** Crashes per 1,000 vehicles/day — the rate the list is ranked by. */
+  per1k: number;
+};
 
 export type ScannerPatterns = {
   /** Distinct calendar days the window covers. */
@@ -53,6 +65,9 @@ export type ScannerPatterns = {
   byKind: KindCount[];
   /** Hour of day (0–23) crashes peak at, or null if none. */
   peakHour: number | null;
+  /** Crash hotspots the county has a traffic count for, ranked by crashes per
+   *  vehicle. Empty when no hotspot road matched a count. */
+  trafficAdjusted: TrafficAdjusted[];
 };
 
 const EMPTY: ScannerPatterns = {
@@ -63,7 +78,47 @@ const EMPTY: ScannerPatterns = {
   byHour: Array(24).fill(0),
   byKind: [],
   peakHour: null,
+  trafficAdjusted: [],
 };
+
+const TRAFFIC = trafficCounts as Record<string, number>;
+const ROAD_REPL: Record<string, string> = {
+  ROAD: "RD", STREET: "ST", AVENUE: "AVE", DRIVE: "DR", HIGHWAY: "HWY",
+  LANE: "LN", BOULEVARD: "BLVD", COURT: "CT", ROUTE: "RT",
+};
+/** Normalize a road name to the traffic-lookup key (same rules the bake used). */
+export function roadKey(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/@.*$/, "")
+    .replace(/\bBRIDGE\b/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => ROAD_REPL[w] ?? w)
+    .join(" ")
+    .trim();
+}
+
+/**
+ * Read the crash hotspots against county traffic counts: for each hotspot road
+ * we have a count for, crashes per 1,000 vehicles/day. Ranked by that rate, so
+ * a quieter road with the same crash load rises above a busy one. Intersections
+ * are skipped (a corridor count doesn't describe a junction), and a road with
+ * no county count simply doesn't appear — never a guessed volume.
+ */
+function trafficAdjusted(roads: { spot: string; count: number }[]): TrafficAdjusted[] {
+  const out: TrafficAdjusted[] = [];
+  for (const s of roads) {
+    if (s.count < 2) continue; // a rate needs more than a single crash
+    if (/\band\b/i.test(s.spot)) continue; // intersection, not a corridor
+    const aadt = TRAFFIC[roadKey(s.spot)];
+    if (!aadt || aadt <= 0) continue;
+    out.push({ spot: s.spot, count: s.count, aadt, per1k: Math.round((s.count / (aadt / 1000)) * 10) / 10 });
+  }
+  out.sort((a, b) => b.per1k - a.per1k);
+  return out.slice(0, 5);
+}
 
 /** Clock string like "7:23 pm" → hour of day 0–23, or null. */
 export function hourOf(clock: string): number | null {
@@ -262,6 +317,10 @@ function aggregateRecords(records: PatternRecord[]): ScannerPatterns {
     byHour,
     byKind,
     peakHour: byHour[peak] > 0 ? peak : null,
+    // Computed over EVERY crash road (not just the top-6 shown), so a quieter
+    // road with a bad crash-per-vehicle rate can surface even when it isn't a
+    // top hotspot by raw count.
+    trafficAdjusted: trafficAdjusted([...crashes.entries()].map(([spot, count]) => ({ spot, count }))),
   };
 }
 
