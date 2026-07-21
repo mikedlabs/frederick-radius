@@ -630,121 +630,104 @@ export default function MapDock(props: MapDockProps) {
         {/* ── The top control bar: search row + a Filters / view-toggle bar,
             pinned to the top of the map. ── */}
         <div className="dock-head">
-          {/* Search, folded in as the top row — the map's ONE search. */}
-          <div className="dock-search-wrap">
-            <div className="dock-search" role="search">
-              <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
-              <input
-                type="search"
-                value={props.q}
-                onChange={(e) => props.setQ(e.target.value)}
-                placeholder="Search this map"
-                aria-label="Search this map"
-                className="dock-search-input"
-              />
-              {props.q.trim().length > 0 ? (
-                <button
-                  type="button"
-                  className="dock-search-clear tap-44"
-                  onClick={() => props.setQ("")}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                </button>
-              ) : (
-                <span aria-hidden className="dock-search-kbd">Find</span>
+          {/* Row 1 — search plus two compact controls. More opens the
+              When/Where/Layers panel; the toggle flips map/list. Both stay OFF
+              the category row so the categories below get the full width. */}
+          <div className="dock-topline">
+            <div className="dock-search-wrap">
+              <div className="dock-search" role="search">
+                <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+                <input
+                  type="search"
+                  value={props.q}
+                  onChange={(e) => props.setQ(e.target.value)}
+                  placeholder="Search this map"
+                  aria-label="Search this map"
+                  className="dock-search-input"
+                />
+                {props.q.trim().length > 0 && (
+                  <button
+                    type="button"
+                    className="dock-search-clear tap-44"
+                    onClick={() => props.setQ("")}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  </button>
+                )}
+              </div>
+              {props.searchMatches.length > 0 && (
+                <ul className="dock-search-results">
+                  {props.searchMatches.map((r) => {
+                    const dot =
+                      r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                      : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                      : r.type === "action" ? "var(--app-brand, #E14328)"
+                      : "var(--app-ink-3, #7A828C)";
+                    return (
+                      <li key={r.id}>
+                        <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
+                          <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                          <span className="dock-search-result-text">
+                            <span className="dock-search-result-title">{r.title}</span>
+                            <span className="dock-search-result-sub">{r.subtitle}</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </div>
-            {props.searchMatches.length > 0 && (
-              <ul className="dock-search-results">
-                {props.searchMatches.map((r) => {
-                  const dot =
-                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
-                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
-                    : r.type === "action" ? "var(--app-brand, #E14328)"
-                    : "var(--app-ink-3, #7A828C)";
-                  return (
-                    <li key={r.id}>
-                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
-                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
-                        <span className="dock-search-result-text">
-                          <span className="dock-search-result-title">{r.title}</span>
-                          <span className="dock-search-result-sub">{r.subtitle}</span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* Row 2 — the always-visible category chip row (the primary
-              action: pick a kind of place in one tap). "All" clears the
-              intent; each chip writes the SAME ?intent= param as the Places
-              tab. More (the When/Where/Layers depth) + the map ↔ list toggle
-              pin to the right and never scroll. */}
-          <div className="dock-cats">
-            <div
-              className="dock-cats-scroll"
-              role="group"
-              aria-label="Kinds of places"
-            >
-              <Chip
-                on={!browse.intentKey}
-                onClick={() => pickIntent(null)}
-                count={browse.everythingCount}
-              >
-                All
-              </Chip>
-              {INTENTS.map((i) => (
-                <Chip
-                  key={i.key}
-                  on={browse.intentKey === i.key}
-                  color={i.color}
-                  onClick={() => pickIntent(i.key)}
-                  count={browse.intentCounts[i.key]}
-                  title={i.blurb}
-                >
-                  {i.label}
-                </Chip>
-              ))}
             </div>
             <button
               type="button"
-              className="dock-filters tap-44"
+              className="dock-icbtn tap-44"
               data-on={moreCount > 0 || undefined}
               aria-expanded={pane !== null}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
+              aria-label="More filters: when, where, and layers"
               onClick={toggleFilters}
             >
               <SlidersHorizontal className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-              More
-              {moreCount > 0 && <span className="dock-filters-n">{moreCount}</span>}
+              {moreCount > 0 && <span className="dock-icbtn-n">{moreCount}</span>}
             </button>
             <button
               type="button"
-              className="dock-viewtoggle tap-44"
+              className="dock-icbtn tap-44"
               aria-pressed={props.listView}
+              aria-label={props.listView ? "Show the map" : "Show the list"}
               onClick={() => {
                 haptic("light");
                 track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
                 props.onToggleList();
               }}
             >
-              {props.listView ? (
-                <>
-                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  Map
-                </>
-              ) : (
-                <>
-                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  List
-                </>
-              )}
+              {props.listView
+                ? <MapIcon className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                : <List className="h-4 w-4" strokeWidth={2.2} aria-hidden />}
             </button>
+          </div>
+
+          {/* Row 2 — the always-visible category row, now the full width of the
+              bar so the categories actually show. "All" clears the intent; each
+              chip writes the same ?intent= param as the Places tab. */}
+          <div className="dock-cats-scroll" role="group" aria-label="Kinds of places">
+            <Chip on={!browse.intentKey} onClick={() => pickIntent(null)} count={browse.everythingCount}>
+              All
+            </Chip>
+            {INTENTS.map((i) => (
+              <Chip
+                key={i.key}
+                on={browse.intentKey === i.key}
+                color={i.color}
+                onClick={() => pickIntent(i.key)}
+                count={browse.intentCounts[i.key]}
+                title={i.blurb}
+              >
+                {i.label}
+              </Chip>
+            ))}
           </div>
         </div>
 

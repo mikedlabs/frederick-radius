@@ -3134,37 +3134,76 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    the right and never scroll. Surfacing the categories here replaced the old
    single Filters button that buried them three taps deep (owner ask
    2026-07-21: the map "feels messy" / hard to use). */
-.dock-cats {
+/* Row 1 — search takes the room; More + the map/list toggle are compact
+   square icon buttons pinned to its right, OFF the category row so the
+   categories below can use the full width. */
+.dock-topline {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px;
 }
+.dock-topline .dock-search-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dock-icbtn {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-icbtn:active {
+  transform: scale(0.94);
+}
+.dock-icbtn[data-on],
+.dock-icbtn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
+  color: var(--app-brand-press);
+}
+.dock-icbtn-n {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--app-brand);
+  color: var(--app-on-brand);
+}
+/* Row 2 — the category row, now full width. A soft right-edge fade so it
+   reads as scrollable; masks use the gradient's ALPHA, so the opaque ink stop
+   means "fully shown" and the 22px band stays subtle. */
 .dock-cats-scroll {
   display: flex;
   align-items: center;
   gap: 7px;
-  flex: 1 1 auto;
-  min-width: 0;
+  padding: 0 8px 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  /* A soft right-edge fade so the row reads as scrollable: the last chip
-     dissolves into the head instead of being hard-clipped. Static (no scroll
-     listener) — masks use the gradient's ALPHA, so the opaque ink stop just
-     means "fully shown" and the small 24px band stays subtle. */
-  -webkit-mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
-  mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 22px), transparent);
 }
 .dock-cats-scroll::-webkit-scrollbar {
   display: none;
 }
 /* Chips hold their size; the row scrolls under them instead of wrapping. */
 .dock-cats-scroll > .dock-chip {
-  flex: 0 0 auto;
-}
-/* More + the view toggle keep their size at the row's right edge. */
-.dock-cats > .dock-filters,
-.dock-cats > .dock-viewtoggle {
   flex: 0 0 auto;
 }
 /* The Filters button — icon-led pill. Carries an active-filter count and a
@@ -3321,7 +3360,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-cats {
+  .dock-topline {
     flex: 1 1 auto;
     min-width: 0;
   }
