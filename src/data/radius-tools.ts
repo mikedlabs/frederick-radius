@@ -363,6 +363,15 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         keywords: ["playground", "play area"],
       },
       {
+        id: "emergency",
+        label: "Emergency & urgent care",
+        description: "Call 911, the county ER, urgent care, poison and crisis lines.",
+        href: "/emergency",
+        icon: "activity",
+        tone: "brand",
+        keywords: ["emergency", "911", "hospital", "emergency room", "ER", "urgent care", "poison control", "frederick health", "ambulance", "crisis"],
+      },
+      {
         id: "emergency-vet",
         label: "Emergency vet care",
         description: "Find listed emergency animal care and poison-help contacts.",
