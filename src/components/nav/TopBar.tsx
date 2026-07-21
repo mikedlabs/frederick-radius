@@ -210,9 +210,23 @@ export default function TopBar() {
               the logo and the right-side chips, Apple-Maps style.
               Tap anywhere on it opens the typeahead modal. */}
           {pageOwnsSearch ? (
-            // Spacer keeps the right cluster (pulse · Browse) on the right
-            // edge while the dock below owns search on this surface.
-            <div aria-hidden className="min-w-0 flex-1" />
+            pathname === "/map" ? (
+              // The map's search moved into the dock at the foot of the screen,
+              // which left this bar a lone disc over dead space. Name the
+              // territory here in one quiet line of the display serif so the
+              // header reads like a field-guide map sheet — a title, not a
+              // control (the disc beside it is the home button). flex-1 still
+              // pins the pulse · Compass cluster to the right edge.
+              <div className="ml-1 min-w-0 flex-1">
+                <span className="block truncate font-serif text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  Frederick County
+                </span>
+              </div>
+            ) : (
+              // Spacer keeps the right cluster (pulse · Browse) on the right
+              // edge while the dock below owns search on this surface.
+              <div aria-hidden className="min-w-0 flex-1" />
+            )
           ) : (
             <button
               type="button"
