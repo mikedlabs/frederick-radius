@@ -35,7 +35,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         name="q"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search Frederick County"
+        placeholder="Find places, events, towns, tools"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"

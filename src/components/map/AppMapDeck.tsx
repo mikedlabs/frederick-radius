@@ -68,7 +68,7 @@ export default function AppMapDeck({
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search this map…"
+              placeholder="Find coffee, a trail, a town"
               aria-label="Search this map"
               className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none"
               style={{ color: "var(--app-ink)" }}
