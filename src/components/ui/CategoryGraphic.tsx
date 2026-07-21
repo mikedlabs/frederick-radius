@@ -5,7 +5,7 @@ import {
   Library, Mountain, Music, Palette, ParkingCircle, PawPrint, Pill,
   Pizza, Recycle, ShieldCheck, ShoppingBag, Sparkles, Tent, Theater,
   ToyBrick, Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi,
-  Wine, Wrench, MapPin,
+  Wine, Wrench, MapPin, Scissors,
 } from "lucide-react";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 
@@ -38,6 +38,7 @@ const ICONS: Record<string, typeof Coffee> = {
   Mountain, Music, Palette, ParkingCircle, PawPrint, Pill, Pizza, Recycle,
   ShieldCheck, ShoppingBag, Sparkles, Tent, Theater, ToyBrick, Train,
   Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi, Wine, Wrench,
+  Scissors,
 };
 
 // Fallback palette for events / places with no matching category in
