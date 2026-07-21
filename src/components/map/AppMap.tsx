@@ -22,6 +22,7 @@ import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
 import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
 import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import type { OsmPlace } from "@/lib/integrations/overpass";
@@ -645,6 +646,14 @@ export default function AppMap({
     }
   };
   const [userLoc, setUserLoc] = useState<LngLat | null>(cachedPosition);
+  // Ranking fallback when there's no device fix: the saved home town's
+  // centroid. Privacy-free (client-local preference, no prompt), and it makes
+  // "closest to you first" true for home-town users who never shared location.
+  // Read once per mount — a home-town change lands on the next visit.
+  const homeCentroid = useMemo(() => {
+    const slug = getHomeMuni();
+    return slug ? MUNICIPALITIES.find((m) => m.slug === slug)?.centroid ?? null : null;
+  }, []);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
   const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? trailsLayerDefault);
@@ -908,8 +917,12 @@ export default function AppMap({
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
-  // Emit the curated places inside the current viewport (nearest-center
-  // first) whenever the map settles — drives the synced results list.
+  // Emit the curated places inside the current viewport whenever the map
+  // settles — drives the synced results list. Ranked nearest-FIRST from the
+  // reader's OWN location when we know it (a cached or granted fix — this is
+  // Radius, the closest thing to you leads), and nearest-to-map-center only as
+  // the fallback, so the top result is never an arbitrary place across a
+  // county-wide view.
   const emitInView = () => {
     if (!mapRef.current) return;
     const map = mapRef.current.getMap();
@@ -931,6 +944,11 @@ export default function AppMap({
     );
     if (!onPlacesInView) return;
     const c = map.getCenter();
+    // Rank from the reader's own fix when we have one (cached or granted),
+    // else their saved home town's centroid, else the map center. Squared-
+    // degree distance is enough to ORDER at county scale (same metric the
+    // center sort has always used).
+    const ref = userLoc ?? homeCentroid ?? { lng: c.lng, lat: c.lat };
     const inside = filteredPlaces
       .filter(
         (p) =>
@@ -941,7 +959,7 @@ export default function AppMap({
       )
       .map((p) => ({
         slug: p.slug,
-        d: (p.geom.lng - c.lng) ** 2 + (p.geom.lat - c.lat) ** 2,
+        d: (p.geom.lng - ref.lng) ** 2 + (p.geom.lat - ref.lat) ** 2,
       }))
       .sort((a, z) => a.d - z.d)
       .slice(0, 60)
@@ -2265,7 +2283,11 @@ export default function AppMap({
           {/* County boundary — the quiet always-on county edge (6.1).
               Committed static GIS polygon, drawn as an outline UNDER the
               municipal lines and pins so the map reads as a county field
-              guide. A touch heavier than the muni dashes, still calm. */}
+              guide. Colored in Spruce (brand-2 #16352B, "deep county green")
+              rather than warm ink-2 (#423E34), which read as a muddy brown line
+              at low opacity over the cream ground — an intentional green
+              territorial edge, not an accidental brown one. GL can't read CSS
+              vars, so the token value is inlined (documented paint exception). */}
           <Source
             id="county-boundary"
             type="geojson"
@@ -2276,9 +2298,9 @@ export default function AppMap({
               type="line"
               layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
-                "line-color": "#423E34",
+                "line-color": "#16352B",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 13, 2 ],
-                "line-opacity": 0.4,
+                "line-opacity": 0.45,
               }}
             />
           </Source>
@@ -2299,7 +2321,7 @@ export default function AppMap({
               paint={{
                 "line-color": "#5C5A50",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 13, 1.4],
-                "line-opacity": 0.35,
+                "line-opacity": 0.22,
                 "line-dasharray": [3, 2],
               }}
             />

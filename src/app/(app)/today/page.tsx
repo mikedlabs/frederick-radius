@@ -732,18 +732,23 @@ function ProgramRow({
  *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
  *  join the same chronological program as quiet rows. */
 async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
+  const { publicEvents, sourceHealth } = await eventsPromise;
   // (The overnight "First thing tomorrow" strip that used to live here grew into
   // its own composed TomorrowPreview beat above — top draw + weather look, gated
   // on the same "late" daypart — so the tomorrow answer isn't duplicated.)
   // The headliner itself renders ONCE, at page level (TonightHeadliner); this
   // section carries the rest of the program. Same derivation, same promise.
-  const { todayAll, ahead, feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
+  const { ahead, feature, upcomingRest, remainingAlsoToday, remainingEarlierToday } =
     deriveTodayProgram(publicEvents, now);
+  // "N events today" counts only what is still AHEAD (the headliner plus the
+  // forward program), never the draws that already wrapped up — those live in
+  // the collapsed "Earlier today" list and must not inflate the header count
+  // (the 7:55 PM audit: six ended library crafts made the count read "11" over
+  // ~3 visible rows). Dedupe the headliner's repeat feed occurrences.
   const featureDuplicateCount = feature
-    ? Math.max(0, todayAll.filter((event) => isSameTodayListing(event, feature)).length - 1)
+    ? Math.max(0, ahead.filter((event) => isSameTodayListing(event, feature)).length - 1)
     : 0;
-  const visibleTodayCount = todayAll.length - featureDuplicateCount;
+  const visibleTodayCount = ahead.length - featureDuplicateCount;
 
   // The day PROGRAM (replaced the unlabeled sideways rail + separate "Also
   // today" bucket, owner call 2026-07-15: "feels like a list with no
@@ -795,13 +800,33 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             : undefined
         }
       >
+        {/* Honest partial-data signal. assembleUnifiedEvents returns
+            sourceHealth so the UI never presents a set shrunk by a feed
+            timeout as a complete "quiet day" — the same contract /events
+            honors. When some calendar didn't answer, say so before the list,
+            and drop the completeness claims below. */}
+        {sourceHealth.degraded && (
+          <p
+            role="status"
+            className="mb-3 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-relaxed"
+            style={{
+              borderColor: "color-mix(in srgb, var(--app-warning) 35%, var(--app-border))",
+              background: "color-mix(in srgb, var(--app-warning) 7%, var(--app-bg-elevated))",
+              color: "var(--app-ink-2)",
+            }}
+          >
+            Some live calendars didn&rsquo;t answer, so today&rsquo;s list may be incomplete.
+          </p>
+        )}
         {upcomingRest.length > 0 || remainingAlsoToday.length > 0 || remainingEarlierToday.length > 0 ? (
           <div className="space-y-3">
             {/* ONE-HERO composition, part 2: the quiet-day truth. When no real
                 draw earned the page headline, say so plainly instead of
                 promoting a routine row into a fake hero; the quiet program
-                rows below and the week content further down carry the page. */}
-            {!feature && (
+                rows below and the week content further down carry the page.
+                Suppressed when sources are degraded — we can't call a day quiet
+                when a feed just failed to load. */}
+            {!feature && !sourceHealth.degraded && (
               <p className="px-0.5 pt-1 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                 It is a quiet {easternStartHour(now.toISOString()) >= 17 ? "night" : "day"} around here. The
                 week ahead is on the{" "}
@@ -867,7 +892,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             className="text-body py-4"
             style={{ color: "var(--app-ink-3)" }}
           >
-            No events are on the calendar today.{" "}
+            {/* Only an empty set we TRUST is stated as "no events." When the
+                feeds are degraded the banner above already explains the gap,
+                and this stays a neutral pointer instead of a false all-clear. */}
+            {sourceHealth.degraded
+              ? "Today's list may be incomplete. "
+              : "No events are on the calendar today. "}
             <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
               Browse all events
             </Link>

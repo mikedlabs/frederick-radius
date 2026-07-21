@@ -247,8 +247,13 @@ export default async function OpenNowPage() {
         <PlaceIndex sections={sections} />
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-          Nothing is confirmed open at this hour. Places with unverified posted
-          hours appear below; check before you go.
+          {/* Only promise the "below" list when it actually renders (likely
+              can be empty overnight or in a sparse scope). Otherwise point at
+              the map link that follows, so the copy never references a section
+              that isn't there. */}
+          {likely.length > 0
+            ? "Nothing is confirmed open at this hour. Places with unverified posted hours appear below; check before you go."
+            : "Nothing is confirmed open at this hour right now. Open the map to look for places nearby, or check back a little later."}
         </p>
       )}
 

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { TABS, tabIndexForPath } from "./tabs";
 
@@ -69,6 +70,37 @@ export default function BottomNav() {
   // precisely when the visitor is trying to verify it.
   if (pathname.startsWith("/ask")) return null;
 
+  // Find, at the nav's center (owner call 2026-07-21). History note: the old
+  // center "Mark" (+) was removed 2026-07-01 because a LOW-frequency action
+  // shouted louder than the answers. Find is the opposite case — the single
+  // highest-frequency intent in the app — which is what earns center
+  // prominence (frequency, not novelty; INTERACTION_CRAFT rule 4). It opens
+  // the ONE global search overlay via the existing fr:open-search bridge
+  // (TopBar's listener is unconditional, so this works on /map and /search
+  // too) — no second search implementation.
+  const findCell = (
+    <li key="find" className="flex items-center justify-center">
+      <button
+        type="button"
+        aria-label="Find places, events, towns, tools"
+        aria-haspopup="dialog"
+        onClick={() => {
+          haptic("light");
+          window.dispatchEvent(new CustomEvent("fr:open-search"));
+        }}
+        className="grid h-11 w-11 place-items-center rounded-full transition-transform active:scale-[0.92]"
+        style={{
+          background: "linear-gradient(155deg, var(--app-brand), var(--app-brand-press))",
+          color: "var(--app-on-brand)",
+          boxShadow:
+            "0 6px 14px -6px color-mix(in srgb, var(--app-brand) 55%, transparent), inset 0 1px 0 rgba(255,255,255,0.25)",
+        }}
+      >
+        <Search width={20} height={20} strokeWidth={2.4} aria-hidden />
+      </button>
+    </li>
+  );
+
   return (
     <div
       // Hide the floating bottom pill at lg+ where the SideRail takes
@@ -133,7 +165,7 @@ export default function BottomNav() {
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-4 px-1.5 py-1.5"
+          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
         >
           {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =
@@ -209,13 +241,16 @@ export default function BottomNav() {
               </li>
             );
 
-            // The prominent center "Mark" (+) action was removed from the nav
-            // (2026-07-01, owner call): reporting is a low-frequency action, and
-            // the bright center cell shouted louder than the real answers while
-            // making the 4-tab nav read as a lopsided 5. "Mark a spot" now lives
-            // where a spot actually exists — a contextual FAB on /map — and in
-            // the Explore ("More") sheet. The nav is the clean 4 tabs again.
-            return cell;
+            // Find rides the center slot, between Map and Events (the findCell
+            // comment above carries the why + the Mark-removal history).
+            return idx === 1 ? (
+              <Fragment key={href}>
+                {cell}
+                {findCell}
+              </Fragment>
+            ) : (
+              cell
+            );
           })}
         </ul>
       </nav>

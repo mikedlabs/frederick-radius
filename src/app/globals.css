@@ -2970,6 +2970,121 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-top: 4px;
 }
 
+/* Category grid — the Places pane's "whole guide at a glance": every intent as
+   a tile (icon chip + label + count), grouped by family. Color per tile via
+   --c; a lit tile tints toward its color. Two columns; each tile clears 44px. */
+/* Most-needed shortcuts: a wrap of one-tap need chips (icon medallion + label)
+   above the category grid — categories, the everyday amenities, open-now and
+   near-me together, so the common answer never needs a tab. Color per chip. */
+.dock-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.dock-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 13px 0 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--c) 22%, var(--app-border));
+  background: color-mix(in srgb, var(--c) 6%, var(--app-bg-elevated));
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-need:active {
+  transform: scale(0.97);
+}
+.dock-need-ic {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  color: #fff;
+  background: var(--c);
+}
+.dock-need[data-on] {
+  background: color-mix(in srgb, var(--c) 16%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--c) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent);
+}
+
+.dock-cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+/* Poster tile: a category-tinted gradient ground, a large low-opacity
+   watermark of the category's icon bleeding off the top-right corner, and the
+   label + count layered in front — the same field-guide treatment as the Today
+   shelf, so a category reads by color and mark before you read the word. */
+.dock-cat {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 78px;
+  padding: 11px 13px;
+  border-radius: var(--app-radius-md, 14px);
+  border: 1px solid color-mix(in srgb, var(--c) 20%, var(--app-border));
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--c) 15%, var(--app-bg-elevated)),
+    color-mix(in srgb, var(--c) 4%, var(--app-bg-elevated))
+  );
+  text-align: left;
+  transition: transform 0.1s, box-shadow 0.18s, border-color 0.18s, background 0.18s;
+}
+.dock-cat:active {
+  transform: scale(0.98);
+}
+.dock-cat[data-on] {
+  border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, transparent),
+    0 10px 22px -13px color-mix(in srgb, var(--c) 65%, transparent);
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--c) 28%, var(--app-bg-elevated)),
+    color-mix(in srgb, var(--c) 10%, var(--app-bg-elevated))
+  );
+}
+.dock-cat-art {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  color: var(--c);
+  opacity: 0.16;
+  pointer-events: none;
+  transform: rotate(-8deg);
+}
+.dock-cat[data-on] .dock-cat-art {
+  opacity: 0.26;
+}
+.dock-cat-t {
+  position: relative;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--app-ink);
+  line-height: 1.1;
+}
+.dock-cat-n {
+  position: relative;
+  margin-top: 3px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--c) 55%, var(--app-ink-2));
+  font-variant-numeric: tabular-nums;
+}
+
 /* Chips. Color arrives per-chip via --c; lit chips fill with it. The
    .tap-44-y extender keeps every ≤44px chip honest about its target. */
 .dock-chips {
@@ -3137,99 +3252,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* Row 1 — search takes the room; More + the map/list toggle are compact
    square icon buttons pinned to its right, OFF the category row so the
    categories below can use the full width. */
-.dock-topline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-}
-.dock-topline .dock-search-wrap {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.dock-icbtn {
-  position: relative;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--app-radius-md);
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-ink-2);
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-icbtn:active {
-  transform: scale(0.94);
-}
-.dock-icbtn[data-on],
-.dock-icbtn[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
-  color: var(--app-brand-press);
-}
-.dock-icbtn-n {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  font-weight: 700;
-  line-height: 1;
-  border-radius: 999px;
-  background: var(--app-brand);
-  color: var(--app-on-brand);
-}
-/* Row 2 — the category row, now full width. A soft right-edge fade so it
-   reads as scrollable; masks use the gradient's ALPHA, so the opaque ink stop
-   means "fully shown" and the 22px band stays subtle. */
-.dock-cats-scroll {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 8px 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 22px), transparent);
-  mask-image: linear-gradient(to right, var(--app-ink) calc(100% - 22px), transparent);
-}
-.dock-cats-scroll::-webkit-scrollbar {
-  display: none;
-}
-/* Chips hold their size; the row scrolls under them instead of wrapping. */
-.dock-cats-scroll > .dock-chip {
-  flex: 0 0 auto;
-}
-/* The Filters button — icon-led pill. Carries an active-filter count and a
-   soft brand tint when any filter is on. */
-.dock-filters {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-ink);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-filters:active {
-  transform: scale(0.97);
-}
-.dock-filters[data-on] {
-  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--app-brand) 45%, var(--app-border));
-  color: var(--app-brand-press);
-}
+/* (The old horizontal chip-scroll strip, its "More"/Filters pill, and main's
+   parallel dock-topline/icbtn row experiment were all replaced by the single
+   Browse-places door; their styles are gone. .dock-filters-n survives as the
+   door's active-filter count badge.) */
 .dock-filters-n {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 10.5px;
@@ -3239,6 +3265,61 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   background: color-mix(in srgb, var(--app-brand) 16%, var(--app-bg-elevated));
   color: var(--app-brand-press);
+}
+
+/* The single "Browse places" door: fills the row (view toggle pins right) and
+   shows the active category — a color dot, its label, and count — or a grid
+   icon + "Browse places" when nothing is filtered. Opens the grouped category
+   grid, so the whole guide is one tap away without a cramped scrolling strip. */
+.dock-cats > .dock-browse {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dock-cats > .dock-viewtoggle {
+  flex: 0 0 auto;
+}
+.dock-browse {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-ink);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-browse:active {
+  transform: scale(0.99);
+}
+.dock-browse[data-on] {
+  background: color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated));
+  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
+}
+.dock-browse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex: none;
+}
+.dock-browse-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.dock-browse-n {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-ink-3);
+  font-variant-numeric: tabular-nums;
+  flex: none;
 }
 
 /* The panel's sub-tabs (Places · When · Where · Layers) + the Done button,
@@ -3359,10 +3440,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     height: 52px;
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
-  }
-  .dock-topline {
-    flex: 1 1 auto;
-    min-width: 0;
   }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {

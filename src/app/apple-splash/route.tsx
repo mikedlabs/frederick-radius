@@ -13,9 +13,10 @@ export const dynamic = "force-static";
  * are a follow-up. Android needs none of this — it composits its own splash
  * from the manifest `background_color` + maskable icon.
  *
- * The art is the app mark (spruce tile, cream ring, vermilion dot — the same
- * icon you tap) centered on the paper-cream ground, with the wordmark below,
- * so the launch reads as the light field guide, not a blank flash.
+ * The art is the app mark — the Ripple (concentric half-arcs rising from a
+ * point, brick tile, paper strokes; brand handoff 2026-07-21, mark 4A) — the
+ * same icon you tap, centered on the paper-cream ground with the wordmark
+ * below, so the launch reads as the light field guide, not a blank flash.
  */
 export function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,9 +26,6 @@ export function GET(request: Request) {
   // Scale the mark to the shorter edge so portrait + landscape both center well.
   const short = Math.min(width, height);
   const tile = Math.round(short * 0.34);
-  const ring = Math.round(tile * 0.42);
-  const ringStroke = Math.round(tile * 0.1);
-  const dot = Math.round(tile * 0.16);
 
   return new ImageResponse(
     (
@@ -50,23 +48,20 @@ export function GET(request: Request) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#16352B",
-            borderRadius: Math.round(tile * 0.22),
+            background: "#B5462B",
+            borderRadius: Math.round(tile * 0.233),
+            overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              width: ring,
-              height: ring,
-              borderRadius: 9999,
-              border: `${ringStroke}px solid #EEE6D4`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div style={{ width: dot, height: dot, borderRadius: 9999, background: "#E14328" }} />
-          </div>
+          {/* The Ripple, exact handoff geometry on the 100-grid. */}
+          <svg viewBox="0 0 100 100" width={tile} height={tile}>
+            <g fill="none" stroke="#F4EEE2" strokeLinecap="round" strokeWidth={4}>
+              <path d="M31 78 A 19 19 0 0 1 69 78" strokeOpacity={0.95} />
+              <path d="M15 78 A 35 35 0 0 1 85 78" strokeOpacity={0.55} />
+              <path d="M-1 78 A 51 51 0 0 1 101 78" strokeOpacity={0.28} />
+            </g>
+            <circle cx="50" cy="78" r="8" fill="#F4EEE2" />
+          </svg>
         </div>
         <div
           style={{

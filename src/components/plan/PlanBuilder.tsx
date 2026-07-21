@@ -712,7 +712,7 @@ function PlannerFields({
           <select
             value={area}
             onChange={(event) => onAreaChange(event.target.value)}
-            className="min-h-11 min-w-0 flex-1 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+            className="min-h-11 min-w-0 flex-1 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ color: "var(--app-ink)" }}
             aria-label="Planning area"
           >
@@ -739,7 +739,7 @@ function PlannerFields({
           id="plan-start"
           value={startMode}
           onChange={(event) => onStartModeChange(event.target.value as StartMode)}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="Start time"
         >
@@ -766,7 +766,7 @@ function PlannerFields({
           id="plan-audience"
           value={audience}
           onChange={(event) => onAudienceChange(event.target.value as PlanInputs["audience"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="Who is going"
         >
@@ -779,7 +779,7 @@ function PlannerFields({
           id="plan-focus"
           value={vibe}
           onChange={(event) => onVibeChange(event.target.value as PlanInputs["vibe"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="What matters most"
         >
@@ -792,7 +792,7 @@ function PlannerFields({
           id="plan-duration"
           value={hours}
           onChange={(event) => onHoursChange(Number(event.target.value) as PlanInputs["duration_hours"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none"
+          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="Time available"
         >

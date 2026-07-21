@@ -388,7 +388,7 @@ export default function SearchOverlay({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Frederick County"
+            placeholder="Find places, events, towns, tools"
             aria-label="Search"
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a

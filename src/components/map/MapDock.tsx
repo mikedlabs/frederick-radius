@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clock, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Search as SearchIcon, SlidersHorizontal, Tag, X, Zap } from "lucide-react";
+import { Baby, Beer, Car, Church, Clock, Coffee, Droplets, Heart, Hotel, Landmark, LayoutGrid, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
+import { orderNeedsForHour } from "./needsOrder";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import type { BrowseDockInfo } from "./types";
 import type { LngLat } from "@/lib/geo";
@@ -24,6 +25,48 @@ import {
 } from "./dockCaption";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
+
+/** One Lucide component per intent icon key, so the Places grid renders an
+ *  icon per category straight from the shared INTENTS registry. */
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Coffee, Utensils, Wine, Beer, Trees, Baby, Palette, Heart, Landmark, ShoppingBag, Hotel, Church,
+};
+
+/** The 12 intents, grouped the way a resident thinks about them, so the Places
+ *  pane shows the WHOLE guide at a glance instead of one chip behind "More".
+ *  Order/keys mirror @/data/intents; a new intent must be added to a family
+ *  here (a missing key just won't appear in the grid). */
+const CATEGORY_FAMILIES: ReadonlyArray<{ label: string; keys: string[] }> = [
+  { label: "Food & drink", keys: ["coffee", "eat", "breweries", "wineries"] },
+  { label: "Outdoors & active", keys: ["outdoor", "family"] },
+  { label: "Culture & community", keys: ["arts", "faith"] },
+  { label: "Everyday & services", keys: ["wellness", "shop", "civic", "stay"] },
+];
+
+type MapNeed =
+  | { kind: "intent"; key: string; label: string; Icon: LucideIcon; color: string }
+  | { kind: "amenity"; key: string; label: string; Icon: LucideIcon; color: string }
+  | { kind: "opennow"; label: string; Icon: LucideIcon; color: string }
+  | { kind: "nearme"; label: string; Icon: LucideIcon; color: string }
+  | { kind: "parking"; label: string; Icon: LucideIcon; color: string };
+
+/** The handful of things most people open the map to find, surfaced as one-tap
+ *  shortcuts ABOVE the full category grid. Mixes categories, the everyday
+ *  amenities (restrooms, water, Wi-Fi, parking), open-now and near-me — so the
+ *  common answer is instant, and a restroom is one tap, not four taps buried in
+ *  a "Layers" tab. Colors are inlined intent/token hues (GL-paint parity). */
+const TOP_NEEDS: ReadonlyArray<MapNeed> = [
+  { kind: "opennow", label: "Open now", Icon: Clock, color: "#1E6B3A" },
+  { kind: "nearme", label: "Near me", Icon: LocateFixed, color: "#20506A" },
+  { kind: "intent", key: "coffee", label: "Coffee", Icon: Coffee, color: "#8B5A2B" },
+  { kind: "intent", key: "eat", label: "Food", Icon: Utensils, color: "#A03A22" },
+  { kind: "amenity", key: "restroom", label: "Restrooms", Icon: Toilet, color: "#20506A" },
+  { kind: "parking", label: "Parking", Icon: Car, color: "#20506A" },
+  { kind: "intent", key: "outdoor", label: "Parks", Icon: Trees, color: "#1E6B3A" },
+  { kind: "amenity", key: "wifi", label: "Wi-Fi", Icon: Wifi, color: "#20506A" },
+  { kind: "amenity", key: "water", label: "Water", Icon: Droplets, color: "#20506A" },
+  { kind: "intent", key: "family", label: "Kids", Icon: Baby, color: "#C99632" },
+];
 
 /** The four filter groups, now the panel's sub-tabs. What is purely KINDS
  *  OF PLACES; the map drapes (trails, transit, aerial, …) and the Yours
@@ -259,7 +302,24 @@ export default function MapDock(props: MapDockProps) {
   const sp = useSearchParams();
 
   const [pane, setPane] = useState<Pane | null>(null);
-  const [amenExpanded, setAmenExpanded] = useState(() => props.amenityGroups.size > 0);
+  // Time-aware needs: lead with what this hour most likely needs (Eastern),
+  // computed once per mount. The Open now / Near me anchors never move — only
+  // the content tail reorders — so habits can form on the top controls.
+  const [needsNow] = useState(() => {
+    let hour: number;
+    try {
+      hour = Number(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          hour: "numeric",
+          hourCycle: "h23",
+        }).format(new Date()),
+      );
+    } catch {
+      hour = new Date().getHours();
+    }
+    return orderNeedsForHour(TOP_NEEDS, hour);
+  });
   // The Layers tab's Key grid is collapsed by default so the panel stays a
   // low strip; one small chip reveals it.
   const [keyOpen, setKeyOpen] = useState(false);
@@ -540,7 +600,6 @@ export default function MapDock(props: MapDockProps) {
     props.onAerialSeason("all");
     props.setScrubHour(null);
     for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
-    setAmenExpanded(false);
     setWhereSel({ kind: "county" });
     setScope("county");
     setPane(null);
@@ -552,9 +611,10 @@ export default function MapDock(props: MapDockProps) {
     restoreRef.current?.focus?.();
   };
   // The "More" button: open the panel when closed, close it when any tab is
-  // open. Opens to the When tab now that the categories (the Places tab's
-  // headline) are surfaced as the top-row chip row — More is the shortcut to
-  // the depth that is NOT already on screen.
+  // open. Opens to the Places tab — the grouped category grid — because the
+  // top-row chip strip only fits a couple of categories before the rest scroll
+  // out of view, so "the whole guide at a glance" has to live one obvious tap
+  // away. When/Where/Layers are a tab away inside the same panel.
   const toggleFilters = () => {
     haptic("light");
     if (pane !== null) {
@@ -562,7 +622,7 @@ export default function MapDock(props: MapDockProps) {
       return;
     }
     restoreRef.current = document.activeElement as HTMLElement | null;
-    setPane("when");
+    setPane("what");
   };
   // Switch sub-tabs while the panel stays open (the trigger to restore was
   // captured on the original open).
@@ -614,6 +674,29 @@ export default function MapDock(props: MapDockProps) {
     : pane === "layers" ? "Map layers"
     : "";
 
+  // The Most-needed shortcuts unify categories, amenities, open-now and near-me
+  // under "what do you need", so the common answer never requires tab-hopping.
+  const isNeedOn = (n: MapNeed): boolean =>
+    n.kind === "intent" ? browse.intentKey === n.key
+    : n.kind === "amenity" ? props.amenityGroups.has(n.key)
+    : n.kind === "opennow" ? browse.openNow
+    : n.kind === "parking" ? props.showParking
+    : whereSel.kind === "nearme";
+  const runNeed = (n: MapNeed) => {
+    haptic("light");
+    if (n.kind === "intent") pickIntent(browse.intentKey === n.key ? null : n.key);
+    else if (n.kind === "opennow") toggleOpenNow();
+    else if (n.kind === "nearme") props.goNearMe();
+    else if (n.kind === "parking") props.setShowParking((v) => !v);
+    else
+      props.setAmenityGroups((prev) => {
+        const next = new Set(prev);
+        if (next.has(n.key)) next.delete(n.key);
+        else next.add(n.key);
+        return next;
+      });
+  };
+
   return (
     <>
       {/* Scrim — dims the map; a tap closes the open panel. */}
@@ -630,104 +713,117 @@ export default function MapDock(props: MapDockProps) {
         {/* ── The top control bar: search row + a Filters / view-toggle bar,
             pinned to the top of the map. ── */}
         <div className="dock-head">
-          {/* Row 1 — search plus two compact controls. More opens the
-              When/Where/Layers panel; the toggle flips map/list. Both stay OFF
-              the category row so the categories below get the full width. */}
-          <div className="dock-topline">
-            <div className="dock-search-wrap">
-              <div className="dock-search" role="search">
-                <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
-                <input
-                  type="search"
-                  value={props.q}
-                  onChange={(e) => props.setQ(e.target.value)}
-                  placeholder="Search this map"
-                  aria-label="Search this map"
-                  className="dock-search-input"
-                />
-                {props.q.trim().length > 0 && (
-                  <button
-                    type="button"
-                    className="dock-search-clear tap-44"
-                    onClick={() => props.setQ("")}
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  </button>
-                )}
-              </div>
-              {props.searchMatches.length > 0 && (
-                <ul className="dock-search-results">
-                  {props.searchMatches.map((r) => {
-                    const dot =
-                      r.type === "event" ? "var(--app-brand-2, #2F5D50)"
-                      : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
-                      : r.type === "action" ? "var(--app-brand, #E14328)"
-                      : "var(--app-ink-3, #7A828C)";
-                    return (
-                      <li key={r.id}>
-                        <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
-                          <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
-                          <span className="dock-search-result-text">
-                            <span className="dock-search-result-title">{r.title}</span>
-                            <span className="dock-search-result-sub">{r.subtitle}</span>
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+          {/* Search, folded in as the top row — the map's ONE search. */}
+          <div className="dock-search-wrap">
+            <div className="dock-search" role="search">
+              <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+              <input
+                type="search"
+                value={props.q}
+                onChange={(e) => props.setQ(e.target.value)}
+                // The placeholder is the manual: concrete examples teach the
+                // box's range (categories, outdoors, towns) at the exact
+                // moment the eye is on it. No questions promised here — the
+                // Ask handoff isn't wired to this box, and a signifier must
+                // not overpromise.
+                placeholder="Find coffee, a trail, a town"
+                aria-label="Search this map"
+                className="dock-search-input"
+              />
+              {props.q.trim().length > 0 ? (
+                <button
+                  type="button"
+                  className="dock-search-clear tap-44"
+                  onClick={() => props.setQ("")}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                </button>
+              ) : (
+                <span aria-hidden className="dock-search-kbd">Find</span>
               )}
             </div>
+            {props.searchMatches.length > 0 && (
+              <ul className="dock-search-results">
+                {props.searchMatches.map((r) => {
+                  const dot =
+                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                    : r.type === "action" ? "var(--app-brand, #E14328)"
+                    : "var(--app-ink-3, #7A828C)";
+                  return (
+                    <li key={r.id}>
+                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
+                        <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
+                        <span className="dock-search-result-text">
+                          <span className="dock-search-result-title">{r.title}</span>
+                          <span className="dock-search-result-sub">{r.subtitle}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* Row 2 — the always-visible category chip row (the primary
+              action: pick a kind of place in one tap). "All" clears the
+              intent; each chip writes the SAME ?intent= param as the Places
+              tab. More (the When/Where/Layers depth) + the map ↔ list toggle
+              pin to the right and never scroll. */}
+          <div className="dock-cats">
+            {/* One clear door to the whole guide. Shows the current filter (or
+                "Browse places") and opens the grouped category grid — replacing
+                the horizontal chip strip that only fit a couple of the twelve
+                categories on a phone before the rest scrolled out of sight. */}
             <button
               type="button"
-              className="dock-icbtn tap-44"
-              data-on={moreCount > 0 || undefined}
+              className="dock-browse tap-44"
+              data-on={pane === "what" || Boolean(intent) || undefined}
               aria-expanded={pane !== null}
               aria-controls="dock-pane"
               aria-haspopup="dialog"
-              aria-label="More filters: when, where, and layers"
               onClick={toggleFilters}
             >
-              <SlidersHorizontal className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-              {moreCount > 0 && <span className="dock-icbtn-n">{moreCount}</span>}
+              {intent ? (
+                <>
+                  <span aria-hidden className="dock-browse-dot" style={{ background: intent.color }} />
+                  <span className="dock-browse-label">{intent.label}</span>
+                  <span className="dock-browse-n">
+                    {(browse.intentCounts[intent.key] ?? 0).toLocaleString("en-US")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+                  <span className="dock-browse-label">Browse places</span>
+                </>
+              )}
+              {moreCount > 0 && <span className="dock-filters-n">{moreCount}</span>}
             </button>
             <button
               type="button"
-              className="dock-icbtn tap-44"
+              className="dock-viewtoggle tap-44"
               aria-pressed={props.listView}
-              aria-label={props.listView ? "Show the map" : "Show the list"}
               onClick={() => {
                 haptic("light");
                 track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
                 props.onToggleList();
               }}
             >
-              {props.listView
-                ? <MapIcon className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                : <List className="h-4 w-4" strokeWidth={2.2} aria-hidden />}
+              {props.listView ? (
+                <>
+                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  Map
+                </>
+              ) : (
+                <>
+                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+                  List
+                </>
+              )}
             </button>
-          </div>
-
-          {/* Row 2 — the always-visible category row, now the full width of the
-              bar so the categories actually show. "All" clears the intent; each
-              chip writes the same ?intent= param as the Places tab. */}
-          <div className="dock-cats-scroll" role="group" aria-label="Kinds of places">
-            <Chip on={!browse.intentKey} onClick={() => pickIntent(null)} count={browse.everythingCount}>
-              All
-            </Chip>
-            {INTENTS.map((i) => (
-              <Chip
-                key={i.key}
-                on={browse.intentKey === i.key}
-                color={i.color}
-                onClick={() => pickIntent(i.key)}
-                count={browse.intentCounts[i.key]}
-                title={i.blurb}
-              >
-                {i.label}
-              </Chip>
-            ))}
           </div>
         </div>
 
@@ -814,47 +910,115 @@ export default function MapDock(props: MapDockProps) {
               )}
             </div>
 
-            {/* ── PLACES — kinds of places only ── */}
+            {/* ── PLACES — the whole guide at a glance: every category, grouped
+                the way a resident thinks about them, one tap to filter the map.
+                Replaces the flat iconless chip wrap (and the top-row scroll that
+                only fit a couple) so the range of the guide is finally visible. */}
             {pane === "what" && (
               <div>
-                <Sect>Kinds of places</Sect>
-                <div className="dock-chips">
-                  <Chip on={!intent} onClick={() => pickIntent(null)} count={browse.everythingCount}>
-                    Everything
-                  </Chip>
-                  {INTENTS.map((i) => (
-                    <Chip
-                      key={i.key}
-                      on={browse.intentKey === i.key}
-                      color={i.color}
-                      onClick={() => pickIntent(i.key)}
-                      count={browse.intentCounts[i.key]}
-                      title={i.blurb}
-                    >
-                      {i.label}
-                    </Chip>
-                  ))}
+                <Sect>Most needed</Sect>
+                <div className="dock-needs">
+                  {needsNow.map((n) => {
+                    const on = isNeedOn(n);
+                    return (
+                      <button
+                        key={n.kind + ("key" in n ? n.key : n.label)}
+                        type="button"
+                        className="dock-need"
+                        data-on={on || undefined}
+                        aria-pressed={on}
+                        onClick={() => runNeed(n)}
+                        style={{ "--c": n.color } as React.CSSProperties}
+                      >
+                        <span aria-hidden className="dock-need-ic">
+                          <n.Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                        </span>
+                        {n.label}
+                      </button>
+                    );
+                  })}
                 </div>
+                {CATEGORY_FAMILIES.map((fam) => (
+                  <div key={fam.label}>
+                    <Sect>{fam.label}</Sect>
+                    <div className="dock-cat-grid">
+                      {fam.keys.map((k) => {
+                        const it = INTENTS.find((i) => i.key === k);
+                        if (!it) return null;
+                        const Icon = CATEGORY_ICONS[it.icon] ?? Tag;
+                        const on = browse.intentKey === it.key;
+                        return (
+                          <button
+                            key={it.key}
+                            type="button"
+                            className="dock-cat"
+                            data-on={on || undefined}
+                            aria-pressed={on}
+                            title={it.blurb}
+                            onClick={() => pickIntent(on ? null : it.key)}
+                            style={{ "--c": it.color } as React.CSSProperties}
+                          >
+                            <span aria-hidden className="dock-cat-art">
+                              <Icon className="h-16 w-16" strokeWidth={1.5} />
+                            </span>
+                            <span className="dock-cat-t">{it.label}</span>
+                            <span className="dock-cat-n">
+                              {(browse.intentCounts[it.key] ?? 0).toLocaleString("en-US")} places
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
                 {intent?.subIntents && intent.subIntents.length > 0 && (
-                  <HeadRow
-                    color={intent.color}
-                    ariaLabel={`Narrow ${intent.label}`}
-                    onPick={(k) => pickSub(k === "" ? null : k)}
-                    items={[
-                      {
-                        key: "",
-                        label: "All",
-                        count: browse.intentCounts[intent.key],
-                        on: !browse.subKey,
-                      },
-                      ...intent.subIntents.map((s) => ({
-                        key: s.key,
-                        label: s.label,
-                        count: browse.subCounts[s.key],
-                        on: browse.subKey === s.key,
-                      })),
-                    ]}
-                  />
+                  <>
+                    <Sect>Narrow {intent.label}</Sect>
+                    <HeadRow
+                      color={intent.color}
+                      ariaLabel={`Narrow ${intent.label}`}
+                      onPick={(k) => pickSub(k === "" ? null : k)}
+                      items={[
+                        {
+                          key: "",
+                          label: "All",
+                          count: browse.intentCounts[intent.key],
+                          on: !browse.subKey,
+                        },
+                        ...intent.subIntents.map((s) => ({
+                          key: s.key,
+                          label: s.label,
+                          count: browse.subCounts[s.key],
+                          on: browse.subKey === s.key,
+                        })),
+                      ]}
+                    />
+                  </>
+                )}
+                {/* Public amenities live here, in the find-flow — a restroom is
+                    a thing you need, not a map drape. The everyday ones are also
+                    up in "Most needed"; this is the complete, de-nested set. */}
+                {props.amenityCount > 0 && (
+                  <>
+                    <Sect>Public amenities</Sect>
+                    <HeadRow
+                      color="var(--app-cool)"
+                      ariaLabel="Public amenities"
+                      onPick={(k) =>
+                        props.setAmenityGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(k)) next.delete(k);
+                          else next.add(k);
+                          return next;
+                        })
+                      }
+                      items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
+                        key: g.key,
+                        label: g.label,
+                        on: props.amenityGroups.has(g.key),
+                      }))}
+                    />
+                  </>
                 )}
               </div>
             )}
@@ -978,23 +1142,11 @@ export default function MapDock(props: MapDockProps) {
                 from the old bottom-left tray. ── */}
             {pane === "layers" && (
               <div>
+                {/* Map drapes + conditions only. Public amenities (restrooms,
+                    water, Wi-Fi, …) moved to the Places tab, where finding one
+                    is a first-class action rather than a layer toggle. */}
                 <Sect>Map layers</Sect>
                 <div className="dock-chips">
-                  {props.amenityCount > 0 && (
-                    <Chip
-                      on={props.amenityGroups.size > 0}
-                      color="var(--app-cool)"
-                      onClick={() => setAmenExpanded((v) => !v)}
-                      ariaExpanded={amenExpanded}
-                      count={props.amenityGroups.size > 0 ? props.amenityGroups.size : null}
-                      title="Amenities: restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water"
-                    >
-                      Amenities
-                      <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>
-                        {amenExpanded ? "▲" : "▼"}
-                      </span>
-                    </Chip>
-                  )}
                   {props.civicAvailable && (
                     <Chip
                       on={props.showCivic}
@@ -1118,27 +1270,6 @@ export default function MapDock(props: MapDockProps) {
                     Radar as of <span className="font-mono">{radarClock}</span> Eastern.
                     Frames arrive a few minutes behind real time.
                   </p>
-                )}
-                {amenExpanded && props.amenityCount > 0 && (
-                  <HeadRow
-                    color="var(--app-cool)"
-                    ariaLabel="Amenity kinds"
-                    onPick={(k) =>
-                      props.setAmenityGroups((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(k)) next.delete(k);
-                        else next.add(k);
-                        return next;
-                      })
-                    }
-                    items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
-                      key: g.key,
-                      label: g.label,
-                      on: props.amenityGroups.has(g.key),
-                      disabled: g.comingSoon === true,
-                      soon: g.comingSoon === true,
-                    }))}
-                  />
                 )}
                 {props.showAerial && (
                   <HeadRow

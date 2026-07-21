@@ -242,7 +242,7 @@ export default function TopBar() {
                   them concatenated ("What's open?What's open right now?").
                   The button's aria-label is the accessible name; this text
                   is decorative. */}
-              <span className="truncate text-left">Search Frederick County</span>
+              <span className="truncate text-left">Find places, events, towns, tools</span>
               <kbd
                 className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}

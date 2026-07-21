@@ -35,7 +35,11 @@ export const MUNICIPALITIES: Municipality[] = [
     // This scope covers the full municipality, including west-side shopping
     // centers. Calling it "Downtown" made distant results look incorrectly
     // scoped; true downtown discovery is handled by location/radius context.
-    name: "Frederick",
+    // "Frederick City" (owner call 2026-07-21): in a guide named for the
+    // COUNTY, a bare "Frederick" chip read ambiguously — city vs county.
+    // The postal city on addresses stays "Frederick" (place.city), and the
+    // passport stamp keeps the short title (stamps.ts special-cases it).
+    name: "Frederick City",
     type: "city",
     population: 78_171,
     centroid: { lng: -77.4105, lat: 39.4143 },
