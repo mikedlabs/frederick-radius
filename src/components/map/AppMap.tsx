@@ -537,6 +537,14 @@ export default function AppMap({
   // of the clean cold open without reversing it: only explicit prior choices
   // restore, a first-timer still gets the clean default, deep-links win below.
   const [layerPrefs] = useState(readMapLayerPrefs);
+  // Layers a deep-link asked to turn on (e.g. /map?at=...&show=firestations),
+  // so a search result can center AND reveal the pin. Read once; stored prefs
+  // still win when present. AppMap is ssr:false, so window is available.
+  const [deepLinkLayers] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    const raw = new URLSearchParams(window.location.search).get("show") ?? "";
+    return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  });
   // The internal category-chip filter (activeCats) retired with the dock:
   // "places by type" merged into the What pane's intent chips, which filter
   // through the URL (?intent/?sub) like every shareable view. Stored cats
@@ -672,9 +680,9 @@ export default function AppMap({
   const [showCameras, setShowCameras] = useState(() => layerPrefs.cameras ?? false);
   // Frederick County fire & rescue companies (GIS, static) — opt-in, OFF by
   // default. Each pin is the station number, the root of its call signs.
-  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? false);
+  const [showFireStations, setShowFireStations] = useState(() => layerPrefs.firestations ?? deepLinkLayers.has("firestations"));
   // County parks + public libraries (GIS, static) — opt-in, OFF by default.
-  const [showCivicPlaces, setShowCivicPlaces] = useState(() => layerPrefs.civicplaces ?? false);
+  const [showCivicPlaces, setShowCivicPlaces] = useState(() => layerPrefs.civicplaces ?? deepLinkLayers.has("civicplaces"));
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
