@@ -147,6 +147,19 @@ export const metadata: Metadata = {
  * and reported this deck (otherwise null, so the card is unchanged). Honest
  * about the source: ParkZen's counts are crowd-sourced estimates, so this reads
  * "about this full," never an exact ledger. */
+/** Short "updated Nm ago" for the occupancy observed time (null-safe). */
+function updatedAgo(iso: string | null): string {
+  if (!iso) return "";
+  const d = Date.now() - +new Date(iso);
+  if (!Number.isFinite(d) || d < 0) return "";
+  const m = Math.floor(d / 60000);
+  if (m < 1) return "updated just now";
+  if (m < 60) return `updated ${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `updated ${h} hr ago`;
+  return `updated ${Math.floor(h / 24)} days ago`;
+}
+
 function GarageLiveBadge({ occ }: { occ: GarageOccupancy }) {
   const dot = (color: string) => (
     <span
@@ -157,25 +170,33 @@ function GarageLiveBadge({ occ }: { occ: GarageOccupancy }) {
   );
   let color = "var(--app-ink-3)";
   let text: string;
+  // The feed's own contract: treat this as "about this full," never an
+  // authoritative space-by-space ledger. So visible counts carry a "~" to read
+  // as estimates (visible on touch, not buried in a hover title), and the
+  // crowd-sourced caveat + observed time ride in the accessible label so a
+  // screen-reader / touch user gets the same honesty a mouse hover would.
   if (occ.isFull) {
     color = "var(--app-warning)";
     text = "Full";
   } else if (occ.available !== null) {
     color = occ.isFilling ? "var(--app-accent-press)" : "var(--app-positive)";
-    text = `${occ.available} ${occ.available === 1 ? "space" : "spaces"}`;
+    text = `~${occ.available} ${occ.available === 1 ? "space" : "spaces"}`;
   } else if (occ.percentFull !== null) {
     color = occ.isFilling ? "var(--app-accent-press)" : "var(--app-positive)";
-    text = `${occ.percentFull}% full`;
+    text = `~${occ.percentFull}% full`;
   } else if (occ.status) {
     text = occ.status;
   } else {
     return null;
   }
+  const ago = updatedAgo(occ.updated);
+  const caveat = `Crowd-sourced availability estimate via Park Frederick (ParkZen)${ago ? `, ${ago}` : ""}`;
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
       style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}
-      title="Live availability via Park Frederick (ParkZen), crowd-sourced"
+      aria-label={`${text.replace(/^~/, "about ")}. ${caveat}`}
+      title={caveat}
     >
       {dot(color)}
       {text}
@@ -554,8 +575,8 @@ export default async function ParkingPage() {
                 style={{ color: "var(--app-ink-2)" }}
               >
                 When the city declares a snow emergency, parking is
-                BANNED on designated routes (Patrick, Market, 7th, and
-                others). Vehicles get ticketed and towed. Listen for
+                not allowed on designated routes (Patrick, Market, 7th,
+                and others). Vehicles get ticketed and towed. Listen for
                 the declaration on local news or check the city
                 website during a storm.
               </span>
