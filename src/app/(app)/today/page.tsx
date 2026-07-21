@@ -438,9 +438,9 @@ export default async function HomePage() {
           "More weather & local tools" drawer (they were never weather, and a
           visitor never found "where to stay" behind a weather label). One
           VISIBLE zone under a single secondary heading, then the toolbox door,
-          so the bottom of the page reads as a calm "good to have" shelf. */}
-      <section aria-label="Good to have" className="mt-6">
-        <SectionHeading size="sm" title="Good to have" />
+          so the bottom of the page reads as a calm essentials shelf. */}
+      <section aria-label="Essentials" className="mt-6">
+        <SectionHeading size="sm" title="Essentials" />
         <div className="mt-3 space-y-3">
           {/* Emergency essentials lead the shelf — the one utility a visitor
               most needs to have found BEFORE the moment they need it (beta
