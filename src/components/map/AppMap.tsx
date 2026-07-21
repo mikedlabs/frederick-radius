@@ -900,8 +900,12 @@ export default function AppMap({
   // How many places carry Field Notes — drives the lens chip's count.
   const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
-  // Emit the curated places inside the current viewport (nearest-center
-  // first) whenever the map settles — drives the synced results list.
+  // Emit the curated places inside the current viewport whenever the map
+  // settles — drives the synced results list. Ranked nearest-FIRST from the
+  // reader's OWN location when we know it (a cached or granted fix — this is
+  // Radius, the closest thing to you leads), and nearest-to-map-center only as
+  // the fallback, so the top result is never an arbitrary place across a
+  // county-wide view.
   const emitInView = () => {
     if (!mapRef.current) return;
     const map = mapRef.current.getMap();
@@ -923,6 +927,10 @@ export default function AppMap({
     );
     if (!onPlacesInView) return;
     const c = map.getCenter();
+    // Rank from the reader's own fix when we have one (cached or granted),
+    // else from the map center. Squared-degree distance is enough to ORDER at
+    // county scale (same metric the center sort has always used).
+    const ref = userLoc ?? { lng: c.lng, lat: c.lat };
     const inside = filteredPlaces
       .filter(
         (p) =>
@@ -933,7 +941,7 @@ export default function AppMap({
       )
       .map((p) => ({
         slug: p.slug,
-        d: (p.geom.lng - c.lng) ** 2 + (p.geom.lat - c.lat) ** 2,
+        d: (p.geom.lng - ref.lng) ** 2 + (p.geom.lat - ref.lat) ** 2,
       }))
       .sort((a, z) => a.d - z.d)
       .slice(0, 60)
