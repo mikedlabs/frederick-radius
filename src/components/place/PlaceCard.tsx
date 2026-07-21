@@ -533,9 +533,21 @@ export default function PlaceCard({
   ) : null;
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 rounded-[var(--app-radius-lg)] px-2.5 py-2"
-      style={{ background: "var(--app-bg-elevated-solid)" }}
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-2.5 overflow-hidden rounded-[var(--app-radius-lg)] py-2 pl-3.5 pr-2.5"
+      style={{
+        // Field-guide "pass" material: the warm paper texture behind the
+        // existing emboss (--app-hi/--app-edge from .tactile), with a category
+        // color cap down the left edge — the same color-band language the
+        // feature/answer/tile variants already carry, now on the workhorse row.
+        backgroundColor: "var(--app-bg-elevated-solid)",
+        backgroundImage: "var(--app-paper-light)",
+      }}
     >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[3px]"
+        style={{ background: color }}
+      />
       <button
         type="button"
         onClick={openDetail}
