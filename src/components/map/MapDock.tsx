@@ -301,7 +301,6 @@ export default function MapDock(props: MapDockProps) {
   const sp = useSearchParams();
 
   const [pane, setPane] = useState<Pane | null>(null);
-  const [amenExpanded, setAmenExpanded] = useState(() => props.amenityGroups.size > 0);
   // The Layers tab's Key grid is collapsed by default so the panel stays a
   // low strip; one small chip reveals it.
   const [keyOpen, setKeyOpen] = useState(false);
@@ -582,7 +581,6 @@ export default function MapDock(props: MapDockProps) {
     props.onAerialSeason("all");
     props.setScrubHour(null);
     for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
-    setAmenExpanded(false);
     setWhereSel({ kind: "county" });
     setScope("county");
     setPane(null);
@@ -973,6 +971,31 @@ export default function MapDock(props: MapDockProps) {
                     />
                   </>
                 )}
+                {/* Public amenities live here, in the find-flow — a restroom is
+                    a thing you need, not a map drape. The everyday ones are also
+                    up in "Most needed"; this is the complete, de-nested set. */}
+                {props.amenityCount > 0 && (
+                  <>
+                    <Sect>Public amenities</Sect>
+                    <HeadRow
+                      color="var(--app-cool)"
+                      ariaLabel="Public amenities"
+                      onPick={(k) =>
+                        props.setAmenityGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(k)) next.delete(k);
+                          else next.add(k);
+                          return next;
+                        })
+                      }
+                      items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
+                        key: g.key,
+                        label: g.label,
+                        on: props.amenityGroups.has(g.key),
+                      }))}
+                    />
+                  </>
+                )}
               </div>
             )}
 
@@ -1095,23 +1118,11 @@ export default function MapDock(props: MapDockProps) {
                 from the old bottom-left tray. ── */}
             {pane === "layers" && (
               <div>
+                {/* Map drapes + conditions only. Public amenities (restrooms,
+                    water, Wi-Fi, …) moved to the Places tab, where finding one
+                    is a first-class action rather than a layer toggle. */}
                 <Sect>Map layers</Sect>
                 <div className="dock-chips">
-                  {props.amenityCount > 0 && (
-                    <Chip
-                      on={props.amenityGroups.size > 0}
-                      color="var(--app-cool)"
-                      onClick={() => setAmenExpanded((v) => !v)}
-                      ariaExpanded={amenExpanded}
-                      count={props.amenityGroups.size > 0 ? props.amenityGroups.size : null}
-                      title="Amenities: restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water"
-                    >
-                      Amenities
-                      <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>
-                        {amenExpanded ? "▲" : "▼"}
-                      </span>
-                    </Chip>
-                  )}
                   {props.civicAvailable && (
                     <Chip
                       on={props.showCivic}
@@ -1235,27 +1246,6 @@ export default function MapDock(props: MapDockProps) {
                     Radar as of <span className="font-mono">{radarClock}</span> Eastern.
                     Frames arrive a few minutes behind real time.
                   </p>
-                )}
-                {amenExpanded && props.amenityCount > 0 && (
-                  <HeadRow
-                    color="var(--app-cool)"
-                    ariaLabel="Amenity kinds"
-                    onPick={(k) =>
-                      props.setAmenityGroups((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(k)) next.delete(k);
-                        else next.add(k);
-                        return next;
-                      })
-                    }
-                    items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
-                      key: g.key,
-                      label: g.label,
-                      on: props.amenityGroups.has(g.key),
-                      disabled: g.comingSoon === true,
-                      soon: g.comingSoon === true,
-                    }))}
-                  />
                 )}
                 {props.showAerial && (
                   <HeadRow
