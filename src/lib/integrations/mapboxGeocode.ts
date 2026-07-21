@@ -23,11 +23,13 @@
  *   - transient failures (HTTP error, timeout) THROW inside the cached fn
  *     so they are never cached, and the caller converts them to null.
  *
- * Trust gates: we request types=address,street,block and re-check the
- * returned feature_type, so Mapbox can never hand back a town/postcode
- * centroid (which would swap one centroid for another). The coordinate
- * must also pass isValidCoord — the real county polygon + straddle
- * buffer — or it is rejected outright.
+ * Trust gates: the request carries NO types= filter (v6 rejects the
+ * "street"/"block" filter values with a 422 — that 422 once nulled every
+ * geocode silently), so precision is enforced on the RESPONSE: only
+ * address/street/block feature types are accepted, meaning Mapbox can
+ * never hand back a town/postcode centroid (which would swap one
+ * centroid for another). The coordinate must also pass isValidCoord —
+ * the real county polygon + straddle buffer — or it is rejected outright.
  */
 import { unstable_cache } from "next/cache";
 import { isValidCoord, type LngLat } from "@/lib/geo";
@@ -41,9 +43,9 @@ import type { EventWithMeta } from "@/lib/loaders/events";
  * Street suffixes that mark a plausible street address. `\b`-bounded so
  * "Market" doesn't match "Mark" etc. Known conservative false positives
  * ("St. John's Church" via the Saint abbreviation, "The Way Station")
- * cost at most one cached geocode that types=address,street,block will
- * almost always answer with nothing — never a wrong pin, because the
- * county gate and feature-type gate still apply.
+ * cost at most one cached geocode that the feature-type gate will almost
+ * always answer with nothing — never a wrong pin, because the county
+ * gate and feature-type gate still apply.
  */
 const STREET_SUFFIX =
   /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|way|dr|drive|ln|lane|pike|ct|court|pl|place|hwy|highway|pkwy|parkway|sq|square|ter|terrace|cir|circle|aly|alley|tpke|turnpike)\b/i;
@@ -131,7 +133,14 @@ export async function geocodeForwardUncached(q: string): Promise<LngLat | null> 
       "https://api.mapbox.com/search/geocode/v6/forward" +
       `?q=${encodeURIComponent(q)}` +
       `&proximity=${PROXIMITY}` +
-      "&country=US&types=address,street,block&limit=1" +
+      // NO types= filter: Mapbox v6 REJECTS "street"/"block" as filter values
+      // (422 VALIDATION_ERROR — verified live 2026-07-21; the allowed filter
+      // list is country/region/place/district/locality/postcode/neighborhood/
+      // address only). That 422 threw on EVERY request, so every scanner map
+      // pin and hotspot link silently fail-softed to null on prod. Precision
+      // is enforced on the RESPONSE instead: parseGeocodeResponse accepts only
+      // address/street/block feature types, and isValidCoord gates the county.
+      "&country=US&limit=1" +
       `&access_token=${MAPBOX_TOKEN}`;
     // MAPBOX_SERVER_HEADERS is load-bearing: the production token is
     // URL-restricted and Mapbox matches the Referer on ALL APIs, so a
