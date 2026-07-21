@@ -5,6 +5,7 @@
  */
 export type PushTopic =
   | "civic-alerts"
+  | "traffic-alerts"
   | "saved-events"
   | "daily-briefing"
   | "specials"
@@ -15,6 +16,10 @@ export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = 
   "civic-alerts": {
     label: "Civic alerts",
     desc: "Receive important weather and civic alerts.",
+  },
+  "traffic-alerts": {
+    label: "Traffic alerts",
+    desc: "Get a heads-up when a major crash closes a main road.",
   },
   "saved-events": {
     label: "Saved event reminders",

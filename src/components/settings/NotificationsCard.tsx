@@ -10,6 +10,7 @@ import { getHomeMuni } from "@/lib/personalize";
 
 const ALL_TOPICS: PushTopic[] = [
   "civic-alerts",
+  "traffic-alerts",
   "saved-events",
   "daily-briefing",
   "specials",
