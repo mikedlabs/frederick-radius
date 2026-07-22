@@ -28,16 +28,16 @@ another municipality endorses the app.
 
 ## About
 
-> Frederick Radius is an independent local guide for Frederick County. It helps
-> you see what is open, what is happening, and what is useful around you. The
-> guide covers Downtown Frederick and communities across the county, with local
-> places, events, public information, and details that are usually scattered
-> across separate sites.
+> Frederick Radius is an independent guide to Frederick County. It organizes
+> nearby businesses and current events by location, so you do not have to search
+> separate sites. The map also includes parking information and public amenities
+> when those details help you get around. Coverage starts in Downtown Frederick
+> and extends across the county's municipalities.
 >
-> I have been building and refining Radius for more than a year. Some information
-> comes from public sources and local businesses. Other details come from field
-> work, including amenities I have mapped by hand. Radius is in public beta, so
-> corrections and specific examples of bad results are welcome.
+> I have spent more than a year building and refining Radius. It combines public
+> sources and business information with details I gathered in the field,
+> including amenities I mapped by hand. The site is still in beta, so I want to
+> hear when a result is wrong.
 >
 > Frederick Radius is not affiliated with or endorsed by the City of Frederick,
 > Frederick County Government, or any municipality.
@@ -68,9 +68,9 @@ Group-launch alt text:
 > I have been building Frederick Radius for more than a year because useful
 > local information is still scattered across too many places.
 >
-> Radius helps you see what is open and what is happening nearby. It also brings
-> in practical details that are easy to miss, from parking and transit to public
-> amenities I have mapped by hand.
+> Radius puts nearby businesses and current events on one map. It also shows
+> parking information. I have spent weeks walking Downtown Frederick to map
+> public amenities that were not available from a reliable source.
 >
 > It is in public beta. If something is wrong, send me the exact page or search
 > that failed. That kind of feedback helps me fix the real problem.
@@ -118,8 +118,8 @@ operator opts in.
 Greeting:
 
 > Thanks for reaching out to Frederick Radius. If you found something wrong,
-> send the page or exact search, what you expected, and the town or area you
-> were in.
+> send the page or exact search that failed. Include what you expected and where
+> you were.
 
 Instant reply:
 
