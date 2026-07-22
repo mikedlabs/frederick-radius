@@ -27,7 +27,7 @@ test.describe("mobile discovery shell", () => {
     await expect(openFind).toBeFocused();
   });
 
-  test("the map keeps search and its five actions immediately available", async ({ page }) => {
+  test("the map keeps search, decisions, and live layers immediately available", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
     const mapFind = page.getByRole("link", { name: "Find on this map" });
@@ -40,10 +40,26 @@ test.describe("mobile discovery shell", () => {
     await expect(controls.getByRole("button", { name: "Places" })).toBeVisible();
     await expect(controls.getByRole("button", { name: "Time" })).toBeVisible();
     await expect(controls.getByRole("button", { name: "Area" })).toBeVisible();
-    await expect(controls.getByRole("button", { name: /Layers/ })).toBeVisible();
-    await expect(controls.getByRole("button", { name: "Show list view" })).toBeVisible();
 
-    await controls.getByRole("button", { name: /Layers/ }).click();
+    const layers = page.getByRole("group", { name: "Map layer controls" });
+    await expect(layers.getByRole("button", { name: /Read this area/ })).toBeVisible();
+    await expect(layers.getByRole("button", { name: /Layers/ })).toBeVisible();
+    await expect(layers.getByRole("button", { name: "Transit" })).toBeVisible();
+    await expect(layers.getByRole("button", { name: "Radar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Show list view" })).toHaveCount(0);
+
+    await layers.getByRole("button", { name: /Read this area/ }).click();
+    const discoveryPane = page.getByRole("region", { name: "Read this area" });
+    await expect(discoveryPane).toBeVisible();
+    await discoveryPane.locator(".dock-discovery-card").first().click();
+    const finding = page.locator(".map-finding-peek");
+    await expect(finding).toBeVisible();
+    await expect(finding.getByText("Why this appeared")).toBeVisible();
+    await expect(finding.getByRole("button", { name: "Next finding" })).toBeVisible();
+    await finding.getByRole("button", { name: "Close finding" }).click();
+    await expect(finding).toBeHidden();
+
+    await layers.getByRole("button", { name: /Layers/ }).click();
     await expect(page.getByRole("region", { name: "Layers" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
   });

@@ -85,9 +85,38 @@ export type PlaceEnrichment = {
   review_author_uri?: string;
   review_author_photo_uri?: string;
   review_google_maps_uri?: string;
+  review_flag_content_uri?: string;
   /** Canonical Google Maps source for the place record. */
   google_maps_uri?: string;
+  /** Request-scoped Google context. These fields are rendered with Google
+   * attribution and are never persisted into Radius-authored descriptions. */
+  generative_summary?: GooglePlaceSummary;
+  decision_features?: GooglePlaceFeature[];
 };
+
+export type GooglePlaceSummary = {
+  text: string;
+  disclosure: string;
+  report_uri?: string;
+};
+
+export type GooglePlaceFeature =
+  | "allows_dogs"
+  | "curbside_pickup"
+  | "delivery"
+  | "dine_in"
+  | "good_for_children"
+  | "good_for_groups"
+  | "good_for_watching_sports"
+  | "live_music"
+  | "outdoor_seating"
+  | "reservable"
+  | "restroom"
+  | "serves_breakfast"
+  | "serves_brunch"
+  | "serves_coffee"
+  | "serves_vegetarian_food"
+  | "takeout";
 
 export type GoogleAuthorAttribution = {
   display_name?: string;
@@ -98,6 +127,7 @@ export type GoogleAuthorAttribution = {
 export type GooglePhotoAttribution = {
   photo_name: string;
   google_maps_uri?: string;
+  flag_content_uri?: string;
   authors: GoogleAuthorAttribution[];
 };
 
@@ -113,13 +143,15 @@ export function googlePlacesConfigured(): boolean {
  * Field sets, chosen to control the Places API (New) billing SKU:
  *   - "full"   → includes `reviews` ⇒ Enterprise + Atmosphere (priciest).
  *                Use ONLY at build time, where we actually store reviews.
- *   - "lean"   → everything except reviews ⇒ Enterprise tier. The runtime
- *                default — the per-view enrich route never returns reviews,
- *                so paying the Atmosphere SKU for them was pure waste.
+ *   - "basic"  → visit logistics + photos, with no summaries or reviews.
+ *                This is the only field set an automatic, gap-filling place
+ *                sheet request may use.
+ *   - "lean"   → everything except reviews ⇒ Enterprise tier. Kept for
+ *                explicit callers that need editorial context.
  *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
  *                business-status cron, which reads nothing else.
  */
-export type GoogleFieldSet = "status" | "hours" | "lean" | "full" | "photos";
+export type GoogleFieldSet = "status" | "hours" | "basic" | "lean" | "full" | "photos" | "experience";
 
 const FIELDS_FULL = [
   "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
@@ -135,14 +167,42 @@ const FIELDS_HOURS = [
   "id", "businessStatus",
   "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
 ];
+// Runtime gap-filling for a genuinely bare place sheet. It deliberately
+// excludes editorialSummary, generativeSummary, reviews, and decision
+// attributes. Those richer fields are requested only after a user asks for
+// current Google context.
+const FIELDS_BASIC = [
+  "id", "displayName", "businessStatus",
+  "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
+  "rating", "userRatingCount", "nationalPhoneNumber", "websiteUri",
+  "location", "photos", "googleMapsUri",
+];
 
 // Photo self-heal (place-photo proxy): photo resource names only, so the
 // per-call cost of refreshing a rotated name stays on the smallest SKU
 // that carries photos.
 const FIELDS_PHOTOS = ["id", "photos"];
+// User-opened place context. FIELDS_LEAN already reaches the Enterprise +
+// Atmosphere SKU because it requests editorialSummary; these additional
+// decision fields make that paid request materially more useful without
+// moving it to a higher Places Details tier.
+const FIELDS_EXPERIENCE = [
+  ...FIELDS_LEAN,
+  "generativeSummary", "reviews",
+  "allowsDogs", "curbsidePickup", "delivery", "dineIn",
+  "goodForChildren", "goodForGroups", "goodForWatchingSports", "liveMusic",
+  "outdoorSeating", "reservable", "restroom", "servesBreakfast",
+  "servesBrunch", "servesCoffee", "servesVegetarianFood", "takeout",
+];
 
 function fieldsFor(set: GoogleFieldSet): string[] {
-  return set === "status" ? FIELDS_STATUS : set === "hours" ? FIELDS_HOURS : set === "full" ? FIELDS_FULL : set === "photos" ? FIELDS_PHOTOS : FIELDS_LEAN;
+  return set === "status" ? FIELDS_STATUS
+    : set === "hours" ? FIELDS_HOURS
+    : set === "basic" ? FIELDS_BASIC
+    : set === "full" ? FIELDS_FULL
+    : set === "photos" ? FIELDS_PHOTOS
+    : set === "experience" ? FIELDS_EXPERIENCE
+    : FIELDS_LEAN;
 }
 
 type GApiPlace = {
@@ -158,10 +218,34 @@ type GApiPlace = {
   nationalPhoneNumber?: string;
   websiteUri?: string;
   googleMapsUri?: string;
+  generativeSummary?: {
+    overview?: { text?: string };
+    flagContentUri?: string;
+    overviewFlagContentUri?: string;
+    disclosureText?: { text?: string };
+    disclaimerText?: { text?: string };
+  };
+  allowsDogs?: boolean;
+  curbsidePickup?: boolean;
+  delivery?: boolean;
+  dineIn?: boolean;
+  goodForChildren?: boolean;
+  goodForGroups?: boolean;
+  goodForWatchingSports?: boolean;
+  liveMusic?: boolean;
+  outdoorSeating?: boolean;
+  reservable?: boolean;
+  restroom?: boolean;
+  servesBreakfast?: boolean;
+  servesBrunch?: boolean;
+  servesCoffee?: boolean;
+  servesVegetarianFood?: boolean;
+  takeout?: boolean;
   location?: { latitude?: number; longitude?: number };
   photos?: Array<{
     name?: string;
     googleMapsUri?: string;
+    flagContentUri?: string;
     authorAttributions?: Array<{
       displayName?: string;
       uri?: string;
@@ -174,6 +258,7 @@ type GApiPlace = {
     text?: { text?: string };
     rating?: number;
     googleMapsUri?: string;
+    flagContentUri?: string;
     authorAttribution?: {
       displayName?: string;
       uri?: string;
@@ -181,6 +266,65 @@ type GApiPlace = {
     };
   }>;
 };
+
+const FEATURE_FIELDS: Array<[keyof GApiPlace, GooglePlaceFeature]> = [
+  ["allowsDogs", "allows_dogs"],
+  ["curbsidePickup", "curbside_pickup"],
+  ["delivery", "delivery"],
+  ["dineIn", "dine_in"],
+  ["goodForChildren", "good_for_children"],
+  ["goodForGroups", "good_for_groups"],
+  ["goodForWatchingSports", "good_for_watching_sports"],
+  ["liveMusic", "live_music"],
+  ["outdoorSeating", "outdoor_seating"],
+  ["reservable", "reservable"],
+  ["restroom", "restroom"],
+  ["servesBreakfast", "serves_breakfast"],
+  ["servesBrunch", "serves_brunch"],
+  ["servesCoffee", "serves_coffee"],
+  ["servesVegetarianFood", "serves_vegetarian_food"],
+  ["takeout", "takeout"],
+];
+
+export function decisionFeatures(place: GApiPlace): GooglePlaceFeature[] {
+  return FEATURE_FIELDS.flatMap(([field, feature]) =>
+    place[field] === true ? [feature] : [],
+  );
+}
+
+export function normalizeGooglePlaceSummary(
+  summary: GApiPlace["generativeSummary"],
+): GooglePlaceSummary | undefined {
+  const text = summary?.overview?.text?.trim();
+  const disclosure = (
+    summary?.disclosureText?.text ?? summary?.disclaimerText?.text
+  )?.trim();
+  return text && disclosure
+    ? {
+        text,
+        disclosure,
+        report_uri: summary?.flagContentUri ?? summary?.overviewFlagContentUri,
+      }
+    : undefined;
+}
+
+export function normalizeGooglePhotoAttributions(
+  photos: GApiPlace["photos"],
+): GooglePhotoAttribution[] {
+  return (photos ?? []).flatMap((photo) => {
+    if (!photo.name) return [];
+    return [{
+      photo_name: photo.name,
+      google_maps_uri: photo.googleMapsUri,
+      flag_content_uri: photo.flagContentUri,
+      authors: (photo.authorAttributions ?? []).map((author) => ({
+        display_name: author.displayName?.trim() || undefined,
+        uri: author.uri || undefined,
+        photo_uri: author.photoUri || undefined,
+      })),
+    } satisfies GooglePhotoAttribution];
+  });
+}
 
 /**
  * Pick ONE usable review snippet: highest-rated first, then sane
@@ -195,6 +339,7 @@ export function pickReview(
   authorUri?: string;
   authorPhotoUri?: string;
   googleMapsUri?: string;
+  flagContentUri?: string;
 } | undefined {
   if (!Array.isArray(reviews) || reviews.length === 0) return undefined;
   // Logistics-y reviews ("clean bathroom", "easy parking", "they were
@@ -209,6 +354,7 @@ export function pickReview(
       authorUri: r.authorAttribution?.uri || undefined,
       authorPhotoUri: r.authorAttribution?.photoUri || undefined,
       googleMapsUri: r.googleMapsUri || undefined,
+      flagContentUri: r.flagContentUri || undefined,
     }))
     .filter((c) => c.snippet.length >= 40 && c.snippet.length <= 240 && c.rating >= 4);
   if (candidates.length === 0) return undefined;
@@ -225,6 +371,7 @@ export function pickReview(
     authorUri: pool[0].authorUri,
     authorPhotoUri: pool[0].authorPhotoUri,
     googleMapsUri: pool[0].googleMapsUri,
+    flagContentUri: pool[0].flagContentUri,
   };
 }
 
@@ -236,18 +383,8 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     [];
   const status = (p.businessStatus as GoogleBusinessStatus) || "UNKNOWN";
   const selectedReview = pickReview(p.reviews);
-  const photoAttributions = (p.photos ?? []).flatMap((photo) => {
-    if (!photo.name) return [];
-    return [{
-      photo_name: photo.name,
-      google_maps_uri: photo.googleMapsUri,
-      authors: (photo.authorAttributions ?? []).map((author) => ({
-        display_name: author.displayName?.trim() || undefined,
-        uri: author.uri || undefined,
-        photo_uri: author.photoUri || undefined,
-      })),
-    } satisfies GooglePhotoAttribution];
-  });
+  const generativeSummary = normalizeGooglePlaceSummary(p.generativeSummary);
+  const photoAttributions = normalizeGooglePhotoAttributions(p.photos);
   return {
     google_place_id: p.id,
     business_status: status,
@@ -271,7 +408,10 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     review_author_uri: selectedReview?.authorUri,
     review_author_photo_uri: selectedReview?.authorPhotoUri,
     review_google_maps_uri: selectedReview?.googleMapsUri,
+    review_flag_content_uri: selectedReview?.flagContentUri,
     google_maps_uri: p.googleMapsUri,
+    generative_summary: generativeSummary,
+    decision_features: decisionFeatures(p),
   };
 }
 

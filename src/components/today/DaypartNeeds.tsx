@@ -165,14 +165,6 @@ export default function DaypartNeeds({
                     {place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
                   </span>
                 </span>
-                {place.photo ? (
-                  <span
-                    className="absolute right-1.5 top-1.5 z-10 max-w-[8rem] truncate rounded-full bg-black/60 px-1.5 py-1 text-[7px] leading-none text-white/90 backdrop-blur-sm"
-                    translate="no"
-                  >
-                    {place.photoCredit ? `${place.photoCredit} · Google Maps` : "Google Maps"}
-                  </span>
-                ) : null}
               </Link>
             </li>
           ))}

@@ -17,6 +17,7 @@
  */
 import PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import ENRICH_RAW from "@/data/places-enrichment.json" with { type: "json" };
+import DESCRIPTIONS_RAW from "@/data/descriptions.json" with { type: "json" };
 import { PLACES as SOURCE_PLACES } from "@/data/places";
 import {
   CATEGORIES,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/hours-visitability";
 import { isGooglePlaceId } from "@/lib/provenance";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import type { PlaceDescriptionEntry } from "@/lib/loaders/placeDescriptions";
 import {
   isManualPlaceStatusReviewCurrent,
   MANUAL_PLACE_STATUS_OVERRIDES,
@@ -39,6 +41,7 @@ import {
 
 const PLACES = PLACES_RAW as unknown as PlaceCardData[];
 const ENRICH = ENRICH_RAW as Record<string, { google_place_id?: string }>;
+const DESCRIPTIONS = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
 type Severity = "critical" | "high" | "medium" | "low";
 type Gate = {
   id: string;
@@ -59,9 +62,12 @@ const blurbCounts = (() => {
 })();
 function isDecisionCopy(p: PlaceCardData): boolean {
   const b = (p.short_blurb ?? "").trim();
-  if (!b) return false;
+  if (b.length < 35 || b.length > 220 || !/[.!?]$/.test(b)) return false;
   const name = p.name.trim();
   if (b === name) return false;
+  if (/^(?:bars?|baker(?:y|ies)|coffee|parks?|restaurants?|shopping|worship)\s+in\s+/i.test(b)) return false;
+  if (/\b(?:more info about|click here|learn more|call us|visit us|contact us)\b/i.test(b)) return false;
+  if (/\b\d{1,5}\s+[A-Za-z].*\b(?:St|Ave|Rd|Blvd|Ln|Dr|Way|Ct|Pkwy|Hwy)\b/i.test(b)) return false;
   // A name prefix is often grammatical, useful copy ("Baker Park is a
   // 44-acre…"). Reject only the short scraped echo this guard was written for
   // ("Name Patrick St"), not an otherwise substantive description.
@@ -162,6 +168,41 @@ const GATES: Gate[] = [
       const good = PLACES.filter(isDecisionCopy).length;
       const r = pct(good, PLACES.length);
       return { pass: r >= 0.5, observed: `${fmtPct(r)} have unique, decision-useful blurbs`, expect: ">= 50% (target 90% of editorial)" };
+    },
+  },
+  {
+    id: "radius_description_registry",
+    severity: "high",
+    audit: "editorial provenance",
+    run: () => {
+      const publicSlugs = new Set(PLACES.map((place) => place.slug));
+      const approved = Object.entries(DESCRIPTIONS).filter(([, entry]) => entry.status === "approved");
+      const invalid = approved.filter(([slug, entry]) => {
+        const sourceOk = entry.source.kind === "radius_editorial" || /^https:\/\//.test(entry.source.url ?? "");
+        return !publicSlugs.has(slug) || !sourceOk || !entry.reviewed_at ||
+          !entry.reviewer_note?.trim() || !/[.!?]$/.test(entry.blurb.trim());
+      });
+      return {
+        pass: invalid.length === 0,
+        observed: `${invalid.length} invalid of ${approved.length} approved descriptions`,
+        expect: "0 invalid, unreviewed, undocumented, unsourced, or orphaned approvals",
+      };
+    },
+  },
+  {
+    id: "radius_owned_copy_coverage",
+    severity: "medium",
+    audit: "DQ-011 provenance split",
+    run: () => {
+      const owned = PLACES.filter((place) =>
+        Boolean(place.description_source && isDecisionCopy(place)),
+      ).length;
+      const r = pct(owned, PLACES.length);
+      return {
+        pass: r >= 0.5,
+        observed: `${fmtPct(r)} have decision copy owned or approved by Radius`,
+        expect: ">= 50% (Google runtime context reported separately)",
+      };
     },
   },
   {

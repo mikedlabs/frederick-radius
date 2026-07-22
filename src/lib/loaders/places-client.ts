@@ -4,6 +4,10 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
+import {
+  googlePhotoNameFromProxyUrl,
+  publishableGooglePhotoAttribution,
+} from "@/lib/google-photo-policy";
 
 type ClientPlaceData = PlaceCardData & {
   /** Build-time policy stamped by build-client-places. This avoids reading a
@@ -23,23 +27,18 @@ type ClientPlaceData = PlaceCardData & {
  * cards never read are dropped. `import type` of PlaceCardData is
  * erased, so this module pulls in zero loader code.
  */
-function withoutLegacyGoogleBlobMirror(place: PlaceCardData): PlaceCardData {
+export function withoutUnpublishableGooglePhoto(place: PlaceCardData): PlaceCardData {
   const photo = place.google_photo_url;
   if (!photo) return place;
-  try {
-    const url = new URL(photo);
-    if (url.hostname.endsWith(".public.blob.vercel-storage.com")) {
-      return { ...place, google_photo_url: undefined };
-    }
-  } catch {
-    // Same-origin proxy paths are intentionally relative and therefore land
-    // here. Keep them: /api/place-photo is the no-store transport.
-  }
-  return place;
+  const photoName = googlePhotoNameFromProxyUrl(photo);
+  const attribution = photoName && place.google_photo_attribution
+    ? publishableGooglePhotoAttribution(photoName, [place.google_photo_attribution])
+    : undefined;
+  return attribution ? place : { ...place, google_photo_url: undefined };
 }
 
 const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[]).map(
-  withoutLegacyGoogleBlobMirror,
+  withoutUnpublishableGooglePhoto,
 );
 
 /** Hide places Google or our manual curation has marked closed. The

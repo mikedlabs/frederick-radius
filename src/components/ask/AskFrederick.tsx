@@ -299,16 +299,24 @@ function sourceOpenLabel(source: AskSource): string {
   return source.href.startsWith("http") ? "Open source" : "Open details";
 }
 
+export function canDisplayAskSourcePhoto(
+  source: Pick<AskSource, "href" | "photo_url">,
+): boolean {
+  if (!source.photo_url) return false;
+  const isGooglePhoto = /\/api\/place-photo|googleusercontent\.com|places\.googleapis\.com/i.test(
+    source.photo_url,
+  );
+  // A compact Google thumbnail may omit its author only when it opens the
+  // same photo in a larger, fully attributed place view. Event and external
+  // source cards do not provide that path, so they use the designed fallback.
+  return !isGooglePhoto || /^\/places\//.test(source.href);
+}
+
 function AskSourceCard({ source, index }: { source: AskSource; index: number }) {
   const external = source.href.startsWith("http");
   const saveTarget = sourceSaveTarget(source);
   const phone = source.phone?.replace(/[^+\d]/g, "");
-  const photoNeedsCredit = Boolean(
-    source.photo_url &&
-      (/\/api\/place-photo/i.test(source.photo_url) ||
-        /googleusercontent\.com|places\.googleapis\.com/i.test(source.photo_url)),
-  );
-
+  const displayPhoto = canDisplayAskSourcePhoto(source);
   return (
     <article
       className="overflow-hidden border-y"
@@ -319,7 +327,7 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
     >
       <div className="grid grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[104px_minmax(0,1fr)]">
         <div className="relative min-h-[112px] overflow-hidden bg-[var(--app-bg-sunken)]">
-          {source.photo_url ? (
+          {displayPhoto && source.photo_url ? (
             <>
               <Image
                 src={source.photo_url}
@@ -331,11 +339,6 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
                 blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
               />
-              {photoNeedsCredit ? (
-                <span className="absolute bottom-0 right-0 bg-black/70 px-1.5 py-1 text-[8px] leading-none text-white">
-                  Google Maps
-                </span>
-              ) : null}
             </>
           ) : (
             <span

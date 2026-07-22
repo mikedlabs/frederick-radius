@@ -227,6 +227,9 @@ import AppMapDeck from "./AppMapDeck";
 import MapDock from "./MapDock";
 import MapPeek from "./MapPeek";
 import MapParkingPeek from "./MapParkingPeek";
+import MapDiscoveryOverlay from "./MapDiscoveryOverlay";
+import MapDiscoveryPeek from "./MapDiscoveryPeek";
+import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
 import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
@@ -543,6 +546,17 @@ export default function AppMap({
   const initialDefaults = useMemo(() => defaultsFor(mode), [mode]);
   const [selected, setSelected] = useState<Selected>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // "Read this area" finding currently drawn as a small constellation. It is
+  // separate from a selected pin: one finding can connect several entities.
+  const [selectedDiscovery, setSelectedDiscovery] = useState<MapDiscovery | null>(null);
+  // Event eligibility changes while somebody leaves the map open. Tick only
+  // the deterministic finding memo; the interval does not fetch or move the
+  // camera, and it stops cleanly when this map unmounts.
+  const [discoveryClockMs, setDiscoveryClockMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setDiscoveryClockMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [hover, setHover] = useState<{ lng: number; lat: number; label: string; sub?: string } | null>(null);
   // The hover preview is for a real hovering pointer (a mouse) only. On touch
   // there is no hover: a pan drag fires synthetic mousemove events, so leaving
@@ -561,6 +575,11 @@ export default function AppMap({
     if (typeof window === "undefined") return new Set();
     const raw = new URLSearchParams(window.location.search).get("show") ?? "";
     return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+  });
+  const [deepLinkedAerial] = useState<AerialPhoto | null>(() => {
+    if (typeof window === "undefined") return null;
+    const src = new URLSearchParams(window.location.search).get("aerial");
+    return src ? AERIAL_PHOTOS.find((photo) => photo.src === src) ?? null : null;
   });
   // The internal category-chip filter (activeCats) retired with the dock:
   // "places by type" merged into the What pane's intent chips, which filter
@@ -645,15 +664,10 @@ export default function AppMap({
   // cramped popup into a real card you can act on without leaving the map.
   const [peekPlace, setPeekPlace] = useState<MapPinPlace | null>(null);
   const [peekListReturnSlug, setPeekListReturnSlug] = useState<string | null>(null);
-  // Map ↔ list toggle: flip the currently-filtered pins into a scannable
-  // list. ?view=list preserves the choice without dropping any existing
-  // filter, layer, scope, or camera parameter.
+  // Kept only for the contextual results handoff used by MapList. The map no
+  // longer advertises a second presentation mode or restores legacy
+  // ?view=list links; browse always opens on the map canvas.
   const [listView, setListView] = useState(false);
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("view") === "list") {
-      setListView(true);
-    }
-  }, []);
   // True once the camera has moved off the county overview (the county opens at
   // ~z9.6; past ~z10.6 the user has zoomed or panned in). Drives the "show the
   // whole county" reset FAB so it only appears when there is somewhere to go
@@ -691,12 +705,12 @@ export default function AppMap({
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
   // one opens a Popup with the photo thumbnail + season + date.
-  const [showAerial, setShowAerial] = useState(() => layerPrefs.aerial ?? false);
-  const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
+  const [showAerial, setShowAerial] = useState(() => deepLinkLayers.has("aerial") || Boolean(deepLinkedAerial) || (layerPrefs.aerial ?? false));
+  const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(deepLinkedAerial);
   // Historic cemeteries — opt-in heritage overlay (county GIS). OFF by
   // default: 250+ pins of local history is a deliberate interest, not
   // part of the clean cold open. Tapping one opens a small popup.
-  const [showCemeteries, setShowCemeteries] = useState(() => layerPrefs.cemeteries ?? false);
+  const [showCemeteries, setShowCemeteries] = useState(() => deepLinkLayers.has("cemeteries") || (layerPrefs.cemeteries ?? false));
   const [selectedCemetery, setSelectedCemetery] = useState<CemeteryPin | null>(null);
   // Downtown parking garages — opt-in Parking layer, OFF by default (five
   // garage markers tinted by live availability). Tapping one raises the
@@ -704,6 +718,19 @@ export default function AppMap({
   // the feed is configured, otherwise the markers stay neutral (no fake count).
   const [showParking, setShowParking] = useState(() => layerPrefs.parking ?? false);
   const [parkingPeek, setParkingPeek] = useState<ParkingPin | null>(null);
+  // A finding may reveal the handful of support layers needed to understand
+  // its constellation. These are render-only unions: the user's own choices
+  // stay untouched, are the only values persisted below, and reappear exactly
+  // as they were when the finding closes.
+  const visibleAmenityGroups = useMemo(() => {
+    const next = new Set(amenityGroups);
+    for (const group of selectedDiscovery?.layers.amenityGroups ?? []) next.add(group);
+    return next;
+  }, [amenityGroups, selectedDiscovery]);
+  const visibleTransit = showTransit || Boolean(selectedDiscovery?.layers.transit);
+  const visibleParking = showParking || Boolean(selectedDiscovery?.layers.parking);
+  const visibleAerial = showAerial || Boolean(selectedDiscovery?.layers.aerial);
+  const visibleCemeteries = showCemeteries || Boolean(selectedDiscovery?.layers.cemeteries);
   // Animated weather radar (RainViewer) — opt-in raster drape under the
   // pins. OFF by default; the tray's toggle stamps the newest frame's time
   // so nobody mistakes minutes-old radar for real time.
@@ -731,7 +758,7 @@ export default function AppMap({
   const [viewCenter, setViewCenter] = useState<LngLat | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
-  const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
+  const [aerialSeason, setAerialSeason] = useState<AerialSeason>(deepLinkedAerial?.season ?? "all");
   // Mapbox paint transitions ignore the prefers-reduced-motion media
   // query, so gate the cross-fade duration ourselves to honor it.
   const aerialFade = (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) ? 0 : 450;
@@ -751,7 +778,7 @@ export default function AppMap({
     if (!map) return;
     const apply = () => {
       try {
-        if (showAerial && map.getSource("fr-dem")) {
+        if (visibleAerial && map.getSource("fr-dem")) {
           map.setTerrain({ source: "fr-dem", exaggeration: 1.35 });
           map.easeTo({ pitch: 52, duration: aerialFade === 0 ? 0 : 900 });
         } else {
@@ -770,7 +797,7 @@ export default function AppMap({
       // accumulate on rapid toggling. No-op if it already fired.
       return () => { map.off("idle", apply); };
     }
-  }, [showAerial, aerialFade]);
+  }, [visibleAerial, aerialFade]);
 
   // Remember the user's explicit layer choices (per device) so a customized map
   // survives reload. Transient focus filters (saved-only / field-notes-only)
@@ -852,7 +879,7 @@ export default function AppMap({
     // Overpass is an optional enrichment source. The curated county map is
     // complete on cold open, so do not download the county-wide dataset until
     // the user activates an amenity group (or arrives via an amenity link).
-    if (amenityGroups.size === 0) {
+    if (visibleAmenityGroups.size === 0) {
       setOsmLoading(false);
       setOsmError(null);
       return;
@@ -862,8 +889,12 @@ export default function AppMap({
     setOsmError(null);
     (async () => {
       try {
-        const { fetchOsmFrederick } = await import("@/lib/integrations/overpass");
-        const data = await fetchOsmFrederick();
+        const response = await fetch("/api/map/osm", {
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("OpenStreetMap enrichment is unavailable");
+        const payload: unknown = await response.json();
+        const data = Array.isArray(payload) ? payload as OsmPlace[] : [];
         if (cancelled) return;
         setOsmPlaces(data);
         saveCachedOsm(data);
@@ -875,7 +906,7 @@ export default function AppMap({
       }
     })();
     return () => { cancelled = true; };
-  }, [osmFromProps, amenityGroups.size]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [osmFromProps, visibleAmenityGroups.size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tap a result in the synced list → fly there, glow it, light haptic.
   useEffect(() => {
@@ -920,6 +951,17 @@ export default function AppMap({
     () => (activeSlugs ? new Set(activeSlugs) : null),
     [activeSlugs],
   );
+  // A selected finding should read immediately: its connected place pins stay
+  // strong while unrelated place pins recede. This is visual emphasis only;
+  // the dock's counts continue to use the user's actual What/Open filters.
+  const discoveryPlaceSet = useMemo(() => {
+    if (!selectedDiscovery) return null;
+    const slugs = selectedDiscovery.points
+      .map((point) => point.id.startsWith("place:") ? point.id.slice("place:".length) : null)
+      .filter((slug): slug is string => Boolean(slug));
+    return slugs.length > 0 ? new Set(slugs) : null;
+  }, [selectedDiscovery]);
+  const visualMatchSet = discoveryPlaceSet ?? matchSet;
   // What the dock counts + the list show: the drawn pins (lens-filtered)
   // intersected with the active match set. The faded pins stay on the map
   // but don't count as "on the map".
@@ -1085,10 +1127,10 @@ export default function AppMap({
   const activeAmenityCats = useMemo(() => {
     const s = new Set<string>();
     for (const g of AMENITY_GROUPS) {
-      if (amenityGroups.has(g.key)) for (const c of g.cats) s.add(c);
+      if (visibleAmenityGroups.has(g.key)) for (const c of g.cats) s.add(c);
     }
     return s;
-  }, [amenityGroups]);
+  }, [visibleAmenityGroups]);
 
   // Amenities live in their own source, rendered only past street zoom
   // (see the amenity-icons layer minzoom). Empty until the user opts in,
@@ -1215,16 +1257,16 @@ export default function AppMap({
         pri: p.is_verified ? 0 : 1,
         // Faded when an active What/Open-now filter doesn't match this pin
         // (interaction: the map reacts to the dock, not just the count).
-        dimmed: matchSet ? !matchSet.has(p.slug) : false,
+        dimmed: visualMatchSet ? !visualMatchSet.has(p.slug) : false,
         // Emphasized: a MATCH while a filter is active. Drives the icon-size
         // boost so matches grow and dominate over the shrunk, faded rest —
         // weak contrast (matches at full, rest at 0.28) read as barely
         // filtered before. false on the clean, unfiltered map.
-        emph: matchSet ? matchSet.has(p.slug) : false,
+        emph: visualMatchSet ? visualMatchSet.has(p.slug) : false,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
-  }), [filteredPlaces, matchSet]);
+  }), [filteredPlaces, visualMatchSet]);
 
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
@@ -1276,7 +1318,7 @@ export default function AppMap({
     const apply = () => {
       try {
         if (!m.getLayer("curated-clusters")) return;
-        const on = matchSet != null;
+        const on = visualMatchSet != null;
         m.setPaintProperty("curated-clusters", "circle-opacity", on ? 0.3 : 0.62);
         if (m.getLayer("curated-cluster-glow"))
           m.setPaintProperty("curated-cluster-glow", "circle-opacity", on ? 0.09 : 0.18);
@@ -1293,7 +1335,7 @@ export default function AppMap({
       // so a stale-closure paint can't run and listeners can't accumulate.
       return () => { m.off("idle", apply); };
     }
-  }, [matchSet]);
+  }, [visualMatchSet]);
 
   // The single selected place — drives a soft glow ring under its icon.
   const selectedGeoJson = useMemo(() => {
@@ -1333,16 +1375,20 @@ export default function AppMap({
 
   const onClick = (e: MapMouseEvent) => {
     setCivicTown(null); // any tap dismisses a prior town sheet
+    // A direct map selection takes over from a synthesized finding. The map
+    // should never make the user wonder which of two different cards is live.
+    if (selectedDiscovery) setSelectedDiscovery(null);
     const feature = e.features?.[0];
     if (!feature) {
       // An empty tap is a DISMISS first. If a pin peek, a parking peek, or a
       // selected pin is open, closing it IS the whole gesture — no town bubble,
       // no haptic. (The map used to grab every empty tap and pop an unrequested
       // "which town?" sheet, so you could never simply tap away to clear a card.)
-      if (peekPlace || parkingPeek || selectedSlug) {
+      if (peekPlace || parkingPeek || selectedSlug || selectedDiscovery) {
         setPeekPlace(null);
         setParkingPeek(null);
         setSelectedSlug(null);
+        setSelectedDiscovery(null);
         return;
       }
       // Nothing was open, so this is a deliberate tap on empty land -> which
@@ -1909,6 +1955,71 @@ export default function AppMap({
     [eventSlugsInView, visibleEvents],
   );
 
+  // The finding engine reads only the entities already authorized for this
+  // map payload. It joins them deterministically around the current viewport
+  // (or the device fix when one is available) and suppresses thin one-fact
+  // results, so "Read this area" never becomes a second generic directory.
+  const discoveries = useMemo(
+    () => viewBounds && viewCenter ? buildMapDiscoveries({
+      places: inViewPlaces,
+      events: inViewEvents,
+      amenities,
+      parking,
+      transitStops,
+      cemeteries,
+      aerialPhotos: AERIAL_PHOTOS,
+      origin: viewCenter,
+      bounds: {
+        west: viewBounds.w,
+        east: viewBounds.e,
+        south: viewBounds.s,
+        north: viewBounds.n,
+      },
+      now: new Date(discoveryClockMs),
+      limit: 6,
+    }) : [],
+    [amenities, cemeteries, discoveryClockMs, inViewEvents, inViewPlaces, parking, transitStops, viewBounds, viewCenter],
+  );
+  // A camera move caused by a finding can slightly change the ranked viewport
+  // set. Keep the selected card in the swipe deck until the user closes it.
+  const discoveryDeck = useMemo(
+    () => selectedDiscovery && !discoveries.some((item) => item.id === selectedDiscovery.id)
+      ? [selectedDiscovery, ...discoveries]
+      : discoveries,
+    [discoveries, selectedDiscovery],
+  );
+  const selectedDiscoveryIndex = selectedDiscovery
+    ? discoveryDeck.findIndex((item) => item.id === selectedDiscovery.id)
+    : -1;
+
+  const showDiscovery = (discovery: MapDiscovery) => {
+    setSelectedDiscovery(discovery);
+    setSelected(null);
+    setSelectedEvent(null);
+    setSelectedSlug(null);
+    setPeekPlace(null);
+    setParkingPeek(null);
+    setClusterList(null);
+    setCivicTown(null);
+    const map = mapRef.current?.getMap();
+    if (map) {
+      cameraIntentRef.current = true;
+      map.easeTo({
+        center: discovery.center,
+        zoom: Math.max(map.getZoom(), discovery.zoom),
+        duration: prefersReducedMotion() ? 0 : 950,
+        easing: CAM_EASE,
+        essential: true,
+      });
+    }
+  };
+
+  const showDiscoveryAt = (index: number) => {
+    if (discoveryDeck.length === 0) return;
+    const normalized = (index + discoveryDeck.length) % discoveryDeck.length;
+    showDiscovery(discoveryDeck[normalized]);
+  };
+
   // Multiple events often share one venue. Separate those buttons by at
   // least one tap target so each event remains visible and independently
   // operable instead of stacking into a single ambiguous pin.
@@ -1964,7 +2075,7 @@ export default function AppMap({
           : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
       }
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
-      data-map-peek={dock && (peekPlace || parkingPeek) ? "open" : undefined}
+      data-map-peek={dock && (peekPlace || parkingPeek || selectedDiscovery) ? "open" : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
         const target = event.target as Element;
@@ -2098,7 +2209,7 @@ export default function AppMap({
         {/* Aerial time machine — scrub the drone archive by season. With a
             dock, the seasons nest under the Aerial photos overlay chip in
             the What pane; the floating strip serves dock-less maps only. */}
-        {showAerial && !dock && (
+        {visibleAerial && !dock && (
           <div
             className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)" }}
@@ -2308,7 +2419,7 @@ export default function AppMap({
           {/* #3 toggleable line overlays — rendered BEFORE the point
               layers so pins sit on top. Empty (invisible) unless the
               user opts in; base map unchanged by default. */}
-          <Source id="transit-lines" type="geojson" data={(showTransit ? transitLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
+          <Source id="transit-lines" type="geojson" data={(visibleTransit ? transitLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="transit-line"
               type="line"
@@ -2330,11 +2441,11 @@ export default function AppMap({
             type="geojson"
             data={{
               type: "FeatureCollection",
-              features: showTransit
+              features: visibleTransit
                 ? transitStops.map((st) => ({
                     type: "Feature" as const,
                     geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
-                    properties: { name: st.name },
+                    properties: { id: st.id, name: st.name },
                   }))
                 : [],
             }}
@@ -2370,7 +2481,7 @@ export default function AppMap({
             type="geojson"
             data={{
               type: "FeatureCollection",
-              features: showTransit
+              features: visibleTransit
                 ? marcStations.map((st) => ({
                     type: "Feature" as const,
                     geometry: { type: "Point" as const, coordinates: [st.lng, st.lat] },
@@ -2406,11 +2517,11 @@ export default function AppMap({
           {/* Live vehicles and route lines are one honest Transit layer. The
               old always-on vehicles made the dock say "No layers" while buses
               were visibly moving on the map. */}
-          <LiveBuses show={showTransit} />
+          <LiveBuses show={visibleTransit} />
           {/* MARC trains ride the SAME Transit toggle — one honest layer.
               DOM markers sit above the canvas, so a train at Point of Rocks
               never hides beneath its marc-station pin. */}
-          <LiveMarcTrains show={showTransit} />
+          <LiveMarcTrains show={visibleTransit} />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"
@@ -3073,7 +3184,7 @@ export default function AppMap({
           <Source
             id="aerial"
             type="geojson"
-            data={(showAerial ? aerialGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
+            data={(visibleAerial ? aerialGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
           >
             <Layer
               id="aerial-halo"
@@ -3202,7 +3313,7 @@ export default function AppMap({
           <Source
             id="cemeteries"
             type="geojson"
-            data={(showCemeteries ? cemeteryGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
+            data={(visibleCemeteries ? cemeteryGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
           >
             <Layer
               id="cemetery-icons"
@@ -3254,6 +3365,12 @@ export default function AppMap({
             </Popup>
           )}
 
+          {/* A "Read this area" result is drawn as a constellation: the
+              selected facts stay strong, unrelated place pins recede, and the
+              dashed connectors make the join visible without pretending to
+              be a walking or driving route. */}
+          <MapDiscoveryOverlay discovery={selectedDiscovery} />
+
           {/* Event pins — the Frederick-only differentiator vs Google/
               Apple Maps. Each event in the next 48h plotted at its venue
               as a circular photo bubble (or category-colored badge when
@@ -3274,6 +3391,7 @@ export default function AppMap({
                 onClick={(ev) => {
                   ev.stopPropagation();
                   haptic("light");
+                  setSelectedDiscovery(null);
                   setSelected(null);
                   setSelectedEvent(e);
                 }}
@@ -3288,6 +3406,8 @@ export default function AppMap({
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
+                  opacity: selectedDiscovery && !selectedDiscovery.points.some((point) => point.id === `event:${e.slug}`) ? 0.18 : 1,
+                  transition: "opacity 180ms ease",
                 }}
               >
                 <span
@@ -3333,7 +3453,7 @@ export default function AppMap({
               filling / red full / ink unknown). DOM markers (not a GeoJSON
               layer) so each is a real ≥44px, keyboard-reachable button and
               the glyph stays crisp. Tapping raises the parking peek. */}
-          {showParking &&
+          {visibleParking &&
             parking.map((g) => {
               const tone = parkingTone(g);
               const { fill, ink } = PARKING_TONE_STYLE[tone];
@@ -3350,6 +3470,7 @@ export default function AppMap({
                     onClick={(ev) => {
                       ev.stopPropagation();
                       haptic("light");
+                      setSelectedDiscovery(null);
                       setSelected(null);
                       setSelectedEvent(null);
                       setPeekPlace(null);
@@ -3424,7 +3545,7 @@ export default function AppMap({
               unobstructed, so dock-host CSS returns the zoom cluster there.
               GeolocateControl only rides dock-less maps: on /map browse,
               locate's one home is the Where pane. */}
-          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && (
+          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && !selectedDiscovery && (
             <NavigationControl position="bottom-right" showCompass={false} />
           )}
           {!dock && <GeolocateControl position="bottom-right" trackUserLocation />}
@@ -3446,8 +3567,6 @@ export default function AppMap({
             setQ={setQ}
             searchMatches={searchMatches}
             pickSearch={pickSearch}
-            listView={listView}
-            onToggleList={() => updateListView(!listView)}
             savedCount={followedSlugs.size}
             showSavedOnly={showSavedOnly}
             setShowSavedOnly={setShowSavedOnly}
@@ -3509,6 +3628,12 @@ export default function AppMap({
               });
             }}
             fitCounty={fitCounty}
+            discoveries={discoveries}
+            selectedDiscoveryId={selectedDiscovery?.id ?? null}
+            onSelectDiscovery={(id) => {
+              const discovery = discoveries.find((item) => item.id === id);
+              if (discovery) showDiscovery(discovery);
+            }}
             onPaneOpenChange={setDockPaneOpen}
           />
           </div>
@@ -3519,7 +3644,7 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !listView && !peekPlace && !parkingPeek && offOverview && (
+        {dock && !listView && !peekPlace && !parkingPeek && !selectedDiscovery && offOverview && (
           <button
             type="button"
             className="map-reset-fab tap-44"
@@ -3536,7 +3661,7 @@ export default function AppMap({
             a dock pane or the list is open. While locating, the icon swaps to
             a spinner (static under reduced motion) so the ~8s geolocation wait
             reads as working, not stuck. */}
-        {dock && !listView && !peekPlace && !parkingPeek && (
+        {dock && !listView && !peekPlace && !parkingPeek && !selectedDiscovery && (
           <button
             type="button"
             className="map-locate-fab tap-44"
@@ -3555,6 +3680,17 @@ export default function AppMap({
               <LocateFixed className="h-5 w-5" strokeWidth={2.2} aria-hidden />
             )}
           </button>
+        )}
+
+        {dock && selectedDiscovery && !listView && (
+          <MapDiscoveryPeek
+            discovery={selectedDiscovery}
+            index={Math.max(0, selectedDiscoveryIndex)}
+            total={Math.max(1, discoveryDeck.length)}
+            onPrevious={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) - 1)}
+            onNext={() => showDiscoveryAt((selectedDiscoveryIndex < 0 ? 0 : selectedDiscoveryIndex) + 1)}
+            onClose={() => setSelectedDiscovery(null)}
+          />
         )}
 
         {/* The map's LIST face — the same filtered pins as a scannable

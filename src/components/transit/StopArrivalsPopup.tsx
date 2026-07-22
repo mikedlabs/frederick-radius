@@ -11,9 +11,9 @@ import { routesForStop } from "./routeGeometry";
  * called, which routes serve it, and whether a bus is actually inbound right
  * now. Routes come from the static geometry (routesForStop, transit.json
  * shapes); arrivals come from the live GTFS-realtime TripUpdates feed via
- * /api/transit/stop-predictions. TransIT publishes no static bus timetable, so
- * when no trip is inbound the panel says so plainly and points at the schedule
- * instead of inventing a time.
+ * /api/transit/stop-predictions. Official static schedules exist, but this
+ * popup intentionally shows only realtime TripUpdates. An empty realtime
+ * result is described as "not reporting," not proof that no bus is scheduled.
  *
  * Renders the popup CONTENTS; the caller wraps it in a react-map-gl Popup so
  * this stays free of map plumbing.
@@ -28,7 +28,8 @@ type StopPrediction = { stopId: string; routeId?: string; arrivalEpoch?: number 
 
 export type SelectedStop = { id: string; name: string; lng: number; lat: number };
 
-const COUNTY_TRANSIT_URL = "https://frederickcountymd.gov/105/Transit-Services";
+const COUNTY_TRANSIT_URL =
+  "https://www.frederickcountymd.gov/207/Transit-Routes-Schedule-Information";
 
 /** Ink or paper, whichever reads on the route color. Mirrors NextStopsBoard so
  *  a route chip looks identical wherever it appears. */
@@ -145,7 +146,7 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
               marginBottom: 4,
             }}
           >
-            Next arrivals
+            Live arrivals
           </p>
           <ul style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {arrivals.map((a, i) => (
@@ -176,14 +177,14 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
         </>
       ) : (
         <p style={{ fontSize: 11.5, lineHeight: 1.4, color: "var(--app-ink-3)" }}>
-          No bus is inbound to this stop right now.{" "}
+          No live arrival is reporting for this stop right now.{" "}
           <a
             href={COUNTY_TRANSIT_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "var(--app-cool)", fontWeight: 600 }}
           >
-            See the schedule
+            Check the official schedule
           </a>
           .
         </p>

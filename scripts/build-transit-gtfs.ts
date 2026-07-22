@@ -13,6 +13,8 @@ import { writeFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
+const OFFICIAL_SCHEDULE_URL =
+  "https://www.frederickcountymd.gov/199/Connector-Schedules";
 const TMP = "/tmp/fr-gtfs";
 const OUT = new URL("../src/data/transit.json", import.meta.url).pathname;
 
@@ -32,6 +34,12 @@ function csv(file: string): Record<string, string>[] {
     const c = splitCsvLine(l); const o: Record<string, string> = {};
     hdr.forEach((h, i) => (o[h] = c[i])); return o;
   });
+}
+
+/** GTFS YYYYMMDD -> ISO YYYY-MM-DD. Invalid or absent dates stay absent. */
+function gtfsDate(value: string | undefined): string | undefined {
+  if (!value || !/^\d{8}$/.test(value)) return undefined;
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
 }
 
 async function main() {
@@ -76,9 +84,24 @@ async function main() {
     if (best) shapes[rid] = simplify(raw[best]);
   }
 
+  const feedInfo = csv("feed_info.txt")[0] ?? {};
+  const agencyInfo = csv("agency.txt")[0] ?? {};
+  const generatedAt = new Date().toISOString().slice(0, 10);
+
   const out = {
     agency: "Transit Services of Frederick County", fareFree: true, phone: "301-600-2065",
-    generatedAt: new Date().toISOString().slice(0, 10), routes, stops, shapes,
+    generatedAt,
+    // This block describes the committed STATIC GTFS snapshot. It must never be
+    // used as proof that vehicle positions or arrival predictions are live.
+    staticFeed: {
+      sourceUrl: GTFS_URL,
+      agencyUrl: agencyInfo.agency_url || "https://www.frederickcountymd.gov/105/Transit-Services",
+      scheduleUrl: OFFICIAL_SCHEDULE_URL,
+      fetchedOn: generatedAt,
+      serviceWindowStart: gtfsDate(feedInfo.feed_start_date),
+      serviceWindowEnd: gtfsDate(feedInfo.feed_end_date),
+    },
+    routes, stops, shapes,
   };
   writeFileSync(OUT, JSON.stringify(out));
   rmSync(TMP, { recursive: true, force: true });

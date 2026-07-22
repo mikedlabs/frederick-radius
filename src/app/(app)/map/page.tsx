@@ -616,12 +616,14 @@ async function BrowseMapArea() {
   });
 
   // Transit stop dots + MARC stations with next trains (map phase 3).
-  // Stops carry NO schedule data (none exists in our set) — location and
-  // name only. MARC departures are computed here from the committed GTFS
-  // schedule and shown as clock times, so ISR staleness cannot lie.
+  // Bus stops come from the committed static TransIT GTFS snapshot. Preserve
+  // stop_id all the way into the map pin: the realtime TripUpdates feed uses
+  // that same key, so a later stop tap can request an honest live arrival.
+  // MARC departures are computed here from the committed GTFS schedule and
+  // shown as clock times, so ISR staleness cannot lie.
   const transitStops: TransitStopPin[] = (
-    TRANSIT_RAW as { stops: Array<{ name: string; lat: number; lng: number }> }
-  ).stops.map((st) => ({ name: st.name, lng: st.lng, lat: st.lat }));
+    TRANSIT_RAW as { stops: Array<{ id: string | number; name: string; lat: number; lng: number }> }
+  ).stops.map((st) => ({ id: String(st.id), name: st.name, lng: st.lng, lat: st.lat }));
   const marc = etNowParts(now);
   const marcActive = activeServiceIds(marc.ymd, marc.weekday);
   const marcStations: MarcStationPin[] = MARC_STATIONS.map((st) => ({

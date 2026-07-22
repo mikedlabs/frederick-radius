@@ -75,6 +75,10 @@ const raw2026 = {
   type: "FeatureCollection",
   features: [
     {
+      geometry: { type: "MultiLineString", coordinates: [[[-77.411, 39.412], [-77.42, 39.39]]] },
+      properties: { route_id: "15", rt_long_nm: "#15 route alternate segment 1", objectid: "0" },
+    },
+    {
       geometry: { type: "MultiLineString", coordinates: [[[-77.41, 39.41], [-77.4, 39.42]]] },
       properties: { route_id: "65", rt_long_nm: "#65/Walkersville Connector", destination: "Loop", objectid: "1" },
     },
@@ -106,6 +110,7 @@ describe("normalizeTransitRoutes — 2026 schema (rt_long_nm)", () => {
   it("maps route_id to the county's canonical route names", () => {
     const out = normalizeTransitRoutes(raw2026);
     const names = out.map((r) => r.name);
+    expect(names).toContain("15 Connector");
     expect(names.filter((n) => n === "65 Connector")).toHaveLength(3);
   });
 

@@ -115,9 +115,10 @@ export type BrowseDockInfo = {
   eventWindowCounts: Partial<Record<TimeMode, number>>;
 };
 
-/** A TransIT bus stop as a map dot (MD Open Data). No schedule data
- *  exists for stops, so pins carry location + name only — honest. */
-export type TransitStopPin = { name: string; lng: number; lat: number };
+/** A TransIT bus stop from the committed static GTFS snapshot. The GTFS
+ *  stop_id is load-bearing: realtime TripUpdates use the same id, so dropping
+ *  it here makes a map stop impossible to connect to honest live arrivals. */
+export type TransitStopPin = { id: string; name: string; lng: number; lat: number };
 
 /** A MARC station pin with its next scheduled trains (server-computed
  *  from the committed GTFS schedule at render; shown as clock times so
