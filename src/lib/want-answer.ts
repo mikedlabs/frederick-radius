@@ -313,22 +313,26 @@ export function approxHeroIndex(open: WantCandidate[]): number {
   return best;
 }
 
-function bestFitScore(candidate: WantCandidate): number {
+function bestFitScore(candidate: WantCandidate, preciseOrigin: boolean): number {
+  const proximity = preciseOrigin && candidate.distance_m != null
+    ? 10 / (1 + candidate.distance_m / 600)
+    : 0;
   return (
     candidate.feature_score +
     (candidate.local_favorite ? 1.5 : 0) +
     (candidate.hidden_gem ? 0.5 : 0) +
     ratingSignal(candidate.google_rating, candidate.google_rating_count) * 0.75 -
-    (isChainName(candidate.name) ? 0.75 : 0)
+    (isChainName(candidate.name) ? 0.75 : 0) +
+    proximity
   );
 }
 
 /** Rank a timeless Ask decision by editorial fit. Current hours remain on the
  * row, but they do not let an open chain beat the better local answer merely
  * because the question was asked after breakfast service ended. */
-export function rankBestFit(candidates: WantCandidate[]): WantCandidate[] {
+export function rankBestFit(candidates: WantCandidate[], preciseOrigin = false): WantCandidate[] {
   return [...candidates].sort((a, b) => {
-    const scoreDelta = bestFitScore(b) - bestFitScore(a);
+    const scoreDelta = bestFitScore(b, preciseOrigin) - bestFitScore(a, preciseOrigin);
     if (scoreDelta !== 0) return scoreDelta;
     const distanceDelta = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
     if (distanceDelta !== 0) return distanceDelta;
@@ -404,7 +408,7 @@ export function buildWantAnswer(
   const rankingMode = opts?.rankingMode ?? "open-now";
 
   if (rankingMode === "best-fit") {
-    const best = rankBestFit(candidates);
+    const best = rankBestFit(candidates, Boolean(origin && !opts?.approximateOrigin));
     return {
       key: cKey,
       label: want.label,

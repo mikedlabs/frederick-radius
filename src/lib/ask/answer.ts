@@ -1109,19 +1109,22 @@ function wantContextBlock(
     );
   };
   const gateBreakfast = !intent.cuisine && (intent.key === "breakfast" || intent.key === "brunch");
-  const namesMeal = /\b(?:breakfast|brunch|lunch|dinner|supper|late[- ]night)\b/i.test(query);
   const asksForCurrentAvailability = /\b(?:right now|open now|open|now|today|tonight|this (?:morning|afternoon|evening))\b/i.test(query);
-  const rankingMode = namesMeal && !asksForCurrentAvailability ? "best-fit" : "open-now";
+  // Ask is timeless unless the person supplies a clock. The Today strip is
+  // explicitly a right-now surface, but a typed "coffee" request should not
+  // silently become "which coffee shop is open this second?" and discard a
+  // stronger nearby match with unposted hours.
+  const rankingMode = asksForCurrentAvailability ? "open-now" : "best-fit";
   // Origin seeds the ORDERING only (downtown core / the town's centroid);
   // approximateOrigin makes the hero the strongest PLACE among the near-open
   // set, never the fluke nearest (the Chick-fil-A lesson, PR #1123).
   const downtown = intent.area?.kind === "downtown";
   const origin = downtown
     ? FREDERICK_CENTER
-    : town?.centroid ?? context.origin ?? null;
+    : queryTown?.centroid ?? context.origin ?? scopedTown?.centroid ?? null;
   const approximateOrigin = Boolean(
     origin &&
-      (downtown || town || context.canShowDistance === false),
+      (downtown || queryTown || (!context.origin && scopedTown) || context.canShowDistance === false),
   );
   let wa = buildWantAnswer(intent.key, null, origin, now, {
     approximateOrigin,
@@ -1427,9 +1430,22 @@ export async function askFrederick(
   const retrieval = qualifiedSearch(q, 12, eventPool, context);
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
-  const filteredHits = rerankWithTaste(retrieval.hits, tasteProfile).filter((hit) => {
+  const tasteRankedHits = rerankWithTaste(retrieval.hits, tasteProfile);
+  const hasCompleteCompoundMatch = tasteRankedHits.some((hit) =>
+    hit.type === "place" &&
+    Boolean(hit.conceptCoverage && hit.conceptCoverage.total > 1 && hit.conceptCoverage.matched === hit.conceptCoverage.total),
+  );
+  const filteredHits = tasteRankedHits.filter((hit) => {
     if (hit.type === "event") return eventFitsAskIntent(hit.event, intent, now) && eventMatchesTopic(hit.event, q);
     if (hit.type !== "place") return true;
+    // Once Radius has one place that proves every part of a combined request,
+    // partial matches are not equivalent recommendations. Keep them out of
+    // the answer cards instead of calling a generic coffee chain another
+    // answer to "coffee and bikes".
+    if (
+      hasCompleteCompoundMatch &&
+      (!hit.conceptCoverage || hit.conceptCoverage.matched !== hit.conceptCoverage.total)
+    ) return false;
     const p = hit.place;
     if (intent.localOnly && isChainName(p.name)) return false;
     if (intent.travelMode === "walk" && context.origin && (p.distance_m ?? Infinity) > 2_400) return false;
@@ -1505,7 +1521,14 @@ export async function askFrederick(
   // Broad meal planning supplements open-ended asks. It must not outrank a
   // stricter compound-food query ("breakfast sandwich") or a reservation
   // request whose sources require explicit dish evidence ("steak at 7:30").
-  const wantIntent = retrieval.meta.qualifiers.compoundIntent || intent.reservation
+  // The one-want machinery is excellent at "coffee" and "breakfast", but it
+  // intentionally knows only one domain. Sending "coffee and bikes" through
+  // it silently throws away "bikes". Combined discovery requests therefore
+  // stay with shared search, which can prove that one place satisfies every
+  // named concept. Mixed amenity requests are different: the amenity grounder
+  // has already handled the second half.
+  const combinedDiscovery = !amenitySupplement && /\b(?:and|with|plus|both|combined?)\b/i.test(q);
+  const wantIntent = retrieval.meta.qualifiers.compoundIntent || intent.reservation || combinedDiscovery
     ? null
     : wantIntentOf(q, now);
   const requestedVisitAt = appointmentWindow?.at ?? (
@@ -1754,6 +1777,8 @@ export async function askFrederick(
         const region = regionForMunicipality(p.municipality);
         const fit = region && intent.regions.includes(region)
           ? `${lead ? "Start here" : "Worth the drive"} in ${COUNTY_REGION_LABELS[region]}`
+          : h.conceptCoverage && h.conceptCoverage.total > 1 && h.conceptCoverage.matched === h.conceptCoverage.total
+            ? "Matches the full request"
           : retrieval.meta.qualifiers.categoryLabel
           ? `Verified ${retrieval.meta.qualifiers.categoryLabel} listing${lead ? " ranked first" : ""}`
           : lead
@@ -1869,6 +1894,7 @@ export async function askFrederick(
         nearMe: retrieval.meta.qualifiers.nearMe,
         nearMeApplied: retrieval.meta.nearMeApplied,
         strictNearest,
+        combinedDiscovery,
         contextLabel: retrieval.meta.contextLabel,
         eventIntent: isEventSearchIntent(q),
         regions: intent.regions,
@@ -1972,6 +1998,7 @@ function deterministicAnswer({
   nearMe,
   nearMeApplied,
   strictNearest,
+  combinedDiscovery,
   contextLabel,
   eventIntent,
   regions,
@@ -1989,6 +2016,7 @@ function deterministicAnswer({
   nearMe?: boolean;
   nearMeApplied?: boolean;
   strictNearest?: boolean;
+  combinedDiscovery?: boolean;
   contextLabel?: string | null;
   eventIntent?: boolean;
   regions?: CountyRegion[];
@@ -2046,7 +2074,7 @@ function deterministicAnswer({
     return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
   }
   if (sourceList.length > 0) {
-    return pickLead(sourceList, category?.toLowerCase() ?? null, { downtown });
+    return pickLead(sourceList, category?.toLowerCase() ?? null, { downtown, combined: combinedDiscovery });
   }
   if (downtown) {
     return `I found ${count} match${count === 1 ? "" : "es"} near downtown Frederick${openNow ? " with current open hours" : ""}.`;
@@ -2071,7 +2099,7 @@ function deterministicAnswer({
 function pickLead(
   sources: readonly AskSource[],
   subject: string | null,
-  opts: { downtown?: boolean } = {},
+  opts: { downtown?: boolean; combined?: boolean } = {},
 ): string {
   const top = sources[0];
   const where = top.city ? ` in ${top.city}` : "";
@@ -2084,7 +2112,9 @@ function pickLead(
   else if ((m = status.match(/^Opens\s+(.+)$/i))) liveFact = ` It opens ${m[1]}.`;
 
   const subjectTail = subject ? ` for ${subject}` : "";
-  const lead = `${top.name}${where} is the best match${subjectTail}.`;
+  const lead = opts.combined
+    ? `${top.name}${where} is the strongest match because it covers the full request.`
+    : `${top.name}${where} is the best match${subjectTail}.`;
 
   const rest = sources.length - 1;
   const nearTail = opts.downtown ? " near downtown" : "";
@@ -2094,7 +2124,9 @@ function pickLead(
   } else if (rest > 1) {
     more = ` ${sources[1].name} is another option${nearTail}, with ${rest - 1} more match${rest - 1 === 1 ? "" : "es"}.`;
   } else {
-    more = " It is the only current match in the available data.";
+    more = opts.combined
+      ? " No other Radius listing has evidence for both."
+      : " It is the only current match in the available data.";
   }
   return `${lead}${liveFact}${more}`;
 }

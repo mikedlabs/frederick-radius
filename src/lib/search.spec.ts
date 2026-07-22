@@ -131,6 +131,42 @@ describe("qualifiedSearch — natural category plurals", () => {
 });
 
 describe("qualifiedSearch — Ask uses place context by default", () => {
+  const gravelAndGrind = { lng: -77.40955, lat: 39.42165 };
+
+  it("puts a nearby place that satisfies every concept ahead of a generic chain", () => {
+    const { hits } = qualifiedSearch("coffee and bikes", 12, undefined, {
+      origin: gravelAndGrind,
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    });
+    const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+    expect(places[0]?.distance_m).toBeLessThan(50);
+    const lead = hits.find((hit) => hit.type === "place");
+    expect(lead?.type === "place" ? lead.conceptCoverage : null).toEqual({ matched: 2, total: 2 });
+    expect(places.findIndex((place) => /^starbucks\b/i.test(place.name))).toBeGreaterThan(0);
+  });
+
+  it("understands ordinary plurals when the curated tag is singular", () => {
+    const places = search("coffee and bikes", 12)
+      .flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.slug).toBe("gravel-and-grind-frederick");
+  });
+
+  it("uses location for an ordinary relevant query without requiring the word nearest", () => {
+    const places = qualifiedSearch("coffee", 12, undefined, {
+      origin: gravelAndGrind,
+      municipality: "frederick",
+      contextLabel: "your location",
+      canShowDistance: true,
+    }).hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
+
+    expect(places[0]?.distance_m).toBeLessThan(1_000);
+  });
+
   it("hard-filters an unconstrained search to the selected town", () => {
     const { hits, meta } = qualifiedSearch("MZ Art Studio", 12, undefined, {
       origin: { lng: -77.3523, lat: 39.3276 },

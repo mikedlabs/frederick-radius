@@ -21,7 +21,12 @@ import {
 } from "@/lib/search/qualifiers";
 
 export type SearchHit =
-  | { type: "place"; place: PlaceCardData; score: number }
+  | {
+      type: "place";
+      place: PlaceCardData;
+      score: number;
+      conceptCoverage?: { matched: number; total: number };
+    }
   | { type: "event"; event: Event & { distance_m?: number }; score: number }
   | { type: "municipality"; municipality: Municipality; score: number }
   | { type: "category"; category: Category; score: number }
@@ -41,6 +46,12 @@ const STOP = new Set([
   "me", "my", "we", "you", "your", "i'm", "im",
   "need", "want", "wanna", "looking", "look", "find", "show", "get", "give",
   "some", "any", "please", "near", "nearby", "around", "where", "what", "how", "can", "do",
+  // Time and preference language constrains the decision but is not evidence
+  // that a place satisfies the requested thing. Keeping "tonight" as a
+  // search term, for example, makes a beer-and-food place look like it only
+  // answered two thirds of "beer and food tonight".
+  "now", "today", "tonight", "tomorrow", "weekend", "morning", "afternoon", "evening",
+  "good", "great", "best", "current", "right",
 ]);
 
 // Frederick-area words usually describe where to look, not what the visitor
@@ -61,16 +72,85 @@ function normalize(s: string): string[] {
   return specificTerms.length > 0 ? specificTerms : terms;
 }
 
+/** Small, deliberately conservative inflection normalizer. Search data uses
+ * singular curated tags ("bike") while people naturally ask with plurals
+ * ("bikes"). This is not meant to be a general stemmer: it only collapses
+ * ordinary English noun plurals without rewriting words such as "glass" or
+ * "business" into unrelated fragments. */
+function singularTerm(term: string): string {
+  if (term.length > 4 && /(ches|shes|xes|zes)$/.test(term)) return term.slice(0, -2);
+  if (
+    term.length > 3 &&
+    term.endsWith("s") &&
+    !/(ss|us|is|ous)$/.test(term)
+  ) return term.slice(0, -1);
+  return term;
+}
+
+function termVariants(term: string): string[] {
+  const variants = new Set([term, singularTerm(term)]);
+  // "movies" -> "movie" while "activities" -> "activity". Keeping both
+  // conservative candidates is safer than pretending one suffix rule can
+  // fully stem English.
+  if (term.length > 4 && term.endsWith("ies")) {
+    variants.add(term.slice(0, -1));
+    variants.add(`${term.slice(0, -3)}y`);
+  }
+  return [...variants];
+}
+
 function fieldScore(haystack: string, terms: string[]): number {
   const lower = haystack.toLowerCase();
   let score = 0;
   for (const t of terms) {
     if (!t) continue;
-    if (lower === t) score += 3;
-    else if (lower.startsWith(t)) score += 2;
-    else if (lower.includes(t)) score += 1;
+    // Score the best inflection once. "bikes" matching the curated "bike"
+    // tag must not count twice merely because both variants are considered.
+    let best = 0;
+    for (const variant of termVariants(t)) {
+      if (lower === variant) best = Math.max(best, 3);
+      else if (lower.startsWith(variant)) best = Math.max(best, 2);
+      else if (lower.includes(variant)) best = Math.max(best, 1);
+    }
+    score += best;
   }
   return score;
+}
+
+function compoundCoverage(
+  query: string,
+  evidenceText: string,
+  terms: string[],
+): { score: number; matched: number; total: number } | null {
+  // A connector signals one combined job, not two unrelated alternatives.
+  // "coffee and bikes" should prefer the one coffee bar/bike shop over a
+  // generic coffee chain that happens to have a higher curation score.
+  if (!/\b(?:and|with|plus|both|combined?)\b/i.test(query)) return null;
+  const concepts = Array.from(new Set(terms)).slice(0, 5);
+  if (concepts.length < 2) return null;
+
+  const evidence = new Set(
+    evidenceText
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}'-]/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .flatMap(termVariants),
+  );
+  const matched = concepts.filter((concept) =>
+    termVariants(concept).some((variant) => evidence.has(variant)),
+  ).length;
+  const missing = concepts.length - matched;
+  // Full concept coverage is a ranking tier. Partial matches remain eligible,
+  // but they cannot coast on feature score when one place answers the whole
+  // request. The modest per-term component still distinguishes 2/3 from 1/3.
+  return {
+    score: matched === concepts.length
+      ? 10 + matched * 2
+      : matched * 2 - missing * 3,
+    matched,
+    total: concepts.length,
+  };
 }
 
 /**
@@ -334,6 +414,7 @@ export function search(
       ...(p.tags ?? []),
     ].join(" ");
     const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, evidenceText, intent) : 0;
+    const coverage = compoundCoverage(query, evidenceText, terms);
     // Event intent ("live music"): genuine venues stay in play, but a
     // place whose only claim was an incidental name token (the candle
     // shop "Liveyoung") steps aside for the actual events below.
@@ -342,7 +423,14 @@ export function search(
       const place = options.origin
         ? { ...p, distance_m: haversineMeters(options.origin, p.geom) }
         : p;
-      hits.push({ type: "place", place, score: s + p.feature_score + iv + ev });
+      hits.push({
+        type: "place",
+        place,
+        score: s + p.feature_score + iv + ev + (coverage?.score ?? 0),
+        conceptCoverage: coverage
+          ? { matched: coverage.matched, total: coverage.total }
+          : undefined,
+      });
     }
   }
 
@@ -420,23 +508,25 @@ export function search(
     }
   }
 
-  hits.sort((a, b) => {
-    if (options.rankPlacesByDistance && a.type === "place" && b.type === "place") {
-      const adjusted = (hit: Extract<SearchHit, { type: "place" }>) => {
-        const distance = hit.place.distance_m;
-        if (distance == null || !Number.isFinite(distance)) return hit.score;
-        // Relevance still leads; proximity is a meaningful lift plus a
-        // progressive far-away penalty. This avoids both failure modes:
-        // pure text ranking that crowns a Brunswick keyword match downtown,
-        // and pure nearest-first ranking that calls a nearby pizza shop a
-        // breakfast-sandwich answer because its blurb mentions sandwiches.
-        const proximityLift = 5 / (1 + distance / 1_500);
-        const farPenalty = Math.max(0, distance - 8_000) / 2_500;
-        return hit.score + proximityLift - farPenalty;
-      };
-      const score = adjusted(b) - adjusted(a);
-      if (score !== 0) return score;
+  if (options.rankPlacesByDistance) {
+    for (const hit of hits) {
+      if (hit.type !== "place") continue;
+      const distance = hit.place.distance_m;
+      if (distance == null || !Number.isFinite(distance)) continue;
+      // A precise nearby match should feel like Radius knows where the person
+      // is. Relevance and complete concept coverage are already in hit.score;
+      // this then gives a strong lift inside a short walk and progressively
+      // penalizes results that send a user across the county.
+      const proximityLift = 10 / (1 + distance / 600);
+      const farPenalty = Math.max(0, distance - 6_000) / 2_000;
+      // Persist the location-aware score. Ask's optional taste reranker runs
+      // after this search; keeping the adjustment prevents personalization
+      // from accidentally restoring a farther generic result.
+      hit.score += proximityLift - farPenalty;
     }
+  }
+
+  hits.sort((a, b) => {
     if (options.rankEventsByDistance && a.type === "event" && b.type === "event") {
       const distance = (a.event.distance_m ?? Infinity) - (b.event.distance_m ?? Infinity);
       if (distance !== 0) return distance;

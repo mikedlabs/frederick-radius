@@ -118,6 +118,24 @@ describe("buildWantAnswer context", () => {
     ]);
   });
 
+  it("makes a truly nearby fit prominent when the origin is precise", () => {
+    const ranked = rankBestFit([
+      cand({ slug: "nearby", name: "Nearby Local", distance_m: 80, feature_score: 5 }),
+      cand({ slug: "farther", name: "Farther Favorite", distance_m: 2_000, feature_score: 8, local_favorite: true }),
+    ], true);
+
+    expect(ranked[0]?.slug).toBe("nearby");
+  });
+
+  it("does not let an approximate centroid crown the fluke nearest place", () => {
+    const ranked = rankBestFit([
+      cand({ slug: "centroid-chain", name: "Starbucks", distance_m: 80, feature_score: 5 }),
+      cand({ slug: "local-fit", name: "Local Coffee", distance_m: 2_000, feature_score: 8, local_favorite: true }),
+    ], false);
+
+    expect(ranked[0]?.slug).toBe("local-fit");
+  });
+
   it("returns the complete open brewery set for the Beer page filter", () => {
     const answer = buildWantAnswer(
       "breweries",
