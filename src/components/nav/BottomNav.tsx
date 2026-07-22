@@ -90,7 +90,7 @@ export default function BottomNav() {
           haptic("light");
           window.dispatchEvent(new CustomEvent("fr:open-search"));
         }}
-        className="grid h-11 w-11 place-items-center rounded-full transition-transform active:scale-[0.92]"
+        className="grid h-11 w-11 place-items-center rounded-full transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
         style={{
           background: "linear-gradient(155deg, var(--app-brand), var(--app-brand-press))",
           color: "var(--app-on-brand)",
@@ -198,7 +198,7 @@ export default function BottomNav() {
             };
 
             const tabClass =
-              "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
+              "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]";
             const tabStyle = {
               // brand-press, not brand: the 11px active label sits on a faint
               // brand tint over cream where #E14328 is only ~3.3:1 (fails AA);

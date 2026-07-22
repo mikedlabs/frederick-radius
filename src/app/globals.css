@@ -279,8 +279,10 @@
   /* Brand-tinted ambient under the single primary CTA. Opt-in via
    * .tactile-glow-brand so it never accidentally fires elsewhere.  */
   --app-brand-glow: 0 10px 28px -6px rgba(225, 67, 40, 0.45);
-  /* Gentle overshoot for press/lift physics. */
-  --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+  /* Overshoot for press/lift physics. Bumped 1.4 -> 1.56 (owner ask,
+   * 2026-07-22: "smoother, not as sharp") so a released control visibly
+   * springs past rest and settles, instead of snapping straight back. */
+  --app-ease-spring: cubic-bezier(0.32, 1.56, 0.45, 1);
 }
 
 @media (min-width: 64rem) {
@@ -1334,16 +1336,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-3);
 }
 .tactile-interactive:active {
-  /* Deeper, snappier press: a touch more scale-down so the control
-     visibly "gives" under a finger, and on release it springs back
-     with --app-ease-bounce (a subtle overshoot) instead of a flat
-     ease — the difference between a button that moves and one that
-     feels alive. ~110ms press-in keeps it responsive. */
+  /* The press: the control visibly "gives" under a finger, then the
+     base .tactile transition (spring ease) carries the release with a
+     small overshoot — the difference between a button that moves and
+     one that feels alive. 150ms ease-out press-in reads soft rather
+     than snapped (owner ask: smoother, not as sharp). */
   transform: translateY(0) scale(0.965);
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
   transition:
-    transform 110ms var(--app-ease-bounce),
-    box-shadow 110ms var(--app-ease-out);
+    transform 150ms var(--app-ease-out),
+    box-shadow 150ms var(--app-ease-out);
+}
+
+/* ── tap-pop — the PUSH-OUT press for chip-scale controls (pills, want
+   chips, filter chips). Where a card presses IN under a finger, a chip
+   pops OUT (scale up) and springs back on release: playful, soft, and
+   it reads as "I picked this one" in a dense row. The doubled class
+   selector outranks .tactile-interactive's :hover/:active transforms
+   when both classes sit on one element. `--pop` tunes the scale for
+   bigger controls (full-width rows want ~1.015, not 1.06). ─────────── */
+.tap-pop {
+  will-change: transform;
+  /* Full property list so this doesn't clobber .tactile's box-shadow
+     transition on elements carrying both classes. */
+  transition:
+    transform var(--app-dur-med) var(--app-ease-spring),
+    box-shadow var(--app-dur-med) var(--app-ease-out),
+    filter var(--app-dur-fast) var(--app-ease-out);
+}
+.tap-pop.tap-pop:active {
+  transform: scale(var(--pop, 1.06));
+  transition-duration: 130ms;
+  transition-timing-function: var(--app-ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tap-pop.tap-pop:active {
+    transform: none;
+  }
 }
 /* Filled controls: gloss overlay + bottom inner lip + bumped ambient
  * so a solid background reads as material, not flat. Plays well with
