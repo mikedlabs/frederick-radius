@@ -7,8 +7,10 @@
  * Run: node --import tsx scripts/copy-scores.ts
  */
 import { writeFileSync } from "node:fs";
-import { PLACES } from "../src/data/places";
+import DESCRIPTIONS_RAW from "../src/data/descriptions.json" with { type: "json" };
 import { classifyDescription, type CopyQuality } from "../src/lib/copy-quality";
+import { publicPlaces } from "../src/lib/loaders/places";
+import type { PlaceDescriptionEntry } from "../src/lib/loaders/placeDescriptions";
 
 function main(): void {
   const counts: Record<CopyQuality, number> = {
@@ -18,8 +20,14 @@ function main(): void {
     reviewed: 0,
   };
   const bySlug: Record<string, CopyQuality> = {};
-  for (const p of PLACES) {
-    const q = classifyDescription(p.name, p.description ?? p.short_blurb);
+  const places = publicPlaces();
+  const descriptions = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
+  for (const p of places) {
+    const q = classifyDescription(
+      p.name,
+      descriptions[p.slug]?.blurb ?? p.description ?? p.short_blurb,
+      descriptions[p.slug]?.status === "approved",
+    );
     counts[q]++;
     bySlug[p.slug] = q;
   }
@@ -27,7 +35,7 @@ function main(): void {
     new URL("../src/data/copy-scores.json", import.meta.url).pathname,
     JSON.stringify({ computed_at: new Date().toISOString(), counts, bySlug }, null, 0),
   );
-  const tot = PLACES.length;
+  const tot = places.length;
   const pct = (n: number) => ((n / tot) * 100).toFixed(1) + "%";
   console.log(
     `copy: ${tot} places. scraped ${counts.scraped} (${pct(counts.scraped)}), ` +

@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { scopeHistoricOverlay } from "@/lib/map/historicOverlay";
 
 export const runtime = "nodejs";
 export const revalidate = 86400;
@@ -43,6 +44,14 @@ export async function GET(
     // In the registry but not seeded yet: an empty collection, not a 500,
     // so a toggle of a coming-soon layer degrades quietly.
     body = JSON.stringify({ type: "FeatureCollection", features: [] });
+  }
+
+  if (layer === "historic") {
+    try {
+      body = JSON.stringify(scopeHistoricOverlay(JSON.parse(body)));
+    } catch {
+      body = JSON.stringify({ type: "FeatureCollection", features: [] });
+    }
   }
 
   const etag = `"${createHash("sha1").update(body).digest("hex")}"`;

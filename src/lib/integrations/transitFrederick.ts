@@ -1,11 +1,11 @@
 /**
  * TransIT Frederick — public transit routes + stops.
  *
- * HONEST SOURCING: TransIT's cataloged static GTFS ZIP
- * (maps.frederickcountymd.gov/google/google_transit.zip) currently
- * 404s per Transitland, and no public GTFS-Realtime URL is exposed —
- * so live schedules and real-time vehicle positions need the live
- * GTFS feed confirmed with the county (a later phase, NOT faked here).
+ * HONEST SOURCING: this module serves Maryland Open Data route lines and
+ * stop points. The separate, confirmed TransIT static GTFS snapshot lives in
+ * src/data/transit.json, while GTFS-realtime vehicle and TripUpdates feeds are
+ * handled by transitRealtime.ts. Do not describe this weekly Socrata geometry
+ * as live vehicle or arrival data.
  *
  * What IS reliable + keyless today on Maryland Open Data (Socrata):
  *   - "Frederick County TransIT Routes" (2xca-jw6k) — 36 routes with
@@ -92,6 +92,7 @@ function firstVertex(coords: unknown): [number, number] | null {
  */
 const CANONICAL_ROUTE_NAMES: Record<string, string> = {
   "10": "10 Connector",
+  "15": "15 Connector",
   "20": "20 Connector",
   "40": "40 Connector",
   "50": "50 Connector",

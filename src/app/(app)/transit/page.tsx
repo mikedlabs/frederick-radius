@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 const COUNTY_TRANSIT_URL = "https://frederickcountymd.gov/105/Transit-Services";
+const COUNTY_TRANSIT_SCHEDULES_URL =
+  "https://www.frederickcountymd.gov/207/Transit-Routes-Schedule-Information";
 const COUNTY_TRANSIT_PHONE = "301-600-2065";
 
 // Intent-led entry tiles, split by what the rider is doing. "Act now" are the
@@ -34,11 +36,11 @@ type TransitIntent = {
 
 const TRANSIT_ACT: TransitIntent[] = [
   {
-    label: "Schedules + fares",
-    hint: "Current TransIT schedules, fare table, holiday changes",
+    label: "Bus schedules",
+    hint: "Official connector and shuttle schedules, including July 2026 changes",
     icon: Clock,
     accent: "var(--app-cool)",
-    href: COUNTY_TRANSIT_URL,
+    href: COUNTY_TRANSIT_SCHEDULES_URL,
     external: true,
   },
   {
@@ -61,27 +63,27 @@ const TRANSIT_REFERENCE: TransitIntent[] = [
     external: true,
   },
   {
-    label: "Bus pass + tickets",
-    hint: "Daily, weekly, monthly, and reduced-fare passes",
+    label: "Accessibility + rider help",
+    hint: "Lift, ramp, securement, and travel-training information",
     icon: Ticket,
     accent: "var(--app-cool)",
-    href: COUNTY_TRANSIT_URL,
+    href: "https://frederickcountymd.gov/222/Accessibility-Features",
     external: true,
   },
   {
     label: "Bike on the bus",
-    hint: "Every TransIT bus has a 2-bike front rack, first-come, no fee",
+    hint: "TransIT buses have bike racks; the driver can help if needed",
     icon: Bike,
     accent: "var(--app-cool)",
     href: COUNTY_TRANSIT_URL,
     external: true,
   },
   {
-    label: "Senior reduced fare",
-    hint: "Half-price for riders 60+, ADA-eligible, or Medicare cardholders",
+    label: "Service updates",
+    hint: "Official route changes, cancellations, and holiday service",
     icon: Users,
     accent: "var(--app-warning)",
-    href: COUNTY_TRANSIT_URL,
+    href: "https://frederickcountymd.gov/225/Rider-Bulletins-News-Updates-Publication",
     external: true,
   },
   {
@@ -130,9 +132,9 @@ export const revalidate = 60;
  *
  * Live data that exists today: TransIT vehicle positions with a resolved next
  * stop + ETA (GTFS-realtime), MARC schedule with a realtime delay overlay, and
- * per-stop bus arrivals (GTFS-realtime TripUpdates, surfaced on stop tap). No
- * static TransIT timetable is published, so bus arrivals are realtime only and
- * an empty stop says so honestly.
+ * per-stop bus arrivals (GTFS-realtime TripUpdates, surfaced on stop tap).
+ * TransIT also publishes official schedules and a static GTFS feed. Radius uses
+ * that static feed for the network snapshot, but does not present it as live.
  */
 function relativeAge(iso: string | null): string | null {
   if (!iso) return null;
@@ -149,6 +151,18 @@ function relativeAge(iso: string | null): string | null {
   if (days < 365) return "12 months ago";
   const years = Math.max(1, Math.floor(days / 365));
   return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
+function sourceDate(iso: string | undefined): string | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function IntentTile({ intent }: { intent: TransitIntent }) {
@@ -211,6 +225,19 @@ export default async function TransitPage() {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   const fareFree = (TRANSIT_RAW as { fareFree?: boolean }).fareFree === true;
+  const staticFeed = (
+    TRANSIT_RAW as {
+      generatedAt?: string;
+      staticFeed?: {
+        fetchedOn?: string;
+        serviceWindowStart?: string;
+        serviceWindowEnd?: string;
+      };
+    }
+  ).staticFeed;
+  const staticSnapshotDate = sourceDate(staticFeed?.fetchedOn);
+  const serviceWindowStart = sourceDate(staticFeed?.serviceWindowStart);
+  const serviceWindowEnd = sourceDate(staticFeed?.serviceWindowEnd);
 
   return (
     <div className="relative space-y-6">
@@ -341,21 +368,26 @@ export default async function TransitPage() {
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         <p>
-          Route shapes come from Maryland Open Data (Frederick County TransIT). Stops and live bus
-          positions stream from the county GTFS and GTFS-realtime feeds and refresh every few seconds.
-          Scheduled next-departure times are not in that feed yet, so tap a stop to see any bus
-          currently inbound.
+          Route lines come from Maryland Open Data. Stop locations, route names, and route colors come
+          from a static TransIT GTFS snapshot{staticSnapshotDate ? ` downloaded ${staticSnapshotDate}` : ""}
+          {serviceWindowStart && serviceWindowEnd ? `, covering ${serviceWindowStart} through ${serviceWindowEnd}` : ""}.
+          Vehicle positions and inbound estimates use a separate GTFS-realtime feed and appear only as
+          live information while that feed is responding.
+        </p>
+        <p>
+          Frederick County&apos;s published schedules remain the source of truth for planned departure
+          times, holiday service, and route changes.
         </p>
         <p className="flex flex-wrap items-center gap-3 pt-1">
           <a
-            href="https://frederickcountymd.gov/105/Transit-Services"
+            href={COUNTY_TRANSIT_SCHEDULES_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="tap-44-y inline-flex items-center gap-1"
             style={{ color: "var(--app-cool)" }}
           >
             <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-            County TransIT (schedules)
+            Official TransIT schedules
           </a>
           <Link
             href="/contacts"

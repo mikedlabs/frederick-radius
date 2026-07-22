@@ -17,9 +17,10 @@ describe("searchIndex map-layer results", () => {
     expect(layer!.type).toBe("action");
   });
 
-  it("offers covered bridges and public art for their keywords", () => {
+  it("offers covered bridges without reviving the duplicate historic overlay", () => {
     expect(searchIndex("covered bridge", 8).some((r) => r.id === "layer:bridges")).toBe(true);
-    expect(searchIndex("mural", 8).some((r) => r.id === "layer:art")).toBe(true);
+    expect(searchIndex("local history", 8).some((r) => r.id === "layer:historic")).toBe(false);
+    expect(searchIndex("cemeteries", 8).some((r) => r.id === "layer:historic")).toBe(false);
   });
 
   it("does not offer a layer for an unrelated query", () => {
@@ -28,14 +29,14 @@ describe("searchIndex map-layer results", () => {
   });
 
   it("never offers a coming-soon (not ready) layer", () => {
-    // Trails is not ready (federal NPS data); typing its keyword must
-    // not toggle an empty overlay.
-    const results = searchIndex("appalachian trail", 8);
-    expect(results.some((r) => r.id === "layer:trails")).toBe(false);
+    // Public art has no reviewed entries yet; typing its keyword must not
+    // toggle an empty overlay.
+    const results = searchIndex("mural", 8);
+    expect(results.some((r) => r.id === "layer:art")).toBe(false);
   });
 
   it("keeps ready layer doors when the qualified adapter is used", () => {
-    expect(qualifiedSearchIndex("mural", 8).results.some((r) => r.id === "layer:art")).toBe(true);
+    expect(qualifiedSearchIndex("local history", 8).results.some((r) => r.id === "layer:historic")).toBe(false);
     expect(qualifiedSearchIndex("parks", 8).results.some((r) => r.id === "layer:parks")).toBe(true);
   });
 

@@ -81,9 +81,9 @@ function readableOn(hex: string): string {
  *     and a pinch-to-zoom hint would compete with the route lines.
  *
  * Honest sourcing: route shapes come from MD Open Data (Socrata,
- * keyless, weekly revalidate via transitFrederick.ts). Stops and
- * schedules need the live GTFS feed (not yet confirmed with the
- * county) and will arrive in a later phase.
+ * keyless, weekly revalidate via transitFrederick.ts). Interactive stop
+ * locations and ids come from the committed static TransIT GTFS snapshot.
+ * Vehicle positions and arrival estimates are separate GTFS-realtime data.
  */
 export default function TransitMap({
   shapes,

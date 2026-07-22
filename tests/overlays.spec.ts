@@ -26,7 +26,7 @@ describe("overlay registry", () => {
 
   it("every listed overlay is seeded and ready", () => {
     const ready = OVERLAYS.filter((o) => o.ready).map((o) => o.key).sort();
-    expect(ready).toEqual(["art", "bridges", "markets", "parks"]);
+    expect(ready).toEqual(["bridges", "markets", "parks"]);
   });
 });
 
@@ -52,6 +52,7 @@ describe("serializeLayers", () => {
     expect(serializeLayers(["art", "parks"])).toBe("parks,art");
     expect(serializeLayers(["parks", "art"])).toBe("parks,art");
     expect(parseLayersParam(serializeLayers(["bridges", "art"]))).toEqual(["art", "bridges"]);
+    expect(serializeLayers(["bridges", "parks"])).toBe("parks,bridges");
   });
 
   it("is empty when nothing is active, so the param drops from the URL", () => {

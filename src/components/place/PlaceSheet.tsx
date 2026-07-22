@@ -26,8 +26,13 @@ import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
 import { nearestAerial, currentSeason } from "@/lib/aerial";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import {
+  GooglePhotoAttributionLine,
+  googlePhotoAttributionForUrl,
+} from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
+import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 
 /**
  * Bottom-sheet detail view for a place. The presence/drag/focus/exit
@@ -46,7 +51,7 @@ type Props = {
 export default function PlaceSheet({ place, onClose }: Props) {
   return (
     <BottomSheet present={Boolean(place)} onClose={onClose} ariaLabel={place?.name ?? "Place details"}>
-      {(dismiss) => place && <PlaceSheetContent place={place} onClose={dismiss} />}
+      {(dismiss) => place && <PlaceSheetContent key={place.slug} place={place} onClose={dismiss} />}
     </BottomSheet>
   );
 }
@@ -76,16 +81,22 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
   const [extra, setExtra] = useState<{
     photos: string[]; hours: string[]; phone?: string; website?: string;
     photo_attributions?: GooglePhotoAttribution[]; google_maps_uri?: string;
-  } | null>(null);
+  } & LiveGooglePlaceData | null>(null);
+  const needsBasicEnrichment = Boolean(
+    !place.google_photo_url &&
+    !place.google_hours?.length &&
+    !place.phone &&
+    !place.website,
+  );
   useEffect(() => {
-    if (place.google_photo_url) return; // already statically enriched
+    if (!needsBasicEnrichment) return;
     let cancelled = false;
-    fetch(`/api/place/${place.slug}/enrich`)
+    fetch(`/api/place/${place.slug}/enrich?mode=basic`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setExtra(d); })
       .catch(() => {});
-    return () => { cancelled = true; setExtra(null); };
-  }, [place.slug, place.google_photo_url]);
+    return () => { cancelled = true; };
+  }, [needsBasicEnrichment, place.slug]);
 
   // Upcoming events happening AT this venue — a strong "should I go" signal.
   useEffect(() => {
@@ -107,6 +118,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
   const googleMapsUri = place.google_maps_uri ?? extra?.google_maps_uri;
   // Every unique photo (hero first), for the tap-to-enlarge lightbox.
   const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
+  const lightboxAttributions = allPhotos.map((url) => {
+    const attribution = googlePhotoAttributionForUrl(url, photoAttributions) ??
+      (url === heroUrl ? heroAttribution : undefined);
+    return {
+      attribution,
+      placeGoogleMapsUri: googleMapsUri,
+    };
+  });
   const hoursLines = place.google_hours?.length
     ? place.google_hours
     : (extra?.hours ?? []);
@@ -286,7 +305,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                 {place.google_rating_count ? (
                   <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
                 ) : null}
-                <span className="text-[9px]" translate="no" style={{ color: "var(--app-ink-3)" }}>Google Maps</span>
+                <span className="text-xs" translate="no" style={{ color: "var(--app-ink-3)" }}>Google Maps</span>
               </span>
             )}
             {place.price_band && (
@@ -378,10 +397,25 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         {/* Blurb — gated by the copy-quality detector so scraped junk
             (phone numbers, contact CTAs, addresses) never shows. */}
         {place.short_blurb && classifyDescription(place.name, place.short_blurb) !== "scraped" && (
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {place.short_blurb}
-          </p>
+          <div className="mt-3">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {place.short_blurb}
+            </p>
+            <PlaceDescriptionCredit
+              kind={place.description_source}
+              url={place.description_source_url}
+              verifiedAt={place.description_verified_at}
+            />
+          </div>
         )}
+
+        <div className="mt-3">
+          <LiveGooglePlaceContext
+            key={place.slug}
+            slug={place.slug}
+            showSummary={!place.short_blurb || classifyDescription(place.name, place.short_blurb) === "scraped"}
+          />
+        </div>
 
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (
@@ -408,14 +442,6 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
                 />
-                <span
-                  className="absolute bottom-0 right-0 max-w-full truncate rounded-tl bg-black/70 px-1 py-0.5 text-[8px] leading-none text-white"
-                  translate="no"
-                >
-                  {photoAttributions[i + 1]?.authors[0]?.display_name
-                    ? `${photoAttributions[i + 1].authors[0].display_name} · Google Maps`
-                    : "Google Maps"}
-                </span>
               </div>
             ))}
           </div>
@@ -581,6 +607,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
       {lightboxAt !== null && (
         <PhotoLightbox
           photos={allPhotos}
+          attributions={lightboxAttributions}
           startIndex={lightboxAt}
           alt={place.name}
           onClose={() => setLightboxAt(null)}

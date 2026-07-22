@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   askQuestionPath,
   askResultHeading,
+  canDisplayAskSourcePhoto,
   explicitAreaInQuery,
   hasResolvedNearbyArea,
   nearbyQueryNeedsAreaChoice,
@@ -126,5 +127,16 @@ describe("Ask Radius nearby context", () => {
         detail: "Serves bagels, espresso, and breakfast sandwiches.",
       }),
     ).toBe(true);
+  });
+
+  it("shows a Google thumbnail only when it opens an attributed place view", () => {
+    const photo_url = "/api/place-photo?name=places%2Fid%2Fphotos%2Fphoto&w=800";
+    expect(canDisplayAskSourcePhoto({ href: "/places/cafe-nola", photo_url })).toBe(true);
+    expect(canDisplayAskSourcePhoto({ href: "/events/live-music", photo_url })).toBe(false);
+    expect(canDisplayAskSourcePhoto({ href: "https://example.com", photo_url })).toBe(false);
+    expect(canDisplayAskSourcePhoto({
+      href: "/events/live-music",
+      photo_url: "/images/events/live-music.jpg",
+    })).toBe(true);
   });
 });

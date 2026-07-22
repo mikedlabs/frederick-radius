@@ -42,6 +42,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run ingest:business -- --limit=${{ github.event.inputs.limit || '60' }}
+      - name: Build description review queue
+        run: npm run descriptions:candidates
       # Commits pushed with GITHUB_TOKEN do not start another workflow run.
       # business-info.json contains Radius-authored prose, so gate it here.
       - name: Verify Radius-authored copy
@@ -50,13 +52,13 @@ jobs:
         run: |
           git config user.name  "frederick-radius-bot"
           git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/business-info.json; then
-            git add src/data/business-info.json
+          if ! git diff --quiet -- src/data/business-info.json src/data/descriptions.json; then
+            git add src/data/business-info.json src/data/descriptions.json
             git commit -m "data: refresh business deep-info (automated)"
             # Rebase onto any commits that landed during the run, then push,
             # so a moving main can't reject the bot's data commit.
             git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
             git push origin "HEAD:${GITHUB_REF_NAME:-main}"
           else
-            echo "No business-info changes."
+            echo "No business-info or description-candidate changes."
           fi

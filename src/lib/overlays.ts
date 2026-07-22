@@ -53,7 +53,10 @@ export const OVERLAYS: OverlayDef[] = [
     label: "Public art",
     sources: "The curated Frederick public art trail, with photos and artists",
     endpoint: "/api/overlays/public-art",
-    ready: true,
+    // The curated file intentionally contains no approved pieces yet. Do not
+    // advertise a working layer that opens onto an empty map; the control will
+    // light up automatically when the human-reviewed catalog is populated.
+    ready: false,
   },
   {
     key: "markets",

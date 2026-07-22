@@ -22,6 +22,10 @@ import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import {
+  publishableGooglePhotoAttribution,
+  publishableGooglePhotoNames,
+} from "@/lib/google-photo-policy";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
@@ -42,6 +46,10 @@ import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
 import MD_MARKETS_RAW from "@/data/farmers-markets.json";
+import {
+  approvedPlaceDescription,
+  type PlaceDescriptionSourceKind,
+} from "@/lib/loaders/placeDescriptions";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -451,6 +459,13 @@ export type PlaceEnriched = Omit<Provenance, "source"> & {
   review_author_photo_uri?: string;
   review_google_maps_uri?: string;
   google_maps_uri?: string;
+  /** Source of the public Radius-authored description. Google summaries are
+   * fetched and attributed separately at request time; they never enter this
+   * field or masquerade as Radius copy. */
+  description_source?: PlaceDescriptionSourceKind;
+  description_source_url?: string;
+  description_verified_at?: string;
+  description_reviewed?: boolean;
   /** Structured signal extracted (by AI) from editorial_summary +
    *  review_snippet — see scripts/extract-known-for.mjs. Surfaced as
    *  a chip strip on /places/[slug] so visitors get the WHAT (food,
@@ -594,6 +609,7 @@ function boundaryBlurb(raw: string | undefined, name: string): string {
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = enrichmentFor(p.slug);
+  const approvedDescription = approvedPlaceDescription(p.slug, p.name);
   if (!e)
     return {
       ...p,
@@ -610,7 +626,16 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
       // Same boundary clean the enriched branch gets: scrape fragments
       // ("is a family-owned…") read broken regardless of enrichment, and
       // irreparable scrape debris is dropped outright.
-      short_blurb: boundaryBlurb(p.short_blurb, p.name),
+      short_blurb: boundaryBlurb(
+        approvedDescription?.blurb ?? p.short_blurb,
+        p.name,
+      ),
+      description_source: approvedDescription?.source.kind ??
+        (p.source === "seed" || p.source === "manual" ? "radius_editorial" : undefined),
+      description_source_url: approvedDescription?.source.url,
+      description_verified_at:
+        approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
+      description_reviewed: Boolean(approvedDescription),
     };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
@@ -618,7 +643,10 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     e.business_status === "CLOSED_TEMPORARILY" ? "closed_temporarily" :
     e.business_status === "OPERATIONAL" ? "operational" :
     p.is_operational;
-  const photos = (e.photo_names ?? []).slice(0, 8);
+  const photos = publishableGooglePhotoNames(
+    (e.photo_names ?? []).slice(0, 8),
+    e.photo_attributions,
+  );
   const photoAttributions = (e.photo_attributions ?? []).filter((credit) =>
     photos.includes(credit.photo_name),
   );
@@ -651,18 +679,15 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   //      null and the existing category is kept.
   const category =
     OV_PATCH?.[p.slug]?.category ?? categoryFromPrimaryType(e.primary_type) ?? p.category;
-  // Curated editorial voice (seed/manual) is kept; for DFP + Google-
-  // discovered, Google's real one-line description replaces the
-  // scraped/placeholder blurb ("Coffee in Thurmont"). Never blank,
-  // never fabricated — only a real Google summary wins.
+  // Curated editorial voice (seed/manual) is kept. Approved, source-backed
+  // Radius copy wins when present. Google summaries are intentionally NOT
+  // promoted into our permanent blurb: current Google context is fetched at
+  // request time and displayed in its own attributed container.
   // Boundary clean: scraped/editorial blurbs carry em dashes (against the
   // no-em-dash voice rule), stray entities, and tags. cleanFeedText normalizes
   // them (— -> ", ") and is a no-op on already-clean curated text, so both the
   // client bundle and the server detail page render consistent, on-voice copy.
-  const rawBlurb =
-    p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
-      ? e.editorial_summary.trim()
-      : p.short_blurb;
+  const rawBlurb = approvedDescription?.blurb ?? p.short_blurb;
   const short_blurb = boundaryBlurb(rawBlurb, p.name);
   // Hours: a hand-curated structured schedule (seed/manual, e.g. the
   // parks) always wins; otherwise parse Google's weekday strings into the
@@ -694,9 +719,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // response prevents first-party/browser/CDN retention.
     google_photo_url: photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined,
     google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
-    google_photo_attribution: photoAttributions.find(
-      (credit) => credit.photo_name === photos[0],
-    ),
+    google_photo_attribution: photos[0]
+      ? publishableGooglePhotoAttribution(photos[0], photoAttributions)
+      : undefined,
     google_photo_attributions: photoAttributions.length > 0 ? photoAttributions : undefined,
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
@@ -715,6 +740,12 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     review_author_photo_uri: e.review_author_photo_uri,
     review_google_maps_uri: e.review_google_maps_uri,
     google_maps_uri: e.google_maps_uri,
+    description_source: approvedDescription?.source.kind ??
+      (p.source === "seed" || p.source === "manual" ? "radius_editorial" : undefined),
+    description_source_url: approvedDescription?.source.url,
+    description_verified_at:
+      approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
+    description_reviewed: Boolean(approvedDescription),
     known_for: KNOWN_FOR[p.slug]?.known_for?.length
       ? KNOWN_FOR[p.slug]?.known_for
       : undefined,

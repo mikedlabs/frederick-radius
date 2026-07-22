@@ -1,1 +1,86 @@
-{}
+{
+  "7th-sister": {
+    "blurb": "7th Sister serves Mid-Atlantic food, including oysters with blackberry mignonette and a house crab cake seared until golden with whole-grain mustard and herbs.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.7thsister.com/",
+      "fetched_at": "2026-05-31T18:17:34.525Z"
+    },
+    "generated_at": "2026-05-31T18:17:34.525Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "dublin-roasters-frederick": {
+    "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://dublinroasterscoffee.com/",
+      "fetched_at": "2026-05-31T18:16:48.386Z"
+    },
+    "generated_at": "2026-05-31T18:16:48.386Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "hoffman-brothers-ice-cream": {
+    "blurb": "Hoffman Brothers makes ice cream in signature flavors such as Honey Graham, Chocolate Love, and Caramel Crunch, with nondairy options available.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://sashaahoffman.wixsite.com/hoffmanbrothersicecr",
+      "fetched_at": "2026-05-31T18:18:33.338Z"
+    },
+    "generated_at": "2026-05-31T18:18:33.338Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "main-cup-middletown": {
+    "blurb": "The Main Cup serves comfort-food standards and globally inspired dishes in a restaurant and bar setting.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.themaincup.com/",
+      "fetched_at": "2026-05-31T18:17:22.635Z"
+    },
+    "generated_at": "2026-05-31T18:17:22.635Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "milkhouse-brewery-mt-airy": {
+    "blurb": "Milkhouse brews classic beer styles with Maryland hops at Stillpoint Farm, which also has a taproom and local mercantile.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.milkhousebrewery.com/",
+      "fetched_at": "2026-05-31T18:16:43.279Z"
+    },
+    "generated_at": "2026-05-31T18:16:43.279Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "plaza-mexico": {
+    "blurb": "Plaza Mexico serves Mexican standards such as quesadillas, nachos, and churros in a colorful family restaurant.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.plazamexicomd.com/",
+      "fetched_at": "2026-05-31T18:18:06.467Z"
+    },
+    "generated_at": "2026-05-31T18:18:06.467Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  },
+  "tin-corner": {
+    "blurb": "Tin Corner serves slow-simmered pho, sizzling rice plates, and Vietnamese dishes with house-made sauces.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://tincornerfrederick.com/",
+      "fetched_at": "2026-05-31T18:18:38.663Z"
+    },
+    "generated_at": "2026-05-31T18:18:38.663Z",
+    "reviewed_at": "2026-07-22T00:00:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-22."
+  }
+}

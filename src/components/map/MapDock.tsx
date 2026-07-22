@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, BusFront, Car, ChevronDown, Church, Clock, Coffee, Droplets, Footprints, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, List, LocateFixed, Map as MapIcon, MoonStar, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Baby, Beer, BusFront, Car, ChevronDown, ChevronRight, Church, Clock, Coffee, Droplets, Footprints, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LocateFixed, MoonStar, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -25,6 +25,7 @@ import {
   whatCaption,
   whenCaption,
 } from "./dockCaption";
+import type { MapDiscovery } from "./mapDiscoveries";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -85,12 +86,12 @@ const MAP_SETUPS: ReadonlyArray<{
   { key: "getting-around", label: "Getting around", description: "See routes, incidents, parking, and cameras.", Icon: BusFront },
   { key: "trail-day", label: "Trail day", description: "See outdoor places with trails, parks, and radar.", Icon: Footprints },
   { key: "field-kit", label: "Field kit", description: "Find nearby restrooms, water, trash, seating, and bike help.", Icon: LocateFixed },
-  { key: "frederick-stories", label: "Frederick stories", description: "This view layers aerial photos, cemeteries, art, and bridges.", Icon: History },
+  { key: "frederick-stories", label: "Frederick stories", description: "See aerial photos, the county cemetery inventory, and covered bridges.", Icon: History },
 ];
 
 /** The four filter groups. What is purely kinds of places; the map drapes
  *  (trails, transit, aerial, …) and the Yours lenses live together in Layers. */
-type Pane = "what" | "when" | "where" | "layers";
+type Pane = "what" | "when" | "where" | "discover" | "layers";
 type PlaceReveal = "categories" | "amenities";
 
 /** Where the camera is pointed, per the user's own choice in the Where
@@ -104,12 +105,10 @@ const TOWN_ZOOM = 13.4;
 
 /**
  * MapDock — ONE instrument for the /map browse surface, "maps-app" top
- * layout. A slim control bar is pinned at the top of the map: search first,
- * then five stable actions — Places, Time, Area, Layers, and List. The first
- * four open one panel directly; List changes the map's presentation. The open
- * panel names the selected job once and carries its count line plus Done and
- * clear controls. There is no duplicate tab row inside the panel. The bottom
- * of the map stays clean for pins, camera controls, and the locate button.
+ * layout. Search and three decision controls stay at the top; map layers live
+ * in a persistent horizontal rail so their state never disappears into a
+ * menu. Deeper controls open as a bottom sheet on phones and a side tray on
+ * desktop, leaving the map visible while the user compares layers.
  *
  *   - Places — kinds of places (the intent chips + the sub strip); the chip
  *              row up top is the one-tap shortcut into the same intents.
@@ -202,9 +201,10 @@ export type MapDockProps = {
   flyTo: (center: [number, number], zoom: number) => void;
   fitCounty: () => void;
 
-  // ── Map ↔ list toggle ──
-  listView: boolean;
-  onToggleList: () => void;
+  // ── Read this area: evidence-backed connections already in the viewport. ──
+  discoveries: MapDiscovery[];
+  selectedDiscoveryId: string | null;
+  onSelectDiscovery: (id: string) => void;
 
   /** Lets AppMap dim the map chrome + mark the host while a pane is open. */
   onPaneOpenChange: (open: boolean) => void;
@@ -560,6 +560,7 @@ export default function MapDock(props: MapDockProps) {
     (props.showCameras ? 1 : 0) +
     (props.showFireStations ? 1 : 0) +
     (props.showCivicPlaces ? 1 : 0);
+  const visibleLayerCount = layerCount + lensLabels.length;
 
   // What = kinds of places only (no lens, no drapes any more).
   const what = whatCaption({
@@ -637,6 +638,27 @@ export default function MapDock(props: MapDockProps) {
     });
   };
 
+  const clearLayers = () => {
+    haptic("light");
+    track("map_dock", { pane: "layers", pick: "clear" });
+    props.setAmenityGroups(new Set());
+    props.setShowCivic(false);
+    props.setShowTransit(false);
+    props.setShowTrails(false);
+    props.setShowAerial(false);
+    props.setShowCemeteries(false);
+    props.setShowParking(false);
+    props.setShowRadar(false);
+    props.setShowIncidents(false);
+    props.setShowCameras(false);
+    props.setShowFireStations(false);
+    props.setShowCivicPlaces(false);
+    props.setShowSavedOnly(false);
+    props.setFieldNotesOnly(false);
+    props.onAerialSeason("all");
+    for (const key of [...props.activeOverlays]) props.toggleOverlay(key);
+  };
+
   const runSetup = (key: MapSetupKey) => {
     haptic("light");
     track("map_setup", { setup: key });
@@ -662,7 +684,7 @@ export default function MapDock(props: MapDockProps) {
 
     const wantedOverlays: OverlayKey[] =
       key === "trail-day" ? ["parks"]
-      : key === "frederick-stories" ? ["art", "bridges"]
+      : key === "frederick-stories" ? ["bridges"]
       : [];
     for (const overlay of OVERLAYS) {
       const isOn = props.activeOverlays.includes(overlay.key);
@@ -704,7 +726,6 @@ export default function MapDock(props: MapDockProps) {
       if (key === "field-kit") q.set(SCOPE_PARAM, "nearme");
       if (wantedOverlays.length > 0) q.set("layers", wantedOverlays.join(","));
     });
-    closePane();
   };
 
   const togglePane = (next: Pane) => {
@@ -742,6 +763,7 @@ export default function MapDock(props: MapDockProps) {
     pane === "what" ? "Kinds of places"
     : pane === "when" ? "Time"
     : pane === "where" ? "Area"
+    : pane === "discover" ? "Read this area"
     : pane === "layers" ? "Map layers"
     : "";
 
@@ -780,18 +802,10 @@ export default function MapDock(props: MapDockProps) {
       else next.add(key);
       return next;
     });
-    closePane();
   };
 
   return (
     <>
-      {/* Scrim — dims the map; a tap closes the open panel. */}
-      <div
-        className={`dock-scrim${pane ? " on" : ""}`}
-        onClick={closePane}
-        aria-hidden
-      />
-
       <div
         className={`dock${pane ? " dock-open" : ""}`}
         data-map-dock
@@ -855,9 +869,8 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
-          {/* Five stable map actions. The first four open a single-purpose
-              panel; List changes the presentation without adding another
-              layer of navigation inside that panel. */}
+          {/* Three stable questions. Layers use the persistent rail below so
+              the map state remains visible and removable at all times. */}
           <div className="dock-actions" role="group" aria-label="Map controls">
             <button
               type="button"
@@ -892,46 +905,121 @@ export default function MapDock(props: MapDockProps) {
               <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
               <span>Area</span>
             </button>
-            <button
-              type="button"
-              className="dock-action tap-44"
-              data-on={layerCount > 0 || undefined}
-              aria-expanded={pane === "layers"}
-              aria-controls="dock-pane"
-              onClick={() => togglePane("layers")}
-            >
-              <Layers3 className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span>Layers</span>
-            </button>
-            <button
-              type="button"
-              className="dock-action tap-44"
-              data-on={props.listView || undefined}
-              aria-pressed={props.listView}
-              aria-label={props.listView ? "Show map view" : "Show list view"}
-              onClick={() => {
-                haptic("light");
-                track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
-                props.onToggleList();
-              }}
-            >
-              {props.listView ? (
-                <>
-                  <MapIcon className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  Map
-                </>
-              ) : (
-                <>
-                  <List className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                  List
-                </>
-              )}
-            </button>
           </div>
         </div>
 
-        {/* ── The filter panel drops from the selected action. The action
-            row remains the only navigation between control groups. ── */}
+        {/* A persistent layer rail: common layers are always one tap away;
+            less-common active layers stay here until the user turns them off. */}
+        <div className="dock-layer-rail" role="group" aria-label="Map layer controls">
+          <button
+            type="button"
+            className="dock-layer-more dock-read-area tap-44"
+            data-on={pane === "discover" || Boolean(props.selectedDiscoveryId) || undefined}
+            aria-expanded={pane === "discover"}
+            aria-controls="dock-pane"
+            onClick={() => togglePane("discover")}
+          >
+            <Waypoints className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+            Read this area
+            {props.discoveries.length > 0 && <span className="dock-layer-count">{props.discoveries.length}</span>}
+          </button>
+          <button
+            type="button"
+            className="dock-layer-more tap-44"
+            data-on={pane === "layers" || undefined}
+            aria-expanded={pane === "layers"}
+            aria-controls="dock-pane"
+            onClick={() => togglePane("layers")}
+          >
+            <Layers3 className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+            Layers
+            {visibleLayerCount > 0 && <span className="dock-layer-count">{visibleLayerCount}</span>}
+          </button>
+          <button
+            type="button"
+            className="dock-layer-toggle tap-44"
+            data-on={props.showTransit || undefined}
+            aria-pressed={props.showTransit}
+            onClick={() => props.setShowTransit((value) => !value)}
+          >
+            <span className="dock-layer-dot" aria-hidden />
+            Transit
+          </button>
+          {props.parkingCount > 0 && (
+            <button
+              type="button"
+              className="dock-layer-toggle tap-44"
+              data-on={props.showParking || undefined}
+              aria-pressed={props.showParking}
+              onClick={() => props.setShowParking((value) => !value)}
+            >
+              <span className="dock-layer-dot" aria-hidden />
+              Parking
+            </button>
+          )}
+          <button
+            type="button"
+            className="dock-layer-toggle tap-44"
+            data-on={props.showRadar || undefined}
+            aria-pressed={props.showRadar}
+            onClick={() => props.setShowRadar((value) => !value)}
+          >
+            <span className="dock-layer-dot" aria-hidden />
+            Radar
+          </button>
+
+          {props.amenityGroups.size > 0 && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-label="Hide all public amenities" onClick={() => props.setAmenityGroups(new Set())}>
+              <span className="dock-layer-dot" aria-hidden />
+              Amenities
+              <span className="dock-layer-count">{props.amenityGroups.size}</span>
+            </button>
+          )}
+          {props.showCivic && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCivic(false)}><span className="dock-layer-dot" aria-hidden />Roads &amp; alerts</button>
+          )}
+          {props.showTrails && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowTrails(false)}><span className="dock-layer-dot" aria-hidden />Trails</button>
+          )}
+          {props.showAerial && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowAerial(false)}><span className="dock-layer-dot" aria-hidden />Aerial</button>
+          )}
+          {props.showCemeteries && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCemeteries(false)}><span className="dock-layer-dot" aria-hidden />Cemeteries</button>
+          )}
+          {props.showIncidents && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowIncidents(false)}><span className="dock-layer-dot" aria-hidden />Incidents</button>
+          )}
+          {props.showCameras && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCameras(false)}><span className="dock-layer-dot" aria-hidden />Cameras</button>
+          )}
+          {props.showFireStations && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowFireStations(false)}><span className="dock-layer-dot" aria-hidden />Fire stations</button>
+          )}
+          {props.showCivicPlaces && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCivicPlaces(false)}><span className="dock-layer-dot" aria-hidden />Parks &amp; libraries</button>
+          )}
+          {props.showSavedOnly && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowSavedOnly(false)}><span className="dock-layer-dot" aria-hidden />Saved</button>
+          )}
+          {props.fieldNotesOnly && (
+            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setFieldNotesOnly(false)}><span className="dock-layer-dot" aria-hidden />Field notes</button>
+          )}
+          {props.activeOverlays.map((key) => {
+            const overlay = OVERLAYS.find((item) => item.key === key);
+            if (!overlay) return null;
+            return (
+              <button key={key} type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.toggleOverlay(key)}>
+                <span className="dock-layer-dot" aria-hidden />
+                {overlay.label}
+              </button>
+            );
+          })}
+
+        </div>
+
+        {/* The deeper controls are a bottom sheet on phones and a side tray on
+            desktop. They never replace or dim the map. */}
         <div
           className="dock-pane"
           id="dock-pane"
@@ -955,19 +1043,24 @@ export default function MapDock(props: MapDockProps) {
             {/* The living mono count line — also the polite live region. */}
             <div className="dock-countbar">
               <div className="dock-countline" aria-live="polite">
-                {line}
-                <span className="sr-only">
-                  {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
-                </span>
+                {pane === "discover"
+                  ? `${props.discoveries.length} explained connection${props.discoveries.length === 1 ? "" : "s"} in this view.`
+                  : line}
+                {pane !== "discover" && (
+                  <span className="sr-only">
+                    {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
+                  </span>
+                )}
               </div>
-              {dirty && (
+              {pane !== "discover" && (pane === "layers" ? visibleLayerCount > 0 : dirty) && (
                 <button
                   type="button"
                   className="dock-clear tap-44"
-                  onClick={clearAll}
-                  aria-label="Clear all filters"
+                  onClick={pane === "layers" ? clearLayers : clearAll}
+                  aria-label={pane === "layers" ? "Hide all map layers" : "Clear all filters"}
                 >
-                  <X className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+                  <X className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
+                  <span>{pane === "layers" ? "Clear layers" : "Reset"}</span>
                 </button>
               )}
             </div>
@@ -1234,6 +1327,56 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── READ THIS AREA — synthesized, source-visible connections.
+                This is not another layer catalog. Each card names the literal
+                relationship it found; selecting one closes the tray and draws
+                only that small constellation on the map. ── */}
+            {pane === "discover" && (
+              <div className="dock-discoveries">
+                <p className="dock-discovery-intro">
+                  Radius connects facts that are already on this map. Every finding below can show why it appeared.
+                </p>
+                {props.discoveries.length > 0 ? (
+                  <div className="dock-discovery-list">
+                    {props.discoveries.map((discovery) => (
+                      <button
+                        key={discovery.id}
+                        type="button"
+                        className="dock-discovery-card"
+                        data-on={props.selectedDiscoveryId === discovery.id || undefined}
+                        aria-pressed={props.selectedDiscoveryId === discovery.id}
+                        onClick={() => {
+                          haptic("light");
+                          track("map_finding", { pick: "select", kind: discovery.kind });
+                          props.onSelectDiscovery(discovery.id);
+                          closePane();
+                        }}
+                      >
+                        <span className="dock-discovery-mark" aria-hidden>
+                          <Waypoints className="h-4 w-4" strokeWidth={2.15} />
+                        </span>
+                        <span className="dock-discovery-copy">
+                          <span className="dock-discovery-eyebrow">{discovery.eyebrow}</span>
+                          <strong className="dock-discovery-title">{discovery.title}</strong>
+                          <span className="dock-discovery-summary">{discovery.summary}</span>
+                          <span className="dock-discovery-proof">
+                            {discovery.points.length} mapped points · {discovery.evidence.length} source-backed facts
+                          </span>
+                        </span>
+                        <ChevronRight className="dock-discovery-arrow h-4 w-4" strokeWidth={2.2} aria-hidden />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="dock-discovery-empty">
+                    <Waypoints className="h-5 w-5" strokeWidth={2} aria-hidden />
+                    <p>Radius did not find a strong enough connection in this view.</p>
+                    <small>Move closer to a town or event, then read the area again.</small>
+                  </div>
+                )}
               </div>
             )}
 

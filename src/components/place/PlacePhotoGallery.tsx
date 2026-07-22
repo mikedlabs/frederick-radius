@@ -4,16 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
-import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import {
+  GooglePhotoAttributionLine,
+  googlePhotoAttributionForUrl,
+} from "@/components/place/GoogleAttribution";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
-
-function photoNameFromProxy(url: string): string | undefined {
-  try {
-    return new URL(url, "https://frederickradius.app").searchParams.get("name") ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * PlacePhotoGallery — the full place page's "Photos" rail, made tappable.
@@ -43,8 +38,7 @@ export default function PlacePhotoGallery({
       <h2 className="eyebrow">Photos</h2>
       <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
         {photos.slice(1, 8).map((url, i) => {
-          const photoName = photoNameFromProxy(url);
-          const attribution = attributions.find((credit) => credit.photo_name === photoName);
+          const attribution = googlePhotoAttributionForUrl(url, attributions);
           return (
             <div key={url} className="w-40 shrink-0 space-y-1">
               <button
@@ -78,7 +72,16 @@ export default function PlacePhotoGallery({
         })}
       </div>
       {at !== null && (
-        <PhotoLightbox photos={photos} startIndex={at} alt={name} onClose={() => setAt(null)} />
+        <PhotoLightbox
+          photos={photos}
+          attributions={photos.map((url) => ({
+            attribution: googlePhotoAttributionForUrl(url, attributions),
+            placeGoogleMapsUri,
+          }))}
+          startIndex={at}
+          alt={name}
+          onClose={() => setAt(null)}
+        />
       )}
     </section>
   );

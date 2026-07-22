@@ -2629,12 +2629,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. A "maps-app" top layout: a slim control bar pins to the TOP of the
-   map (search row, then one stable Places · Time · Area · Layers · List
-   control row). The first four controls open one focused panel over the
-   scrim-dimmed map; List changes the presentation. The bottom stays clean for
-   pins, the zoom cluster, and the locate FAB. Living at the top permanently
-   clears the floating BottomNav (which owns the bottom edge).
+   dock-*. Search and three decision controls pin to the top. A separate,
+   persistent layer rail makes visible map state directly reversible. Deeper
+   controls open in a bottom sheet on phones and a side tray on desktop so the
+   map remains the canvas instead of disappearing behind a dropdown.
    ========================================================================== */
 
 /* Host marker on the map container: with the dock now at the TOP, the map's
@@ -2654,10 +2652,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    fixed at bottom-0. Lift the zoom pair to a small clearance above that nav,
    matching the FeedbackWidget's lift. Desktop (>=lg) has a SideRail, not a
    bottom pill, so it keeps the tighter 14px above.
-   NOTE: never give the top-anchored .dock wrapper a `bottom` here — a stale
-   bottom-era override stretched the wrapper the full height of the map, so
-   .dock-pane (top:100%) opened as a detached sheet far below the head and
-   overflowed the phone viewport. The wrapper must hug .dock-head. */
+   The top instrument remains independent from the fixed layer tray. */
 @media (max-width: 1023.98px) {
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
@@ -2665,34 +2660,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* Scrim behind the open pane — tap to close. Sits above the map + its
-   floating chrome, below the dock card. */
-.dock-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: calc(var(--z-sticky) - 1);
-  background: color-mix(in srgb, var(--app-ink) 20%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s;
-}
-.dock-scrim.on {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 /* The dock wrapper — positions the whole instrument at the top of the map,
-   under the search pill. It carries no paint of its own: .dock-head is the
-   frosted caption card and .dock-pane hangs off it at top:100%. Keeping the
-   wrapper unfiltered means it stays the containing block for the absolutely
-   positioned pane. */
+   under the app bar. It carries no paint of its own. */
 .dock {
   position: absolute;
-  /* Top-anchored "maps-app" layout: the control bar pins just under the app
-     TopBar and its panel opens DOWNWARD (see .dock-pane). The map container
-     (.dock-host) already starts below the TopBar, so a small inset sits the
-     bar just inside the map's top edge. The wrapper carries no paint of its
-     own and must hug .dock-head so the panel drops from directly beneath it. */
+  /* The map container already starts below the TopBar, so a small inset sits
+     the instrument just inside the map's top edge. */
   top: 8px;
   bottom: auto;
   left: max(10px, env(safe-area-inset-left, 0px));
@@ -2809,9 +2782,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   white-space: nowrap;
 }
 
-/* The pinned head: caption tab bar + count line. Frosted paper so the map
-   reads beneath the blur. Rounds all four corners at rest; squares its
-   bottom edge while a pane is dropped so head + pane read as one card. */
+/* The pinned head: search plus the three core map questions. */
 .dock-head {
   position: relative;
   z-index: 2;
@@ -2825,51 +2796,83 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock.dock-open .dock-head {
   box-shadow: var(--app-shadow-3);
-  /* The panel drops DOWN from the head, so the head squares its BOTTOM
-     corners to meet it seamlessly and keeps its top corners rounded. */
-  border-top-left-radius: var(--app-radius-md);
-  border-top-right-radius: var(--app-radius-md);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
 }
 
-/* The filter panel — drops DOWN from directly under the control bar
-   (top: 100% of the dock wrapper) over the dimmed map. Collapsed via
-   max-height so the head above it never shifts. Reduced motion is covered
-   by the global gate; the explicit rule below keeps the intent obvious if
-   that gate ever narrows. */
+/* Deep controls are a real map tray, not a dropdown attached to the search.
+   On phones it rises above the bottom navigation; on desktop it becomes a
+   compact right-side inspector. The rest of the map remains visible and can
+   still be panned while the tray is open. */
 .dock-pane {
-  position: absolute;
-  /* Top-anchored dock: the panel hangs BELOW the control bar (top: 100% of
-     the dock wrapper) over the dimmed map. */
-  top: 100%;
-  bottom: auto;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  max-height: 0;
+  position: fixed;
+  top: auto;
+  bottom: calc(var(--app-bottomnav-reserve, 84px) + 12px + env(safe-area-inset-bottom, 0px));
+  left: max(10px, env(safe-area-inset-left, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: calc(var(--z-sticky) + 2);
+  max-height: min(62dvh, 560px);
   overflow: hidden;
   background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(16px) saturate(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(1.08);
   border: 1px solid var(--app-border);
-  border-top: none;
-  border-radius: 0 0 var(--app-radius-md) var(--app-radius-md);
+  border-radius: calc(var(--app-radius-md) + 4px);
   box-shadow: var(--app-shadow-3);
-  transition: max-height 0.32s ease;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(24px) scale(0.985);
+  transform-origin: bottom center;
+  transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.28s;
 }
 .dock-open .dock-pane {
-  max-height: min(470px, 56dvh);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+.dock-pane::before {
+  content: "";
+  display: block;
+  width: 38px;
+  height: 4px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink-3) 35%, transparent);
 }
 .dock-pane-scroll {
-  max-height: min(470px, 56dvh);
+  max-height: min(62dvh, 560px);
   overflow-y: auto;
   /* Momentum scrolling for the dock pane on iOS (harmless no-op on modern
      Safari where it's the default; restores it on older WebKit). */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 12px 14px 14px;
+  padding: 8px 14px 16px;
   scrollbar-width: thin;
+}
+
+@media (min-width: 1024px) {
+  .dock-pane {
+    top: calc(var(--app-topbar-h, 56px) + 14px);
+    right: 16px;
+    bottom: auto;
+    left: auto;
+    width: min(400px, calc(100vw - 32px));
+    max-height: calc(100dvh - var(--app-topbar-h, 56px) - 28px);
+    transform: translateX(24px) scale(0.985);
+    transform-origin: right top;
+  }
+  .dock-open .dock-pane {
+    transform: translateX(0) scale(1);
+  }
+  .dock-pane::before {
+    display: none;
+  }
+  .dock-pane-scroll {
+    max-height: calc(100dvh - var(--app-topbar-h, 56px) - 28px);
+    padding-top: 14px;
+  }
 }
 .dock-pane-head {
   display: flex;
@@ -3131,6 +3134,139 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   line-height: 1.3;
 }
 
+/* "Read this area" is the map's synthesis tool, not another map layer. Its
+   cards use a quiet editorial hierarchy and keep the full explanation one tap
+   away on the selected finding card. */
+.dock-read-area {
+  color: var(--app-brand-press);
+  border-color: color-mix(in srgb, var(--app-brand) 32%, var(--app-border));
+  background: color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated));
+}
+.dock-discoveries {
+  padding-top: 2px;
+}
+.dock-discovery-intro {
+  margin: 2px 2px 12px;
+  max-width: 38rem;
+  color: var(--app-ink-2);
+  font-size: 12.5px;
+  line-height: 1.48;
+}
+.dock-discovery-list {
+  display: grid;
+  gap: 8px;
+}
+.dock-discovery-card {
+  position: relative;
+  width: 100%;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 20px;
+  align-items: start;
+  gap: 10px;
+  padding: 13px 11px 13px 12px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--app-brand) 8%, transparent), transparent 42%),
+    var(--app-bg-elevated);
+  color: var(--app-ink);
+  text-align: left;
+  box-shadow: 0 8px 18px -18px color-mix(in srgb, var(--app-ink) 55%, transparent);
+  transition: transform 0.1s, border-color 0.18s, box-shadow 0.18s;
+}
+.dock-discovery-card:hover {
+  border-color: color-mix(in srgb, var(--app-brand) 38%, var(--app-border));
+  box-shadow: 0 12px 24px -20px color-mix(in srgb, var(--app-ink) 65%, transparent);
+}
+.dock-discovery-card:active {
+  transform: scale(0.99);
+}
+.dock-discovery-card[data-on] {
+  border-color: color-mix(in srgb, var(--app-brand) 62%, var(--app-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 24%, transparent);
+}
+.dock-discovery-mark {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--app-brand);
+  background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-sunken));
+}
+.dock-discovery-copy {
+  min-width: 0;
+  display: block;
+}
+.dock-discovery-eyebrow,
+.dock-discovery-title,
+.dock-discovery-summary,
+.dock-discovery-proof {
+  display: block;
+}
+.dock-discovery-eyebrow {
+  color: var(--app-brand-press);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+.dock-discovery-title {
+  margin-top: 3px;
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.18;
+}
+.dock-discovery-summary {
+  display: -webkit-box;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--app-ink-2);
+  font-size: 11.5px;
+  line-height: 1.38;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dock-discovery-proof {
+  margin-top: 7px;
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  line-height: 1.2;
+}
+.dock-discovery-arrow {
+  align-self: center;
+  color: var(--app-ink-3);
+}
+.dock-discovery-empty {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 22px;
+  border: 1px dashed var(--app-border);
+  border-radius: var(--app-radius-md);
+  color: var(--app-ink-3);
+  text-align: center;
+}
+.dock-discovery-empty p {
+  color: var(--app-ink-2);
+  font-size: 13px;
+  font-weight: 650;
+}
+.dock-discovery-empty small {
+  max-width: 260px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* Chips. Color arrives per-chip via --c; lit chips fill with it. The
    .tap-44-y extender keeps every ≤44px chip honest about its target. */
 .dock-chips {
@@ -3314,14 +3450,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
-/* Five stable map actions sit directly below search. Open-panel emphasis and
+/* Three stable map questions sit directly below search. Open-panel emphasis and
    active-filter status are deliberately separate visual states. They share the available
    width instead of competing as a long Browse pill plus mystery icon buttons.
    A quiet registration rule carries state without turning the map chrome into
    a row of colored capsules. */
 .dock-actions {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 5px;
 }
@@ -3385,61 +3521,92 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   height: 2px;
   background: var(--app-brand);
 }
-/* The single "Browse places" door: fills the row (view toggle pins right) and
-   shows the active category — a color dot, its label, and count — or a grid
-   icon + "Browse places" when nothing is filtered. Opens the grouped category
-   grid, so the whole guide is one tap away without a cramped scrolling strip. */
-.dock-cats > .dock-browse {
-  flex: 1 1 auto;
-  min-width: 0;
+
+/* Persistent map-layer rail. It behaves like an instrument panel: three
+   common switches are always present and every less-common active layer stays
+   visible until it is removed. Horizontal scrolling preserves map acreage on
+   a phone; the scrollbar is intentionally hidden. */
+.dock-layer-rail {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: max-content;
+  max-width: 100%;
+  margin: 7px auto 0;
+  padding: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  border: 1px solid color-mix(in srgb, var(--app-border) 86%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 91%, transparent);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  box-shadow: var(--app-shadow-2);
 }
-.dock-cats > .dock-viewtoggle {
+.dock-layer-rail::-webkit-scrollbar {
+  display: none;
+}
+.dock-layer-toggle,
+.dock-layer-more {
   flex: 0 0 auto;
-}
-.dock-browse {
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  min-height: 44px;
-  padding: 0 15px;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-ink);
-  font-size: 14px;
-  font-weight: 600;
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-browse:active {
-  transform: scale(0.99);
-}
-.dock-browse[data-on] {
-  background: color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--app-brand) 40%, var(--app-border));
-}
-.dock-browse-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  flex: none;
-}
-.dock-browse-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--app-ink-2);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 650;
   white-space: nowrap;
-  text-align: left;
+  transition: color 0.14s, background 0.14s, border-color 0.14s, transform 0.08s;
 }
-.dock-browse-n {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--app-ink-3);
-  font-variant-numeric: tabular-nums;
+.dock-layer-toggle:active,
+.dock-layer-more:active {
+  transform: scale(0.97);
+}
+.dock-layer-dot {
+  width: 7px;
+  height: 7px;
   flex: none;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  opacity: 0.58;
 }
-
+.dock-layer-toggle[data-on],
+.dock-layer-more[data-on] {
+  color: var(--app-brand-press);
+  border-color: color-mix(in srgb, var(--app-brand) 30%, var(--app-border));
+  background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated));
+}
+.dock-layer-toggle[data-on] .dock-layer-dot {
+  border-color: var(--app-brand);
+  background: var(--app-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-brand) 12%, transparent);
+  opacity: 1;
+}
+.dock-layer-more {
+  color: var(--app-ink);
+  border-color: var(--app-border);
+  background: var(--app-bg-elevated);
+}
+.dock-layer-count {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding-inline: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-brand) 15%, var(--app-bg-sunken));
+  color: var(--app-brand-press);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  line-height: 1;
+}
 /* The count row inside the panel: the living mono count line + the clear ×. */
 .dock-countbar {
   display: flex;
@@ -3448,14 +3615,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-bottom: 4px;
 }
 .dock-clear {
-  flex: 0 0 44px;
+  flex: 0 0 auto;
   min-height: 44px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-inline: 12px;
   color: var(--app-ink-3);
   border-radius: 999px;
   border: 1px solid var(--app-border);
   background: var(--app-bg-elevated);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 /* The living mono count line — also the polite live region. It lives in the
@@ -3472,27 +3645,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Map ↔ list toggle — a small pill in the top control bar. */
-.dock-viewtoggle {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 4px 11px;
-  border-radius: 999px;
-  border: 1px solid var(--app-border);
-  background: var(--app-bg-elevated);
-  color: var(--app-ink-2);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-.dock-viewtoggle[aria-pressed="true"] {
-  background: var(--app-brand);
-  border-color: var(--app-brand);
-  color: var(--app-on-brand);
-}
-
 /* A phone in landscape has only ~235px of map height. Top anchoring and the
    downward panel are already the default now, so landscape only lays the head
    out as one horizontal strip (search beside the Filters / toggle bar) to
@@ -3527,9 +3679,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-action > span {
     display: none;
   }
-  .dock-open .dock-pane,
+  .dock-pane,
   .dock-pane-scroll {
-    max-height: min(170px, calc(var(--app-browse-map-height) - 64px));
+    max-height: min(170px, calc(var(--app-browse-map-height) - 20px));
   }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
@@ -3989,6 +4141,159 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-on-brand, #fff);
 }
 
+/* Selected "Read this area" finding. It is intentionally wider and more
+   narrative than a place peek, but still leaves most of the map visible. */
+.map-finding-peek {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(var(--app-bottomnav-reserve, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-sticky);
+  width: min(520px, calc(100% - 20px));
+  max-height: min(52dvh, 410px);
+  margin-inline: auto;
+  padding: 12px 14px 13px;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
+  border-radius: var(--app-radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--app-brand) 10%, transparent), transparent 38%),
+    color-mix(in srgb, var(--app-bg-elevated) 97%, transparent);
+  backdrop-filter: blur(14px) saturate(1.06);
+  -webkit-backdrop-filter: blur(14px) saturate(1.06);
+  box-shadow: var(--app-shadow-3);
+  overscroll-behavior: contain;
+}
+.map-finding-topline {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.map-finding-index {
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.map-finding-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.map-finding-nav-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--app-ink-2);
+  background: color-mix(in srgb, var(--app-bg-sunken) 78%, transparent);
+}
+.map-finding-nav-btn:active {
+  transform: scale(0.96);
+}
+.map-finding-eyebrow {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-brand-press);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.map-finding-title {
+  margin-top: 3px;
+  padding-right: 6px;
+  color: var(--app-ink);
+  font-size: clamp(20px, 4.8vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+.map-finding-summary {
+  margin-top: 7px;
+  color: var(--app-ink-2);
+  font-size: 13px;
+  line-height: 1.48;
+}
+.map-finding-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--app-border);
+}
+.map-finding-proof {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.map-finding-proof summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-ink-2);
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.map-finding-proof summary::-webkit-details-marker {
+  display: none;
+}
+.map-finding-proof ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 3px;
+  padding: 1px 2px 2px;
+}
+.map-finding-proof li {
+  display: grid;
+  gap: 2px;
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--app-brand) 34%, var(--app-border));
+  color: var(--app-ink-2);
+  font-size: 10.5px;
+  line-height: 1.38;
+}
+.map-finding-proof li small {
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+}
+.map-finding-open {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  color: var(--app-on-brand, #fff);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 430px) {
+  .map-finding-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .map-finding-title {
+    font-size: 21px;
+  }
+}
+
 /* Mapbox attribution must stay visible, but the compact bottom controls sat
    underneath the mobile place card. When a preview is open, move both legal
    attribution corners just below the dock instead of hiding them or letting
@@ -4119,13 +4424,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-ink-3);
 }
 
-/* Reduced motion: no expand animation, no scrim fade — state changes
-   land instantly. (The global gate covers this too; kept explicit so
-   the dock honors it even if that gate is ever scoped down.) */
+/* Reduced motion: sheet state changes land instantly. */
 @media (prefers-reduced-motion: reduce) {
   .dock-head,
   .dock-pane,
-  .dock-scrim,
   .dock-chip {
     transition: none !important;
   }

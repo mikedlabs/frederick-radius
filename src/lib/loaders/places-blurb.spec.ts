@@ -78,4 +78,15 @@ describe("place blurb boundary", () => {
     });
     expect(rendered.short_blurb).toBe("");
   });
+
+  it("loads an approved first-party description with provenance", () => {
+    const dublin = publicPlaceBySlug("dublin-roasters-frederick");
+    expect(dublin).toBeDefined();
+
+    const rendered = decoratePlace(dublin!);
+    expect(rendered.short_blurb).toContain("air roasting");
+    expect(rendered.description_source).toBe("business_website");
+    expect(rendered.description_source_url).toBe("https://dublinroasterscoffee.com/");
+    expect(rendered.description_reviewed).toBe(true);
+  });
 });

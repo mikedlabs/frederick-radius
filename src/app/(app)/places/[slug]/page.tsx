@@ -45,7 +45,8 @@ import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar"
 import SourceBadge from "@/components/place/SourceBadge";
 import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
-import { GoogleReviewAttribution } from "@/components/place/GoogleAttribution";
+import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
+import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -312,11 +313,18 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             <MyRadiusButton slug={place.slug} name={place.name} />
           </div>
           {desc && (
-            // max-w-[68ch]: cap the reading measure — on desktop the content
-            // column is ~900px, which ran this prose past 100ch (UX audit).
-            <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {desc}
-            </p>
+            <div>
+              {/* max-w-[68ch]: cap the reading measure — on desktop the content
+                  column is ~900px, which ran this prose past 100ch (UX audit). */}
+              <p className="max-w-[68ch] text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                {desc}
+              </p>
+              <PlaceDescriptionCredit
+                kind={place.description_source}
+                url={place.description_source_url}
+                verifiedAt={place.description_verified_at}
+              />
+            </div>
           )}
         </div>
       </header>
@@ -376,22 +384,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         ) : (
           <BusinessExtrasCard info={businessInfoFor(place.slug)} />
         )}
-        {place.review_snippet && (
-          <figure
-            className="border-l-2 pl-3"
-            style={{ borderColor: "color-mix(in srgb, var(--app-cool) 45%, transparent)" }}
-          >
-            <blockquote className="text-[13px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              &ldquo;{place.review_snippet}&rdquo;
-            </blockquote>
-            <GoogleReviewAttribution
-              author={place.review_author}
-              authorUri={place.review_author_uri}
-              reviewGoogleMapsUri={place.review_google_maps_uri}
-              placeGoogleMapsUri={place.google_maps_uri}
-            />
-          </figure>
-        )}
+        <LiveGooglePlaceContext slug={place.slug} showSummary={!desc} />
         <PlaceMarginTools slug={place.slug} />
       </div>
 

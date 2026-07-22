@@ -28,8 +28,24 @@ describe("Google photo storage guardrails", () => {
     expect(loader).not.toContain("placePhotoBlob(");
 
     const clientLoader = read("src/lib/loaders/places-client.ts");
-    expect(clientLoader).toContain("withoutLegacyGoogleBlobMirror");
-    expect(clientLoader).toContain('.public.blob.vercel-storage.com');
+    expect(clientLoader).toContain("withoutUnpublishableGooglePhoto");
+    expect(clientLoader).toContain("publishableGooglePhotoAttribution");
+  });
+
+  it("requires exact source metadata before server or runtime loaders publish a photo", () => {
+    const loader = read("src/lib/loaders/places.ts");
+    const route = read("src/app/api/place/[slug]/enrich/route.ts");
+    expect(loader).toContain("publishableGooglePhotoNames");
+    expect(route).toContain("publishableGooglePhotoNames");
+  });
+
+  it("keeps Google content reporting attached to full photos and reviews", () => {
+    const lightbox = read("src/components/ui/PhotoLightbox.tsx");
+    const context = read("src/components/place/GooglePlaceContext.tsx");
+    expect(lightbox).toContain("flag_content_uri");
+    expect(lightbox).toContain("Report photo");
+    expect(context).toContain("review_flag_content_uri");
+    expect(context).toContain("reviewFlagContentUri");
   });
 
   it("keeps on-demand Places enrichment out of Next's persistent cache", () => {

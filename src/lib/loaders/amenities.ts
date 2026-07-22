@@ -92,7 +92,30 @@ const GREENSPACE = new Set([
 ]);
 const PLACE_IMPLIED_KINDS = new Set<AmenityKind>(["picnic", "playground"]);
 
-const CLUSTER_M = 45; // same-kind points this close are one thing
+// A blanket 45m collapse erased legitimate street furniture: two benches or
+// trash cans on the same block are two assets, not duplicate records. Broad
+// area-like amenities can tolerate a wider merge; exact field assets cannot.
+const CLUSTER_M_BY_KIND: Partial<Record<AmenityKind, number>> = {
+  picnic: 45,
+  playground: 35,
+  wifi: 25,
+  ev_charging: 20,
+  restroom: 18,
+  pool: 18,
+  river_gauge: 12,
+  trash: 8,
+  recycling: 8,
+  water: 8,
+  bench: 8,
+  dog_waste: 8,
+  dog_water: 8,
+  outlet: 8,
+  bike_parking: 8,
+  bike_repair: 8,
+  other: 8,
+};
+const DEFAULT_CLUSTER_M = 18;
+const FIELD_TO_FIELD_CLUSTER_M = 2;
 const PLACE_OVERLAP_M = 60; // an implied-kind point this close to its park
 
 const cell = (lat: number, lng: number, sizeM: number) => {
@@ -104,10 +127,10 @@ const cell = (lat: number, lng: number, sizeM: number) => {
  * The amenity side of the ONE duplicate rule. Two deterministic,
  * conservative passes so a user never sees the same amenity twice:
  *
- *  1. Internal cluster collapse — many identical OSM nodes of the
- *     SAME kind within ~45 m (the measured "Picnic area ×8 at one
- *     overlook") fold to a single representative (the most specifically
- *     named one). Every kind, county-wide.
+ *  1. Internal cluster collapse — repeated records of the SAME kind fold to
+ *     one representative. The tolerance follows the asset: 45m for broad
+ *     picnic areas, 8m for street furniture, and only 2m between two
+ *     field-mapped points. This keeps two real bins or benches on a block.
  *  2. Place-overlap — a `picnic`/`playground` point sitting on a
  *     canonical green-space PLACE (≤60 m) is dropped: the park place
  *     already represents it. Utility kinds (restroom/Wi-Fi/EV/bike)
@@ -124,26 +147,30 @@ export function dedupeAmenities(
   for (const a of list) (byKind.get(a.kind) ?? byKind.set(a.kind, []).get(a.kind)!).push(a);
   const kept: Amenity[] = [];
   for (const group of byKind.values()) {
+    const clusterM = CLUSTER_M_BY_KIND[group[0]?.kind] ?? DEFAULT_CLUSTER_M;
     const used = new Array(group.length).fill(false);
     const idx: Record<string, number[]> = {};
     group.forEach((a, i) =>
-      (idx[cell(a.lat, a.lng, CLUSTER_M)] ??= []).push(i),
+      (idx[cell(a.lat, a.lng, clusterM)] ??= []).push(i),
     );
     for (let i = 0; i < group.length; i++) {
       if (used[i]) continue;
       const cluster = [i];
       used[i] = true;
-      const cy = Math.round((group[i].lat * 111_320) / CLUSTER_M);
-      const cx = Math.round((group[i].lng * 111_320) / CLUSTER_M);
+      const cy = Math.round((group[i].lat * 111_320) / clusterM);
+      const cx = Math.round((group[i].lng * 111_320) / clusterM);
       for (let dz = -1; dz <= 1; dz++)
         for (let dx = -1; dx <= 1; dx++)
           for (const j of idx[`${cy + dz},${cx + dx}`] ?? []) {
             if (used[j]) continue;
+            const bothField = group[i].id.startsWith("field:") && group[j].id.startsWith("field:");
+            const tolerance = bothField ? FIELD_TO_FIELD_CLUSTER_M : clusterM;
             if (
+              group[i].id === group[j].id ||
               haversineMeters(
                 { lng: group[i].lng, lat: group[i].lat },
                 { lng: group[j].lng, lat: group[j].lat },
-              ) <= CLUSTER_M
+              ) <= tolerance
             ) {
               used[j] = true;
               cluster.push(j);

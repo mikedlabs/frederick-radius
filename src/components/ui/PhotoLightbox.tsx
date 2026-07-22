@@ -7,6 +7,12 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import {
+  GoogleContentReportLink,
+  GooglePhotoAttributionLine,
+  safeGoogleReportUrl,
+} from "@/components/place/GoogleAttribution";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
 /**
  * PhotoLightbox — full-screen tap-to-enlarge photo viewer.
@@ -22,11 +28,16 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
  */
 export default function PhotoLightbox({
   photos,
+  attributions,
   startIndex = 0,
   alt = "Photo",
   onClose,
 }: {
   photos: string[];
+  attributions?: Array<{
+    attribution?: GooglePhotoAttribution;
+    placeGoogleMapsUri?: string;
+  }>;
   startIndex?: number;
   alt?: string;
   onClose: () => void;
@@ -159,6 +170,27 @@ export default function PhotoLightbox({
               {i + 1} / {count}
             </div>
           </>
+        )}
+        {attributions?.[i] && (
+          <div
+            className="absolute bottom-[max(env(safe-area-inset-bottom,0px)+16px,16px)] left-[max(12px,env(safe-area-inset-left,0px))] z-10 rounded bg-black/70 px-2 py-1 text-xs font-normal"
+            style={{ color: "white" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <GooglePhotoAttributionLine
+              attribution={attributions[i].attribution}
+              placeGoogleMapsUri={attributions[i].placeGoogleMapsUri}
+              showAvatar
+            />
+            {safeGoogleReportUrl(attributions[i].attribution?.flag_content_uri) ? (
+              <span className="mt-1 block text-right">
+                <GoogleContentReportLink
+                  href={attributions[i].attribution?.flag_content_uri}
+                  label="Report photo"
+                />
+              </span>
+            ) : null}
+          </div>
         )}
       </motion.div>
     </AnimatePresence>,
