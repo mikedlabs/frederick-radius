@@ -262,7 +262,7 @@ export default function WantsAccordion({
                 type="button"
                 aria-pressed={active}
                 onClick={() => promote(cat.key)}
-                className="tap-44 tactile-interactive inline-flex shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold"
+                className="tap-44 tap-pop tactile-interactive inline-flex shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-semibold"
                 style={{
                   borderColor: active
                     ? `color-mix(in srgb, ${cat.color} 62%, var(--app-border))`
@@ -304,7 +304,7 @@ export default function WantsAccordion({
               onPointerDown={prefetchOnIntent(sub.href)}
               onClick={interceptWant(sub.href, sub.label)}
               aria-expanded={w ? active : undefined}
-              className="tap-44 tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold"
+              className="tap-44 tap-pop tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold"
               style={{
                 borderColor: active ? `color-mix(in srgb, ${accent} 55%, var(--app-border))` : "transparent",
                 background: active

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { LayoutGrid, ChevronDown } from "lucide-react";
+import { haptic } from "@/lib/haptics";
 
 /**
  * BrowsePlacesDisclosure — an OBVIOUS tap target for the "I want…" category
@@ -27,7 +28,8 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
     setMounted(true);
   }, []);
 
-  const toggle = () =>
+  const toggle = () => {
+    haptic("light");
     setOpen((v) => {
       const next = !v;
       try {
@@ -37,6 +39,7 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
       }
       return next;
     });
+  };
 
   const panelId = "browse-places-panel";
 
@@ -47,10 +50,12 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
         onClick={toggle}
         aria-expanded={mounted ? open : false}
         aria-controls={panelId}
-        className="flex min-h-[52px] w-full items-center gap-3 border-b px-1 py-2 text-left transition hover:bg-[var(--app-bg-elevated)] active:opacity-70"
+        className="tap-pop flex min-h-[52px] w-full items-center gap-3 border-b px-1 py-2 text-left transition hover:bg-[var(--app-bg-elevated)]"
         style={{
           borderColor: "var(--app-border)",
-        }}
+          // Full-width row: a gentle push-out, not the chip-scale 1.06.
+          "--pop": "1.015",
+        } as CSSProperties}
       >
         <span
           aria-hidden

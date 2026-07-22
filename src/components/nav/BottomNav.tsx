@@ -40,7 +40,7 @@ export default function BottomNav() {
           haptic("light");
           window.dispatchEvent(new CustomEvent("fr:open-search"));
         }}
-        className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] transition active:scale-[0.96]"
+        className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
         style={{
           background: "var(--app-brand-press)",
           color: "var(--app-on-brand)",
@@ -107,7 +107,7 @@ export default function BottomNav() {
                   }}
                   onClick={handleActivate}
                   aria-current={isRealActive ? "page" : undefined}
-                  className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition active:scale-[0.97]"
+                  className="relative flex h-12 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] text-center transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
                   style={{
                     color: active ? "var(--app-brand-press)" : "var(--app-ink-3)",
                     background: active ? "var(--app-brand-tint-6)" : "transparent",

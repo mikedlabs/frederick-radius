@@ -153,8 +153,10 @@ export default function Pill({
   // zone to ~44px without changing the visual or the layout flow.
   const hit =
     "relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-['']";
+  // tap-pop: chips push OUT under the finger and spring back on release
+  // (owner ask, 2026-07-22) — cards press in, chips pop out.
   const base =
-    `tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad} ${hit}`;
+    `tap-44-y tap-pop inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition ${pad} ${hit}`;
   const inactiveCls = active || bare ? "" : "border border-[var(--app-border-strong)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
