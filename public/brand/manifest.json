@@ -29,7 +29,7 @@
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-07-22T14:20:45.354Z",
+  "generatedAt": "2026-07-22T19:52:26.355Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -341,6 +341,16 @@
       ]
     },
     {
+      "file": "social/facebook-group-launch.svg",
+      "width": 1080,
+      "height": 1350,
+      "role": "Facebook food-truck launch post using owned Frederick photography",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
       "file": "social/photo-post-template.svg",
       "width": 1080,
       "height": 1350,
@@ -441,6 +451,28 @@
       ]
     },
     {
+      "file": "campaign/poster-field-guide.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "18 by 24 campaign poster built around the live field-guide idea",
+      "exports": [
+        "svg",
+        "png",
+        "pdf"
+      ]
+    },
+    {
+      "file": "campaign/poster-right-now.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "18 by 24 campaign poster using owned Frederick night photography",
+      "exports": [
+        "svg",
+        "png",
+        "pdf"
+      ]
+    },
+    {
       "file": "nfc/general-front.svg",
       "width": 1088,
       "height": 713,
@@ -478,6 +510,28 @@
       "exports": [
         "svg",
         "png"
+      ]
+    },
+    {
+      "file": "nfc/signal-front.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 premium Radius Signal NFC card front",
+      "exports": [
+        "svg",
+        "png",
+        "pdf"
+      ]
+    },
+    {
+      "file": "nfc/signal-back.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 premium Radius Signal NFC card back with a working QR fallback",
+      "exports": [
+        "svg",
+        "png",
+        "pdf"
       ]
     }
   ],

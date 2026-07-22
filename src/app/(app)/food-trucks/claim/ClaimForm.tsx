@@ -70,7 +70,7 @@ export default function ClaimForm({ trucks }: { trucks: TruckOption[] }) {
           Your request is in.
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The owner reviews every claim by hand and will reach out at the contact you gave. Once
+          Radius reviews every claim by hand and will reach out at the contact you gave. Once
           your claim is approved you get a private link for posting a live pin when you are out.
         </p>
       </div>

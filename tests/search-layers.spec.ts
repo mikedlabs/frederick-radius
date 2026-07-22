@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { searchIndex } from "@/lib/search/index";
+import { qualifiedSearchIndex, searchIndex } from "@/lib/search/index";
+import { qualifiedSearch } from "@/lib/search";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
  * One-search: typing what a map LAYER shows offers the layer itself, so
@@ -30,5 +32,26 @@ describe("searchIndex map-layer results", () => {
     // not toggle an empty overlay.
     const results = searchIndex("appalachian trail", 8);
     expect(results.some((r) => r.id === "layer:trails")).toBe(false);
+  });
+
+  it("keeps ready layer doors when the qualified adapter is used", () => {
+    expect(qualifiedSearchIndex("mural", 8).results.some((r) => r.id === "layer:art")).toBe(true);
+    expect(qualifiedSearchIndex("parks", 8).results.some((r) => r.id === "layer:parks")).toBe(true);
+  });
+
+  it("preserves location-aware ranking for an ordinary query", () => {
+    const context = {
+      origin: FREDERICK_CENTER,
+      contextLabel: "Downtown Frederick",
+    };
+    const core = qualifiedSearch("bakery", 8, undefined, context).hits;
+    const firstCorePlace = core.find((hit) => hit.type === "place");
+    const adapted = qualifiedSearchIndex("bakery", 8, undefined, context).results;
+    const firstAdaptedPlace = adapted.find((result) => result.type === "place");
+
+    expect(firstCorePlace?.type).toBe("place");
+    expect(firstAdaptedPlace?.id).toBe(
+      firstCorePlace?.type === "place" ? `place:${firstCorePlace.place.slug}` : undefined,
+    );
   });
 });

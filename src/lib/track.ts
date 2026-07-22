@@ -1,9 +1,9 @@
 /**
  * track — fire a Plausible custom event AND a first-party per-member event.
  *
- * Plausible stays exactly as it was: cookieless, privacy-first, event NAMES and
- * small string/number props only, never anything that identifies a person. On
- * top of that, track() ALSO fire-and-forgets the same event to /api/track, where
+ * Plausible receives only a small allowlist of stable event names, never search
+ * text, answer text, or anything that identifies a person. On top of that,
+ * track() ALSO fire-and-forgets the event to /api/track, where
  * the server attributes it to the signed httpOnly `fr_member` cookie (an NFC
  * member) and drops it when there is no member or the member opted out. That
  * first-party post is what lets the owner see per-card activity, which cookieless
@@ -17,6 +17,58 @@ import {
   ANALYTICS_OPTOUT_COOKIE,
   ANALYTICS_OPTOUT_STORAGE_KEY,
 } from "@/lib/nfc-constants";
+
+/**
+ * Starter-plan measurement stays deliberately small. Native pageviews answer
+ * where people arrive; these goals answer whether Radius helped. Everything
+ * else still reaches the private per-member beta log below, but does not spend
+ * another billable Plausible event or distort bounce rate.
+ */
+export const PLAUSIBLE_GOAL_EVENTS = new Set([
+  "find_open",
+  "search_pick",
+  "search_map",
+  "search_empty",
+  "ask_open",
+  "ask_submit",
+  "ask_answer",
+  "ask_empty",
+  "map_pin",
+  "pulse_item_open",
+  "compass_tool_open",
+  "save_place",
+  "save_event",
+  "calendar_add",
+  "push_optin",
+  "report_submit",
+  "feedback_send",
+  "share_today",
+]);
+
+export function shouldSendToPlausible(
+  event: string,
+  props?: Record<string, string | number | boolean>,
+): boolean {
+  if (!PLAUSIBLE_GOAL_EVENTS.has(event)) return false;
+  // A save goal means activation, not undoing a save later.
+  if ((event === "save_place" || event === "save_event") && props?.on === false) return false;
+  return true;
+}
+
+type PlausibleFn = ((name: string) => void) & {
+  q?: string[][];
+};
+
+function plausibleQueue(): PlausibleFn | null {
+  if (typeof window === "undefined") return null;
+  const target = window as unknown as { plausible?: PlausibleFn };
+  if (target.plausible) return target.plausible;
+  const queued = ((...args: [string]) => {
+    (queued.q = queued.q || []).push(args);
+  }) as PlausibleFn;
+  target.plausible = queued;
+  return queued;
+}
 
 function firstPartyOptedOut(): boolean {
   try {
@@ -73,15 +125,15 @@ export function track(
   props?: Record<string, string | number | boolean>,
 ): void {
   if (typeof window === "undefined") return;
-  try {
-    const plausible = (
-      window as unknown as {
-        plausible?: (name: string, opts?: { props?: Record<string, unknown> }) => void;
-      }
-    ).plausible;
-    plausible?.(event, props ? { props } : undefined);
-  } catch {
-    /* ignore — analytics is best-effort */
+  if (shouldSendToPlausible(event, props)) {
+    try {
+      // Starter cannot analyze custom properties. Sending only the stable goal
+      // name also guarantees raw Search/Ask text can never leave through this
+      // path. Anonymous misses already have their own first-party data-gap log.
+      plausibleQueue()?.(event);
+    } catch {
+      /* ignore — analytics is best-effort */
+    }
   }
   // Additionally log to the first-party per-member event log (opt-out honored).
   postFirstParty(event, props);

@@ -45,7 +45,10 @@ const TYPE_MAP: Record<string, string> = {
   farmers_market: "market", market: "market",
   pharmacy: "pharmacy", drugstore: "pharmacy",
   hardware_store: "hardware",
-  gym: "wellness", fitness_center: "wellness", yoga_studio: "yoga", spa: "wellness",
+  // Preserve the guide's specific child categories. "wellness" is the parent
+  // browse lane; collapsing gyms or spas into it would make the audit suggest
+  // a less useful category than the one already assigned.
+  gym: "yoga", fitness_center: "yoga", yoga_studio: "yoga", spa: "spa",
   golf_course: "golf",
   parking: "parking", train_station: "transit", transit_station: "transit", bus_station: "transit",
 };
@@ -77,7 +80,7 @@ const REVIEWED_EXCEPTIONS = new Set([
   "cafe-nola:coffee", // full-service bistro; coffee remains a secondary tag
   "schroyers-tavern-at-maryland-national-golf-club-middletown:golf", // restaurant at a course
   "urbana-library-farmers-market-new-market:library", // market hosted at the library
-  "best-kept-secret-hair-salon:wellness", // hair salon; spa is a secondary Google type
+  "best-kept-secret-hair-salon:spa", // hair salon; spa is a secondary Google type
   "quince-orchard-psychotherapy:agritourism", // mental-health practice whose brand contains Orchard
 ]);
 

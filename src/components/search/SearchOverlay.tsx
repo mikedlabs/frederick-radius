@@ -4,7 +4,7 @@ import { track } from "@/lib/track";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, MessageCircleQuestion, Phone, Train } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity, Toilet } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
   SearchResult,
@@ -14,7 +14,7 @@ import { readCachedPosition } from "@/hooks/useGeolocation";
 import { haversineMeters, formatDistance } from "@/lib/geo";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
 import { findQuickAnswers } from "@/lib/answers/intents";
-import { searchCivicActions } from "@/lib/search/civic";
+import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 import type { IntentIcon } from "@/lib/answers/types";
 
 /**
@@ -35,11 +35,9 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // AbortController so an out-of-order request can't overwrite a newer
 // result. Trust signals are populated server-side on each result so
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import TrustChip from "@/components/ui/TrustChip";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
-import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
-import { getHomeMuni } from "@/lib/personalize";
+import { frederickHour } from "@/lib/search-suggestions";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -49,41 +47,27 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   action: ArrowRight,
 };
 
-const HEADING_BY_TYPE: Record<SearchResultType, string> = {
-  place: "Places",
-  event: "Events",
-  category: "Categories",
-  municipality: "Towns",
-  action: "Actions",
+const LABEL_BY_TYPE: Record<SearchResultType, string> = {
+  place: "Place",
+  event: "Event",
+  category: "Category",
+  municipality: "Town",
+  action: "Tool",
 };
 
 /**
- * Group flat results by type WHILE preserving relevance ordering.
- * The first occurrence of each type determines the group order, so
- * if the top hit is a Place, the Places group shows first; if an
- * Event leads, Events leads. Within each group, items stay in the
- * order the API returned (which is already relevance-scored).
- *
- * Returns a list of {type, items} pairs whose concatenated items
- * preserve the original flat result indices — so keyboard nav and
- * activeIdx keep working across the grouped layout.
- *
- * Exported only for unit tests; the SearchOverlay JSX is the only
- * runtime consumer in the app.
+ * Keep the API's ranked order intact. The first result gets the stronger
+ * decision card; everything after it stays in the exact order returned.
+ * Grouping by type made a lower-ranked place leapfrog a better event or tool.
  */
-export function groupByTypePreservingOrder(
-  results: SearchResult[],
-): { type: SearchResultType; items: Array<{ r: SearchResult; idx: number }> }[] {
-  const order: SearchResultType[] = [];
-  const buckets = new Map<SearchResultType, Array<{ r: SearchResult; idx: number }>>();
-  results.forEach((r, idx) => {
-    if (!buckets.has(r.type)) {
-      buckets.set(r.type, []);
-      order.push(r.type);
-    }
-    buckets.get(r.type)!.push({ r, idx });
-  });
-  return order.map((type) => ({ type, items: buckets.get(type)! }));
+export function splitBestMatch(results: SearchResult[]): {
+  best: SearchResult | null;
+  rest: Array<{ r: SearchResult; idx: number }>;
+} {
+  return {
+    best: results[0] ?? null,
+    rest: results.slice(1).map((r, index) => ({ r, idx: index + 1 })),
+  };
 }
 
 /**
@@ -146,7 +130,7 @@ export default function SearchOverlay({
   // Frederick matches" (2026-07-12 audit): "loading" while a request is in
   // flight, "error" when it failed, "done" when it genuinely returned.
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -157,6 +141,17 @@ export default function SearchOverlay({
   const recent = useRecentSearches();
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
+
+  const updateQuery = (next: string) => {
+    setQuery(next);
+    // Never leave a result from the previous query tappable during the
+    // debounce window. The first visible row always belongs to what is in the
+    // field now.
+    setResults([]);
+    setSearchMeta(null);
+    setStatus(next.trim() ? "loading" : "idle");
+    setHoverIdx(null);
+  };
 
   // Debounced fetch against /api/search. 150ms feels instant on a fast
   // typer but still coalesces 3-4 keystrokes into a single round trip.
@@ -232,6 +227,7 @@ export default function SearchOverlay({
   // fix, distance simply isn't shown — search never nags for permission.
   useEffect(() => {
     if (open) {
+      track("find_open");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read of a client-only cached fix when the overlay opens
       setCoords(readCachedPosition());
       // Remember what had focus (the TopBar search button) so closing the
@@ -252,7 +248,10 @@ export default function SearchOverlay({
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI reset when the overlay closes
       setQuery("");
-      setActiveIdx(0);
+      setResults([]);
+      setSearchMeta(null);
+      setStatus("idle");
+      setHoverIdx(null);
     }
   }, [open]);
 
@@ -286,48 +285,13 @@ export default function SearchOverlay({
         }
         return;
       }
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        // Clamp at 0 when results are empty (mid-debounce): min(-1, ...)
-        // would set -1 and aria-activedescendant would point at a
-        // nonexistent id once results land, with Enter going dead.
-        setActiveIdx((i) => (results.length === 0 ? 0 : Math.min(results.length - 1, i + 1)));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIdx((i) => Math.max(0, i - 1));
-      } else if (e.key === "Enter") {
-        // Only hijack Enter while the SEARCH INPUT owns focus. If the
-        // user has Tabbed to the Clear button, the backdrop, or a result
-        // link, native activation must win — preventDefault here would
-        // cancel it and navigate to results[activeIdx] instead.
-        if (document.activeElement !== inputRef.current) return;
-        const r = results[activeIdx];
-        if (r) {
-          e.preventDefault();
-          // Persist the query so the next time the user opens the
-          // overlay they see their last queries first.
-          if (query.trim()) pushRecent(query.trim());
-          window.location.href = r.href;
-        }
-      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // pushRecent + query are read inside the handler when Enter is
     // pressed — without them, a stale closure can persist the previous
     // query string after the user edits the input and hits Enter.
-  }, [open, results, activeIdx, onClose, pushRecent, query]);
-
-  // Reset active index when query changes
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset highlight to the top result whenever the query changes
-  useEffect(() => { setActiveIdx(0); }, [query]);
-
-  // Scroll active result into view
-  useEffect(() => {
-    if (!listRef.current) return;
-    const el = listRef.current.querySelector<HTMLElement>(`[data-idx="${activeIdx}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [activeIdx]);
+  }, [open, onClose]);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -344,25 +308,31 @@ export default function SearchOverlay({
   // the county's own How-Do-I actions (voter registration, FixIT,
   // marriage licenses, burn permits…). Cheap synchronous lookups; no fetch.
   const quickAnswers = findQuickAnswers(query);
-  const govAnswers = findDepartments(query);
-  const civicAnswers = searchCivicActions(query, 2).filter(
+  const civicCandidates = searchCivicActions(query, 2);
+  const govAnswers = shouldShowDepartmentAnswers(query, civicCandidates)
+    ? findDepartments(query)
+    : [];
+  const civicAnswers = civicCandidates.filter(
     // A department card already carries richer detail (phone, about) —
     // don't double up when an action points at the same page.
     (c) => !govAnswers.some((d) => d.website === c.href),
   );
   const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0 || civicAnswers.length > 0;
+  const { best, rest } = splitBestMatch(results);
+  const rankedResults = best ? [{ r: best, idx: 0 }, ...rest] : [];
 
   return (
     <div
+      id="radius-find-dialog"
       ref={dialogRef}
-      className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center"
+      className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center bg-[var(--app-bg)] sm:bg-transparent"
       style={{
-        paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
-        paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Search Frederick Radius"
+      aria-labelledby="radius-find-title"
     >
       {/* Backdrop — tabIndex={-1} keeps the invisible full-screen button out
           of the Tab cycle (the focus trap would otherwise wrap to it and the
@@ -373,33 +343,57 @@ export default function SearchOverlay({
         tabIndex={-1}
         aria-label="Close search"
         onClick={onClose}
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 hidden bg-black/40 backdrop-blur-[2px] sm:block"
       />
 
       {/* Sheet */}
       <div
-        className="relative z-10 mt-[10dvh] w-full max-w-screen-sm overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--app-bg)] sm:mt-[8dvh] sm:h-auto sm:max-h-[84dvh] sm:max-w-screen-sm sm:rounded-[var(--app-radius-xl)] sm:border sm:bg-[var(--app-bg-elevated)] sm:shadow-[var(--app-shadow-3)]"
         style={{ borderColor: "var(--app-border)" }}
       >
+        <div
+          className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-5"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        >
+          <div className="min-w-0">
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+              Find
+            </p>
+            <h2 id="radius-find-title" className="truncate font-serif text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+              Frederick County
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close Find"
+            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition active:scale-95"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            Close
+          </button>
+        </div>
+
         {/* Input */}
         <div
-          className="flex items-center gap-3 border-b px-4 py-3"
-          style={{ borderColor: "var(--app-border)" }}
+          className="mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 shadow-[var(--app-shadow-1)] transition focus-within:border-[var(--app-brand)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--app-brand)_18%,transparent)] sm:mx-5"
+          style={{ borderColor: "var(--app-border-strong)" }}
         >
-          <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <Search className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-press)" }} aria-hidden />
           <input
             ref={inputRef}
-            type="text"
+            type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find places, events, towns, tools"
-            aria-label="Search"
+            onChange={(e) => updateQuery(e.target.value)}
+            placeholder="Coffee, parking, live music, permits…"
+            aria-label="Find across Frederick County"
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
             // focusable link nested inside role=option while retaining the
             // fast Arrow/Enter shortcut for sighted keyboard users.
             aria-controls={query.trim() && results.length > 0 ? "search-results" : undefined}
-            className="flex-1 bg-transparent text-base outline-none placeholder:text-[var(--app-ink-3)]"
+            className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-[var(--app-ink-3)]"
             style={{ color: "var(--app-ink)" }}
             autoComplete="off"
             spellCheck={false}
@@ -407,23 +401,17 @@ export default function SearchOverlay({
           {query && (
             <button
               type="button"
-              onClick={() => setQuery("")}
-              aria-label="Clear"
+              onClick={() => updateQuery("")}
+              aria-label="Clear search"
               className="tap-44 shrink-0 rounded-full p-1 transition hover:bg-[var(--app-bg-sunken)]"
             >
               <X className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             </button>
           )}
-          <kbd
-            className="hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1.5 py-0.5 text-[10px] font-medium sm:inline-block"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            esc
-          </kbd>
         </div>
 
         {/* Results */}
-        <div className="max-h-[60dvh] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto border-t sm:max-h-[64dvh]" style={{ borderColor: "var(--app-border)" }}>
           {/* Direct answer — "ask Frederick" routes a buried-gov question
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
@@ -539,8 +527,9 @@ export default function SearchOverlay({
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
-              onPick={(s) => setQuery(s)}
+              onPick={updateQuery}
               onClearRecent={clearRecent}
+              onClose={onClose}
             />
           ) : results.length === 0 ? (
             // No live role on this block — regions mounted WITH content aren't
@@ -563,118 +552,159 @@ export default function SearchOverlay({
             </div>
             )
           ) : (
-            // Grouped results — group order follows relevance (the
-            // type of the top hit appears first), items within a group
-            // keep the API's relevance ordering. The flat `activeIdx`
-            // is preserved across groups via the `idx` recorded in each
-            // bucket, so arrow-key nav still walks the full result list.
-            <ul ref={listRef} id="search-results" aria-label="Search results" className="py-1">
-              {groupByTypePreservingOrder(results).map((group, gi) => {
-                const color = COLOR_BY_TYPE[group.type];
-                return (
-                  <li key={group.type} className={gi > 0 ? "mt-1" : ""}>
-                    {/* Group header — small, all-caps, tinted by type
-                        so the eye can pick out the section it wants
-                        without reading individual rows. Single source
-                        of "what kind of thing is this" — the per-item
-                        type pill is gone now that the header carries
-                        it. */}
-                    <div
-                      className="px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.12em]"
-                      style={{ color }}
+            <ul ref={listRef} id="search-results" aria-label="Search results" className="py-2">
+              {rankedResults.map(({ r, idx }) => {
+                const Icon = ICON_BY_TYPE[r.type];
+                const color = COLOR_BY_TYPE[r.type];
+                const trust = r.trust ?? null;
+                const distance = coords && r.lat != null && r.lng != null
+                  ? formatDistance(haversineMeters(coords, { lng: r.lng, lat: r.lat }))
+                  : null;
+                const pick = () => {
+                  if (query.trim()) pushRecent(query.trim());
+                  track("search_pick", { type: r.type });
+                  onClose();
+                };
+                const art = r.thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.thumbnail}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className={idx === 0
+                      ? "h-16 w-16 shrink-0 rounded-[var(--app-radius-md)] object-cover"
+                      : "mt-0.5 h-10 w-10 shrink-0 rounded-[var(--app-radius-sm)] object-cover"}
+                    style={{ background: `${color}1A`, boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className={idx === 0
+                      ? "grid h-16 w-16 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
+                      : "mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"}
+                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--app-bg-sunken))`, color }}
+                  >
+                    <Icon className={idx === 0 ? "h-6 w-6" : "h-4 w-4"} strokeWidth={1.9} />
+                  </span>
+                );
+
+                if (idx === 0) {
+                  const mapHref = r.type === "place" && r.lat != null && r.lng != null
+                    ? `/map?at=${r.lat.toFixed(5)},${r.lng.toFixed(5)}&place=${encodeURIComponent(r.id.replace(/^place:/, ""))}`
+                    : null;
+                  return (
+                    <li
+                      key={r.id}
+                      id="search-opt-0"
+                      data-idx={0}
+                      className="mx-3 mb-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-1)]"
+                      style={{ borderColor: "color-mix(in srgb, var(--app-brand) 26%, var(--app-border))" }}
                     >
-                      {HEADING_BY_TYPE[group.type]} · {group.items.length}
-                    </div>
-                    <ul aria-label={HEADING_BY_TYPE[group.type]}>
-                      {group.items.map(({ r, idx }) => {
-                        const Icon = ICON_BY_TYPE[r.type];
-                        const active = idx === activeIdx;
-                        const trust = r.trust ?? null;
-                        return (
-                          <li
-                            key={r.id}
-                            id={`search-opt-${idx}`}
-                            data-idx={idx}
+                      <div className="flex items-start gap-3 p-3">
+                        {art}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+                            Best match · {LABEL_BY_TYPE[r.type]}
+                          </p>
+                          <p className="mt-1 line-clamp-2 font-serif text-[19px] font-semibold leading-[1.05] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+                            {r.type === "action" ? r.title : highlight(r.title, query)}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                            {r.subtitle}{distance ? ` · ${distance}` : ""}
+                          </p>
+                          {trust && <TrustChip signal={trust} className="mt-1.5" />}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+                        <Link
+                          href={r.href}
+                          onClick={pick}
+                          onMouseEnter={() => setHoverIdx(0)}
+                          onMouseLeave={() => setHoverIdx(null)}
+                          className="flex min-h-11 items-center justify-center gap-1.5 px-3 text-[12px] font-semibold"
+                          style={{ color: "var(--app-ink)", background: hoverIdx === 0 ? "var(--app-bg-sunken)" : "transparent" }}
+                        >
+                          Open
+                          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                        </Link>
+                        {mapHref ? (
+                          <Link
+                            href={mapHref}
+                            onClick={() => {
+                              if (query.trim()) pushRecent(query.trim());
+                              track("search_map");
+                              onClose();
+                            }}
+                            className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
+                            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
                           >
-                            <Link
-                              href={r.href}
-                              onClick={() => {
-                                track("search_pick", { type: r.type });
-                                onClose();
-                              }}
-                              onMouseEnter={() => setActiveIdx(idx)}
-                              // No outline-none: the global :focus-visible ring
-                              // must show if a user Tabs onto a result directly.
-                              className="flex items-start gap-3 px-4 py-2.5"
-                              style={{
-                                background: active ? "var(--app-bg-sunken)" : "transparent",
-                              }}
-                            >
-                              {/* Thumbnail when the result has a photo
-                                  (places + events) — a 36px rounded
-                                  square that reads as "this is a real
-                                  thing" faster than a generic icon
-                                  stamp. Falls back to the typed round
-                                  icon when no photo is available. Plain
-                                  <img>: no next/image optimizer round-
-                                  trip just for a 32px tile. */}
-                              {r.thumbnail ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={r.thumbnail}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="mt-0.5 h-9 w-9 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
-                                  style={{
-                                    background: `${color}1A`,
-                                    boxShadow: `inset 0 0 0 1px var(--app-border)`,
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  aria-hidden
-                                  className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)]"
-                                  style={{ background: `${color}1A`, color }}
-                                >
-                                  <Icon className="h-4 w-4" strokeWidth={1.75} />
-                                </span>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                                  {r.type === "action" ? r.title : highlight(r.title, query)}
-                                </p>
-                                <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                                  {r.subtitle}
-                                  {coords && r.lat != null && r.lng != null
-                                    ? ` · ${formatDistance(haversineMeters(coords, { lng: r.lng, lat: r.lat }))}`
-                                    : ""}
-                                </p>
-                                {trust && <TrustChip signal={trust} className="mt-1" />}
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                            <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                            Map
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/ask?q=${encodeURIComponent(query.trim())}`}
+                            onClick={() => {
+                              track("ask_open");
+                              onClose();
+                            }}
+                            className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
+                            style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                          >
+                            Ask Radius
+                          </Link>
+                        )}
+                      </div>
+                    </li>
+                  );
+                }
+
+                return (
+                  <li key={r.id} id={`search-opt-${idx}`} data-idx={idx}>
+                    <Link
+                      href={r.href}
+                      onClick={pick}
+                      onMouseEnter={() => setHoverIdx(idx)}
+                      onMouseLeave={() => setHoverIdx(null)}
+                      className="flex min-h-[62px] items-start gap-3 border-b px-4 py-2.5 sm:px-5"
+                      style={{
+                        borderColor: "var(--app-border)",
+                        background: hoverIdx === idx ? "var(--app-bg-sunken)" : "transparent",
+                      }}
+                    >
+                      {art}
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color }}>
+                          {LABEL_BY_TYPE[r.type]}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                          {r.type === "action" ? r.title : highlight(r.title, query)}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                          {r.subtitle}{distance ? ` · ${distance}` : ""}
+                        </span>
+                        {trust && <TrustChip signal={trust} className="mt-1" />}
+                      </span>
+                      <ArrowRight className="mt-4 h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
+                    </Link>
                   </li>
                 );
               })}
             </ul>
           )}
 
-          {query.trim() ? (
-            <div className="border-t px-3 py-3" style={{ borderColor: "var(--app-border)" }}>
+          {query.trim() && results.length === 0 && !hasAnswer && status === "done" ? (
+            <div className="border-t px-4 py-4" style={{ borderColor: "var(--app-border)" }}>
               <Link
                 href={`/ask?q=${encodeURIComponent(query.trim())}`}
                 onClick={() => {
                   track("ask_open", { source: "search" });
                   onClose();
                 }}
-                className="tactile-interactive flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 transition active:scale-[0.99]"
+                className="tactile-interactive flex min-h-14 items-center gap-3 border-y px-1 py-3 transition active:opacity-75"
                 style={{
-                  borderColor: "color-mix(in srgb, var(--app-brand) 32%, var(--app-border))",
-                  background: "color-mix(in srgb, var(--app-brand) 7%, var(--app-bg-elevated))",
+                  borderColor: "var(--app-border-strong)",
                 }}
               >
                 <span
@@ -689,10 +719,10 @@ export default function SearchOverlay({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                    Ask Radius about this
+                    Ask Radius
                   </span>
                   <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                    Ask a local question or build a plan from Radius data.
+                    Add details such as time, budget, or who is coming.
                   </span>
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
@@ -704,14 +734,18 @@ export default function SearchOverlay({
         {/* Footer hints */}
         <div
           className="flex items-center justify-between border-t px-4 py-2 text-[10px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          style={{
+            borderColor: "var(--app-border)",
+            color: "var(--app-ink-3)",
+            paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+          }}
         >
           {/* Keyboard affordances exist only where a keyboard does: on a
               touch phone none of these keys exist, so the row hides on
               coarse-pointer devices and the match count stands alone
               (fresh-eyes audit, Jul 2026). */}
           <div className="hidden items-center gap-3 [@media(hover:hover)_and_(pointer:fine)]:flex">
-            <KbdHint label="↑↓" desc="navigate" />
+            <KbdHint label="tab" desc="move" />
             <KbdHint label="↵" desc="open" />
             <KbdHint label="esc" desc="close" />
           </div>
@@ -725,6 +759,8 @@ export default function SearchOverlay({
               ? `${results.length} match${results.length === 1 ? "" : "es"}`
               : !query.trim()
                 ? ""
+                : hasAnswer
+                  ? "Direct answer available"
                 : status === "error"
                   ? "Search unavailable"
                   : status === "loading"
@@ -755,89 +791,37 @@ function EmptyHint({
   recent,
   onPick,
   onClearRecent,
+  onClose,
 }: {
   recent: string[];
   onPick: (s: string) => void;
   onClearRecent: () => void;
+  onClose: () => void;
 }) {
-  // Time-of-day-aware suggestions. The hour is read at render-time
-  // so a returning user in the evening sees evening prompts, even
-  // if their last visit was morning. Frederick is locked to Eastern.
   const hour = frederickHour();
-  const suggestions = suggestionsForHour(hour);
-
-  // Personalized quick-start tiles. The previous /tonight and
-  // /discover entries were duplicate paths to /today's content —
-  // retired in the structural cuts. We point straight at /now with
-  // a lens, plus /m/<home-muni> when set. Each tile is a real
-  // destination, not a query — tapping closes the overlay and
-  // navigates.
-  const homeMuni = getHomeMuni();
-  const homeMuniName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name : null;
-  const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Sparkles }> = [
-    { href: "/ask", title: "Ask Radius", subtitle: "Get help deciding", Icon: MessageCircleQuestion },
-    { href: "/events?lens=today", title: "Plan tonight", subtitle: "What's happening this evening", Icon: Sparkles },
-    { href: "/events", title: "All events", subtitle: "Tonight, weekend, this week", Icon: Sparkles },
-    ...(homeMuniName && homeMuni
-      ? [{ href: `/m/${homeMuni}`, title: homeMuniName, subtitle: "Your spot", Icon: MapPin }]
-      : []),
+  const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Clock }> = [
+    { href: "/open-now", title: "Open now", subtitle: "Use checked hours across the county.", Icon: Clock },
+    {
+      href: "/events?lens=today",
+      title: hour >= 16 ? "Events tonight" : "Events today",
+      subtitle: "See the current local calendar.",
+      Icon: Calendar,
+    },
+    { href: "/amenities", title: "Public essentials", subtitle: "Find restrooms, water, Wi-Fi, and more.", Icon: Toilet },
+    { href: "/pulse", title: "Live conditions", subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
   ];
 
   return (
-    <div className="space-y-5 px-4 py-5">
-      {/* Quick-start tiles — visible above recents so a fresh visitor
-          sees high-value destinations first. Personalized to the home
-          muni when set. */}
-      <div>
-        <p
-          className="text-xs font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Quick start
-        </p>
-        <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-          {quickStart.map((q) => (
-            <li key={q.href}>
-              <Link
-                href={q.href}
-                className="group flex items-center gap-2.5 rounded-xl border p-2.5 transition active:scale-[0.99]"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-bg-elevated)",
-                }}
-              >
-                <span
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                  style={{
-                    background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-                    color: "var(--app-cool)",
-                  }}
-                >
-                  <q.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                    {q.title}
-                  </span>
-                  <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                    {q.subtitle}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {recent.length > 0 && (
+    <div className="px-4 py-5 sm:px-5">
+      {recent.length > 0 ? (
         <div>
           <div className="flex items-baseline justify-between">
             <p
-              className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.1em]"
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
-              Recent
+              Recent searches
             </p>
             <button
               type="button"
@@ -849,49 +833,61 @@ function EmptyHint({
               Clear
             </button>
           </div>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
             {recent.map((s) => (
               <li key={`recent-${s}`}>
                 <button
                   type="button"
                   onClick={() => onPick(s)}
-                  className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    color: "var(--app-ink)",
-                    background: "var(--app-bg-sunken)",
-                  }}
+                  className="flex min-h-12 w-full items-center gap-2 border-b px-1 text-left text-[13px] font-semibold last:border-b-0"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
                 >
-                  <Clock className="h-2.5 w-2.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-                  {s}
+                  <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                  <span className="min-w-0 flex-1 truncate">{s}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
                 </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+            Useful now
+          </p>
+          <ul className="mt-2 border-y" style={{ borderColor: "var(--app-border-strong)" }}>
+            {quickStart.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  className="group flex min-h-[62px] items-center gap-3 border-b px-1 py-2.5 last:border-b-0"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]" style={{ color: "var(--app-brand-press)", background: "var(--app-brand-tint-6)" }}>
+                    <item.Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>{item.title}</span>
+                    <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{item.subtitle}</span>
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
+                </Link>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div>
-        <p
-          className="text-xs font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Try {hour >= 5 && hour < 11 ? "this morning" : hour < 17 ? "this afternoon" : hour < 22 ? "this evening" : "tonight"}
-        </p>
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <li key={`sugg-${s}`}>
-              <button
-                type="button"
-                onClick={() => onPick(s)}
-                className="tap-44-y inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-              >
-                {s}
-              </button>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+        <Link href="/ask" onClick={onClose} className="group flex min-h-12 items-center gap-3 px-1">
+          <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2.1} style={{ color: "var(--app-brand)" }} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Ask Radius</span>
+            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>Use a question when a name or category is not enough.</span>
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
+        </Link>
       </div>
     </div>
   );

@@ -21,6 +21,9 @@ official service, and do not imply that a source or municipality endorses it.
 - `public/brand/social/facebook-cover.svg` and `facebook-cover-photo.svg`:
   coordinated Brick and natural-photography Facebook covers.
 - `public/brand/social/avatar.svg`: the circle-safe account avatar.
+- `public/brand/social/facebook-group-launch.svg`: the Frederick food-truck
+  campaign image, built from owned photography with the tracked `food-truck`
+  beta access code.
 - `public/brand/social/feed-event-template.svg`: a square event post.
 - `public/brand/social/feed-live-template.svg`: an open-now or live update.
 - `public/brand/social/photo-post-template.svg`: an editable 4:5 photo post.
@@ -69,7 +72,7 @@ happening today, and practical information around you across Frederick County.
 It is still in beta, so I am fixing real problems as people find them.
 
 Try it: [URL]
-Access code: [CODE]
+Access code: food-truck
 
 ### Today page
 

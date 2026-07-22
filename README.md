@@ -134,10 +134,12 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `MAPBOX_ACCESS_TOKEN` | Map tiles + isochrone proxy |
 | `NWS_USER_AGENT` | Required identifier for the NWS API |
 | `SENTRY_DSN` | Runtime error capture |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | Plausible analytics |
+| `NEXT_PUBLIC_PLAUSIBLE_SRC` | Optional override for the checked-in Frederick Radius `pa-….js` URL, mainly for a future first-party proxy |
 | `DATABASE_URL` | Postgres for feed-snapshot telemetry |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Gate `/admin/*` (fail-closed by default) |
 | `BUSINESS_STATUS_CRON=1` | Nightly Google Place Details refresh (PAID — off by default) |
+
+The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
 
 ## Closed-business handling
 

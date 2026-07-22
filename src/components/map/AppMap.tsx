@@ -63,6 +63,7 @@ import { installCountySpotlight } from "./countySpotlight";
 import BAKED_STYLE from "./frederick-style.json";
 import { markMapOnLoad, markMapIdleOnce } from "./mapPerf";
 import { readMapLayerPrefs, writeMapLayerPrefs } from "./mapLayerPrefs";
+import { nearestMapUtilities, type NearbyUtilityPoint } from "./mapNearby";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -430,6 +431,10 @@ export default function AppMap({
   const effectiveCenter: [number, number] = cachedPosition
     ? [cachedPosition.lng, cachedPosition.lat]
     : initialCenter;
+  const searchFallbackOriginRef = useRef<LngLat>({
+    lng: effectiveCenter[0],
+    lat: effectiveCenter[1],
+  });
   // Stable first-paint camera input. Measuring DOM here on every React render
   // caused avoidable layout reads; explicit Whole County refits still measure
   // the live dock through countyFitPadding().
@@ -623,10 +628,18 @@ export default function AppMap({
   >(null);
   // (Mark-a-spot left the map entirely, owner call 2026-07-02: the in-map
   // mark mode built earlier the same day still read as overlay clutter on
-  // the map surface. Marking lives at /report — reachable from More →
-  // "Mark a spot" — and submitted reports still render via the community
+  // the map surface. Marking lives at /report, linked from the map's report
+  // entry point, and submitted reports still render via the community
   // reports layer.)
   const [q, setQ] = useState("");
+  // A global Find result can hand the map both a camera point and a place slug.
+  // The camera is seeded by BrowseMapClient; this slug opens the same compact
+  // peek a direct pin tap would once the map style is ready.
+  const initialPlaceSlug = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("place");
+  }, []);
+  const deepLinkPlaceAppliedRef = useRef(false);
   // Pin peek — the compact bottom card that rises when a curated pin is
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
   // cramped popup into a real card you can act on without leaving the map.
@@ -670,7 +683,10 @@ export default function AppMap({
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
   const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? trailsLayerDefault);
   const [showTransit, setShowTransit] = useState(
-    () => layerPrefs.transit ?? initialDefaults.lineLayers.includes("transit"),
+    // The county browse map should feel alive on first load. Static routes,
+    // stops, and the real-time TransIT feed are a baseline there, while a
+    // remembered explicit Off choice still wins on the next visit.
+    () => layerPrefs.transit ?? (Boolean(dock) || initialDefaults.lineLayers.includes("transit")),
   );
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
@@ -1150,6 +1166,25 @@ export default function AppMap({
     return { type: "FeatureCollection" as const, features: [...feats, ...curated] };
   }, [osmPlaces, extraAmenities, amenities, activeAmenityCats]);
 
+  // Every place peek can quietly answer the next practical question without
+  // forcing the user to close it and rebuild an amenity filter. This joins the
+  // deterministic amenity snapshot, fresh OSM/field points, and transit stops;
+  // the peek helper deduplicates kinds and keeps only a short walk away.
+  const utilityPoints = useMemo<NearbyUtilityPoint[]>(
+    () => [
+      ...amenities.map((a) => ({
+        lng: a.lng,
+        lat: a.lat,
+        kind: AMENITY_KIND_TO_CAT[a.kind],
+      })),
+      ...[...osmPlaces, ...extraAmenities]
+        .filter(isAmenity)
+        .map((p) => ({ lng: p.lng, lat: p.lat, kind: p.category_slug })),
+      ...transitStops.map((stop) => ({ lng: stop.lng, lat: stop.lat, kind: "transit" })),
+    ],
+    [amenities, extraAmenities, osmPlaces, transitStops],
+  );
+
   /**
    * Curated places as a clustered GeoJSON source.
    * 1,300+ markers rendered individually was the noise — clustering folds
@@ -1496,29 +1531,45 @@ export default function AppMap({
   // SearchOverlay; stale responses are dropped.
   const router = useRouter();
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
+  const searchRequestRef = useRef(0);
   useEffect(() => {
     const term = q.trim();
+    const requestId = ++searchRequestRef.current;
+    // A result from the previous phrase must never remain tappable while this
+    // phrase waits for its debounce or network response.
+    setSearchMatches([]);
     if (term.length < 2) {
-      setSearchMatches([]);
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(term)}&limit=6`, { signal: ctrl.signal })
+      const params = new URLSearchParams({ q: term, limit: "6", origin: "map" });
+      const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
+      // About 11m precision is plenty for nearest-first ranking and avoids
+      // sending an unnecessarily exact coordinate.
+      params.set("lat", origin.lat.toFixed(4));
+      params.set("lng", origin.lng.toFixed(4));
+      fetch(`/api/search?${params.toString()}`, { signal: ctrl.signal })
         .then((r) => (r.ok ? r.json() : { results: [] }))
         // /api/search returns { results: [...] } (same shape SearchOverlay
         // reads). Unwrap it — reading the response as a bare array left the
         // map dock's search silently empty on every keystroke.
-        .then((d: { results?: SearchResult[] }) => setSearchMatches(Array.isArray(d?.results) ? d.results : []))
-        .catch(() => {
-          /* aborted or offline — keep the previous list */
+        .then((d: { results?: SearchResult[] }) => {
+          if (requestId === searchRequestRef.current) {
+            setSearchMatches(Array.isArray(d?.results) ? d.results : []);
+          }
+        })
+        .catch((error: unknown) => {
+          if ((error as { name?: string })?.name !== "AbortError" && requestId === searchRequestRef.current) {
+            setSearchMatches([]);
+          }
         });
     }, 150);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q]);
+  }, [q, userLoc, viewCenter]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -1529,6 +1580,10 @@ export default function AppMap({
 
   const pickSearch = (r: SearchResult) => {
     haptic("light");
+    // A focused result belongs on the map. If search was opened while the
+    // synchronized list was visible, return to the canvas before moving the
+    // camera or opening a peek.
+    if (listView) updateListView(false);
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
     if (layer) {
@@ -1849,6 +1904,10 @@ export default function AppMap({
           if (!t || t.dayKey !== scrubTodayKey) return true;
           return withinScrubWindow(t.startH, t.endH, scrubHour);
         });
+  const inViewEvents = useMemo(
+    () => visibleEvents.filter((event) => eventSlugsInView.has(event.slug)),
+    [eventSlugsInView, visibleEvents],
+  );
 
   // Multiple events often share one venue. Separate those buttons by at
   // least one tap target so each event remains visible and independently
@@ -2154,6 +2213,15 @@ export default function AppMap({
             // firing moveend, so seed the reset FAB's visibility from the
             // initial frame too.
             setOffOverview(e.target.getZoom() > 10.6);
+            if (!deepLinkPlaceAppliedRef.current && initialPlaceSlug) {
+              deepLinkPlaceAppliedRef.current = true;
+              const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
+              if (place) {
+                setSelectedSlug(place.slug);
+                setPeekListReturnSlug(null);
+                setPeekPlace(place);
+              }
+            }
           }}
           onMoveStart={() => setMapMoving(true)}
           onMoveEnd={(e) => {
@@ -3494,6 +3562,7 @@ export default function AppMap({
         {dock && listView && (
           <MapList
             places={inViewPlaces}
+            events={inViewEvents}
             userLoc={userLoc}
             sortOrigin={userLoc ?? homeCentroid ?? viewCenter}
             onPick={(p) => {
@@ -3507,6 +3576,21 @@ export default function AppMap({
               }
               setParkingPeek(null);
               setPeekPlace(p);
+            }}
+            onPickEvent={(event) => {
+              updateListView(false);
+              setPeekListReturnSlug(null);
+              setSelectedSlug(null);
+              setPeekPlace(null);
+              setParkingPeek(null);
+              setClusterList(null);
+              setCivicTown(null);
+              setSelectedEvent(event);
+              const m = mapRef.current?.getMap();
+              if (m) {
+                cameraIntentRef.current = true;
+                smoothFocus(m, [event.lng, event.lat], { minZoom: 14, maxStep: 6 });
+              }
             }}
           />
         )}
@@ -3537,6 +3621,7 @@ export default function AppMap({
                 .sort((a, b) => a.d - b.d)
                 .map((x) => ({ name: x.g.name, distM: x.d, available: x.g.available }))[0] ?? null
             }
+            nearbyUtilities={nearestMapUtilities(peekPlace.geom, utilityPoints)}
             userLoc={userLoc}
             onClose={() => {
               setPeekPlace(null);

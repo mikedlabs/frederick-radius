@@ -903,6 +903,7 @@ export default function AskFrederick({
       setShowAllSources(false);
       setRes(cached.result);
       if (cached.result.status !== "empty") {
+        track("ask_answer");
         lastQueryRef.current = effectiveQuery;
         setQ("");
       }
@@ -948,9 +949,10 @@ export default function AskFrederick({
         setShowAllSources(false);
         setRes(next);
         if (next.status !== "empty") {
+          track("ask_answer");
           lastQueryRef.current = effectiveQuery;
           setQ("");
-        } else {
+        } else if (!failure) {
           // The question Radius could not answer IS the roadmap: the query
           // text goes with the event so the dashboard shows what was wanted
           // and missed. Queries here are place-seeking text ("vegan brunch

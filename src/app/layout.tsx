@@ -247,7 +247,7 @@ export default function RootLayout({
             - Plausible (self-hosted feel; product metrics, no IP storage)
             - Vercel Analytics + Speed Insights (Pro-tier; real-user web
               vitals + traffic per route, which Plausible doesn't surface)
-            Both are GDPR-safe / cookieless. */}
+            Both run without advertising cookies in this configuration. */}
         {/* Brand-aligned toaster — paper-cream surface, warm-dark
             ink, sits just above the bottom nav so toasts don't
             overlap the tab bar. Sonner handles enter/exit physics +
@@ -270,10 +270,9 @@ export default function RootLayout({
           duration={3000}
         />
         <Plausible />
-        {/* obs-4: gate the Vercel real-user telemetry to PRODUCTION so preview
-            and local traffic don't pollute the Core Web Vitals / traffic data
-            you judge prod against. Plausible stays on everywhere (product
-            metrics). VERCEL_ENV is "production" | "preview" | "development". */}
+        {/* Gate real-user telemetry to PRODUCTION so preview and local traffic
+            do not pollute the product and Core Web Vitals data used to judge
+            the live site. VERCEL_ENV is production, preview, or development. */}
         {process.env.VERCEL_ENV === "production" && (
           <>
             <Analytics />

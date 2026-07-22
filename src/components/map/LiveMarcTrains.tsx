@@ -177,7 +177,7 @@ export default function LiveMarcTrains({ show }: { show: boolean }) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.tripId); }}
-              aria-label={`MARC ${v.line} train, ${p.moving ? "moving now" : "holding"}`}
+              aria-label={`MARC ${v.line} train ${v.tripId}, ${p.moving ? "moving now" : "holding"}`}
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-train-in 260ms ease-out both" }}
             >
               {/* Heading chevron — the way the train is travelling. */}

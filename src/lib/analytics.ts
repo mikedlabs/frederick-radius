@@ -1,23 +1,22 @@
 /**
- * Privacy-first analytics config. Plausible is cookieless and stores no
- * personal data, so no consent banner is required -- the public-sector
- * data-sensibility fit. Off unless a domain is configured, which keeps
- * it fully inert in dev/preview and makes self-hosting a no-code env
- * change (point src at your own instance).
+ * Privacy-conscious analytics config. Plausible runs without advertising
+ * cookies in this setup. It is enabled only for the production deployment,
+ * which keeps local work and preview reviews out of the real site data.
  *
  * Pure on purpose: the env read lives in the component, the decision
  * lives here, so the gating logic is trivially unit-tested.
  */
 
-const DEFAULT_SRC = "https://plausible.io/js/script.js";
+// Public, site-specific tracker URL from Plausible's Site Installation screen.
+// It is visible in every production page response and is not a secret.
+const FREDERICK_RADIUS_SRC = "https://plausible.io/js/pa-wWMBaYS8AxxZglTw8l0Hs.js";
 
-export type PlausibleConfig = { src: string; domain: string };
+export type PlausibleConfig = { src: string };
 
 export function plausibleConfig(
-  env: { domain?: string | null; src?: string | null } = {},
+  env: { production?: boolean; src?: string | null } = {},
 ): PlausibleConfig | null {
-  const domain = env.domain?.trim();
-  if (!domain) return null;
-  const src = env.src?.trim() || DEFAULT_SRC;
-  return { src, domain };
+  if (!env.production) return null;
+  const src = env.src?.trim() || FREDERICK_RADIUS_SRC;
+  return { src };
 }

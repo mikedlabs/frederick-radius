@@ -43,6 +43,7 @@ import {
   UtensilsCrossed,
   Waves,
   Wifi,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -56,6 +57,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 import { toolMatchesQuery } from "@/lib/search/toolQuery";
+import { track } from "@/lib/track";
 
 /** One Lucide component per registry icon key, so the directory renders
  *  straight from the shared RADIUS_TOOL_GROUPS instead of a hand-kept copy of
@@ -153,6 +155,13 @@ type CompassSection = {
   items: DirectoryItem[];
 };
 
+const COMMON_TASK_IDS = [
+  "open-now",
+  "events",
+  "public-essentials",
+  "county-pulse",
+] as const;
+
 /** Build the directory once from the registry. When a home town has not been
  * chosen, Settings becomes the single setup row instead of rendering two links
  * to the same destination. */
@@ -208,6 +217,19 @@ export function splitEssentialItems(items: DirectoryItem[]) {
   };
 }
 
+/** The small front door to the four jobs residents reach for most often.
+ *  This is derived from the same registry-backed sections as the full index,
+ *  so it cannot point at a stale duplicate route. */
+export function commonCompassTasks(sections: CompassSection[]): DirectoryItem[] {
+  const byId = new globalThis.Map(
+    sections.flatMap((section) => section.items).map((item) => [item.id, item]),
+  );
+  return COMMON_TASK_IDS.flatMap((id) => {
+    const item = byId.get(id);
+    return item ? [item] : [];
+  });
+}
+
 function subscribeHomeTown(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -219,9 +241,6 @@ export default function CompassHub() {
   const router = useRouter();
   const homeSlug = useSyncExternalStore(subscribeHomeTown, getHomeMuni, noHomeTown);
   const [query, setQuery] = useState("");
-  const [openSectionId, setOpenSectionId] = useState<string | null>(
-    RADIUS_TOOL_GROUPS[0]?.id ?? null,
-  );
   const normalizedQuery = query.trim().toLocaleLowerCase();
 
   const warm = (href: string) => router.prefetch(href);
@@ -229,9 +248,11 @@ export default function CompassHub() {
     onMouseEnter: () => warm(href),
     onFocus: () => warm(href),
     onPointerDown: () => warm(href),
+    onClick: () => track("compass_tool_open"),
   });
 
   const sections = useMemo(() => buildCompassSections(homeSlug), [homeSlug]);
+  const commonTasks = useMemo(() => commonCompassTasks(sections), [sections]);
 
   useEffect(() => {
     const openHashSection = () => {
@@ -239,7 +260,8 @@ export default function CompassHub() {
       if (!hash.startsWith("cat-")) return;
       const sectionId = hash.slice(4);
       if (!sections.some((section) => section.id === sectionId)) return;
-      setOpenSectionId(sectionId);
+      const details = document.getElementById(hash)?.querySelector("details");
+      if (details instanceof HTMLDetailsElement) details.open = true;
       window.requestAnimationFrame(() => {
         document.getElementById(hash)?.scrollIntoView({ block: "start" });
       });
@@ -248,7 +270,7 @@ export default function CompassHub() {
     openHashSection();
     window.addEventListener("hashchange", openHashSection);
     return () => window.removeEventListener("hashchange", openHashSection);
-  }, [sections]);
+  }, [sections, normalizedQuery]);
 
   const visibleSections = sections
     .map((section) => ({
@@ -262,11 +284,15 @@ export default function CompassHub() {
     0,
   );
 
-  const toggleSection = (sectionId: string) => {
-    const next = openSectionId === sectionId ? null : sectionId;
-    setOpenSectionId(next);
+  const syncSection = (sectionId: string, open: boolean) => {
+    if (open) {
+      document.querySelectorAll<HTMLDetailsElement>("details[data-compass-section]").forEach((details) => {
+        if (details.dataset.compassSection !== sectionId) details.open = false;
+      });
+    }
     const url = new URL(window.location.href);
-    url.hash = next ? `cat-${next}` : "";
+    if (open) url.hash = `cat-${sectionId}`;
+    else if (url.hash === `#cat-${sectionId}`) url.hash = "";
     window.history.replaceState({}, "", url);
   };
 
@@ -281,23 +307,37 @@ export default function CompassHub() {
           All tools
         </h1>
         <p className="mt-2 max-w-xl text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Search by need or open a section below.
+          Search by need, or browse by section.
         </p>
-        <label className="relative mt-4 block">
-          <span className="sr-only">Filter tools</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Find a tool"
-            className="min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2 pl-9 pr-3 text-[13px] outline-none placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          />
+        <label className="mt-4 block">
+          <span className="mb-1.5 block text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            Filter all tools
+          </span>
+          <span className="relative block">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Type a task or topic"
+              className="min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2 pl-9 pr-11 text-[13px] outline-none placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear tool filter"
+                className="absolute inset-y-0 right-0 grid min-w-11 place-items-center rounded-r-[var(--app-radius-md)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+              >
+                <X className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+              </button>
+            ) : null}
+          </span>
         </label>
         {normalizedQuery ? (
           <p className="relative mt-2 px-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }} role="status">
@@ -305,6 +345,10 @@ export default function CompassHub() {
           </p>
         ) : null}
       </header>
+
+      {!normalizedQuery && commonTasks.length > 0 ? (
+        <CommonTasks items={commonTasks} intentProps={intentProps} />
+      ) : null}
 
       {normalizedQuery
         ? visibleSections.map((section) => (
@@ -314,8 +358,7 @@ export default function CompassHub() {
             <CompassSectionDisclosure
               key={section.id}
               section={section}
-              open={openSectionId === section.id}
-              onToggle={() => toggleSection(section.id)}
+              onToggle={(open) => syncSection(section.id, open)}
               intentProps={intentProps}
             />
           ))}
@@ -328,16 +371,57 @@ export default function CompassHub() {
   );
 }
 
+function CommonTasks({
+  items,
+  intentProps,
+}: {
+  items: DirectoryItem[];
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
+}) {
+  return (
+    <nav aria-labelledby="compass-common-tasks-heading">
+      <p
+        id="compass-common-tasks-heading"
+        className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        Common tasks
+      </p>
+      <ul
+        className="grid grid-cols-2 border-y [&>li:nth-child(-n+2)]:border-b [&>li:nth-child(odd)]:border-r"
+        style={{ borderColor: "var(--app-border-strong)" }}
+      >
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.id} style={{ borderColor: "var(--app-border)" }}>
+              <Link
+                href={item.href}
+                prefetch={false}
+                {...intentProps(item.href)}
+                className="tactile-interactive group flex min-h-12 items-center gap-2.5 px-2 py-2 text-[12.5px] font-semibold outline-none transition hover:bg-black/[0.025] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] sm:px-3"
+                style={{ color: "var(--app-ink)" }}
+              >
+                <Icon className="h-4 w-4 shrink-0" style={{ color: "var(--app-brand-press)" }} strokeWidth={2} aria-hidden />
+                <span className="min-w-0 flex-1 leading-tight">{item.label}</span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 function CompassSectionDisclosure({
   section,
-  open,
   onToggle,
   intentProps,
 }: {
   section: CompassSection;
-  open: boolean;
-  onToggle: () => void;
-  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+  onToggle: (open: boolean) => void;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
   const examples = section.items.slice(0, 2).map((item) => item.label).join(" · ");
   const contentId = `compass-${section.id}-content`;
@@ -345,18 +429,20 @@ function CompassSectionDisclosure({
 
   return (
     <section id={`cat-${section.id}`} aria-labelledby={headingId} className="scroll-mt-24">
-      <h2 id={headingId}>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
+      <details
+        name="compass-sections"
+        data-compass-section={section.id}
+        className="group"
+        onToggle={(event) => onToggle(event.currentTarget.open)}
+      >
+        <summary
           aria-controls={contentId}
-          className="tactile-interactive flex min-h-[58px] w-full items-center gap-3 border-y px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+          className="tactile-interactive flex min-h-[58px] w-full cursor-pointer list-none items-center gap-3 border-y px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
           style={{ borderColor: "var(--app-border-strong)" }}
         >
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
-              <span className="font-serif text-[21px] font-semibold leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
+              <span id={headingId} className="font-serif text-[21px] font-semibold leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
                 {section.label}
               </span>
               <span className="font-mono text-[9px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
@@ -368,20 +454,20 @@ function CompassSectionDisclosure({
             </span>
           </span>
           <ChevronDown
-            className={`h-4 w-4 shrink-0 transition-transform${open ? " rotate-180" : ""}`}
+            className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
             strokeWidth={2.25}
             style={{ color: "var(--app-ink-3)" }}
             aria-hidden
           />
-        </button>
-      </h2>
-      <div id={contentId} hidden={!open} className="pt-2.5">
-        {section.id === "essentials" ? (
-          <AmenityReveal items={section.items} intentProps={intentProps} />
-        ) : (
-          <LedgerList items={section.items} intentProps={intentProps} />
-        )}
-      </div>
+        </summary>
+        <div id={contentId} className="pt-2.5">
+          {section.id === "essentials" ? (
+            <AmenityReveal items={section.items} intentProps={intentProps} />
+          ) : (
+            <LedgerList items={section.items} intentProps={intentProps} />
+          )}
+        </div>
+      </details>
     </section>
   );
 }
@@ -391,7 +477,7 @@ function SearchResultSection({
   intentProps,
 }: {
   section: CompassSection;
-  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
   return (
     <section aria-labelledby={`compass-search-${section.id}`} className="space-y-2.5">
@@ -408,7 +494,7 @@ function CompassSearchFallback({
   intentProps,
 }: {
   query: string;
-  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
   const encodedQuery = encodeURIComponent(query);
   const askHref = `/ask?q=${encodedQuery}`;
@@ -456,7 +542,7 @@ function LedgerList({
 }: {
   items: DirectoryItem[];
   cols?: 2 | 3;
-  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
   const liClass =
     cols === 3
@@ -502,7 +588,7 @@ function AmenityReveal({
   intentProps,
 }: {
   items: DirectoryItem[];
-  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
   const [showAllAmenities, setShowAllAmenities] = useState(false);
   const { openAll, amenities, rows } = splitEssentialItems(items);

@@ -35,6 +35,7 @@
     "cvs-thurmont": "cvs-pharmacy-thurmont"
   },
   "remove": [
+    "brunswick-crossing-brunswick",
     "drug-detox-frederick",
     "addiction-rehab-frederick",
     "freez-king",
@@ -612,7 +613,7 @@
       "category": "services"
     },
     "best-kept-secret-hair-salon": {
-      "category": "services",
+      "category": "salon",
       "address": "2060 Yellow Springs Rd Ste 105",
       "geom": {
         "lng": -77.4365616,
@@ -635,7 +636,7 @@
       "category": "wellness"
     },
     "crystallume-medspa": {
-      "category": "wellness"
+      "category": "spa"
     },
     "dahlia-noir-salon": {
       "category": "services"
@@ -757,7 +758,7 @@
       "category": "wellness"
     },
     "shaestheticsss": {
-      "category": "wellness"
+      "category": "spa"
     },
     "six-east-salon-and-spa": {
       "category": "services"
@@ -784,7 +785,7 @@
       "category": "services"
     },
     "verbena-salon-spa": {
-      "category": "wellness"
+      "category": "spa"
     },
     "vital-sources-psychological-services": {
       "category": "wellness"

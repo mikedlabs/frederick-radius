@@ -76,6 +76,7 @@ export default function DismissibleSection({
                 {href && (
                   <Link
                     href={href}
+                    aria-label={`${cta}: ${title}`}
                     className="tap-44-y inline-flex items-center gap-1 text-xs font-medium tracking-tight"
                     style={{ color: "var(--app-brand-press)" }}
                   >
@@ -98,6 +99,7 @@ export default function DismissibleSection({
               {href && (
                 <Link
                   href={href}
+                  aria-label={`${cta}: ${title}`}
                   className="tap-44-y inline-flex items-center gap-1 text-xs font-medium tracking-tight"
                   style={{ color: "var(--app-brand-press)" }}
                 >

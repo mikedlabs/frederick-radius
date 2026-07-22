@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchX, MessageCircleQuestion } from "lucide-react";
 import {
   plausibleKeys,
   fetchAggregate,
@@ -13,10 +12,8 @@ import {
  * /admin/traffic — Plausible, read into the desk's own language.
  *
  * The dashboard plausible.io already draws is one tap away; what it
- * cannot lead with is the one thing a solo operator should read first:
- * THE MISSES — every search and Ask question that returned nothing,
- * with the exact text someone typed. That list is the work queue, so
- * it sits above top pages here, not below.
+ * The private data-gap log, not third-party custom properties, owns the exact
+ * text behind missed searches and unanswered questions.
  *
  * Reads the Stats API server-side (no iframe: the CSP stays closed and
  * the page stays in the app's own type). Everything fails soft — no
@@ -36,19 +33,16 @@ export default async function TrafficPage() {
   let today: Aggregate | null = null;
   let week: Aggregate | null = null;
   let month: Aggregate | null = null;
-  let misses: { kind: "search" | "ask"; row: BreakdownRow }[] = [];
   let pages: BreakdownRow[] | null = null;
   let actions: BreakdownRow[] | null = null;
 
   if (keys) {
     // External API, no pooled-connection hazard — parallel is fine here
     // (the sequential-await rule on the desk is about the Supavisor pool).
-    const [t, w, m, searchMisses, askMisses, p, a] = await Promise.all([
+    const [t, w, m, p, a] = await Promise.all([
       fetchAggregate(keys, "day"),
       fetchAggregate(keys, "7d"),
       fetchAggregate(keys, "30d"),
-      fetchBreakdown(keys, "event:props:query", "30d", { filters: "event:name==search_empty", limit: 20 }),
-      fetchBreakdown(keys, "event:props:query", "30d", { filters: "event:name==ask_empty", limit: 20 }),
       fetchBreakdown(keys, "event:page", "7d", { limit: 10 }),
       fetchBreakdown(keys, "event:name", "7d", { limit: 10 }),
     ]);
@@ -57,10 +51,6 @@ export default async function TrafficPage() {
     month = m;
     pages = p;
     actions = a?.filter((r) => r.label !== "pageview") ?? null;
-    misses = [
-      ...(searchMisses ?? []).map((row) => ({ kind: "search" as const, row })),
-      ...(askMisses ?? []).map((row) => ({ kind: "ask" as const, row })),
-    ].sort((x, y) => y.row.events - x.row.events);
   }
 
   return (
@@ -84,12 +74,10 @@ export default async function TrafficPage() {
           style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
         >
           <p>
-            The tracker is collecting, but this page reads the numbers through the Plausible Stats
-            API, which needs two server-side env vars that are not set yet:{" "}
-            <code>PLAUSIBLE_API_KEY</code> (Plausible → Settings → API keys) and{" "}
-            <code>PLAUSIBLE_SITE_ID</code> (the site domain, <code>frederickradius.app</code>).
-            Add them in Vercel and this page fills itself in. The Monday digest starts working
-            from the same two keys.
+            Your Starter plan collects pageviews and goals in Plausible. This embedded view uses
+            the Stats API, which is a Business-plan feature. Use the Plausible dashboard for the
+            live numbers. If you upgrade later, add <code>PLAUSIBLE_API_KEY</code> and{" "}
+            <code>PLAUSIBLE_SITE_ID</code> in Vercel to fill this page and the Monday digest.
           </p>
         </section>
       ) : (
@@ -116,47 +104,6 @@ export default async function TrafficPage() {
             )}
           </section>
 
-          {/* ── The misses: the work queue this page exists for ── */}
-          <section className="mt-7">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-              The misses · 30d
-            </h2>
-            <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
-              What people typed and did not get. Each row is a data gap to close.
-            </p>
-            {misses.length === 0 ? (
-              <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                No missed searches or unanswered questions recorded yet. Either nothing has missed,
-                or the goals are new (events started firing on 2026-07-19).
-              </p>
-            ) : (
-              <ul className="mt-3 overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
-                {misses.slice(0, 20).map(({ kind, row }, i) => (
-                  <li
-                    key={`${kind}-${row.label}`}
-                    className="flex min-h-11 items-center gap-3 bg-[var(--app-bg-elevated)] px-3 py-2"
-                    style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}
-                  >
-                    {kind === "search" ? (
-                      <SearchX className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning-press)" }} />
-                    ) : (
-                      <MessageCircleQuestion className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
-                    )}
-                    <span className="min-w-0 flex-1 truncate font-mono text-[13px]" style={{ color: "var(--app-ink)" }}>
-                      {row.label}
-                    </span>
-                    <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                      {kind === "search" ? "search" : "ask"}
-                    </span>
-                    <span className="shrink-0 font-mono text-[12.5px] font-bold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                      ×{row.events}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
           {/* ── Reference: where people go, what they do ── */}
           <section className="mt-7 grid gap-6 sm:grid-cols-2">
             <BreakdownList title="Top pages · 7d" rows={pages} empty="No pageviews recorded yet." />
@@ -165,8 +112,18 @@ export default async function TrafficPage() {
         </>
       )}
 
+      <section className="mt-7 border-y py-3" style={{ borderColor: "var(--app-border-strong)" }}>
+        <h2 className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Search and Ask gaps</h2>
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Exact questions stay in Radius&rsquo;s own anonymous data-gap log instead of being sent to Plausible.
+        </p>
+        <Link href="/admin/data-gaps" className="tap-44-y mt-1 inline-flex items-center text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
+          Open data gaps →
+        </Link>
+      </section>
+
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Numbers are Plausible aggregates; the tracker is cookieless and collects nothing personal.
+        Numbers are aggregate Plausible measurements from its cookieless tracker.
         The full dashboard lives at{" "}
         <a href="https://plausible.io/frederickradius.app" rel="noreferrer" target="_blank" className="underline">
           plausible.io

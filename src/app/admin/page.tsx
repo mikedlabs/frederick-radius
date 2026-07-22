@@ -124,8 +124,8 @@ export default function AdminDesk() {
           <KeyChip label="Beta wall" on={Boolean(process.env.BETA_PASSWORD)} />
           {/* Two lights on purpose: the tracker (public, collects) and the
               Stats API (server, reads back) turn on independently. */}
-          <KeyChip label="Plausible tracker" on={Boolean(process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN)} />
-          <KeyChip label="Plausible stats" on={Boolean(process.env.PLAUSIBLE_API_KEY && process.env.PLAUSIBLE_SITE_ID)} />
+          <KeyChip label="Plausible tracker" on={process.env.VERCEL_ENV === "production"} />
+          <KeyChip label="Plausible Business API" on={Boolean(process.env.PLAUSIBLE_API_KEY && process.env.PLAUSIBLE_SITE_ID)} />
         </div>
       </section>
 

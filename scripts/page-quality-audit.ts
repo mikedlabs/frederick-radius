@@ -381,15 +381,21 @@ async function expandDisclosureContent(page: Page): Promise<{
   buttonsOpened: number;
   controlLabels: string[];
 }> {
-  const nativeDetailsAttempted = await page.evaluate(() => {
+  const nativeDetails = await page.evaluate(() => {
     const root = document.querySelector("main,[role='main']") ?? document.body;
     const closed = [...root.querySelectorAll<HTMLDetailsElement>("details:not([open])")]
       .filter((disclosure) => !disclosure.closest("form,header,footer,nav,[role='navigation']"));
+    let opened = 0;
     for (const disclosure of closed) {
       disclosure.dataset.pageQualityNativeAttempted = "true";
       disclosure.open = true;
+      // Named <details> groups intentionally close the previous sibling when
+      // the next one opens. Verify each disclosure at the moment it is opened
+      // instead of misclassifying a healthy accordion because only its final
+      // member remains open in the captured state.
+      if (disclosure.open) opened += 1;
     }
-    return closed.length;
+    return { attempted: closed.length, opened };
   });
 
   const attemptedControls: Array<{ auditId: string; label: string; targetId: string }> = [];
@@ -490,17 +496,9 @@ async function expandDisclosureContent(page: Page): Promise<{
       return !triggerVisible || trigger.getAttribute("aria-expanded") === "true";
     })
     .map(({ label }) => label || "Disclosure"), attemptedControls);
-  const nativeDetailsOpened = await page.evaluate(() => {
-    const root = document.querySelector("main,[role='main']") ?? document.body;
-    // Named details groups and application handlers may close a sibling when
-    // another disclosure opens. Report only panels that remain open in the
-    // state that is actually measured and captured.
-    return root.querySelectorAll("details[data-page-quality-native-attempted='true'][open]").length;
-  });
-
   return {
-    nativeDetailsAttempted,
-    nativeDetailsOpened,
+    nativeDetailsAttempted: nativeDetails.attempted,
+    nativeDetailsOpened: nativeDetails.opened,
     buttonsAttempted: attemptedControls.length,
     buttonsRevealed,
     buttonsOpened: controlLabels.length,
@@ -1124,7 +1122,7 @@ function buildMarkdown(report: AuditReport): string {
         result.expanded?.metrics.unresolvedImages.length ?? null,
       )),
       markdownCell(result.expanded
-        ? `${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} details open + ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controls revealed (${result.expanded.buttonsOpened} remain open)`
+        ? `${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} details verified + ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controls revealed (${result.expanded.buttonsOpened} remain open)`
         : "none"),
       markdownCell(result.pageErrors.length),
       markdownCell(metrics?.pageHeight ?? null),
@@ -1167,7 +1165,7 @@ function buildMarkdown(report: AuditReport): string {
     }
     if (result.expanded) {
       const expandedMetrics = result.expanded.metrics;
-      lines.push(`- Expanded disclosures: ${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} native details remain open; ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controlled panels revealed, ${result.expanded.buttonsOpened} remain open`);
+      lines.push(`- Expanded disclosures: ${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} native details verified; ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controlled panels revealed, ${result.expanded.buttonsOpened} remain open`);
       for (const issue of expandedMetrics.headingOrderIssues) lines.push(`- Expanded heading: ${issue}`);
       if (expandedMetrics.horizontalOverflowPx > 0) {
         const offenders = expandedMetrics.overflowElements.slice(0, 5).map((item) => item.selector).join(", ");

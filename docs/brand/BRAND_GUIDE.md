@@ -330,8 +330,8 @@ The source kit includes:
 - A 1080 by 1350 owned-photography post template.
 - A 1080 by 1920 owned-photography story template and brand frame.
 - A 1200 by 630 Open Graph card.
-- Four 18 by 24 poster masters: two use owned Frederick photography; two explain Today and Ask Radius with current UI captures.
-- Four CR80 NFC card masters: general and partner front/back pairs with tested-QR and printed-URL fallbacks.
+- Six 18 by 24 poster masters. The original set uses owned Frederick photography and current product captures. The campaign pair adds the live field-guide concept and a tracked production QR.
+- Six CR80 NFC card masters. The general and partner pairs remain editable templates. The Radius Signal pair adds a finished public-facing card with separate tracked NFC and QR destinations.
 
 NFC cards follow [`NFC_CARD_GUIDE.md`](NFC_CARD_GUIDE.md). Never ship a
 decorative or untested QR code, and test both the tap target and printed
@@ -399,8 +399,8 @@ npm test
 
 `npm run build:brand` rebuilds the editable SVGs, PNG exports, font package, licenses, and asset manifest. Do not redraw the Ripple in a component or design file when the source asset already exists.
 
-The generated kit contains 32 SVG masters with matching PNG exports: seven
-marks, six lockups, eleven social assets, four posters, and four NFC card
+The generated kit contains 37 SVG masters with matching PNG exports: seven
+marks, six lockups, twelve social assets, six posters, and six NFC card
 masters. Its manifest also records 14 font files plus the separately generated
 launcher, favicon, Apple, notification, splash, and dynamic Open Graph
 surfaces.

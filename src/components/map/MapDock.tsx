@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, Car, ChevronDown, Church, Clock, Coffee, Droplets, Heart, Hotel, Landmark, LayoutGrid, List, LocateFixed, Map as MapIcon, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Baby, Beer, BusFront, Car, ChevronDown, Church, Clock, Coffee, Droplets, Footprints, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, List, LocateFixed, Map as MapIcon, MoonStar, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
@@ -16,6 +16,7 @@ import { haptic } from "@/lib/haptics";
 import { parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
 import { track } from "@/lib/track";
 import { BRAND } from "@/lib/brand";
+import { consumeFindRequest } from "@/lib/findBridge";
 import {
   TIME_WINDOWS,
   countLine,
@@ -34,7 +35,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 };
 
 /** The 12 intents, grouped the way a resident thinks about them, so the Places
- *  pane shows the WHOLE guide at a glance instead of one chip behind "More".
+ *  pane shows the whole guide at a glance without a second navigation layer.
  *  Order/keys mirror @/data/intents; a new intent must be added to a family
  *  here (a missing key just won't appear in the grid). */
 const CATEGORY_FAMILIES: ReadonlyArray<{ label: string; keys: string[] }> = [
@@ -69,9 +70,26 @@ const TOP_NEEDS: ReadonlyArray<MapNeed> = [
   { kind: "intent", key: "family", label: "Kids", Icon: Baby, color: BRAND.colors.ridge },
 ];
 
-/** The four filter groups, now the panel's sub-tabs. What is purely KINDS
- *  OF PLACES; the map drapes (trails, transit, aerial, …) and the Yours
- *  lenses live together on the Layers tab. */
+type MapSetupKey = "tonight" | "getting-around" | "trail-day" | "field-kit" | "frederick-stories";
+
+/** Multi-layer Frederick views. These do not add another permanent control
+ *  row: they live inside Layers and compose the existing filters in one tap.
+ *  The map remains the answer; the panel closes as soon as a setup runs. */
+const MAP_SETUPS: ReadonlyArray<{
+  key: MapSetupKey;
+  label: string;
+  description: string;
+  Icon: LucideIcon;
+}> = [
+  { key: "tonight", label: "Tonight", description: "See evening events with parking and transit.", Icon: MoonStar },
+  { key: "getting-around", label: "Getting around", description: "See routes, incidents, parking, and cameras.", Icon: BusFront },
+  { key: "trail-day", label: "Trail day", description: "See outdoor places with trails, parks, and radar.", Icon: Footprints },
+  { key: "field-kit", label: "Field kit", description: "Find nearby restrooms, water, trash, seating, and bike help.", Icon: LocateFixed },
+  { key: "frederick-stories", label: "Frederick stories", description: "This view layers aerial photos, cemeteries, art, and bridges.", Icon: History },
+];
+
+/** The four filter groups. What is purely kinds of places; the map drapes
+ *  (trails, transit, aerial, …) and the Yours lenses live together in Layers. */
 type Pane = "what" | "when" | "where" | "layers";
 type PlaceReveal = "categories" | "amenities";
 
@@ -86,19 +104,12 @@ const TOWN_ZOOM = 13.4;
 
 /**
  * MapDock — ONE instrument for the /map browse surface, "maps-app" top
- * layout. A slim control bar is pinned at the TOP of the map: the folded-in
- * search field (row 1), then an always-visible category chip row (row 2) —
- * an "All" chip plus one chip per intent, horizontally scrolling, the
- * primary "pick a kind of place" action made a single tap (Google/Apple-Maps
- * pattern). Pinned to that row's right (never scrolling): a compact "More"
- * button — carrying the count of the When/Where/Layers filters still folded
- * behind it — and the Map ↔ list toggle. "More" drops a panel DOWN over the
- * scrim-dimmed map, and that panel carries four sub-tabs — Places · When ·
- * Where · Layers — with a slim mono count line and a Done / clear control.
- * The category chips are the shortcut; the Places tab is the same list plus
- * its sub-intents (the depth), so nothing is lost by surfacing them. The
- * bottom of the map is left clean: only the pins, the zoom cluster, and the
- * locate FAB.
+ * layout. A slim control bar is pinned at the top of the map: search first,
+ * then five stable actions — Places, Time, Area, Layers, and List. The first
+ * four open one panel directly; List changes the map's presentation. The open
+ * panel names the selected job once and carries its count line plus Done and
+ * clear controls. There is no duplicate tab row inside the panel. The bottom
+ * of the map stays clean for pins, camera controls, and the locate button.
  *
  *   - Places — kinds of places (the intent chips + the sub strip); the chip
  *              row up top is the one-tap shortcut into the same intents.
@@ -294,9 +305,6 @@ function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
 }
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export default function MapDock(props: MapDockProps) {
   const { browse, onPaneOpenChange } = props;
   const router = useRouter();
@@ -330,10 +338,8 @@ export default function MapDock(props: MapDockProps) {
   // Focus management for the drop-down panel: focus lands inside the panel
   // when it OPENS, and the trigger (the Filters button) is restored on close.
   const paneRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
-  // Tracks whether the panel was already open, so switching sub-tabs does not
-  // yank focus off the tab the user just pressed (focus only follows an open).
-  const wasOpenRef = useRef(false);
 
   // Match the readout to the scope that already seeded the map's camera.
   // localStorage is client-only, so this intentionally runs after hydration.
@@ -389,16 +395,34 @@ export default function MapDock(props: MapDockProps) {
     restoreRef.current?.focus?.();
   };
 
-  // Focus into the panel when it opens (first focusable), so the drawer is
-  // reachable by keyboard the moment it drops down. Switching sub-tabs keeps
-  // focus where the user pressed.
   useEffect(() => {
-    const wasClosed = !wasOpenRef.current;
-    wasOpenRef.current = pane !== null;
-    if (pane === null || !wasClosed) return;
-    const first = paneRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-    first?.focus();
-  }, [pane]);
+    const focusMapSearch = () => {
+      consumeFindRequest("map");
+      setPane(null);
+      setPlaceReveal(null);
+      if (window.location.hash === "#map-search-input") {
+        const url = new URL(window.location.href);
+        url.hash = "";
+        window.history.replaceState({}, "", url);
+      }
+      window.requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      });
+    };
+    const focusMapSearchHash = () => {
+      if (window.location.hash === "#map-search-input") focusMapSearch();
+    };
+    window.addEventListener("fr:focus-map-search", focusMapSearch);
+    window.addEventListener("hashchange", focusMapSearchHash);
+    if (consumeFindRequest("map") || window.location.hash === "#map-search-input") {
+      window.requestAnimationFrame(focusMapSearch);
+    }
+    return () => {
+      window.removeEventListener("fr:focus-map-search", focusMapSearch);
+      window.removeEventListener("hashchange", focusMapSearchHash);
+    };
+  }, []);
 
   // ── URL writes: the EXISTING params, via replace so chip taps don't
   //    stack history entries. ──
@@ -569,20 +593,8 @@ export default function MapDock(props: MapDockProps) {
     whereAway: whereSel.kind !== "county",
   });
 
-  // The "More" button's count: how many independent filters are on BEHIND
-  // More. The category (intent) is now surfaced as a lit chip in the top row,
-  // so it is deliberately excluded here — the badge counts only the
-  // When/Where/Layers depth still folded away (a sub-intent is a refinement
-  // of its intent, so it never adds on its own, matching the dirty flag).
-  const moreCount =
-    (browse.openNow ? 1 : 0) +
-    (browse.dealsOn ? 1 : 0) +
-    (browse.musicTonight ? 1 : 0) +
-    (browse.timeModeExplicit ? 1 : 0) +
-    (props.scrubHour != null ? 1 : 0) +
-    lensLabels.length +
-    layerCount +
-    (whereSel.kind !== "county" ? 1 : 0);
+  const timeActive = browse.openNow || browse.dealsOn || browse.musicTonight
+    || browse.timeModeExplicit || props.scrubHour != null;
 
   const line = countLine({
     places: props.placeCount,
@@ -613,53 +625,105 @@ export default function MapDock(props: MapDockProps) {
     for (const k of [...props.activeOverlays]) props.toggleOverlay(k);
     setWhereSel({ kind: "county" });
     setScope("county");
-    setPane(null);
-    router.replace(pathname, { scroll: false });
+    props.fitCounty();
+    closePane();
+    // Clear filters without throwing away the user's map/list presentation.
+    // The deep focus target goes too, because the camera has just returned to
+    // the whole county and a shared URL must reopen in that same state.
+    setParams((q) => {
+      for (const key of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers", "at", "place", SCOPE_PARAM]) {
+        q.delete(key);
+      }
+    });
   };
 
-  // The "More" button: open the panel when closed, close it when any tab is
-  // open. Opens to the Places tab — the grouped category grid — because the
-  // top-row chip strip only fits a couple of categories before the rest scroll
-  // out of view, so "the whole guide at a glance" has to live one obvious tap
-  // away. When/Where/Layers are a tab away inside the same panel.
-  const toggleFilters = () => {
+  const runSetup = (key: MapSetupKey) => {
     haptic("light");
-    if (pane !== null) {
+    track("map_setup", { setup: key });
+
+    // A setup is a deliberate complete view, not another handful of toggles
+    // layered onto an unknown previous state. Area/camera stay put unless the
+    // user chose Field kit, whose promise is explicitly nearby utility.
+    props.setAmenityGroups(new Set());
+    props.setShowCivic(false);
+    props.setShowTransit(false);
+    props.setShowTrails(false);
+    props.setShowAerial(false);
+    props.setShowCemeteries(false);
+    props.setShowParking(false);
+    props.setShowRadar(false);
+    props.setShowIncidents(false);
+    props.setShowCameras(false);
+    props.setShowFireStations(false);
+    props.setShowCivicPlaces(false);
+    props.setShowSavedOnly(false);
+    props.setFieldNotesOnly(false);
+    props.onAerialSeason("all");
+
+    const wantedOverlays: OverlayKey[] =
+      key === "trail-day" ? ["parks"]
+      : key === "frederick-stories" ? ["art", "bridges"]
+      : [];
+    for (const overlay of OVERLAYS) {
+      const isOn = props.activeOverlays.includes(overlay.key);
+      const shouldBeOn = wantedOverlays.includes(overlay.key);
+      if (isOn !== shouldBeOn) props.toggleOverlay(overlay.key);
+    }
+
+    if (key === "tonight") {
+      props.setShowTransit(true);
+      props.setShowParking(true);
+    } else if (key === "getting-around") {
+      props.setShowCivic(true);
+      props.setShowTransit(true);
+      props.setShowParking(true);
+      props.setShowIncidents(true);
+      props.setShowCameras(true);
+    } else if (key === "trail-day") {
+      props.setShowTrails(true);
+      props.setShowRadar(true);
+      props.setShowCivicPlaces(true);
+      props.setAmenityGroups(new Set(["water", "safety"]));
+    } else if (key === "field-kit") {
+      props.setAmenityGroups(new Set([
+        "restroom", "water", "trash", "dog", "wifi", "outlet", "bike", "seating",
+      ]));
+      setWhereSel({ kind: "nearme" });
+      setScope("nearme");
+    } else {
+      props.setShowAerial(true);
+      props.setShowCemeteries(true);
+    }
+
+    setParams((q) => {
+      for (const param of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers"]) {
+        q.delete(param);
+      }
+      if (key === "tonight") q.set("t", "tonight");
+      if (key === "trail-day") q.set("intent", "outdoor");
+      if (key === "field-kit") q.set(SCOPE_PARAM, "nearme");
+      if (wantedOverlays.length > 0) q.set("layers", wantedOverlays.join(","));
+    });
+    closePane();
+  };
+
+  const togglePane = (next: Pane) => {
+    haptic("light");
+    if (pane === next) {
       closePane();
       return;
     }
-    restoreRef.current = document.activeElement as HTMLElement | null;
-    setPane("what");
+    if (pane === null) restoreRef.current = document.activeElement as HTMLElement | null;
+    setPane(next);
   };
-  // Switch sub-tabs while the panel stays open (the trigger to restore was
-  // captured on the original open).
-  const selectTab = (p: Pane) => {
-    haptic("light");
-    setPane(p);
-  };
-
-  // Esc closes the panel; Tab is trapped within it while open.
+  // This is a non-modal disclosure over the map. Escape closes it, while Tab
+  // follows the ordinary page order instead of being trapped in a hybrid
+  // pseudo-dialog.
   const onPaneKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.stopPropagation();
       closePane();
-      return;
-    }
-    const host = paneRef.current;
-    if (e.key !== "Tab" || !host) return;
-    const nodes = Array.from(
-      host.querySelectorAll<HTMLElement>(FOCUSABLE),
-    ).filter((n) => n.offsetParent !== null);
-    if (nodes.length === 0) return;
-    const first = nodes[0];
-    const last = nodes[nodes.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && active === first) {
       e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
     }
   };
 
@@ -740,6 +804,8 @@ export default function MapDock(props: MapDockProps) {
             <div className="dock-search" role="search">
               <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
               <input
+                id="map-search-input"
+                ref={searchInputRef}
                 type="search"
                 value={props.q}
                 onChange={(e) => props.setQ(e.target.value)}
@@ -789,52 +855,60 @@ export default function MapDock(props: MapDockProps) {
             )}
           </div>
 
-          {/* Row 2 — the always-visible category chip row (the primary
-              action: pick a kind of place in one tap). "All" clears the
-              intent; each chip writes the SAME ?intent= param as the Places
-              tab. More (the When/Where/Layers depth) + the map ↔ list toggle
-              pin to the right and never scroll. */}
-          <div className="dock-cats">
-            {/* One clear door to the whole guide. Shows the current filter (or
-                "Browse places") and opens the grouped category grid — replacing
-                the horizontal chip strip that only fit a couple of the twelve
-                categories on a phone before the rest scrolled out of sight. */}
+          {/* Five stable map actions. The first four open a single-purpose
+              panel; List changes the presentation without adding another
+              layer of navigation inside that panel. */}
+          <div className="dock-actions" role="group" aria-label="Map controls">
             <button
               type="button"
-              className="dock-browse tap-44"
-              data-on={pane === "what" || Boolean(intent) || undefined}
-              aria-expanded={pane !== null}
+              className="dock-action tap-44"
+              data-on={Boolean(intent) || undefined}
+              aria-expanded={pane === "what"}
               aria-controls="dock-pane"
-              aria-haspopup="dialog"
-              onClick={toggleFilters}
+              onClick={() => togglePane("what")}
             >
-              {intent ? (
-                <>
-                  <span aria-hidden className="dock-browse-dot" style={{ background: intent.color }} />
-                  <span className="dock-browse-label">{intent.label}</span>
-                  <span className="dock-browse-n">
-                    {props.placeCount.toLocaleString("en-US")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
-                  <span className="dock-browse-label">Browse places</span>
-                </>
-              )}
-              {moreCount > 0 && (
-                <span
-                  className="dock-filters-n"
-                  aria-label={`${moreCount} other active ${moreCount === 1 ? "filter" : "filters"}`}
-                >
-                  +{moreCount}
-                </span>
-              )}
+              <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span>{intent?.label ?? "Places"}</span>
             </button>
             <button
               type="button"
-              className="dock-viewtoggle tap-44"
+              className="dock-action tap-44"
+              data-on={timeActive || undefined}
+              aria-expanded={pane === "when"}
+              aria-controls="dock-pane"
+              onClick={() => togglePane("when")}
+            >
+              <Clock className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span>Time</span>
+            </button>
+            <button
+              type="button"
+              className="dock-action tap-44"
+              data-on={whereSel.kind !== "county" || undefined}
+              aria-expanded={pane === "where"}
+              aria-controls="dock-pane"
+              onClick={() => togglePane("where")}
+            >
+              <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span>Area</span>
+            </button>
+            <button
+              type="button"
+              className="dock-action tap-44"
+              data-on={layerCount > 0 || undefined}
+              aria-expanded={pane === "layers"}
+              aria-controls="dock-pane"
+              onClick={() => togglePane("layers")}
+            >
+              <Layers3 className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span>Layers</span>
+            </button>
+            <button
+              type="button"
+              className="dock-action tap-44"
+              data-on={props.listView || undefined}
               aria-pressed={props.listView}
+              aria-label={props.listView ? "Show map view" : "Show list view"}
               onClick={() => {
                 haptic("light");
                 track("map_dock", { pane: "view", pick: props.listView ? "map" : "list" });
@@ -856,12 +930,12 @@ export default function MapDock(props: MapDockProps) {
           </div>
         </div>
 
-        {/* ── The filter panel — drops DOWN from under the control bar over
-            the scrim-dimmed map. Its four sub-tabs pick the group. ── */}
+        {/* ── The filter panel drops from the selected action. The action
+            row remains the only navigation between control groups. ── */}
         <div
           className="dock-pane"
           id="dock-pane"
-          role="dialog"
+          role="region"
           aria-label={paneTitle}
           aria-hidden={pane === null}
           // See EventsBoardDock: inert keeps the collapsed panel's controls
@@ -871,49 +945,8 @@ export default function MapDock(props: MapDockProps) {
           onKeyDown={onPaneKeyDown}
         >
           <div className="dock-pane-scroll">
-            <div className="dock-tabs">
-              <div className="dock-tablist" role="tablist" aria-label="Filter groups">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pane === "what"}
-                  className="dock-tab"
-                  data-on={pane === "what" || undefined}
-                  onClick={() => selectTab("what")}
-                >
-                  Places
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pane === "when"}
-                  className="dock-tab"
-                  data-on={pane === "when" || undefined}
-                  onClick={() => selectTab("when")}
-                >
-                  Time
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pane === "where"}
-                  className="dock-tab"
-                  data-on={pane === "where" || undefined}
-                  onClick={() => selectTab("where")}
-                >
-                  Area
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pane === "layers"}
-                  className="dock-tab"
-                  data-on={pane === "layers" || undefined}
-                  onClick={() => selectTab("layers")}
-                >
-                  Layers
-                </button>
-              </div>
+            <div className="dock-pane-head">
+              <h2 className="dock-pane-title">{paneTitle}</h2>
               <button type="button" className="dock-done" onClick={closePane}>
                 Done
               </button>
@@ -1208,6 +1241,26 @@ export default function MapDock(props: MapDockProps) {
                 from the old bottom-left tray. ── */}
             {pane === "layers" && (
               <div>
+                <Sect>Quick setups</Sect>
+                <div className="dock-setups" role="group" aria-label="Frederick map setups">
+                  {MAP_SETUPS.map(({ key, label, description, Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className="dock-setup"
+                      onClick={() => runSetup(key)}
+                    >
+                      <span aria-hidden className="dock-setup-icon">
+                        <Icon className="h-4 w-4" strokeWidth={2.1} />
+                      </span>
+                      <span className="dock-setup-copy">
+                        <strong>{label}</strong>
+                        <small>{description}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
                 {/* Map drapes + conditions only. Public amenities (restrooms,
                     water, Wi-Fi, …) moved to the Places tab, where finding one
                     is a first-class action rather than a layer toggle. */}

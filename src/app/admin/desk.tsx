@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown,
 } from "lucide-react";
 import { getSql } from "@/lib/db/client";
-import { plausibleKeys, fetchAggregate, fetchBreakdown } from "@/lib/integrations/plausible-stats";
+import { plausibleKeys, fetchAggregate } from "@/lib/integrations/plausible-stats";
 import { PLACES } from "@/data/places";
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
 import TRANSIT from "@/data/transit.json" with { type: "json" };
@@ -474,7 +474,7 @@ export async function TrafficGlance() {
           Traffic
         </SectionHead>
         <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          The tracker is collecting; reading numbers here needs the two Plausible Stats API keys. The traffic page explains the setup.
+          Starter is collecting in Plausible. Embedded numbers require its Business Stats API; use the traffic page for the right dashboard link.
         </p>
       </section>
     );
@@ -482,14 +482,11 @@ export async function TrafficGlance() {
 
   // External API — Promise.all is fine here; the sequential-await rule is
   // about the Supavisor pooled connection, which this never touches.
-  const [today, week, month, searchMisses, askMisses] = await Promise.all([
+  const [today, week, month] = await Promise.all([
     fetchAggregate(keys, "day"),
     fetchAggregate(keys, "7d"),
     fetchAggregate(keys, "30d"),
-    fetchBreakdown(keys, "event:props:query", "30d", { filters: "event:name==search_empty", limit: 20 }),
-    fetchBreakdown(keys, "event:props:query", "30d", { filters: "event:name==ask_empty", limit: 20 }),
   ]);
-  const missCount = [...(searchMisses ?? []), ...(askMisses ?? [])].reduce((a, r) => a + r.events, 0);
 
   return (
     <section className="mt-6">
@@ -513,10 +510,8 @@ export async function TrafficGlance() {
             <VDiv />
             <Vital value={week?.pageviews ?? "–"} label="views · 7d" />
           </div>
-          <p className="mt-2 text-[12.5px]" style={{ color: missCount > 0 ? "var(--app-warning-press)" : "var(--app-ink-3)" }}>
-            {missCount > 0
-              ? `${missCount} searches and questions found nothing in 30 days. The traffic page lists every one.`
-              : "Every recorded search and question found something in the last 30 days."}
+          <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            Search and Ask misses live in the private data-gap queue, not in third-party custom properties.
           </p>
         </>
       )}

@@ -2630,10 +2630,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
    dock-*. A "maps-app" top layout: a slim control bar pins to the TOP of the
-   map (search row, then a single Filters button + a Map ↔ list toggle). The
-   Filters button drops a panel DOWN over the scrim-dimmed map; that panel
-   carries the four sub-tabs (Places · When · Where · Layers), a mono count
-   line, and Done / clear-all. The bottom of the map is left clean for the
+   map (search row, then one stable Places · Time · Area · Layers · List
+   control row). The first four controls open one focused panel over the
+   scrim-dimmed map; List changes the presentation. The bottom stays clean for
    pins, the zoom cluster, and the locate FAB. Living at the top permanently
    clears the floating BottomNav (which owns the bottom edge).
    ========================================================================== */
@@ -3064,6 +3063,74 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-variant-numeric: tabular-nums;
 }
 
+/* Frederick map setups compose several existing layers into one useful view.
+   They live inside Layers as a compact horizontal field-guide index, keeping
+   the permanent map chrome quiet while making the deep data approachable. */
+.dock-setups {
+  display: flex;
+  gap: 8px;
+  margin-inline: -2px;
+  padding: 1px 2px 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+  scrollbar-width: none;
+}
+.dock-setups::-webkit-scrollbar {
+  display: none;
+}
+.dock-setup {
+  flex: 0 0 176px;
+  min-height: 76px;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)), var(--app-bg-elevated));
+  color: var(--app-ink);
+  text-align: left;
+  box-shadow: 0 4px 12px -10px color-mix(in srgb, var(--app-ink) 35%, transparent);
+  transition: border-color 0.14s, transform 0.08s, background 0.14s;
+}
+.dock-setup:hover {
+  border-color: color-mix(in srgb, var(--app-cool) 38%, var(--app-border));
+}
+.dock-setup:active {
+  transform: translateY(1px);
+}
+.dock-setup-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: var(--app-cool);
+  background: color-mix(in srgb, var(--app-cool) 13%, var(--app-bg-elevated));
+}
+.dock-setup-copy {
+  min-width: 0;
+}
+.dock-setup-copy strong,
+.dock-setup-copy small {
+  display: block;
+}
+.dock-setup-copy strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.dock-setup-copy small {
+  margin-top: 4px;
+  color: var(--app-ink-3);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
 /* Chips. Color arrives per-chip via --c; lit chips fill with it. The
    .tap-44-y extender keeps every ≤44px chip honest about its target. */
 .dock-chips {
@@ -3142,6 +3209,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .dock-subrow button {
   flex: 0 0 auto;
+  min-width: 44px;
   min-height: 44px;
   padding: 0 2px;
   font-size: 12px;
@@ -3246,6 +3314,77 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: var(--app-brand-press);
 }
 
+/* Five stable map actions sit directly below search. Open-panel emphasis and
+   active-filter status are deliberately separate visual states. They share the available
+   width instead of competing as a long Browse pill plus mystery icon buttons.
+   A quiet registration rule carries state without turning the map chrome into
+   a row of colored capsules. */
+.dock-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px;
+}
+.dock-action {
+  position: relative;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-ink-3);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1;
+  transition: color 0.14s, background 0.14s, border-color 0.14s, transform 0.08s;
+}
+.dock-action:active {
+  transform: scale(0.97);
+}
+.dock-action > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-action[data-on] {
+  color: var(--app-brand-press);
+}
+.dock-action[data-on]::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--app-brand);
+  transform: translateX(-50%);
+}
+.dock-action[aria-expanded="true"],
+.dock-action[aria-pressed="true"] {
+  color: var(--app-brand-press);
+  border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
+  background: var(--app-brand-tint-6);
+}
+.dock-action[aria-expanded="true"]::after,
+.dock-action[aria-pressed="true"]::after {
+  content: "";
+  top: auto;
+  left: auto;
+  width: auto;
+  transform: none;
+  position: absolute;
+  inset-inline: 9px;
+  bottom: 0;
+  height: 2px;
+  background: var(--app-brand);
+}
 /* The single "Browse places" door: fills the row (view toggle pins right) and
    shows the active category — a color dot, its label, and count — or a grid
    icon + "Browse places" when nothing is filtered. Opens the grouped category
@@ -3301,50 +3440,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   flex: none;
 }
 
-/* The panel's sub-tabs (Places · When · Where · Layers) + the Done button,
-   sitting on the panel's top rule. The active tab is inked in brand and
-   carries a 2.5px brand rule along the BOTTOM, sitting on that container
-   border. The tablist scrolls sideways if space is tight; Done stays put. */
-.dock-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  margin: 0 -2px 6px;
-  padding: 0 2px;
-  border-bottom: 1px solid var(--app-border);
-}
-.dock-tablist {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.dock-tablist::-webkit-scrollbar {
-  display: none;
-}
-.dock-tab {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--app-ink-2);
-  border-bottom: 2.5px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-}
-.dock-tab[aria-selected="true"] {
-  color: var(--app-brand-press);
-  border-bottom-color: var(--app-brand);
-}
-.dock-tabs .dock-done {
-  margin-left: auto;
-  align-self: center;
-}
-
 /* The count row inside the panel: the living mono count line + the clear ×. */
 .dock-countbar {
   display: flex;
@@ -3353,8 +3448,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-bottom: 4px;
 }
 .dock-clear {
-  flex: 0 0 40px;
-  min-height: 40px;
+  flex: 0 0 44px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   color: var(--app-ink-3);
@@ -3420,6 +3515,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
+  .dock-actions {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px;
+  }
+  .dock-action {
+    min-height: 44px;
+    padding-inline: 3px;
+  }
+  .dock-action > span {
+    display: none;
+  }
+  .dock-open .dock-pane,
+  .dock-pane-scroll {
+    max-height: min(170px, calc(var(--app-browse-map-height) - 64px));
+  }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
     bottom: 10px !important;
@@ -3462,6 +3573,45 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-locate-fab:active {
   transform: scale(0.94);
+}
+
+/* Honest GTFS-Realtime boot state. The pill appears only until vehicles load
+   (or when the public feed is empty/unavailable), then yields the canvas to the
+   actual moving buses. */
+.map-live-status {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: calc(98px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-map-control);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  max-width: min(250px, calc(100% - 92px));
+  padding: 7px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 95%, transparent);
+  box-shadow: var(--app-shadow-2);
+  color: var(--app-ink-2);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.map-live-status-dot,
+.map-live-status-pulse {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--app-cool);
+}
+.map-live-status-pulse {
+  animation: map-live-feed-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes map-live-feed-pulse {
+  from { opacity: 0.35; transform: scale(0.78); }
+  to { opacity: 1; transform: scale(1); }
 }
 .map-locate-fab[data-on] {
   color: var(--app-brand);
@@ -3794,6 +3944,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 11px;
   color: var(--app-ink-3);
 }
+.map-peek-nearby {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--app-ink-3);
+}
+.map-peek-nearby strong {
+  color: var(--app-ink-2);
+  font-weight: 650;
+}
 .map-peek-acts {
   flex: 0 0 auto;
   display: flex;
@@ -3848,6 +4011,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* Clear the dock head above (search + caption + foot) and the nav below. */
   padding: 150px 12px calc(var(--app-bottomnav-reserve, 0px) + 16px);
 }
+.map-list-results {
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+}
+.map-list-section + .map-list-section {
+  margin-top: 18px;
+}
+.map-list-section-title {
+  padding: 10px 10px 7px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
 .map-list-rows {
   display: flex;
   flex-direction: column;
@@ -3867,6 +4048,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .map-list-row:hover {
   background: var(--app-bg-elevated);
+}
+.map-list-event {
+  background: color-mix(in srgb, var(--app-brand) 5%, var(--app-bg));
+}
+.map-list-event:hover {
+  background: color-mix(in srgb, var(--app-brand) 9%, var(--app-bg));
+}
+.map-list-event-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-brand-press);
+  background: color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated));
 }
 .map-list-dot {
   flex: 0 0 auto;
@@ -4403,3 +4600,187 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    plus its own bottom sheet (.dock-ltray). It is now a sub-tab inside the top
    Filters panel (MapDock, 2026-07-21), so those rules were removed with the
    JSX and the map's bottom-left corner is clear again. */
+/* ── Food-truck board ────────────────────────────────────────────────
+   Vendor-approved photography is not available for every truck. The page
+   pairs owned Frederick photography with cuisine-led editorial panels rather
+   than using unrelated stock food or scraping social images. */
+.food-truck-hero {
+  position: relative;
+  min-height: clamp(25rem, 68vw, 36rem);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-ink);
+  box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
+  isolation: isolate;
+}
+
+.food-truck-hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(34, 28, 21, .05) 0%, rgba(34, 28, 21, .1) 32%, rgba(34, 28, 21, .84) 100%),
+    linear-gradient(90deg, rgba(34, 28, 21, .32) 0%, transparent 75%);
+}
+
+.food-truck-hero-copy {
+  position: absolute;
+  z-index: 2;
+  inset: auto 1.25rem 1.45rem;
+  max-width: 38rem;
+  color: var(--app-on-brand);
+}
+
+.food-truck-hero-copy > p:first-child { opacity: .82; }
+
+.food-truck-hero-copy h1 {
+  margin-top: .55rem;
+  max-width: 9ch;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(3rem, 10vw, 5.6rem);
+  font-weight: 400;
+  line-height: .92;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.food-truck-hero-copy h1 + p {
+  margin-top: .9rem;
+  max-width: 35rem;
+  font-size: clamp(.82rem, 2vw, .98rem);
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--app-on-brand) 88%, transparent);
+}
+
+.food-truck-hero-counts {
+  display: flex;
+  gap: .55rem;
+  margin-top: 1rem;
+}
+
+.food-truck-hero-counts span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .35rem;
+  padding: .42rem .68rem;
+  border: 1px solid color-mix(in srgb, var(--app-on-brand) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink) 54%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: .69rem;
+  font-weight: 650;
+}
+
+.food-truck-hero-counts strong {
+  font-family: var(--font-mono), monospace;
+  font-size: .86rem;
+}
+
+.food-truck-photo-credit {
+  position: absolute;
+  z-index: 2;
+  top: .8rem;
+  right: .85rem;
+  color: color-mix(in srgb, var(--app-on-brand) 78%, transparent);
+  font-size: .58rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(34, 28, 21, .5);
+}
+
+.food-truck-how[open] summary svg:last-child { transform: rotate(180deg); }
+
+.food-truck-card {
+  border-color: var(--app-border);
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.food-truck-card-art {
+  --ft-bg: var(--app-brand);
+  --ft-ink: var(--app-on-brand);
+  position: relative;
+  display: flex;
+  min-height: 9rem;
+  align-items: flex-end;
+  overflow: hidden;
+  padding: 1rem;
+  color: var(--ft-ink);
+  background: var(--ft-bg);
+  isolation: isolate;
+}
+
+.food-truck-card-art::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 13rem;
+  height: 13rem;
+  top: -7.5rem;
+  right: -4rem;
+  border: 2.4rem solid color-mix(in srgb, var(--ft-ink) 11%, transparent);
+  border-radius: 50%;
+}
+
+.food-truck-card-art::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: .16;
+  background: repeating-linear-gradient(118deg, transparent 0 20px, var(--ft-ink) 21px 22px);
+  mask-image: linear-gradient(90deg, transparent 18%, #000 100%);
+}
+
+.food-truck-card-art[data-flavor="comfort"] { --ft-bg: var(--app-amber); --ft-ink: var(--app-ink); }
+.food-truck-card-art[data-flavor="world"] { --ft-bg: var(--app-cool); }
+.food-truck-card-art[data-flavor="fresh"] { --ft-bg: var(--app-brand-2); }
+.food-truck-card-art[data-flavor="sweet"] { --ft-bg: var(--app-accent); }
+
+.food-truck-card-art p {
+  max-width: 13ch;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.65rem, 6vw, 2.25rem);
+  font-weight: 400;
+  line-height: .92;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.food-truck-card-number {
+  position: absolute;
+  top: .82rem;
+  left: 1rem;
+  font-family: var(--font-mono), monospace;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  opacity: .72;
+}
+
+.food-truck-card-icon {
+  position: absolute;
+  right: 1rem;
+  bottom: .9rem;
+  width: 2rem;
+  height: 2rem;
+  opacity: .72;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .food-truck-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
+  }
+}
+
+@media (max-width: 480px) {
+  .food-truck-hero { min-height: 29rem; border-radius: var(--app-radius-lg); }
+  .food-truck-hero-copy { inset: auto 1rem 1.05rem; }
+  .food-truck-photo-credit { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-truck-card { transition: none; }
+}

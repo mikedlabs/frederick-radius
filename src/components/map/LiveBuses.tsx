@@ -7,8 +7,7 @@ import { haptic } from "@/lib/haptics";
 import { exposeMarkerChild } from "./markerA11y";
 
 /**
- * LiveBuses — real TransIT vehicles on the map (fulfills the map's own
- * "Coming soon: real-time positions" promise). Polls the keyless
+ * LiveBuses — real TransIT vehicles on the map. Polls the keyless
  * GTFS-realtime feed via /api/transit/vehicles while the Transit layer is
  * on, draws each bus as a route-colored badge, and EASES each one to its new
  * report between polls (felt, not watched).
@@ -187,6 +186,7 @@ type Tween =
 
 export default function LiveBuses({ show, highlightRouteId }: { show: boolean; highlightRouteId?: string }) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
+  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [ago, setAgo] = useState(0);
@@ -211,15 +211,18 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     const load = async () => {
       try {
         const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
-        if (!r.ok) return;
+        if (!r.ok) throw new Error(`Transit feed returned ${r.status}`);
         const d = (await r.json()) as { vehicles?: LiveVehicle[] };
         if (alive && Array.isArray(d.vehicles)) {
           setVehicles(d.vehicles);
+          setFeedStatus(d.vehicles.length > 0 ? "ready" : "empty");
           setAgo(0);
           setNowMs(Date.now());
           setPollSeq((s) => s + 1);
         }
-      } catch { /* keep last known */ }
+      } catch {
+        if (alive) setFeedStatus((current) => current === "ready" ? current : "error");
+      }
     };
     load();
     const poll = setInterval(load, POLL_MS);
@@ -318,7 +321,19 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     return { stop: v.nextStop, color, line };
   }, [selected, vehicles]);
 
-  if (!show || vehicles.length === 0) return null;
+  if (!show) return null;
+  if (vehicles.length === 0) {
+    return (
+      <div className="map-live-status" role="status" aria-live="polite">
+        <span aria-hidden className={feedStatus === "loading" ? "map-live-status-pulse" : "map-live-status-dot"} />
+        {feedStatus === "loading"
+          ? "Loading live buses"
+          : feedStatus === "error"
+            ? "Live bus positions unavailable"
+            : "No buses reporting right now"}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -401,7 +416,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.vehicleId); }}
-              aria-label={`TransIT ${route?.name ?? "bus"}, ${p.moving ? "moving now" : "at a stop"}`}
+              aria-label={`TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${p.moving ? "moving now" : "at a stop"}`}
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
               {/* Fresh-data ripple: re-keying on pollSeq remounts it, so the

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RADIUS_TOOLS } from "@/data/radius-tools";
-import { buildCompassSections, splitEssentialItems } from "./CompassHub";
+import {
+  buildCompassSections,
+  commonCompassTasks,
+  splitEssentialItems,
+} from "./CompassHub";
 
 function representedRegistryIds(homeSlug: string | null): string[] {
   const registryIds = new Set(RADIUS_TOOLS.map((tool) => tool.id));
@@ -39,5 +43,17 @@ describe("Compass browse model", () => {
     const settingsLinks = yours!.items.filter((item) => item.href === "/settings");
     expect(settingsLinks).toHaveLength(1);
     expect(settingsLinks[0].label).toBe("Choose your home town");
+  });
+
+  it("derives the restrained common-task strip from registered tools", () => {
+    const tasks = commonCompassTasks(buildCompassSections(null));
+
+    expect(tasks.map((item) => item.id)).toEqual([
+      "open-now",
+      "events",
+      "public-essentials",
+      "county-pulse",
+    ]);
+    expect(tasks.every((item) => RADIUS_TOOLS.some((tool) => tool.id === item.id))).toBe(true);
   });
 });

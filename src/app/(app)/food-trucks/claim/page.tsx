@@ -40,11 +40,25 @@ export default function FoodTruckClaimPage() {
           Claim your truck.
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Run one of these trucks? Claim it here. The owner reviews each claim by hand, and once
-          yours is approved you get a private link for dropping a live location pin whenever you
-          are out. The pin shows only while you are genuinely there.
+          Pick your truck and leave a way to reach you. Radius verifies each request by hand. Once
+          approved, you get a private link for posting a live location whenever you are out. You do
+          not need to create an account.
         </p>
       </header>
+
+      <div
+        className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+      >
+        <p className="text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>Do not see your truck in the list?</p>
+        <Link
+          href="/submit/place?category=food-truck"
+          className="tap-44 inline-flex shrink-0 items-center text-[12px] font-semibold"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          Add it first
+        </Link>
+      </div>
 
       <ClaimForm trucks={trucks} />
 

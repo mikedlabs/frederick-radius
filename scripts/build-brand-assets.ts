@@ -6,6 +6,7 @@
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import QRCode from "qrcode";
 import { BRAND, RIPPLE_GEOMETRY, type RippleDetail } from "../src/lib/brand";
 import { PLATFORM_BRAND } from "../src/lib/platform-brand";
 
@@ -30,6 +31,8 @@ const LOCKED_BRAND_CONTRACT = {
   },
 } as const;
 const TAGLINE_UPPER = BRAND.tagline.toUpperCase();
+const POSTER_QR_URL = "https://frederickradius.app/?utm_source=poster&utm_medium=qr&utm_campaign=field-guide";
+const CARD_QR_URL = "https://frederickradius.app/?utm_source=radius-card&utm_medium=qr&utm_campaign=field-guide";
 const BRAND_GUIDANCE_FILES = [
   "docs/brand/BRAND_GUIDE.md",
   "docs/brand/Frederick-Radius-Brand-Guide.html",
@@ -73,6 +76,7 @@ type Asset = {
   height: number;
   make: (fontCss: string) => string;
   png?: boolean;
+  pdf?: { width: string; height: string };
   role: string;
 };
 
@@ -327,6 +331,34 @@ function feedPortrait(fonts: string): string {
   );
 }
 
+function facebookGroupLaunch(fonts: string, photoUrl: string): string {
+  return svgShell(
+    1080,
+    1350,
+    `<defs>
+    <linearGradient id="group-photo-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".08"/>
+      <stop offset="38%" stop-color="${BRAND.colors.ink}" stop-opacity=".04"/>
+      <stop offset="72%" stop-color="${BRAND.colors.ink}" stop-opacity=".43"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".78"/>
+    </linearGradient>
+  </defs>
+  <image href="${photoUrl}" width="1080" height="1350" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1080" height="1350" fill="url(#group-photo-shade)"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(66 66) scale(.82)")}
+  <text x="171" y="137" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="43" font-weight="400">${BRAND.name}</text>
+  <text x="66" y="570" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="100" font-weight="400" letter-spacing="-1.5">
+    <tspan x="66" dy="0">FIND THE</tspan><tspan x="66" dy="106">FOOD TRUCKS.</tspan>
+  </text>
+  <rect x="68" y="730" width="76" height="8" fill="${BRAND.colors.brick}"/>
+  <text x="68" y="815" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="33" font-weight="500">
+    <tspan x="68" dy="0">20 local trucks.</tspan><tspan x="68" dy="46">Their latest location links.</tspan>
+  </text>
+  <text x="68" y="1270" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="22" font-weight="750" letter-spacing="3.1">FREDERICKRADIUS.APP  ·  CODE: FOOD-TRUCK</text>`,
+    fonts,
+  );
+}
+
 function photoPostTemplate(fonts: string): string {
   return svgShell(
     1080,
@@ -570,6 +602,130 @@ function qrPlaceholder(x: number, y: number, size: number): string {
   <text x="${center}" y="${y + size / 2 - 9}" text-anchor="middle" fill="${BRAND.colors.mutedInk}" font-family="Public Sans" font-size="18" font-weight="750" letter-spacing="1.4"><tspan x="${center}" dy="0">ADD TESTED</tspan><tspan x="${center}" dy="25">QR CODE</tspan></text>`;
 }
 
+function qrGroup(
+  url: string,
+  x: number,
+  y: number,
+  size: number,
+  dark = BRAND.colors.ink,
+  light = BRAND.colors.cream,
+): string {
+  const qr = QRCode.create(url, { errorCorrectionLevel: "M" });
+  const count = qr.modules.size;
+  const margin = 4;
+  const cell = Math.max(1, Math.floor(size / (count + margin * 2)));
+  const renderedSize = cell * (count + margin * 2);
+  const offsetX = x + (size - renderedSize) / 2;
+  const offsetY = y + (size - renderedSize) / 2;
+  const modules: string[] = [];
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
+      if (!qr.modules.get(row, col)) continue;
+      modules.push(
+        `<rect x="${offsetX + (col + margin) * cell}" y="${offsetY + (row + margin) * cell}" width="${cell}" height="${cell}" fill="${dark}"/>`,
+      );
+    }
+  }
+  return `<g shape-rendering="crispEdges">
+    <rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${light}"/>
+    ${modules.join("\n    ")}
+  </g>`;
+}
+
+function posterFieldGuide(fonts: string, artworkUrl: string): string {
+  return svgShell(
+    1800,
+    2400,
+    `<defs>
+    <linearGradient id="field-guide-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BRAND.colors.cream}" stop-opacity=".02"/>
+      <stop offset="68%" stop-color="${BRAND.colors.cream}" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="${BRAND.colors.cream}" stop-opacity=".68"/>
+    </linearGradient>
+  </defs>
+  <image href="${artworkUrl}" width="1800" height="2400" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1800" height="2400" fill="url(#field-guide-shade)"/>
+  <rect x="0" width="22" height="2400" fill="${BRAND.colors.brick}"/>
+  ${ripple("compact", BRAND.colors.brick, "translate(116 105) scale(1.02)")}
+  <text x="248" y="184" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="56" font-weight="400">${BRAND.name}</text>
+  <text x="122" y="388" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="24" font-weight="750" letter-spacing="4.7">A DIGITAL FIELD GUIDE FOR FREDERICK COUNTY</text>
+  <text x="116" y="625" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="142" font-weight="400" letter-spacing="-2.4">
+    <tspan x="116" dy="0">A field guide</tspan><tspan x="116" dy="146">that knows what</tspan><tspan x="116" dy="146">time it is.</tspan>
+  </text>
+  <text x="122" y="2172" fill="${BRAND.colors.ink}" font-family="Public Sans" font-size="36" font-weight="500">
+    <tspan x="122" dy="0">Current local information, organized</tspan><tspan x="122" dy="50">around where you are.</tspan>
+  </text>
+  <text x="122" y="2320" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="27" font-weight="750" letter-spacing="4.2">FREDERICKRADIUS.APP</text>
+  <rect x="1390" y="2020" width="286" height="286" rx="18" fill="${BRAND.colors.cream}"/>
+  ${qrGroup(POSTER_QR_URL, 1413, 2043, 240)}`,
+    fonts,
+  );
+}
+
+function posterRightNow(fonts: string, photoUrl: string): string {
+  return svgShell(
+    1800,
+    2400,
+    `<defs>
+    <linearGradient id="right-now-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".1"/>
+      <stop offset="42%" stop-color="${BRAND.colors.ink}" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".9"/>
+    </linearGradient>
+  </defs>
+  <image href="${photoUrl}" width="1800" height="2400" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1800" height="2400" fill="url(#right-now-shade)"/>
+  <rect x="0" width="22" height="2400" fill="${BRAND.colors.brick}"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(116 106) scale(1.06)")}
+  <text x="254" y="190" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="58" font-weight="400">${BRAND.name}</text>
+  <text x="122" y="1425" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="154" font-weight="400" letter-spacing="-2.8">
+    <tspan x="122" dy="0">See Frederick</tspan><tspan x="122" dy="156">as it is</tspan><tspan x="122" dy="156">right now.</tspan>
+  </text>
+  <text x="128" y="2048" fill="${BRAND.colors.cream}" fill-opacity=".86" font-family="Public Sans" font-size="35" font-weight="500">
+    <tspan x="128" dy="0">What is useful around you changes by the hour.</tspan><tspan x="128" dy="51">Radius keeps the current view in one place.</tspan>
+  </text>
+  <text x="128" y="2308" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="27" font-weight="750" letter-spacing="4.2">FREDERICKRADIUS.APP</text>
+  <rect x="1390" y="2050" width="286" height="286" rx="18" fill="${BRAND.colors.cream}"/>
+  ${qrGroup(POSTER_QR_URL, 1413, 2073, 240)}`,
+    fonts,
+  );
+}
+
+function nfcSignalFront(fonts: string): string {
+  return svgShell(
+    1088,
+    713,
+    `<rect width="1088" height="713" fill="${BRAND.colors.cream}"/>
+  <rect x="0" width="18" height="713" fill="${BRAND.colors.brick}"/>
+  ${rippleField(BRAND.colors.paperDeep, "translate(590 72) scale(5.4)", 1)}
+  ${ripple("compact", BRAND.colors.brick, "translate(70 54) scale(.72)")}
+  <text x="166" y="117" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="40" font-weight="400">${BRAND.name}</text>
+  <text x="70" y="360" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="92" font-weight="400" letter-spacing="-1.5">Tap to start nearby.</text>
+  <text x="74" y="438" fill="${BRAND.colors.mutedInk}" font-family="Public Sans" font-size="25" font-weight="500">${BRAND.tagline}</text>
+  <circle cx="894" cy="535" r="17" fill="${BRAND.colors.brick}"/>
+  <text x="74" y="618" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="18" font-weight="750" letter-spacing="2.8">NFC ENABLED · TAP THE FRONT</text>`,
+    fonts,
+  );
+}
+
+function nfcSignalBack(fonts: string): string {
+  return svgShell(
+    1088,
+    713,
+    `<rect width="1088" height="713" fill="${BRAND.colors.ink}"/>
+  <rect x="0" width="18" height="713" fill="${BRAND.colors.brick}"/>
+  <text x="78" y="123" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="20" font-weight="750" letter-spacing="3.2">FREDERICK RADIUS</text>
+  <text x="76" y="280" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="72" font-weight="400"><tspan x="76" dy="0">Tap the front.</tspan><tspan x="76" dy="78">Scan if you cannot.</tspan></text>
+  <text x="80" y="520" fill="${BRAND.colors.cream}" fill-opacity=".76" font-family="Public Sans" font-size="23">No download. No account required.</text>
+  <text x="80" y="606" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="21" font-weight="750" letter-spacing="2.6">FREDERICKRADIUS.APP</text>
+  <rect x="734" y="122" width="292" height="338" rx="22" fill="${BRAND.colors.cream}"/>
+  ${qrGroup(CARD_QR_URL, 760, 148, 240)}
+  <text x="880" y="430" text-anchor="middle" fill="${BRAND.colors.ink}" font-family="Public Sans" font-size="16" font-weight="750" letter-spacing="2">SCAN TO OPEN</text>
+  ${ripple("compact", BRAND.colors.cream, "translate(810 504) scale(1.34)")}`,
+    fonts,
+  );
+}
+
 function nfcGeneralFront(fonts: string): string {
   return svgShell(
     1088,
@@ -646,6 +802,8 @@ async function main() {
     textItalicFont,
     summerPhoto,
     fallPhoto,
+    nightPhoto,
+    cartographicArtwork,
     todayUi,
     askUi,
   ] = await Promise.all([
@@ -654,6 +812,8 @@ async function main() {
     readFile(FONT_SOURCE.textItalic),
     readFile(path.join(ROOT, "public/images/seasons/summer/SUMMER MUST USE.jpg")),
     readFile(path.join(ROOT, "public/images/seasons/fall/FALL COLORS.jpg")),
+    readFile(path.join(ROOT, "public/images/seasons/spring/Frederick Night.jpg")),
+    readFile(path.join(OUT, "campaign/cartographic-ripple-background.png")),
     readFile(path.join(OUT, "examples/ui-today-mobile.webp")),
     readFile(path.join(OUT, "examples/ui-ask-radius-mobile.webp")),
   ]);
@@ -664,6 +824,8 @@ async function main() {
   );
   const summerPhotoUrl = `data:image/jpeg;base64,${summerPhoto.toString("base64")}`;
   const fallPhotoUrl = `data:image/jpeg;base64,${fallPhoto.toString("base64")}`;
+  const nightPhotoUrl = `data:image/jpeg;base64,${nightPhoto.toString("base64")}`;
+  const cartographicArtworkUrl = `data:image/png;base64,${cartographicArtwork.toString("base64")}`;
   const todayUiUrl = `data:image/webp;base64,${todayUi.toString("base64")}`;
   const askUiUrl = `data:image/webp;base64,${askUi.toString("base64")}`;
 
@@ -673,6 +835,7 @@ async function main() {
     mkdir(path.join(OUT, "social"), { recursive: true }),
     mkdir(path.join(OUT, "posters"), { recursive: true }),
     mkdir(path.join(OUT, "nfc"), { recursive: true }),
+    mkdir(path.join(OUT, "campaign"), { recursive: true }),
     mkdir(path.join(OUT, "examples"), { recursive: true }),
     mkdir(path.join(OUT, "fonts"), { recursive: true }),
     mkdir(path.join(OUT, "fonts/static"), { recursive: true }),
@@ -776,6 +939,14 @@ async function main() {
       make: feedPortrait,
     },
     {
+      file: "social/facebook-group-launch.svg",
+      width: 1080,
+      height: 1350,
+      role: "Facebook food-truck launch post using owned Frederick photography",
+      png: true,
+      make: (fonts) => facebookGroupLaunch(fonts, fallPhotoUrl),
+    },
+    {
       file: "social/photo-post-template.svg",
       width: 1080,
       height: 1350,
@@ -856,6 +1027,24 @@ async function main() {
       make: (fonts) => posterAskRadius(fonts, askUiUrl),
     },
     {
+      file: "campaign/poster-field-guide.svg",
+      width: 1800,
+      height: 2400,
+      role: "18 by 24 campaign poster built around the live field-guide idea",
+      png: true,
+      pdf: { width: "18in", height: "24in" },
+      make: (fonts) => posterFieldGuide(fonts, cartographicArtworkUrl),
+    },
+    {
+      file: "campaign/poster-right-now.svg",
+      width: 1800,
+      height: 2400,
+      role: "18 by 24 campaign poster using owned Frederick night photography",
+      png: true,
+      pdf: { width: "18in", height: "24in" },
+      make: (fonts) => posterRightNow(fonts, nightPhotoUrl),
+    },
+    {
       file: "nfc/general-front.svg",
       width: 1088,
       height: 713,
@@ -887,6 +1076,24 @@ async function main() {
       png: true,
       make: nfcPartnerBack,
     },
+    {
+      file: "nfc/signal-front.svg",
+      width: 1088,
+      height: 713,
+      role: "CR80 premium Radius Signal NFC card front",
+      png: true,
+      pdf: { width: "3.625in", height: "2.375in" },
+      make: nfcSignalFront,
+    },
+    {
+      file: "nfc/signal-back.svg",
+      width: 1088,
+      height: 713,
+      role: "CR80 premium Radius Signal NFC card back with a working QR fallback",
+      png: true,
+      pdf: { width: "3.625in", height: "2.375in" },
+      make: nfcSignalBack,
+    },
   ];
 
   // Keep exported SVGs self-contained: embedded OFL font files mean the
@@ -910,6 +1117,24 @@ async function main() {
         );
         await page.evaluate(() => document.fonts.ready);
         await page.screenshot({ path: pngDestination, omitBackground: true });
+      }
+      if (asset.pdf) {
+        await page.evaluate(() => {
+          const svg = document.querySelector("svg");
+          if (!svg) return;
+          svg.setAttribute("width", "100%");
+          svg.setAttribute("height", "100%");
+          svg.style.width = "100vw";
+          svg.style.height = "100vh";
+        });
+        await page.pdf({
+          path: destination.replace(/\.svg$/, ".pdf"),
+          width: asset.pdf.width,
+          height: asset.pdf.height,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 },
+          printBackground: true,
+          pageRanges: "1",
+        });
       }
     }
   } finally {
@@ -985,12 +1210,12 @@ async function main() {
         license: "licenses/OFL-Public-Sans.txt",
       },
     ],
-    assets: assets.map(({ file, width, height, role, png }) => ({
+    assets: assets.map(({ file, width, height, role, png, pdf }) => ({
       file,
       width,
       height,
       role,
-      exports: png ? ["svg", "png"] : ["svg"],
+      exports: ["svg", ...(png ? ["png"] : []), ...(pdf ? ["pdf"] : [])],
     })),
     platform: {
       iconVersion: PLATFORM_BRAND.iconVersion,
@@ -1021,7 +1246,7 @@ async function main() {
     writeFile(path.join(OUT, "tokens.css"), tokenCss),
   ]);
   await writeFile(path.join(OUT, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log(`Built ${assets.length} source assets and PNG exports in ${OUT}`);
+  console.log(`Built ${assets.length} source assets and requested exports in ${OUT}`);
 }
 
 main().catch((error) => {

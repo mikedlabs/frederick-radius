@@ -24,7 +24,6 @@ import {
   School,
   Shield,
   Siren,
-  Sparkles,
   TrafficCone,
   TrainFront,
   Waves,
@@ -34,6 +33,7 @@ import {
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
+import { track } from "@/lib/track";
 
 const ICONS: Record<string, LucideIcon> = {
   AlertTriangle,
@@ -305,7 +305,7 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
 
   return (
     <div role="status" className="flex min-w-0 items-start gap-2.5 border-y px-1 py-3" style={{ borderColor: "var(--app-border-strong)" }}>
-      <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
+      <Clock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>Since your last look</p>
         <p className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{message}</p>
@@ -316,37 +316,53 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
 
 function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: string) => void }) {
   if (tiles.length === 0) return null;
+  const degradedCount = tiles.filter((tile) => tile.degraded).length;
+  const hasDegraded = degradedCount > 0;
   return (
-    <section aria-labelledby="pulse-systems-heading" className="min-w-0 border-y py-3" style={{ borderColor: "var(--app-border)" }}>
-      <div className="flex min-w-0 items-center gap-2">
-        <Shield aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>System checks</h2>
-      </div>
-      <ul className="mt-2.5 grid min-w-0 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-        {tiles.map((tile) => {
-          const degraded = tile.degraded === true;
-          return (
-            <li key={tile.key} className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onOpen(tile.key)}
-                className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
-                aria-label={`${tile.label}: ${tile.countLabel}`}
-              >
-                {degraded ? (
-                  <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
-                ) : (
-                  <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>{tile.label}</span>
-                  <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{tile.countLabel}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    <section aria-labelledby="pulse-systems-heading" className="min-w-0">
+      <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
+        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+          {hasDegraded ? (
+            <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
+          ) : (
+            <Shield aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+          )}
+          <span id="pulse-systems-heading" className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Other system checks
+          </span>
+          <span className="shrink-0 text-[10.5px]" style={{ color: hasDegraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>
+            {hasDegraded
+              ? `${degradedCount} ${degradedCount === 1 ? "feed needs" : "feeds need"} a refresh`
+              : `${tiles.length} checked`}
+          </span>
+          <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-55 transition-transform group-open:rotate-180" />
+        </summary>
+        <ul className="grid min-w-0 grid-cols-2 gap-x-4 border-t px-1 py-2 sm:grid-cols-4" style={{ borderColor: "var(--app-border)" }}>
+          {tiles.map((tile) => {
+            const degraded = tile.degraded === true;
+            return (
+              <li key={tile.key} className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => onOpen(tile.key)}
+                  className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
+                  aria-label={`${tile.label}: ${tile.countLabel}`}
+                >
+                  {degraded ? (
+                    <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
+                  ) : (
+                    <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>{tile.label}</span>
+                    <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{tile.countLabel}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </details>
     </section>
   );
 }
@@ -469,6 +485,7 @@ export default function PulseBoard({
   const steady = tiles.filter((tile) => STEADY_SYSTEMS.has(tile.key) && !tile.attention && tile.key !== hero.leadKey && !summarizedKeys.has(tile.key));
   const localUpdates = tiles.filter((tile) => LOCAL_UPDATES.has(tile.key) && !tile.attention && tile.key !== hero.leadKey);
   const visibleUpdates = showAllUpdates ? localUpdates : localUpdates.slice(0, 4);
+  const beforeYouGo = [...conditions, ...gettingAround];
 
   const validKeys = useMemo(() => new Set(tiles.map((tile) => tile.key)), [tiles]);
 
@@ -484,6 +501,7 @@ export default function PulseBoard({
 
   const openTile = (key: string) => {
     if (!validKeys.has(key)) return;
+    track("pulse_item_open");
     if (open) updateOpenParam(key, "replace");
     else {
       updateOpenParam(key, "push");
@@ -515,7 +533,7 @@ export default function PulseBoard({
         <div className="max-w-[42rem]">
           <div aria-hidden className="mb-3 h-[3px] w-14 rounded-full" style={{ background: heroColor }} />
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-black/65">
-            <span>Live conditions</span>
+            <span>Before you leave</span>
             <span aria-hidden className="text-black/30">·</span>
             <span className="flex items-center gap-1.5 text-[10px]" style={{ color: heroColor }}>
               <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: heroColor }} />
@@ -536,7 +554,9 @@ export default function PulseBoard({
               </button>
             </div>
           )}
-          <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
+          {!hero.allClear && chips.length > 0 ? (
+            <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
+          ) : null}
         </div>
       </header>
 
@@ -555,31 +575,47 @@ export default function PulseBoard({
             </section>
           )}
 
-          <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
-            <GroupHeading id="pulse-live-board-heading" title="Current conditions" />
-            <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border-strong)" }}>
-              {[...conditions, ...gettingAround].map((tile) => (
-                <ConditionReading key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
-              ))}
-            </div>
-          </section>
+          {beforeYouGo.length > 0 && (
+            <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
+              <GroupHeading
+                id="pulse-live-board-heading"
+                eyebrow="Live conditions"
+                title="Before you go"
+                note="Weather, air, roads and transit"
+              />
+              <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border-strong)" }}>
+                {beforeYouGo.map((tile) => (
+                  <ConditionReading key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <aside className="min-w-0 space-y-7">
           <SystemsLedger tiles={steady} onOpen={openTile} />
 
           {localUpdates.length > 0 && (
-            <section aria-labelledby="pulse-updates-heading" className="min-w-0 space-y-2.5">
-              <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" />
-              <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border)" }}>
-                <ul id="pulse-local-updates" className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
-                {localUpdates.length > 4 && (
-                  <button type="button" onClick={() => setShowAllUpdates((value) => !value)} aria-expanded={showAllUpdates} aria-controls="pulse-local-updates" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-                    {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more updates`}
-                    <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
-                  </button>
-                )}
-              </div>
+            <section aria-labelledby="pulse-updates-heading" className="min-w-0">
+              <details className="group border-y" style={{ borderColor: "var(--app-border)" }}>
+                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]">
+                  <Newspaper aria-hidden className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} />
+                  <span id="pulse-updates-heading" className="min-w-0 flex-1 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    Local updates
+                  </span>
+                  <span className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>{localUpdates.length} sources</span>
+                  <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 opacity-55 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="min-w-0 border-t px-1" style={{ borderColor: "var(--app-border)" }}>
+                  <ul id="pulse-local-updates" className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+                  {localUpdates.length > 4 && (
+                    <button type="button" onClick={() => setShowAllUpdates((value) => !value)} aria-expanded={showAllUpdates} aria-controls="pulse-local-updates" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                      {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more updates`}
+                      <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
+                    </button>
+                  )}
+                </div>
+              </details>
             </section>
           )}
         </aside>

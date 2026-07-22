@@ -219,7 +219,10 @@ export function trucksByKind(kind: FoodTruckKind): FoodTruck[] {
   return FOOD_TRUCKS.filter((t) => t.kind === kind);
 }
 
-/** A vendor's own daily-location link, best available (site > IG > FB). */
+/**
+ * A vendor's best daily-location link. Social feeds win because vendors post
+ * same-day stops there; a website is the fallback when no social feed exists.
+ */
 export function truckFeedUrl(t: FoodTruck): string | null {
-  return t.website ?? t.instagram ?? t.facebook ?? null;
+  return t.instagram ?? t.facebook ?? t.website ?? null;
 }

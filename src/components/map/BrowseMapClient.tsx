@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppMapClient, {
   type CivicPin,
@@ -24,7 +24,7 @@ import { isOpenNow } from "@/lib/hours";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
-import { parseScope, scopeCentroid, setScope, SCOPE_PARAM, type Scope } from "@/lib/scope";
+import { parseScope, scopeCentroid, SCOPE_PARAM, type Scope } from "@/lib/scope";
 
 /**
  * BrowseMapClient — the param-dependent half of /map's browse mode.
@@ -162,9 +162,6 @@ export default function BrowseMapClient({
   // not silently turn the county map into a downtown/town close-up.
   const explicitScope = parseScope(sp.get(SCOPE_PARAM));
   const [scope] = useState<Scope>(() => explicitScope ?? "county");
-  useEffect(() => {
-    if (!explicitScope) setScope("county");
-  }, [explicitScope]);
   // A town scope resolves to a fixed centroid; nearme/county don't.
   const scopeCenter = scopeCentroid(scope);
 

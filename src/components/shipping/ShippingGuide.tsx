@@ -167,7 +167,7 @@ export default function ShippingGuide({
               )}
               <ul className="overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
                 {g.list.map((p, i) => (
-                  <ShipRow key={p.id} p={p} first={i === 0} />
+                  <ShipRow key={p.id} p={p} first={i === 0} position={i + 1} groupSize={g.list.length} />
                 ))}
               </ul>
             </div>
@@ -181,7 +181,17 @@ export default function ShippingGuide({
 /** One shipping point as a dense row: a kind-tinted carrier badge, the name,
  *  a carrier · town · address meta line, optional hours, and a one-tap
  *  Directions affordance (the row itself opens maps). */
-function ShipRow({ p, first }: { p: ShipPoint; first: boolean }) {
+function ShipRow({
+  p,
+  first,
+  position,
+  groupSize,
+}: {
+  p: ShipPoint;
+  first: boolean;
+  position: number;
+  groupSize: number;
+}) {
   const { icon: Icon, ink } = KIND_META[p.kind];
   const carrier = CARRIER_LABEL[p.carrier] ?? "";
   const meta = [carrier, muniName(p.municipality), p.address].filter(Boolean).join(" · ");
@@ -191,7 +201,7 @@ function ShipRow({ p, first }: { p: ShipPoint; first: boolean }) {
         href={directionsHref(p)}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`Get directions to ${p.name}${p.address ? ` at ${p.address}` : ` in ${muniName(p.municipality)}`}`}
+        aria-label={`Get directions to ${p.name}${p.address ? ` at ${p.address}` : `, item ${position} of ${groupSize}, in ${muniName(p.municipality)}`}`}
         className="tactile-interactive flex min-h-[56px] items-center gap-3 px-3 py-2.5"
       >
         <span

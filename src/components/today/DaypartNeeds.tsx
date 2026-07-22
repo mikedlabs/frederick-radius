@@ -102,6 +102,7 @@ export default function DaypartNeeds({
           </p>
           <Link
             href={active.href}
+            aria-label={`See all ${active.label.toLocaleLowerCase()} places`}
             className="tap-44-y inline-flex items-center gap-0.5 text-[11.5px] font-semibold"
             style={{ color: "var(--app-brand-press)" }}
           >

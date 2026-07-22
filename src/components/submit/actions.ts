@@ -15,6 +15,9 @@ export type SubmitPlaceInput = {
   website: string;
   phone: string;
   description: string;
+  social_url: string;
+  photo_url: string;
+  photo_permission: boolean;
   submitter_email: string;
   submitter_name: string;
   is_owner: boolean;
@@ -120,6 +123,9 @@ export async function submitPlaceAction(
 ): Promise<{ token: string }> {
   if (!input.name || !input.category || !input.submitter_email) {
     throw new Error("Name, category, and email are required.");
+  }
+  if (input.photo_url && !input.photo_permission) {
+    throw new Error("Confirm that Frederick Radius has permission to display the submitted photo.");
   }
   const token = await persistSubmission("place", input, {
     submitter_name: input.submitter_name,

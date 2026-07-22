@@ -45,12 +45,10 @@ const MAX_PROP_STR_LEN = 200;
 // id, so the blast radius is self-poisoning, but a sane shape costs nothing).
 const SAFE_EVENT_RE = /^[a-z0-9_]{1,64}$/;
 
-// Prop VALUES in this codebase are categorical (a craving key, a source, an
-// on/off flag) — with two exceptions that carry raw user text: search_empty and
-// ask_empty pass the typed `query`. That free-text is fine for cookieless
-// Plausible, but it must NOT land in the member-LINKED first-party log, where it
-// would tie "what did this person search for" to a durable id. We drop these keys
-// (an allow-by-shape denylist of the known free-text carriers) before any insert.
+// Prop VALUES in this codebase are usually categorical (a craving key, a source,
+// an on/off flag). Search and Ask misses can carry raw text, which must never
+// land in this member-linked log or in Plausible. track() sends only stable goal
+// names to Plausible; this second guard drops sensitive keys before any insert.
 const SENSITIVE_PROP_KEYS = new Set([
   "query",
   "q",

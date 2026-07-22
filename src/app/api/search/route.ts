@@ -60,14 +60,24 @@ export async function GET(request: NextRequest) {
     Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
       ? { lat: roundCoord(lat), lng: roundCoord(lng) }
       : null;
-  const approx = await approxLocation();
-  const context = resolveDecisionContext({
-    scopeRaw: request.cookies.get(SCOPE_COOKIE)?.value ?? null,
-    homeMuniRaw: request.cookies.get("fr_home_muni")?.value ?? null,
-    deviceOrigin,
-    approximateOrigin: approx.origin,
-    approximateStatus: approx.status,
-  });
+  // The map ranks around the camera the user is looking at. A town/home cookie
+  // is useful for global Find, but must not silently override an explicit map
+  // origin after someone pans across the county.
+  const mapOrigin = request.nextUrl.searchParams.get("origin") === "map" && deviceOrigin;
+  const context = mapOrigin
+    ? {
+        origin: deviceOrigin,
+        filterMunicipality: null,
+        label: "Current map area",
+        fallbackReason: null,
+      }
+    : await approxLocation().then((approx) => resolveDecisionContext({
+        scopeRaw: request.cookies.get(SCOPE_COOKIE)?.value ?? null,
+        homeMuniRaw: request.cookies.get("fr_home_muni")?.value ?? null,
+        deviceOrigin,
+        approximateOrigin: approx.origin,
+        approximateStatus: approx.status,
+      }));
   const { results, meta } = qualifiedSearchIndex(q, limit, events, {
     origin: context.origin,
     municipality: context.filterMunicipality,

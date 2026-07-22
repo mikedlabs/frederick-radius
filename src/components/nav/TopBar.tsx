@@ -10,6 +10,7 @@ import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
+import { consumeFindRequest } from "@/lib/findBridge";
 
 
 export default function TopBar() {
@@ -85,10 +86,20 @@ export default function TopBar() {
   // Compass and other in-page launchers can open the one global search
   // without mounting a second search implementation.
   useEffect(() => {
-    const open = () => setSearchOpen(true);
+    const open = () => {
+      consumeFindRequest("global");
+      setSearchOpen(true);
+    };
     window.addEventListener("fr:open-search", open);
+    if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
   }, []);
+
+  // Keep the center Find destination visually in sync with the dialog no
+  // matter which trigger opened it (bottom nav, desktop field, or keyboard).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("fr:search-state", { detail: { open: searchOpen } }));
+  }, [searchOpen]);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -99,8 +110,17 @@ export default function TopBar() {
       }
       // Forward slash as a quick-open (don't trigger when typing into another input)
       if (e.key === "/" && !searchOpen) {
-        const tag = (e.target as HTMLElement)?.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA" && (e.target as HTMLElement)?.contentEditable !== "true") {
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        const role = target?.getAttribute("role");
+        const editable = tag === "INPUT"
+          || tag === "TEXTAREA"
+          || tag === "SELECT"
+          || target?.isContentEditable
+          || role === "textbox"
+          || role === "searchbox"
+          || role === "combobox";
+        if (!editable) {
           e.preventDefault();
           setSearchOpen(true);
         }
@@ -162,7 +182,10 @@ export default function TopBar() {
               {/* The wordmark yields on the narrowest phones so functional
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
-              <span className="hidden whitespace-nowrap leading-none min-[375px]:block" style={{ color: "var(--app-ink)" }}>
+              <span
+                className={`${pathname === "/map" ? "hidden sm:block" : "hidden min-[375px]:block"} whitespace-nowrap leading-none`}
+                style={{ color: "var(--app-ink)" }}
+              >
                 Frederick Radius
               </span>
             </Link>
@@ -184,9 +207,6 @@ export default function TopBar() {
               <div className="ml-1 min-w-0 flex-1">
                 {pathname === "/map" ? (
                   <>
-                    <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:hidden" style={{ color: "var(--app-ink)" }}>
-                      County map
-                    </span>
                     <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
                       Frederick County
                     </span>
@@ -276,7 +296,7 @@ export default function TopBar() {
             }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="text-[14px] font-medium leading-none">All tools</span>
+            <span className={pathname === "/map" ? "hidden text-[14px] font-medium leading-none min-[430px]:inline" : "text-[14px] font-medium leading-none"}>All tools</span>
           </Link>}
         </div>
       </header>

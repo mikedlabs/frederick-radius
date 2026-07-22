@@ -234,6 +234,14 @@ export default function PlaceCard({
   const color = cat?.color ?? "var(--app-brand)";
   const { openSheet } = usePlaceSheet();
   const openDetail = () => { haptic("light"); openSheet(place); };
+  // Chain locations often share the same visible name. Give every card action
+  // enough location context for voice control and screen readers to distinguish
+  // the downtown result from the one across the county.
+  const actionName = place.address
+    ? `${place.name} at ${place.address}`
+    : place.city
+      ? `${place.name} in ${place.city}`
+      : place.name;
   // "Known for" — the real descriptive blurb, or null for DFP filler.
   const kf = knownFor(place);
   // Neutral mode drops the editorial "why" chips entirely (the /map list is a
@@ -264,7 +272,7 @@ export default function PlaceCard({
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-3 p-4 pl-5">
@@ -305,7 +313,7 @@ export default function PlaceCard({
           </div>
         </button>
         <div className="absolute right-2.5 top-2.5 z-10">
-          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
     );
@@ -329,7 +337,7 @@ export default function PlaceCard({
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="space-y-2.5 p-4">
@@ -404,7 +412,7 @@ export default function PlaceCard({
           </div>
         </button>
         <div className="absolute right-2.5 top-2.5 z-10">
-          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
     );
@@ -426,7 +434,7 @@ export default function PlaceCard({
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="space-y-2 p-3.5 pb-4">
@@ -471,7 +479,7 @@ export default function PlaceCard({
           </div>
         )}
         <div className="absolute bottom-2 right-2 z-10">
-          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+          <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
         </div>
       </article>
     );
@@ -485,7 +493,7 @@ export default function PlaceCard({
         <button
           type="button"
           onClick={openDetail}
-          aria-label={`View ${place.name} details`}
+          aria-label={`View ${actionName} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-2.5 p-2.5">
@@ -551,7 +559,7 @@ export default function PlaceCard({
       <button
         type="button"
         onClick={openDetail}
-        aria-label={`View ${place.name} details`}
+        aria-label={`View ${actionName} details`}
         className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       />
       <div className="pointer-events-none relative z-10 self-center">
@@ -613,7 +621,7 @@ export default function PlaceCard({
         )}
       </div>
       <div className="relative z-10 self-start">
-        <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        <SaveButton refType="place" refId={place.slug} label={`Save ${actionName}`} />
       </div>
     </article>
   );

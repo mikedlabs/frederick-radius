@@ -3,12 +3,14 @@
 import { useEffect, useId, useRef } from "react";
 import { ArrowRight, Bookmark, CornerUpRight, X } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import type { EventPin, MapPinPlace } from "./types";
+import type { NearbyUtility } from "./mapNearby";
 
 /**
  * MapPeek — the quick-peek card that rises from the bottom when a pin is
@@ -43,6 +45,7 @@ export default function MapPeek({
   place,
   hostedEvent = null,
   nearestGarage = null,
+  nearbyUtilities = [],
   userLoc,
   onClose,
   onDetails,
@@ -54,6 +57,8 @@ export default function MapPeek({
   /** Nearest downtown garage within a short walk, with the live space
    *  count when the feed reports one. Null outside garage range. */
   nearestGarage?: { name: string; distM: number; available: number | null } | null;
+  /** Closest distinct practical amenities within a short walk. */
+  nearbyUtilities?: NearbyUtility[];
   userLoc: LngLat | null;
   onClose: () => void;
   /** Open the full PlaceSheet for the deep read. */
@@ -64,6 +69,7 @@ export default function MapPeek({
   const saved = useIsSaved("place", place.slug);
   const toggleSave = useToggleSave("place", place.slug);
   const open = openLine(place);
+  const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
   const dist =
     userLoc && place.geom
       ? formatDistance(haversineMeters(userLoc, place.geom))
@@ -110,6 +116,12 @@ export default function MapPeek({
           <span id={nameId} className="map-peek-name font-serif">{place.name}</span>
           <span className="map-peek-meta">
             <span style={{ color: open.tone, fontWeight: 600 }}>{open.text}</span>
+            {town && (
+              <>
+                <span aria-hidden className="map-peek-dot">·</span>
+                <span>{town}</span>
+              </>
+            )}
             {dist && (
               <>
                 <span aria-hidden className="map-peek-dot">·</span>
@@ -152,6 +164,17 @@ export default function MapPeek({
               {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
             </span>
           )}
+          {nearbyUtilities.length > 0 && (
+            <span className="map-peek-nearby">
+              <strong>Nearby</strong>
+              {nearbyUtilities.map((item) => (
+                <span key={item.label}>
+                  <span aria-hidden> · </span>
+                  {item.label} {formatDistance(item.distM)}
+                </span>
+              ))}
+            </span>
+          )}
           <span
             className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold"
             style={{ color: "var(--app-brand-press)" }}
@@ -162,9 +185,13 @@ export default function MapPeek({
           <span id={descriptionId} className="sr-only">
             {cat?.name ?? place.category}. {open.text}.
             {dist ? ` ${dist} away.` : ""}
+            {town ? ` In ${town}.` : ""}
             {place.deal_hook ? ` ${place.deal_hook}.` : ""}
             {hostedEvent ? ` Upcoming event: ${hostedEvent.title}.` : ""}
             {nearestGarage ? ` Nearby parking: ${nearestGarage.name}.` : ""}
+            {nearbyUtilities.length > 0
+              ? ` Nearby: ${nearbyUtilities.map((item) => `${item.label}, ${formatDistance(item.distM)}`).join("; ")}.`
+              : ""}
             Open details.
           </span>
         </span>

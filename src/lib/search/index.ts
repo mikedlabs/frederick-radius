@@ -273,6 +273,26 @@ export function searchIndex(
   return [...head, ...hits];
 }
 
+function searchHead(query: string): SearchResult[] {
+  return [
+    ...matchQuickActions(query).slice(0, 2),
+    ...matchLayers(query).slice(0, 1),
+    ...matchCivicPlaces(query).slice(0, 2),
+  ];
+}
+
+function dedupeByHref(results: SearchResult[], limit: number): SearchResult[] {
+  const seen = new Set<string>();
+  const unique: SearchResult[] = [];
+  for (const result of results) {
+    if (seen.has(result.href)) continue;
+    seen.add(result.href);
+    unique.push(result);
+    if (unique.length === limit) break;
+  }
+  return unique;
+}
+
 export type QualifiedSearchIndexResult = {
   results: SearchResult[];
   meta: QualifiedSearchMeta;
@@ -286,15 +306,21 @@ export function qualifiedSearchIndex(
   eventPool?: readonly Event[],
   context: QualifiedSearchContext = {},
 ): QualifiedSearchIndexResult {
-  const qualified = qualifiedSearch(query, limit, eventPool, context);
-  if (!qualified.meta.qualifiers.constrained) {
-    return {
-      results: searchIndex(query, limit, eventPool),
-      meta: qualified.meta,
-    };
-  }
+  const head = searchHead(query);
+  const qualified = qualifiedSearch(query, limit + head.length, eventPool, context);
+  const ranked = qualified.hits.map(hitToResult);
+  // Natural-language constraints own the first decision: “coffee near me”
+  // must lead with the nearest qualified coffee, not a generic map door. For
+  // ordinary named searches, purpose-built actions can still lead as before.
+  // In both cases, layer and civic heads remain discoverable and URL-level
+  // duplicates are removed after the two sources are merged.
+  const merged = qualified.meta.qualifiers.constrained
+    ? ranked.length > 0
+      ? [ranked[0], ...head, ...ranked.slice(1)]
+      : head
+    : [...head, ...ranked];
   return {
-    results: qualified.hits.map(hitToResult),
+    results: dedupeByHref(merged, limit),
     meta: qualified.meta,
   };
 }

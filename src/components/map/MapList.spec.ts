@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { rankMapListPlaces } from "./MapList";
-import type { MapPinPlace } from "./types";
+import { rankMapListEvents, rankMapListPlaces } from "./MapList";
+import type { EventPin, MapPinPlace } from "./types";
 
 function place(slug: string, lng: number): MapPinPlace {
   return {
@@ -14,6 +14,18 @@ function place(slug: string, lng: number): MapPinPlace {
     is_verified: true,
     municipality: "frederick",
     short_blurb: "A test place.",
+  };
+}
+
+function event(slug: string, startsAt: string, lng: number): EventPin {
+  return {
+    slug,
+    title: slug,
+    starts_at: startsAt,
+    venue_name: "Test venue",
+    lng,
+    lat: 39.4,
+    category: "community",
   };
 }
 
@@ -35,5 +47,31 @@ describe("rankMapListPlaces", () => {
     );
 
     expect(rows.map((row) => row.slug)).toEqual(["near", "middle"]);
+  });
+});
+
+describe("rankMapListEvents", () => {
+  it("puts the sooner event first even when a later event is closer", () => {
+    const rows = rankMapListEvents(
+      [
+        event("later-nearby", "2026-07-23T00:00:00.000Z", -77.2),
+        event("sooner-farther", "2026-07-22T23:00:00.000Z", -77.4),
+      ],
+      { lng: -77.2, lat: 39.4 },
+    );
+
+    expect(rows.map((row) => row.slug)).toEqual(["sooner-farther", "later-nearby"]);
+  });
+
+  it("uses distance to break a start-time tie", () => {
+    const rows = rankMapListEvents(
+      [
+        event("far", "2026-07-22T23:00:00.000Z", -77.5),
+        event("near", "2026-07-22T23:00:00.000Z", -77.21),
+      ],
+      { lng: -77.2, lat: 39.4 },
+    );
+
+    expect(rows.map((row) => row.slug)).toEqual(["near", "far"]);
   });
 });

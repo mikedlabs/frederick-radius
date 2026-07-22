@@ -78,6 +78,9 @@ files are in `licenses/`.
   side. Those edges may disappear on narrower screens.
 - `feed-brand`: 1080 px square brand post.
 - `feed-portrait`: 1080 by 1350 portrait brand post.
+- `facebook-group-launch`: 1080 by 1350 food-truck campaign post using owned
+  Frederick photography. Use this when sharing the food-truck board in a
+  Frederick community group. The printed campaign code is `food-truck`.
 - `feed-event-template`: Editable event post.
 - `feed-live-template`: Editable live or open-now post.
 - `photo-post-template`: Replace the 4:5 placeholder area with owned Frederick photography.
@@ -95,20 +98,30 @@ files are in `licenses/`.
 - `ask-radius`: 18 by 24 activation poster built around the current Ask Radius
   interface. Replace the outlined QR placeholder with a tested production QR
   code before printing.
+- `campaign/poster-field-guide`: 18 by 24 poster for the live field-guide
+  campaign, with a working tracked QR code.
+- `campaign/poster-right-now`: 18 by 24 owned-photography campaign poster with
+  a working tracked QR code.
 
 The poster SVGs are editable 1800 by 2400 masters. The PNG exports are ready
-for review or a short-run proof. Add a tested QR code only after the final
-destination URL and campaign tracking are locked.
+for review or a short-run proof. The campaign pair also includes 18 by 24 PDF
+exports with generated QR codes. Add a tested QR code to the older templates
+only after the final destination URL and campaign tracking are locked.
 
 ## NFC cards
 
 - `nfc/general-front` and `nfc/general-back`: General Frederick Radius card.
+- `nfc/signal-front` and `nfc/signal-back`: Premium Radius Signal CR80 card.
+  The QR and programmed NFC destination use separate analytics media values.
+- `campaign/radius-signal-card-mockup.png`: Presentation view of the intended
+  stock, embossing, and edge treatment. Production should use the SVG masters.
 - `nfc/partner-front` and `nfc/partner-back`: Blank partner or venue template.
 
-All four masters are CR80 cards at 300 dpi with 0.125 in bleed: 1088 by 713
-px. They intentionally contain QR and partner placeholders, not a decorative
-or fake QR code. Follow `docs/brand/NFC_CARD_GUIDE.md` for trim, safe area,
-programming, and proofing requirements.
+All six masters are CR80 cards at 300 dpi with 0.125 in bleed: 1088 by 713
+px. The general and partner templates retain deliberate QR placeholders. The
+Radius Signal back contains a generated production QR. Follow
+`docs/brand/NFC_CARD_GUIDE.md` for trim, safe area, programming, and proofing
+requirements.
 
 SVG is the editable master. PNG is the ready-to-upload export. Do not enlarge a PNG to create a new master.
 

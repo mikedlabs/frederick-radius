@@ -61,7 +61,14 @@ function isDecisionCopy(p: PlaceCardData): boolean {
   const b = (p.short_blurb ?? "").trim();
   if (!b) return false;
   const name = p.name.trim();
-  if (b === name || b.startsWith(`${name} `)) return false; // "Name Patrick St"
+  if (b === name) return false;
+  // A name prefix is often grammatical, useful copy ("Baker Park is a
+  // 44-acre…"). Reject only the short scraped echo this guard was written for
+  // ("Name Patrick St"), not an otherwise substantive description.
+  if (b.startsWith(`${name} `)) {
+    const remainderWords = b.slice(name.length).trim().split(/\s+/).filter(Boolean);
+    if (remainderWords.length < 5) return false;
+  }
   if ((blurbCounts.get(b) ?? 0) > 3) return false; // shared boilerplate
   return true;
 }

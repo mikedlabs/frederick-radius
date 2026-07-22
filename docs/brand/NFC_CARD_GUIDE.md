@@ -26,11 +26,15 @@ wants the back rotated before approving a two-sided proof.
 - `general-front.svg` and `general-back.svg` are the standard Radius card.
 - `partner-front.svg` and `partner-back.svg` are the venue template. Replace
   every all-caps placeholder before export.
+- `signal-front.svg` and `signal-back.svg` are the premium public-facing Radius
+  Signal card. Its back includes a working tracked QR fallback.
 - The matching PNG files are proofs and handoff previews. The SVGs are the
   production masters.
 
-The dotted QR areas are placeholders only. They are deliberately not fake or
-decorative QR codes.
+The dotted QR areas in the general and partner templates are placeholders.
+They are deliberately not fake or decorative QR codes. The Radius Signal back
+contains a generated QR that must still be scanned from the final physical
+proof before production.
 
 ## NFC programming
 
@@ -38,6 +42,10 @@ Program one short HTTPS URL as an NDEF URI record. Use a stable Radius URL that
 can redirect later, instead of writing campaign copy or a long tracking URL to
 the chip. Lock the card only after the destination, redirect, and analytics
 have been verified.
+
+The Radius Signal master uses separate `utm_medium=nfc` and `utm_medium=qr`
+destinations. This lets Plausible distinguish a tap from a scan without storing
+anything personal on the card.
 
 Do not store names, email addresses, access credentials, or any other personal
 information on the card. The chip should only open a public web address.

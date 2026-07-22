@@ -49,9 +49,9 @@ export async function buildWeeklyDigestBody(now: Date = new Date()): Promise<str
 
   if (!key || !site) {
     lines.push(
-      "Traffic and event numbers need two env vars that are not set yet:",
-      "`PLAUSIBLE_API_KEY` (Plausible → Settings → API keys) and `PLAUSIBLE_SITE_ID` (the site domain).",
-      "Add them in Vercel and next Monday's digest fills itself in.",
+      "Traffic and goal numbers are available in the Plausible dashboard.",
+      "This automated digest needs Plausible Business because Starter does not include the Stats API.",
+      "If the plan is upgraded, add `PLAUSIBLE_API_KEY` and `PLAUSIBLE_SITE_ID` in Vercel.",
     );
     return lines.join("\n");
   }

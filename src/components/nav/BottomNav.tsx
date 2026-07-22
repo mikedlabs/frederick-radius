@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { requestFind } from "@/lib/findBridge";
 import { TABS, tabIndexForPath } from "./tabs";
 import { useHideOnScroll } from "./useHideOnScroll";
 
@@ -22,33 +23,61 @@ export default function BottomNav() {
   const hidden = useHideOnScroll(false);
   const realIdx = tabIndexForPath(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  const findRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pathname completion clears the optimistic destination
     setPendingIdx(null);
   }, [pathname]);
 
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      setFindOpen(Boolean(detail?.open));
+    };
+    window.addEventListener("fr:search-state", sync);
+    return () => window.removeEventListener("fr:search-state", sync);
+  }, []);
+
+  useEffect(() => {
+    findRef.current?.setAttribute("data-find-ready", "true");
+  }, []);
+
   if (pathname.startsWith("/ask")) return null;
 
+  const mapOwnsFind = pathname === "/map";
   const findCell = (
-    <li key="find" className="flex items-center justify-center">
-      <button
-        type="button"
-        aria-label="Find places, events, towns, tools"
-        aria-haspopup="dialog"
-        onClick={() => {
+    <li key="find" className="flex px-0.5">
+      <Link
+        ref={findRef}
+        href={mapOwnsFind ? "/map#map-search-input" : "/search"}
+        aria-label={mapOwnsFind ? "Find on this map" : "Find across Frederick County"}
+        aria-haspopup={mapOwnsFind ? undefined : "dialog"}
+        aria-controls={mapOwnsFind ? "map-search-input" : "radius-find-dialog"}
+        aria-expanded={mapOwnsFind ? undefined : findOpen}
+        onClick={(event) => {
+          event.preventDefault();
           haptic("light");
-          window.dispatchEvent(new CustomEvent("fr:open-search"));
+          requestFind(mapOwnsFind ? "map" : "global");
         }}
-        className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-md)] transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
+        className="relative flex h-12 w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[var(--app-radius-sm)] transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
         style={{
-          background: "var(--app-brand-press)",
-          color: "var(--app-on-brand)",
-          boxShadow: "var(--app-edge), var(--app-lip)",
+          background: findOpen
+            ? "var(--app-brand)"
+            : "color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid))",
+          color: findOpen ? "var(--app-on-brand)" : "var(--app-brand-press)",
+          border: "1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
         }}
       >
-        <Search width={20} height={20} strokeWidth={2.35} aria-hidden />
-      </button>
+        <span
+          aria-hidden
+          className="absolute inset-x-2 top-0 h-[2px]"
+          style={{ background: findOpen ? "var(--app-on-brand)" : "var(--app-brand)" }}
+        />
+        <Search width={20} height={20} strokeWidth={2.25} aria-hidden />
+        <span className="text-[11px] font-semibold leading-tight tracking-tight">Find</span>
+      </Link>
     </li>
   );
 

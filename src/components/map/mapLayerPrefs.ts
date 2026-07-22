@@ -46,18 +46,21 @@ export function readMapLayerPrefs(): MapLayerPrefs {
 export function writeMapLayerPrefs(p: MapLayerPrefs): void {
   if (typeof window === "undefined") return;
   try {
-    // Drop empty/false noise so the stored blob stays small and a cleared map
-    // round-trips to "nothing remembered" (not a wall of false flags).
+    // Drop empty/false noise so the stored blob stays small. Transit is the
+    // exception: the county map enables it for a first-time visitor, so an
+    // explicit false must survive reload and remain a real user choice.
     const slim: MapLayerPrefs = {};
     if (p.cats && p.cats.length) slim.cats = p.cats;
     if (p.amenities && p.amenities.length) slim.amenities = p.amenities;
     if (p.civic) slim.civic = true;
-    if (p.transit) slim.transit = true;
+    if (typeof p.transit === "boolean") slim.transit = p.transit;
     if (p.trails) slim.trails = true;
     if (p.aerial) slim.aerial = true;
     if (p.cemeteries) slim.cemeteries = true;
     if (p.parking) slim.parking = true;
     if (p.radar) slim.radar = true;
+    if (p.incidents) slim.incidents = true;
+    if (p.cameras) slim.cameras = true;
     if (p.firestations) slim.firestations = true;
     if (p.civicplaces) slim.civicplaces = true;
     if (Object.keys(slim).length === 0) window.localStorage.removeItem(KEY);
