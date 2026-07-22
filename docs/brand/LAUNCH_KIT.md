@@ -67,9 +67,9 @@ programming, and proofing.
 ### Public beta
 
 I have been building Frederick Radius for over a year because useful local
-information is scattered across too many places. It shows what is open, what is
-happening today, and practical information around you across Frederick County.
-It is still in beta, so I am fixing real problems as people find them.
+information is scattered across too many places. Radius puts nearby places
+beside today's events, then adds county information that is usually harder to
+find. It is still in beta, so I am fixing real problems as people find them.
 
 Try it: [URL]
 Access code: food-truck
@@ -92,19 +92,18 @@ you a bad answer, send me the exact question. That is useful beta feedback.
 
 ### Countywide
 
-Frederick is bigger than one feed. Radius covers the city and the towns around
-it, with local places, events, county services, and map information that are
-usually scattered across different sites.
+Frederick County does not stop at downtown. Radius covers the city and the
+surrounding towns with the same nearby search and event tools.
 
 [URL]
 
 ### How it is made
 
-Some of Radius comes from live public data. Some of it comes from me walking
-downtown and mapping benches, trash cans, dog waste stations, and other useful
-things nobody seems to have in one reliable dataset. I have rebuilt parts of
-this more times than I can count, but I am making the local tool I kept wishing
-existed.
+Radius uses live public data, but some of its most useful details came from
+walking downtown with the mapping tool I built. Benches and trash cans were not
+available in one reliable dataset, so I recorded them myself. I have rebuilt
+parts of Radius more times than I can count because I want the tool to work
+here.
 
 [URL]
 
@@ -121,9 +120,9 @@ into another generic directory.
 **Subject:** Frederick maker opens countywide local information app for public beta
 
 I am a Frederick-based photographer and small-business owner, and I have spent
-more than a year building Frederick Radius. It is a mobile guide to the city
-and the rest of Frederick County. It brings local places, current events,
-practical services, and map information into one place.
+more than a year building Frederick Radius. The mobile guide covers Frederick
+City and the surrounding county. It brings current local sources into one
+location-based view, including details I have mapped by hand.
 
 The app is in public beta because local data is messy and the useful details
 need real testing. I can share screenshots, the story behind the project, and

@@ -2,8 +2,8 @@
 
 > Frederick County starts where you are.
 
-Frederick Radius helps people find open places, local events, and practical
-information across Frederick County, Maryland.
+Frederick Radius brings Frederick County's scattered local information into one
+guide and sorts it by your location.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
 **Brand system:** [`docs/brand/BRAND_GUIDE.md`](./docs/brand/BRAND_GUIDE.md)

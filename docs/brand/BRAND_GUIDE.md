@@ -6,7 +6,9 @@ This is the source of truth for Frederick Radius. It applies to the product, soc
 
 ## The idea
 
-Frederick Radius helps someone understand what is useful around them without making them search through several sites and social feeds. The brand should feel local, informed, calm, and practical. It should never feel like a tourism campaign, a government portal, or a generic technology product.
+Frederick Radius should feel like it was made by someone who knows the county
+and checks the facts. Keep the tone useful and matter-of-fact. Do not borrow the
+voice of tourism advertising or government.
 
 The Ripple begins at one point and reaches beyond the frame. It represents a person standing somewhere in Frederick County and the useful things within reach.
 

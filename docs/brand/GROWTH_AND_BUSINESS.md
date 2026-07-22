@@ -274,21 +274,23 @@ who take no useful action is still expensive.
 
 ## How to pitch a business
 
-Use a specific observation, show the working page, and explain the trust rule.
+Start with a specific problem on the business's current listing. Show the
+working Radius page, then explain that payment never changes search order.
 
-> Radius already includes Frederick County businesses for free. I noticed your
-> [Sunday hours / event link / menu] is hard to confirm across the places people
-> check. I am testing an owner tool that keeps that information current, gives
-> you a trackable Radius link and NFC card, and reports calls, direction opens,
-> and official-site visits. Paying does not move you up in search. I would like
-> to run it with you for [period], then show you the real results before you
-> decide whether to keep it.
+> I noticed that your [specific detail] is hard to confirm across the places
+> people check. Radius already includes Frederick County businesses for free,
+> and I am testing an owner tool that lets you correct that information and post
+> timely updates. The pilot includes a trackable page and NFC card. I will report
+> the calls or direction requests Radius actually sends. Paying never changes
+> your position in search. I would like to try it with you for [period], then
+> review the results together before you decide whether to continue.
 
 For a service project:
 
-> I can also handle the photo, campaign page, card design, and measurement as a
-> fixed project. The scope is [deliverables] for [price]. The sponsored work is
-> labeled, and it does not change Radius recommendations.
+> I can also quote the photography and campaign work as a separate project,
+> including the card design if you need it. The scope is [deliverables] for
+> [price]. Sponsored work will be labeled and will not affect Radius
+> recommendations.
 
 Do not open with the technology stack, the number of APIs, or the hours spent
 building the app. Those facts can explain the work after the owner understands
