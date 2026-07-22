@@ -4,9 +4,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { eventIntentOf } from "@/lib/events/intents";
 import { isKeysEvent } from "@/lib/today/keysEvent";
-import { formatEventWhen } from "@/lib/events/format";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { Row, RowList } from "@/components/ui/Row";
+import EventCard from "@/components/event/EventCard";
 import EmptyState from "@/components/ui/EmptyState";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -23,7 +21,7 @@ import Skeleton from "@/components/ui/Skeleton";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
-const MAX_ROWS = 10;
+const MAX_ROWS = 6;
 
 export default async function CountySportsEvents({
   eventsPromise,
@@ -54,21 +52,11 @@ export default async function CountySportsEvents({
   }
 
   return (
-    <RowList className="mt-4">
-      {rows.map((e) => {
-        const town = MUNICIPALITY_BY_SLUG[e.municipality]?.name;
-        const where = [e.venue_name, town].filter(Boolean).join(", ");
-        return (
-          <Row
-            key={e.slug}
-            href={`/events/${e.slug}`}
-            title={e.title}
-            subtitle={[formatEventWhen(e), where].filter(Boolean).join(" · ")}
-            meta={e.is_free ? "Free" : e.price_text || undefined}
-          />
-        );
-      })}
-    </RowList>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {rows.map((event) => (
+        <EventCard key={event.slug} event={event} variant="glance" priorityImage={false} />
+      ))}
+    </div>
   );
 }
 

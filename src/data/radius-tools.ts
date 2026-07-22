@@ -428,11 +428,11 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       {
         id: "sports",
         label: "Catch a game",
-        description: "Follow the Frederick Keys and find places to play.",
+        description: "Follow pro, college, and high-school teams, then find places to play.",
         href: "/sports",
         icon: "activity",
         tone: "accent",
-        keywords: ["sports", "frederick keys", "keys game", "baseball", "golf", "pickleball", "swimming pool"],
+        keywords: ["sports", "frederick keys", "keys game", "flying cows", "cows game", "hood blazers", "mount st marys", "mountaineers", "fcc cougars", "high school sports", "fcps athletics", "basketball", "baseball", "golf", "pickleball", "swimming pool"],
       },
       {
         id: "plan",

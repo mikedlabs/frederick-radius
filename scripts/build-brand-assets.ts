@@ -337,24 +337,29 @@ function facebookGroupLaunch(fonts: string, photoUrl: string): string {
     1350,
     `<defs>
     <linearGradient id="group-photo-shade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".08"/>
-      <stop offset="38%" stop-color="${BRAND.colors.ink}" stop-opacity=".04"/>
-      <stop offset="72%" stop-color="${BRAND.colors.ink}" stop-opacity=".43"/>
-      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".78"/>
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".25"/>
+      <stop offset="55%" stop-color="${BRAND.colors.ink}" stop-opacity=".38"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".72"/>
     </linearGradient>
   </defs>
-  <image href="${photoUrl}" width="1080" height="1350" preserveAspectRatio="xMidYMid slice"/>
-  <rect width="1080" height="1350" fill="url(#group-photo-shade)"/>
-  ${ripple("compact", BRAND.colors.cream, "translate(66 66) scale(.82)")}
-  <text x="171" y="137" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="43" font-weight="400">${BRAND.name}</text>
-  <text x="66" y="570" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="100" font-weight="400" letter-spacing="-1.5">
-    <tspan x="66" dy="0">FIND THE</tspan><tspan x="66" dy="106">FOOD TRUCKS.</tspan>
+  <rect width="1080" height="1350" fill="${BRAND.colors.ink}"/>
+  <image href="${photoUrl}" width="1080" height="790" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1080" height="790" fill="url(#group-photo-shade)"/>
+  <rect x="40" y="40" width="1000" height="1270" rx="28" fill="none" stroke="${BRAND.colors.cream}" stroke-opacity=".28" stroke-width="2"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(68 64) scale(.82)")}
+  <text x="173" y="134" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="43" font-weight="400">${BRAND.name}</text>
+  <rect x="40" y="674" width="1000" height="636" rx="28" fill="${BRAND.colors.cream}"/>
+  <rect x="40" y="674" width="1000" height="12" rx="6" fill="${BRAND.colors.brick}"/>
+  <text x="90" y="755" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="3.4">FREDERICK COUNTY · MOBILE VENDORS</text>
+  <text x="84" y="892" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="91" font-weight="400" letter-spacing="-1.6">
+    <tspan x="84" dy="0">Find the</tspan><tspan x="84" dy="92">food trucks.</tspan>
   </text>
-  <rect x="68" y="730" width="76" height="8" fill="${BRAND.colors.brick}"/>
-  <text x="68" y="815" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="33" font-weight="500">
-    <tspan x="68" dy="0">20 local trucks.</tspan><tspan x="68" dy="46">Their latest location links.</tspan>
+  <text x="88" y="1081" fill="${BRAND.colors.ink}" fill-opacity=".78" font-family="Public Sans" font-size="27" font-weight="520">
+    <tspan x="88" dy="0">20 local trucks, with the latest location</tspan><tspan x="88" dy="40">links from the people running them.</tspan>
   </text>
-  <text x="68" y="1270" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="22" font-weight="750" letter-spacing="3.1">FREDERICKRADIUS.APP  ·  CODE: FOOD-TRUCK</text>`,
+  <rect x="86" y="1192" width="336" height="58" rx="29" fill="${BRAND.colors.brick}"/>
+  <text x="254" y="1229" text-anchor="middle" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="18" font-weight="760" letter-spacing="2.1">CODE: FOOD-TRUCK</text>
+  <text x="990" y="1230" text-anchor="end" fill="${BRAND.colors.ink}" font-family="Public Sans" font-size="19" font-weight="760" letter-spacing="2.4">FREDERICKRADIUS.APP</text>`,
     fonts,
   );
 }
@@ -942,9 +947,9 @@ async function main() {
       file: "social/facebook-group-launch.svg",
       width: 1080,
       height: 1350,
-      role: "Facebook food-truck launch post using owned Frederick photography",
+      role: "Facebook food-truck launch post using owned Frederick night photography",
       png: true,
-      make: (fonts) => facebookGroupLaunch(fonts, fallPhotoUrl),
+      make: (fonts) => facebookGroupLaunch(fonts, nightPhotoUrl),
     },
     {
       file: "social/photo-post-template.svg",

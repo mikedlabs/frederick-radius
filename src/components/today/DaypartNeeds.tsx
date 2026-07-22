@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import type { DaypartRow } from "@/lib/loaders/daypartPicks";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * The daypart's open-now place needs, shown as one focused shelf at a time.
@@ -118,10 +120,23 @@ export default function DaypartNeeds({
                 href={`/places/${place.slug}`}
                 prefetch={false}
                 aria-label={`${place.name}, open now`}
-                className="relative flex h-[6.75rem] w-[10.5rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
+                className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
                 style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
               >
-                <CategoryGraphic category={active.category} seed={place.slug} />
+                {place.photo ? (
+                  <Image
+                    src={place.photo}
+                    alt=""
+                    fill
+                    unoptimized={place.photo.startsWith("/api/place-photo")}
+                    sizes="168px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
+                  />
+                ) : (
+                  <CategoryGraphic category={active.category} seed={place.slug} />
+                )}
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
@@ -150,6 +165,14 @@ export default function DaypartNeeds({
                     {place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
                   </span>
                 </span>
+                {place.photo ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 z-10 max-w-[8rem] truncate rounded-full bg-black/60 px-1.5 py-1 text-[7px] leading-none text-white/90 backdrop-blur-sm"
+                    translate="no"
+                  >
+                    {place.photoCredit ? `${place.photoCredit} · Google Maps` : "Google Maps"}
+                  </span>
+                ) : null}
               </Link>
             </li>
           ))}

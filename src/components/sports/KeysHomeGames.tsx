@@ -27,7 +27,7 @@ import Skeleton from "@/components/ui/Skeleton";
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
 const KEYS_SCHEDULE_URL = "https://www.milb.com/frederick/schedule";
-const MAX_GAMES = 5;
+const MAX_GAMES = 3;
 
 const GAME_WEEKDAY = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",

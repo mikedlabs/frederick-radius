@@ -68,19 +68,20 @@ function statusChip(s: Score): { text: string; live: boolean } {
 
 /** The under-score line: inning for live, first pitch for pre, venue for final. */
 function detailLine(s: Score): string {
+  const location = s.keysHome ? "Home at Nymeo Field" : "Away game";
   if (s.state === "live") {
     const inning = [s.inningState, s.inningOrdinal].filter(Boolean).join(" ");
     const outs = s.outs != null ? `${s.outs} out` : "";
-    return [inning, outs].filter(Boolean).join(" · ");
+    return [inning, outs, location].filter(Boolean).join(" · ");
   }
   if (s.state === "pre") {
     const t = firstPitch(s.startsAt);
-    return t ? `First pitch ${t}` : "Today";
+    return [t ? `First pitch ${t}` : "Today", location].join(" · ");
   }
   if (s.state === "postponed") return "The game was postponed, so check the official page.";
   if (s.state === "cancelled") return "The game was called off.";
   // final
-  return s.keysHome ? "at Nymeo Field, Frederick" : `at ${s.opponent.name}`;
+  return location;
 }
 
 function ScoreRow({
@@ -162,7 +163,7 @@ export default function KeysScore() {
   const chip = statusChip(score);
   const keysWon = score.state === "final" && (score.keys.runs ?? 0) > (score.opponent.runs ?? 0);
   const oppWon = score.state === "final" && (score.opponent.runs ?? 0) > (score.keys.runs ?? 0);
-  const vs = score.keysHome ? "vs" : "@";
+  const matchupWord = score.keysHome ? "vs." : "at";
 
   return (
     <div
@@ -190,23 +191,31 @@ export default function KeysScore() {
           style={{ color: KEYS_ORANGE_DEEP }}
         >
           <BaseballGlyph size={13} />
-          Frederick Keys {vs} {score.opponent.name}
+          Frederick Keys {matchupWord} {score.opponent.name}
         </span>
-        <span
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-          style={
-            chip.live
-              ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
-              : { background: "rgba(26,21,14,0.15)", color: "rgba(26,21,14,0.75)" }
-          }
-        >
-          {chip.live && (
-            <span
-              aria-hidden
-              className="inline-block h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse"
-            />
-          )}
-          {chip.text}
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span
+            className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            style={{ borderColor: "rgba(26,21,14,0.24)", color: "rgba(26,21,14,0.78)" }}
+          >
+            {score.keysHome ? "Home" : "Away"}
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+            style={
+              chip.live
+                ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
+                : { background: "rgba(26,21,14,0.15)", color: "rgba(26,21,14,0.75)" }
+            }
+          >
+            {chip.live && (
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse"
+              />
+            )}
+            {chip.text}
+          </span>
         </span>
       </div>
 
@@ -248,7 +257,7 @@ export default function KeysScore() {
         href={score.url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`Frederick Keys ${vs} ${score.opponent.name}, ${chip.text}`}
+        aria-label={`Frederick Keys ${score.keysHome ? "home versus" : "away at"} ${score.opponent.name}, ${chip.text}`}
         className="absolute inset-0 z-10"
       />
     </div>

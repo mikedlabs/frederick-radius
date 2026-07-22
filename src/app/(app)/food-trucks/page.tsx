@@ -7,10 +7,8 @@ import {
   ExternalLink,
   Facebook,
   Globe,
-  IceCream,
   Instagram,
   MapPin,
-  Truck,
 } from "lucide-react";
 import { FOOD_TRUCKS, truckFeedUrl, type FoodTruck } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -67,6 +65,7 @@ export const metadata: Metadata = {
     title: "Food trucks & carts in Frederick County",
     description:
       "Find Frederick County's mobile food and treat vendors, then check each vendor's latest location post.",
+    images: ["/brand/social/facebook-group-launch.png"],
   },
 };
 
@@ -96,7 +95,6 @@ function TruckCard({
 }) {
   const feed = truckFeedUrl(truck);
   const flavor = flavorFor(truck);
-  const Icon = truck.kind === "treats" ? IceCream : Truck;
   const homeBase = resolveHomeBase(truck.homeBase);
 
   const statusFallback = homeBase ? (
@@ -118,7 +116,7 @@ function TruckCard({
     <li className="food-truck-card tactile w-[min(84vw,22rem)] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] sm:w-auto">
       <div className="food-truck-card-art" data-flavor={flavor} aria-hidden>
         <span className="food-truck-card-number">{String(number).padStart(2, "0")}</span>
-        <Icon className="food-truck-card-icon" strokeWidth={1.5} />
+        <span className="food-truck-card-kind">{truck.kind === "treats" ? "Treat truck" : "Mobile kitchen"}</span>
         <p>{truck.cuisine}</p>
       </div>
 
@@ -198,12 +196,12 @@ export default async function FoodTrucksPage() {
 
       <header className="food-truck-hero">
         <Image
-          src="/images/seasons/summer/SUMMER STREETS.jpg"
-          alt="An aerial view across Downtown Frederick toward the county landscape"
+          src="/images/seasons/spring/Frederick Night.jpg"
+          alt="Downtown Frederick after dark"
           fill
           priority
           sizes="(max-width: 768px) 100vw, 960px"
-          className="object-cover object-center"
+          className="food-truck-hero-photo object-cover object-[56%_46%]"
         />
         <div className="food-truck-hero-shade" />
         <div className="food-truck-hero-copy">

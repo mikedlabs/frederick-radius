@@ -15,7 +15,13 @@ import { isRecommendable } from "@/lib/relevance";
  * presentational server component taking these rows as props.
  */
 
-export type DaypartPick = { slug: string; name: string; rating: number | null };
+export type DaypartPick = {
+  slug: string;
+  name: string;
+  rating: number | null;
+  photo?: string | null;
+  photoCredit?: string | null;
+};
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
 
 function easternHour(now: Date): number {
@@ -49,7 +55,13 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
             isRecommendable(p),
         )
         .slice(0, 4)
-        .map((p) => ({ slug: p.slug, name: p.name, rating: p.google_rating ?? null })),
+        .map((p) => ({
+          slug: p.slug,
+          name: p.name,
+          rating: p.google_rating ?? null,
+          photo: p.google_photo_url ?? null,
+          photoCredit: p.google_photo_attribution?.authors[0]?.display_name ?? null,
+        })),
     }))
     .filter((row) => row.picks.length > 0);
 }

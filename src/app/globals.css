@@ -4600,6 +4600,342 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    plus its own bottom sheet (.dock-ltray). It is now a sub-tab inside the top
    Filters panel (MapDock, 2026-07-21), so those rules were removed with the
    JSX and the map's bottom-left corner is clear again. */
+
+/* ── County sports board ─────────────────────────────────────────────
+   Owned field photography opens the page; team and event information sits in
+   compact editorial panels. Long place inventories stay folded until asked. */
+.sports-hero {
+  position: relative;
+  min-height: clamp(23rem, 63vw, 34rem);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-ink);
+  box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
+  isolation: isolate;
+}
+
+.sports-hero-photo {
+  filter: brightness(.58) saturate(.72) contrast(1.06);
+  transform: scale(1.01);
+}
+
+.sports-hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(20, 16, 12, .18) 0%, rgba(20, 16, 12, .28) 42%, rgba(20, 16, 12, .92) 100%),
+    linear-gradient(90deg, rgba(20, 16, 12, .54) 0%, transparent 78%);
+}
+
+.sports-hero-copy {
+  position: absolute;
+  z-index: 2;
+  inset: auto 1.25rem 1.35rem;
+  max-width: 39rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--app-brand);
+  color: var(--app-on-brand);
+}
+
+.sports-hero-copy > p:first-child { opacity: .78; }
+
+.sports-hero-copy h1 {
+  max-width: 10ch;
+  margin-top: .55rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(3rem, 10vw, 5.6rem);
+  font-weight: 400;
+  line-height: .9;
+  letter-spacing: -.046em;
+}
+
+.sports-hero-copy h1 + p {
+  max-width: 33rem;
+  margin-top: .85rem;
+  color: color-mix(in srgb, var(--app-on-brand) 88%, transparent);
+  font-size: clamp(.82rem, 2vw, .98rem);
+  line-height: 1.48;
+}
+
+.sports-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .95rem;
+}
+
+.sports-hero-tags span {
+  padding: .38rem .62rem;
+  border: 1px solid color-mix(in srgb, var(--app-on-brand) 28%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-ink) 56%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: .65rem;
+  font-weight: 650;
+}
+
+.sports-photo-credit {
+  position: absolute;
+  z-index: 2;
+  top: .8rem;
+  right: .85rem;
+  color: color-mix(in srgb, var(--app-on-brand) 76%, transparent);
+  font-size: .57rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(20, 16, 12, .55);
+}
+
+.sports-cows-masthead {
+  position: relative;
+  display: grid;
+  min-height: 9.5rem;
+  align-content: end;
+  overflow: hidden;
+  padding: 1rem 1.1rem;
+  color: var(--app-on-brand);
+  background:
+    radial-gradient(circle at 86% 18%, transparent 0 2.7rem, color-mix(in srgb, var(--app-on-brand) 18%, transparent) 2.75rem 2.9rem, transparent 2.95rem),
+    linear-gradient(135deg, var(--app-accent-press), color-mix(in srgb, var(--app-accent) 62%, var(--app-ink)));
+}
+
+.sports-cows-masthead span {
+  font-family: var(--font-mono), monospace;
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: .78;
+}
+
+.sports-cows-masthead strong {
+  margin: .2rem 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2.2rem, 9vw, 4rem);
+  font-weight: 400;
+  line-height: .88;
+  letter-spacing: -.035em;
+}
+
+.sports-campus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.sports-campus-card {
+  position: relative;
+  display: grid;
+  min-height: 10.5rem;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  padding: .9rem;
+  border: 1px solid color-mix(in srgb, var(--app-on-brand) 15%, transparent);
+  border-radius: var(--app-radius-lg);
+  color: #fffaf0;
+  box-shadow: var(--app-elev-1), var(--app-edge);
+  isolation: isolate;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.sports-campus-card::after {
+  position: absolute;
+  z-index: -1;
+  right: -1.35rem;
+  bottom: -2.6rem;
+  width: 7.5rem;
+  height: 7.5rem;
+  border: 1px solid rgba(255, 250, 240, .16);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1.4rem rgba(255, 250, 240, .035);
+  content: "";
+}
+
+.sports-campus-card--plum { background: linear-gradient(145deg, #6a294d, #301927); }
+.sports-campus-card--blue { background: linear-gradient(145deg, #194e76, #11283b); }
+.sports-campus-card--green { background: linear-gradient(145deg, #386349, #1e3428); }
+
+.sports-campus-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--app-elev-2), var(--app-edge);
+}
+
+.sports-campus-mark {
+  width: max-content;
+  padding: .28rem .42rem;
+  border: 1px solid rgba(255, 250, 240, .34);
+  border-radius: .38rem;
+  font-family: var(--font-mono), monospace;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.sports-campus-copy {
+  display: flex;
+  align-self: end;
+  flex-direction: column;
+  padding-right: 1.1rem;
+}
+
+.sports-campus-copy > span {
+  font-size: .65rem;
+  opacity: .74;
+}
+
+.sports-campus-copy strong {
+  margin-top: .12rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.45rem, 3vw, 2.05rem);
+  font-weight: 400;
+  line-height: .96;
+  letter-spacing: -.025em;
+}
+
+.sports-campus-copy small {
+  margin-top: .45rem;
+  font-family: var(--font-mono), monospace;
+  font-size: .53rem;
+  font-weight: 650;
+  letter-spacing: .055em;
+  opacity: .68;
+}
+
+.sports-campus-arrow {
+  position: absolute;
+  top: .85rem;
+  right: .85rem;
+  width: .9rem;
+  height: .9rem;
+  opacity: .7;
+}
+
+.sports-schools-panel {
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated);
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+}
+
+.sports-schools-lead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .85rem;
+  padding: 1rem;
+}
+
+.sports-schools-icon {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border-radius: .72rem;
+  color: var(--app-on-brand);
+  background: var(--app-ink);
+}
+
+.sports-schools-lead h3 {
+  margin-top: .28rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.45rem, 4vw, 2.1rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -.025em;
+}
+
+.sports-schools-lead h3 + p {
+  max-width: 36rem;
+  margin-top: .4rem;
+  color: var(--app-ink-2);
+  font-size: .73rem;
+  line-height: 1.5;
+}
+
+.sports-schools-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid var(--app-border);
+}
+
+.sports-schools-actions a {
+  display: flex;
+  min-height: 2.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: .32rem;
+  border-right: 1px solid var(--app-border);
+  color: var(--app-ink);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.sports-schools-actions a:last-child { border-right: 0; }
+.sports-schools-actions svg { width: .72rem; height: .72rem; }
+
+.sports-school-list > summary {
+  display: flex;
+  min-height: 3rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: .75rem 1rem;
+  color: var(--app-ink-2);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.sports-school-list > summary::-webkit-details-marker { display: none; }
+.sports-school-list > summary svg { width: .85rem; height: .85rem; transition: transform 160ms ease; }
+.sports-school-list[open] > summary svg { transform: rotate(180deg); }
+
+.sports-school-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  padding: 0 1rem .9rem;
+}
+
+.sports-school-chips span {
+  padding: .38rem .55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-ink-2);
+  background: var(--app-bg);
+  font-size: .61rem;
+  font-weight: 600;
+}
+
+.sports-school-official {
+  display: flex;
+  min-height: 2.9rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: .7rem 1rem;
+  border-top: 1px solid var(--app-border);
+  color: var(--app-brand-press);
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.sports-school-official svg { width: .8rem; height: .8rem; }
+
+.sports-play-group { border-color: var(--app-border); }
+.sports-play-group[open] > summary svg:last-child { transform: rotate(180deg); }
+.sports-play-group > summary::-webkit-details-marker { display: none; }
+
+@media (max-width: 480px) {
+  .sports-hero { min-height: 29rem; border-radius: var(--app-radius-lg); }
+  .sports-hero-copy { inset: auto 1rem 1.05rem; padding-left: .8rem; }
+  .sports-photo-credit { display: none; }
+  .sports-campus-grid { grid-template-columns: 1fr 1fr; }
+  .sports-campus-card { min-height: 9.25rem; }
+  .sports-campus-card:first-child { grid-column: 1 / -1; min-height: 8.5rem; }
+}
+
 /* ── Food-truck board ────────────────────────────────────────────────
    Vendor-approved photography is not available for every truck. The page
    pairs owned Frederick photography with cuisine-led editorial panels rather
@@ -4620,8 +4956,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(180deg, rgba(34, 28, 21, .05) 0%, rgba(34, 28, 21, .1) 32%, rgba(34, 28, 21, .84) 100%),
-    linear-gradient(90deg, rgba(34, 28, 21, .32) 0%, transparent 75%);
+    linear-gradient(180deg, rgba(20, 16, 12, .28) 0%, rgba(20, 16, 12, .36) 38%, rgba(20, 16, 12, .92) 100%),
+    linear-gradient(90deg, rgba(20, 16, 12, .62) 0%, rgba(20, 16, 12, .2) 72%, transparent 100%);
+}
+
+.food-truck-hero-photo {
+  filter: brightness(.72) saturate(.78) contrast(1.04);
+  transform: scale(1.01);
 }
 
 .food-truck-hero-copy {
@@ -4630,6 +4971,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   inset: auto 1.25rem 1.45rem;
   max-width: 38rem;
   color: var(--app-on-brand);
+  padding-left: 1rem;
+  border-left: 3px solid var(--app-brand);
 }
 
 .food-truck-hero-copy > p:first-child { opacity: .82; }
@@ -4702,12 +5045,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   --ft-ink: var(--app-on-brand);
   position: relative;
   display: flex;
-  min-height: 9rem;
+  min-height: 8.35rem;
   align-items: flex-end;
   overflow: hidden;
   padding: 1rem;
   color: var(--ft-ink);
-  background: var(--ft-bg);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--ft-bg) 76%, var(--app-ink)) 0%,
+      color-mix(in srgb, var(--ft-bg) 58%, var(--app-ink)) 100%);
   isolation: isolate;
 }
 
@@ -4715,12 +5061,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   content: "";
   position: absolute;
   z-index: -1;
-  width: 13rem;
-  height: 13rem;
-  top: -7.5rem;
-  right: -4rem;
-  border: 2.4rem solid color-mix(in srgb, var(--ft-ink) 11%, transparent);
-  border-radius: 50%;
+  inset: .8rem auto .8rem 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--ft-ink) 72%, transparent);
 }
 
 .food-truck-card-art::after {
@@ -4728,12 +5071,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   position: absolute;
   z-index: -1;
   inset: 0;
-  opacity: .16;
-  background: repeating-linear-gradient(118deg, transparent 0 20px, var(--ft-ink) 21px 22px);
-  mask-image: linear-gradient(90deg, transparent 18%, #000 100%);
+  opacity: .1;
+  background: linear-gradient(90deg, transparent 0 58%, var(--ft-ink) 58% 58.5%, transparent 58.5% 100%);
 }
 
-.food-truck-card-art[data-flavor="comfort"] { --ft-bg: var(--app-amber); --ft-ink: var(--app-ink); }
+.food-truck-card-art[data-flavor="comfort"] { --ft-bg: var(--app-amber); }
 .food-truck-card-art[data-flavor="world"] { --ft-bg: var(--app-cool); }
 .food-truck-card-art[data-flavor="fresh"] { --ft-bg: var(--app-brand-2); }
 .food-truck-card-art[data-flavor="sweet"] { --ft-bg: var(--app-accent); }
@@ -4741,7 +5083,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .food-truck-card-art p {
   max-width: 13ch;
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(1.65rem, 6vw, 2.25rem);
+  font-size: clamp(1.55rem, 5.6vw, 2.08rem);
   font-weight: 400;
   line-height: .92;
   letter-spacing: -.035em;
@@ -4759,13 +5101,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   opacity: .72;
 }
 
-.food-truck-card-icon {
+.food-truck-card-kind {
   position: absolute;
+  top: .82rem;
   right: 1rem;
-  bottom: .9rem;
-  width: 2rem;
-  height: 2rem;
-  opacity: .72;
+  font-family: var(--font-mono), monospace;
+  font-size: .57rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .68;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -4777,7 +5122,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 @media (max-width: 480px) {
   .food-truck-hero { min-height: 29rem; border-radius: var(--app-radius-lg); }
-  .food-truck-hero-copy { inset: auto 1rem 1.05rem; }
+  .food-truck-hero-copy { inset: auto 1rem 1.05rem; padding-left: .8rem; }
   .food-truck-photo-credit { display: none; }
 }
 

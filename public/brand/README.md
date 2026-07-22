@@ -79,7 +79,7 @@ files are in `licenses/`.
 - `feed-brand`: 1080 px square brand post.
 - `feed-portrait`: 1080 by 1350 portrait brand post.
 - `facebook-group-launch`: 1080 by 1350 food-truck campaign post using owned
-  Frederick photography. Use this when sharing the food-truck board in a
+  Frederick night photography. Use this when sharing the food-truck board in a
   Frederick community group. The printed campaign code is `food-truck`.
 - `feed-event-template`: Editable event post.
 - `feed-live-template`: Editable live or open-now post.
