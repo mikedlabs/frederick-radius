@@ -35,6 +35,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import { BRAND } from "@/lib/brand";
 import {
   distanceLabel,
   lipFact,
@@ -83,18 +84,18 @@ const PLACE_HUES = placeHues as Record<string, string>;
 const WALLET_GROUND: Record<string, string> = {
   // Food & drink — warm reds, ambers, a wine, a rose
   restaurant: "#C23A22", pizza: "#D2481F", bakery: "#C77A1E", coffee: "#6F4A2F",
-  bar: "#8A2433", brewery: "#C0871F", winery: "#7A2D5A", distillery: "#A6602E",
+  bar: "#8A2433", brewery: BRAND.colors.functionalAmber, winery: "#7A2D5A", distillery: "#A6602E",
   "ice-cream": "#C85C86", market: "#3E8E41", agritourism: "#6B8E23",
   // Outdoors — greens + a playful teal for the kids' surface
-  park: "#1E6B3A", trail: "#1B4638", playground: "#2E8B8B", golf: "#2E7D5B",
+  park: "#315A43", trail: "#1B4638", playground: "#2E8B8B", golf: "#2E7D5B",
   // Arts & culture — a purple family, split
   gallery: "#8E2C6F", music: "#A63F5C", museum: "#5B3A8F", theater: "#7A2E9F",
   library: "#285C8A", family: "#D98324",
   // Civic — a blue family, split; parking/services stay graphite
-  civic: "#20506A", government: "#3E6488", transit: "#2A7A9A", parking: "#55534E",
+  civic: "#285D73", government: "#3E6488", transit: "#2A7A9A", parking: "#55534E",
   "public-safety": "#962633", worship: "#5B3A8F",
   // Shops, services, wellness, stay
-  shopping: "#B26B00", antiques: "#8B5A2B", "book-store": "#6B4E8A",
+  shopping: BRAND.colors.functionalAmber, antiques: "#8B5A2B", "book-store": "#6B4E8A",
   services: "#4A4A48", wellness: "#A83A4A", yoga: "#B85C6E",
   lodging: "#3E5A6E", pharmacy: "#2E7D6B",
 };
@@ -117,7 +118,7 @@ function Card({
   // Brand-first: the business's own extracted hue, then the category's
   // wallet ground, then the category ink, then a civic blue.
   const hue =
-    PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#20506A";
+    PLACE_HUES[place.slug] ?? WALLET_GROUND[place.category] ?? cat?.color ?? "#285D73";
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name ?? null;
   const kind = cat?.name ?? "Place";
   const fact = lipFact(place, town);
@@ -175,7 +176,7 @@ function Card({
           // "can the cards not be so dark"). The calm comes from the deck
           // starting fully CLOSED (no card raised until tapped), not from
           // draining the color.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #221C15), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
           // Stagger index for the deal-in entrance (see globals.css sw-deal).
           "--sw-i": index,
         } as CSSProperties

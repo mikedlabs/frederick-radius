@@ -23,17 +23,17 @@ import {
  *  Icons are lucide, never emoji (DESIGN_TELLS). */
 const TYPES: { kind: string; label: string; Icon: LucideIcon; color: string }[] = [
   { kind: "trash", label: "Trash", Icon: Trash2, color: "#4A4A48" },
-  { kind: "recycling", label: "Recycling", Icon: Recycle, color: "#1E6B3A" },
-  { kind: "water", label: "Water", Icon: Droplet, color: "#20506A" },
+  { kind: "recycling", label: "Recycling", Icon: Recycle, color: "#315A43" },
+  { kind: "water", label: "Water", Icon: Droplet, color: "#285D73" },
   { kind: "bench", label: "Bench", Icon: Armchair, color: "#7A7975" },
-  { kind: "ev_charging", label: "EV", Icon: Zap, color: "#1E6B3A" },
+  { kind: "ev_charging", label: "EV", Icon: Zap, color: "#315A43" },
   { kind: "outlet", label: "Outlet", Icon: Plug, color: "#4A4A48" },
-  { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "#20506A" },
-  { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "#1E6B3A" },
-  { kind: "restroom", label: "Restroom", Icon: Toilet, color: "#20506A" },
-  { kind: "other", label: "Other", Icon: Plus, color: "#E14328" },
+  { kind: "dog_water", label: "Dog water", Icon: PawPrint, color: "#285D73" },
+  { kind: "dog_waste", label: "Dog bags", Icon: Dog, color: "#315A43" },
+  { kind: "restroom", label: "Restroom", Icon: Toilet, color: "#285D73" },
+  { kind: "other", label: "Other", Icon: Plus, color: "#B5462B" },
 ];
-const COLOR_FOR = (kind: string) => TYPES.find((t) => t.kind === kind)?.color ?? "#E14328";
+const COLOR_FOR = (kind: string) => TYPES.find((t) => t.kind === kind)?.color ?? "#B5462B";
 
 const PASS_KEY = "fr:collect:passcode";
 const BY_KEY = "fr:collect:by";
@@ -701,7 +701,8 @@ export default function CollectClient() {
   const riding = mode === "ride";
 
   return (
-    <div className="relative bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
+    <main className="relative bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
+      <h1 className="sr-only">Collect civic amenities</h1>
       {/* Map fills the whole screen; the control bar floats over the bottom so
           the map stays as large as possible for accurate placement. */}
       <div className="absolute inset-0">
@@ -778,12 +779,12 @@ export default function CollectClient() {
       {!riding && !editing && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
-            <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-            <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-            <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-            <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-            <line x1="35" y1="24" x2="45" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-            <circle cx="24" cy="24" r="3" fill="var(--app-brand,#E14328)" />
+            <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <line x1="35" y1="24" x2="45" y2="24" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+            <circle cx="24" cy="24" r="3" fill="var(--app-brand,#B5462B)" />
           </svg>
         </div>
       )}
@@ -905,7 +906,7 @@ export default function CollectClient() {
                   aria-pressed={active}
                   className={`flex min-h-[52px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
                     active
-                      ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]"
+                      ? "border-[var(--app-brand,#B5462B)] bg-[var(--app-brand-tint-14)]"
                       : "border-[var(--app-ink)]/12 bg-white/70"
                   }`}
                 >
@@ -923,7 +924,7 @@ export default function CollectClient() {
             <button
               type="button"
               onClick={undoLast}
-              className="tap-44 text-sm font-semibold text-[var(--app-brand,#E14328)]"
+              className="tap-44 text-sm font-semibold text-[var(--app-brand,#B5462B)]"
             >
               Undo
             </button>
@@ -941,7 +942,7 @@ export default function CollectClient() {
               maxLength={280}
               aria-label="Note"
               placeholder={kind === "other" ? "What is it?" : "Note (optional)"}
-              className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+              className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
             />
             {/* Visible "Photo" text (not an emoji alone): the camera glyph fails
                 to render on some Android/desktop fonts, collapsing the control to
@@ -986,7 +987,7 @@ export default function CollectClient() {
               }}
               placeholder="Passcode"
               autoComplete="off"
-              className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+              className="min-h-11 w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
             />
             <input
               type="text"
@@ -998,7 +999,7 @@ export default function CollectClient() {
               }}
               maxLength={60}
               placeholder="Your name (optional)"
-              className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+              className="min-h-11 w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
             />
           </div>
         )}
@@ -1007,9 +1008,9 @@ export default function CollectClient() {
           <p
             className={`text-center text-sm ${
               status.tone === "ok"
-                ? "text-[var(--app-brand-2,#2F5470)]"
+                ? "text-[var(--app-positive,#315A43)]"
                 : status.tone === "error"
-                  ? "text-[var(--app-brand,#E14328)]"
+                  ? "text-[var(--app-brand,#B5462B)]"
                   : "text-[var(--app-ink)]/70"
             }`}
             role="status"
@@ -1024,7 +1025,7 @@ export default function CollectClient() {
               type="button"
               onClick={removePoint}
               disabled={saving}
-              className="rounded-[var(--app-radius-md,12px)] border border-[var(--app-brand,#E14328)] px-4 py-3 text-base font-semibold text-[var(--app-brand,#E14328)] disabled:opacity-50"
+              className="rounded-[var(--app-radius-md,12px)] border border-[var(--app-brand,#B5462B)] px-4 py-3 text-base font-semibold text-[var(--app-brand,#B5462B)] disabled:opacity-50"
             >
               Delete
             </button>
@@ -1048,6 +1049,6 @@ export default function CollectClient() {
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 }

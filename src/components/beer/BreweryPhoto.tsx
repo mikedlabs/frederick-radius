@@ -39,7 +39,7 @@ export function BreweryPhoto({
   const showPhoto = Boolean(src && failedSrc !== src);
 
   return (
-    <span className={`relative block overflow-hidden bg-[#1b1712] ${className}`}>
+    <span className={`relative block overflow-hidden bg-[var(--app-ink)] ${className}`}>
       {showPhoto && src ? (
         <Image
           src={src}
@@ -52,13 +52,13 @@ export function BreweryPhoto({
           onError={() => setFailedSrc(src)}
         />
       ) : (
-        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_30%_20%,rgba(227,182,93,.16),transparent_46%),linear-gradient(145deg,#2b241b,#11100d)] p-[18%]">
+        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_30%_20%,rgba(197,138,50,.16),transparent_46%),linear-gradient(145deg,var(--app-ink-2),var(--app-ink))] p-[18%]">
           <BreweryLogo
             brewerySlug={brewerySlug}
             breweryName={breweryName}
             decorative={decorative}
             sizes={sizes}
-            className="h-full w-full bg-[#f7f0e4] object-contain p-[8%] shadow-[0_18px_46px_rgba(0,0,0,.38)]"
+            className="h-full w-full bg-[var(--app-bg-elevated-solid)] object-contain p-[8%] shadow-[0_18px_46px_rgba(0,0,0,.38)]"
           />
         </span>
       )}

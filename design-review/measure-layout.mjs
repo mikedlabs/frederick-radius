@@ -32,21 +32,6 @@ async function pageFor(width, height, path, delay = 1800) {
   return { page, context };
 }
 
-const rect = (el) => {
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  const s = getComputedStyle(el);
-  return {
-    x: Number(r.x.toFixed(1)),
-    y: Number(r.y.toFixed(1)),
-    width: Number(r.width.toFixed(1)),
-    height: Number(r.height.toFixed(1)),
-    bottom: Number(r.bottom.toFixed(1)),
-    display: s.display,
-    position: s.position,
-  };
-};
-
 for (const [view, width, height] of [["mobile-375x812", 375, 812], ["tablet-768x1024", 768, 1024]]) {
   out[view] = {};
   for (const [name, path] of [

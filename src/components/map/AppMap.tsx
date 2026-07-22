@@ -30,6 +30,7 @@ import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { useFollowedSlugs } from "@/hooks/useFollows";
 import { useRouter } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
+import { setScope, SCOPE_PARAM } from "@/lib/scope";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -52,6 +53,7 @@ import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { track } from "@/lib/track";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
 import { applyFrederickPalette, installRelief } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
 // Baked style JSON — the palette pre-applied at build time. Only used when
@@ -435,6 +437,13 @@ export default function AppMap({
   const [shortLandscapeViewport, setShortLandscapeViewport] = useState(
     () => typeof window !== "undefined" && window.innerHeight < 520 && window.innerWidth > window.innerHeight,
   );
+  // Mobile already has pinch and double-tap zoom. The stock two-button zoom
+  // stack put Zoom out in the exact same 44px box as the browse map's Locate
+  // control. Dock-less embeds retain the stock controls; the full browse map
+  // keeps them from lg upward.
+  const [compactMapViewport, setCompactMapViewport] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 1024,
+  );
   // Shareable / reload-safe camera: a `?c=lng,lat,zoom` param (written on
   // moveend below) reopens the map exactly where it was left. Read once at
   // mount; malformed values fall through to the mode/cached default. Mapbox
@@ -451,6 +460,8 @@ export default function AppMap({
     const updateViewportMode = () => {
       const next = window.innerHeight < 520 && window.innerWidth > window.innerHeight;
       setShortLandscapeViewport((current) => current === next ? current : next);
+      const nextCompact = window.innerWidth < 1024;
+      setCompactMapViewport((current) => current === nextCompact ? current : nextCompact);
     };
     window.addEventListener("resize", updateViewportMode, { passive: true });
     window.addEventListener("orientationchange", updateViewportMode, { passive: true });
@@ -620,6 +631,7 @@ export default function AppMap({
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
   // cramped popup into a real card you can act on without leaving the map.
   const [peekPlace, setPeekPlace] = useState<MapPinPlace | null>(null);
+  const [peekListReturnSlug, setPeekListReturnSlug] = useState<string | null>(null);
   // Map ↔ list toggle: flip the currently-filtered pins into a scannable
   // list. ?view=list preserves the choice without dropping any existing
   // filter, layer, scope, or camera parameter.
@@ -700,6 +712,7 @@ export default function AppMap({
   // (viewport-honest count, 2026-07-17 map audit). Null until first settle
   // (initial render counts everything, which at county zoom is the truth).
   const [viewBounds, setViewBounds] = useState<{ w: number; e: number; s: number; n: number } | null>(null);
+  const [viewCenter, setViewCenter] = useState<LngLat | null>(null);
   // Time machine: which season's drone shots are lit. "all" shows every
   // pin; a season fades the others out (cross-fade, not a hard cut).
   const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
@@ -942,8 +955,9 @@ export default function AppMap({
           .map((event) => event.slug),
       ),
     );
-    if (!onPlacesInView) return;
     const c = map.getCenter();
+    setViewCenter({ lng: c.lng, lat: c.lat });
+    if (!onPlacesInView) return;
     // Rank from the reader's own fix when we have one (cached or granted),
     // else their saved home town's centroid, else the map center. Squared-
     // degree distance is enough to ORDER at county scale (same metric the
@@ -1156,7 +1170,7 @@ export default function AppMap({
         color:
           CATEGORY_BY_SLUG[p.category]?.color
           ?? CATEGORY_BY_SLUG[CATEGORY_BY_SLUG[p.category]?.parent ?? ""]?.color
-          ?? "#E14328",
+          ?? "#B5462B",
         bucket: bucketOf(p.category),
         // "Last call" — open now but closing within the hour. Drives a
         // soft amber halo so a glance catches what's about to close.
@@ -1254,7 +1268,7 @@ export default function AppMap({
       features: p
         ? [{
             type: "Feature" as const,
-            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#E14328" },
+            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#B5462B" },
             geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
           }]
         : [],
@@ -1376,6 +1390,7 @@ export default function AppMap({
         setSelected(null);
         setSelectedEvent(null);
         setParkingPeek(null);
+        setPeekListReturnSlug(null);
         setPeekPlace(place);
         // Lift the tapped pin above the bottom card (Google/Apple pattern):
         // shift the camera up so the pin + its selected glow stay visible
@@ -1384,6 +1399,7 @@ export default function AppMap({
         cameraIntentRef.current = true;
         m?.easeTo({
           center: [place.geom.lng, place.geom.lat],
+          zoom: Math.max(m.getZoom(), 14),
           offset: [0, -120],
           duration: prefersReducedMotion() ? 0 : 500,
           essential: true,
@@ -1473,9 +1489,11 @@ export default function AppMap({
   // On-map search — match places already on the map by name/address/city.
   // Unified search (one-search): the map bar asks the same /api/search
   // the TopBar overlay does, so the two bars can never give different
-  // answers. Places focus the map; events, towns, and categories
-  // navigate; a layer result toggles the overlay right here. Debounced
-  // 150ms to match SearchOverlay; stale responses are dropped.
+  // answers. Anything with coordinates stays on the map: places and
+  // events focus in place, towns move the camera and update the shared
+  // county scope. Categories/actions still open their purpose-built page,
+  // while layer results toggle in place. Debounced 150ms to match
+  // SearchOverlay; stale responses are dropped.
   const router = useRouter();
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
   useEffect(() => {
@@ -1528,10 +1546,79 @@ export default function AppMap({
         setQ("");
         if (map) {
           cameraIntentRef.current = true;
-          smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+          // A named search result is an explicit destination, not a gentle
+          // browse nudge. Land close enough to identify the selected place.
+          smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15, maxStep: 6 });
         }
         setParkingPeek(null);
+        setPeekListReturnSlug(null);
         setPeekPlace(p);
+        return;
+      }
+    }
+
+    // A mappable event is already part of this map's event pool. Keep the
+    // reader in context, land on its venue, and open the same event popup a
+    // pin tap would. If this result is outside the currently loaded event
+    // window, the detail route remains the honest fallback below.
+    if (r.type === "event") {
+      const event = events.find((candidate) => candidate.slug === r.id.replace(/^event:/, ""));
+      if (event) {
+        const map = mapRef.current?.getMap();
+        setQ("");
+        setSelected(null);
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setSelectedSlug(null);
+        setCivicTown(null);
+        setClusterList(null);
+        setSelectedEvent(event);
+        if (map) {
+          cameraIntentRef.current = true;
+          smoothFocus(map, [event.lng, event.lat], { minZoom: 14.5, maxStep: 6 });
+        }
+        return;
+      }
+    }
+
+    // "Find … a town" should not eject someone to a town landing page. Move
+    // the map there, persist the town lens in the shared scope, and keep the
+    // current filters/layers intact. MapDock subscribes to setScope and owns
+    // the full browse-map flight; a dock-less embed receives the same flight
+    // directly here.
+    if (r.type === "municipality") {
+      const slug = r.id.replace(/^municipality:/, "");
+      const town = MUNICIPALITIES.find((candidate) => candidate.slug === slug);
+      if (town) {
+        setQ("");
+        setSelected(null);
+        setSelectedEvent(null);
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setSelectedSlug(null);
+        setCivicTown(null);
+        setClusterList(null);
+        cameraIntentRef.current = true;
+
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set(SCOPE_PARAM, town.slug);
+          window.history.replaceState(null, "", url.toString());
+        } catch {
+          // URL persistence is an enhancement; scope + camera still update.
+        }
+        setScope(`town:${town.slug}`);
+
+        if (!dock) {
+          mapRef.current?.getMap().flyTo({
+            center: [town.centroid.lng, town.centroid.lat],
+            zoom: 13.4,
+            duration: prefersReducedMotion() ? 0 : 900,
+            curve: 1.25,
+            easing: CAM_EASE,
+            essential: true,
+          });
+        }
         return;
       }
     }
@@ -1818,6 +1905,7 @@ export default function AppMap({
           : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
       }
       data-dock-pane={dock ? (dockPaneOpen ? "open" : "closed") : undefined}
+      data-map-peek={dock && (peekPlace || parkingPeek) ? "open" : undefined}
       style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
       onPointerDownCapture={(event) => {
         const target = event.target as Element;
@@ -1854,7 +1942,7 @@ export default function AppMap({
             style={{ background: "var(--app-bg)" }}
             role="alert"
           >
-            <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
+            <p className="font-sans text-base font-semibold" style={{ color: "var(--app-ink)" }}>
               {mapUnsupported ? "This browser can't show the map" : "The map is temporarily unavailable"}
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
@@ -2158,7 +2246,7 @@ export default function AppMap({
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#20506A",
+                "line-color": "#285D73",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
                 "line-opacity": 0.75,
               }}
@@ -2189,10 +2277,10 @@ export default function AppMap({
               minzoom={12.5}
               paint={{
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 12.5, 2, 16, 4.5],
-                "circle-color": "#20506A",
+                "circle-color": "#285D73",
                 "circle-opacity": 0.85,
                 "circle-stroke-width": 1,
-                "circle-stroke-color": "#EEE6D4",
+                "circle-stroke-color": "#F4EEE2",
               }}
             />
             <Layer
@@ -2206,7 +2294,7 @@ export default function AppMap({
                 "text-anchor": "top",
                 "text-optional": true,
               }}
-              paint={{ "text-color": "#20506A", "text-halo-color": "#EEE6D4", "text-halo-width": 1 }}
+              paint={{ "text-color": "#285D73", "text-halo-color": "#F4EEE2", "text-halo-width": 1 }}
             />
           </Source>
           <Source
@@ -2230,7 +2318,7 @@ export default function AppMap({
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 4, 14, 8],
                 "circle-color": "#5A4FCF",
                 "circle-stroke-width": 2,
-                "circle-stroke-color": "#EEE6D4",
+                "circle-stroke-color": "#F4EEE2",
               }}
             />
             <Layer
@@ -2244,7 +2332,7 @@ export default function AppMap({
                 "text-anchor": "top",
                 "text-optional": true,
               }}
-              paint={{ "text-color": "#3F3894", "text-halo-color": "#EEE6D4", "text-halo-width": 1.2 }}
+              paint={{ "text-color": "#3F3894", "text-halo-color": "#F4EEE2", "text-halo-width": 1.2 }}
             />
           </Source>
           {/* Live vehicles and route lines are one honest Transit layer. The
@@ -2267,7 +2355,7 @@ export default function AppMap({
                 "line-color": [
                   "match",
                   ["get", "paved"],
-                  "paved", "#1E6B3A",
+                  "paved", "#315A43",
                   "unpaved", "#B4712A",
                   "#6E6552",
                 ],
@@ -2283,8 +2371,8 @@ export default function AppMap({
           {/* County boundary — the quiet always-on county edge (6.1).
               Committed static GIS polygon, drawn as an outline UNDER the
               municipal lines and pins so the map reads as a county field
-              guide. Colored in Spruce (brand-2 #16352B, "deep county green")
-              rather than warm ink-2 (#423E34), which read as a muddy brown line
+              guide. Colored in Forest (brand-2 #315A43, "deep county green")
+              rather than warm ink-2 (#5A5348), which read as a muddy brown line
               at low opacity over the cream ground — an intentional green
               territorial edge, not an accidental brown one. GL can't read CSS
               vars, so the token value is inlined (documented paint exception). */}
@@ -2298,7 +2386,7 @@ export default function AppMap({
               type="line"
               layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
-                "line-color": "#16352B",
+                "line-color": "#315A43",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 13, 2 ],
                 "line-opacity": 0.45,
               }}
@@ -2334,7 +2422,7 @@ export default function AppMap({
               layout={{ "line-join": "round", "line-cap": "round" }}
               filter={["==", ["get", "name"], civicTown?.name ?? "__none__"]}
               paint={{
-                "line-color": "#20506A",
+                "line-color": "#285D73",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 2, 13, 3.5],
                 "line-opacity": civicTown ? 0.9 : 0,
                 "line-opacity-transition": { duration: aerialFade, delay: 0 },
@@ -2368,21 +2456,21 @@ export default function AppMap({
                 maxWidth="250px"
               >
                 <div style={{ padding: "2px 2px 4px", minWidth: 198 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--app-cool, #20506A)", margin: 0 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--app-cool, #285D73)", margin: 0 }}>
                     You&rsquo;re in
                   </p>
-                  <strong className="font-serif" style={{ display: "block", fontSize: 18, lineHeight: 1.15, color: "var(--app-ink, #16140E)", marginTop: 1 }}>
+                  <strong className="font-serif" style={{ display: "block", fontSize: 18, lineHeight: 1.15, color: "var(--app-ink, #221C15)", marginTop: 1 }}>
                     {title}
                   </strong>
                   {contacts.length > 0 ? (
                     <div style={{ marginTop: 7, display: "flex", flexDirection: "column", gap: 5 }}>
                       {contacts.map((c) => (
                         <div key={c.label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, fontSize: 12 }}>
-                          <span style={{ color: "var(--app-ink-2, #423E34)" }}>{c.label}</span>
+                          <span style={{ color: "var(--app-ink-2, #5A5348)" }}>{c.label}</span>
                           {c.phone ? (
-                            <a href={`tel:${c.phone.replace(/[^0-9]/g, "")}`} style={{ color: "var(--app-cool, #20506A)", fontWeight: 600, whiteSpace: "nowrap" }}>{c.phone}</a>
+                            <a href={`tel:${c.phone.replace(/[^0-9]/g, "")}`} style={{ color: "var(--app-cool, #285D73)", fontWeight: 600, whiteSpace: "nowrap" }}>{c.phone}</a>
                           ) : c.website ? (
-                            <a href={c.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-cool, #20506A)", fontWeight: 600 }}>Visit ↗</a>
+                            <a href={c.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-cool, #285D73)", fontWeight: 600 }}>Visit ↗</a>
                           ) : null}
                         </div>
                       ))}
@@ -2393,7 +2481,7 @@ export default function AppMap({
                     </p>
                   )}
                   {muni && (
-                    <Link href={`/m/${muni.slug}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--app-brand, #E14328)" }}>
+                    <Link href={`/m/${muni.slug}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--app-brand, #B5462B)" }}>
                       {title} guide <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                     </Link>
                   )}
@@ -2419,7 +2507,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#20506A",
+                "circle-color": "#285D73",
                 "circle-opacity": 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
@@ -2438,7 +2526,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#20506A",
+                "circle-color": "#285D73",
                 "circle-opacity": 0.55,
                 "circle-blur": 0.25,
                 "circle-radius": [
@@ -2629,7 +2717,7 @@ export default function AppMap({
               filter={["all", ["!", ["has", "point_count"]], ["==", ["get", "closing"], true]]}
               paint={{
                 "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 9, 15, 15, 18, 20],
-                "circle-color": "#B26B00",
+                "circle-color": BRAND.colors.functionalAmber,
                 "circle-opacity": 0.26,
                 "circle-blur": 0.55,
               }}
@@ -2838,14 +2926,14 @@ export default function AppMap({
               id="ring-fill"
               type="fill"
               beforeId="curated-lastcall"
-              paint={{ "fill-color": "#E14328", "fill-opacity": 0.07 }}
+              paint={{ "fill-color": "#B5462B", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
               beforeId="curated-lastcall"
               paint={{
-                "line-color": "#E14328",
+                "line-color": "#B5462B",
                 "line-width": 2,
                 "line-opacity": 0.55,
                 "line-dasharray": [2, 2],
@@ -2856,14 +2944,14 @@ export default function AppMap({
             <Layer
               id="dot-halo"
               type="circle"
-              paint={{ "circle-radius": 13, "circle-color": "#20506A", "circle-opacity": 0.22 }}
+              paint={{ "circle-radius": 13, "circle-color": "#285D73", "circle-opacity": 0.22 }}
             />
             <Layer
               id="dot-core"
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": "#20506A",
+                "circle-color": "#285D73",
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 2,
               }}
@@ -2876,7 +2964,7 @@ export default function AppMap({
               beforeId="curated-lastcall"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#20506A",
+                "line-color": "#285D73",
                 "line-width": 3.5,
                 "line-opacity": 0.75,
                 "line-dasharray": [0.5, 1.6],
@@ -3081,11 +3169,11 @@ export default function AppMap({
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--app-ink-3, #5C5A50)", margin: 0 }}>
                   Historic cemetery
                 </p>
-                <strong className="font-serif" style={{ display: "block", fontSize: 16, lineHeight: 1.2, color: "var(--app-ink, #16140E)", marginTop: 1 }}>
+                <strong className="font-sans" style={{ display: "block", fontSize: 16, lineHeight: 1.2, color: "var(--app-ink, #221C15)", marginTop: 1 }}>
                   {selectedCemetery.name}
                 </strong>
                 {selectedCemetery.place && (
-                  <p style={{ marginTop: 4, fontSize: 12, color: "var(--app-ink-2, #423E34)" }}>
+                  <p style={{ marginTop: 4, fontSize: 12, color: "var(--app-ink-2, #5A5348)" }}>
                     {selectedCemetery.place}
                   </p>
                 )}
@@ -3268,7 +3356,9 @@ export default function AppMap({
               unobstructed, so dock-host CSS returns the zoom cluster there.
               GeolocateControl only rides dock-less maps: on /map browse,
               locate's one home is the Where pane. */}
-          <NavigationControl position="bottom-right" showCompass={false} />
+          {(!dock || !compactMapViewport) && !peekPlace && !parkingPeek && (
+            <NavigationControl position="bottom-right" showCompass={false} />
+          )}
           {!dock && <GeolocateControl position="bottom-right" trackUserLocation />}
         </Map>
 
@@ -3361,7 +3451,7 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !listView && offOverview && (
+        {dock && !listView && !peekPlace && !parkingPeek && offOverview && (
           <button
             type="button"
             className="map-reset-fab tap-44"
@@ -3378,7 +3468,7 @@ export default function AppMap({
             a dock pane or the list is open. While locating, the icon swaps to
             a spinner (static under reduced motion) so the ~8s geolocation wait
             reads as working, not stuck. */}
-        {dock && !listView && (
+        {dock && !listView && !peekPlace && !parkingPeek && (
           <button
             type="button"
             className="map-locate-fab tap-44"
@@ -3403,15 +3493,17 @@ export default function AppMap({
             roll. Honest empty state when nothing matches. */}
         {dock && listView && (
           <MapList
-            places={visiblePlaces}
+            places={inViewPlaces}
             userLoc={userLoc}
+            sortOrigin={userLoc ?? homeCentroid ?? viewCenter}
             onPick={(p) => {
               updateListView(false);
+              setPeekListReturnSlug(p.slug);
               setSelectedSlug(p.slug);
               const m = mapRef.current?.getMap();
               if (m && p.geom) {
                 cameraIntentRef.current = true;
-                smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14 });
+                smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14, maxStep: 6 });
               }
               setParkingPeek(null);
               setPeekPlace(p);
@@ -3449,6 +3541,14 @@ export default function AppMap({
             onClose={() => {
               setPeekPlace(null);
               setSelectedSlug(null);
+              if (peekListReturnSlug) {
+                const returnSlug = peekListReturnSlug;
+                setPeekListReturnSlug(null);
+                updateListView(true);
+                window.requestAnimationFrame(() => {
+                  document.querySelector<HTMLElement>(`[data-map-place-slug="${CSS.escape(returnSlug)}"]`)?.focus();
+                });
+              }
             }}
             onDetails={() => openPlaceSheet(peekPlace)}
           />
@@ -3476,7 +3576,7 @@ export default function AppMap({
               maxWidth="260px"
             >
               <div style={{ fontFamily: "var(--font-inter, inherit)" }}>
-                <p className="font-serif text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                <p className="font-sans text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                   MARC · {st.name}
                 </p>
                 {st.departures.length > 0 ? (
@@ -3520,9 +3620,10 @@ export default function AppMap({
                     const m = mapRef.current?.getMap();
                     if (m) {
                       cameraIntentRef.current = true;
-                      smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15 });
+                      smoothFocus(m, [pin.geom.lng, pin.geom.lat], { minZoom: 15, maxStep: 6 });
                     }
                     setParkingPeek(null);
+                    setPeekListReturnSlug(null);
                     setPeekPlace(pin);
                   }}
                   className="tap-44 flex w-full items-center gap-2.5 rounded-[var(--app-radius-sm)] px-2 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"

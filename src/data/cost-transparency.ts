@@ -53,7 +53,7 @@ export const BUILD_LINES: ReadonlyArray<BuildLine> = [
   {
     label: "Data verification + curation",
     description:
-      "The 1,700+ Frederick County places, vetted by hand. Address corrections, photo sourcing, blurb editing, dedup decisions: the work that doesn't show up in commits but is the difference between a directory and a field guide.",
+      "The 1,700+ Frederick County places, vetted by hand. Address corrections, photo sourcing, blurb editing, and duplicate review are the work that does not show up in commits, but they are what make the information useful and dependable.",
     hours: 80,
     rate_low_usd: 75,
     rate_high_usd: 125,

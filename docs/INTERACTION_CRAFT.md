@@ -70,6 +70,27 @@ behavior. Cite the rule number in PRs that lean on one.
     metadata. Never let a data failure look like local absence (the
     SearchOverlay error state is the model).
 
+12. **One page answers one primary question.** A page may contain deep tools,
+    but only the user's current task receives full-page treatment. Beer can
+    help someone match a pour, browse the index, choose a taproom, or find an
+    event; those are modes in one workspace, not four pages stacked together.
+
+13. **Keep the answer visible; reveal the evidence and alternatives.** Safety,
+    the current answer, and the strongest current option stay in the page.
+    Filters, source trails, alternate picks, history, and catalogs open after
+    intent. Use the existing BottomDrawer for temporary mobile depth and
+    CollapsibleSection for quiet lower-page detail.
+
+14. **One destination gets one doorway per viewport.** Before adding a search,
+    tool directory, settings link, or category launcher, check the shell and
+    the neighboring section. If the same action is already obvious and within
+    reach, the duplicate is clutter rather than discoverability.
+
+15. **A card must change a decision.** A border and background are earned by
+    content that can be chosen, compared, saved, or acted on. Copy that merely
+    restates the heading belongs in the heading or should be removed. Prefer a
+    row, rule, or type change when no separate object exists.
+
 ## Applied so far (evidence)
 
 - Rule 1: map finder grid; "Most needed" row; amenities into the find-flow.
@@ -77,14 +98,23 @@ behavior. Cite the rule number in PRs that lean on one.
 - Rule 8: placeholder sweep (global search, both map boxes) — this pass.
 - Rule 11: /today sourceHealth banner; honest counts; /open-now empty copy.
 - Rule 10: exception log started (preferences reset).
+- Rule 12 + 13: /beer task workspace; Compass category disclosures; secondary
+  Today content collapsed behind explicit intent; Map shows six common needs,
+  reveals the full place and amenity catalogs on request, then closes the panel
+  when a choice is made so the map becomes the answer again.
+- Rule 14: mobile TopBar search removed where the primary bottom Find control
+  already owns the same action; Ask no longer embeds a second tool directory.
+- Rule 15: Saved empty state and the global mobile footer reduced to the facts
+  and actions that remain useful.
 
 ## Standing next builds (named, in priority order)
 
 1. **The Radius bar** (rules 1, 2, 6): one persistent find bar, thumb-zone,
    on every surface — needs row, recents, type-anything. Placement decision
    pending (above the nav pill vs replacing its center).
-2. **The arrival card** (rule 3): design the end of the find journey —
-   distance, open-state, directions, the stamp moment.
+2. **Finish the arrival journey** (rule 3): the map preview now makes details,
+   open-state, save, and directions clear; complete the on-arrival and stamp
+   moments inside the full place sheet.
 3. **Motion audit** (rules 4, 5): inventory transition durations on frequent
    controls; zero-out the frequent, keep ceremony rare.
 4. **Weather-aware defaults** (rule 6): radar-on-rain floats indoor needs up.

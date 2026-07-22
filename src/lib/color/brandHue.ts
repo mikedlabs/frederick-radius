@@ -1,3 +1,5 @@
+import { BRAND } from "@/lib/brand";
+
 /**
  * brandHue — the pure math behind the SavedWallet per-business card color.
  *
@@ -12,7 +14,7 @@
  *   - the clamp: S into [0.35, 0.75], L into [0.30, 0.55], so every card
  *     sits in the same jewel-toned register as WALLET_GROUND
  *   - the AA guarantee: the wallet renders the hue through
- *     `color-mix(in srgb, hue 60%, #16140E)` (the light stop of the card
+ *     `color-mix(in srgb, hue 60%, #221C15)` (the light stop of the card
  *     gradient in SavedWallet.tsx); cream text on that mixed ground must
  *     clear WCAG AA 4.5:1. We compute the same mix here and, if a clamped
  *     hue fails, darken L below the clamp floor until it passes (contrast
@@ -20,8 +22,8 @@
  *     to its category ground).
  */
 
-export const CREAM = "#EEE6D4"; // --app-bg, the wallet card text color
-export const INK = "#16140E"; // --app-ink, the gradient's dark partner
+export const CREAM = BRAND.colors.cream; // --app-bg, the wallet card text color
+export const INK = BRAND.colors.ink; // --app-ink, the gradient's dark partner
 /** SavedWallet's light gradient stop is color-mix(in srgb, hue 60%, ink). */
 export const GROUND_MIX = 0.6;
 export const AA_MIN = 4.5;

@@ -199,7 +199,7 @@ function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
   );
 }
 
-/** The leader-dotted priced index line: VENUE ········· $5 MARGARITAS. */
+/** Compact venue row. Timing stays visible; town and deal sit below it. */
 function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
   const live = it.kind === "live";
   const sub =
@@ -210,15 +210,12 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
         : `${DAY_ABBR[it.day!]} ${fmtMin(it.startsAt!)}`;
   return (
     <Link href={`/places/${it.r.slug}`} aria-label={`${it.r.name}${it.r.deal ? `: ${it.r.deal}` : ""}`} className="tactile-interactive group block py-1.5">
-      {/* Venue · town ········· when. Leader-dots to the TIMING; town rides the
-          same line to keep each venue to two compact lines so more fit at once. */}
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex min-w-0 items-baseline gap-2">
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
-        <span className="shrink truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "55%" }}>{it.r.name}</span>
-        {it.r.town && <span className="shrink-0 truncate font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</span>}
-        <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
+        <span className="min-w-0 flex-1 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{it.r.name}</span>
         <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.04em]" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
       </div>
+      {it.r.town && <span className="mt-0.5 block truncate text-[11px] font-medium" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</span>}
       {/* The deal — figures flow inline (glued to each item), clamped to keep the
           row compact. The full deal is on the place page. */}
       {it.r.deal ? (
@@ -256,6 +253,8 @@ export default function HappyHourGuide({
   const [day, setDay] = useState(today);
   const [nowMin, setNowMin] = useState(seedMin);
   const [query, setQuery] = useState("");
+  const [showAllMore, setShowAllMore] = useState(false);
+  const [showAllVaries, setShowAllVaries] = useState(false);
   const prevCover = useRef<string | null>(null);
   const [coverBloom, setCoverBloom] = useState(false);
 
@@ -307,6 +306,10 @@ export default function HappyHourGuide({
   const liveRest = live.filter((x) => x.r.slug !== coverSlug);
   const laterRest = later.filter((x) => x.r.slug !== coverSlug);
   const otherRest = other.filter((x) => x.r.slug !== coverSlug);
+  const moreVisible = searching || showAllMore ? otherRest : otherRest.slice(0, 8);
+  const hiddenMoreCount = otherRest.length - moreVisible.length;
+  const variesVisible = searching || showAllVaries ? varies : varies.slice(0, 6);
+  const hiddenVariesCount = varies.length - variesVisible.length;
 
   // Re-cast bloom when the cover changes to a different spot on a tick (the
   // one-shot "the issue's cover just changed" flourish). Safe: `cover` only
@@ -385,8 +388,8 @@ export default function HappyHourGuide({
             </button>
           )}
         </div>
-        <div className="-mx-4 px-4">
-          <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="max-w-full overflow-hidden">
+          <ul className="flex max-w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {["Drafts", "Wine", "Cocktails", "Oysters", "Half off", "Wings"].map((label) => {
               const key = label.toLowerCase();
               const on = q === key;
@@ -396,7 +399,7 @@ export default function HappyHourGuide({
                     type="button"
                     onClick={() => setQuery(on ? "" : key)}
                     aria-pressed={on}
-                    className="tap-44-y rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
+                    className="inline-flex min-h-11 items-center rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
                     style={
                       on
                         ? { borderColor: "var(--app-accent)", background: "var(--app-accent)", color: "var(--app-on-brand, #fff)" }
@@ -411,7 +414,7 @@ export default function HappyHourGuide({
           </ul>
         </div>
         {searching && (
-          <p className="px-0.5 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          <p role="status" aria-live="polite" className="px-0.5 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
             {shownRows.length === 0 ? "No matches" : `${shownRows.length} ${shownRows.length === 1 ? "spot" : "spots"} for “${query.trim()}”`}
           </p>
         )}
@@ -447,7 +450,17 @@ export default function HappyHourGuide({
 
           <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-brand-press)" items={liveRest} nowMin={nowMin} />
           <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent-press)" items={laterRest} nowMin={nowMin} />
-          <IndexSection label="More this week" count={otherRest.length} tone="var(--app-ink-2)" items={otherRest} nowMin={nowMin} />
+          <IndexSection label="More this week" count={otherRest.length} tone="var(--app-ink-2)" items={moreVisible} nowMin={nowMin} />
+          {hiddenMoreCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllMore(true)}
+              className="min-h-11 w-full border-y text-[13px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+            >
+              Show all {otherRest.length} later this week
+            </button>
+          )}
 
           {/* Schedule varies — verified spots whose hours don't parse to a day. */}
           {varies.length > 0 && (
@@ -457,14 +470,14 @@ export default function HappyHourGuide({
                 <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{varies.length}</span>
               </div>
               <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
-                {varies.map((r) => (
+                {variesVisible.map((r) => (
                   <li key={r.slug}>
                     <Link href={`/places/${r.slug}`} aria-label={`${r.name}${r.deal ? `: ${r.deal}` : ""}`} className="tactile-interactive block py-1.5">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="shrink truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "60%" }}>{r.name}</span>
-                        <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
-                        <span className="shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</span>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <span className="min-w-0 flex-1 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{r.name}</span>
+                        <span className="max-w-[48%] shrink-0 truncate text-right font-mono text-[11px] uppercase tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}</span>
                       </div>
+                      {r.town && <span className="mt-0.5 block truncate text-[11px] font-medium" style={{ color: "var(--app-ink-3)" }}>{r.town}</span>}
                       {r.deal ? (
                         <DealLines deal={r.deal} max={4} layout="inline" vague={figureCount(r.deal) === 0} className="mt-0.5 line-clamp-2 text-[12.5px]" />
                       ) : (
@@ -474,6 +487,16 @@ export default function HappyHourGuide({
                   </li>
                 ))}
               </ul>
+              {hiddenVariesCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllVaries(true)}
+                  className="min-h-11 w-full border-t text-[13px] font-semibold"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+                >
+                  Show all {varies.length} schedules
+                </button>
+              )}
             </section>
           )}
         </div>

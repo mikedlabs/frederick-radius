@@ -46,7 +46,7 @@ export default function PlaceHero({
   // Vermilion brand fallback for uncategorized places. Kept as a literal
   // (not var(--app-brand)) because `color` is consumed in hex-alpha concat
   // below (`${color}26`), which a CSS var cannot satisfy.
-  const color = cat?.color ?? "#E14328";
+  const color = cat?.color ?? "#B5462B";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const resolved = resolvePhotoSrc(slug, width);

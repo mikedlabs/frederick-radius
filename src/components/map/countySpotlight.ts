@@ -23,12 +23,13 @@
  */
 import type { Map as GLMap } from "mapbox-gl";
 import COUNTY from "@/data/county-boundary.json";
+import { BRAND } from "@/lib/brand";
 
 // Warm paper scrim (tracks --app-bg) and a field-guide border ink.
-const VEIL = "#EAE2D2";
+const VEIL = BRAND.colors.paperDeep;
 const VEIL_OPACITY = 0.72;
-const BORDER = "#7A6A52"; // warm sepia ink — a printed-map border
-const BORDER_GLOW = "#A03A22"; // brand brick, a whisper of accent inside
+const BORDER = BRAND.colors.controlBorder;
+const BORDER_GLOW = BRAND.colors.brick;
 
 // A box wide enough to cover any viewport the app shows (generous around
 // Maryland). Wound as the veil's outer ring; the county rings punch holes.

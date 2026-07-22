@@ -3,11 +3,12 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, CalendarCheck } from "lucide-react";
 import { COLLECTIONS } from "@/data/collections";
 import PageBloom from "@/components/ui/PageBloom";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/collections" },
-  title: "Collections",
-  description: "Browse local lists organized around a specific kind of day in Frederick County.",
+  title: PRODUCT_NAMES.localLists.pageTitle,
+  description: PRODUCT_NAMES.localLists.description,
 };
 
 /**
@@ -28,8 +29,8 @@ export default function CollectionsIndex() {
       <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Collections
+        <h1 className="font-sans text-[clamp(2rem,8vw,3rem)] font-semibold leading-none tracking-[-0.035em]" style={{ color: "var(--app-ink)" }}>
+          Local lists
         </h1>
         <p
           className="text-[14px] leading-snug"
@@ -50,12 +51,12 @@ export default function CollectionsIndex() {
         <span
           aria-hidden
           className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)" }}
         >
-          <CalendarCheck className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+          <CalendarCheck className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-serif text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <span className="block font-sans text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             Need a plan for today?
           </span>
           <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>

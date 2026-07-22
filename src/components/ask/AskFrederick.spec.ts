@@ -74,8 +74,21 @@ describe("Ask Radius nearby context", () => {
   it("respects a place named in the question", () => {
     expect(explicitAreaInQuery("Coffee in Urbana right now")).toBe("town:urbana");
     expect(explicitAreaInQuery("Dinner in New Market")).toBe("town:new-market");
+    expect(explicitAreaInQuery("Steak near downtown Frederick")).toBe("town:frederick");
+    expect(explicitAreaInQuery("A walkable date night downtown")).toBe("town:frederick");
+    expect(explicitAreaInQuery("Coffee in downtown Brunswick")).toBe("town:brunswick");
     expect(explicitAreaInQuery("What is happening in Frederick County?")).toBe("county");
     expect(explicitAreaInQuery("What is open tonight?")).toBeNull();
+  });
+
+  it("does not interrupt a local search that already names downtown Frederick", () => {
+    expect(
+      nearbyQueryNeedsAreaChoice(
+        "I want a steak dinner near downtown Frederick at 7:30 tonight",
+        "county",
+        false,
+      ),
+    ).toBe(false);
   });
 
   it("derives saved IDs from the real detail link", () => {

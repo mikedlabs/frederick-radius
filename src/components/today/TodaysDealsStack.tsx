@@ -46,7 +46,7 @@ export default function TodaysDealsStack({
         <div>
           <h3
             id="today-specials-heading"
-            className={`${embedded ? "text-[17px]" : "text-[20px]"} font-serif font-semibold leading-tight tracking-[-0.01em]`}
+            className={`${embedded ? "text-[17px] font-sans font-semibold" : "text-[20px] font-serif"} leading-tight tracking-[-0.01em]`}
             style={{ color: "var(--app-ink)" }}
           >
             Specials
@@ -99,7 +99,7 @@ export default function TodaysDealsStack({
                     {/* text-wrap pretty: multi-line deal headlines ("… by the
                         bottle / only") otherwise orphan their last word. */}
                     <span
-                      className="block font-serif text-[17px] font-semibold leading-[1.22] tracking-[-0.01em] [text-wrap:pretty]"
+                      className="block font-sans text-[17px] font-semibold leading-[1.22] tracking-[-0.01em] [text-wrap:pretty]"
                       style={{ color: "var(--app-ink)" }}
                     >
                       {deal.headline}

@@ -248,7 +248,7 @@ export const LANE_META: Record<
   press: {
     label: "Press & Broadcast",
     tagline: "Newsrooms, TV stations, radio, and wires covering Frederick County.",
-    color: "#A03A22",
+    color: ACCENTS.terracotta,
   },
   community: {
     label: "Community",

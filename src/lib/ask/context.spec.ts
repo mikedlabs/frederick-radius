@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -341,6 +341,27 @@ describe("normalizePlainTextAnswer", () => {
   it("preserves numeric ranges while cleaning prose dashes", () => {
     expect(normalizePlainTextAnswer("Cafe Nola – open 5 – 9 PM")).toBe(
       "Cafe Nola is open 5-9 PM.",
+    );
+  });
+});
+
+describe("concisePlainTextAnswer", () => {
+  it("keeps complete sentences within the word budget", () => {
+    const answer = [
+      "Cafe Nola is the closest match and its current hours cover breakfast today.",
+      "Beans and Bagels is another nearby option with a different menu.",
+      "A third sentence adds detail that does not fit the compact answer.",
+    ].join(" ");
+    const concise = concisePlainTextAnswer(answer, 24);
+    expect(concise).toBe(
+      "Cafe Nola is the closest match and its current hours cover breakfast today. Beans and Bagels is another nearby option with a different menu.",
+    );
+  });
+
+  it("uses a grammatical recovery message for one oversized sentence", () => {
+    const answer = `${Array.from({ length: 90 }, () => "detail").join(" ")}.`;
+    expect(concisePlainTextAnswer(answer, 20)).toBe(
+      "That answer is too broad to show clearly. Ask for one town, time, or type of place and I will narrow it down.",
     );
   });
 });

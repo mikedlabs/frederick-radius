@@ -53,7 +53,18 @@ type Display = {
   categorySlug?: string;
 };
 
-function displayFor(hit: SearchHit): Display {
+function branchKey(hit: Extract<SearchHit, { type: "place" }>): string {
+  return `${hit.place.name.trim().toLocaleLowerCase()}|${hit.place.city.trim().toLocaleLowerCase()}`;
+}
+
+/** The street portion is enough to distinguish two branches in the same town.
+ *  Keep the full mailing address on the place page instead of stuffing it into
+ *  every search row. */
+function streetAddress(address: string): string {
+  return (address.split(",", 1)[0] ?? "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+function displayFor(hit: SearchHit, showBranchAddress = false): Display {
   switch (hit.type) {
     case "place":
       return {
@@ -63,6 +74,7 @@ function displayFor(hit: SearchHit): Display {
         // not "ice-cream · Frederick".
         subtitle: [
           CATEGORY_BY_SLUG[hit.place.category]?.name ?? hit.place.category.replace(/-/g, " "),
+          showBranchAddress ? streetAddress(hit.place.address) : "",
           hit.place.city,
         ].filter(Boolean).join(" · "),
         badge: { label: "Place", color: CATEGORY_BY_SLUG[hit.place.category]?.color ?? "var(--app-brand)" },
@@ -82,7 +94,7 @@ function displayFor(hit: SearchHit): Display {
         href: `/m/${hit.municipality.slug}`,
         title: hit.municipality.name,
         subtitle: hit.municipality.hero_blurb || hit.municipality.description,
-        badge: { label: "Town", color: "var(--app-brand-2)" },
+        badge: { label: "Town", color: "var(--app-cool)" },
         Icon: Building2,
       };
     case "category":
@@ -98,7 +110,7 @@ function displayFor(hit: SearchHit): Display {
         href: hit.page.href,
         title: hit.page.title,
         subtitle: hit.page.blurb,
-        badge: { label: "Guide", color: "var(--app-brand-2)" },
+        badge: { label: "Guide", color: "var(--app-brand)" },
         Icon: DoorOpen,
       };
   }
@@ -118,12 +130,14 @@ function SearchResultRow({
   hit,
   dominantType,
   divided,
+  showBranchAddress,
 }: {
   hit: SearchHit;
   dominantType?: string;
   divided: boolean;
+  showBranchAddress?: boolean;
 }) {
-  const d = displayFor(hit);
+  const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
@@ -226,6 +240,18 @@ export default async function SearchPage({
   // restaurants or stores instead of the official licensing answer.
   const answer = suppressLocalHits ? null : inferredAnswer;
   const rankedHits = suppressLocalHits ? [] : hits;
+  // A chain can have several branches in the same town. Add street context
+  // only to those colliding rows; unique places keep the quieter category +
+  // town subtitle.
+  const branchCounts = new Map<string, number>();
+  for (const hit of rankedHits) {
+    if (hit.type !== "place") continue;
+    const key = branchKey(hit);
+    branchCounts.set(key, (branchCounts.get(key) ?? 0) + 1);
+  }
+  const duplicateBranches = new Set(
+    [...branchCounts.entries()].filter(([, count]) => count > 1).map(([key]) => key),
+  );
   const typeCounts = new Map<string, number>();
   for (const h of rankedHits) typeCounts.set(h.type, (typeCounts.get(h.type) ?? 0) + 1);
   const dominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -320,7 +346,7 @@ export default async function SearchPage({
                 ? { borderTop: "1px solid var(--app-border)" }
                 : undefined}
             >
-              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", color: "var(--app-brand-2)" }}>
+              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
                 <Building2 className="h-4 w-4" strokeWidth={2.25} />
               </span>
               <span className="min-w-0 flex-1">
@@ -426,7 +452,13 @@ export default async function SearchPage({
             style={{ borderColor: "var(--app-border)" }}
           >
             {primaryHits.map((hit, index) => (
-              <SearchResultRow key={keyFor(hit)} hit={hit} dominantType={dominantType} divided={index > 0} />
+              <SearchResultRow
+                key={keyFor(hit)}
+                hit={hit}
+                dominantType={dominantType}
+                divided={index > 0}
+                showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
+              />
             ))}
           </ul>
           {remainingHits.length > 0 && (
@@ -437,7 +469,13 @@ export default async function SearchPage({
               </summary>
               <ul aria-label={`More results for ${query}`}>
                 {remainingHits.map((hit, index) => (
-                  <SearchResultRow key={keyFor(hit)} hit={hit} dominantType={dominantType} divided={index > 0} />
+                  <SearchResultRow
+                    key={keyFor(hit)}
+                    hit={hit}
+                    dominantType={dominantType}
+                    divided={index > 0}
+                    showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
+                  />
                 ))}
               </ul>
             </details>

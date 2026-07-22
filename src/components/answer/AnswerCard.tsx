@@ -93,7 +93,7 @@ export default function AnswerCard({
             <span />
           )}
           {metaRight && (
-            // Data voice: distances/times in JetBrains Mono + tabular-nums
+            // Data voice: distances/times in Public Sans + tabular numerals
             // (the brand reserves mono for data), so the numeric datum reads
             // as a measured figure, not prose, and column-aligns card to card.
             <span className="font-mono text-[12px] font-medium tabular-nums" style={{ color: inkQuiet }}>
@@ -105,8 +105,8 @@ export default function AnswerCard({
 
       <div className="relative z-10 space-y-1">
         <h3
-          className={`${featured ? (plated ? "text-[22px]" : "text-[18px]") : "text-[16px]"} font-semibold leading-snug`}
-          style={{ color: inkMain, fontFamily: "var(--font-display, Georgia, serif)" }}
+          className={`${featured ? (plated ? "text-[22px]" : "text-[18px]") : "text-[16px]"} ${featured ? "font-serif" : "font-sans font-semibold"} leading-snug`}
+          style={{ color: inkMain }}
         >
           {answer.title}
         </h3>

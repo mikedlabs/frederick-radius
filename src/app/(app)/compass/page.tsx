@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import CompassHub from "@/components/nav/CompassHub";
 import PageBloom from "@/components/ui/PageBloom";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/compass" },
-  title: "Compass",
-  description:
-    "Open every Frederick Radius guide and tool from one index.",
+  title: PRODUCT_NAMES.allTools.pageTitle,
+  description: PRODUCT_NAMES.allTools.description,
 };
 
 /**

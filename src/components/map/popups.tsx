@@ -19,18 +19,16 @@ import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
  *  the closing "hurry" cell reads warning, everything else stays muted
  *  ink so only the actionable fact carries color. */
 const LEDGER_TONE: Record<LedgerCell["tone"], string> = {
-  open: "var(--app-positive, #1E6B3A)",
+  open: "var(--app-positive, #315A43)",
   soon: "var(--app-warning-press, #8F5600)",
   closed: "var(--app-ink-3, #5C5A50)",
   muted: "var(--app-ink-3, #5C5A50)",
 };
 
-/** Shared display face for popup titles — Fraunces, with a real serif
- *  fallback so a font miss never drops to sans (the popup lives outside
- *  React's CSS scope, so we can't lean on a class). */
-const SERIF = "var(--font-display), ui-serif, Georgia, serif";
-/** JetBrains Mono for the data ledger — times, prices, the caption voice. */
-const MONO = "var(--font-mono), ui-monospace, 'SFMono-Regular', monospace";
+/** Popup content lives in MapLibre-owned DOM, so shared font classes are not
+ *  reliable here. Keep an explicit Public Sans stack for compact titles/data. */
+const SANS = "var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif";
+const DATA = SANS;
 
 /**
  * Clamp feed-sourced text to N lines with clean wrapping. The feed carries
@@ -74,13 +72,13 @@ export function EventPopup({ e }: { e: EventPin }) {
           textAlign: "center",
         }}
       >
-        <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: "0.14em" }}>
+        <span style={{ fontFamily: DATA, fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", fontVariantNumeric: "tabular-nums" }}>
           {s.month}
         </span>
-        <span style={{ fontFamily: SERIF, fontSize: 26, lineHeight: 1, fontWeight: 600 }}>
+        <span style={{ fontFamily: DATA, fontSize: 26, lineHeight: 1, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
           {s.day}
         </span>
-        <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", opacity: 0.7 }}>
+        <span style={{ fontFamily: DATA, fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", opacity: 0.7, fontVariantNumeric: "tabular-nums" }}>
           {s.weekday.toUpperCase()}
         </span>
       </div>
@@ -94,14 +92,14 @@ export function EventPopup({ e }: { e: EventPin }) {
         }}
       />
       <div style={{ flex: 1, minWidth: 0, padding: "4px 4px 4px 10px" }}>
-        <p style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color, marginBottom: 3, ...clamp(1) }}>
+        <p style={{ fontFamily: DATA, fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", color, marginBottom: 3, ...clamp(1) }}>
           {stubEyebrow(s)}
         </p>
-        <strong style={{ fontSize: 15, lineHeight: 1.25, color: "var(--app-ink, #16140E)", fontFamily: SERIF, ...clamp(2) }}>
+        <strong style={{ fontSize: 15, lineHeight: 1.25, fontWeight: 600, color: "var(--app-ink, #221C15)", fontFamily: SANS, ...clamp(2) }}>
           {e.title}
         </strong>
         {e.venue_name && (
-          <p style={{ fontSize: 12, margin: "4px 0 8px", color: "var(--app-ink-2, #423E34)", ...clamp(1) }}>
+          <p style={{ fontSize: 12, margin: "4px 0 8px", color: "var(--app-ink-2, #5A5348)", ...clamp(1) }}>
             {e.venue_name}
           </p>
         )}
@@ -117,8 +115,8 @@ export function EventPopup({ e }: { e: EventPin }) {
 }
 
 /**
- * Place card — the "specimen" treatment. Category plate line, serif name, a
- * hairline rule, then a single mono ledger row of terse facts
+ * Place card — the "specimen" treatment. Category plate line, compact name, a
+ * hairline rule, then a single tabular data row of terse facts
  * ("Open · til 6pm · $$") — the field-guide plate-caption voice. The blurb
  * trails below in quiet ink; the ledger, not the prose, is the scannable
  * substance.
@@ -130,18 +128,18 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
   return (
     <div style={{ minWidth: 208, padding: 4 }}>
       <p style={{
-        fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+        fontFamily: DATA, fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
         textTransform: "uppercase", color: catColor, marginBottom: 4,
       }}>
         {cat?.name ?? p.category}
       </p>
-      <strong style={{ fontSize: 15, color: "var(--app-ink, #16140E)", fontFamily: SERIF, ...clamp(2) }}>
+      <strong style={{ fontSize: 15, fontWeight: 600, color: "var(--app-ink, #221C15)", fontFamily: SANS, ...clamp(2) }}>
         {p.name}
       </strong>
       {ledger.length > 0 && (
         <>
           <div style={{ height: 1, background: "color-mix(in srgb, var(--app-ink) 14%, transparent)", margin: "6px 0" }} aria-hidden />
-          <p style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: "0.01em", ...clamp(1) }}>
+          <p style={{ fontFamily: DATA, fontSize: 11, fontWeight: 600, letterSpacing: "0.01em", fontVariantNumeric: "tabular-nums", ...clamp(1) }}>
             {ledger.map((cell, i) => (
               <span key={i} style={{ color: LEDGER_TONE[cell.tone] }}>
                 {i > 0 && <span style={{ color: "var(--app-ink-3, #5C5A50)", margin: "0 5px" }}>·</span>}
@@ -152,7 +150,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
         </>
       )}
       {p.short_blurb && (
-        <p style={{ fontSize: 12, margin: "6px 0", color: "var(--app-ink-2, #423E34)", lineHeight: 1.45, ...clamp(3) }}>
+        <p style={{ fontSize: 12, margin: "6px 0", color: "var(--app-ink-2, #5A5348)", lineHeight: 1.45, ...clamp(3) }}>
           {p.short_blurb}
         </p>
       )}
@@ -189,11 +187,11 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color, marginBottom: 4 }}>
           {meta.label}
         </p>
-        <strong style={{ fontSize: 15, color: "var(--app-ink, #16140E)", fontFamily: "var(--font-display), ui-serif, Georgia, serif", ...clamp(2) }}>
+        <strong style={{ fontSize: 15, fontWeight: 600, color: "var(--app-ink, #221C15)", fontFamily: SANS, ...clamp(2) }}>
           {p.name}
         </strong>
         {p.address && (
-          <p style={{ fontSize: 12, margin: "6px 0 4px", color: "var(--app-ink-2, #423E34)", lineHeight: 1.4 }}>
+          <p style={{ fontSize: 12, margin: "6px 0 4px", color: "var(--app-ink-2, #5A5348)", lineHeight: 1.4 }}>
             {p.address}
           </p>
         )}
@@ -224,11 +222,11 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         )}
         <p style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", color: cat?.color ?? "var(--app-brand-2, #2F5470)", marginBottom: 4,
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-cool, #285D73)", marginBottom: 4,
         }}>
           {cat?.name ?? p.category_slug}
         </p>
-        <strong style={{ display: "block", fontSize: 15, color: "var(--app-ink, #1A1A1A)", fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}>
+        <strong style={{ display: "block", fontSize: 15, fontWeight: 600, color: "var(--app-ink, #1A1A1A)", fontFamily: SANS }}>
           {p.name}
         </strong>
         {p.address && (
@@ -239,7 +237,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         <p style={{
           marginTop: 6, fontSize: 10, fontWeight: 600,
           textTransform: "uppercase", letterSpacing: "0.06em",
-          color: "var(--app-brand-2, #2F5470)",
+          color: "var(--app-positive, #315A43)",
         }}>
           Marked on foot
         </p>
@@ -255,7 +253,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       }}>
         {cat?.name ?? p.category_slug}
       </p>
-      <strong style={{ fontSize: 15, color: "var(--app-ink, #1A1A1A)", fontFamily: "var(--font-display), ui-serif, Georgia, serif", ...clamp(2) }}>
+      <strong style={{ fontSize: 15, fontWeight: 600, color: "var(--app-ink, #1A1A1A)", fontFamily: SANS, ...clamp(2) }}>
         {p.name}
       </strong>
       <p style={{

@@ -96,7 +96,6 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
     if (info.offset.y > 120 || info.velocity.y > 500) {
       haptic("light");
       setOpen(false);
-      setTimeout(onClose, 220);
     } else {
       y.set(0);
     }
@@ -132,7 +131,7 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)]"
           >
             {children(dismiss)}
           </motion.div>
@@ -149,7 +148,13 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
  */
 export function SheetHandle({ onClose, closeLabel }: { onClose: () => void; closeLabel: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
+    <div
+      className="flex items-center justify-between gap-2 pb-1 pt-2"
+      style={{
+        paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
+      }}
+    >
       <button
         type="button"
         onClick={() => { haptic("light"); onClose(); }}

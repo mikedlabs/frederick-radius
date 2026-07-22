@@ -11,14 +11,16 @@ import OnTapNow from "@/components/beer/OnTapNow";
 import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 import MyTaps from "@/components/beer/MyTaps";
 import TaproomMap from "@/components/beer/TaproomMap";
-import { BREWERIES } from "@/data/beers";
+import BeerWorkspace from "@/components/beer/BeerWorkspace";
+import { BEER_SNAPSHOT_MONTH, BREWERIES } from "@/data/beers";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Frederick beer guide: find your pour",
+  title: PRODUCT_NAMES.beer.pageTitle,
   description:
     "A visual guide to 174 signature pours across 17 Frederick County breweries, with flavor matching and a device-only brewery passport. Verify availability before you go.",
   alternates: { canonical: "/beer" },
@@ -37,43 +39,49 @@ export default function BeerPage() {
   ) as BreweryPhotoMap;
 
   return (
-    <div className="space-y-12 pb-4 sm:space-y-16">
+    <div className="space-y-8 pb-4 sm:space-y-10">
       {/* Zone 1 — compact masthead (replaced the tall BeerHero) so the Flavor
           Field is nearly above the fold. */}
       <BeerMasthead />
 
-      {/* Zones 2 + 3 — the instrument: the Flavor Field chart (the whole
-          county's palate, and the family/ABV filter control) leading the pour
-          list it filters. Owner ask 2026-07-20: "impressive to beer lovers, a
-          real tool," "less like a directory." */}
-      <BeerIndex photos={breweryPhotos} />
-
-      {/* Zone 4 — the taprooms as PHOTOGRAPHS, not a logo directory. */}
-      <BreweryStrip photos={breweryPhotos} />
-
-      <BeerTasteFlight />
-
-      <Suspense fallback={<BeerTaproomEventsFallback />}>
-        <BeerTaproomEvents />
-      </Suspense>
-
-      {/* Live tap lists from pilot breweries' own Untappd for Business
-          menus. Self-hides until at least one brewery shares a read-only
-          token (docs/UNTAPPD_PILOT.md), then lights up per brewery. */}
-      <Suspense fallback={null}>
-        <OnTapNow />
-      </Suspense>
-
-      <TaproomMap places={breweryCards} />
-
-      <MyTaps />
+      {/* One task is expanded at a time. The catalog, taprooms, events, map,
+          finder, and saved pours still exist, but no longer compete as eight
+          consecutive full-page zones. */}
+      <BeerWorkspace
+        find={
+          <div className="space-y-12">
+            <BeerTasteFlight />
+            <MyTaps />
+          </div>
+        }
+        index={<BeerIndex photos={breweryPhotos} />}
+        taprooms={
+          <div className="space-y-12">
+            <BreweryStrip photos={breweryPhotos} />
+            <TaproomMap places={breweryCards} />
+          </div>
+        }
+        tonight={
+          <div className="space-y-12">
+            {/* Live tap lists from pilot breweries' own Untappd for Business
+                menus. Self-hides until a brewery shares a read-only token. */}
+            <Suspense fallback={null}>
+              <OnTapNow />
+            </Suspense>
+            <Suspense fallback={<BeerTaproomEventsFallback />}>
+              <BeerTaproomEvents />
+            </Suspense>
+          </div>
+        }
+      />
 
       <footer
-        className="grid gap-4 border-t border-black/12 py-6 text-[#281e14] sm:grid-cols-[1fr_auto] sm:items-end"
+        className="grid gap-4 border-t py-6 text-[var(--app-ink)] sm:grid-cols-[1fr_auto] sm:items-end"
+        style={{ borderColor: "var(--app-border)" }}
       >
         <div className="max-w-[42rem] text-[11px] leading-relaxed text-black/60">
           <p className="font-semibold text-black/72">Before you go</p>
-          <p className="mt-1">Signature beers are based on a July 2026 snapshot of brewery sites and Untappd. Check the brewery&rsquo;s current tap list and hours before making a special trip.</p>
+          <p className="mt-1">Signature beers are based on a {BEER_SNAPSHOT_MONTH} snapshot of brewery sites and Untappd. Check the brewery&rsquo;s current tap list and hours before making a special trip.</p>
         </div>
         <Link
           href="/trust"

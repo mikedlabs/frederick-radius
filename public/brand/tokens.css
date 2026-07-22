@@ -1,0 +1,18 @@
+:root {
+  --radius-brick: #B5462B;
+  --radius-cream: #F4EEE2;
+  --radius-ink: #221C15;
+  --radius-forest: #315A43;
+  --radius-creek: #285D73;
+  --radius-plum: #7E2C6F;
+  --radius-amber: #C58A32;
+  --radius-ridge: #3F5E8F;
+  --radius-surface: #FBF8F0;
+  --radius-paper-deep: #EAE1D1;
+  --radius-border: #D8CDBA;
+  --radius-muted-ink: #6C6357;
+  --radius-control-border: #927F63;
+  --radius-functional-amber: #925E16;
+  --radius-font-display: "Libre Caslon Display";
+  --radius-font-text: "Public Sans";
+}

@@ -11,6 +11,8 @@ describe("Google photo storage guardrails", () => {
     expect(route).toContain('cache: "no-store"');
     expect(route).toContain('"Cache-Control": "private, no-store, max-age=0"');
     expect(route).not.toContain("revalidate: 604800");
+    expect(route).toContain('placeholderResponse(name, w, "rate-limited", slug)');
+    expect(route).not.toContain('new Response("Too Many Requests"');
   });
 
   it("leaves the legacy download command as a hard refusal", () => {

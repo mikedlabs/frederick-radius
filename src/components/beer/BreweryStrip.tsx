@@ -48,10 +48,10 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
   }, [photos, feature]);
 
   return (
-    <section aria-labelledby="brewery-strip-heading" className="text-[#281e14]">
+    <section aria-labelledby="brewery-strip-heading" className="text-[var(--app-ink)]">
       <div className="px-0.5">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[#85501f]">The taprooms</p>
-        <h2 id="brewery-strip-heading" className="mt-1 font-serif text-[28px] font-semibold leading-none tracking-[-0.03em] sm:text-[34px]">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--app-amber-text)]">The taprooms</p>
+        <h2 id="brewery-strip-heading" className="mt-1 font-serif text-[28px] leading-none tracking-[-0.03em] sm:text-[34px]">
           Find a brewery.
         </h2>
       </div>
@@ -62,8 +62,8 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
           type="button"
           onClick={() => setFeature(null)}
           aria-pressed={feature === null}
-          className={`min-h-9 shrink-0 rounded-full px-3 text-[12px] font-semibold transition ${
-            feature === null ? "bg-[#382517] text-[#fffaf2]" : "border border-black/15 bg-[#faf5ea] text-black/62"
+          className={`min-h-11 shrink-0 rounded-full px-3 text-[12px] font-semibold transition ${
+            feature === null ? "bg-[var(--app-ink)] text-[var(--app-on-brand)]" : "border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink-2)]"
           }`}
         >
           All {BREWERIES.length}
@@ -76,8 +76,8 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
               type="button"
               onClick={() => setFeature(on ? null : chip.key)}
               aria-pressed={on}
-              className={`min-h-9 shrink-0 rounded-full px-3 text-[12px] font-semibold transition ${
-                on ? "bg-[#382517] text-[#fffaf2]" : "border border-black/15 bg-[#faf5ea] text-black/62"
+              className={`min-h-11 shrink-0 rounded-full px-3 text-[12px] font-semibold transition ${
+                on ? "bg-[var(--app-ink)] text-[var(--app-on-brand)]" : "border border-[var(--app-border)] bg-[var(--app-bg-elevated-solid)] text-[var(--app-ink-2)]"
               }`}
             >
               {chip.label}
@@ -86,9 +86,13 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
         })}
       </div>
 
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        This filter has {cards.length} {cards.length === 1 ? "brewery" : "breweries"}.
+      </p>
+
       {/* Photo card rail */}
       {cards.length > 0 ? (
-        <ul className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none]">
+        <ul id="brewery-strip-results" className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none]">
           {cards.map((c) => (
             <li key={c.slug} className="shrink-0 snap-start">
               <Link
@@ -111,10 +115,10 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
                   style={{ background: "linear-gradient(to top, rgba(18,13,9,0.86) 0%, rgba(18,13,9,0.20) 42%, transparent 66%)" }}
                 />
                 <span className="absolute inset-x-0 bottom-0 p-4">
-                  <span className="block font-serif text-[24px] font-semibold leading-tight tracking-[-0.02em] text-[#fffaf2]">
+                  <span className="block font-serif text-[24px] leading-tight tracking-[-0.02em] text-[var(--app-on-brand)]">
                     {c.name}
                   </span>
-                  <span className="mt-1 block font-mono text-[10.5px] uppercase tracking-[0.1em] text-[#f0d9b8]">
+                  <span className="mt-1 block font-mono text-[10.5px] uppercase tracking-[0.1em] text-[var(--app-paper-2)]">
                     {c.town} · {c.beers} beer{c.beers === 1 ? "" : "s"}
                   </span>
                 </span>
@@ -123,7 +127,7 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 rounded-[14px] border border-black/12 bg-[#faf5ea] px-4 py-8 text-center text-[13px] text-black/60">
+        <p className="mt-4 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated-solid)] px-4 py-8 text-center text-[13px] text-[var(--app-ink-3)]" style={{ borderColor: "var(--app-border)" }}>
           No breweries match that filter yet.
         </p>
       )}

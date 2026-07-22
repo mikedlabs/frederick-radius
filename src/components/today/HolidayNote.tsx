@@ -33,7 +33,7 @@ export default function HolidayNote({ now }: { now: Date }) {
         <Flag className="h-4 w-4" strokeWidth={2} />
       </span>
       <div className="min-w-0">
-        <p className="font-serif text-[15px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+        <p className="font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
           {h.name}
           {h.observed && (
             <span className="ml-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>

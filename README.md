@@ -1,8 +1,12 @@
 # Frederick Radius
 
-> An answer-first field guide to Frederick County, Maryland. What's open, what's happening, where, and how to get there — answered, with its source.
+> Frederick County starts where you are.
+
+Frederick Radius helps people find open places, local events, and practical
+information across Frederick County, Maryland.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
+**Brand system:** [`docs/brand/BRAND_GUIDE.md`](./docs/brand/BRAND_GUIDE.md)
 **Companion docs:** [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (what the product is + the laws) · [`UX_REDO.md`](./UX_REDO.md) (the sequenced redo plan + data-confidence gate) · [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
 
 ---
@@ -16,12 +20,12 @@ Four primary tabs (the bottom nav; single source of truth in `src/components/nav
 | **Today** | `/today` | The home. Today still leads with weather + an events shelf; the answer-first reframe (the "intelligence layer" home) is UX_REDO Layer 2. Renders weather (hourly + 7-day), TodayMoves + MoveStack, TwoDoors, mode-scoped events, MoodTiles. |
 | **Map** | `/map` | Pinpoint-first map with category-color pins + a layers drawer (civic / transit / trails / amenities). Radius is a mode here: `/map?mode=radius`. |
 | **Events** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar. |
-| **My Radius** | `/my-radius` | localStorage-backed saves · recently-viewed places · follows. |
+| **Saved** | `/my-radius` | Local and synced saves, recently viewed places, and follows. |
 
 ### Deep-link routes (not in bottom nav but discoverable)
 
 - `/places/[slug]` · `/category/[slug]` · `/m/[slug]` · `/events/[slug]` · `/events/calendar`
-- `/map?mode=radius` (within-reach mode) · `/search` (one ranked list) · `/pulse` (deep weather)
+- `/map?mode=radius` (within-reach mode) · `/search` (one ranked list) · `/pulse` (live conditions)
 - `/parks` · `/trails` · `/trail` (beverage trail) · `/transit` · `/rivers` · `/history` · `/from-above`
 
 ### Meta + flow
@@ -100,7 +104,7 @@ Three jobs the app does. Every route sits under one of them:
 2. **MAP** — answer "what's here / where / what kind" (map, directory, town, category, radius mode)
 3. **EVENTS** — answer "what's coming up" (events list, calendar, weekend)
 
-My Radius is your stuff — not a job, a holding area.
+Saved keeps the places, events, and beer picks a user wants to return to.
 
 Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` → `/today`, `/browse` → `/map`, `/saved` → `/my-radius`, `/radius` → `/map?mode=radius`, `/water` → `/rivers`, plus the older `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities`.
 

@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 /**
  * SectionHeading — the one strong category header, reused by Shelf and
  * the Radius results grid (and available to any future surface). A
- * tick + serif title + a quiet count, optional trailing action.
+ * tick + editorial title + a quiet count, optional trailing action.
  *
  * The tick color reads from `--section-accent` if a parent has set it
  * (so a whole route can theme its headings with one declaration on the
@@ -31,9 +31,9 @@ export default function SectionHeading({
   trailing?: React.ReactNode;
   /** Override the route accent for a single heading. */
   accent?: string;
-  /** Heading register. `lg` is the primary section title (serif 22 + full
+  /** Heading register. `lg` is the primary section title (Caslon 22 + full
    *  tick); `sm` is the one lighter subhead register for secondary sections
-   *  (serif 16 + a shorter tick), so hierarchy reads from type, not per-section
+   *  (Public Sans 16 + a shorter tick), so hierarchy reads from type, not per-section
    *  invention. */
   size?: "lg" | "sm";
 }) {
@@ -48,8 +48,8 @@ export default function SectionHeading({
       <h2
         className={
           small
-            ? "flex items-center gap-2 font-serif text-[16px] font-semibold leading-none tracking-tight"
-            : "flex items-center gap-2 font-serif text-[22px] font-semibold leading-none tracking-tight"
+            ? "flex items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
+            : "flex items-center gap-2 font-serif text-[22px] leading-none tracking-tight"
         }
         style={{ color: "var(--app-ink)" }}
       >
@@ -61,7 +61,7 @@ export default function SectionHeading({
         {title}
         {count !== undefined && (
           <span
-            className={small ? "text-sm font-normal tabular-nums" : "text-base font-normal tabular-nums"}
+            className={small ? "font-data text-sm font-normal" : "font-data text-base font-normal"}
             style={{ color: "var(--app-ink-3)" }}
           >
             {count}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Bookmark, CornerUpRight, X } from "lucide-react";
+import { useEffect, useId, useRef } from "react";
+import { ArrowRight, Bookmark, CornerUpRight, X } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
@@ -64,28 +64,29 @@ export default function MapPeek({
   const saved = useIsSaved("place", place.slug);
   const toggleSave = useToggleSave("place", place.slug);
   const open = openLine(place);
-  const [imgOk, setImgOk] = useState(true);
-
   const dist =
     userLoc && place.geom
       ? formatDistance(haversineMeters(userLoc, place.geom))
       : null;
 
-  // The static-map thumbnail — the image "already available" for a pin
-  // that ships no photo in the slim payload. A pin marks where it sits, so
-  // a small map crop reads as the place at a glance. Fails soft to a
-  // category-tinted band (the Referer-restricted token can 403 off-domain).
-  const pin = cat?.color && /^#[0-9a-fA-F]{6}$/.test(cat.color)
-    ? cat.color.slice(1).toLowerCase()
-    : "e14328";
-  const staticSrc = place.geom
-    ? `/api/static-map?lng=${place.geom.lng.toFixed(5)}&lat=${place.geom.lat.toFixed(5)}&pin=${pin}&size=320x150`
-    : "";
-
   const dirHref = place.geom ? directionsHref(place.geom.lat, place.geom.lng) : "#";
+  const regionRef = useRef<HTMLDivElement>(null);
+  const nameId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    regionRef.current?.focus({ preventScroll: true });
+  }, []);
 
   return (
-    <div className="map-peek" role="dialog" aria-label={place.name}>
+    <div
+      ref={regionRef}
+      className="map-peek"
+      role="region"
+      tabIndex={-1}
+      aria-labelledby={nameId}
+      aria-describedby={descriptionId}
+    >
       <button
         type="button"
         className="map-peek-close tap-44"
@@ -95,26 +96,18 @@ export default function MapPeek({
         <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
       </button>
 
-      <button type="button" className="map-peek-body" onClick={onDetails}>
-        <span className="map-peek-thumb" style={{ background: catColor }}>
-          {imgOk && staticSrc && (
-            // eslint-disable-next-line @next/next/no-img-element -- static Mapbox crop, outside next/image
-            <img
-              src={staticSrc}
-              alt=""
-              width={80}
-              height={80}
-              decoding="async"
-              className="field-map-image"
-              onError={() => setImgOk(false)}
-            />
-          )}
-        </span>
+      <button
+        type="button"
+        className="map-peek-body"
+        onClick={onDetails}
+        aria-labelledby={nameId}
+        aria-describedby={descriptionId}
+      >
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color: catColor }}>
             {cat?.name ?? place.category}
           </span>
-          <span className="map-peek-name font-serif">{place.name}</span>
+          <span id={nameId} className="map-peek-name font-serif">{place.name}</span>
           <span className="map-peek-meta">
             <span style={{ color: open.tone, fontWeight: 600 }}>{open.text}</span>
             {dist && (
@@ -159,6 +152,21 @@ export default function MapPeek({
               {nearestGarage.available != null ? ` · ${nearestGarage.available} spaces` : ""}
             </span>
           )}
+          <span
+            className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Details
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+          </span>
+          <span id={descriptionId} className="sr-only">
+            {cat?.name ?? place.category}. {open.text}.
+            {dist ? ` ${dist} away.` : ""}
+            {place.deal_hook ? ` ${place.deal_hook}.` : ""}
+            {hostedEvent ? ` Upcoming event: ${hostedEvent.title}.` : ""}
+            {nearestGarage ? ` Nearby parking: ${nearestGarage.name}.` : ""}
+            Open details.
+          </span>
         </span>
       </button>
 

@@ -104,7 +104,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Sun"
           eyebrowIcon={<SunriseIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {clockLabel(sun.sunset)}
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
@@ -138,7 +138,7 @@ export default async function WeatherMoreGrid() {
               </>
             )}
           </svg>
-          <p className="mt-1 text-[11px] tabular-nums opacity-70">
+          <p className="mt-1 font-data text-[11px] opacity-70">
             Sunrise {clockLabel(sun.sunrise)}
           </p>
         </MoreTile>
@@ -150,7 +150,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Wind"
           eyebrowIcon={<WindIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {windSpeedText || (metar?.windSpeedKts != null ? `${metar.windSpeedKts} kt` : "N/A")}
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
@@ -161,7 +161,7 @@ export default async function WeatherMoreGrid() {
                 : "Current"}
           </p>
           {gustsKts !== null && (
-            <p className="mt-2 text-[12px] tabular-nums">
+            <p className="mt-2 font-data text-[12px]">
               <span className="opacity-70">Gusts to </span>
               <span className="font-semibold">{gustsKts} kt</span>
             </p>
@@ -175,7 +175,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Humidity"
           eyebrowIcon={<Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {metar.relativeHumidity}%
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
@@ -183,7 +183,7 @@ export default async function WeatherMoreGrid() {
           </p>
           <p className="mt-2 text-[12px] leading-snug opacity-80">
             The dew point is{" "}
-            <span className="font-semibold tabular-nums">{metar.dewpointF}°</span>
+            <span className="font-data font-semibold">{metar.dewpointF}°</span>
             {comfort && comfort.label !== "Comfortable" && comfort.label !== "Dry" && (
               <>
                 <span className="opacity-50"> · </span>
@@ -203,7 +203,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Feels like"
           eyebrowIcon={<Thermometer className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {metar.tempF}&deg;
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
@@ -231,7 +231,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Pressure"
           eyebrowIcon={<Gauge className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {metar.pressureHpa.toFixed(0)}
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
@@ -253,7 +253,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Visibility"
           eyebrowIcon={<Eye className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {metar.visibilityMi}
             <span className="ml-1 text-[14px] font-normal opacity-70">mi</span>
           </p>
@@ -275,13 +275,13 @@ export default async function WeatherMoreGrid() {
         eyebrow={moon.name}
         eyebrowIcon={<Moon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
       >
-        <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+        <p className="font-data text-[22px] font-semibold leading-none">
           {Math.round(moon.illumination * 100)}%
         </p>
         <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
           Illuminated
         </p>
-        <p className="mt-2 text-[12px] tabular-nums opacity-80">
+        <p className="mt-2 font-data text-[12px] opacity-80">
           {moon.name === "Full Moon"
             ? "The moon is full tonight."
             : moon.daysToFull < moon.daysToNew
@@ -296,7 +296,7 @@ export default async function WeatherMoreGrid() {
           eyebrow="Daylight"
           eyebrowIcon={<SunsetIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
-          <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+          <p className="font-data text-[22px] font-semibold leading-none">
             {Math.floor(delta.todayMinutes / 60)}
             <span className="ml-0.5 text-[14px] font-normal opacity-70">h </span>
             {delta.todayMinutes % 60}
@@ -305,7 +305,7 @@ export default async function WeatherMoreGrid() {
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             Today
           </p>
-          <p className="mt-2 text-[12px] tabular-nums opacity-80">
+          <p className="mt-2 font-data text-[12px] opacity-80">
             {delta.deltaMinutes === 0
               ? "Same as yesterday"
               : delta.deltaMinutes > 0

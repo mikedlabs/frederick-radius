@@ -152,11 +152,11 @@ export default function ArchivePage() {
         </div>
 
         <div className="relative max-w-[48rem]">
-          <p className="eyebrow inline-flex items-center gap-2 text-[var(--app-brand-2)]">
+          <p className="eyebrow inline-flex items-center gap-2 text-[var(--app-cool)]">
             <Library className="h-3.5 w-3.5" aria-hidden />
             Archive Lens · primary sources
           </p>
-          <h1 className="mt-3 max-w-[42rem] font-serif text-[38px] font-semibold leading-[0.98] tracking-tight text-[var(--app-ink)] sm:text-[50px] lg:text-[58px]">
+          <h1 className="mt-3 max-w-[42rem] font-editorial text-[38px] leading-[0.98] tracking-tight text-[var(--app-ink)] sm:text-[50px] lg:text-[58px]">
             Frederick, under the surface.
           </h1>
           <p className="mt-4 max-w-[39rem] text-[14px] leading-relaxed text-[var(--app-ink-2)] sm:text-[16px]">

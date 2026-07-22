@@ -22,7 +22,7 @@ const ICONS = {
 
 const TINT: Record<keyof typeof ICONS, string> = {
   Sun: "#E8A33D",
-  CloudSun: "#C99632",
+  CloudSun: ACCENTS.amber,
   Cloud: "#8A8884",
   CloudRain: ACCENTS.slate,
   CloudSnow: "#7CA8D8",

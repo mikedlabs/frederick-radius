@@ -356,6 +356,10 @@ export default function SearchOverlay({
     <div
       ref={dialogRef}
       className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center"
+      style={{
+        paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Search Frederick Radius"
@@ -374,7 +378,7 @@ export default function SearchOverlay({
 
       {/* Sheet */}
       <div
-        className="relative z-10 mx-4 mt-[10dvh] w-full max-w-screen-sm overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+        className="relative z-10 mt-[10dvh] w-full max-w-screen-sm overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
         style={{ borderColor: "var(--app-border)" }}
       >
         {/* Input */}
@@ -497,7 +501,7 @@ export default function SearchOverlay({
                         className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
                         style={{ borderColor: "var(--app-border)" }}
                       >
-                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", color: "var(--app-brand-2)" }}>
+                        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
                           <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
                         </span>
                         <span className="min-w-0 flex-1">

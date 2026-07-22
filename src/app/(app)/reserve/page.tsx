@@ -44,7 +44,7 @@ export default async function ReservePage() {
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
           href="/today"
-          className="inline-flex items-center gap-1 hover:underline"
+          className="tap-44-y inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -84,19 +84,21 @@ export default async function ReservePage() {
           const town = MUNICIPALITY_BY_SLUG[p.municipality ?? ""]?.name;
           return (
             <li key={p.slug} className="flex items-center gap-3 py-3" style={{ borderColor: "var(--app-border)" }}>
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/places/${p.slug}`}
-                  className="block font-serif text-[15.5px] font-semibold leading-snug hover:underline"
+              <Link
+                href={`/places/${p.slug}`}
+                className="flex min-h-11 min-w-0 flex-1 flex-col justify-center hover:underline"
+              >
+                <span
+                  className="font-serif text-[15.5px] font-semibold leading-snug"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {p.name}
-                </Link>
-                <p className="mt-0.5 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                </span>
+                <span className="mt-0.5 truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                   {town ?? "Frederick County"}
                   {p.short_blurb ? ` · ${p.short_blurb}` : ""}
-                </p>
-              </div>
+                </span>
+              </Link>
               <a
                 href={reserve.url}
                 target="_blank"
@@ -129,7 +131,7 @@ export default async function ReservePage() {
           href={openTableSearchUrl("restaurants Frederick MD")}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2.5 inline-flex items-center text-[13px] font-semibold"
+          className="tap-44-y mt-2.5 inline-flex items-center text-[13px] font-semibold"
           style={{ color: "var(--app-brand-press)" }}
         >
           Search OpenTable

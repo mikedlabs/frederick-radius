@@ -170,7 +170,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
             type="button"
             onClick={() => setKind(null)}
             aria-pressed={kind === null}
-            className={`min-h-9 rounded-full px-3 text-[12px] font-semibold transition ${kind === null ? "text-white" : "border"}`}
+            className={`min-h-11 rounded-full px-3 text-[12px] font-semibold transition ${kind === null ? "text-white" : "border"}`}
             style={kind === null ? { background: "var(--app-ink)" } : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
           >
             All {incidents.length}
@@ -183,7 +183,7 @@ export default function ScannerBoard({ initial }: { initial: ScannerIncident[] }
                 type="button"
                 onClick={() => setKind(on ? null : k)}
                 aria-pressed={on}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition"
                 style={on ? { background: toneOf(k), color: "#fff" } : { border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
               >
                 <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: on ? "#fff" : toneOf(k) }} />

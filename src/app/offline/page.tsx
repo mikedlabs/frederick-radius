@@ -1,5 +1,7 @@
 "use client";
 
+import RippleMark from "@/components/brand/RippleMark";
+
 /**
  * Shown only by the service worker when a navigation fails and there is
  * no cached copy. Deliberately tiny and dependency-free so it works
@@ -11,18 +13,7 @@ export default function OfflinePage() {
       className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center"
       style={{ color: "var(--app-ink)" }}
     >
-      <span
-        aria-hidden
-        className="grid h-16 w-16 place-items-center rounded-[var(--app-radius-lg)]"
-        style={{ background: "var(--app-brand)" }}
-      >
-        <span
-          className="grid h-7 w-7 place-items-center rounded-full"
-          style={{ border: "3px solid #fff" }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#fff" }} />
-        </span>
-      </span>
+      <RippleMark size={64} tile />
       <h1 className="mt-5 font-serif text-2xl font-semibold tracking-tight">
         You are offline
       </h1>

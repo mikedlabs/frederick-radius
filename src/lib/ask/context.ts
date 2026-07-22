@@ -538,6 +538,30 @@ export function normalizePlainTextAnswer(s: string): string {
 }
 
 /**
+ * Keep generated answers scannable without cutting a sentence in half. Source
+ * cards carry the extra detail, so the prose should make the decision and
+ * stop. An unusually long single sentence is rejected in favor of a short,
+ * grammatical recovery prompt rather than shipping a clipped fragment.
+ */
+export function concisePlainTextAnswer(s: string, maxWords = 80): string {
+  const normalized = normalizePlainTextAnswer(s);
+  const wordCount = (value: string) => value.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount(normalized) <= maxWords) return normalized;
+
+  const sentences = normalized.match(/[^.!?]+[.!?](?:[\])}'"]*)?/g) ?? [];
+  const kept: string[] = [];
+  let used = 0;
+  for (const sentence of sentences) {
+    const count = wordCount(sentence);
+    if (used + count > maxWords) break;
+    kept.push(sentence.trim());
+    used += count;
+  }
+  if (kept.length > 0) return kept.join(" ");
+  return "That answer is too broad to show clearly. Ask for one town, time, or type of place and I will narrow it down.";
+}
+
+/**
  * No em dashes in user-facing copy (docs/VOICE.md) — every other surface
  * converts them at the boundary (cleanFeedText); model prose must clear
  * the same bar. Digit ranges were already normalized to hyphens and

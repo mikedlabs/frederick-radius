@@ -19,6 +19,7 @@ import { photoUrl, getPlaceDetails } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { BRAND, RIPPLE_GEOMETRY } from "@/lib/brand";
 
 export const runtime = "nodejs";
 // A route-level revalidate value would put Google photo bytes in Next/Vercel's
@@ -27,21 +28,34 @@ export const dynamic = "force-dynamic";
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 const VALID_SLUG = /^[a-z0-9-]+$/;
+const PLACEHOLDER_ACCENTS = [
+  BRAND.colors.brick,
+  BRAND.colors.forest,
+  BRAND.colors.plum,
+  BRAND.colors.ridge,
+] as const;
+const SVG_FONT_FACES = `<style>
+  @font-face{font-family:'Public Sans';src:url('/brand/fonts/public-sans-variable.woff2') format('woff2');font-style:normal;font-weight:100 900}
+  @font-face{font-family:'Libre Caslon Display';src:url('/brand/fonts/libre-caslon-display-400.woff2') format('woff2');font-style:normal;font-weight:400}
+</style>`;
 
-/**
- * Pull display initials from a place name. "Brewers Alley" → "BA";
- * "Sumittra Thai Cuisine" → "ST"; single-word "Tabù" → "TA". Anything
- * already two characters or shorter stays as-is. Drops parens / dashes
- * / business filler.
- */
-function initialsOf(name: string): string {
-  const words = name
-    .replace(/[(),'.&]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 0 && !/^(the|of|and|at|in|on)$/i.test(w));
-  if (words.length === 0) return "FR";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function rippleSvg(accent: string, w: number, hgt: number): string {
+  const scale = Math.max(2.4, hgt / 118);
+  const x = w - 94 * scale;
+  const y = -18 * scale;
+  const paths = RIPPLE_GEOMETRY.full.paths
+    .map((path, index) => `<path d="${path}" stroke-opacity="${RIPPLE_GEOMETRY.full.opacities[index]}"/>`)
+    .join("");
+  return `<g transform="translate(${x} ${y}) scale(${scale})" fill="none" stroke="${accent}" stroke-linecap="round" stroke-width="2.2">${paths}</g><circle cx="${w - 44}" cy="${Math.round(hgt * 0.48)}" r="6" fill="${accent}"/>`;
 }
 
 /**
@@ -51,12 +65,9 @@ function initialsOf(name: string): string {
  * gradient tile. This is what we want for hero/marquee photos where a
  * single 502 used to leave a glaring gap.
  *
- * When the caller passes a place slug, we render a RICHER fallback:
- * place initials in big serif type on a category-colored gradient. A
- * lot more like a "this is a real place we just don't have a photo
- * for right now" tile than the old generic gradient circle. Falls
- * back to the hash-colored gradient when no slug or no place match,
- * so the function is always safe to call.
+ * When the caller passes a place slug, the plate identifies the listing and
+ * its category without pretending that generated initials are photography.
+ * The actual Radius ripple makes the degraded state unmistakably ours.
  */
 function placeholderSvg(name: string, w: number, slug?: string): string {
   const aspect = 4 / 3;
@@ -66,36 +77,34 @@ function placeholderSvg(name: string, w: number, slug?: string): string {
   const place = slug ? PLACE_BY_SLUG[slug] : undefined;
   if (place) {
     const cat = CATEGORY_BY_SLUG[place.category];
-    const accent = cat?.color ?? "#A03A22";
-    const ini = initialsOf(place.name);
-    const fontSize = Math.round(hgt * 0.42);
+    const accent = cat?.color ?? BRAND.colors.brick;
+    const placeName = escapeXml(place.name);
+    const category = escapeXml((cat?.name ?? place.category ?? "Place").toUpperCase());
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${accent}" stop-opacity="0.42"/>
-      <stop offset="100%" stop-color="${accent}" stop-opacity="0.18"/>
-    </linearGradient>
-  </defs>
-  <rect width="${w}" height="${hgt}" fill="#1A1815"/>
-  <rect width="${w}" height="${hgt}" fill="url(#g)"/>
-  <text x="${w / 2}" y="${hgt / 2}" text-anchor="middle" dominant-baseline="central" font-family="Georgia, 'Times New Roman', serif" font-weight="600" font-size="${fontSize}" fill="${accent}" fill-opacity="0.88" letter-spacing="${Math.round(fontSize * 0.04)}">${ini}</text>
+  ${SVG_FONT_FACES}
+  <rect width="${w}" height="${hgt}" fill="${BRAND.colors.cream}"/>
+  <rect width="5" height="${hgt}" fill="${accent}"/>
+  ${rippleSvg(accent, w, hgt)}
+  <line x1="32" y1="${Math.round(hgt * 0.28)}" x2="${Math.round(w * 0.52)}" y2="${Math.round(hgt * 0.28)}" stroke="${BRAND.colors.border}"/>
+  <text x="32" y="${Math.round(hgt * 0.19)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(11, Math.round(hgt * 0.026))}" font-weight="700" letter-spacing="2.4" fill="${accent}">${category}</text>
+  <text x="32" y="${Math.round(hgt * 0.37)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(10, Math.round(hgt * 0.023))}" letter-spacing="1.4" fill="${BRAND.colors.mutedInk}">PHOTO NOT AVAILABLE</text>
+  <text x="32" y="${Math.round(hgt * 0.82)}" font-family="Libre Caslon Display, Georgia, serif" font-size="${Math.max(20, Math.round(hgt * 0.075))}" fill="${BRAND.colors.ink}">${placeName}</text>
 </svg>`;
   }
 
   // Generic gradient fallback (no slug or unknown slug).
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  const hue = Math.abs(h) % 360;
-  const h2 = (hue + 30) % 360;
+  const colorIndex = Math.abs(h) % PLACEHOLDER_ACCENTS.length;
+  const first = PLACEHOLDER_ACCENTS[colorIndex];
+  const second = PLACEHOLDER_ACCENTS[(colorIndex + 1) % PLACEHOLDER_ACCENTS.length];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="hsl(${hue},45%,32%)"/>
-      <stop offset="100%" stop-color="hsl(${h2},35%,18%)"/>
-    </linearGradient>
-  </defs>
-  <rect width="${w}" height="${hgt}" fill="url(#g)"/>
-  <circle cx="${w * 0.78}" cy="${hgt * 0.28}" r="${w * 0.12}" fill="hsl(${hue},60%,55%)" fill-opacity="0.18"/>
+  ${SVG_FONT_FACES}
+  <rect width="${w}" height="${hgt}" fill="${BRAND.colors.cream}"/>
+  <rect width="5" height="${hgt}" fill="${first}"/>
+  ${rippleSvg(second, w, hgt)}
+  <text x="32" y="${Math.round(hgt * 0.20)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(11, Math.round(hgt * 0.026))}" font-weight="700" letter-spacing="2.4" fill="${first}">FREDERICK RADIUS</text>
+  <text x="32" y="${Math.round(hgt * 0.36)}" font-family="Public Sans, Arial, Helvetica, sans-serif" font-size="${Math.max(10, Math.round(hgt * 0.023))}" letter-spacing="1.4" fill="${BRAND.colors.mutedInk}">PHOTO NOT AVAILABLE</text>
 </svg>`;
 }
 
@@ -181,14 +190,6 @@ export async function GET(req: NextRequest) {
   if (!isSameOriginRequest(req)) {
     return new Response("Forbidden", { status: 403 });
   }
-  // Per-IP rate limit: 120 photos/minute is generous (a full
-  // viewport of cards is ~6–12 photos, a few page loads is far
-  // under). Anyone past 120/min is scraping. No-op when KV isn't
-  // configured (see isRateLimited docs).
-  if (await isRateLimited(req, "place-photo", 120, 60)) {
-    return new Response("Too Many Requests", { status: 429 });
-  }
-
   const name = req.nextUrl.searchParams.get("name");
   // parseInt("abc") is NaN, and `|| "800"` only defends an empty/missing
   // param — not a non-numeric one. Without the finite check a hand-crafted
@@ -205,6 +206,16 @@ export async function GET(req: NextRequest) {
 
   if (!name || !VALID_NAME.test(name)) {
     return new Response("Bad photo name", { status: 400 });
+  }
+
+  // Per-IP rate limit: 120 photos/minute is generous (a full viewport of
+  // cards is ~6–12 photos, a few page loads is far under). Anyone past that
+  // threshold should not trigger another paid upstream request. Return the
+  // route's normal artwork fallback instead of a 429, though: a long browsing
+  // session or a shared NAT must never turn valid <img> elements into broken
+  // icons. No-op when KV is not configured (see isRateLimited docs).
+  if (await isRateLimited(req, "place-photo", 120, 60)) {
+    return placeholderResponse(name, w, "rate-limited", slug);
   }
 
   const url = photoUrl(name, w);

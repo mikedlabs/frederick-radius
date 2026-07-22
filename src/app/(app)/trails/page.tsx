@@ -176,9 +176,9 @@ export default async function TrailsPage() {
                   <span
                     aria-hidden
                     className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                    style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 14%, transparent)" }}
+                    style={{ background: "color-mix(in srgb, var(--app-positive, #315A43) 14%, transparent)" }}
                   >
-                    <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
+                    <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #315A43)" }} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -200,7 +200,7 @@ export default async function TrailsPage() {
       ) : (
         <>
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-positive, #1E6B3A)" }}>
+            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-positive, #315A43)" }}>
               {trails.length}
             </strong>{" "}
             trails across {groups.length} {groups.length === 1 ? "area" : "areas"}

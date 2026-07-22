@@ -153,7 +153,7 @@ function OnNowChipCard({ chip }: { chip: OnNowChip }) {
           )}
           {chip.kicker}
         </span>
-        <span className="block truncate font-serif text-[14px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+        <span className="block truncate font-sans text-[14px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
           {chip.title}
         </span>
         {chip.meta && (

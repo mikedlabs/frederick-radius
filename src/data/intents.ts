@@ -28,6 +28,7 @@ import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { isPizzaPlace } from "@/data/cravings";
 import { cuisinesOf } from "@/lib/cuisine";
 import { ACCENTS } from "@/data/categories";
+import { BRAND } from "@/lib/brand";
 
 export type IntentKey =
   | "coffee"
@@ -380,7 +381,7 @@ export const INTENTS: Intent[] = [
     key: "eat",
     label: "Eat & drink",
     blurb: "Find a place for a meal or a drink.",
-    color: "#A03A22",
+    color: BRAND.colors.brick,
     icon: "Utensils",
     match: (p) => FOOD.has(p.category),
     preferOpen: true,
@@ -437,7 +438,7 @@ export const INTENTS: Intent[] = [
     label: "Breweries",
     blurb:
       "Browse Frederick County breweries and distilleries.",
-    color: "#C99632",
+    color: "#8B5A2B",
     icon: "Beer",
     match: (p) =>
       // A brewery is anything in the brewery category that ISN'T a
@@ -454,7 +455,7 @@ export const INTENTS: Intent[] = [
     key: "outdoor",
     label: "Get outside",
     blurb: "Find a place to spend time outdoors.",
-    color: "#1E6B3A",
+    color: "#315A43",
     icon: "Trees",
     match: (p) => OUTDOOR.has(p.category),
     preferOpen: false,
@@ -472,7 +473,7 @@ export const INTENTS: Intent[] = [
     key: "family",
     label: "Take the kids",
     blurb: "Find a family-friendly place to visit.",
-    color: "#C99632",
+    color: BRAND.colors.ridge,
     icon: "Baby",
     match: (p) => FAMILY_CATS.has(p.category),
     preferOpen: false,

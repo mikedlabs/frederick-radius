@@ -14,6 +14,7 @@
 import type { Daypart } from "@/lib/daypart";
 import type { IntentId } from "@/lib/events/intents";
 import { LENS_WORDS } from "@/lib/timeLens";
+import { BRAND } from "@/lib/brand";
 
 /** The board's time lens (?lens=), matching EventsExplorer's TimeKey. */
 export type TimeKey = "all" | "today" | "weekend" | "week";
@@ -28,14 +29,14 @@ export type TimeKey = "all" | "today" | "weekend" | "week";
  * drift from the taxonomy.
  */
 export const EVENT_INTENT_COLOR: Record<IntentId, string> = {
-  music: "#7E1F1F",
-  arts: "#5B3A8F",
-  food: "#A03A22",
-  family: "#20506A",
-  sports: "#C0871F",
-  outdoors: "#1E6B3A",
-  community: "#875C10",
-  civic: "#5C5A50",
+  music: BRAND.colors.plum,
+  arts: BRAND.colors.plum,
+  food: BRAND.colors.brick,
+  family: BRAND.colors.ridge,
+  sports: BRAND.colors.creek,
+  outdoors: BRAND.colors.forest,
+  community: BRAND.colors.ridge,
+  civic: BRAND.colors.mutedInk,
 };
 
 /** Human label for each time lens. "all" has no label (it's "Anytime").

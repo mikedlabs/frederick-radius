@@ -49,7 +49,7 @@ function readableOn(hex: string): string {
   if (!m) return "#FFFFFF";
   const n = parseInt(m[1], 16);
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.62 ? "#16140E" : "#FFFFFF";
+  return lum > 0.62 ? "#221C15" : "#FFFFFF";
 }
 
 function arrivalMins(epoch: number | undefined, nowMs: number): number | null {
@@ -326,7 +326,7 @@ export default function TransitNow({
                 <span className="font-mono tabular-nums">{vehicles.length} moving now</span>
               )
             )}
-            {FARE_FREE && <span style={{ color: "var(--app-brand-2)", fontWeight: 600 }}>free to ride</span>}
+            {FARE_FREE && <span style={{ color: "var(--app-cool)", fontWeight: 600 }}>free to ride</span>}
             {nearCount != null && vehicles.length > 0 && (
               <span className="font-mono tabular-nums">{nearCount} within about a mile</span>
             )}

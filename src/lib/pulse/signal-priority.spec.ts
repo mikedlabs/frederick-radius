@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { pulseAlertPriority, shouldAqiLead, type PulseAlertSignal } from "./signal-priority";
+import {
+  powerOutageTone,
+  pulseAlertPriority,
+  pulseStatusState,
+  shouldAqiLead,
+  type PulseAlertSignal,
+  type PulseStatusSignals,
+} from "./signal-priority";
 
 function alert(overrides: Partial<PulseAlertSignal> = {}): PulseAlertSignal {
   return {
@@ -45,5 +52,45 @@ Smoke may be unhealthy (Red Alert) to very unhealthy (Purple Alert) Friday night
     expect(pulseAlertPriority(codeOrange)).toBe(6);
     expect(pulseAlertPriority(tornado)).toBeLessThan(pulseAlertPriority(codeOrange));
     expect(shouldAqiLead(5, codeOrange)).toBe(true);
+  });
+});
+
+describe("powerOutageTone", () => {
+  it("keeps a small active outage visible without labeling it high severity", () => {
+    expect(powerOutageTone(25, 119_844)).toBe("warning");
+  });
+
+  it("marks a widespread outage as high severity", () => {
+    expect(powerOutageTone(1_000, 119_844)).toBe("danger");
+    expect(powerOutageTone(250, 20_000)).toBe("danger");
+  });
+});
+
+describe("pulseStatusState", () => {
+  const quiet: PulseStatusSignals = {
+    weather: false,
+    fireRescue: false,
+    traffic: false,
+    power: false,
+    schools: false,
+    air: false,
+    police: false,
+  };
+
+  it("never reports all clear while a breaking police release is active", () => {
+    expect(pulseStatusState({ ...quiet, police: true }, false)).toEqual({
+      hasActive: true,
+      heroDegraded: false,
+      allClear: false,
+    });
+  });
+
+  it("keeps the quiet and degraded states distinct", () => {
+    expect(pulseStatusState(quiet, false).allClear).toBe(true);
+    expect(pulseStatusState(quiet, true)).toEqual({
+      hasActive: false,
+      heroDegraded: true,
+      allClear: false,
+    });
   });
 });

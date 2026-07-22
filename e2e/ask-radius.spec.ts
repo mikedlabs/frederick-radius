@@ -32,7 +32,7 @@ async function fulfill(route: Route, result: AskResult, status = 200) {
 }
 
 async function submit(page: Page, query: string) {
-  const input = page.getByLabel("Ask Frederick Radius");
+  const input = page.getByRole("textbox", { name: "Ask Radius" });
   await input.fill(query);
   await input.press("Enter");
 }
@@ -58,7 +58,7 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("1 source answer.")).toBeVisible();
     await expect(page.getByText("Source 1", { exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Browse all \d+ tools/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Browse all Radius tools/ })).toBeVisible();
 
     await submit(page, "three sources");
     await expect(page.getByText("3 source answer.")).toBeVisible();
@@ -80,6 +80,7 @@ test.describe("Ask Radius deterministic workspace", () => {
           plan: {
             title: "Downtown date night",
             summary: "Dinner followed by a show.",
+            dateLabel: "Today",
             href: "/plan?occasion=date-night",
             stops: [
               {
@@ -167,9 +168,13 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "slow response");
-    await expect(page.getByText("Radius is checking local data.")).toBeVisible();
+    await expect(
+      page.getByText("Radius is checking current local data and sources."),
+    ).toBeVisible();
     await page.waitForTimeout(1_400);
-    await expect(page.getByText("Radius is comparing the strongest matches.")).toBeVisible();
+    await expect(
+      page.getByText("Radius is checking current local data and sources."),
+    ).toBeVisible();
     release();
     await expect(page.getByText("The delayed answer arrived.")).toBeVisible();
   });
@@ -191,7 +196,7 @@ test.describe("Ask Radius deterministic workspace", () => {
 
     await page.goto("/ask");
     await submit(page, "first request");
-    await page.getByLabel("Ask Frederick Radius").fill("second request");
+    await page.getByRole("textbox", { name: "Ask Radius" }).fill("second request");
     await page.locator('form[aria-label="Ask Radius"]').evaluate((form) => {
       form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
@@ -280,26 +285,13 @@ test.describe("Ask Radius deterministic workspace", () => {
     expect(queries.at(-1)).toBe(contextual);
   });
 
-  test("shows every tool without repeating featured destinations", async ({ page }) => {
+  test("keeps the full tool directory one tap away in Compass", async ({ page }) => {
     await page.goto("/ask");
-    const featured = page.getByRole("navigation", { name: "Featured Radius tools" });
-    await expect(featured.getByRole("link")).toHaveCount(6);
-
-    await page.getByRole("button", { name: /Show all \d+ tools/ }).click();
-    const allTools = page.locator("#all-radius-tools a");
-    // Every registered tool except the six featured cards (which the "all"
-    // list hides while unfiltered). Update alongside the tool registry.
-    await expect(allTools).toHaveCount(48);
-    const featuredHrefs = await featured.getByRole("link").evaluateAll((links) =>
-      links.map((link) => link.getAttribute("href")),
+    await expect(page.getByRole("navigation", { name: "Featured Radius tools" })).toHaveCount(0);
+    await expect(page.locator("#all-radius-tools")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Browse all Radius tools/ })).toHaveAttribute(
+      "href",
+      "/compass",
     );
-    const allHrefs = await allTools.evaluateAll((links) =>
-      links.map((link) => link.getAttribute("href")),
-    );
-    expect(featuredHrefs.filter((href) => allHrefs.includes(href))).toEqual([]);
-
-    await page.getByLabel("Filter Radius tools").fill("trash");
-    await expect(featured).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Trash cans/ })).toBeVisible();
   });
 });

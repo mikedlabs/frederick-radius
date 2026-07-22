@@ -1,7 +1,9 @@
 # Design system — Frederick Radius
 
-Last touched: May 2026 design-token audit. Three PRs landed at once:
-**typography scale + fonts**, **color tokens**, **layout primitives**.
+Current foundation: Frederick Radius Brand System 1.2, July 22, 2026. The full identity, logo, voice,
+photography, social, and governance rules live in
+[`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md). This file documents the
+implementation-oriented type, color, layout, and component scales.
 
 When you're touching a component, this is the source of truth. New
 code picks from these tokens; old `text-[Npx]` and inline `color-mix`
@@ -11,37 +13,52 @@ calls get swept opportunistically as we revisit files.
 
 ## Typography
 
-### Fonts (3, was 4)
+### Fonts
 
 | Variable          | Family            | Use                                    |
 |-------------------|-------------------|----------------------------------------|
-| `--font-sans`     | Public Sans       | Default body, every non-display string |
-| `--font-serif`    | Newsreader        | Display + body italic / pull-quote     |
-| `--font-mono`     | JetBrains Mono    | Metadata, tabular numerics, code       |
+| `--font-sans`     | Public Sans Variable | Product titles, body, navigation, labels, controls |
+| `--font-serif`    | Public Sans Variable | Compatibility alias for older interface components |
+| `--font-display`  | Libre Caslon Display | Wordmark and rare editorial or campaign moments |
+| `--font-mono`     | Public Sans Variable | Times, distances, counts, tabular data |
 
-**Dropped: Instrument Serif.** Used in exactly one tagline on `/about`;
-Newsreader's italic carries the editorial voice with one fewer font
-fetch (saves ~50KB + a round-trip).
+The product uses two families. Libre Caslon Display is Regular only; never
+simulate a bold or italic display cut. Public Sans uses its variable upright
+and italic files and handles technical data with tabular numerals, so a third
+mono family is unnecessary. Legacy `.font-serif` components intentionally
+compute to Public Sans. Use `.font-brand` for the wordmark and
+`.font-editorial` only for a deliberate editorial hero.
 
-### Scale (8 canonical sizes)
+Map canvas labels use the cartographic face supplied by Mapbox. That exception
+is limited to labels drawn inside the map canvas; every Radius map control,
+sheet, popup, and list uses Public Sans.
+
+### Role-based scale
 
 Pick by **semantic role**, never by pixel. The line-height pairings
 are baked in — don't set `leading-*` on these.
 
 | Class            | Size | Line height | Use                                              |
 |------------------|------|-------------|--------------------------------------------------|
-| `.text-caption`  | 10   | 1.35        | timestamps, attribution tails                    |
-| `.text-meta`     | 11   | 1.4         | non-uppercase helper text                        |
-| `.text-body`     | 13   | 1.55        | default body in cards / drawer rows              |
-| `.text-body-lg`  | 14   | 1.6         | page intro paragraphs, dense reading             |
-| `.text-lead`     | 16   | 1.6         | pull-quotes, /about pitch body                   |
-| `.text-title-sm` | 15   | 1.25        | small card title (`PlaceCard` tile variant)      |
-| `.text-title`    | 18   | 1.2         | section title inside a card header (serif)       |
-| `.display-3`     | 20–24 (clamp) | 1.15 | page subhead, sits between body and `.display-2` |
+| `.text-caption`  | 11   | 1.4         | short timestamps and attribution only            |
+| `.text-meta`     | 12   | 1.45        | short metadata and helper text                   |
+| `.text-meta-lg`  | 13   | 1.5         | prominent metadata and compact explanations      |
+| `.text-body`     | 15   | 1.55        | compact card and drawer copy                     |
+| `.text-body-lg`  | 16   | 1.6         | normal reading copy and page introductions       |
+| `.text-lead`     | 18   | 1.55        | pull quotes and editorial introductions          |
+| `.text-title-sm` | 16   | 1.25        | compact Public Sans item title                   |
+| `.text-title`    | 20   | 1.15        | Public Sans section title inside a card header   |
+| `.display-3`     | 22–26 (clamp) | 1.12 | page subhead, between body and `.display-2`  |
 | `.display-2`     | 24–36 (clamp) | 1.1  | page hero subhead                                |
-| `.display-1`     | 32–56 (clamp) | 1.04 | page hero headline                               |
+| `.display-1`     | 35–58 (clamp) | 1.02 | page hero headline                               |
 
-Plus `.eyebrow` for uppercase 11px with `0.14em` tracking (already
+Normal paragraph text on a phone should be 15 to 16 px. Eleven to 13 px is
+reserved for short supporting data, never instructions or a multi-sentence
+explanation. Product headings use Public Sans. Libre Caslon Display begins at
+18 px and appears only where the wordmark or a deliberately editorial moment
+earns it.
+
+Plus `.eyebrow` for uppercase 11px with `0.1em` tracking (already
 canonical — kept).
 
 ### Color is NOT baked into typography classes
@@ -53,30 +70,33 @@ context. Callers set color explicitly (Tailwind `color:` or `style`).
 
 ## Color
 
-### Brand palette (paper-cream, unchanged)
+### Brand palette
 
 | Token                | Hex      | Use                                      |
 |----------------------|----------|------------------------------------------|
-| `--app-bg`           | #F4EFE6  | Paper-cream ground, the canvas           |
-| `--app-bg-elevated`  | #FBF8F1 (92% α) | Cards, popovers, drawers          |
-| `--app-bg-sunken`    | #ECE5D5  | Tracks, nested cards                     |
-| `--app-ink`          | #1A1815  | Headlines, important body                |
-| `--app-ink-2`        | #4A4844  | Default body                             |
-| `--app-ink-3`        | #6A6862  | Meta, captions (WCAG AA on bg/sunken)    |
-| `--app-brand`        | #A8462C  | Frederick brick — the primary           |
-| `--app-brand-2`      | #2E3B2C  | Catoctin green                           |
-| `--app-accent`       | #C99632  | Almanac gold                             |
-| `--app-cool`         | #2F5470  | Carroll Creek slate                      |
+| `--app-bg`           | #F4EEE2  | Cream ground, the normal canvas          |
+| `--app-bg-elevated-solid` | #FBF8F0 | Cards, popovers, drawers            |
+| `--app-bg-sunken`    | #EAE1D1  | Tracks, nested cards                     |
+| `--app-ink`          | #221C15  | Headlines, important body                |
+| `--app-ink-2`        | #5A5348  | Default body                             |
+| `--app-ink-3`        | #6C6357  | Meta and captions with AA contrast       |
+| `--app-brand`        | #B5462B  | Brick, identity and primary action       |
+| `--app-brand-2`      | #315A43  | Catoctin Forest, terrain/outdoor accent   |
+| `--app-amber`        | #C58A32  | Live/caution/sunlight or Beer selection/flagship fill with Ink |
+| `--app-amber-text`   | #925E16  | Text-safe Ochre Amber on Cream and Beer controls |
+| `--app-accent`       | #7E2C6F  | Limited arts/editorial Plum              |
+| `--app-cool`         | #285D73  | Creek, civic/map/transit/data accent      |
+| `--app-civic`        | #285D73  | Creek alias for official-source context  |
 | `--app-sage`         | #859076  | Topo-line sage                           |
 
 ### Status colors (one changed)
 
 | Token            | Hex      | Notes                                    |
 |------------------|----------|------------------------------------------|
-| `--app-positive` | #1E6B3A  |                                          |
-| `--app-warning`  | #B26B00  |                                          |
+| `--app-positive` | #315A43  | Small positive or open state             |
+| `--app-warning`  | #925E16  | Text-safe Ochre warning                  |
 | `--app-danger`   | **#B4231E** | **was #A02929** — too close to brand brown; now unmistakably stop-sign red |
-| `--app-info`     | #2F5470  | Same as `--app-cool`                     |
+| `--app-info`     | #285D73  | Supporting information                   |
 
 ### Tint utilities (NEW — replaces inline color-mix)
 
@@ -92,7 +112,7 @@ Available:
 - `--app-positive-tint-{6,14}`
 - `--app-warning-tint-{6,14}`
 - `--app-danger-tint-{6,14}`
-- `--app-ink-tint-{6,12}`
+- `--app-ink-tint-{6,8,12}`
 
 ### Dropped: dark mode CSS
 
@@ -100,6 +120,59 @@ The 50-line `html.dark { … }` block was dead CSS — no user-facing
 toggle ever shipped. Stripped. When a real toggle lands, regen the
 block; the paper-first identity is what gets shipped to phones in
 dark mode for now.
+
+---
+
+## Surface and shape
+
+The visual model is a printed field guide. Most information sits directly on
+the Cream canvas and is organized with typography, spacing, and ruled edges.
+Do not solve every grouping problem with another floating card.
+
+### Surface roles
+
+| Role | Treatment | Use |
+|---|---|---|
+| Paper field | Cream canvas, no shadow | Page background and normal reading flow |
+| Ruled section | Top, bottom, or side rule with spacing | Lists, answer sources, launchers, and editorial groupings |
+| Card | Elevated solid paper, 10px radius, quiet edge | One bounded item that must remain intact or move as a unit |
+| Panel | Solid paper, 14px radius | Dense local controls or a contained workspace |
+| Sheet | Solid paper, 18px radius at its exposed corners | Mobile drawers, menus, and overlays that own a temporary layer |
+
+Use elevation only when the surface is actually above another surface. Menus,
+sheets, and temporary overlays need depth. Normal rows and page sections do
+not. The existing `tactile*` names are compatibility hooks, not permission to
+add gloss, lift, or glow to routine content.
+
+### Radius policy
+
+| Token | Value | Intended role |
+|---|---:|---|
+| `--app-radius-sm` | 6px | Buttons, inputs, utility controls, and small markers |
+| `--app-radius-md` | 10px | Cards and grouped content |
+| `--app-radius-lg` | 14px | Panels and compact drawers |
+| `--app-radius-xl` | 18px | Large mobile sheets and rare feature surfaces |
+
+The practical ranges are 6 to 8 pixels for controls, 10 to 12 pixels for
+cards, and roughly 16 pixels for sheets. Use the closest named token instead of
+inventing a one-off value.
+
+A full capsule is a semantic shape. Reserve it for status, a selected toggle,
+or a compact filter. Ordinary calls to action, navigation items, source rows,
+content cards, and search results do not become pills. A true circle is still
+correct for geometry that is inherently circular, such as a map location
+button, avatar, dot, or the round portion of the Radius mark.
+
+### Decoration and image fallbacks
+
+- The Radius ripple, a registration rule, a real map line, or a real Frederick
+  photograph can carry identity. Use one at a time when it helps hierarchy.
+- Do not add routine glows, animated gradient rims, glass blur, or floating
+  ambient blobs. A feature state may use one solid registration rule.
+- Do not create fake visual variety with seeded gradients, randomized icon
+  angles, artificial textures, or giant initials that resemble photography.
+- A missing image is a data state. Label it honestly and use one stable brand
+  plate until a licensed or owner-supplied photograph is available.
 
 ---
 
@@ -139,7 +212,7 @@ Stop hardcoding `z-30 / z-40 / z-50`. Pick from the named scale:
 | `--z-base`     | 0     | Default flow                              |
 | `--z-raised`   | 10    | Sticky cards, popovers, in-page overlays  |
 | `--z-sticky`   | 30    | TopBar, sticky section headers            |
-| `--z-nav`      | 40    | BottomNav floating pill                   |
+| `--z-nav`      | 40    | BottomNav and SideRail                    |
 | `--z-overlay`  | 50    | Modal backdrops, drawer backdrops, sheets |
 | `--z-toast`    | 70    | Sonner toaster — always on top            |
 

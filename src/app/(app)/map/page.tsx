@@ -379,7 +379,7 @@ async function RadiusMode() {
 /** Browse mode — the clean whole-county default surface. */
 function BrowseMode() {
   return (
-    <div className="relative -mx-4 -mt-4 lg:ml-0">
+    <div className="relative -mx-4 sm:-mx-5 lg:ml-0">
       <h1 className="sr-only">Frederick County map</h1>
       <Suspense
         fallback={

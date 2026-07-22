@@ -187,7 +187,7 @@ export default function EventCard({
             {date.month}
           </span>
           <span
-            className="font-serif text-[17px] font-semibold"
+            className="font-data text-[17px] font-semibold"
             style={{ color: "var(--app-ink)" }}
           >
             {date.day}
@@ -333,7 +333,7 @@ export default function EventCard({
           <Link
             href={`/events/${event.slug}`}
             prefetch={false}
-            className={`flex min-h-11 items-end font-serif text-[21px] font-semibold leading-[1.08] tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
+            className={`flex min-h-11 items-end font-serif text-[21px] leading-[1.08] tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: titleColor }}
           >
             <span className="absolute inset-0" aria-hidden />

@@ -5,6 +5,13 @@ import { recordSearchMiss } from "@/lib/telemetry/searchMiss";
 import { isRateLimited, isSameOriginMutationRequest, readJsonBodyWithLimit } from "@/lib/origin-check";
 import { roundCoord } from "@/lib/walkTime";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { applyAskOutdoorSafety } from "@/lib/ask/outdoor-safety";
+import { isOutdoorRecommendation } from "@/lib/weather-safety";
+import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
+import { FREDERICK_CENTER } from "@/lib/geo";
+
+const ASK_SAFETY_DEADLINE_MS = 1_500;
 
 /**
  * POST /api/ask  → { configured, answer, sources }
@@ -73,13 +80,37 @@ export async function POST(req: NextRequest) {
     approximateOrigin: null,
     approximateStatus: "missing",
   });
-  const result = await askFrederick(query, {
-    origin: context.origin,
-    municipality: context.filterMunicipality,
-    contextLabel: context.label,
-    canShowDistance: context.canShowDistance,
-    fallbackReason: context.fallbackReason,
-  }, { taste: body.taste });
+  // Outdoor safety is a final response constraint, not a suggestion to the
+  // model. Load cached NWS alerts and measured AirNow AQI with retrieval,
+  // then remove any outdoor answer/source/plan before JSON reaches the client.
+  // This prevents a model sentence such as "take the kids to the skate park"
+  // from surviving beneath an active thunderstorm or flood warning.
+  const [rawResult, hold] = await Promise.all([
+    askFrederick(query, {
+      origin: context.origin,
+      municipality: context.filterMunicipality,
+      contextLabel: context.label,
+      canShowDistance: context.canShowDistance,
+      fallbackReason: context.fallbackReason,
+    }, { taste: body.taste }),
+    // Do not let a slow safety provider recreate Ask's old multi-second wait.
+    // The upstream fetches are cached, and a cold miss gets a short final
+    // safety budget while the grounded answer is built in parallel.
+    loadOutdoorSafetyHold(context.origin ?? FREDERICK_CENTER, {
+      deadlineMs: ASK_SAFETY_DEADLINE_MS,
+    }),
+  ]);
+  const result = applyAskOutdoorSafety(
+    rawResult,
+    query,
+    hold,
+    (source) => {
+      const place = source.href.startsWith("/places/")
+        ? clientPlaceBySlug(source.href.slice("/places/".length))
+        : null;
+      return isOutdoorRecommendation(place ?? source);
+    },
+  );
   if (result.usedModel) meterUsage("anthropic_ask");
   // Configured but nothing real to point at = a data gap, not a config gap.
   if (result.configured !== false && (!result.sources || result.sources.length === 0)) {

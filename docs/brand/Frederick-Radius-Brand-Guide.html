@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frederick Radius Brand System</title>
+  <style>
+    @font-face{font-family:"Libre Caslon Display";src:url("../../public/brand/fonts/libre-caslon-display-400.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+    @font-face{font-family:"Public Sans";src:url("../../public/brand/fonts/public-sans-variable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+    @font-face{font-family:"Public Sans";src:url("../../public/brand/fonts/public-sans-variable-italic.woff2") format("woff2");font-weight:100 900;font-style:italic;font-display:swap}
+    :root{
+      --brick:#B5462B;--cream:#F4EEE2;--ink:#221C15;--amber:#C58A32;
+      --surface:#FBF8F0;--paper-deep:#EAE1D1;--border:#D8CDBA;--muted:#6C6357;
+      --control-border:#927F63;--functional-amber:#925E16;
+      --creek:#285D73;--plum:#7E2C6F;--forest:#315A43;--ridge:#3F5E8F;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--border);color:var(--ink);font-family:"Public Sans",Arial,sans-serif}
+    .page{width:13.333in;height:7.5in;position:relative;overflow:hidden;background:var(--cream);padding:.64in .75in;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid-page}
+    .page + .page{page-break-before:always;break-before:page}
+    .page:last-child{page-break-after:auto}
+    .brick{background:var(--brick);color:var(--cream)}
+    .ink{background:var(--ink);color:var(--cream)}
+    .forest{background:var(--forest);color:var(--cream)}
+    h1,h2,h3,p{margin:0}
+    h1,h2,.display{font-family:"Libre Caslon Display",Georgia,serif;font-weight:400}
+    h1{font-size:76px;line-height:.98;letter-spacing:-1.2px}
+    h2{font-size:56px;line-height:1.02;letter-spacing:-.7px}
+    h3{font-size:17px;line-height:1.2}
+    p{font-size:18px;line-height:1.55;color:var(--muted)}
+    .brick p,.ink p,.forest p{color:rgba(244,238,226,.82)}
+    .kicker{display:flex;align-items:center;gap:12px;font-size:12px;line-height:1;text-transform:uppercase;letter-spacing:.22em;font-weight:750;color:var(--brick)}
+    .brick .kicker,.ink .kicker,.forest .kicker{color:var(--cream)}
+    .kicker:before{content:"";width:28px;height:2px;background:currentColor}
+    .rule{height:1px;background:var(--border);margin:24px 0}
+    .brick .rule,.ink .rule,.forest .rule{background:rgba(244,238,226,.28)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:46px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .grow{display:flex;flex-direction:column;justify-content:space-between;height:100%}
+    .note{font-size:14px;line-height:1.45;color:var(--muted)}
+    .brick .note,.ink .note,.forest .note{color:rgba(244,238,226,.72)}
+    .label{font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.18em;font-weight:750;color:var(--brick)}
+    .chip{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:650}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px}
+    .number{font-family:"Libre Caslon Display",Georgia,serif;font-size:64px;line-height:1;color:var(--brick)}
+    .mark{display:block;object-fit:contain}
+    .offedge{position:absolute;right:-170px;bottom:-240px;width:650px;height:650px;opacity:.16}
+    .folio{position:absolute;right:.75in;bottom:.32in;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+    .brick .folio,.ink .folio,.forest .folio{color:rgba(244,238,226,.55)}
+    .swatch{min-height:118px;border-radius:16px;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(34,28,21,.09)}
+    .swatch strong{font-size:16px}.swatch span{font-size:12px;margin-top:4px;opacity:.82}
+    .swatch.compact{min-height:78px;padding:12px}.swatch.compact strong{font-size:13px}.swatch.compact span{font-size:10px}
+    .token-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px}
+    .token{min-height:42px;border:1px solid rgba(34,28,21,.12);border-radius:10px;padding:8px 9px;font-size:9px;line-height:1.25;font-weight:700}
+    .token span{display:block;font-size:8px;font-weight:500;margin-top:2px;opacity:.82}
+    .swatch.light{color:var(--ink)}.swatch.dark{color:var(--cream)}
+    .type-sample{font-family:"Libre Caslon Display",Georgia,serif;font-size:84px;line-height:1}
+    .sans-sample{font-family:"Public Sans",Arial,sans-serif;font-size:72px;line-height:1;font-weight:600}
+    .type-layout{display:grid;grid-template-columns:.8fr 1.55fr;gap:18px;margin-top:20px}
+    .type-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:19px 21px;min-height:438px}
+    .caslon-wordmark{font-family:"Libre Caslon Display",Georgia,serif;font-size:39px;line-height:1.05;margin-top:20px}
+    .caslon-alpha{font-family:"Libre Caslon Display",Georgia,serif;font-size:18px;line-height:1.5;margin-top:20px;word-break:break-word}
+    .weight-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;margin-top:12px}
+    .weight-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--border);padding:5px 0 7px;font-size:15px}
+    .weight-row span{width:28px;font-size:10px;color:var(--muted);font-weight:600}
+    .role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+    .role-chip{min-height:57px;border:1px solid var(--border);border-radius:9px;padding:7px 8px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+    .role-chip .role-name{font-size:8px;line-height:1;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--brick)}
+    .input-spec{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:9px 12px;border:1px solid var(--control-border);border-radius:9px;background:var(--cream);font-size:16px;line-height:1.25}
+    ul{margin:0;padding-left:20px;color:var(--muted);font-size:16px;line-height:1.5}
+    li+li{margin-top:8px}
+    .brick ul,.ink ul,.forest ul{color:rgba(244,238,226,.82)}
+    .photo-system{display:grid;grid-template-columns:1.72fr .72fr;gap:20px;margin-top:22px;align-items:stretch}
+    .photo-frame{margin:0;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:18px}
+    .photo-frame img{display:block;width:100%;height:318px;object-fit:cover;object-position:center 52%;border-radius:11px}
+    .photo-caption{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:10px 4px 2px}
+    .photo-caption p{font-size:11px;line-height:1.35}
+    .photo-rules{display:flex;flex-direction:column;gap:11px}
+    .photo-rule-card{padding:15px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+    .photo-rule-card h3{font-size:14px;margin-top:7px}
+    .photo-rule-card p{font-size:11px;line-height:1.4;margin-top:6px}
+    .photo-rule-card.ink{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+    .photo-rule-card.ink p{color:rgba(244,238,226,.78)}
+    .ui-system-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .ui-example{min-height:368px;display:grid;grid-template-columns:158px 1fr;gap:15px;padding:13px;background:var(--surface);border:1px solid var(--border);border-radius:18px}
+    .ui-phone{height:342px;overflow:hidden;border:1px solid var(--control-border);border-radius:22px;background:var(--cream);box-shadow:0 9px 20px rgba(34,28,21,.13)}
+    .ui-phone img{display:block;width:100%;height:100%;object-fit:contain;object-position:top center}
+    .ui-copy{padding:6px 1px 4px;min-width:0}
+    .ui-copy h3{font-size:16px;margin-top:10px}
+    .ui-copy p{font-size:12px;line-height:1.45;margin-top:9px}
+    .ui-copy .note{font-size:11px;line-height:1.4}
+    .micro-rule{height:1px;background:var(--border);margin:14px 0 11px}
+    .behavior-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    .behavior{background:var(--surface);padding:13px 16px;min-height:76px}
+    .behavior strong{display:block;font-size:13px;margin-top:6px}
+    .behavior p{font-size:11px;line-height:1.4;margin-top:4px}
+    .system-legend{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:10px 15px;border:1px solid var(--border);border-radius:12px;background:var(--paper-deep)}
+    .system-legend p{font-size:11px;line-height:1.35;color:var(--ink)}
+    .social-grid{display:grid;grid-template-columns:1.15fr .75fr .75fr;gap:18px;align-items:start}
+    .social-grid img{width:100%;display:block;border-radius:12px;box-shadow:0 12px 28px rgba(34,28,21,.16)}
+    .do-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .do{border-top:4px solid var(--forest);padding-top:14px}.dont{border-top:4px solid var(--brick);padding-top:14px}
+    @page{size:13.333in 7.5in;margin:0}
+    @media print{html,body{background:none}.page{margin:0}}
+  </style>
+</head>
+<body>
+  <section class="page brick">
+    <img class="offedge" src="../../public/brand/marks/ripple-full-cream.svg" alt="" />
+    <div class="grow" style="position:relative">
+      <div class="kicker">Brand System · 1.2</div>
+      <div>
+        <img src="../../public/brand/marks/ripple-full-cream.svg" alt="" style="width:96px;margin-bottom:28px" />
+        <h1 style="font-size:110px">Frederick Radius</h1>
+        <div style="font-size:34px;line-height:1.2;font-weight:500;margin-top:18px;max-width:760px">Frederick County starts where you are.</div>
+      </div>
+      <div class="note">Frederick Radius Brand System 1.2 · July 22, 2026</div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="grow">
+      <div>
+        <div class="kicker">01 · The idea</div>
+        <h2 style="margin-top:26px;max-width:900px">Current local information for Frederick County, organized around where you are.</h2>
+      </div>
+      <div class="grid2" style="align-items:end">
+        <p style="font-size:23px;color:var(--ink)">Frederick Radius starts from a chosen place and brings together the current local information needed to decide what to do next.</p>
+        <div class="card">
+          <div class="label">The brand should feel</div>
+          <p style="margin-top:14px">Local, informed, calm, and practical. It should not feel like a tourism campaign, a government portal, or a generic technology product.</p>
+        </div>
+      </div>
+    </div>
+    <div class="folio">Frederick Radius · Brand guide</div>
+  </section>
+
+  <section class="page ink">
+    <img class="offedge" src="../../public/brand/marks/ripple-full-cream.svg" alt="" style="opacity:.08" />
+    <div class="grow" style="position:relative">
+      <div>
+        <div class="kicker">02 · The Ripple</div>
+        <h2 style="margin-top:26px;max-width:860px">One point represents the person, place, or moment at the center of the answer.</h2>
+      </div>
+      <div class="grid3" style="align-items:end">
+        <div><img class="mark" src="../../public/brand/marks/ripple-full-cream.svg" alt="Three arc Ripple" style="width:160px" /><div class="label" style="color:var(--cream);margin-top:14px">Full · 48 px+</div></div>
+        <div><img class="mark" src="../../public/brand/marks/ripple-compact-cream.svg" alt="Two arc Ripple" style="width:112px" /><div class="label" style="color:var(--cream);margin-top:14px">Compact · 24-47 px</div></div>
+        <div><img class="mark" src="../../public/brand/marks/ripple-favicon-cream.svg" alt="One arc Ripple" style="width:72px" /><div class="label" style="color:var(--cream);margin-top:14px">Favicon · below 24 px</div></div>
+      </div>
+      <p class="note">The arcs are solid in every primary mark. Use opacity only when the Ripple becomes background texture or motion.</p>
+    </div>
+    <div class="folio">Identity</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">03 · Lockups</div>
+    <h2 style="margin-top:24px">The identity uses one quiet, horizontal signature.</h2>
+    <div class="grid2" style="margin-top:44px;align-items:center">
+      <div class="card" style="padding:28px"><img src="../../public/brand/lockups/horizontal-brick.svg" alt="Horizontal lockup" style="width:100%" /></div>
+      <div class="card" style="padding:28px;background:var(--ink)"><img src="../../public/brand/lockups/descriptor-cream.svg" alt="Reverse tagline lockup" style="width:100%" /></div>
+    </div>
+    <div class="do-grid" style="margin-top:34px">
+      <div class="do"><h3>Use the mark at its correct optical size.</h3><p class="note" style="margin-top:8px">Keep clear space equal to the radius of the inner arc.</p></div>
+      <div class="dont"><h3>Do not redraw or decorate the mark.</h3><p class="note" style="margin-top:8px">Do not stretch, rotate, outline, add initials, or use the retired circle.</p></div>
+    </div>
+    <div class="folio">Identity</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">04 · Color</div>
+    <h2 style="margin-top:24px">Recognition stays small. Functional colors explain data.</h2>
+    <div class="grid3" style="margin-top:38px;grid-template-columns:repeat(4,1fr);gap:14px">
+      <div class="swatch dark" style="background:var(--brick)"><strong>Brick</strong><span>#B5462B</span></div>
+      <div class="swatch light" style="background:var(--cream)"><strong>Cream</strong><span>#F4EEE2</span></div>
+      <div class="swatch dark" style="background:var(--ink)"><strong>Ink</strong><span>#221C15</span></div>
+      <div class="swatch light" style="background:var(--surface);justify-content:space-between"><img src="../../public/brand/marks/ripple-compact-brick.svg" alt="Ripple mark" style="width:64px" /><div style="display:flex;flex-direction:column"><strong>Ripple</strong><span>Recognition mark</span></div></div>
+    </div>
+    <div class="label" style="margin-top:18px">Functional data colors</div>
+    <div class="grid3" style="margin-top:9px;grid-template-columns:repeat(5,1fr);gap:10px">
+      <div class="swatch compact dark" style="background:var(--forest)"><strong>Catoctin Forest</strong><span>#315A43 · outdoors/open</span></div>
+      <div class="swatch compact dark" style="background:var(--creek)"><strong>Creek</strong><span>#285D73 · civic and maps</span></div>
+      <div class="swatch compact dark" style="background:var(--plum)"><strong>Plum</strong><span>#7E2C6F · culture</span></div>
+      <div class="swatch compact light" style="background:var(--amber)"><strong>Ochre Amber</strong><span>#C58A32 · live, sun, or beer</span></div>
+      <div class="swatch compact dark" style="background:var(--ridge)"><strong>Ridge</strong><span>#3F5E8F · limited data</span></div>
+    </div>
+    <p class="note" style="margin-top:12px">Brick, Cream, Ink, the Ripple, and owned Frederick photography form the recognition system. Functional colors organize a real topic or state; they never replace the shell or become separate page brands.</p>
+    <div class="label" style="margin-top:11px">Working neutrals and text-safe Amber</div>
+    <div class="token-row">
+      <div class="token" style="background:var(--surface)">Surface<span>#FBF8F0</span></div>
+      <div class="token" style="background:var(--paper-deep)">Paper Deep<span>#EAE1D1</span></div>
+      <div class="token" style="background:var(--border)">Border<span>#D8CDBA</span></div>
+      <div class="token" style="background:var(--control-border);color:var(--cream)">Control Border<span>#927F63</span></div>
+      <div class="token" style="background:var(--muted);color:var(--cream)">Muted Ink<span>#6C6357</span></div>
+      <div class="token" style="background:var(--functional-amber);color:var(--cream)">Amber Text<span>#925E16</span></div>
+    </div>
+    <div class="folio">Foundations</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">05 · Typography</div>
+    <div style="display:flex;justify-content:space-between;gap:40px;align-items:end;margin-top:15px">
+      <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:32px;line-height:1.06;font-weight:650;letter-spacing:-.4px;max-width:650px">Public Sans carries the product. Caslon is a rare signature.</h2>
+      <p class="note" style="width:330px">The kit includes installable TTF files plus WOFF2 files. Install the Public Sans variable pair or the static compatibility set, not both.</p>
+    </div>
+    <div class="type-layout">
+      <div class="type-card">
+        <div class="label">Libre Caslon Display · Regular 400</div>
+        <div class="caslon-wordmark">Frederick Radius</div>
+        <div class="caslon-alpha">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br />abcdefghijklmnopqrstuvwxyz<br />0123456789 &amp; ? !</div>
+        <div class="micro-rule" style="margin-top:20px"></div>
+        <h3>Use rarely.</h3>
+        <p class="note" style="margin-top:8px">Use Caslon for the wordmark and an occasional editorial or hero moment. Product page titles, cards, controls, labels, and data default to Public Sans.</p>
+        <p class="note" style="margin-top:9px">Do not synthesize bold or italic. The supplied Caslon file is one upright Regular cut by design.</p>
+      </div>
+      <div class="type-card">
+        <div style="display:flex;justify-content:space-between;gap:18px;align-items:end"><div><div class="label">Public Sans · Variable upright and italic</div><h3 style="font-size:20px;margin-top:8px">Product titles, text, controls, and data</h3></div><div style="font-size:13px;font-style:italic;color:var(--muted)">Current local information.</div></div>
+        <div class="weight-grid">
+          <div class="weight-row" style="font-weight:400"><span>400</span>Frederick County 0123456789</div>
+          <div class="weight-row" style="font-weight:500"><span>500</span>Frederick County 0123456789</div>
+          <div class="weight-row" style="font-weight:600"><span>600</span>Frederick County 0123456789</div>
+          <div class="weight-row" style="font-weight:700"><span>700</span>Frederick County 0123456789</div>
+        </div>
+        <p style="font-size:12px;line-height:1.35;margin-top:9px;color:var(--ink)">ABCDEFGHIJKLMNOPQRSTUVWXYZ · abcdefghijklmnopqrstuvwxyz · <span style="font-variant-numeric:tabular-nums">00:00 11:11 123,456</span><br /><span style="font-style:italic">Italic: Frederick County starts where you are.</span></p>
+        <div class="label" style="margin-top:11px">Mobile roles shown at size</div>
+        <div class="role-grid">
+          <div class="role-chip"><div class="role-name">Caption · 11</div><div style="font-size:11px">Source note</div></div>
+          <div class="role-chip"><div class="role-name">Metadata · 13</div><div style="font-size:13px">Updated 8:42 AM</div></div>
+          <div class="role-chip"><div class="role-name">Body · 15</div><div style="font-size:15px">Useful detail</div></div>
+          <div class="role-chip"><div class="role-name">Reading · 16</div><div style="font-size:16px">Current conditions</div></div>
+          <div class="role-chip"><div class="role-name">Item title · 20</div><div style="font-size:20px;font-weight:600">Baker Park</div></div>
+          <div class="role-chip"><div class="role-name">Page title · 32</div><div style="font-size:32px;line-height:1;font-weight:650">Today</div></div>
+        </div>
+        <div class="input-spec"><span>Ask Radius</span><span class="note">Input · 16 px minimum</span></div>
+        <p class="note" style="margin-top:8px;font-size:10px">Desktop handoff: variable upright and italic. Compatibility set: 400, 500, 600, and 700 with matching italics. Map canvas labels use Mapbox cartographic type; Radius map controls remain Public Sans.</p>
+      </div>
+    </div>
+    <div class="folio">Foundations</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">06 · Product behavior</div>
+    <h2 style="margin-top:26px;max-width:830px">The interface should feel like a local field guide with useful live information.</h2>
+    <div class="grid2" style="margin-top:34px;row-gap:24px">
+      <div><div class="number" style="color:var(--forest)">01</div><h3 style="margin-top:8px">Lead with the answer.</h3><p class="note" style="margin-top:7px">Show the current condition, strongest recommendation, or next useful action first.</p></div>
+      <div><div class="number" style="color:var(--forest)">02</div><h3 style="margin-top:8px">Reveal detail when it helps.</h3><p class="note" style="margin-top:7px">Secondary information can live in a disclosure, sheet, or selected map state.</p></div>
+      <div><div class="number" style="color:var(--forest)">03</div><h3 style="margin-top:8px">Keep actions honest.</h3><p class="note" style="margin-top:7px">A control says what will happen next and never promises a capability the product does not have.</p></div>
+      <div><div class="number" style="color:var(--forest)">04</div><h3 style="margin-top:8px">Remove empty decoration.</h3><p class="note" style="margin-top:7px">A card, label, or button earns its place by helping someone decide or act.</p></div>
+    </div>
+    <div class="folio">Product system</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">07 · Surfaces and motion</div>
+    <div class="grid2" style="margin-top:32px;align-items:start">
+      <div>
+        <h2>Cream is the normal canvas.</h2>
+        <p style="margin-top:18px">Cards use Surface. Paper Deep groups quiet material. Thin rules and restrained shadows do more work than a stack of inflated containers.</p>
+        <div style="display:flex;gap:12px;margin-top:28px"><span class="chip">160 ms response</span><span class="chip">240 ms transition</span><span class="chip">420 ms reveal</span></div>
+      </div>
+      <div class="card">
+        <div class="label">Use sparingly</div>
+        <ul style="margin-top:16px">
+          <li>Ink frames create contrast moments, not a default dark theme.</li>
+          <li>Oversized Ripple arcs belong on one high-value surface.</li>
+          <li>Motion explains a state change or spatial relationship.</li>
+          <li>Reduced-motion users receive the same information.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <p style="font-size:21px;color:var(--ink)">Beer, Live conditions, All tools, and the rest of the product keep one identity. Beer may use Ochre for taste selections, flagship markers, and beer metadata, but its page remains Cream, Ink, Brick, photography, and ruled paper.</p>
+    <div class="folio">Product system</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">08 · Photography</div>
+    <div style="display:flex;justify-content:space-between;gap:40px;align-items:end;margin-top:16px">
+      <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:34px;line-height:1.06;font-weight:650;letter-spacing:-.45px;max-width:690px">Use a recognizable Frederick photograph without recoloring it.</h2>
+      <p class="note" style="width:320px">Photography joins Brick, Cream, Ink, and the Ripple in the recognition system. It should provide local evidence, not a campaign effect.</p>
+    </div>
+    <div class="photo-system">
+      <figure class="photo-frame">
+        <img src="../../public/brand/examples/frederick-skyline-natural.webp" alt="Market Street in downtown Frederick with its clock tower, water tower, brick buildings, and the ridge beyond" />
+        <figcaption class="photo-caption">
+          <div><div class="label">Approved example · Natural color</div><p style="margin-top:7px;color:var(--ink)">Market Street, downtown Frederick, with the clock tower, water tower, and ridge.</p></div>
+          <p class="note" style="max-width:260px;text-align:right">Owned Frederick Radius photograph. Crop for the subject; do not add a brand-color overlay.</p>
+        </figcaption>
+      </figure>
+      <aside class="photo-rules">
+        <div class="photo-rule-card ink">
+          <div class="label" style="color:var(--cream)">Text contrast</div>
+          <h3>Keep text off the image when possible.</h3>
+          <p>If copy must sit nearby, use a compact neutral Ink panel. Do not tint the photograph Brick, Plum, or Ochre.</p>
+        </div>
+        <div class="photo-rule-card">
+          <div class="label">Subject and crop</div>
+          <h3>Name what makes the place Frederick.</h3>
+          <p>Preserve the landmark, town, street, landscape, or practical context. Do not force one crop into every channel.</p>
+        </div>
+        <div class="photo-rule-card">
+          <div class="label">Asset record</div>
+          <h3>Keep rights and context with the master.</h3>
+          <p>Record owner, date, location, subject, permissions, and source. Remove public GPS data when it is unnecessary.</p>
+        </div>
+      </aside>
+    </div>
+    <div class="folio">Photography</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">09 · System in use</div>
+    <div style="display:flex;justify-content:space-between;gap:42px;align-items:end;margin-top:17px">
+      <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:35px;line-height:1.07;font-weight:650;letter-spacing:-.45px;max-width:670px">The same hierarchy supports a daily view, a question, and a map.</h2>
+      <p class="note" style="width:320px">Current 390 px product captures, July 22, 2026. The examples show the interface contract; time-sensitive content will change.</p>
+    </div>
+    <div class="ui-system-grid" style="margin-top:25px">
+      <article class="ui-example">
+        <div class="ui-phone"><img src="../../public/brand/examples/ui-today-mobile.webp" alt="Today mobile interface with event, action, and disclosure hierarchy" /></div>
+        <div class="ui-copy">
+          <div class="label">Today</div>
+          <h3>Edited hierarchy</h3>
+          <p>The next useful item leads. Time, place, and status stay attached to it. A disclosure holds the rest.</p>
+          <div class="micro-rule"></div>
+          <p class="note"><strong>Public Sans</strong> carries product titles, facts, labels, and actions. <strong>Caslon</strong> is reserved for an occasional editorial moment.</p>
+        </div>
+      </article>
+      <article class="ui-example">
+        <div class="ui-phone"><img src="../../public/brand/examples/ui-ask-radius-mobile.webp" alt="Ask Radius mobile decision workspace" /></div>
+        <div class="ui-copy">
+          <div class="label">Ask Radius</div>
+          <h3>Scope before answer</h3>
+          <p>The chosen area appears before the question. Brick identifies the primary action; example questions remain quiet rows.</p>
+          <div class="micro-rule"></div>
+          <p class="note">Search finds a known item. Ask Radius gives a sourced answer or builds a plan around constraints.</p>
+        </div>
+      </article>
+      <article class="ui-example">
+        <div class="ui-phone"><img src="../../public/brand/examples/ui-map-mobile.webp" alt="Warm, quiet Frederick County map interface" /></div>
+        <div class="ui-copy">
+          <div class="label">County map</div>
+          <h3>Place stays legible</h3>
+          <p>The warm base map is quiet enough for streets, water, controls, and attribution to remain clear.</p>
+          <div class="micro-rule"></div>
+          <p class="note">The Ripple and Cream shell identify Radius. Creek organizes spatial information without becoming a new brand.</p>
+        </div>
+      </article>
+    </div>
+    <div class="folio">Product system · Current UI</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">09 · System in use</div>
+    <div style="display:flex;justify-content:space-between;gap:42px;align-items:end;margin-top:17px">
+      <h2 style="font-family:'Public Sans',Arial,sans-serif;font-size:35px;line-height:1.07;font-weight:650;letter-spacing:-.45px;max-width:690px">Recognition stays fixed while functional color explains the subject.</h2>
+      <p class="note" style="width:318px">Brick, Cream, Ink, and the Ripple make the interface recognizably Radius. Supporting colors carry information; they are not sub-brand palettes.</p>
+    </div>
+    <div class="ui-system-grid" style="margin-top:22px">
+      <article class="ui-example" style="min-height:314px;grid-template-columns:146px 1fr">
+        <div class="ui-phone" style="height:288px"><img src="../../public/brand/examples/ui-pulse-mobile.webp" alt="Live conditions alert with freshness and source" /></div>
+        <div class="ui-copy">
+          <div class="label">Live conditions</div>
+          <h3>Trust beside the claim</h3>
+          <p>Brick marks urgency. Creek structures live systems. Update time and source stay next to the fact they support.</p>
+        </div>
+      </article>
+      <article class="ui-example" style="min-height:314px;grid-template-columns:146px 1fr">
+        <div class="ui-phone" style="height:288px"><img src="../../public/brand/examples/ui-compass-mobile.webp" alt="All tools directory showing grouped practical tools" /></div>
+        <div class="ui-copy">
+          <div class="label">All tools</div>
+          <h3>Tools remain one system</h3>
+          <p>The same Public Sans hierarchy, row disclosure, Cream ground, and stable navigation hold a large directory together.</p>
+        </div>
+      </article>
+      <article class="ui-example" style="min-height:314px;grid-template-columns:146px 1fr">
+        <div class="ui-phone" style="height:288px"><img src="../../public/brand/examples/ui-beer-mobile.webp" alt="Beer page with functional Ochre color and shared Radius shell" /></div>
+        <div class="ui-copy">
+          <div class="label">Beer</div>
+          <h3>Subject, not sub-brand</h3>
+          <p>Ochre describes beer color, choices, and metadata. It does not replace the normal shell, type, or disclosure rules.</p>
+        </div>
+      </article>
+    </div>
+    <div class="behavior-grid" style="margin-top:14px">
+      <div class="behavior"><div class="label">01 · Scope</div><strong>Start from a chosen area.</strong><p>Name the town, county, or user-selected location before ranking nearby results.</p></div>
+      <div class="behavior"><div class="label">02 · Trust</div><strong>Show source and freshness.</strong><p>Keep them with the live claim instead of hiding them in a separate methodology page.</p></div>
+      <div class="behavior"><div class="label">03 · Action</div><strong>Lead to the next useful step.</strong><p>Make the main action clear and keep secondary detail behind an honest disclosure.</p></div>
+    </div>
+    <div class="system-legend" style="margin-top:12px"><p><strong>Recognition:</strong> Ripple · Brick · Cream · Ink · owned photography</p><p><strong>Functional data:</strong> Catoctin Forest · Creek · Plum · Ochre Amber · Ridge</p></div>
+    <div class="folio">Product system · Current UI</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">10 · Maps and data</div>
+    <h2 style="margin-top:24px;max-width:880px">The map is part of the identity because Radius is about place.</h2>
+    <div class="grid2" style="margin-top:42px">
+      <div>
+        <ul>
+          <li>Keep the base map warm and quiet until someone selects a layer or place.</li>
+          <li>Show useful context with a selected marker. A bare pin is not an answer.</li>
+          <li>Attach source and freshness to live information.</li>
+          <li>Keep countywide context without making downtown the center of every answer.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="label">Trust rule</div>
+        <p style="margin-top:14px;font-size:20px;color:var(--ink)">Never imply government endorsement. Official data keeps its source label, time, and direct link.</p>
+        <div style="display:flex;gap:10px;margin-top:24px"><span class="chip" style="border-color:var(--creek);color:var(--creek)">Creek · civic</span><span class="chip" style="border-color:var(--forest);color:var(--forest)">Catoctin Forest · outdoors/open</span><span class="chip" style="border-color:var(--plum);color:var(--plum)">Plum · culture</span></div>
+      </div>
+    </div>
+    <div class="folio">Maps and data</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">11 · Voice</div>
+    <h2 style="margin-top:24px">Write like a careful local editor.</h2>
+    <div class="do-grid" style="margin-top:42px">
+      <div class="do">
+        <h3>Be specific and complete.</h3>
+        <p style="margin-top:14px">Name the place, town, date, distance, source, or condition when it helps someone decide. Explain uncertainty plainly.</p>
+        <div class="card" style="margin-top:22px"><div class="label">Prefer</div><p style="font-size:19px;color:var(--ink);margin-top:12px">This paved loop is 1.2 miles and has parking near the trailhead.</p></div>
+      </div>
+      <div class="dont">
+        <h3>Do not perform intelligence.</h3>
+        <p style="margin-top:14px">Avoid generic slogans, repeated fragments, artificial groups of three, and invented personal experience.</p>
+        <div class="card" style="margin-top:22px"><div class="label">Avoid</div><p style="font-size:19px;color:var(--ink);margin-top:12px">The path bends; the answer is yes.</p></div>
+      </div>
+    </div>
+    <div class="folio">Voice</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">12 · Social system</div>
+    <h2 style="margin-top:22px">The campaign language can be bolder than the product.</h2>
+    <div class="social-grid" style="margin-top:34px">
+      <img src="../../public/brand/social/facebook-cover.png" alt="Facebook cover" />
+      <img src="../../public/brand/social/feed-event-template.png" alt="Event template" />
+      <img src="../../public/brand/social/feed-live-template.png" alt="Open now template" />
+    </div>
+    <p class="note" style="margin-top:20px">Brick carries brand messages. Cream carries events and public information. Catoctin Forest marks open. Ochre Amber is reserved for something live, time-sensitive, sun-related, or specifically about beer.</p>
+    <div class="folio">Social and campaign</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">13 · Asset kit</div>
+    <h2 style="margin-top:22px">The working kit includes editable masters and ready-to-use exports.</h2>
+    <div style="display:grid;grid-template-columns:1.25fr .72fr .72fr .72fr;gap:16px;margin-top:30px;align-items:stretch">
+      <div class="card" style="display:flex;align-items:center;padding:20px"><img src="../../public/brand/lockups/descriptor-brick.png" alt="Tagline lockup" style="width:100%;display:block" /></div>
+      <div class="card" style="padding:12px"><img src="../../public/brand/social/avatar.png" alt="Social avatar" style="width:100%;display:block;border-radius:10px" /></div>
+      <div class="card" style="padding:12px;display:flex;align-items:center;justify-content:center"><img src="../../public/brand/posters/product-today.png" alt="Product-focused Today campaign poster" style="width:100%;height:154px;object-fit:contain;border-radius:10px;display:block" /></div>
+      <div class="card" style="padding:12px;display:flex;align-items:center;justify-content:center"><img src="../../public/brand/nfc/general-front.png" alt="General Frederick Radius NFC card front" style="width:100%;height:154px;object-fit:contain;border-radius:10px;display:block" /></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:24px">
+      <div><div class="label">Identity · 13</div><p class="note" style="margin-top:10px">Seven optical-size marks and six horizontal or stacked lockups, each supplied as SVG and PNG.</p></div>
+      <div><div class="label">Social · 11</div><p class="note" style="margin-top:10px">Circle-safe avatar, two Facebook covers, feed and story formats, photography templates, and Open Graph.</p></div>
+      <div><div class="label">Posters · 4</div><p class="note" style="margin-top:10px">Two photography-led posters plus current-UI posters for Today and Ask Radius.</p></div>
+      <div><div class="label">NFC · 4</div><p class="note" style="margin-top:10px">General and partner CR80 card fronts and backs, with tested-QR and URL fallbacks.</p></div>
+    </div>
+    <div class="rule"></div>
+    <p class="note">The 32 source assets ship with matching PNG exports. Font files, licenses, tokens, the manifest, the PDF, and NFC production guidance complete the handoff. Rebuild it with <strong>npm run build:brand</strong>.</p>
+    <div class="folio">Asset library</div>
+  </section>
+
+  <section class="page">
+    <div class="kicker">14 · Platform delivery</div>
+    <h2 style="margin-top:22px;max-width:880px">The icon, installed app, notifications, and share cards use one contract.</h2>
+    <div class="grid2" style="margin-top:30px;align-items:start">
+      <div class="card">
+        <div style="display:flex;gap:20px;align-items:center">
+          <img src="../../public/icons/icon.svg" alt="Frederick Radius app icon" style="width:92px;height:92px" />
+          <div><div class="label">Launcher family</div><p class="note" style="margin-top:10px">Standard 192 and 512 px icons use the Brick squircle. Maskable artwork is full bleed. Apple uses an opaque 180 px tile.</p></div>
+        </div>
+        <div class="rule"></div>
+        <p class="note">The browser favicon uses one arc at 16, 32, and 48 px. Android notifications use the launcher plus a monochrome 72 px status badge.</p>
+      </div>
+      <div>
+        <div class="label">Share and cache rules</div>
+        <ul style="margin-top:16px">
+          <li>Installed-app chrome and splash backgrounds use Cream.</li>
+          <li>The default site and beta cards use Brick; information cards use Cream.</li>
+          <li>The normal Open Graph image is 1200 by 630; story output is 1080 by 1920.</li>
+          <li>Bump the icon version after artwork changes so caches request new files.</li>
+          <li>Put the date in any time-specific share URL so yesterday's image cannot be reused.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <p class="note"><strong>Source:</strong> src/lib/platform-brand.ts · scripts/build-push-icons.ts · /api/og · /apple-splash</p>
+    <div class="folio">App and platform</div>
+  </section>
+
+  <section class="page brick">
+    <img class="offedge" src="../../public/brand/marks/ripple-full-cream.svg" alt="" />
+    <div class="grow" style="position:relative">
+      <div>
+        <div class="kicker">15 · Governance</div>
+        <h2 style="font-size:72px;margin-top:30px;max-width:880px">Consistency will make the brand feel premium.</h2>
+      </div>
+      <div class="grid2" style="align-items:end">
+        <p style="font-size:21px">The source of truth is <strong>src/lib/brand.ts</strong>. Product tokens mirror it in <strong>src/app/globals.css</strong>. Asset exports are rebuilt with <strong>npm run build:brand</strong>.</p>
+        <div>
+          <div class="label" style="color:var(--cream)">Release check</div>
+          <p class="note" style="margin-top:12px">Rebuild the brand kit, icons, and PDF. A local export is not live. Commit and deploy it, then review the public manifest, icon URLs, splash, default share card, and a new uncached page.</p>
+        </div>
+      </div>
+    </div>
+    <div class="folio">Frederick Radius Brand System · 1.2</div>
+  </section>
+</body>
+</html>

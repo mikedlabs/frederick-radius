@@ -1,4 +1,6 @@
 
+import { PLATFORM_BRAND } from "@/lib/platform-brand";
+
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
  * embedded inside it bumps on every deploy.
@@ -331,8 +333,8 @@ self.addEventListener("push", (event) => {
   const url = safeNavigationTarget(payload.url);
   const options = {
     body,
-    icon: payload.icon || "/icons/icon-192.png",
-    badge: payload.badge || "/icons/badge-72.png",
+    icon: payload.icon || "${PLATFORM_BRAND.icons.push}",
+    badge: payload.badge || "${PLATFORM_BRAND.icons.badge}",
     tag: payload.tag,
     data: { url, n: payload.n },
   };

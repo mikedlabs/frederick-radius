@@ -5,9 +5,8 @@ import { LayoutGrid, ChevronDown } from "lucide-react";
 
 /**
  * BrowsePlacesDisclosure — an OBVIOUS tap target for the "I want…" category
- * browse on /today (owner: the plain text title "didn't make it clear what it
- * is or that it's clickable"). A bordered, elevated card with an icon, an
- * inviting question, and a chevron reads as a button, not a section header.
+ * browse on /today. It is set as the next index row beneath Ask Radius, rather
+ * than another floating card competing with it.
  *
  * Keeps the tap-to-open contract: children (the CravingStrip) ship in the HTML
  * and are display:none until opened, so there is zero fetch and the panel opens
@@ -48,17 +47,15 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
         onClick={toggle}
         aria-expanded={mounted ? open : false}
         aria-controls={panelId}
-        className="flex min-h-11 w-full items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3 text-left transition active:scale-[0.99]"
+        className="flex min-h-[52px] w-full items-center gap-3 border-b px-1 py-2 text-left transition hover:bg-[var(--app-bg-elevated)] active:opacity-70"
         style={{
           borderColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          boxShadow: "var(--app-elev-1)",
         }}
       >
         <span
           aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+          style={{ boxShadow: "inset 2px 0 0 var(--app-brand)", color: "var(--app-brand)" }}
         >
           <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
         </span>

@@ -21,11 +21,11 @@ import { SLOTS_PER_DAY, WEEK_SLOTS, slotLabel, type RhythmPlace, type RhythmGrou
  */
 
 const GROUP_META: Record<RhythmGroup, { label: string; varName: string; fallback: string }> = {
-  food: { label: "Kitchens", varName: "--app-brand", fallback: "#E14328" },
+  food: { label: "Kitchens", varName: "--app-brand", fallback: "#B5462B" },
   coffee: { label: "Coffee", varName: "--app-accent-press", fallback: "#8B6F4E" },
   pours: { label: "Pours", varName: "--app-accent", fallback: "#C9A227" },
   shops: { label: "Shops", varName: "--app-warning", fallback: "#B8860B" },
-  outdoors: { label: "Outdoors", varName: "--app-brand-2", fallback: "#16352B" },
+  outdoors: { label: "Outdoors", varName: "--app-brand-2", fallback: "#315A43" },
   wellness: { label: "Wellness", varName: "--app-cool", fallback: "#3D6B8E" },
   services: { label: "Services", varName: "--app-ink-2", fallback: "#4A463C" },
   civic: { label: "Civic & culture", varName: "--app-ink-3", fallback: "#7A7466" },

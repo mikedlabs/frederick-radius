@@ -96,9 +96,9 @@ export const COLLECTIONS: CollectionDef[] = [
     // two museums, so a wet Saturday with kids has real answers county-wide.
     // Every slug verified against places-client.json.
     slug: "rainy-day-frederick",
-    title: "Rainy day Frederick",
+    title: "Indoors in Frederick",
     blurb:
-      "These indoor stops work for a wet afternoon, whether you want a quiet gallery or somewhere the kids can burn a rainy day off.",
+      "These indoor stops work when rain, heat, smoke, or bad air changes the day.",
     accent: "var(--app-cool)",
     places: [
       "national-museum-civil-war-medicine-frederick",

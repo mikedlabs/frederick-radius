@@ -34,7 +34,7 @@ import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
-import { clockLine, timeAnchorOf, eventContextLines, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, wantsParking, wantsWeather, wantIntentOf, type WantIntent } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, wantsParking, wantsWeather, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { PARKING_OFFICE } from "@/data/parking-garages";
 import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
@@ -973,7 +973,7 @@ const cachedCallModel = unstable_cache(
     // for emphasis even when told not to — the Ask surfaces render PLAIN
     // text, so raw asterisks reached users (the Reddit screenshot). Clean
     // once here, pre-cache, so every surface renders on-voice text.
-    return normalizePlainTextAnswer(answer);
+    return concisePlainTextAnswer(answer, 100);
   },
   // Cost: the key deliberately DROPS the per-commit SHA (it used to include
   // VERCEL_GIT_COMMIT_SHA, so every deploy wiped every cached answer — brutal on
@@ -983,7 +983,7 @@ const cachedCallModel = unstable_cache(
   // key changing. Only a change to the SYSTEM prompt or answer-shaping code
   // isn't reflected in the key — bump this manual version tag (v3 -> v4) when
   // you change those. 24h TTL: even a novel question pays at most once a day.
-  ["ask-answer-v3"],
+  ["ask-answer-v4"],
   { revalidate: 86400, tags: ["ask"] },
 );
 
@@ -1045,6 +1045,14 @@ function fixedAppointmentWindow(
 
 /** "Downtown" is the same 1-mile core /map uses (mode-scope.ts). */
 const DOWNTOWN_RADIUS_M = 1609;
+const NON_SEATED_MEAL_TYPES = new Set([
+  "caterer",
+  "food_court",
+  "food_store",
+  "food_truck",
+  "meal_delivery",
+  "meal_takeaway",
+]);
 
 /**
  * The Tier 2 planner's grounding: a meal/cuisine/craving question routed
@@ -1066,11 +1074,19 @@ function wantContextBlock(
     ? MUNICIPALITY_BY_SLUG[context.municipality]
     : null;
   const town = queryTown ?? scopedTown;
+  const wantsSitDownMeal = /\b(?:quiet|quieter|conversation|date[- ]night|sit[- ]down|table service|dining room)\b/i.test(query);
+  const obviousCounterService = (p: WantRefinable) =>
+    NON_SEATED_MEAL_TYPES.has(p.primary_type ?? "") ||
+    /\b(?:takeout|take-away|food truck|popcorn|catering)\b/i.test(p.name);
   const baseRefine = (p: WantRefinable) => {
     if (intent.cuisine && !cuisinesOf(p).includes(intent.cuisine)) return false;
     if (intent.area?.kind === "downtown" && haversineMeters(FREDERICK_CENTER, p.geom) > DOWNTOWN_RADIUS_M) return false;
     if (town && p.municipality !== town.slug) return false;
     if (!placeMatchesDietary(p, dietary)) return false;
+    // "Quiet dinner" and "date night" imply a place where the user can sit
+    // for the meal. We cannot verify noise levels, but we can keep obvious
+    // takeout counters, food stores, and trucks out of that answer.
+    if (wantsSitDownMeal && obviousCounterService(p)) return false;
     return true;
   };
   // An explicit breakfast/brunch ASK still means breakfast FOOD whatever the
@@ -1370,12 +1386,13 @@ export async function askFrederick(
           .join(", then ");
         const overflow = plan.stops.length > 3 ? `, with ${plan.stops.length - 3} more in the full plan` : "";
         const anchorLead = anchorName && anchorApplied ? `Anchored at ${anchorName}: ` : "";
+        const dayLead = plan.dateLabel === "Today" ? "" : `${plan.dateLabel}: `;
         const constraint = intent.travelMode === "walk"
           ? " Every leg is walkable."
           : reducedMobility
             ? " It stays to two stops with verified parking guidance."
             : "";
-        return `${anchorLead}${stopLine}${overflow}.${constraint} Swap any stop that is not your speed.`;
+        return `${dayLead}${anchorLead}${stopLine}${overflow}.${constraint} Swap any stop that is not your speed.`;
       })(),
       sources: [],
       context: context.origin ? context.contextLabel ?? null : "downtown Frederick",
@@ -1491,14 +1508,20 @@ export async function askFrederick(
   const wantIntent = retrieval.meta.qualifiers.compoundIntent || intent.reservation
     ? null
     : wantIntentOf(q, now);
+  const requestedVisitAt = appointmentWindow?.at ?? (
+    intent.requestedDateTime ? new Date(intent.requestedDateTime) : now
+  );
+  const requestedVisitLabel = appointmentWindow?.timeLabel ?? (
+    intent.requestedDateTime ? intent.requestedTime ?? easternTimeLabel(requestedVisitAt) : undefined
+  );
   const want = wantIntent
     ? wantContextBlock(
         wantIntent,
-        appointmentWindow?.at ?? now,
+        requestedVisitAt,
         context,
         q,
         intent.dietary,
-        appointmentWindow?.timeLabel,
+        requestedVisitLabel,
       )
     : null;
   const wantBlock = want ? `${want.block}\n` : "";
@@ -1525,7 +1548,7 @@ export async function askFrederick(
           null,
           canExposeDistance(context),
         );
-      if (appointmentWindow) source.status = `At ${appointmentWindow.timeLabel} · ${r.fact}`;
+      if (requestedVisitLabel) source.status = `At ${requestedVisitLabel} · ${r.fact}`;
       sources.push(source);
     }
   }
@@ -2010,15 +2033,15 @@ function deterministicAnswer({
     const anchor = !contextLabel || /^(?:near you|your location)$/i.test(contextLabel)
       ? "your location"
       : contextLabel.replace(/^ranked from\s+/i, "");
-    return `Here ${count === 1 ? "is" : "are"} the ${count} closest verified match${count === 1 ? "" : "es"} from ${anchor}.`;
+    return `Here ${count === 1 ? "is" : "are"} the ${count} closest match${count === 1 ? "" : "es"} from ${anchor}, ranked by the location and hours available now.`;
   }
   const sourceList = sources ?? [];
   if (eventIntent) {
     if (sourceList.length > 0) {
       const top = sourceList[0];
       return count > 1
-        ? `${top.name} is the closest fit, with ${count - 1} more in the window below.`
-        : `${top.name} is the one current match, so the card below has the details.`;
+        ? `${top.name} is the closest fit for that time. ${count - 1} other ${count - 1 === 1 ? "event also matches" : "events also match"}.`
+        : `${top.name} is the only current match for that time.`;
     }
     return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
   }
@@ -2026,11 +2049,11 @@ function deterministicAnswer({
     return pickLead(sourceList, category?.toLowerCase() ?? null, { downtown });
   }
   if (downtown) {
-    return `I found ${count} verified match${count === 1 ? "" : "es"} near downtown Frederick${openNow ? " with confirmed open hours" : ""}.`;
+    return `I found ${count} match${count === 1 ? "" : "es"} near downtown Frederick${openNow ? " with current open hours" : ""}.`;
   }
   if (category) {
     const subject = category.toLowerCase();
-    return `I found ${count} verified match${count === 1 ? "" : "es"} for ${subject}${openNow ? " with confirmed open hours" : ""}.`;
+    return `I found ${count} match${count === 1 ? "" : "es"} for ${subject}${openNow ? " with current open hours" : ""}.`;
   }
   return `I found ${count} result${count === 1 ? "" : "s"} that match the wording of your request.`;
 }
@@ -2054,23 +2077,24 @@ function pickLead(
   const where = top.city ? ` in ${top.city}` : "";
   const status = top.status ?? "";
   let liveFact = "";
-  let m = status.match(/^Open until\s+(.+)$/i);
-  if (m) liveFact = ` It's open until ${m[1]}.`;
+  let m = status.match(/^At\s+(.+?)\s+·\s+(?:Open|Closing soon)\b/i);
+  if (m) liveFact = ` It is scheduled to be open at ${m[1]}.`;
+  else if ((m = status.match(/^Open until\s+(.+)$/i))) liveFact = ` It's open until ${m[1]}.`;
   else if (/^Open now\b/i.test(status) || /^Open\b\s*$/i.test(status)) liveFact = " It's open now.";
   else if ((m = status.match(/^Opens\s+(.+)$/i))) liveFact = ` It opens ${m[1]}.`;
 
   const subjectTail = subject ? ` for ${subject}` : "";
-  const lead = `${top.name}${where} is the strongest verified pick${subjectTail} on file.`;
+  const lead = `${top.name}${where} is the best match${subjectTail}.`;
 
   const rest = sources.length - 1;
   const nearTail = opts.downtown ? " near downtown" : "";
   let more = "";
   if (rest === 1) {
-    more = ` ${sources[1].name} is the other verified match${nearTail}, below.`;
+    more = ` ${sources[1].name} is another option${nearTail}.`;
   } else if (rest > 1) {
-    more = ` ${rest} more verified picks${nearTail} are below, led by ${sources[1].name}.`;
+    more = ` ${sources[1].name} is another option${nearTail}, with ${rest - 1} more match${rest - 1 === 1 ? "" : "es"}.`;
   } else {
-    more = " It's the only verified match, so the card below has the details.";
+    more = " It is the only current match in the available data.";
   }
   return `${lead}${liveFact}${more}`;
 }
@@ -2080,10 +2104,9 @@ function regionalAnswer(regions: readonly CountyRegion[], sources: readonly AskS
     const picks = sources.filter((source) => source.region === region).slice(0, 2);
     if (picks.length === 0) return [];
     const names = picks.map((pick) => `${pick.name}${pick.city ? ` in ${pick.city}` : ""}`).join(" and ");
-    const label = region[0].toUpperCase() + region.slice(1);
-    return [`${label}: ${names}`];
+    return [`In ${region} Frederick County, try ${names}.`];
   });
   return parts.length > 0
-    ? `${parts.join(". ")}. These stay outside central Frederick and match the part of the county you asked for.`
+    ? `${parts.join(" ")} These choices stay outside central Frederick.`
     : "I couldn’t find a reliable match in those parts of the county yet.";
 }

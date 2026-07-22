@@ -64,7 +64,7 @@ const TRANSIT_REFERENCE: TransitIntent[] = [
     label: "Bus pass + tickets",
     hint: "Daily, weekly, monthly, and reduced-fare passes",
     icon: Ticket,
-    accent: "var(--app-brand-2)",
+    accent: "var(--app-cool)",
     href: COUNTY_TRANSIT_URL,
     external: true,
   },

@@ -1,3 +1,5 @@
+import { prioritizeAlerts } from "@/lib/alert-priority";
+
 const NWS = "https://api.weather.gov";
 const UA = "Frederick Radius (hello@frederickradius.app)";
 
@@ -73,7 +75,10 @@ function dedupeRevisions(alerts: NwsAlert[]): NwsAlert[] {
       newest.set(key, alert);
     }
   }
-  return [...newest.values()].sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
+  const newestFirst = [...newest.values()].sort(
+    (a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at),
+  );
+  return prioritizeAlerts(newestFirst);
 }
 
 /**

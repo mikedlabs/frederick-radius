@@ -28,6 +28,24 @@ export default function GlobalError({
 
   return (
     <html lang="en">
+      <head>
+        <style>{`
+          @font-face {
+            font-family: "Public Sans Variable";
+            src: url("/brand/fonts/public-sans-variable.woff2") format("woff2");
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+          }
+          @font-face {
+            font-family: "Libre Caslon Display";
+            src: url("/brand/fonts/libre-caslon-display-400.woff2") format("woff2");
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+          }
+        `}</style>
+      </head>
       <body
         style={{
           margin: 0,
@@ -39,10 +57,10 @@ export default function GlobalError({
           gap: 16,
           padding: 24,
           textAlign: "center",
-          background: "#EEE6D4",
-          color: "#16140E",
+          background: "#F4EEE2",
+          color: "#221C15",
           fontFamily:
-            "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+            "'Public Sans Variable', 'Public Sans', ui-sans-serif, system-ui, sans-serif",
         }}
       >
         <p
@@ -52,7 +70,7 @@ export default function GlobalError({
             fontWeight: 600,
             letterSpacing: "0.14em",
             textTransform: "uppercase",
-            color: "#6b6453",
+            color: "#6C6357",
           }}
         >
           Application error
@@ -61,15 +79,15 @@ export default function GlobalError({
           style={{
             margin: 0,
             fontSize: 28,
-            fontWeight: 600,
+            fontWeight: 400,
             lineHeight: 1.15,
             letterSpacing: "-0.01em",
-            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontFamily: "'Libre Caslon Display', Georgia, serif",
           }}
         >
           Frederick Radius could not load.
         </h1>
-        <p style={{ margin: 0, maxWidth: 360, fontSize: 14, lineHeight: 1.5, color: "#3a352b" }}>
+        <p style={{ margin: 0, maxWidth: 360, fontSize: 14, lineHeight: 1.5, color: "#5A5348" }}>
           Something failed while loading this page. Try loading it again.
         </p>
         <button
@@ -82,8 +100,8 @@ export default function GlobalError({
             padding: "12px 20px",
             fontSize: 14,
             fontWeight: 600,
-            color: "#fff",
-            background: "#E14328",
+            color: "#F4EEE2",
+            background: "#B5462B",
             cursor: "pointer",
           }}
         >

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { getNwsAlerts, type NwsAlert } from "@/lib/integrations/nws-alerts";
 import { nwsDisplaySeverity } from "@/components/today/CivicAlerts";
+import { prioritizeAlerts } from "@/lib/alert-priority";
 
 /**
  * WeatherNeeds — the "what you need" layer that appears ONLY during an active
@@ -35,8 +36,10 @@ const HAZARD_MATCHERS: { hazard: Hazard; re: RegExp }[] = [
 ];
 
 function classify(events: string[]): Hazard {
-  for (const { hazard, re } of HAZARD_MATCHERS) {
-    if (events.some((e) => re.test(e))) return hazard;
+  for (const event of events) {
+    for (const { hazard, re } of HAZARD_MATCHERS) {
+      if (re.test(event)) return hazard;
+    }
   }
   return "severe";
 }
@@ -121,7 +124,7 @@ export default async function WeatherNeeds() {
   }
   // Qualifying = a real, non-routine weather warning/advisory (same bar as the
   // Heads-up banner). Info-level and empty feeds render nothing.
-  const active = alerts.filter((a) => nwsDisplaySeverity(a) !== "info");
+  const active = prioritizeAlerts(alerts.filter((a) => nwsDisplaySeverity(a) !== "info"));
   if (active.length === 0) return null;
 
   const hazard = classify(active.map((a) => a.event));
@@ -140,7 +143,7 @@ export default async function WeatherNeeds() {
           <HazardIcon className="h-4 w-4" strokeWidth={2.1} style={{ color: "var(--app-warning-press)" }} />
         </span>
         <div className="min-w-0">
-          <h2 className="font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h2 className="font-sans text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             {h.label}: what you need
           </h2>
           <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>

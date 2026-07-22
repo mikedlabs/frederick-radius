@@ -54,7 +54,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
             <Bookmark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
           </span>
           <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-            A shared radius
+            A shared Frederick list
           </p>
         </div>
         <h1 className="mt-2 font-serif text-[24px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -80,7 +80,7 @@ export default function SharedRadiusView({ slugs }: { slugs: string[] }) {
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            This shared radius is empty.
+            This shared list is empty.
           </p>
           <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
             The link may be incomplete. Start your own instead.

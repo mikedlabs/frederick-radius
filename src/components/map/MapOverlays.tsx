@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Map overlays (data brief 6.3/6.4).
@@ -19,18 +20,14 @@ import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
-// Per-overlay dot color. RESOLVED hex, NOT var(--app-*): these values
-// feed Mapbox GL paint expressions, which cannot read CSS custom
-// properties — a var() here fails to parse and the layer never colorizes
-// or renders (the bug that made overlays look broken). Values mirror the
-// brand tokens in src/app/globals.css; keep them in sync if a token moves.
-// (The earlier var() fallbacks had drifted stale: warning/ink-2/brand-2
-// no longer matched the tokens.)
+// Per-overlay dot color. Resolved values come from the brand contract because
+// Mapbox GL paint expressions cannot read CSS custom properties; a var() here
+// fails to parse and the layer never colorizes or renders.
 const COLOR: Partial<Record<OverlayKey, string>> = {
-  parks: "#1E6B3A",     // --app-positive
-  markets: "#B26B00",   // --app-warning
-  art: "#E14328",       // --app-brand (Signal vermilion)
-  bridges: "#16352B",   // --app-brand-2 (Spruce)
+  parks: BRAND.colors.forest,
+  markets: BRAND.colors.functionalAmber,
+  art: BRAND.colors.brick,
+  bridges: BRAND.colors.creek,
 };
 
 const ENDPOINT = new Map(OVERLAYS.map((o) => [o.key, o.endpoint] as const));
@@ -125,7 +122,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
       {active.map((key) => {
         const fc = data[key];
         if (!fc) return null;
-        const color = COLOR[key] ?? "#E14328";
+        const color = COLOR[key] ?? "#B5462B";
         // Geometry-aware: a layer can carry polygons (park grounds) AND
         // points (named markers) in one file. Fills draw first (under),
         // points draw over them; the filters keep each Layer honest, so
@@ -181,7 +178,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
           <div style={{ padding: "2px 2px 4px" }}>
             <div
               className="font-serif"
-              style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.25, color: "var(--app-ink, #16140E)" }}
+              style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.25, color: "var(--app-ink, #221C15)" }}
             >
               {popup.name}
             </div>
@@ -199,7 +196,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
                 href={popup.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: 11, fontWeight: 600, color: "var(--app-brand, #E14328)", marginTop: 4, display: "inline-block" }}
+                style={{ fontSize: 11, fontWeight: 600, color: "var(--app-brand, #B5462B)", marginTop: 4, display: "inline-block" }}
               >
                 More
               </a>

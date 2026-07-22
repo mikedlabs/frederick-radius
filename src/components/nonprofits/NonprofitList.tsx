@@ -52,7 +52,7 @@ export default function NonprofitList({ orgs }: { orgs: readonly OrgRowData[] })
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search these nonprofits by name or town"
           placeholder="Search by name or town…"
-          className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand-2)]"
+          className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
           style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}
         />
         {query && (

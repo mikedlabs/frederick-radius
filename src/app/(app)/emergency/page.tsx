@@ -76,8 +76,8 @@ function LineRow({
       {phone ? (
         <a
           href={telHref(phone)}
-          className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[13px] font-semibold tabular-nums"
-          style={{ color: "var(--app-brand-press)", minHeight: 44 }}
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 font-mono text-[13px] font-semibold tabular-nums"
+          style={{ color: "var(--app-brand-press)" }}
           aria-label={`Call ${name}`}
         >
           <Phone className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

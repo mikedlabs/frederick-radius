@@ -4,6 +4,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { getWorthALookToday, easternDayKey } from "@/lib/worth-a-look";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { isOutdoorRecommendation } from "@/lib/weather-safety";
+import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 
 /**
  * WorthALook — the daily discovery pick list on /today.
@@ -20,7 +22,13 @@ import SectionHeading from "@/components/ui/SectionHeading";
  * a strip of scraped storefront shots. See docs/PHOTO_POLICY.md.
  */
 export default async function WorthALook() {
-  const picks = await getWorthALookToday(easternDayKey());
+  const [dailyPicks, hold] = await Promise.all([
+    getWorthALookToday(easternDayKey()),
+    loadOutdoorSafetyHold(),
+  ]);
+  const picks = hold
+    ? dailyPicks.filter((pick) => !isOutdoorRecommendation(pick))
+    : dailyPicks;
   if (picks.length === 0) return null;
 
   return (
@@ -50,7 +58,7 @@ export default async function WorthALook() {
                   <CategoryIcon slug={p.category} strokeWidth={1.75} className="h-5 w-5 opacity-90" style={{ color: catColor }} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-serif text-[15px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  <span className="block truncate font-sans text-[15px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {p.name}
                   </span>
                   <span className="mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>

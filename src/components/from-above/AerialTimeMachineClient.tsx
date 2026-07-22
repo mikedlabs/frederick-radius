@@ -52,7 +52,7 @@ export default function AerialTimeMachineClient() {
               className="rounded-full border px-4 py-2 text-[13px] font-semibold"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             >
-              Back to Compass
+              Back to all tools
             </Link>
           </div>
         </section>

@@ -126,6 +126,7 @@ function TruckCard({ truck, accent, beacon }: { truck: FoodTruck; accent: string
           href={feed}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Open today’s location feed for ${truck.name}`}
           className="tap-44 mt-auto inline-flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] px-3 py-2.5 text-[12px] font-semibold"
           style={{ background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, color: accent }}
         >

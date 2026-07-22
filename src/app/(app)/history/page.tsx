@@ -106,7 +106,7 @@ export default async function HistoryPage({
         </div>
         <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
           <p className="eyebrow" style={{ color: "rgba(255,255,255,0.9)" }}>Frederick County · since 1748</p>
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight text-white sm:text-[40px]">
+          <h1 className="font-editorial text-[34px] leading-[1.02] tracking-tight text-white sm:text-[40px]">
             A place with stories.
           </h1>
           <p className="max-w-[30rem] text-[13px] leading-snug text-white/85">

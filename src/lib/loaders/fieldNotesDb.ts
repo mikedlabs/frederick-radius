@@ -20,6 +20,12 @@ import {
   todaysDeals,
   type TodaysDeal,
 } from "@/lib/loaders/todaysDeals";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
+
+// Owner-authored DB notes enrich the committed deal set, but they must never
+// hold the Today stream open while a database connection is cold or unhealthy.
+// The JSON deals remain a complete fail-soft baseline.
+const PUBLIC_FIELD_NOTES_DEADLINE_MS = 1_200;
 
 export type DbFieldNote = {
   id: string;
@@ -65,7 +71,11 @@ function easternIso(now: Date): string {
  * today's weekday or names no day (every-day standing special).
  */
 export async function getDbDealsToday(now: Date, limit = 12): Promise<TodaysDeal[]> {
-  const notes = await getDbFieldNotes();
+  const notes = await withDeadlineFallback(
+    getDbFieldNotes(),
+    PUBLIC_FIELD_NOTES_DEADLINE_MS,
+    [],
+  );
   if (notes.length === 0) return [];
   const todayName = EASTERN_WEEKDAY(now).toLowerCase(); // "tuesday"
   const todayIso = easternIso(now);

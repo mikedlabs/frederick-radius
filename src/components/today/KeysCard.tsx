@@ -149,7 +149,7 @@ export default function KeysCard({
           href={tickets}
           target="_blank"
           rel="noopener noreferrer"
-          className="tap-44-y relative z-[2] mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
+          className="tap-44-y relative z-20 mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
           style={{ borderColor: KEYS_ORANGE_DEEP, color: KEYS_ORANGE_DEEP }}
         >
           Get tickets
@@ -161,7 +161,7 @@ export default function KeysCard({
       <Link
         href={`/events/${event.slug}`}
         aria-label={`Frederick Keys ${opponent ? `versus ${opponent}` : "home game"}${date.time ? `, first pitch ${date.time}` : ""}, at ${venue}`}
-        className="absolute inset-0 z-[1]"
+        className="absolute inset-0 z-10"
       />
     </div>
   );

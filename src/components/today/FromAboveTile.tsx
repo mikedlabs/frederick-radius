@@ -11,8 +11,8 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
  * presented as a real product. Sending visitors there directly is
  * the honest move — no in-app teaser layer, no double click-through.
  *
- * Photo-led magazine card. Brand-book voice: serif display title +
- * Instrument Serif italic subtitle, brick rule on the left side,
+ * Photo-led magazine card. Warm Civic voice: serif display title +
+ * Public Sans subtitle, Brick rule on the left side,
  * paper-cream backplate so the cover photo punches. Opens in a new
  * tab so the visitor doesn't lose their place inside Frederick
  * Radius.
@@ -56,9 +56,8 @@ export default function FromAboveTile() {
               "linear-gradient(180deg, transparent 35%, rgba(10,10,10,0.55) 100%)",
           }}
         />
-        {/* Eyebrow tag — sits on the photo, paper-cream on warm dark.
-            JetBrains Mono via the mono utility for the field-notebook
-            stamp feel. */}
+        {/* Eyebrow tag — sits on the photo, Cream on warm dark. Public Sans
+            carries the small field-notebook label. */}
         <span
           className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm"
           style={{
@@ -71,8 +70,8 @@ export default function FromAboveTile() {
         </span>
       </div>
 
-      {/* Caption block — brick left rule + display title + Instrument
-          Serif italic kicker + a quiet "open the book" affordance.
+      {/* Caption block — Brick left rule + display title + a quiet
+          "open the book" affordance.
           The topo-bg utility wires sage contour rings behind the
           caption, so a peek of the brand-book topographic texture
           lives on every visit to /today. */}
@@ -81,7 +80,7 @@ export default function FromAboveTile() {
         style={{ borderColor: "var(--app-brand)" }}
       >
         <h2
-          className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+          className="font-editorial text-[20px] leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           From above
@@ -90,9 +89,7 @@ export default function FromAboveTile() {
           className="mt-1 text-[16px] leading-snug text-pretty"
           style={{
             color: "var(--app-ink-2)",
-            fontFamily:
-              "var(--font-italic, 'Instrument Serif', 'Iowan Old Style', Georgia, serif)",
-            fontStyle: "italic",
+            fontFamily: "var(--font-sans)",
           }}
         >
           These photos capture six years of mornings over Downtown Frederick.

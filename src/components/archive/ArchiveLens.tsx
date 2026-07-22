@@ -799,8 +799,8 @@ export default function ArchiveLens({ maps, buildings, papers, photos }: Archive
         </div>
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>Who does what</p>
-          <h2 id="provenance-title" className="mt-1 font-serif text-[24px] font-semibold tracking-tight">
-            LOC is the archive. Radius is the field guide.
+          <h2 id="provenance-title" className="mt-1 font-sans text-[24px] font-semibold tracking-tight">
+            The Library of Congress holds the archive. Radius connects it to the present.
           </h2>
           <p className="mt-2 max-w-[48rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             The Library of Congress preserves and describes these source records. Frederick Radius selects a small local set, adds navigation and present-day context, and links back to the evidence. Frederick Radius is independent and is not affiliated with or endorsed by the Library of Congress.

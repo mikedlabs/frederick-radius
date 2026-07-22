@@ -657,8 +657,8 @@ export default async function ParkingPage() {
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
               style={{
                 background:
-                  "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
-                color: "var(--app-brand-2)",
+                  "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+                color: "var(--app-cool)",
               }}
             >
               <Clock className="h-5 w-5" strokeWidth={2} aria-hidden />

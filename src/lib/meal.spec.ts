@@ -60,6 +60,27 @@ describe("matchMeal — honest category gate, never a service claim", () => {
     })).toBe(true);
   });
 
+  it("does not let stray secondary tags turn non-meal venues into dinner", () => {
+    expect(matchMeal(MEALS.dinner, {
+      category: "market",
+      subcategories: ["restaurant"],
+      name: "The Original Popcorn House",
+      primary_type: "food_store",
+    })).toBe(false);
+    expect(matchMeal(MEALS.dinner, {
+      category: "civic",
+      subcategories: ["restaurant"],
+      name: "Community Organization",
+      primary_type: "association_or_organization",
+    })).toBe(false);
+    expect(matchMeal(MEALS.dinner, {
+      category: "brewery",
+      subcategories: ["food-truck"],
+      name: "A Brewery",
+      primary_type: "brewery",
+    })).toBe(false);
+  });
+
   it("late night keeps a bar (a late-bite answer at 11pm)", () => {
     expect(matchMeal(MEALS.late, place("bar"))).toBe(true);
   });

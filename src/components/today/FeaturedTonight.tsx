@@ -4,6 +4,7 @@ import { ArrowUpRight, Star } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Full-bleed photo hero card — the single most compelling place right now.
@@ -43,7 +44,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
           <span
             className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur"
-            style={{ background: `${cat?.color ?? "#A03A22"}D0` }}
+            style={{ background: `${cat?.color ?? BRAND.colors.brick}D0` }}
           >
             Featured tonight
           </span>

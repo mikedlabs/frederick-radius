@@ -1,4 +1,5 @@
 const NPS_BASE = "https://developer.nps.gov/api/v1";
+const NPS_TIMEOUT_MS = 5_000;
 
 // Frederick County NPS units
 export const NPS_PARKS = {
@@ -35,12 +36,19 @@ async function npsFetch<T>(path: string, params: Record<string, string>, revalid
   const url = new URL(`${NPS_BASE}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   url.searchParams.set("api_key", key);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), NPS_TIMEOUT_MS);
   try {
-    const res = await fetch(url.toString(), { next: { revalidate } });
+    const res = await fetch(url.toString(), {
+      signal: ctrl.signal,
+      next: { revalidate },
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

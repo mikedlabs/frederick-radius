@@ -233,7 +233,7 @@ export default function RoutePearls() {
           <span
             aria-hidden
             className="pulse-dot inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--app-positive)" }}
+            style={{ background: "var(--app-cool)" }}
           />
           On the road
         </span>

@@ -1,33 +1,50 @@
 # Frederick Radius — agent guide
 
-A field-guide app for Frederick County, MD (12 incorporated municipalities
+A current local information app for Frederick County, MD (12 incorporated municipalities
 plus Urbana). Next.js App Router on Vercel · Supabase · Mapbox GL ·
 Google Places. Production: https://frederickradius.app
 
 ## Design system — this is the truth, not older specs
 
-Earlier documents referenced Fraunces and a "Creek blue" palette. The
-SHIPPED brand deck (see `src/app/globals.css` tokens) is:
+The canonical brand guide is `docs/brand/BRAND_GUIDE.md`; the generated visual
+guide is `docs/brand/Frederick-Radius-Brand-Guide.html`. The code source of
+truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
+`src/app/globals.css`.
 
-- **Type:** Fraunces (serif display: titles, town/place headers, section
-  heads), Inter (UI: nav, labels, buttons, body, dense lists), JetBrains Mono
-  (data details: times, distances, counts, coordinates). `font-serif` =
-  Fraunces. (Shipped truth per `src/app/layout.tsx`; it replaced the earlier
-  Newsreader/Public Sans spec. Inter is a deliberate, if plain, UI face
-  paired with the characterful Fraunces display, see `docs/DESIGN_TELLS.md`.)
+- **Type:** Libre Caslon Display Regular carries the wordmark and rare
+  editorial or campaign moments. Public Sans carries product page titles,
+  section titles, body copy, navigation, controls, labels, times, distances,
+  and tabular numerals. Public Sans may use its real variable italic. There is
+  no third technical typeface and no faux bold or italic Caslon face. Legacy
+  `.font-serif` maps to Public Sans. Use `.font-brand` for the wordmark and
+  `.font-editorial` only for a deliberate editorial hero.
 - **Palette tokens (always use `var(--app-*)`, never raw hex in app UI):**
-  paper cream ground `--app-bg #EEE6D4`, ink `--app-ink #16140E`,
-  Signal vermilion `--app-brand #E14328`, Spruce green `--app-brand-2`.
-  Tints exist (`--app-brand-tint-*`, `--app-ink-tint-*`); radii are
-  `--app-radius-sm/md/lg` (9/16/24px). The dark `--background/--foreground`
-  tokens are the MARKETING palette (`.marketing-shell`, /pitch) — do not
-  delete or "fix" them.
+  Cream `--app-bg #F4EEE2`, Ink `--app-ink #221C15`, Brick
+  `--app-brand #B5462B`, and Catoctin Forest `--app-brand-2 #315A43`.
+  Catoctin Forest is for terrain, parks, trails, and small positive/open
+  signals, not generic selected states, headers, or page washes. Creek
+  `--app-cool #285D73` is reserved for civic, map, transit, and data use. Plum
+  `--app-accent #7E2C6F` is a limited arts/editorial accent. Ochre Amber
+  `--app-amber #C58A32` communicates a real live, caution, or sunlight state
+  with Ink on top. Beer is the deliberate product exception: Amber marks an
+  active taste control, flagship beer, or beer/brewery metadata without
+  turning the page into an Amber theme. Tints and radii use the existing
+  named token scales.
+- **Mark:** use `RippleMark` or an exported asset from `public/brand`. The full
+  three-arc mark is for 48 px and larger, the compact two-arc mark is for
+  24–47 px, and the one-arc favicon is for smaller sizes. Do not redraw it,
+  wrap it in the retired circle, or invent a page-specific logo.
+- **Surface:** Cream is the normal product canvas. Ink is a rare contrast
+  moment, not a default page theme. Beer, Live conditions, All tools, and every other
+  product surface keep the same identity rather than inventing a palette.
+  `/pitch` is an isolated internal presentation; if it becomes public-facing,
+  bring it into the Frederick Radius Brand System before release.
 - **Voice:** calm local expert. No em dashes in user-facing copy
   (`cleanFeedText` converts them). Verb-first chip labels ("Eat & drink",
   "Open now"). Counts are supporting detail, never the headline. Full rules
   + banned-words list + worked copy per surface: `docs/VOICE.md` (the
-  source of truth — no metaphors, say the true thing plainly, "around here"
-  carries the name). Tagline: "Around here."
+  source of truth — no metaphors, say the true thing plainly). Canonical
+  tagline: "Frederick County starts where you are."
 - **Sentence discipline:** User-facing prose uses complete grammatical
   sentences. Do not manufacture a casual voice with clipped fragments or
   stacks such as "Good beer. Good people. Right now." Headings, buttons, and
@@ -36,7 +53,8 @@ SHIPPED brand deck (see `src/app/globals.css` tokens) is:
   benefits, adjectives, or matching short sentences because the rhythm sounds
   polished. This is a prose rule, not a product limit. Three results, choices,
   steps, cards, or facts are correct when the data or task calls for three.
-- **Aesthetic bar:** a well-made field guide — dense, organized, calm.
+- **Aesthetic bar:** a distinctive local information tool — organized, calm,
+  and immediately useful.
   Typography carries hierarchy before boxes/borders/badges. One primary
   action per view. Honest empty states. If a change reads like a generic
   SaaS template, it's wrong.

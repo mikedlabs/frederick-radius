@@ -33,6 +33,8 @@ const TOWN_INKS = [
   "var(--app-ink-2)",
 ];
 
+const INITIAL_MARKER_COUNT = 8;
+
 function matches(m: HistoricMarker, q: string): boolean {
   return (
     m.title.toLowerCase().includes(q) ||
@@ -45,6 +47,7 @@ function matches(m: HistoricMarker, q: string): boolean {
 export default function MarkersExplorer({ markers }: { markers: readonly HistoricMarker[] }) {
   const [query, setQuery] = useState("");
   const [town, setTown] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
 
@@ -67,6 +70,9 @@ export default function MarkersExplorer({ markers }: { markers: readonly Histori
     if (town) return markers.filter((m) => m.municipality === town);
     return markers;
   }, [markers, q, town, searching]);
+  const isUnfiltered = !searching && town === null;
+  const visibleMarkers = isUnfiltered && !expanded ? shown.slice(0, INITIAL_MARKER_COUNT) : shown;
+  const hiddenCount = shown.length - visibleMarkers.length;
 
   return (
     <section className="space-y-3">
@@ -86,14 +92,17 @@ export default function MarkersExplorer({ markers }: { markers: readonly Histori
           type="search"
           inputMode="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setExpanded(false);
+          }}
           aria-label="Search markers by name, town, or inscription"
           placeholder="Search markers: railroad, a town, a name…"
           className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
           style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}
         />
         {query && (
-          <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="tap-44 absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full" style={{ color: "var(--app-ink-3)" }}>
+          <button type="button" onClick={() => { setQuery(""); setExpanded(false); }} aria-label="Clear search" className="tap-44 absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full" style={{ color: "var(--app-ink-3)" }}>
             <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
           </button>
         )}
@@ -106,7 +115,7 @@ export default function MarkersExplorer({ markers }: { markers: readonly Histori
             <li className="shrink-0">
               <button
                 type="button"
-                onClick={() => setTown(null)}
+                onClick={() => { setTown(null); setExpanded(false); }}
                 aria-pressed={town === null}
                 className="tap-44-y rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
                 style={
@@ -125,7 +134,7 @@ export default function MarkersExplorer({ markers }: { markers: readonly Histori
                 <li key={t.slug} className="shrink-0">
                   <button
                     type="button"
-                    onClick={() => setTown(on ? null : t.slug)}
+                    onClick={() => { setTown(on ? null : t.slug); setExpanded(false); }}
                     aria-pressed={on}
                     className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
                     style={
@@ -157,10 +166,23 @@ export default function MarkersExplorer({ markers }: { markers: readonly Histori
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {shown.map((m) => (
+          {visibleMarkers.map((m) => (
             <MarkerPlate key={m.id} m={m} ink={inkFor.get(m.municipality) ?? "var(--app-brand)"} />
           ))}
         </ul>
+      )}
+
+      {hiddenCount > 0 && (
+        <div className="border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="tap-44-y inline-flex items-center text-[13px] font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Show {hiddenCount} more markers
+          </button>
+        </div>
       )}
     </section>
   );
@@ -215,6 +237,7 @@ function MarkerPlate({ m, ink }: { m: HistoricMarker; ink: string }) {
           )}
           <a
             href={`/map?at=${m.lat},${m.lng}`}
+            aria-label={`Find ${m.title} on the map`}
             className="tap-44 relative mt-auto inline-flex items-center gap-1 pt-3 text-[12px] font-semibold"
             style={{ color: `color-mix(in srgb, ${ink} 78%, var(--app-ink))` }}
           >

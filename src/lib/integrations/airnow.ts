@@ -2,9 +2,10 @@ import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation/latLong/current";
+const AIRNOW_TIMEOUT_MS = 4_000;
 
 export type AqiCategory =
-  | { id: 1; name: "Good"; color: "#1E6B3A" }
+  | { id: 1; name: "Good"; color: "#315A43" }
   | { id: 2; name: "Moderate"; color: "#B26B00" }
   | { id: 3; name: "Unhealthy for Sensitive Groups"; color: "#A03A22" }
   | { id: 4; name: "Unhealthy"; color: "#A02929" }
@@ -40,10 +41,13 @@ type AirNowResp = Array<{
 }>;
 
 const COLORS: Record<number, string> = {
-  1: "#1E6B3A", 2: "#B26B00", 3: "#A03A22", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
+  1: "#315A43", 2: "#B26B00", 3: "#A03A22", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
 };
 
-export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | null> {
+export async function getAirQuality(
+  point: LngLat,
+  { deadlineMs = AIRNOW_TIMEOUT_MS }: { deadlineMs?: number } = {},
+): Promise<AqiObservation[] | null> {
   const key = process.env.AIRNOW_API_KEY;
   if (!key) return null;
 
@@ -52,8 +56,13 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
     `&latitude=${point.lat.toFixed(4)}&longitude=${point.lng.toFixed(4)}` +
     `&distance=25&API_KEY=${key}`;
 
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), deadlineMs);
   try {
-    const res = await fetch(url, { next: { revalidate: 1800 } });
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      next: { revalidate: 1800 },
+    });
     if (!res.ok) return null;
     const data = (await res.json()) as AirNowResp;
     return data
@@ -75,6 +84,8 @@ export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | n
       }));
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

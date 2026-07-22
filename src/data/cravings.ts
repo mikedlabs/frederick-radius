@@ -340,12 +340,12 @@ export const CRAVINGS: Craving[] = [
     match: (p) => p.category === "grocery" || GROCERY.test(p.name),
   },
   {
-    // ~64 places (gallery 31 + museum 20 + theater 13). Spruce token (not
+    // ~64 places (gallery 31 + museum 20 + theater 13). Plum token (not
     // WithinReach's raw hex) and distinct from food's accent + shops' cool.
     key: "art",
     label: "Art",
     icon: "Palette",
-    color: "var(--app-brand-2)",
+    color: "var(--app-accent)",
     match: (p) =>
       p.category === "gallery" ||
       p.category === "museum" ||

@@ -10,6 +10,7 @@
  */
 import type { Place } from "@/data/places";
 import { parkMobileWebUrl, parkMobileFindUrl, openTableUrl, resyUrl } from "@/lib/integrations/deeplinks";
+import { BRAND } from "@/lib/brand";
 
 export type PlaceAction = {
   key: string;
@@ -105,9 +106,9 @@ export function placeActions(p: Place): PlaceAction[] {
   // Order / delivery — food categories
   if (FOOD_CATS.has(p.category)) {
     if (p.order_url) {
-      actions.push({ key: "order", label: "Order", href: p.order_url, external: true, icon: "order", accent: "#A03A22" });
+      actions.push({ key: "order", label: "Order", href: p.order_url, external: true, icon: "order", accent: BRAND.colors.brick });
     } else if (p.doordash_url) {
-      actions.push({ key: "order", label: "DoorDash", href: p.doordash_url, external: true, icon: "order", accent: "#A03A22" });
+      actions.push({ key: "order", label: "DoorDash", href: p.doordash_url, external: true, icon: "order", accent: BRAND.colors.brick });
     } else {
       actions.push({
         key: "order",
@@ -115,7 +116,7 @@ export function placeActions(p: Place): PlaceAction[] {
         href: `https://www.doordash.com/search/store/${q(nameCity)}`,
         external: true,
         icon: "order",
-        accent: "#A03A22",
+        accent: BRAND.colors.brick,
       });
     }
     if (p.menu_url) {

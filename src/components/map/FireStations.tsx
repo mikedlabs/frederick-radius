@@ -44,7 +44,7 @@ export default function FireStations({ show }: { show: boolean }) {
             style={{
               width: 22,
               height: 22,
-              background: "var(--app-brand-2)",
+              background: "var(--app-cool)",
               border: "1.5px solid #fff",
             }}
           >
@@ -63,7 +63,7 @@ export default function FireStations({ show }: { show: boolean }) {
           onClose={() => setSelected(null)}
         >
           <div className="min-w-[176px] p-1">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--app-brand-2)" }}>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--app-cool)" }}>
               Station {selected.station}
             </p>
             <p className="mt-0.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>

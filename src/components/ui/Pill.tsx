@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
 /**
- * Pill — the canonical standalone toggle/intent pill (Visual System v2).
+ * Pill — the canonical compact selector.
  *
  * One primitive for the "tap to narrow / pivot" control that was
  * hand-rolled ~40 times across the app with five slightly different
@@ -17,14 +17,15 @@ import { haptic } from "@/lib/haptics";
  * Renders a <button> by default; pass `href` to render a Next <Link>
  * (with an automatic pending spinner during navigation, the
  * MapModeToggle behavior, so a slow route never feels "stuck"). The
- * inactive state uses the shared tactile elevation so it reads as a
- * real, pressable chip; active fills with the chosen tone.
+ * Full capsules are reserved for this job: selected facets, compact filters,
+ * and toggles. Navigation and ordinary actions use the flatter button/row
+ * vocabulary instead.
  *
  * Tones:
  *   brand      — brand fill (the default "selected facet")
  *   cool       — cool fill (town / place lane)
  *   ink        — ink fill on paper text (TimeToggle's "when?" lane)
- *   prominent  — brand→cool gradient + lift (hero intent chips)
+ *   prominent  — a stronger brick selection, without a decorative gradient
  */
 
 type Tone = "brand" | "cool" | "ink" | "prominent";
@@ -35,8 +36,7 @@ const ACTIVE_BG: Record<Tone, string> = {
   brand: "var(--app-brand-press)",
   cool: "var(--app-cool)",
   ink: "var(--app-ink)",
-  prominent:
-    "linear-gradient(135deg, var(--app-brand-press), color-mix(in srgb, var(--app-brand-press) 60%, var(--app-cool)))",
+  prominent: "var(--app-brand-press)",
 };
 const ACTIVE_FG: Record<Tone, string> = {
   brand: "var(--app-on-brand)",
@@ -155,15 +155,12 @@ export default function Pill({
     "relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-['']";
   const base =
     `tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad} ${hit}`;
-  // Inactive elevation: a free-standing pill gets the tactile chip
-  // treatment; a `bare` pill (inside a shared container) stays flat.
-  const inactiveCls = active || bare ? "" : "tactile tactile-interactive";
+  const inactiveCls = active || bare ? "" : "border border-[var(--app-border-strong)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
     ? {
         background: ACTIVE_BG[tone],
         color: ACTIVE_FG[tone],
-        boxShadow: tone === "prominent" ? "var(--app-elev-2)" : undefined,
         transitionTimingFunction: "var(--app-ease-spring)",
       }
     : {

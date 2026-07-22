@@ -151,7 +151,7 @@ export default async function BeerTaproomEvents() {
             <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>
               {tonight.length > 0 ? "On tonight" : "Coming up"}
             </p>
-            <h2 id="beer-week-heading" className="mt-1 font-serif text-[32px] font-semibold leading-tight tracking-[-0.035em] sm:text-[42px]" style={{ color: "var(--app-ink)" }}>
+            <h2 id="beer-week-heading" className="mt-1 font-serif text-[32px] leading-tight tracking-[-0.035em] sm:text-[42px]" style={{ color: "var(--app-ink)" }}>
               {heading}
             </h2>
             <p className="mt-2 max-w-[38rem] text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -164,7 +164,7 @@ export default async function BeerTaproomEvents() {
         </header>
 
         {tonight.length > 0 && (
-          <ol className="reveal-up mt-5 divide-y divide-black/10 border-y border-black/12">
+          <ol className="reveal-up mt-5 divide-y divide-[var(--app-border)] border-y border-[var(--app-border)]">
             {tonight.map(({ event, brewerySlug }) => {
               const starts = new Date(event.starts_at);
               const started = starts <= now;
@@ -175,15 +175,15 @@ export default async function BeerTaproomEvents() {
                       <span className="block font-mono text-[8px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand-press)" }}>
                         {started ? "On now" : "Tonight"}
                       </span>
-                      <span className="mt-1 block text-[11px] font-semibold text-black/65">{EVENT_TIME.format(starts)}</span>
+                      <span className="mt-1 block text-[11px] font-semibold text-[var(--app-ink-3)]">{EVENT_TIME.format(starts)}</span>
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold leading-snug text-[#281e14] sm:text-[14px]">{event.title}</span>
-                      <span className="mt-1 block truncate text-[10px] text-black/65">
+                      <span className="block text-[13px] font-semibold leading-snug text-[var(--app-ink)] sm:text-[14px]">{event.title}</span>
+                      <span className="mt-1 block truncate text-[10px] text-[var(--app-ink-3)]">
                         {BREWERY_NAME_BY_SLUG.get(brewerySlug) ?? event.venue_name}
                       </span>
                     </span>
-                    <ArrowUpRight className="h-4 w-4 text-black/38 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+                    <ArrowUpRight className="h-4 w-4 text-[var(--app-brand-press)] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
                   </Link>
                 </li>
               );
@@ -192,23 +192,23 @@ export default async function BeerTaproomEvents() {
         )}
 
         {weekRows.length > 0 ? (
-          <ol className={`reveal-up ${tonight.length > 0 ? "mt-3 border-b" : "mt-5 border-y"} divide-y divide-black/10 border-black/12`}>
+          <ol className={`reveal-up ${tonight.length > 0 ? "mt-3 border-b" : "mt-5 border-y"} divide-y divide-[var(--app-border)] border-[var(--app-border)]`}>
             {weekRows.map(({ event, brewerySlug }) => {
               const starts = new Date(event.starts_at);
               return (
                 <li key={event.slug}>
                   <Link href={`/events/${event.slug}`} className="group grid min-h-[82px] grid-cols-[68px_minmax(0,1fr)_28px] items-center gap-3 py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2 sm:grid-cols-[92px_minmax(0,1fr)_32px]">
                     <span>
-                      <span className="block font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-[#85501f]">{EVENT_DAY.format(starts)}</span>
-                      <span className="mt-1 block text-[11px] font-semibold text-black/65">{EVENT_TIME.format(starts)}</span>
+                      <span className="block font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-[var(--app-amber-text)]">{EVENT_DAY.format(starts)}</span>
+                      <span className="mt-1 block text-[11px] font-semibold text-[var(--app-ink-3)]">{EVENT_TIME.format(starts)}</span>
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold leading-snug text-[#281e14] sm:text-[14px]">{event.title}</span>
-                      <span className="mt-1 block truncate text-[10px] text-black/65">
+                      <span className="block text-[13px] font-semibold leading-snug text-[var(--app-ink)] sm:text-[14px]">{event.title}</span>
+                      <span className="mt-1 block truncate text-[10px] text-[var(--app-ink-3)]">
                         {BREWERY_NAME_BY_SLUG.get(brewerySlug) ?? event.venue_name}
                       </span>
                     </span>
-                    <ArrowUpRight className="h-4 w-4 text-black/38 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+                    <ArrowUpRight className="h-4 w-4 text-[var(--app-brand-press)] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
                   </Link>
                 </li>
               );

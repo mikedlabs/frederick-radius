@@ -39,6 +39,8 @@ export type AskAction =
 export type AskPlanPreview = {
   title: string;
   summary: string;
+  /** "Today", "Tomorrow", or a dated weekday for plans farther ahead. */
+  dateLabel: string;
   href: string;
   stops: Array<{
     order: number;

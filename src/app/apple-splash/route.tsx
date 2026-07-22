@@ -1,6 +1,13 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { BRAND, RIPPLE_GEOMETRY } from "@/lib/brand";
 
 export const dynamic = "force-static";
+
+const SPLASH_FONT = readFile(
+  join(process.cwd(), "src/app/api/og/fonts/libre-caslon-display-400.woff"),
+);
 
 /**
  * iOS launch (splash) image for the installed PWA.
@@ -18,7 +25,8 @@ export const dynamic = "force-static";
  * same icon you tap, centered on the paper-cream ground with the wordmark
  * below, so the launch reads as the light field guide, not a blank flash.
  */
-export function GET(request: Request) {
+export async function GET(request: Request) {
+  const displayFont = await SPLASH_FONT;
   const { searchParams } = new URL(request.url);
   const width = Math.max(1, Math.min(4096, Number(searchParams.get("w")) || 1170));
   const height = Math.max(1, Math.min(4096, Number(searchParams.get("h")) || 2532));
@@ -37,7 +45,7 @@ export function GET(request: Request) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#EBE2CD",
+          background: BRAND.colors.cream,
           gap: Math.round(short * 0.06),
         }}
       >
@@ -48,34 +56,46 @@ export function GET(request: Request) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#B5462B",
+            background: BRAND.colors.brick,
             borderRadius: Math.round(tile * 0.233),
             overflow: "hidden",
           }}
         >
           {/* The Ripple, exact handoff geometry on the 100-grid. */}
           <svg viewBox="0 0 100 100" width={tile} height={tile}>
-            <g fill="none" stroke="#F4EEE2" strokeLinecap="round" strokeWidth={4}>
-              <path d="M31 78 A 19 19 0 0 1 69 78" strokeOpacity={0.95} />
-              <path d="M15 78 A 35 35 0 0 1 85 78" strokeOpacity={0.55} />
-              <path d="M-1 78 A 51 51 0 0 1 101 78" strokeOpacity={0.28} />
+            <g fill="none" stroke={BRAND.colors.cream} strokeLinecap="round" strokeWidth={RIPPLE_GEOMETRY.full.strokeWidth}>
+              {RIPPLE_GEOMETRY.full.paths.map((path, index) => (
+                <path key={path} d={path} strokeOpacity={RIPPLE_GEOMETRY.full.opacities[index]} />
+              ))}
             </g>
-            <circle cx="50" cy="78" r="8" fill="#F4EEE2" />
+            <circle cx="50" cy={RIPPLE_GEOMETRY.full.baseline} r={RIPPLE_GEOMETRY.full.dotRadius} fill={BRAND.colors.cream} />
           </svg>
         </div>
         <div
           style={{
             display: "flex",
             fontSize: Math.round(short * 0.058),
-            fontWeight: 600,
-            letterSpacing: -1,
-            color: "#16140E",
+            fontFamily: BRAND.type.display,
+            fontWeight: 400,
+            letterSpacing: -0.5,
+            color: BRAND.colors.ink,
           }}
         >
           Frederick Radius
         </div>
       </div>
     ),
-    { width, height },
+    {
+      width,
+      height,
+      fonts: [
+        {
+          name: BRAND.type.display,
+          data: displayFont,
+          weight: 400,
+          style: "normal",
+        },
+      ],
+    },
   );
 }

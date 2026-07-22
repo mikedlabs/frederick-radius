@@ -13,6 +13,7 @@ import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import { installCountySpotlight } from "@/components/map/countySpotlight";
+import { BRAND } from "@/lib/brand";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -53,7 +54,7 @@ const COUNTY_BOUNDS: [[number, number], [number, number]] = [
 
 const MODE_HEX: Partial<Record<TravelMode, string>> = {
   walk: ACCENTS.slate,
-  bike: "#3B7A52",
+  bike: BRAND.colors.forest,
   drive: ACCENTS.terracotta,
 };
 
@@ -403,7 +404,7 @@ export default function RadiusMap({
           name: props.name,
           // Events ride a fixed brand tint (their ring marker isn't
           // category-colored); places keep their category color.
-          color: isEvent ? "#A03A22" : props.color ?? "#7A828C",
+          color: isEvent ? BRAND.colors.brick : props.color ?? BRAND.colors.mutedInk,
           kind: isEvent ? "event" : "place",
         });
         return;
@@ -773,7 +774,7 @@ export default function RadiusMap({
               "circle-radius": 6,
               "circle-color": "#ffffff",
               "circle-opacity": 0.95,
-              "circle-stroke-color": "#A03A22",
+              "circle-stroke-color": BRAND.colors.brick,
               "circle-stroke-width": 2.5,
             }}
           />
@@ -864,7 +865,8 @@ export default function RadiusMap({
                 style={{
                   fontSize: 12.5,
                   color: "var(--app-ink, #1A1A1A)",
-                  fontFamily: "var(--font-display), ui-serif, Georgia, serif",
+                  fontFamily: "var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif",
+                  fontWeight: 600,
                 }}
               >
                 {hover.name}
@@ -937,7 +939,8 @@ export default function RadiusMap({
                 style={{
                   fontSize: 13,
                   color: "var(--app-ink, #1A1A1A)",
-                  fontFamily: "var(--font-display), ui-serif, Georgia, serif",
+                  fontFamily: "var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif",
+                  fontWeight: 600,
                   verticalAlign: "middle",
                 }}
               >

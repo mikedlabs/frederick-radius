@@ -33,6 +33,7 @@ import {
   setCommunityNotes,
 } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
 
 /**
  * PreferencesPanel — the editable settings hub.
@@ -62,9 +63,9 @@ const INTEREST_OPTIONS: Array<{
   { slug: "food", label: "Eat & drink", Icon: Utensils, color: ACCENTS.terracotta },
   { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: ACCENTS.catoctin },
   { slug: "arts", label: "Arts & Culture", Icon: Palette, color: ACCENTS.plum },
-  { slug: "family", label: "Family", Icon: Baby, color: ACCENTS.amber },
-  { slug: "sports", label: "Sports", Icon: Activity, color: "#0F8A5F" },
-  { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: "#B26B00" },
+  { slug: "family", label: "Family", Icon: Baby, color: ACCENTS.family },
+  { slug: "sports", label: "Sports", Icon: Activity, color: BRAND.colors.creek },
+  { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: BRAND.colors.functionalAmber },
   { slug: "wellness", label: "Wellness", Icon: Heart, color: "#A02929" },
   { slug: "lodging", label: "Lodging", Icon: Hotel, color: "#5B1E55" },
 ];
@@ -351,7 +352,7 @@ export default function PreferencesPanel() {
       <button
         type="button"
         onClick={reset}
-        className="mt-2 inline-flex items-center gap-1.5 self-start text-[12px] font-medium"
+        className="mt-2 inline-flex min-h-11 items-center gap-1.5 self-start text-[12px] font-medium"
         style={{ color: "var(--app-warning-press)" }}
       >
         <RotateCcw className="h-3 w-3" strokeWidth={2.25} aria-hidden />

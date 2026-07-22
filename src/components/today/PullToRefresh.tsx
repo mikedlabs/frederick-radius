@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
@@ -17,18 +17,27 @@ const MAX_PULL = 110;        // px cap on visual stretch
  */
 export default function PullToRefresh() {
   const router = useRouter();
+  const pathname = usePathname();
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef<number | null>(null);
   const triggered = useRef(false);
+  const pullRef = useRef(0);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    // This gesture belongs to the daily dashboard only. Mounting its
+    // window-level listeners on Map and sheet-heavy workspaces made a map pan
+    // or drawer dismissal refresh the entire route.
+    if (typeof window === "undefined" || pathname !== "/today") return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
 
     const onTouchStart = (e: TouchEvent) => {
       if (window.scrollY > 0) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest("input, textarea, select, button, [role='dialog'], [data-pull-refresh-ignore]")) {
+        return;
+      }
       startY.current = e.touches[0].clientY;
       triggered.current = false;
     };
@@ -37,16 +46,19 @@ export default function PullToRefresh() {
       if (startY.current === null) return;
       if (window.scrollY > 0) {
         startY.current = null;
+        pullRef.current = 0;
         setPull(0);
         return;
       }
       const dy = e.touches[0].clientY - startY.current;
       if (dy <= 0) {
+        pullRef.current = 0;
         setPull(0);
         return;
       }
       // Rubber band — decay past threshold so it feels resistive
       const decayed = Math.min(MAX_PULL, dy * 0.55);
+      pullRef.current = decayed;
       setPull(decayed);
       if (decayed >= PULL_THRESHOLD && !triggered.current) {
         triggered.current = true;
@@ -56,7 +68,7 @@ export default function PullToRefresh() {
 
     const onTouchEnd = async () => {
       if (startY.current === null) return;
-      const fired = pull >= PULL_THRESHOLD;
+      const fired = pullRef.current >= PULL_THRESHOLD;
       startY.current = null;
       if (fired) {
         setRefreshing(true);
@@ -69,9 +81,11 @@ export default function PullToRefresh() {
         router.refresh();
         await new Promise((r) => setTimeout(r, 650));
         setRefreshing(false);
+        pullRef.current = 0;
         setPull(0);
         triggered.current = false;
       } else {
+        pullRef.current = 0;
         setPull(0);
       }
     };
@@ -84,7 +98,9 @@ export default function PullToRefresh() {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [pull, router]);
+  }, [pathname, router]);
+
+  if (pathname !== "/today") return null;
 
   const progress = Math.min(1, pull / PULL_THRESHOLD);
   const showSpinner = refreshing || pull > 0;

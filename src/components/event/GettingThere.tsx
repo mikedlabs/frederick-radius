@@ -82,10 +82,10 @@ export default function GettingThere({
       <ul className="mt-2 space-y-1.5">
         {parkingNote && (
           <li className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            <CarFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+            <CarFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
             <span>
               {parkingNote}
-              <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-brand-2)" }}>
+              <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-cool)" }}>
                 Verified
               </span>
             </span>

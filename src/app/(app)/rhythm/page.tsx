@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getRhythmData } from "@/lib/rhythm";
 import { SLOTS_PER_DAY } from "@/lib/rhythm";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 import RhythmField from "@/components/rhythm/RhythmField";
 
 /**
@@ -60,7 +61,7 @@ export default function RhythmPage() {
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          The pulse
+          {PRODUCT_NAMES.liveConditions.uiLabel}
         </Link>
       </nav>
 

@@ -141,6 +141,26 @@ export const RECOMMEND_ALLOW_SLUGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Private membership organizations can still have a public-facing Google
+ * category such as bar, restaurant, or event venue. That makes them look like
+ * ordinary visitor destinations to category-based ranking even though access
+ * may depend on membership or a private event.
+ *
+ * Keep these records available to Search, Map, Saved, and direct links, but do
+ * not promote them as places a visitor can simply walk into. This is a narrow
+ * name-based safety gate for unmistakable lodge/post names, not a general
+ * blacklist for community organizations.
+ */
+const RESTRICTED_MEMBERSHIP_VENUE_RE =
+  /\b(?:fraternal\s+order\s+of\s+eagles|eagles?\s+(?:lodge|aerie)|aerie\s+(?:no\.?\s*)?#?\d+|elks?\s+lodge|moose\s+lodge|american\s+legion(?:\s+post)?|v\.?f\.?w\.?|veterans\s+of\s+foreign\s+wars)\b/i;
+
+export function isRestrictedMembershipVenue(
+  name: string | null | undefined,
+): boolean {
+  return Boolean(name && RESTRICTED_MEMBERSHIP_VENUE_RE.test(name));
+}
+
+/**
  * Junk records suppressed from discovery entirely — bulk-import artifacts
  * that are not real destinations (a generic SEO "listings" record, a
  * single-letter scrape fragment that grabbed a neighbor's photo). Kept
@@ -154,16 +174,20 @@ export const SUPPRESSED_JUNK_SLUGS: ReadonlySet<string> = new Set([
 
 /**
  * Should this record be allowed to LEAD a recommendation surface?
- * False only when ALL hold: its Google primaryType is a pure institution
- * (deny-set), it's a bulk-imported record (dfp/google — curated seed/
- * manual is intentional and always kept), and it isn't on the rescue
- * list. Vague/absent type → recommendable (never guess a place away).
+ * Private membership venues are always held out of promotion. Otherwise,
+ * false only when ALL hold: its Google primaryType is a pure institution
+ * (deny-set), it is a bulk-imported record (dfp/google; curated seed/manual
+ * is intentional and always kept), and it is not on the rescue list.
+ * Vague or absent type means recommendable because we never guess a place
+ * away.
  */
 export function isRecommendable(p: {
+  name?: string | null;
   primary_type?: string | null;
   source: string;
   slug: string;
 }): boolean {
+  if (isRestrictedMembershipVenue(p.name)) return false;
   if (RECOMMEND_ALLOW_SLUGS.has(p.slug)) return true;
   const t = p.primary_type?.trim().toLowerCase();
   if (!t || !RECOMMENDATION_DENY_TYPES.has(t)) return true;

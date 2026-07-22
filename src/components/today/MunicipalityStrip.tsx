@@ -3,15 +3,7 @@ import { CalendarDays } from "lucide-react";
 import { MUNICIPALITIES } from "@/data/municipalities";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
 import { eventsInMunicipality } from "@/lib/loaders/events";
-
-// A deterministic System-Black accent per town so the grid reads as
-// distinct tiles, not one grey list.
-const ACCENTS = ["#E14328", "#20506A", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
-function accentFor(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
-  return ACCENTS[Math.abs(h) % ACCENTS.length];
-}
+import { townAccent } from "@/lib/townAccent";
 
 // Short, alive day label for a town's next event: Today / Tomorrow, then
 // the weekday. Keeps the "featured move" line time-sensitive.
@@ -54,7 +46,7 @@ export default function MunicipalityStrip() {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {towns.map((m) => {
-        const accent = accentFor(m.slug);
+        const accent = townAccent(m.slug);
         return (
           <Link
             key={m.slug}

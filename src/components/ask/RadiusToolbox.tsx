@@ -138,7 +138,7 @@ function FeaturedTool({ tool }: { tool: RadiusTool }) {
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
       </span>
       <span
-        className="mt-4 block pr-5 font-serif text-[16px] font-semibold leading-tight tracking-tight sm:text-[17px]"
+        className="mt-4 block pr-5 font-sans text-[16px] font-semibold leading-tight tracking-tight sm:text-[17px]"
         style={{ color: "var(--app-ink)" }}
       >
         {tool.label}
@@ -357,7 +357,7 @@ export default function RadiusToolbox({ compact = false }: RadiusToolboxProps) {
                 <div className="mb-2.5 flex items-center gap-2.5 px-0.5">
                   <h3
                     id={`radius-tool-group-${group.id}`}
-                    className="font-serif text-[16px] font-semibold leading-none"
+                    className="font-sans text-[16px] font-semibold leading-none"
                     style={{ color: "var(--app-ink)" }}
                   >
                     {group.label}

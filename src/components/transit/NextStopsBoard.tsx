@@ -30,7 +30,7 @@ function readableOn(hex: string): string {
   if (!m) return "#FFFFFF";
   const n = parseInt(m[1], 16);
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.62 ? "#16140E" : "#FFFFFF";
+  return lum > 0.62 ? "#221C15" : "#FFFFFF";
 }
 
 /** Minutes-to-arrival, from state nowMs (never Date.now() in render). */
@@ -90,7 +90,7 @@ export default function NextStopsBoard() {
           <span
             aria-hidden
             className={`${stale ? "" : "pulse-dot "}inline-block h-1.5 w-1.5 rounded-full`}
-            style={{ background: stale ? "var(--app-warning)" : "var(--app-positive)" }}
+            style={{ background: stale ? "var(--app-warning)" : "var(--app-cool)" }}
           />
           Next stops
         </span>
@@ -100,7 +100,7 @@ export default function NextStopsBoard() {
       </div>
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
         {shown.map(({ v, route, mins }) => {
-          const color = route?.color ?? "#20506A";
+          const color = route?.color ?? "#285D73";
           return (
             <li key={v.vehicleId} className="flex items-center gap-2.5 px-3 py-2">
               <span
@@ -138,9 +138,9 @@ export default function NextStopsBoard() {
                 ) : mins == null ? (
                   <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{v.nextStop ? "soon" : ""}</span>
                 ) : mins === 0 ? (
-                  <span className="text-[12px] font-bold" style={{ color: "var(--app-positive, #1E6B3A)" }}>due</span>
+                  <span className="text-[12px] font-bold" style={{ color: "var(--app-cool, #285D73)" }}>due</span>
                 ) : (
-                  <span className="text-[15px] font-bold leading-none" style={{ color: "var(--app-cool, #20506A)" }}>
+                  <span className="text-[15px] font-bold leading-none" style={{ color: "var(--app-cool, #285D73)" }}>
                     {mins}
                     <span className="text-[10px] font-semibold"> min</span>
                   </span>

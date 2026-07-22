@@ -24,7 +24,7 @@ export default function ExploreFooter({ children }: { children: React.ReactNode 
           <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
             The county
           </p>
-          <p className="font-serif text-base font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <p className="font-sans text-base font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             {open ? "Less" : "Browse every town & community"}
           </p>
         </div>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cleanChartDescription,
   cleanChartLaneStatus,
@@ -11,9 +11,15 @@ import {
   chartHeroSentence,
   chartTodayTitle,
   chartFreshnessTail,
+  getChartIncidentsFrederickResult,
   qualifiesForToday,
   type ChartIncident,
 } from "./mdot-chart";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 /** Minimal High-severity Incident on a major route, started "now". */
 function incident(over: Partial<ChartIncident> = {}, now = new Date("2026-07-20T18:00:00Z")): ChartIncident {
@@ -60,6 +66,57 @@ describe("MDOT CHART normalization", () => {
     ]);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("new");
+  });
+});
+
+describe("MDOT CHART feed availability", () => {
+  it("distinguishes a successful empty feed from an upstream failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        new Response(JSON.stringify({ data: [], success: true, totalCount: 0 }), { status: 200 }),
+      ),
+    );
+    await expect(getChartIncidentsFrederickResult()).resolves.toEqual({
+      data: [],
+      available: true,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => new Response("upstream unavailable", { status: 503 })),
+    );
+    await expect(getChartIncidentsFrederickResult()).resolves.toEqual({
+      data: [],
+      available: false,
+    });
+  });
+
+  it("marks a changed or malformed response shape unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        new Response(JSON.stringify({ success: true, totalCount: 0 }), { status: 200 }),
+      ),
+    );
+    expect((await getChartIncidentsFrederickResult()).available).toBe(false);
+  });
+
+  it("aborts a stalled feed and marks it unavailable", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal("fetch", vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+      signal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      });
+    }));
+
+    const pending = getChartIncidentsFrederickResult({ deadlineMs: 50 });
+    await vi.advanceTimersByTimeAsync(50);
+
+    await expect(pending).resolves.toEqual({ data: [], available: false });
+    expect(signal?.aborted).toBe(true);
   });
 });
 

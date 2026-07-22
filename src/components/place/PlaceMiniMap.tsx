@@ -25,7 +25,7 @@ export default function PlaceMiniMap({
   lat: number;
   /** For the alt text + tap-through label. */
   name: string;
-  /** Category hex like "#E14328"; non-hex values fall back to brand. */
+  /** Category hex like "#B5462B"; non-hex values fall back to brand. */
   color?: string;
 }) {
   const pin =

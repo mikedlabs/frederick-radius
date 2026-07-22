@@ -159,7 +159,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
               Between rounds
             </p>
-            <h3 className="truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+            <h3 className="truncate font-sans text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
               {next.name}
             </h3>
             <p className="truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
@@ -185,12 +185,12 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2.5">
       {/* LIVE masthead — this is the most time-urgent thing on the page, so it
           leads with a confident serif title + a pulsing vermilion ON-NOW line.
-          A deliberately different identity from Today's specials' calm spruce
+          A deliberately different identity from Today's specials' calm Forest
           verified-seal dossier below: vermilion live language = "act before it
           ends," so the "now" section reads as the priority. */}
       <div className="flex items-end justify-between gap-3 px-0.5">
         <div className="min-w-0">
-          <h3 id="hh-wallet-eyebrow" className="font-serif text-[17px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h3 id="hh-wallet-eyebrow" className="font-sans text-[17px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
             Happy hour
           </h3>
           <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
@@ -265,7 +265,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                   </div>
 
                   {/* Venue + town. */}
-                  <h3 className="truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                  <h3 className="truncate font-sans text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                     {pour.name}
                     {pour.town ? <span className="font-sans text-[12px] font-normal" style={{ color: "var(--app-ink-3)" }}>{"  ·  "}{pour.town}</span> : null}
                   </h3>

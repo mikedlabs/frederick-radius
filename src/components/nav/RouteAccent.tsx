@@ -30,11 +30,11 @@ const ROUTE_ACCENTS: Record<string, string> = {
                                   // so a stale link's pre-redirect
                                   // render still feels on-brand
   "/events": "var(--app-brand)",  // warm — culture
-  "/plan": "var(--app-brand-2)",  // catoctin green — outdoors-leaning
+  "/plan": "var(--app-brand)",    // planning is an action, not an outdoor category
   "/my-radius": "var(--app-cool)", // civic blue
   "/search": "var(--app-cool)",
   "/pulse": "var(--app-cool)",
-  "/m": "var(--app-brand-2)",     // municipalities — green
+  "/m": "var(--app-cool)",        // municipalities — civic/data Creek
   "/parks": "var(--app-brand-2)",
   "/trails": "var(--app-brand-2)",
   "/transit": "var(--app-cool)",

@@ -87,7 +87,7 @@ export default async function WeekendPreview({
           </span>
           <span
             id="weekend-preview-heading"
-            className="mt-0.5 block font-serif text-[17px] font-semibold leading-tight tracking-tight"
+            className="mt-0.5 block font-sans text-[17px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             This weekend, so far: {weekend.length} things on the calendar

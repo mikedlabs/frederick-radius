@@ -66,7 +66,7 @@ export default async function LetterPage({ params }: { params: Promise<{ slug: s
           Letter no. {letter.number}
           {received ? ` · ${received}` : ""}
         </p>
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+        <h1 className="display-1 font-editorial" style={{ color: "var(--app-ink)" }}>
           {letter.title}
         </h1>
         <p className="text-[13.5px]" style={{ color: "var(--app-ink-3)" }}>

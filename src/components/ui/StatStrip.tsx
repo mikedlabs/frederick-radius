@@ -49,7 +49,7 @@ export default function StatStrip({
         {stats.map((s) => (
           <div key={s.label} className="text-center">
             <div
-              className="font-serif text-[28px] font-semibold leading-none tracking-tight tabular-nums"
+              className="font-data text-[28px] font-semibold leading-none tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {typeof s.value === "number" ? s.value.toLocaleString() : s.value}

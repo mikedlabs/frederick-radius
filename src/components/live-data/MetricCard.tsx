@@ -88,7 +88,7 @@ export default function MetricCard({
         )}
         <div className="space-y-0.5">
           <h3
-            className="font-serif text-[18px] font-semibold leading-tight tracking-tight"
+            className="font-serif text-[18px] leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             {title}
@@ -106,14 +106,14 @@ export default function MetricCard({
         <div className="flex items-end gap-3">
           <p className="flex items-baseline gap-1.5">
             <span
-              className="font-serif text-[34px] font-semibold leading-none tabular-nums"
+              className="font-data text-[34px] font-semibold leading-none"
               style={{ color: "var(--app-ink)" }}
             >
               {value}
             </span>
             {unit && (
               <span
-                className="font-mono text-[12px] font-semibold"
+                className="font-data text-[12px] font-semibold"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {unit}
@@ -132,7 +132,7 @@ export default function MetricCard({
 
         {meta && (
           <p
-            className="font-mono text-[11px] tabular-nums"
+            className="font-data text-[11px]"
             style={{ color: "var(--app-ink-3)" }}
           >
             {meta}

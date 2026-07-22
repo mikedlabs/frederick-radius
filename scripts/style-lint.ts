@@ -348,7 +348,7 @@ const ACTION_COPY_KEYS = new Set([
   "primaryuse",
 ]);
 
-const LOCKED_TAGLINE = "Around here.";
+const LOCKED_TAGLINE = "Frederick County starts where you are.";
 
 function normalizeKey(key: string): string {
   return key.toLowerCase().replace(/[\s'"_-]/g, "");
@@ -506,6 +506,10 @@ function wordsIn(sentence: string): string[] {
     .match(/[A-Za-z][A-Za-z'\u2019-]*/g) ?? [];
 }
 
+const APPROVED_DESCRIPTOR_FRAGMENTS = new Set([
+  LOCKED_TAGLINE,
+]);
+
 /**
  * Structural voice checks are intentionally conservative. They only inspect a
  * complete literal made entirely of two-to-four short sentences. This avoids
@@ -519,6 +523,7 @@ function structuralHit(
 ): { rule: string; snippet: string } | null {
   const text = raw.replace(/\s+/g, " ").trim();
   if (!text || /(?:https?:\/\/|[{}<>])/.test(text)) return null;
+  if (APPROVED_DESCRIPTOR_FRAGMENTS.has(text)) return null;
 
   const words = wordsIn(text);
   if (requireSentence && words.length >= 1 && !/[.!?][\])}'\"]*$/.test(text)) {

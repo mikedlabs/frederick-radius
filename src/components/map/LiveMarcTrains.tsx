@@ -190,7 +190,7 @@ export default function LiveMarcTrains({ show }: { show: boolean }) {
                     width: 0, height: 0,
                     borderLeft: "4.5px solid transparent",
                     borderRight: "4.5px solid transparent",
-                    borderBottom: "7px solid var(--app-cool, #20506A)",
+                    borderBottom: "7px solid var(--app-cool, #285D73)",
                     filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))",
                   }}
                 />
@@ -203,7 +203,7 @@ export default function LiveMarcTrains({ show }: { show: boolean }) {
                   display: "grid", placeItems: "center",
                   width: 26, height: 26,
                   borderRadius: 7,
-                  background: "var(--app-cool, #20506A)",
+                  background: "var(--app-cool, #285D73)",
                   border: "2px solid #fff",
                   boxShadow: "0 2px 6px rgba(0,0,0,0.28)",
                 }}
@@ -231,16 +231,16 @@ export default function LiveMarcTrains({ show }: { show: boolean }) {
           >
             <div style={{ padding: "2px 2px 4px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span aria-hidden style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: 6, background: "var(--app-cool, #20506A)" }}>
+                <span aria-hidden style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: 6, background: "var(--app-cool, #285D73)" }}>
                   <TrainFront size={13} strokeWidth={2.4} color="#fff" />
                 </span>
-                <strong className="font-serif" style={{ fontSize: 15, lineHeight: 1.2, color: "var(--app-ink, #16140E)" }}>
+                <strong className="font-sans" style={{ fontSize: 15, lineHeight: 1.2, color: "var(--app-ink, #221C15)" }}>
                   MARC {v.line}
                 </strong>
               </div>
               <div aria-hidden style={{ height: 1, background: "var(--app-border, #D9D2C3)", margin: "6px 0 5px" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--app-ink-2, #423E34)" }}>
-                <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 999, background: p.moving ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3, #5C5A50)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--app-ink-2, #5A5348)" }}>
+                <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 999, background: p.moving ? "var(--app-cool, #285D73)" : "var(--app-ink-3, #5C5A50)" }} />
                 {p.moving ? "Moving now" : "Holding"}
               </div>
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>

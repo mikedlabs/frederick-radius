@@ -1,4 +1,5 @@
 import { hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
+import { prioritizeAlerts } from "@/lib/alert-priority";
 
 /**
  * Weather verdict, turns a forecast into advice.
@@ -136,13 +137,14 @@ export function weatherVerdict(input: VerdictInput): Verdict {
     hourly,
     now,
     forecastHigh,
-    activeAlerts = [],
+    activeAlerts: unsortedActiveAlerts = [],
     airQuality = null,
     airQualityParameters = [],
     alertsAvailable = true,
     airQualityAvailable = true,
     weatherAvailable = true,
   } = input;
+  const activeAlerts = prioritizeAlerts(unsortedActiveAlerts);
   const hour = easternHour(now);
   // Three time frames, so the words match the clock: overnight (22–05,
   // it is DARK — never claim a "day"), evening (17–22), else daytime.

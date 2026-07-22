@@ -16,8 +16,8 @@
  * Each item is classified into a lane from its title (the feed has no
  * category tags): `police` (arrests, investigations, the blotter), `advisory`
  * (traffic / road / water / emergency), or `civic` (everything else). The
- * /pulse breaking strip surfaces the latest `police` release; the lanes are
- * exported so other surfaces can lean on `advisory` later.
+ * /pulse can promote a genuinely urgent, fresh `police` release; ordinary
+ * announcements remain in the local-updates drawer.
  */
 
 export type CivicPressLane = "police" | "advisory" | "civic";
@@ -160,20 +160,46 @@ export function policeReleases(items: CivicPressItem[]): CivicPressItem[] {
 }
 
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
+const URGENT_POLICE_RE =
+  /\b(amber alert|silver alert|missing (?:person|man|woman|teen|boy|girl|child|juvenile)|active shooter|shelter in place|evacuat|shoot(?:ing|s)?|stabb|homicide|armed suspect|standoff|hazmat|emergency|fatal crash)\b/i;
+// The same urgent words also appear in routine public notices: active-shooter
+// drills, shooting-range training, academy classes, and community meetings.
+// These contexts fail closed unless the title also carries an incident action
+// ("investigating", "arrested", "victim", etc.). A real public directive such
+// as "shelter in place" remains eligible even when the title calls it an
+// announcement.
+const ROUTINE_EXERCISE_RE =
+  /\b(shooting range|firearms? range|training|academy|drill|exercise|course|class|workshop|demonstration)\b/i;
+const ROUTINE_COMMUNICATION_RE =
+  /\b(meeting|open house|announcement|announc(?:e|es|ed|ing)|community event)\b/i;
+const INCIDENT_ACTION_RE =
+  /\b(investigat(?:e|es|ed|ing|ion)|respond(?:s|ed|ing)?|arrest(?:ed|s)?|charg(?:e|ed|es|ing)|victim|suspect|wounded|injured|killed|dead|fatal|wanted|in custody|seeks? (?:information|help))\b/i;
+const PUBLIC_ACTION_RE =
+  /\b(amber alert|silver alert|missing (?:person|man|woman|teen|boy|girl|child|juvenile)|shelter in place|evacuat|armed suspect|standoff|hazmat|fatal crash)\b/i;
 
 /**
- * The single freshest police release, but only if it's recent enough to
- * earn the prominent "breaking" treatment (default 10 days). Older blotter
- * items still appear in the standing Police section, just not up top.
+ * A prominent public-safety strip must be both urgent and fresh. Routine
+ * police announcements, community events, and older releases stay in the
+ * standing Police section instead of borrowing alert styling.
  */
-export function latestPoliceRelease(
+export function featuredPoliceRelease(
   items: CivicPressItem[],
-  maxAgeDays = 10,
+  now = Date.now(),
+  maxAgeHours = 6,
 ): CivicPressItem | null {
-  const latest = policeReleases(items)[0];
-  if (!latest) return null;
-  const age = Date.now() - +new Date(latest.publishedAt);
-  return age <= maxAgeDays * DAY_MS ? latest : null;
+  return policeReleases(items).find((item) => {
+    if (!URGENT_POLICE_RE.test(item.title)) return false;
+    const incidentAction = INCIDENT_ACTION_RE.test(item.title);
+    if (ROUTINE_EXERCISE_RE.test(item.title) && !incidentAction) return false;
+    if (
+      ROUTINE_COMMUNICATION_RE.test(item.title)
+      && !incidentAction
+      && !PUBLIC_ACTION_RE.test(item.title)
+    ) return false;
+    const age = now - +new Date(item.publishedAt);
+    return Number.isFinite(age) && age >= 0 && age <= maxAgeHours * HOUR_MS;
+  }) ?? null;
 }
 
 /**

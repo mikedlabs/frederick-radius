@@ -25,18 +25,19 @@ export const metadata: Metadata = {
 };
 
 const PALETTE: Array<{ name: string; varName: string; ink?: boolean }> = [
-  { name: "Paper", varName: "--app-bg", ink: true },
+  { name: "Cream", varName: "--app-bg", ink: true },
   { name: "Elevated", varName: "--app-bg-elevated", ink: true },
   { name: "Sunken", varName: "--app-bg-sunken", ink: true },
   { name: "Ink", varName: "--app-ink" },
   { name: "Ink 2", varName: "--app-ink-2" },
   { name: "Ink 3", varName: "--app-ink-3" },
-  { name: "Signal vermilion", varName: "--app-brand" },
-  { name: "Vermilion (press)", varName: "--app-brand-press" },
-  { name: "Spruce", varName: "--app-brand-2" },
-  { name: "Almanac gold", varName: "--app-accent" },
-  { name: "Gold (press)", varName: "--app-accent-press" },
-  { name: "Creek slate", varName: "--app-cool" },
+  { name: "Brick", varName: "--app-brand" },
+  { name: "Brick (press)", varName: "--app-brand-press" },
+  { name: "Catoctin Forest", varName: "--app-brand-2" },
+  { name: "Plum", varName: "--app-accent" },
+  { name: "Plum (press)", varName: "--app-accent-press" },
+  { name: "Creek data", varName: "--app-cool" },
+  { name: "Semantic Amber", varName: "--app-amber", ink: true },
   { name: "Positive", varName: "--app-positive" },
   { name: "Warning", varName: "--app-warning", ink: true },
   { name: "Danger", varName: "--app-danger" },
@@ -71,7 +72,7 @@ export default function StyleGuidePage() {
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Design system
         </p>
-        <h1 className="font-serif text-[32px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="font-serif text-[32px] leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           The Frederick Radius style guide.
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -109,15 +110,15 @@ export default function StyleGuidePage() {
         <Eyebrow>Type</Eyebrow>
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Fraunces · serif display
+            Libre Caslon Display · editorial
           </p>
-          <p className="font-serif text-[32px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <p className="font-serif text-[32px] leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Find what is worth your time.
           </p>
         </div>
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Inter · UI
+            Public Sans · text and UI
           </p>
           <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             From Downtown to the surrounding towns: food, events, parks, and the
@@ -126,7 +127,7 @@ export default function StyleGuidePage() {
         </div>
         <div className="space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            JetBrains Mono · data details
+            Public Sans · tabular data
           </p>
           <p className="font-mono text-[14px] tabular-nums" style={{ color: "var(--app-ink)" }}>
             39.4143&deg; N · 77.4105&deg; W · 285,464 residents

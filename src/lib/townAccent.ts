@@ -1,3 +1,5 @@
+import { BRAND } from "@/lib/brand";
+
 /**
  * Stable per-town accent color — a small fixed palette indexed by a hash of
  * the town slug, so the same town always draws the same chapter-rail color
@@ -5,7 +7,14 @@
  * copies (the audit's "copy-pasted TOWN_ACCENTS arrays" finding); behavior is
  * unchanged (same palette, same hash).
  */
-export const TOWN_ACCENTS = ["#E14328", "#20506A", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+export const TOWN_ACCENTS = [
+  BRAND.colors.brick,
+  BRAND.colors.creek,
+  BRAND.colors.forest,
+  BRAND.colors.plum,
+  BRAND.colors.functionalAmber,
+  BRAND.colors.ridge,
+];
 
 export function townAccent(s: string): string {
   let h = 0;

@@ -103,7 +103,7 @@ export default async function LocalNewsStrip() {
             aria-hidden
           />
           <h2
-            className="font-serif text-base font-semibold tracking-tight whitespace-nowrap"
+            className="whitespace-nowrap font-sans text-base font-semibold tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             Local newsroom

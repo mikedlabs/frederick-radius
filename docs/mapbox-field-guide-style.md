@@ -7,7 +7,7 @@ as `P2-1`). This is the upgrade path from the runtime repaint we ship today.
 
 We do **not** ship a stock basemap. `src/components/map/applyFrederickPalette.ts`
 already walks the loaded `light-v11` layers at runtime and repaints them to
-Brand Book No. 01 — paper land, slate water, sage parks, warm-ink labels,
+Warm Civic — Cream land, Creek water, quiet parks, warm-Ink labels,
 taupe roads — suppresses POI clutter, and installs a terrain hillshade.
 `countySpotlight.ts` veils everything outside the county and draws the border.
 
@@ -16,7 +16,7 @@ focused upgrade. The genuine wins:
 
 1. **Typography — the one thing the runtime repaint cannot do.** Mapbox paint
    can recolor labels but cannot change their *font*. A Studio style can set
-   the label text font to **Newsreader** (our serif display face), which is
+   the label text font to **Libre Caslon Display** (our serif display face), which is
    the single biggest "this is a field guide, not Google Maps" move left.
 2. **No runtime repaint cost or flash.** Today we rewrite paint on every
    `style.load`. A baked style paints correct on first frame — no flicker, no
@@ -33,23 +33,23 @@ better-typeset and baked.
 
 | Role | Hex | App token | Studio layers to set |
 |---|---|---|---|
-| Land background | `#F4EFE6` | `--app-paper` | `background`, generic `fill` |
-| Landuse lift | `#ECE5D5` | `--app-paper-2` | `landuse`, `landcover` |
+| Land background | `#F4EEE2` | `--app-paper` | `background`, generic `fill` |
+| Landuse lift | `#EAE1D1` | `--app-paper-2` | `landuse`, `landcover` |
 | Water fill | `#7FA4BB` | Carroll Creek slate | `water` fills |
 | Water line | `#5C8AA8` | `--app-cool-2` | waterway/river/canal/stream lines |
 | Parks / green | `#C9D6BB` | `--app-sage` 60% | park, grass, wood, forest, pitch, cemetery |
 | Buildings | `#DDD3BF` | warm card | `building` fill @ 0.7 opacity |
-| Road — minor | `#D9D2C3` | `--app-border` | residential, service, path, rail |
+| Road — minor | `#D8CDBA` | `--app-border` | residential, service, path, rail |
 | Road — major | `#C2B8A0` | — | primary, secondary, main |
 | Road — highway | `#A89A7C` | warm taupe | motorway, trunk |
-| Label — primary | `#1A1815` | `--app-ink` | settlement, place, state, country |
-| Label — secondary | `#6A6862` | `--app-ink-3` | minor roads, natural, water labels |
-| Label halo | `#F4EFE6` | paper | all symbol text, halo width 1.2 |
+| Label — primary | `#221C15` | `--app-ink` | settlement, place, state, country |
+| Label — secondary | `#6C6357` | `--app-ink-3` | minor roads, natural, water labels |
+| Label halo | `#F4EEE2` | Cream | all symbol text, halo width 1.2 |
 
 ## Layer recipe
 
-**Background / land:** solid `#F4EFE6`. Landuse/landcover fills one step up at
-`#ECE5D5`.
+**Background / land:** solid `#F4EEE2`. Landuse/landcover fills one step up at
+`#EAE1D1`.
 
 **Water:** fills `#7FA4BB`. Waterway/river/canal/stream **lines** `#5C8AA8` at
 0.9 opacity, zoom-scaled width `8→1.2px, 12→2.6px, 16→5px` — the Monocacy and
@@ -60,17 +60,15 @@ Carroll Creek are the county's spine; give them presence, not a hairline.
 **Buildings:** fill `#DDD3BF` at 0.7 opacity; fill-extrusion same at 0.55.
 
 **Roads:** highways `#A89A7C`, primary/secondary `#C2B8A0`, everything else
-`#D9D2C3`. Keep widths from the base style.
+`#D8CDBA`. Keep widths from the base style.
 
 **Labels — the upgrade:**
-- Font: **Newsreader** (Regular for places, Medium for settlements). This is
-  the headline change. Fall back to `Public Sans` then the Mapbox default.
-- Color: settlements/places/state/country `#1A1815`; minor road / natural /
-  water labels `#6A6862`.
-- Halo: `#F4EFE6`, width 1.2 — a printed-paper outline that holds the warm-ink
+- Font: **Libre Caslon Display Regular** for settlements and prominent places.
+  Use Public Sans for roads, small labels, and numeric map data.
+- Color: settlements/places/state/country `#221C15`; minor road / natural /
+  water labels `#6C6357`.
+- Halo: `#F4EEE2`, width 1.2 — a printed-paper outline that holds the warm-Ink
   text against the hillshade.
-- Consider **JetBrains Mono** for any numeric/elevation labels, to echo the
-  app's data-detail convention.
 
 **POI suppression:** hide `poi`, `transit`, `rail-label`, `airport` symbol
 layers entirely — the app's own pins are the points of interest. Keep place
@@ -95,8 +93,8 @@ texture, never dark blotches.
 
 ## County spotlight
 
-`countySpotlight.ts` (world-box-minus-county veil `#EAE2D2` @ 0.72, easing back
-at street zoom, plus a sepia dashed border `#7A6A52` with a brand-brick glow)
+`countySpotlight.ts` (world-box-minus-county veil `#EAE1D1` @ 0.72, easing back
+at street zoom, plus a warm dashed border `#927F63` with a Brick glow)
 is a runtime overlay keyed to our committed boundary. **Leave it in code** — it
 depends on app data and zoom-reactive opacity that's cleaner as an overlay than
 baked into the style.
@@ -118,7 +116,7 @@ baked into the style.
 
 - Both modes (`/map` and `/map?mode=browse`) paint correct on first frame with
   **no repaint flash**.
-- Town names render in **Newsreader** (the visible proof the style took).
+- Town names render in **Libre Caslon Display** (the visible proof the style took).
 - POI clutter stays suppressed; the county veil + border still draw.
 - Run the prod audit (`scripts/prod-audit.mjs`) and spot-check a never-seen
   URL so ISR serves the fresh style.

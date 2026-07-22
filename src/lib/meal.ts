@@ -96,10 +96,27 @@ const BREAKFAST_EXCLUDED_TYPES = new Set([
 ]);
 const BREAKFAST_EXCLUDED_NAME_RE = /\b(sushi|pizzeria|pizza|seafood|crab house|steakhouse)\b/i;
 
+// A secondary food tag can be useful (a market with a real cafe, for
+// example), but imported records occasionally carry a stray `restaurant` or
+// `food-truck` secondary on something that is not a meal destination at all.
+// When Google gives us an explicit non-food venue type, trust that stronger
+// signal instead of letting the loose secondary category leak into Today or
+// Ask Radius meal results.
+const NON_MEAL_VENUE_TYPES = new Set([
+  "association_or_organization",
+  "beautician",
+  "brewery",
+  "distillery",
+  "farm",
+  "food_store",
+  "manufacturer",
+]);
+
 /** Whether a place fits a meal occasion (category gate + pizza-by-name). Honest
  *  by construction: it never asserts the place SERVES the meal, only that it's
  *  the kind of place you'd go for it — the open-now filter does the rest. */
 export function matchMeal(meal: Meal, p: MealMatchable): boolean {
+  if (p.primary_type && NON_MEAL_VENUE_TYPES.has(p.primary_type)) return false;
   if (TREAT_TYPES.has(p.primary_type ?? "") || TREAT_NAME_RE.test(p.name)) return false;
   if (meal.key === "breakfast" || meal.key === "brunch") {
     if (BREAKFAST_EXCLUDED_TYPES.has(p.primary_type ?? "")) return false;

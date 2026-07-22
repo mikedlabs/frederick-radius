@@ -28,8 +28,8 @@ export type ReasonTone =
 
 const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean }> = {
   open: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)",
+    color: "var(--state-open)",
+    bg: "var(--state-open-bg)",
     dot: true, // a live cue for "open now"
   },
   near: {
@@ -37,12 +37,12 @@ const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean
     bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
   },
   verified: {
-    color: "var(--app-brand-2)",
-    bg: "color-mix(in srgb, var(--app-brand-2) 16%, transparent)",
+    color: "var(--app-positive)",
+    bg: "color-mix(in srgb, var(--app-positive) 16%, transparent)",
   },
   free: {
-    color: "var(--app-positive)",
-    bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)",
+    color: "var(--app-cool)",
+    bg: "color-mix(in srgb, var(--app-cool) 16%, transparent)",
   },
   rated: {
     color: "var(--app-accent-press)",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import HappyHourWallet from "@/components/today/HappyHourWallet";
 import TodaysDeals from "@/components/today/TodaysDeals";
 import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
@@ -18,6 +19,7 @@ import { todayDealAvailability } from "@/lib/today/dealAvailability";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { marketTimingAt, todayUtilityBandLabel } from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
@@ -67,11 +69,16 @@ export default async function OnNowBand({
   // The header uses the same schedules as the cards. A day match alone is not
   // enough to claim that a market or offer is available now.
   const marketsPromise = marketTeaserAbove ? Promise.resolve([]) : marketsOpenToday(now);
-  const [{ publicEvents }, markets, deals] = await Promise.all([
+  const [{ publicEvents }, scheduledMarkets, deals, hold] = await Promise.all([
     eventsPromise,
     marketsPromise,
     getMergedTodaysDeals(now, Number.MAX_SAFE_INTEGER),
+    loadOutdoorSafetyHold(undefined, { now }),
   ]);
+  // Markets in this band are outdoor. A published schedule is not permission
+  // to promote one during dangerous weather or unhealthy measured air. Other
+  // indoor offers remain useful and continue to render.
+  const markets = hold ? [] : scheduledMarkets;
   const weekday = EASTERN_WEEKDAY(now);
   const dealTimings = deals.map((deal) => todayDealAvailability(deal.hours, weekday, now));
   const dealCurrentCount = dealTimings.filter((timing) => timing.state === "now").length;
@@ -119,6 +126,7 @@ export default async function OnNowBand({
     .map((key) => ({ key, node: blocks[key] }))
     .filter(({ node }) => node != null);
   if (ordered.length === 0) return null;
+  const [lead, ...additional] = ordered;
 
   const currentSummary = [
     happy.currentCount > 0 ? `${happy.currentCount} happy hour${happy.currentCount === 1 ? "" : "s"}` : null,
@@ -161,9 +169,24 @@ export default async function OnNowBand({
       </div>
       <div className="fg-rule" aria-hidden />
       <div className="space-y-4">
-        {ordered.map(({ key, node }) => (
-          <div key={key}>{node}</div>
-        ))}
+        <div key={lead.key}>{lead.node}</div>
+        {additional.length > 0 ? (
+          <CollapsibleSection
+            title="More available today"
+            count={additional.length}
+            countLabel={additional.length === 1 ? "section" : "sections"}
+            storageKey="fr.today.on-now-more"
+            defaultOpen={false}
+            headingLevel={3}
+            className="border-t pt-1"
+          >
+            <div className="space-y-4 pt-1">
+              {additional.map(({ key, node }) => (
+                <div key={key}>{node}</div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        ) : null}
       </div>
     </section>
   );

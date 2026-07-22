@@ -214,7 +214,13 @@ export default function Sheet({
             />
           </div>
           {(title || subtitle) && (
-            <div className="flex items-start gap-3 px-5 pb-3 pt-1">
+            <div
+              className="flex items-start gap-3 pb-3 pt-1"
+              style={{
+                paddingLeft: "max(1.25rem, env(safe-area-inset-left, 0px))",
+                paddingRight: "max(1.25rem, env(safe-area-inset-right, 0px))",
+              }}
+            >
               <div className="min-w-0 flex-1">
                 {title && (
                   <h2
@@ -246,13 +252,23 @@ export default function Sheet({
           )}
         </div>
         {/* Scrollable body */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-1">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto pb-5 pt-1"
+          style={{
+            paddingLeft: "max(1.25rem, env(safe-area-inset-left, 0px))",
+            paddingRight: "max(1.25rem, env(safe-area-inset-right, 0px))",
+          }}
+        >
           {children}
         </div>
         {footer && (
           <div
-            className="border-t px-5 py-3"
-            style={{ borderColor: "var(--app-border)" }}
+            className="border-t py-3"
+            style={{
+              borderColor: "var(--app-border)",
+              paddingLeft: "max(1.25rem, env(safe-area-inset-left, 0px))",
+              paddingRight: "max(1.25rem, env(safe-area-inset-right, 0px))",
+            }}
           >
             {footer}
           </div>

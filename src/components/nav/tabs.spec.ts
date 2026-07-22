@@ -16,4 +16,12 @@ describe("Ask Radius navigation context", () => {
       url: "/ask",
     });
   });
+
+  it("keeps mapped utilities and live music in the expected primary section", () => {
+    expect(tabIndexForPath("/trails")).toBe(1);
+    expect(tabIndexForPath("/rivers")).toBe(1);
+    expect(tabIndexForPath("/parking")).toBe(1);
+    expect(tabIndexForPath("/transit")).toBe(1);
+    expect(tabIndexForPath("/live-music")).toBe(2);
+  });
 });

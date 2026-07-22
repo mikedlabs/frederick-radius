@@ -40,7 +40,7 @@ export default async function SettingsPage() {
           Settings
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Your Radius settings
+          Settings
         </h1>
         <p
           className="text-[14px] leading-relaxed text-pretty"
@@ -101,7 +101,7 @@ export default async function SettingsPage() {
         ) : (
           <Link
             href="/auth/login?next=/settings"
-            className="group flex items-center gap-3"
+            className="group flex min-h-11 items-center gap-3"
           >
             <span
               aria-hidden

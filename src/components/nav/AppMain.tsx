@@ -29,10 +29,16 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
       className={
         fullBleed
           ? "px-4 sm:px-5 lg:pl-24"
-          : "mx-auto max-w-screen-md px-4 pt-6 sm:px-5 lg:max-w-screen-lg lg:pl-24"
+          : "app-main-reading mx-auto max-w-screen-md pt-6 lg:max-w-screen-lg"
       }
       style={{
-        paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
+        // The full-bleed map already reserves the TopBar and mobile nav in its
+        // viewport-height token. Adding the normal reading-page footer reserve
+        // created a blank 96px scroll tail on a surface that should stay locked
+        // to the viewport.
+        paddingBottom: fullBleed
+          ? 0
+          : "calc(6rem + env(safe-area-inset-bottom, 0px))",
       }}
     >
       <ErrorBoundary>{children}</ErrorBoundary>

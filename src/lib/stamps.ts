@@ -16,7 +16,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
  * src/components/saved/Passport.tsx.
  */
 
-export type StampTone = "brand" | "spruce" | "gold";
+export type StampTone = "brand" | "forest" | "gold";
 
 export type StampDef = {
   key: string;
@@ -72,7 +72,7 @@ export function townDefs(): StampDef[] {
     key: `town-${m.slug}`,
     title: m.slug === "frederick" ? "Frederick" : m.name,
     sub: "Frederick Co.",
-    tone: "spruce" as const,
+    tone: "forest" as const,
     hint: `Save or visit a place in ${m.slug === "frederick" ? "Frederick" : m.name}.`,
   }));
 }

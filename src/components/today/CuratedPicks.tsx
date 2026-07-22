@@ -5,6 +5,7 @@ import { COLLECTION_BY_SLUG } from "@/data/collections";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { easternDayKey } from "@/lib/worth-a-look";
+import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 
 /**
  * CuratedPicks — the "want a plan, not just a thing" rail on /today.
@@ -62,8 +63,12 @@ export function orderPicks(rainAhead: boolean | null, dayIndex = 0): { slug: str
 }
 
 export default async function CuratedPicks() {
-  // Same cached NWS call every weather surface makes — no extra fetch cost.
-  const fc = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  // The shared bounded safety read combines NWS alerts with fresh AirNow AQI,
+  // so the rail never treats clear skies as permission to ignore bad air.
+  const [fc, hold] = await Promise.all([
+    getNwsForecast(FREDERICK_CENTER).catch(() => null),
+    loadOutdoorSafetyHold(FREDERICK_CENTER),
+  ]);
   const next12 = fc?.hourly?.slice(0, 12) ?? [];
   const rainAhead: boolean | null =
     next12.length > 0
@@ -73,16 +78,16 @@ export default async function CuratedPicks() {
   // Same days-since-epoch index WorthALook rotates on, from the Eastern day.
   const [y, m, d] = easternDayKey().split("-").map(Number);
   const dayIndex = Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
-  const picks = orderPicks(rainAhead, dayIndex)
+  const indoorPick = PICKS.find((pick) => pick.slug === "rainy-day-frederick")!;
+  const picks = (hold ? [indoorPick] : orderPicks(rainAhead, dayIndex))
     .map((p) => ({ ...p, c: COLLECTION_BY_SLUG[p.slug] }))
     .filter((p) => p.c && p.c.places.length > 0)
-    .slice(0, 3);
+    .slice(0, hold ? 1 : 3);
   if (picks.length === 0) return null;
 
   return (
     <section className="mt-6" aria-label="Need an idea?">
       <SectionHeading title="Need an idea?" cta="All ideas" href="/collections" />
-
       {/* Horizontal scroller on phones (each card ~72% viewport so the next
           peeks), settling into a tidy grid at sm+. Scrollbar hidden; snap so
           swipes land on a card. */}
@@ -113,7 +118,7 @@ export default async function CuratedPicks() {
               </span>
               <div className="min-w-0 flex-1">
                 <h3
-                  className="font-serif text-[15px] font-semibold leading-snug tracking-tight"
+                  className="font-sans text-[15px] font-semibold leading-snug tracking-tight"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {c!.title}
@@ -136,41 +141,43 @@ export default async function CuratedPicks() {
         ))}
         {/* The generator door — the answer to "these lists never change."
             /plan builds a fresh route from mood, group, and hours. */}
-        <li className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
-          <Link
-            href="/plan"
-            className="tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-md)] border border-dashed bg-[var(--app-bg-sunken)] p-3.5 transition"
-            style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
-          >
-            <span
-              aria-hidden
-              className="ml-1 grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}
+        {!hold && (
+          <li className="min-w-[72%] shrink-0 snap-start sm:min-w-0">
+            <Link
+              href="/plan"
+              className="tactile-interactive group relative flex h-full items-start gap-3 overflow-hidden rounded-[var(--app-radius-md)] border border-dashed bg-[var(--app-bg-sunken)] p-3.5 transition"
+              style={{ borderColor: "var(--app-border-strong, var(--app-border))" }}
             >
-              <CalendarCheck className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h3
-                className="font-serif text-[15px] font-semibold leading-snug tracking-tight"
-                style={{ color: "var(--app-ink)" }}
+              <span
+                aria-hidden
+                className="ml-1 grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}
               >
-                Build your own
-              </h3>
-              <p
-                className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                <CalendarCheck className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3
+                  className="font-sans text-[15px] font-semibold leading-snug tracking-tight"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  Build your own
+                </h3>
+                <p
+                  className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Mood, group, hours
+                </p>
+              </div>
+              <ArrowRight
+                className="mt-1 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                strokeWidth={2.25}
                 style={{ color: "var(--app-ink-3)" }}
-              >
-                Mood, group, hours
-              </p>
-            </div>
-            <ArrowRight
-              className="mt-1 h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-ink-3)" }}
-              aria-hidden
-            />
-          </Link>
-        </li>
+                aria-hidden
+              />
+            </Link>
+          </li>
+        )}
       </ul>
     </section>
   );

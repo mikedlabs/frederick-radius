@@ -33,7 +33,7 @@ const VIBE_META: Record<Vibe, { label: string; icon: LucideIcon; accent: string 
   // so a vibe header reads in the same hue everywhere it appears.
   music:    { label: "Music",    icon: Music,     accent: ACCENTS.plum },
   food:     { label: "Eat & drink", icon: Utensils, accent: ACCENTS.terracotta },
-  family:   { label: "Family",   icon: Baby,      accent: ACCENTS.amber },
+  family:   { label: "Family",   icon: Baby,      accent: ACCENTS.family },
   arts:     { label: "Arts",     icon: Palette,   accent: ACCENTS.plum },
   outdoors: { label: "Outdoors", icon: Trees,     accent: ACCENTS.catoctin },
   civic:    { label: "Civic",    icon: Building2, accent: ACCENTS.slate },

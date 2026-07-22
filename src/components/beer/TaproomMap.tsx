@@ -31,7 +31,7 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>Brewery map</p>
         <h2
           id="taproom-map-heading"
-          className="mt-1 font-serif text-[32px] font-semibold leading-tight tracking-[-0.035em] sm:text-[42px]"
+          className="mt-1 font-serif text-[32px] leading-tight tracking-[-0.035em] sm:text-[42px]"
           style={{ color: "var(--app-ink)" }}
         >
           See breweries across the county.
@@ -51,7 +51,8 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group grid min-h-[152px] w-full grid-cols-[110px_minmax(0,1fr)] overflow-hidden rounded-[12px] border border-black/12 bg-[#f7f0e4] text-left text-[#281e14] transition hover:border-black/24 sm:grid-cols-[190px_minmax(0,1fr)]"
+          className="group grid min-h-[152px] w-full grid-cols-[110px_minmax(0,1fr)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] text-left text-[var(--app-ink)] transition sm:grid-cols-[190px_minmax(0,1fr)]"
+          style={{ borderColor: "var(--app-border)" }}
         >
           <span className="relative min-h-[152px] overflow-hidden" aria-hidden>
             <Image
@@ -64,11 +65,11 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           </span>
           <span className="flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6">
             <span className="min-w-0">
-              <span className="flex items-center gap-2 text-[10px] font-semibold text-black/65"><MapIcon className="h-3.5 w-3.5" aria-hidden />Interactive map</span>
+              <span className="flex items-center gap-2 text-[10px] font-semibold text-[var(--app-cool)]"><MapIcon className="h-3.5 w-3.5" aria-hidden />Interactive map</span>
               <span className="mt-2 block text-[16px] font-semibold">Open the brewery map</span>
-              <span className="mt-1 block text-[10px] text-black/65">{places.length} breweries pinned</span>
+              <span className="mt-1 block text-[10px] text-[var(--app-ink-3)]">{places.length} breweries pinned</span>
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-black/65 transition group-hover:translate-x-1" aria-hidden />
+            <ArrowRight className="h-4 w-4 shrink-0 text-[var(--app-brand-press)] transition group-hover:translate-x-1" aria-hidden />
           </span>
         </button>
       )}

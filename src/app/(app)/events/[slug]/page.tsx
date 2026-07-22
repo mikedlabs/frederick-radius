@@ -430,7 +430,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div
             className="relative h-44 overflow-hidden sm:h-48"
             style={{
-              background: `linear-gradient(135deg, ${cat?.color ?? "#E14328"}40, ${cat?.color ?? "#E14328"}0F 60%, var(--app-bg-elevated))`,
+              background: `linear-gradient(135deg, ${cat?.color ?? "#B5462B"}40, ${cat?.color ?? "#B5462B"}0F 60%, var(--app-bg-elevated))`,
             }}
           >
             {/* Watermark calendar — quietly anchors the right side. */}
@@ -467,7 +467,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           {/* WHEN — promoted to the page's clear second-strongest element,
               directly under the title. The full date+time was previously
               the SMALLEST type on the page (a 10px hero pill / an eyebrow
-              fragment). Date in serif (human), time range in JetBrains Mono
+              fragment). Date in the display face, time range in tabular Public Sans
               (the data voice), one calm line, no box. */}
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <span className="inline-flex items-baseline gap-1.5">
@@ -509,7 +509,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               </span>
             )}
             {event.is_free ? (
-              <span className="font-medium" style={{ color: "var(--app-positive)" }}>Free</span>
+              <span className="font-medium" style={{ color: "var(--app-cool)" }}>Free</span>
             ) : event.price_text && (
               <span className="font-mono tabular-nums">{event.price_text}</span>
             )}

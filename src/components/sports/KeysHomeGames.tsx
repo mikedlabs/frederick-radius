@@ -134,7 +134,7 @@ export default async function KeysHomeGames({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Get tickets for the ${GAME_WEEKDAY.format(starts)} ${GAME_DATE.format(starts)} game`}
-                  className="tap-44 z-[2] inline-flex items-center rounded-[var(--app-radius-sm)] border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
+                  className="tap-44 z-20 inline-flex items-center rounded-[var(--app-radius-sm)] border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
                   style={{ borderColor: "var(--app-brand-press)", color: "var(--app-brand-press)" }}
                 >
                   Get tickets
@@ -153,7 +153,7 @@ export default async function KeysHomeGames({
               <Link
                 href={`/events/${game.slug}`}
                 aria-label={`Frederick Keys ${matchup}, ${GAME_WEEKDAY.format(starts)} ${GAME_DATE.format(starts)}`}
-                className="absolute inset-0 z-[1]"
+                className="absolute inset-0 z-10"
               />
             </li>
           );

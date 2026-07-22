@@ -138,11 +138,11 @@ export const WANTS: WantCategory[] = [
     key: "community",
     label: "Community",
     icon: "Building2",
-    color: "var(--app-brand-2)",
+    color: "var(--app-cool)",
     subs: [
       { label: "Churches & worship", icon: "Church", href: "/category/worship" },
       { label: "Libraries", icon: "Library", href: "/category/library" },
-      { label: "County pulse", icon: "Activity", href: "/pulse" },
+      { label: "Live conditions", icon: "Activity", href: "/pulse" },
       { label: "Contacts", icon: "Building2", href: "/contacts" },
     ],
   },

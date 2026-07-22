@@ -91,7 +91,7 @@ export default async function NonprofitDetailPage({
         className="tap-44 flex items-center gap-3 border-b py-3"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <MapPin className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+        <MapPin className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
         <span className="min-w-0 flex-1 text-[13px] leading-snug" style={{ color: "var(--app-ink)" }}>
           {org.street ? <span className="block">{org.street}</span> : null}
           <span className="block" style={{ color: "var(--app-ink-2)" }}>
@@ -141,7 +141,7 @@ export default async function NonprofitDetailPage({
         target="_blank"
         rel="noopener noreferrer"
         className="tap-44 flex items-center justify-between gap-2 rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] font-medium"
-        style={{ borderColor: "var(--app-brand-2)", color: "var(--app-brand-2)" }}
+        style={{ borderColor: "var(--app-cool)", color: "var(--app-cool)" }}
       >
         <span>View filings and full financials</span>
         <ExternalLink className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />

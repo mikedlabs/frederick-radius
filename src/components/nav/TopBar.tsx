@@ -50,7 +50,10 @@ export default function TopBar() {
   // trigger on those routes so people never have to choose between two
   // search boxes that do the same job. The wordmark/back control, pulse,
   // Compass, and the ⌘K shortcut remain available.
-  const pageOwnsSearch = pathname === "/map" || pathname === "/search";
+  const pageOwnsSearch = pathname === "/map"
+    || pathname === "/search"
+    || pathname === "/compass"
+    || pathname.startsWith("/ask");
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -149,28 +152,18 @@ export default function TopBar() {
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
               aria-label="Frederick Radius, home"
-              className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
+              className="tap-44 flex items-center gap-2.5 font-brand text-[18px] tracking-[-0.015em]"
+              style={{ color: "var(--app-brand)" }}
             >
-              {/* The Ripple, on its brick tile — the same mark as the app icon
-                  and browser tab, so the header and the home screen agree on
-                  what the logo is. rounded-[7px] tracks the squircle's 23.3%
-                  radius at 28px so the shadow hugs the tile. */}
-              <span
-                className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-[7px] shadow-[var(--app-shadow-1)]"
-                aria-hidden
-              >
-                <RippleMark size={28} tile />
-              </span>
-              {/* Wordmark hides on the narrowest phones so the search
-                  pill gets real room (it was clipping to "Se…"); the
-                  disc mark alone carries the brand there. Full lockup
-                  returns from sm: up. */}
-              <span className="hidden leading-tight sm:block">
-                Frederick
-                <span className="block text-[10px] font-medium uppercase tracking-[0.14em] -mt-0.5" style={{ color: "var(--app-ink-3)" }}>
-                  Radius
-                </span>
+              {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
+                  a one-line Libre Caslon wordmark. The app-icon tile belongs
+                  on home screens and avatars, not inside the product header. */}
+              <RippleMark size={34} className="shrink-0" />
+              {/* The wordmark yields on the narrowest phones so functional
+                  controls retain a full touch target. The mark still carries
+                  the brand there; the complete lockup returns at sm. */}
+              <span className="hidden whitespace-nowrap leading-none sm:block" style={{ color: "var(--app-ink)" }}>
+                Frederick Radius
               </span>
             </Link>
           )}
@@ -181,7 +174,7 @@ export default function TopBar() {
               the logo and the right-side chips, Apple-Maps style.
               Tap anywhere on it opens the typeahead modal. */}
           {pageOwnsSearch ? (
-            pathname === "/map" ? (
+            pathname === "/map" || pathname === "/compass" ? (
               // The map's search moved into the dock at the foot of the screen,
               // which left this bar a lone disc over dead space. Name the
               // territory here in one quiet line of the display serif so the
@@ -189,9 +182,20 @@ export default function TopBar() {
               // control (the disc beside it is the home button). flex-1 still
               // pins the pulse · Compass cluster to the right edge.
               <div className="ml-1 min-w-0 flex-1">
-                <span className="block truncate font-serif text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
-                  Frederick County
-                </span>
+                {pathname === "/map" ? (
+                  <>
+                    <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:hidden" style={{ color: "var(--app-ink)" }}>
+                      County map
+                    </span>
+                    <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
+                      Frederick County
+                    </span>
+                  </>
+                ) : (
+                  <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    All tools
+                  </span>
+                )}
               </div>
             ) : (
               // Spacer keeps the right cluster (pulse · Browse) on the right
@@ -199,28 +203,30 @@ export default function TopBar() {
               <div aria-hidden className="min-w-0 flex-1" />
             )
           ) : (
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search Frederick County"
-              className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-              {/* Calm, static placeholder. ONE text node (truncates on
-                  narrow phones) — the previous two responsive spans both
-                  lived in the DOM, so non-CSS readers and audit tools saw
-                  them concatenated ("What's open?What's open right now?").
-                  The button's aria-label is the accessible name; this text
-                  is decorative. */}
-              <span className="truncate text-left">Find places, events, towns, tools</span>
-              <kbd
-                className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
+            <>
+              {/* Mobile already has the prominent center Find action in the
+                  fixed primary nav. Repeating the same search control here
+                  made every page open with two competing discovery doors.
+                  Keep the middle of the top bar calm until the desktop layout,
+                  where the bottom nav is gone and this search becomes primary. */}
+              <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search Frederick County"
+                className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
-                ⌘K
-              </kbd>
-            </button>
+                <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                <span className="truncate text-left">Find places, events, towns, tools</span>
+                <kbd
+                  className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                >
+                  ⌘K
+                </kbd>
+              </button>
+            </>
           )}
 
           {/* (Removed the header "My Radius" bookmark — it duplicated the
@@ -254,15 +260,15 @@ export default function TopBar() {
           {/* Compass is the field-guide index. It is a full destination rather
               than a tall modal, so it can be linked, shared, scrolled, and
               returned from with normal browser history. */}
-          <Link
+          {pathname !== "/compass" && <Link
             href="/compass"
             prefetch={false}
             onMouseEnter={() => router.prefetch("/compass")}
             onFocus={() => router.prefetch("/compass")}
             onPointerDown={() => router.prefetch("/compass")}
-            aria-label="Open the Frederick Radius index"
+            aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
-            title="Open all guides and tools"
+            title="Open all tools"
             className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
@@ -270,8 +276,8 @@ export default function TopBar() {
             }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-medium leading-none sm:inline">Compass</span>
-          </Link>
+            <span className="text-[14px] font-medium leading-none">All tools</span>
+          </Link>}
         </div>
       </header>
 
@@ -279,4 +285,3 @@ export default function TopBar() {
     </>
   );
 }
-

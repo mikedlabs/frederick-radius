@@ -51,11 +51,11 @@ const TOPIC_ICONS: Record<string, LucideIcon> = {
  *  variant; the rail keeps the true brand red (decorative, exempt). */
 const RAIL: Record<string, string> = {
   emergency: "var(--app-danger)", city: "var(--app-brand)",
-  county: "var(--app-cool)", state: "var(--app-brand-2)",
+  county: "var(--app-cool)", state: "var(--app-cool)",
 };
 const NUM_COLOR: Record<string, string> = {
   emergency: "var(--app-danger)", city: "var(--app-brand-press)",
-  county: "var(--app-cool)", state: "var(--app-brand-2)",
+  county: "var(--app-cool)", state: "var(--app-cool)",
 };
 const TAG_LABEL: Record<string, string> = {
   emergency: "24/7", city: "City", county: "County", state: "State",
@@ -270,7 +270,11 @@ export default function ContactsDirectory({
             Send these to your phone or your family:
           </p>
           <div className="flex flex-wrap gap-2">
-            <a href={smsHref} className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold text-white" style={{ background: "var(--app-brand)" }}>
+            <a
+              href={smsHref}
+              className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
+              style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+            >
               <MessageSquare className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden /> Text these
             </a>
             <a href={mailHref} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
@@ -322,7 +326,7 @@ export default function ContactsDirectory({
       {searching ? (
         /* ── Search results — departments then tasks, flat and counted ── */
         <div className="space-y-2.5">
-          <p className="px-0.5 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          <p role="status" aria-live="polite" aria-atomic="true" className="px-0.5 font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
             {total === 0 ? "No matches" : `${total} ${total === 1 ? "result" : "results"} for “${query.trim()}”`}
           </p>
           {deptResults.length > 0 && (
@@ -403,8 +407,8 @@ export default function ContactsDirectory({
             className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
             style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
           >
-            <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)" }}>
-              <Sparkles className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
+            <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)" }}>
+              <Sparkles className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>Not sure who to call?</span>

@@ -23,7 +23,6 @@ import {
   Radio,
   School,
   Shield,
-  ShieldCheck,
   Siren,
   Sparkles,
   TrafficCone,
@@ -93,7 +92,6 @@ export type PulseHero = {
   line: string;
   sub: string;
   renderedAt: number;
-  refreshedClock: string;
   /** The lead situation is fully explained in the hero, so it is not repeated below. */
   leadKey?: string;
   leadMeta?: string;
@@ -109,6 +107,8 @@ export type PulseTile = {
   accent: string;
   active: boolean;
   attention: boolean;
+  /** The source did not answer, so a zero value is unknown rather than clear. */
+  degraded?: boolean;
   kind: "feature" | "gauge" | "status";
   peek?: string;
   gauge?: { value: number; pct: number; unit: string; decimals?: number; comma?: boolean };
@@ -147,17 +147,19 @@ function GroupHeading({
   note,
 }: {
   id: string;
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   note?: string;
 }) {
   return (
     <div className="min-w-0">
-      <p className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-brand-press)" }}>
-        <span aria-hidden className="inline-block h-2.5 w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
-        {eyebrow}
-      </p>
-      <div className="mt-1 flex min-w-0 items-end justify-between gap-3">
+      {eyebrow ? (
+        <p className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "var(--app-brand-press)" }}>
+          <span aria-hidden className="inline-block h-2.5 w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
+          {eyebrow}
+        </p>
+      ) : null}
+      <div className={`${eyebrow ? "mt-1 " : ""}flex min-w-0 items-end justify-between gap-3`}>
         <h2 id={id} className="min-w-0 break-words font-serif text-[25px] font-semibold leading-[1.05] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
@@ -172,7 +174,7 @@ function GroupHeading({
  * from bad inside one grid (owner: "can alerts be more clear"):
  *   - Anything live (a danger/warning chip present) → an Active alerts LEDGER:
  *     one bordered row per live situation, a 3px severity bar in its tone, an
- *     Inter title, and a mono "<severity word> · <clock>" meta. Positive
+ *     Public Sans title, and a tabular "<severity word> · <clock>" meta. Positive
  *     "No X reported" chips are dropped here — a live board shows only what's
  *     live. Tapping a row opens that tile's drawer.
  *   - All clear → the calm fact grid (the positive/informational chips).
@@ -287,8 +289,6 @@ function SinceLastLook({ tiles }: { tiles: PulseTile[] }) {
             .slice(0, 2)
             .join(" and ");
           setMessage(`${labels} ${cleared.length === 1 ? "has" : "have"} cleared since ${timeSince(previous.at)}.`);
-        } else {
-          setMessage(`No new urgent changes since ${timeSince(previous.at)}.`);
         }
       }
 
@@ -319,23 +319,33 @@ function SystemsLedger({ tiles, onOpen }: { tiles: PulseTile[]; onOpen: (key: st
   return (
     <section aria-labelledby="pulse-systems-heading" className="min-w-0 border-y py-3" style={{ borderColor: "var(--app-border)" }}>
       <div className="flex min-w-0 items-center gap-2">
-        <ShieldCheck aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
-        {/* A neutral section label, not an all-clear assertion: a steady tile
-            whose own feed is degraded (countLabel "Feed unavailable") still
-            lists here, so the header must not claim "nothing changed / all
-            checked" on its behalf. Per-tile degraded gating is a follow-up
-            (needs a degraded flag threaded onto PulseTile). */}
-        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Steady systems</h2>
+        <Shield aria-hidden className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+        <h2 id="pulse-systems-heading" className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>System checks</h2>
       </div>
       <ul className="mt-2.5 grid min-w-0 grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-        {tiles.map((tile) => (
-          <li key={tile.key} className="min-w-0">
-            <button type="button" onClick={() => onOpen(tile.key)} className="flex min-h-11 min-w-0 w-full items-center gap-1.5 text-left text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-              <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-brand-2)" }} />
-              <span className="truncate">{tile.label}</span>
-            </button>
-          </li>
-        ))}
+        {tiles.map((tile) => {
+          const degraded = tile.degraded === true;
+          return (
+            <li key={tile.key} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onOpen(tile.key)}
+                className="flex min-h-11 min-w-0 w-full items-center gap-2 text-left"
+                aria-label={`${tile.label}: ${tile.countLabel}`}
+              >
+                {degraded ? (
+                  <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-warning)" }} />
+                ) : (
+                  <Check aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-positive)" }} />
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-[11.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>{tile.label}</span>
+                  <span className="block truncate text-[10px]" style={{ color: degraded ? "var(--app-warning)" : "var(--app-ink-3)" }}>{tile.countLabel}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -359,63 +369,46 @@ function UpdateRow({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
   );
 }
 
-/** Bento surface helpers — active tiles wear a faint wash of their own accent
- *  so a live situation reads as color at a glance, calm ones stay paper. */
-function tileBg(accent: string, active: boolean): string {
-  return active ? `color-mix(in srgb, ${accent} 8%, var(--app-bg-elevated))` : "var(--app-bg-elevated)";
-}
-function tileBorder(accent: string, active: boolean): string {
-  return active ? `color-mix(in srgb, ${accent} 42%, var(--app-border))` : "var(--app-border)";
-}
-
-/** The weather feature: the most-asked live question, so it leads the board as
- *  a wide tile with the temperature set large. */
-function FeatureTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
+/** One instrument reading. The weather reading gets more room, but it stays on
+ * the same ruled sheet as the rest of the county signals instead of becoming
+ * a separate dashboard card. */
+function ConditionReading({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
   const f = tile.feature;
+  const isFeature = tile.kind === "feature";
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="col-span-2 flex items-center gap-4 rounded-[var(--app-radius-md)] border p-4 text-left transition active:scale-[0.99]"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      className={`group grid w-full grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 border-b px-1 text-left transition last:border-b-0 active:bg-black/[0.025]${isFeature ? " min-h-[78px] py-3" : " min-h-[62px] py-2.5"}`}
+      style={{ borderColor: "var(--app-border)" }}
     >
-      <span className="font-serif text-[40px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
-        {f ? `${f.temp}°` : tile.countLabel}
+      <span
+        aria-hidden
+        className="grid h-8 w-8 place-items-center border-l-2"
+        style={{
+          borderColor: tile.accent,
+          color: tile.accent,
+          background: `color-mix(in srgb, ${tile.accent} 8%, transparent)`,
+        }}
+      >
+        {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
           {tile.label}
         </span>
-        {f?.condition && <span className="block truncate text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.condition}</span>}
-        {f?.hl && <span className="block font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{f.hl}</span>}
+        <span className={`block truncate font-semibold${isFeature ? " text-[15px]" : " text-[13.5px]"}`} style={{ color: "var(--app-ink)" }}>
+          {f?.condition ?? tile.countLabel}
+        </span>
+        {f?.hl && <span className="block font-mono text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{f.hl}</span>}
       </span>
-      {createElement(iconFor(tile), { className: "h-7 w-7 shrink-0", strokeWidth: 1.75, style: { color: tile.accent }, "aria-hidden": true })}
-    </button>
-  );
-}
-
-/** A compact stat card: icon, label, the live datum set as the value. Fills a
- *  single grid cell; tapping opens the tile's full body in the drawer. */
-function StatTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex min-h-[98px] flex-col rounded-[var(--app-radius-md)] border p-3 text-left transition active:scale-[0.98]"
-      style={{ borderColor: tileBorder(tile.accent, tile.active), background: tileBg(tile.accent, tile.active) }}
-    >
-      <span
-        aria-hidden
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-        style={{ color: tile.accent, background: `color-mix(in srgb, ${tile.accent} 12%, transparent)` }}
-      >
-        {createElement(iconFor(tile), { className: "h-4 w-4", strokeWidth: 2 })}
-      </span>
-      <span className="mt-auto pt-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-        {tile.label}
-      </span>
-      <span className="mt-0.5 line-clamp-2 text-[14.5px] font-semibold leading-tight" style={{ color: tile.active ? tile.accent : "var(--app-ink)" }}>
-        {tile.countLabel}
+      <span className="flex items-center gap-2">
+        {f && (
+          <span className="font-serif text-[34px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+            {f.temp}°
+          </span>
+        )}
+        <ArrowRight aria-hidden className="h-3.5 w-3.5 opacity-30 transition-transform group-hover:translate-x-0.5" />
       </span>
     </button>
   );
@@ -430,7 +423,7 @@ function AttentionTile({ tile, onOpen }: { tile: PulseTile; onOpen: () => void }
       onClick={onOpen}
       className="group col-span-2 flex items-center gap-3 rounded-[var(--app-radius-md)] border border-l-[3px] px-3.5 py-3 text-left transition active:scale-[0.99]"
       style={{
-        borderColor: tileBorder(tile.accent, true),
+        borderColor: `color-mix(in srgb, ${tile.accent} 42%, var(--app-border))`,
         borderLeftColor: tile.accent,
         background: `color-mix(in srgb, ${tile.accent} 7%, var(--app-bg-elevated))`,
       }}
@@ -514,17 +507,15 @@ export default function PulseBoard({
   // The status word the masthead prints beside the dateline — typography
   // carries the state, not an icon bubble (owner report, 2026-07-18: the
   // rings + badge read like a status widget, not the front page it fronts).
-  const statusWord = hero.allClear ? "All clear" : degraded ? "Watching" : "Active alert";
+  const statusWord = hero.allClear ? "Checked" : degraded ? "Watching" : "Active alert";
 
   return (
     <>
-      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-7 pt-7 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-9 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
+      <header className="-mx-4 -mt-6 border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-7 pt-7 text-[var(--app-ink)] sm:-mx-5 sm:px-8 sm:pb-9 sm:pt-9 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
         <div className="max-w-[42rem]">
-          {/* Masthead rule + dateline: the status color lives in one confident
-              rule over the wire-desk eyebrow, newspaper fashion. */}
           <div aria-hidden className="mb-3 h-[3px] w-14 rounded-full" style={{ background: heroColor }} />
-          <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.17em] text-black/65">
-            <span>Frederick County status</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-black/65">
+            <span>Live conditions</span>
             <span aria-hidden className="text-black/30">·</span>
             <span className="flex items-center gap-1.5 text-[10px]" style={{ color: heroColor }}>
               <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: heroColor }} />
@@ -532,7 +523,7 @@ export default function PulseBoard({
             </span>
             <PulseFreshness renderedAt={hero.renderedAt} />
           </div>
-          <h1 className="mt-3 max-w-[38rem] font-serif text-[clamp(1.9rem,7.5vw,3.4rem)] font-semibold leading-[0.95] tracking-[-0.04em] text-balance text-[var(--app-ink)]">
+          <h1 className="mt-3 max-w-[38rem] font-sans text-[clamp(1.8rem,7vw,2.8rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-balance text-[var(--app-ink)]">
             {hero.line}
           </h1>
           <p className="mt-3 max-w-[36rem] text-[13px] leading-relaxed text-[var(--app-ink-2)]">{hero.sub}</p>
@@ -546,7 +537,6 @@ export default function PulseBoard({
             </div>
           )}
           <div className="mt-5"><HeroFacts chips={chips} onOpen={openTile} /></div>
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--app-ink-3)]"><Clock aria-hidden className="h-3 w-3" /> Updated {hero.refreshedClock} · refreshes automatically</p>
         </div>
       </header>
 
@@ -566,15 +556,11 @@ export default function PulseBoard({
           )}
 
           <section aria-labelledby="pulse-live-board-heading" className="min-w-0 space-y-2.5">
-            <GroupHeading id="pulse-live-board-heading" eyebrow="At a glance" title="County status" note="tap any tile" />
-            <div className="grid min-w-0 grid-cols-2 gap-2.5">
-              {[...conditions, ...gettingAround].map((tile) =>
-                tile.kind === "feature" ? (
-                  <FeatureTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
-                ) : (
-                  <StatTile key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
-                ),
-              )}
+            <GroupHeading id="pulse-live-board-heading" title="Current conditions" />
+            <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border-strong)" }}>
+              {[...conditions, ...gettingAround].map((tile) => (
+                <ConditionReading key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />
+              ))}
             </div>
           </section>
         </div>
@@ -586,9 +572,9 @@ export default function PulseBoard({
             <section aria-labelledby="pulse-updates-heading" className="min-w-0 space-y-2.5">
               <GroupHeading id="pulse-updates-heading" eyebrow="Around Frederick" title="Local updates" />
               <div className="min-w-0 border-y px-1" style={{ borderColor: "var(--app-border)" }}>
-                <ul className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
+                <ul id="pulse-local-updates" className="min-w-0">{visibleUpdates.map((tile) => <UpdateRow key={tile.key} tile={tile} onOpen={() => openTile(tile.key)} />)}</ul>
                 {localUpdates.length > 4 && (
-                  <button type="button" onClick={() => setShowAllUpdates((value) => !value)} className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                  <button type="button" onClick={() => setShowAllUpdates((value) => !value)} aria-expanded={showAllUpdates} aria-controls="pulse-local-updates" className="flex min-h-11 w-full items-center justify-center gap-1.5 border-t text-[11.5px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
                     {showAllUpdates ? "Show fewer updates" : `${localUpdates.length - 4} more updates`}
                     <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform${showAllUpdates ? " rotate-180" : ""}`} />
                   </button>

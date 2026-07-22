@@ -1,5 +1,8 @@
 import RAW from "./beers.json" with { type: "json" };
 
+/** Editorial source date for the stored signature-beer catalog. */
+export const BEER_SNAPSHOT_MONTH = "July 2026";
+
 /**
  * Frederick County beer directory — the data behind /beer (the swipe deck,
  * the taste finder, and the brewery result).

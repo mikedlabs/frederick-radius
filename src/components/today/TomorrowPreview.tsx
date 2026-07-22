@@ -65,7 +65,7 @@ export default async function TomorrowPreview({ now, eventsPromise }: { now: Dat
             style={{ color: "var(--app-ink)" }}
           >
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-serif text-[15px] font-semibold leading-snug tracking-tight">
+              <span className="block truncate font-sans text-[15px] font-semibold leading-snug tracking-tight">
                 {top.title}
               </span>
               {top.venue_name && (

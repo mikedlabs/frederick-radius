@@ -9,26 +9,24 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ExternalLink, ChevronRight } from "lucide-react";
 import {
-  ExternalLink, MapPin, Clock, ChevronRight,
-} from "lucide-react";
-import {
-  getChartIncidentsFrederick,
+  getChartIncidentsFrederickResult,
   chartHeroSentence,
   chartTypeSentence,
   chartTodayTitle,
   chartFreshnessTail,
   humanizeChartText,
 } from "@/lib/integrations/mdot-chart";
-import { getFrederickOutages } from "@/lib/integrations/firstenergy";
-import { getFcpsAlerts } from "@/lib/integrations/fcps";
+import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
+import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
-import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
+import { getCivicPressReleases, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
 import { airQualityObservedAt, getAirQuality, isFreshAqiObservation, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
@@ -46,8 +44,10 @@ import PulseBoard, { type PulseTile, type PulseHero, type PulseHeroChip } from "
 import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
-import { pulseAlertPriority, shouldAqiLead } from "@/lib/pulse/signal-priority";
+import { compareAlertPriority } from "@/lib/alert-priority";
+import { powerOutageTone, pulseAlertPriority, pulseStatusState, shouldAqiLead } from "@/lib/pulse/signal-priority";
 import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isElevatedAirQualityPeriodActive, summarizeAirQualityAlert } from "@/lib/air-quality";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -56,8 +56,8 @@ export const metadata: Metadata = {
   // focused surfaces in /sitemap. Reversible if the route is
   // promoted back into nav.
   robots: { index: false, follow: true },
-  title: "County Pulse",
-  description: "Check current Frederick County conditions from official sources.",
+  title: PRODUCT_NAMES.liveConditions.pageTitle,
+  description: PRODUCT_NAMES.liveConditions.description,
 };
 
 export const revalidate = 120;
@@ -83,15 +83,6 @@ function aqiClock(observation: AqiObservation): string {
     weekday: "short",
     hour: "numeric",
   }).format(observedAt);
-}
-
-function nowClock(): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date());
 }
 
 /** Plain, deterministic local guidance for the alert families NWS publishes.
@@ -269,15 +260,27 @@ export default async function PulsePage() {
   // rescue, weather alerts) are tracked: if any fails or times out, we can't
   // honestly say all clear (audit FR-002). The rest keep the plain fallback.
   let urgentDegraded = false;
+  let trafficAvailable = true;
+  let powerAvailable = true;
+  let schoolsAvailable = true;
   let safetyAvailable = true;
   let fixitAvailable = true;
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidents, outages, fcps, fixit, safety, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
-    withTimeoutTracked(getChartIncidentsFrederick(), FEED_MS, [], markDegraded),
-    withTimeoutTracked(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }, markDegraded),
-    withTimeoutTracked(getFcpsAlerts(), FEED_MS, [], markDegraded),
+  const [incidentsResult, outageResult, fcpsResult, fixit, safety, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+    withTimeoutTracked(getChartIncidentsFrederickResult(), FEED_MS, { data: [], available: false }, () => {
+      trafficAvailable = false;
+      markDegraded();
+    }),
+    withTimeoutTracked(getFrederickOutagesResult(), FEED_MS, { data: { total_out: 0, total_served: 0, munis: [] }, available: false }, () => {
+      powerAvailable = false;
+      markDegraded();
+    }),
+    withTimeoutTracked(getFcpsAlertsResult(), FEED_MS, { data: [], available: false }, () => {
+      schoolsAvailable = false;
+      markDegraded();
+    }),
     withTimeoutTracked(getFixItIssues(15), FEED_MS, [], () => {
       fixitAvailable = false;
     }),
@@ -321,6 +324,14 @@ export default async function PulsePage() {
     withTimeout(getCampDavidTfr(), FEED_MS, null),
   ]);
 
+  const incidents = incidentsResult.data;
+  const outages = outageResult.data;
+  const fcps = fcpsResult.data;
+  trafficAvailable = trafficAvailable && incidentsResult.available;
+  powerAvailable = powerAvailable && outageResult.available;
+  schoolsAvailable = schoolsAvailable && fcpsResult.available;
+  if (!trafficAvailable || !powerAvailable || !schoolsAvailable) urgentDegraded = true;
+
   // Current weather for the leading dashboard tile. The rich PulseWeatherPanel
   // is the tile's body; here we only need the at-a-glance temp + condition.
   const wxCur = forecast?.hourly?.[0] ?? null;
@@ -330,11 +341,15 @@ export default async function PulsePage() {
   const traffic = [...incidents].sort(
     (a, b) => sevRank[a.severity] - sevRank[b.severity]
   );
-  const schoolAlerts = fcps.filter((a) => a.status !== "unknown");
+  const highTraffic = traffic.filter((incident) => incident.severity === "High");
+  const schoolAlerts = fcps.filter(
+    (alert) => alert.status === "closed" || alert.status === "delayed" || alert.status === "early_dismissal",
+  );
 
   // Power outages are "active" only when 25+ customers are out — below
   // that threshold the data is noise (a single transformer trip).
   const outagesActive = outages.total_out >= 25;
+  const outageTone = powerOutageTone(outages.total_out, outages.total_served);
 
   // Only count NWS alerts that haven't already expired. The feed
   // includes alerts with `ends_at` in the past until the cache cycles,
@@ -345,58 +360,60 @@ export default async function PulsePage() {
   if (!alertResult.available) urgentDegraded = true;
   const activeAlerts = alertResult.alerts
     .filter((a) => !a.ends_at || Date.parse(a.ends_at) > nowMs)
-    .sort((a, b) => pulseAlertPriority(a) - pulseAlertPriority(b));
+    .sort(compareAlertPriority);
   // Missing, empty, or stale AirNow observations are all degraded for an
   // all-clear. They can never let an old Good reading hide a changed day.
   const freshAqiObs = (aqiObs ?? []).filter((obs) => isFreshAqiObservation(obs, marcNow));
-  if (aqiObs === null || freshAqiObs.length === 0) urgentDegraded = true;
+  const airAvailable = aqiObs !== null && freshAqiObs.length > 0;
+  if (!airAvailable) urgentDegraded = true;
   const aqiWorst = pickWorstAqi(freshAqiObs);
   const aqiActive = aqiWorst ? aqiWorst.category.id >= 3 : false;
 
-  // Police-lane press releases. The freshest earns the breaking strip up top
-  // (only if recent enough); the rest form the standing blotter in the Police
-  // section, minus the featured one so the page never shows it twice.
-  const breakingPolice = latestPoliceRelease(press);
-  const blotter = policeReleases(press)
+  // Only a fresh, urgent police release earns the safety strip. Routine and
+  // older releases remain in the standing blotter without alert styling.
+  const policeItems = policeReleases(press);
+  const breakingPolice = featuredPoliceRelease(policeItems, nowMs);
+  const latestPolice = policeItems[0] ?? null;
+  const blotter = policeItems
     .filter((p) => p.url !== breakingPolice?.url)
     .slice(0, 5);
   // Planned road work / closures / emergency advisories (distinct from the
   // live MDOT traffic tile). Self-hides when the feeds carry none recent.
   const advisories = advisoryReleases(press).slice(0, 6);
 
-  // Pulse is active if any trusted urgent category is active. We intentionally
-  // do not add unlike records into one fake "situation" total.
-  const hasActive =
-    activeAlerts.length > 0 ||
-    safety.length > 0 ||
-    traffic.length > 0 ||
-    outagesActive ||
-    schoolAlerts.length > 0 ||
-    aqiActive;
-  // "All clear" requires BOTH nothing active AND every urgent feed answered.
-  // If a feed failed and we found nothing, the truthful read is "unknown", not
-  // a reassuring all-clear (audit FR-002).
-  const heroDegraded = !hasActive && urgentDegraded;
-  const allClear = !hasActive && !urgentDegraded;
+  // Pulse is active if any trusted urgent category is active. The featured
+  // police release must use this SAME model as its breaking strip; otherwise a
+  // fresh shooting or missing-person release could sit directly below an
+  // "All clear" masthead. We intentionally do not add unlike records into one
+  // fake situation total.
+  const { heroDegraded, allClear } = pulseStatusState({
+    weather: activeAlerts.length > 0,
+    fireRescue: safety.length > 0,
+    traffic: highTraffic.length > 0,
+    power: outagesActive,
+    schools: schoolAlerts.length > 0,
+    air: aqiActive,
+    police: Boolean(breakingPolice),
+  }, urgentDegraded);
 
   const leadAlert = activeAlerts[0];
   const leadAirSummary = leadAlert ? summarizeAirQualityAlert(leadAlert) : null;
   const activeAirAlert = activeAlerts.find((alert) => summarizeAirQualityAlert(alert) !== null);
   const activeAirSummary = activeAirAlert ? summarizeAirQualityAlert(activeAirAlert) : null;
-  const leadTraffic = traffic[0];
+  const leadTraffic = highTraffic[0];
   const leadSchool = schoolAlerts[0];
   const leadSafety = safety[0];
   const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
 
-  let heroLine = "No major local disruptions are reported.";
-  let heroSub = "Official feeds report no major weather, road, utility, or school disruptions.";
+  let heroLine = "No major disruptions appear in the checked feeds.";
+  let heroSub = "Open any condition below to see its source and latest details.";
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
 
   if (heroDegraded) {
     heroLine = "We can’t confirm an all-clear yet.";
-    heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Pulse will retry automatically.";
+    heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Radius will retry automatically.";
   } else if (aqiLeads && aqiWorst) {
     heroLeadKey = "air";
     heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
@@ -419,6 +436,12 @@ export default async function PulsePage() {
     heroSub = aqiGuidance(aqiWorst.category.id);
     heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
     heroActionLabel = "See the air-quality reading";
+  } else if (breakingPolice) {
+    heroLeadKey = "police";
+    heroLine = breakingPolice.title;
+    heroSub = `${breakingPolice.source} published this update. Read the official release for confirmed details and any instructions.`;
+    heroLeadMeta = [breakingPolice.sourceShort, timeAgo(breakingPolice.publishedAt)].filter(Boolean).join(" · ");
+    heroActionLabel = "Read the official safety update";
   } else if (outagesActive) {
     heroLeadKey = "power";
     heroLine = `${outages.total_out.toLocaleString()} customers are without power.`;
@@ -511,7 +534,7 @@ export default async function PulsePage() {
         rel="noopener noreferrer"
         className="block rounded-[var(--app-radius-md)] px-1 py-2 transition hover:bg-[var(--app-bg-sunken)]"
       >
-        <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+        <h3 className="font-sans text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
           {newsLead.title}
         </h3>
         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
@@ -551,8 +574,19 @@ export default async function PulsePage() {
 
   const policeBody = (
     <div className="space-y-3">
-      {blotter.length > 0 && (
+      {breakingPolice && (
         <div className="space-y-1.5">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
+            Featured safety release
+          </p>
+          <PoliceBlotter items={[breakingPolice]} now={nowMs} />
+        </div>
+      )}
+      {blotter.length > 0 && (
+        <div
+          className={`space-y-1.5${breakingPolice ? " border-t pt-3" : ""}`}
+          style={breakingPolice ? { borderColor: "var(--app-border)" } : undefined}
+        >
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
             Recent releases
           </p>
@@ -560,8 +594,8 @@ export default async function PulsePage() {
         </div>
       )}
       <div
-        className={blotter.length > 0 ? "space-y-2.5 border-t pt-3" : "space-y-2.5"}
-        style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
+        className={blotter.length > 0 || breakingPolice ? "space-y-2.5 border-t pt-3" : "space-y-2.5"}
+        style={blotter.length > 0 || breakingPolice ? { borderColor: "var(--app-border)" } : undefined}
       >
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Frederick PD also publishes the prior day&apos;s calls for service from its
@@ -701,7 +735,7 @@ export default async function PulsePage() {
     alerts: activeAlerts.length > 0,
     air: aqiActive,
     safety: safety.length > 0,
-    traffic: traffic.length > 0,
+    traffic: highTraffic.length > 0,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
   };
@@ -730,8 +764,9 @@ export default async function PulsePage() {
         } as PulseTile]
       : []),
     // ── Numeric feeds → animated gauge rings ──
-    // Air quality: an ambient environmental reading. Self-hides when the AirNow
-    // key is unset or the feed is down.
+    // Air quality: an ambient environmental reading. A missing fresh reading
+    // stays visible as an exact degraded tile, so the hero does not need a
+    // generic "some feeds" warning with no source or next step.
     ...(aqiWorst
       ? [{
           key: "air",
@@ -746,15 +781,37 @@ export default async function PulsePage() {
           sourceLabel: "AirNow · EPA",
           body: aqiBody,
         } as PulseTile]
-      : []),
+      : [{
+          key: "air",
+          label: "Air quality",
+          iconName: "Wind",
+          countLabel: "Feed unavailable",
+          accent: "var(--app-warning)",
+          active: false,
+          attention: false,
+          degraded: true,
+          kind: "status",
+          sourceLabel: "AirNow · EPA",
+          peek: "No fresh Frederick reading",
+          body: emptyNote("AirNow did not return a fresh Frederick observation. Radius will check again automatically."),
+        } as PulseTile]),
     {
       key: "power",
       label: "Power out",
       iconName: "Zap",
-      countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "No major outage",
-      accent: outagesActive ? "var(--app-danger)" : "var(--app-cool)",
+      countLabel: outagesActive
+        ? `${outages.total_out.toLocaleString()} out`
+        : powerAvailable
+          ? "No major outage"
+          : "Feed unavailable",
+      accent: outagesActive
+        ? outageTone === "danger" ? "var(--app-danger)" : "var(--app-warning)"
+        : powerAvailable
+          ? "var(--app-cool)"
+          : "var(--app-warning)",
       active: outagesActive,
       attention: situationActive.power,
+      degraded: !powerAvailable,
       kind: "gauge",
       gauge: {
         value: outages.total_out,
@@ -790,7 +847,11 @@ export default async function PulsePage() {
             />
           ))}
         </>
-      ) : emptyNote("No significant power outages are reported right now."),
+      ) : emptyNote(
+        powerAvailable
+          ? "No significant power outages are reported right now."
+          : "Potomac Edison outage data could not be loaded right now.",
+      ),
     },
     // ── The rest → compact status tiles ──
     {
@@ -805,6 +866,7 @@ export default async function PulsePage() {
       accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
       active: safety.length > 0,
       attention: situationActive.safety,
+      degraded: !safetyAvailable,
       kind: "status",
       sourceLabel: "PulsePoint",
       peek: safety.length > 0
@@ -826,16 +888,23 @@ export default async function PulsePage() {
       key: "traffic",
       label: "Traffic",
       iconName: "Construction",
-      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "None reported",
-      accent: traffic.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+      countLabel: traffic.length > 0
+        ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}`
+        : trafficAvailable
+          ? "None reported"
+          : "Feed unavailable",
+      accent: traffic.length > 0 || !trafficAvailable ? "var(--app-warning)" : "var(--app-cool)",
       active: traffic.length > 0,
       attention: situationActive.traffic,
+      degraded: !trafficAvailable,
       kind: "status",
       sourceLabel: "MDOT CHART",
       peek:
         traffic.length > 0
           ? `${traffic[0].road || traffic[0].location}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
-          : "roads moving",
+          : trafficAvailable
+            ? "roads moving"
+            : "MDOT CHART could not be reached",
       body: traffic.length > 0
         ? traffic.slice(0, 12).map((i) => (
             <Row
@@ -854,16 +923,25 @@ export default async function PulsePage() {
               ]}
             />
           ))
-        : emptyNote("No traffic incidents or roadwork are reported right now."),
+        : emptyNote(
+            trafficAvailable
+              ? "No traffic incidents or roadwork are reported right now."
+              : "MDOT CHART incident data could not be loaded right now.",
+          ),
     },
     {
       key: "schools",
       label: "Schools",
       iconName: "School",
-      countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "No closure or delay",
-      accent: schoolAlerts.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+      countLabel: schoolAlerts.length > 0
+        ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}`
+        : schoolsAvailable
+          ? "No closure or delay"
+          : "Feed unavailable",
+      accent: schoolAlerts.length > 0 || !schoolsAvailable ? "var(--app-warning)" : "var(--app-cool)",
       active: schoolAlerts.length > 0,
       attention: situationActive.schools,
+      degraded: !schoolsAvailable,
       kind: "status",
       sourceLabel: "FCPS RSS",
       peek:
@@ -875,7 +953,9 @@ export default async function PulsePage() {
               : schoolAlerts[0].status === "early_dismissal"
                 ? "Early dismissal"
                 : "Update"
-          : "no alerts today",
+          : schoolsAvailable
+            ? "no alerts today"
+            : "FCPS could not be reached",
       body: schoolAlerts.length > 0
         ? schoolAlerts.map((a) => (
             <Row
@@ -891,11 +971,15 @@ export default async function PulsePage() {
               meta={[timeAgo(a.published_at)]}
             />
           ))
-        : emptyNote("No school closures or delays are reported right now."),
+        : emptyNote(
+            schoolsAvailable
+              ? "No school closures or delays are reported right now."
+              : "FCPS closure and delay data could not be loaded right now.",
+          ),
     },
     {
       key: "fixit",
-      label: "311 open",
+      label: "311 reports",
       iconName: "AlertTriangle",
       countLabel: fixit.length > 0
         ? `${fixit.length} open`
@@ -940,6 +1024,7 @@ export default async function PulsePage() {
           : "var(--app-warning)",
       active: activeAlerts.length > 0,
       attention: situationActive.alerts,
+      degraded: !alertResult.available,
       kind: "status",
       sourceLabel: "NWS · weather.gov",
       peek: activeAlerts.length > 0
@@ -1015,7 +1100,7 @@ export default async function PulsePage() {
             {riverGroups.map((g) => (
               <div key={g.river} className="space-y-2">
                 <p className="flex items-baseline gap-1.5 px-0.5">
-                  <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  <span className="font-sans text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {g.river}
                   </span>
                   <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
@@ -1223,13 +1308,20 @@ export default async function PulsePage() {
       key: "police",
       label: "Police & safety",
       iconName: "Shield",
-      countLabel: blotter.length > 0 ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}` : "CFS map",
+      countLabel: breakingPolice
+        ? "Breaking release"
+        : blotter.length > 0
+          ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}`
+          : "CFS map",
       accent: "var(--app-cool)",
-      active: false,
+      active: Boolean(breakingPolice),
+      // The dedicated breaking strip already keeps this release prominent.
+      // Do not duplicate it in the board's "Happening now" row when another
+      // higher-priority signal owns the masthead.
       attention: false,
       kind: "status",
       sourceLabel: "Frederick PD · City + County",
-      peek: breakingPolice?.title ?? blotter[0]?.title,
+      peek: breakingPolice?.title ?? latestPolice?.title,
       body: policeBody,
     },
     ...(advisories.length > 0
@@ -1269,7 +1361,6 @@ export default async function PulsePage() {
     line: heroLine,
     sub: heroSub,
     renderedAt: nowMs,
-    refreshedClock: nowClock(),
     leadKey: heroLeadKey,
     leadMeta: heroLeadMeta,
     actionLabel: heroActionLabel,
@@ -1302,7 +1393,7 @@ export default async function PulsePage() {
       });
     }
     if (outagesActive) {
-      addHeroChip({ tone: "danger", label: `${outages.total_out.toLocaleString()} without power`, key: "power", meta: "Potomac Edison area" });
+      addHeroChip({ tone: outageTone, label: `${outages.total_out.toLocaleString()} without power`, key: "power", meta: "Potomac Edison area" });
     }
     if (leadTraffic) {
       addHeroChip({
@@ -1322,13 +1413,7 @@ export default async function PulsePage() {
         key: "schools",
       });
     }
-    if (urgentDegraded) {
-      addHeroChip({ tone: "warning", label: "Some feeds unavailable" });
-    }
   } else {
-    addHeroChip({ tone: "positive", label: "No major road incidents reported", key: "traffic" });
-    addHeroChip({ tone: "positive", label: "No significant outage reported", key: "power" });
-    addHeroChip({ tone: "positive", label: "No closure or delay reported", key: "schools" });
     if (wxCur) {
       addHeroChip({ tone: "cool", label: `${wxCur.temperature}°${wxCondition ? ` ${wxCondition}` : ""}`, key: "weather" });
     }
@@ -1447,11 +1532,7 @@ function Row({
             style={{ color: "var(--app-ink-3)" }}
           >
             {metas.map((m, i) => (
-              <span key={i} className="inline-flex items-center gap-1">
-                {i === 0 && <MapPin className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />}
-                {i > 0 && <Clock className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />}
-                {m}
-              </span>
+              <span key={i}>{m}</span>
             ))}
           </p>
         )}

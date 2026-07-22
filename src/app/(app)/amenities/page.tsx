@@ -251,7 +251,7 @@ export default async function AmenitiesPage() {
             trailing={
               <span
                 className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
-                style={{ color: "var(--app-brand-2, #16352B)" }}
+                style={{ color: "var(--app-positive, #315A43)" }}
               >
                 <Footprints className="h-3 w-3" strokeWidth={2.25} aria-hidden />
                 Collected
@@ -274,7 +274,7 @@ export default async function AmenitiesPage() {
                   >
                     <span
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                      style={{ background: "var(--app-brand-tint-6)", color: "var(--app-brand-2, #16352B)" }}
+                      style={{ background: "var(--app-positive-tint-6)", color: "var(--app-positive, #315A43)" }}
                       aria-hidden
                     >
                       <Icon className="h-4 w-4" strokeWidth={2} />

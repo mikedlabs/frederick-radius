@@ -20,11 +20,11 @@ import type { Map as GLMap } from "mapbox-gl";
 // Aligned to the SHIPPED brand tokens (src/app/globals.css) so the map's
 // ground reads as the same paper as the rest of the app, not a lighter
 // off-match. Literal hexes because Mapbox paint props don't resolve CSS vars.
-const PAPER = "#EBE2CD"; // --app-bg: land = the app's paper ground (was #F4EFE6)
+const PAPER = "#F4EEE2"; // --app-bg: land = the app's paper ground (was #F4EFE6)
 const PAPER_2 = "#E4DAC3"; // a hair under paper, for landuse/landcover
 const WATER = "#8DACC0"; // light Creek-slate fill (kept lighter than --app-cool so a big water fill stays legible on the cream ground)
 const WATER_LINE = "#4A7090"; // --app-cool-2: confident creek/river lines (the Monocacy spine)
-const PARK = "#C3D1B3"; // spruce-tinted park green over paper (--app-brand-2 family)
+const PARK = "#C3D1B3"; // Catoctin Forest tint over paper (--app-brand-2 family)
 const FARM = "#DDD5B6"; // warm hay tint for farmland/orchard — Frederick is farm country
 const BUILDING = "#E1D5BD"; // --app-bg-sunken: warm building card
 const BUILDING_LINE = "#D0C4A8"; // hairline warm outline so buildings read as blocks, not blobs
@@ -35,9 +35,9 @@ const ROAD_HWY = "#AD9E80"; // warm taupe highway
 const ROAD_CASE = "#C0B393"; // warm edge under minor/major road fills, so roads read as ribbons not flat washes
 const ROAD_HWY_CASE = "#94856A"; // darker taupe edge that gives highways a confident spine
 const BOUNDARY = "#B39F7C"; // muted warm admin/boundary line — places a town without a hard black rule
-const LABEL = "#16140E"; // --app-ink: warm near-black primary label
+const LABEL = "#221C15"; // --app-ink: warm near-black primary label
 const LABEL_2 = "#5C5A50"; // --app-ink-3: secondary label
-const HALO = "#EBE2CD"; // paper halo (= --app-bg) around dark text
+const HALO = "#F4EEE2"; // paper halo (= --app-bg) around dark text
 
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));

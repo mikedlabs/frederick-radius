@@ -30,7 +30,7 @@ export const PERSONAS = [
         benefit: "Start with what is useful today: nearby places, current events, and practical local updates.",
         primaryUse: "Plan a local day",
         useCase: "Everyday discovery",
-        topFeatures: ["Today", "Radius", "Pulse"],
+        topFeatures: ["Today", "Radius", "Live conditions"],
     },
     {
         id: "visitor",

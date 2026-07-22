@@ -167,11 +167,11 @@ const relativeLuminance = (hex: string): number => {
 /** Paper or ink, whichever has the stronger WCAG contrast on the route. */
 function readableOn(hex: string): string {
   const bg = relativeLuminance(hex);
-  const ink = relativeLuminance("#16140E");
+  const ink = relativeLuminance("#221C15");
   const paper = relativeLuminance("#FCFBF8");
   const inkContrast = (Math.max(bg, ink) + 0.05) / (Math.min(bg, ink) + 0.05);
   const paperContrast = (Math.max(bg, paper) + 0.05) / (Math.min(bg, paper) + 0.05);
-  return inkContrast >= paperContrast ? "#16140E" : "#FCFBF8";
+  return inkContrast >= paperContrast ? "#221C15" : "#FCFBF8";
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -306,7 +306,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     if (!selected) return null;
     const v = vehicles.find((x) => x.vehicleId === selected);
     if (!v?.nextStop) return null;
-    const color = (v.routeId ? ROUTE_BY_ID[v.routeId]?.color : undefined) ?? "#20506A";
+    const color = (v.routeId ? ROUTE_BY_ID[v.routeId]?.color : undefined) ?? "#285D73";
     const line: GeoJSON.Feature<GeoJSON.LineString> = {
       type: "Feature",
       properties: {},
@@ -383,7 +383,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         const p = pos[v.vehicleId];
         if (!p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
-        const color = route?.color ?? "#20506A";
+        const color = route?.color ?? "#285D73";
         const text = readableOn(color);
         const label = route?.short ?? "·";
         const moving = !reduced && p.moving;
@@ -491,7 +491,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         const p = v ? pos[v.vehicleId] : undefined;
         if (!v || !p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
-        const color = route?.color ?? "#20506A";
+        const color = route?.color ?? "#285D73";
         const stateLabel = p.moving ? "Moving now" : "At a stop";
         const eta = etaLabel(v.nextStop?.etaEpoch, nowMs);
         return (
@@ -509,14 +509,14 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
                 <span style={{ display: "grid", placeItems: "center", minWidth: 22, height: 22, padding: "0 5px", borderRadius: 999, background: color, color: readableOn(color), fontSize: 11, fontWeight: 700 }}>
                   {route?.short ?? "·"}
                 </span>
-                <strong className="font-serif" style={{ fontSize: 15, lineHeight: 1.2, color: "var(--app-ink, #16140E)" }}>
+                <strong className="font-sans" style={{ fontSize: 15, lineHeight: 1.2, color: "var(--app-ink, #221C15)" }}>
                   {route?.name ?? "TransIT bus"}
                 </strong>
               </div>
               <div aria-hidden style={{ height: 1, background: "var(--app-border, #D9D2C3)", margin: "6px 0 5px" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--app-ink-2, #423E34)" }}>
-                <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 999, background: p.moving ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3, #5C5A50)" }} />
-                {stateLabel} <span style={{ color: "var(--app-positive, #1E6B3A)", fontWeight: 600 }}>· free</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--app-ink-2, #5A5348)" }}>
+                <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 999, background: p.moving ? "var(--app-cool, #285D73)" : "var(--app-ink-3, #5C5A50)" }} />
+                {stateLabel} <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 600 }}>· free</span>
               </div>
               {/* Next stop — the flight-tracker line: where it's headed + when.
                   Name alone when there's no live ETA (honest, never guessed). */}
@@ -525,10 +525,10 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
                   <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
                     Next
                   </span>
-                  <span style={{ fontWeight: 600, color: "var(--app-ink, #16140E)" }}>
+                  <span style={{ fontWeight: 600, color: "var(--app-ink, #221C15)" }}>
                     {v.nextStop.name}
                     {eta && (
-                      <span style={{ color: "var(--app-cool, #20506A)", fontWeight: 700 }}> · {eta}</span>
+                      <span style={{ color: "var(--app-cool, #285D73)", fontWeight: 700 }}> · {eta}</span>
                     )}
                   </span>
                 </div>

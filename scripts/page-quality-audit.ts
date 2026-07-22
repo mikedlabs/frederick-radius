@@ -109,6 +109,7 @@ type ExpandedAudit = {
   nativeDetailsAttempted: number;
   nativeDetailsOpened: number;
   buttonsAttempted: number;
+  buttonsRevealed: number;
   buttonsOpened: number;
   controlLabels: string[];
   metrics: DomMetrics;
@@ -161,6 +162,9 @@ type AuditReport = {
  */
 const ROUTES: AuditRoute[] = [
   { id: "today", path: "/today", group: "core", description: "Daily decision surface" },
+  { id: "ask", path: "/ask", group: "core", description: "Local decision workspace" },
+  { id: "plan", path: "/plan", group: "core", description: "Trip and outing planner" },
+  { id: "saved", path: "/my-radius", group: "core", description: "Saved places and events" },
   { id: "search-coffee", path: "/search?q=coffee", group: "core", description: "Ranked search results" },
   { id: "search-civic-vote", path: "/search?q=how%20do%20I%20register%20to%20vote", group: "core", description: "Authoritative civic task answer" },
   { id: "search-civic-food-permit", path: "/search?q=food%20permit", group: "core", description: "Direct civic permit action precedence" },
@@ -172,6 +176,10 @@ const ROUTES: AuditRoute[] = [
   { id: "map-unincorporated-area", path: "/map?at=39.36356,-77.30072", group: "core", description: "Coordinate-centered unincorporated area map" },
   { id: "pulse", path: "/pulse", group: "core", description: "Live local status" },
   { id: "compass", path: "/compass", group: "core", description: "Intent-led discovery" },
+  { id: "contacts", path: "/contacts", group: "guide", description: "Local contacts directory" },
+  { id: "collections", path: "/collections", group: "guide", description: "Editorial guide index" },
+  { id: "nonprofits", path: "/nonprofits", group: "guide", description: "Local nonprofit browser" },
+  { id: "sports", path: "/sports", group: "guide", description: "Local sports guide" },
   { id: "beer", path: "/beer", group: "guide", description: "Beer field guide" },
   { id: "brunch", path: "/brunch", group: "guide", description: "Brunch guide" },
   { id: "deals", path: "/deals", group: "guide", description: "Daily specials guide" },
@@ -197,6 +205,14 @@ const ROUTES: AuditRoute[] = [
   { id: "about", path: "/about", group: "support", description: "Product context" },
   { id: "trust", path: "/trust", group: "support", description: "Trust and source policy" },
   { id: "emergency-vet", path: "/emergency-vet", group: "support", description: "Urgent utility page" },
+  { id: "emergency", path: "/emergency", group: "support", description: "Emergency contacts" },
+  { id: "scanner", path: "/scanner", group: "support", description: "Public-safety scanner guide" },
+  { id: "numbers", path: "/numbers", group: "support", description: "Useful phone numbers" },
+  { id: "reserve", path: "/reserve", group: "support", description: "Reservation links" },
+  { id: "markers", path: "/markers", group: "support", description: "Historic marker browser" },
+  { id: "settings", path: "/settings", group: "support", description: "Preferences" },
+  { id: "report", path: "/report", group: "support", description: "Public map reporting tool" },
+  { id: "collect", path: "/collect", group: "support", description: "Field collection map tool" },
 ];
 
 const VIEWPORTS: ViewportDefinition[] = [
@@ -361,6 +377,7 @@ async function expandDisclosureContent(page: Page): Promise<{
   nativeDetailsAttempted: number;
   nativeDetailsOpened: number;
   buttonsAttempted: number;
+  buttonsRevealed: number;
   buttonsOpened: number;
   controlLabels: string[];
 }> {
@@ -376,6 +393,7 @@ async function expandDisclosureContent(page: Page): Promise<{
   });
 
   const attemptedControls: Array<{ auditId: string; label: string; targetId: string }> = [];
+  let buttonsRevealed = 0;
   // Re-query after every click because React disclosures update aria-expanded
   // and visibility asynchronously. The target must be an inline main-content
   // panel rather than navigation, a form action, or a popup/dialog launcher.
@@ -424,6 +442,21 @@ async function expandDisclosureContent(page: Page): Promise<{
     try {
       await control.click({ timeout: Math.min(NAVIGATION_TIMEOUT_MS, 5_000) });
       await page.waitForTimeout(80);
+      const revealed = await page.evaluate(({ auditId, targetId }) => {
+        const trigger = document.querySelector<HTMLElement>(`[data-page-quality-expand-id="${CSS.escape(auditId)}"]`);
+        const target = document.getElementById(targetId);
+        if (!trigger || !target || trigger.getAttribute("aria-expanded") !== "true") return false;
+        const style = getComputedStyle(target);
+        const rect = target.getBoundingClientRect();
+        return !target.hidden
+          && target.getAttribute("aria-hidden") !== "true"
+          && style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity) !== 0
+          && rect.width > 0
+          && rect.height > 0;
+      }, candidate);
+      if (revealed) buttonsRevealed += 1;
     } catch {
       // A disclosure may disappear when another panel opens. It remains marked
       // as attempted so the audit can continue with the rest of the page.
@@ -469,6 +502,7 @@ async function expandDisclosureContent(page: Page): Promise<{
     nativeDetailsAttempted,
     nativeDetailsOpened,
     buttonsAttempted: attemptedControls.length,
+    buttonsRevealed,
     buttonsOpened: controlLabels.length,
     controlLabels,
   };
@@ -856,7 +890,7 @@ function resultStatus(result: Omit<AuditResult, "status">): AuditResult["status"
     result.imageRequestErrors.length > 0
     || Boolean(result.expanded && (
       result.expanded.nativeDetailsAttempted !== result.expanded.nativeDetailsOpened
-      || result.expanded.buttonsAttempted !== result.expanded.buttonsOpened
+      || result.expanded.buttonsAttempted !== result.expanded.buttonsRevealed
     ))
     || auditedStates.some((state) => (
       state.horizontalOverflowPx > 0
@@ -1090,7 +1124,7 @@ function buildMarkdown(report: AuditReport): string {
         result.expanded?.metrics.unresolvedImages.length ?? null,
       )),
       markdownCell(result.expanded
-        ? `${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} details + ${result.expanded.buttonsOpened}/${result.expanded.buttonsAttempted} controls open`
+        ? `${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} details open + ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controls revealed (${result.expanded.buttonsOpened} remain open)`
         : "none"),
       markdownCell(result.pageErrors.length),
       markdownCell(metrics?.pageHeight ?? null),
@@ -1133,7 +1167,7 @@ function buildMarkdown(report: AuditReport): string {
     }
     if (result.expanded) {
       const expandedMetrics = result.expanded.metrics;
-      lines.push(`- Expanded disclosures still open: ${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} native details, ${result.expanded.buttonsOpened}/${result.expanded.buttonsAttempted} controlled panels`);
+      lines.push(`- Expanded disclosures: ${result.expanded.nativeDetailsOpened}/${result.expanded.nativeDetailsAttempted} native details remain open; ${result.expanded.buttonsRevealed}/${result.expanded.buttonsAttempted} controlled panels revealed, ${result.expanded.buttonsOpened} remain open`);
       for (const issue of expandedMetrics.headingOrderIssues) lines.push(`- Expanded heading: ${issue}`);
       if (expandedMetrics.horizontalOverflowPx > 0) {
         const offenders = expandedMetrics.overflowElements.slice(0, 5).map((item) => item.selector).join(", ");

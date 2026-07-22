@@ -19,7 +19,11 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { haversineMeters, FREDERICK_CENTER, type LngLat } from "@/lib/geo";
-import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
+import {
+  isRecommendable,
+  isDestinationCategory,
+  isRestrictedMembershipVenue,
+} from "@/lib/relevance";
 import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { isChainName } from "@/lib/category-ranking";
 import { getOpenStatus } from "@/lib/hours";
@@ -174,7 +178,7 @@ function openingStopBonus(cat: string, input: PlanInputs, slot: Slot): number {
 }
 
 function isPublicPlanCandidate(place: Place): boolean {
-  if (/\b(fraternal order|eagles (?:lodge|aerie)|aerie \d|elks lodge|moose lodge|american legion|vfw|veterans of foreign wars)\b/i.test(place.name)) {
+  if (isRestrictedMembershipVenue(place.name)) {
     return false;
   }
   if ((FOOD.has(place.category) || DRINKS.has(place.category) || TREATS.has(place.category))) {
@@ -337,13 +341,15 @@ function durationFor(cat: string): number {
   return DURATION_MIN[cat] ?? DEFAULT_DURATION;
 }
 
-function whyFor(d: PlaceCardData, input: PlanInputs): string {
-  const rating = d.google_rating ? `Rated ${d.google_rating.toFixed(1)} on Google and ` : "";
-  const fit: Record<PlanInputs["audience"], string> = {
-    date: "a good fit for a date", family: "a practical family stop", solo: "comfortable for a solo outing",
-    friends: "well suited to a group", visitor: "a useful local introduction",
-  };
-  return `${rating}${fit[input.audience]}.`;
+function whyFor(d: PlaceCardData): string {
+  const category = CATEGORY_BY_SLUG[d.category]?.name?.toLowerCase() ?? d.category.replace(/-/g, " ");
+  if (d.google_rating) {
+    return `Google lists this ${category} in ${d.city} with a ${d.google_rating.toFixed(1)} rating.`;
+  }
+  if (d.open_status.state === "open" || d.open_status.state === "closing-soon") {
+    return `This ${category} is in ${d.city}, and its posted hours cover this stop.`;
+  }
+  return `This ${category} is in ${d.city}.`;
 }
 
 function stopCountFor(hours: PlanInputs["duration_hours"]): number {
@@ -383,7 +389,6 @@ function confirmedOpenForStop(place: Place, at: Date, durationMin: number): bool
 function schedule(
   ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }>,
   start: Date,
-  input: PlanInputs,
 ): PlanStop[] {
   let cursor = start.getTime();
   let previous: LngLat | null = null;
@@ -432,7 +437,7 @@ function schedule(
       order: stops.length + 1,
       at,
       duration_min: dur,
-      why: o.place ? whyFor({ ...o.place, open_status: getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(at)) } as PlaceCardData, input) : o.why,
+      why: o.place ? whyFor({ ...o.place, open_status: getOpenStatus(o.place.hours, { verified: o.place.hours_verified }, new Date(at)) } as PlaceCardData) : o.why,
       open: openState,
       place: o.place,
       event: o.event,
@@ -503,14 +508,14 @@ export function buildPlan(input: PlanInputs): Plan {
       : c.d.open_status.state === "open" ? ("open" as const)
       : c.d.open_status.state === "closed" ? ("closed" as const)
       : ("unknown" as const),
-    why: whyFor(c.d, resolvedInput),
+    why: whyFor(c.d),
   }));
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [...items];
   // Events are intentionally not auto-inserted here. The client-safe seed
   // list cannot prove that an event is public, still active, relevant, and
   // reachable inside this route. Event-aware planning belongs on the server
   // against the unified public feed; a place-only plan is safer until then.
-  const stops = schedule(ordered, now, resolvedInput);
+  const stops = schedule(ordered, now);
   const spec: PlanSpec = {
     v: 1,
     i: shareSafeInputs(resolvedInput),
@@ -546,7 +551,7 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
         openState: d.open_status.state === "closed" ? "closed"
           : d.open_status.state === "open" || d.open_status.state === "closing-soon" ? "open"
           : "unknown",
-        why: whyFor(d, resolvedInput),
+        why: whyFor(d),
       });
     } else {
       const e = EVENT_BY_SLUG[ref.e];
@@ -555,7 +560,7 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
     }
   }
   if (ordered.length === 0) return null;
-  const stops = schedule(ordered, now, resolvedInput);
+  const stops = schedule(ordered, now);
   const safeSpec: PlanSpec = {
     ...spec,
     i: shareSafeInputs(resolvedInput),
@@ -703,7 +708,7 @@ export function slotAlternatives(
       name: c.d.name,
       category: c.d.category,
       categoryName: CATEGORY_BY_SLUG[c.d.category]?.name ?? c.d.category,
-      why: whyFor(c.d, spec.i),
+      why: whyFor(c.d),
       photo_url: c.d.google_photo_url,
     });
   }

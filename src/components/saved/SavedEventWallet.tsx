@@ -33,6 +33,7 @@ import type { Event } from "@/data/events";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import { BRAND } from "@/lib/brand";
 import { plate, savedDateLabel } from "@/components/saved/walletFacts";
 import { eventLipFact, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 
@@ -64,11 +65,11 @@ function eventMotifClass(category: string): string {
 const EVENT_GROUND: Record<string, string> = {
   music: "#A63F5C", arts: "#7A2E9F", theater: "#7A2E9F", gallery: "#8E2C6F",
   museum: "#5B3A8F", "public-art": "#9B3F8A", film: "#5B3A8F", comedy: "#A63F5C",
-  family: "#C0871F", library: "#285C8A",
-  market: "#3E8E41", "food-truck": "#C0871F", food: "#C0871F", restaurant: "#C23A22",
-  outdoors: "#1E6B3A", park: "#1E6B3A", sports: "#1E6B3A", agritourism: "#6B8E23",
+  family: BRAND.colors.functionalAmber, library: "#285C8A",
+  market: "#3E8E41", "food-truck": BRAND.colors.functionalAmber, food: BRAND.colors.functionalAmber, restaurant: "#C23A22",
+  outdoors: "#315A43", park: "#315A43", sports: "#315A43", agritourism: "#6B8E23",
   festival: "#B85C1E",
-  civic: "#20506A", community: "#3E6488", government: "#20506A", education: "#285C8A",
+  civic: "#285D73", community: "#3E6488", government: "#285D73", education: "#285C8A",
 };
 
 function Card({
@@ -136,7 +137,7 @@ function Card({
       style={
         {
           // Darkened category ground so cream text always clears AA — never the raw hue.
-          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #16140E), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
+          background: `linear-gradient(152deg, color-mix(in srgb, ${hue} 60%, #221C15), color-mix(in srgb, ${hue} 34%, #0c0a06))`,
           "--sw-i": index,
         } as CSSProperties
       }

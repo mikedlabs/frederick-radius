@@ -96,11 +96,11 @@ export const PARKING_TONE_STYLE: Record<
   ParkingTone,
   { fill: string; ink: string }
 > = {
-  // Spruce/positive, brand red, and slate all clear AA with the warm
-  // near-white on-brand token; amber needs ink text for contrast, so the
-  // "filling" bucket carries dark ink on the amber fill.
+  // Positive, warning, danger, and neutral fills all clear AA with the warm
+  // near-white on-brand token. The lighter decorative amber uses dark Ink,
+  // but this status fill is the darker text-safe warning token.
   positive: { fill: "var(--app-positive)", ink: "var(--app-on-brand, #FCFBF8)" },
-  warning: { fill: "var(--app-warning)", ink: "var(--app-ink, #16140E)" },
+  warning: { fill: "var(--app-warning)", ink: "var(--app-on-brand, #FCFBF8)" },
   danger: { fill: "var(--app-danger)", ink: "var(--app-on-brand, #FCFBF8)" },
-  neutral: { fill: "var(--app-ink-2, #423E34)", ink: "var(--app-on-brand, #FCFBF8)" },
+  neutral: { fill: "var(--app-ink-2, #5A5348)", ink: "var(--app-on-brand, #FCFBF8)" },
 };

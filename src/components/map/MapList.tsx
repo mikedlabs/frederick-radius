@@ -37,33 +37,35 @@ function openLine(p: MapPinPlace): { text: string; tone: string } | null {
 export default function MapList({
   places,
   userLoc,
+  sortOrigin,
   onPick,
 }: {
   places: MapPinPlace[];
   userLoc: LngLat | null;
+  /** Ranking origin when a precise user fix is unavailable. The map center
+   *  keeps the list synchronized with the area the reader just panned to. */
+  sortOrigin?: LngLat | null;
   onPick: (place: MapPinPlace) => void;
 }) {
-  const rows = useMemo(() => {
-    if (!userLoc) {
-      const openScore = (p: MapPinPlace) =>
-        p.open_status.state === "open" || p.open_status.state === "closing-soon" ? 1 : 0;
-      return [...places]
-        .sort(
-          (a, b) =>
-            openScore(b) - openScore(a) ||
-            (b.feature_score ?? 0) - (a.feature_score ?? 0),
-        )
-        .slice(0, 200);
-    }
-    return [...places]
-      .map((p) => ({ p, d: p.geom ? haversineMeters(userLoc, p.geom) : Infinity }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 200)
-      .map((x) => x.p);
-  }, [places, userLoc]);
+  const effectiveOrigin = userLoc ?? sortOrigin ?? null;
+  const rows = useMemo(
+    () => rankMapListPlaces(places, effectiveOrigin),
+    [places, effectiveOrigin],
+  );
 
   return (
     <div className="map-list" role="region" aria-label="Places, as a list">
+      <div
+        className="mx-auto mb-1 flex max-w-[680px] items-baseline justify-between gap-3 px-2"
+        aria-live="polite"
+      >
+        <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          {places.length.toLocaleString("en-US")} {places.length === 1 ? "place" : "places"} in this view
+        </span>
+        <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          {userLoc ? "Nearest to you" : "Nearest map center"}
+        </span>
+      </div>
       {rows.length === 0 ? (
         <div className="map-list-empty">
           <p className="font-serif map-list-empty-title">Nothing matches yet</p>
@@ -89,6 +91,7 @@ export default function MapList({
                 <button
                   type="button"
                   className="map-list-row tap-44"
+                  data-map-place-slug={p.slug}
                   onClick={() => {
                     haptic("light");
                     onPick(p);
@@ -128,4 +131,32 @@ export default function MapList({
       )}
     </div>
   );
+}
+
+/** Stable list ranking. A real location or the visible map center leads by
+ *  distance. The legacy open/quality fallback remains for embeds that do not
+ *  expose either origin. Exported so the map/list contract is testable without
+ *  mounting Mapbox. */
+export function rankMapListPlaces(
+  places: MapPinPlace[],
+  origin: LngLat | null,
+  limit = 200,
+): MapPinPlace[] {
+  if (origin) {
+    return [...places]
+      .map((p) => ({ p, d: p.geom ? haversineMeters(origin, p.geom) : Infinity }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, limit)
+      .map((x) => x.p);
+  }
+
+  const openScore = (p: MapPinPlace) =>
+    p.open_status.state === "open" || p.open_status.state === "closing-soon" ? 1 : 0;
+  return [...places]
+    .sort(
+      (a, b) =>
+        openScore(b) - openScore(a) ||
+        (b.feature_score ?? 0) - (a.feature_score ?? 0),
+    )
+    .slice(0, limit);
 }

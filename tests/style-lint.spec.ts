@@ -42,6 +42,15 @@ describe("style lint source classification", () => {
     expect(findings).toEqual([]);
   });
 
+  it("accepts the exact canonical brand descriptor", () => {
+    expect(
+      lintSourceText(
+        "fixture.tsx",
+        "const descriptor = <p>Current local information for Frederick County, organized around where you are.</p>;",
+      ),
+    ).toEqual([]);
+  });
+
   it("accepts an ordinary complete sentence", () => {
     expect(
       lintSourceText(
@@ -169,17 +178,30 @@ describe("style lint source classification", () => {
 
   it("classifies only the exact locked tagline as a label", () => {
     expect(
-      lintSourceText("fixture.ts", 'const brand = { tagline: "Around here." };'),
+      lintSourceText(
+        "fixture.ts",
+        'const brand = { tagline: "Frederick County starts where you are." };',
+      ),
     ).toEqual([]);
     expect(
-      lintSourceText("fixture.ts", 'const brand = { tagline: "Around here, anyway." };'),
+      lintSourceText(
+        "fixture.ts",
+        'const brand = { tagline: "Frederick County around you." };',
+      ),
     ).toEqual(
       expect.arrayContaining([expect.objectContaining({ rule: "sentence fragment" })]),
     );
-    expect(lintSourceText("fixture.tsx", "const brand = <p>Around here.</p>;"))
-      .toEqual([]);
     expect(
-      lintSourceText("fixture.tsx", "const brand = <p>Around here, anyway.</p>;"),
+      lintSourceText(
+        "fixture.tsx",
+        "const brand = <p>Frederick County starts where you are.</p>;",
+      ),
+    ).toEqual([]);
+    expect(
+      lintSourceText(
+        "fixture.tsx",
+        "const brand = <p>Frederick County around you.</p>;",
+      ),
     ).toEqual(
       expect.arrayContaining([expect.objectContaining({ rule: "sentence fragment" })]),
     );

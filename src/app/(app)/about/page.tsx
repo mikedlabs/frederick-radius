@@ -67,7 +67,7 @@ const ABOUT_INTENTS: AboutIntent[] = [
     label: "Email Radius",
     hint: "Ask about the project or a possible partnership.",
     icon: Mail,
-    accent: "var(--app-brand-2)",
+    accent: "var(--app-cool)",
     href: "mailto:hello@frederickradius.app",
     external: true,
   },
@@ -173,9 +173,8 @@ export default async function AboutPage() {
       </div>
 
       {/* The pitch — four paragraphs, no more. Read top to bottom in
-          about 30 seconds. The italic tagline uses Newsreader's
-          italic (the display serif) on Public Sans body — Instrument
-          Serif was dropped in the May 2026 audit. */}
+          about 30 seconds. Libre Caslon Display carries the editorial
+          headings and Public Sans carries the body. */}
       <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
           Frederick Radius helps people find open places, local events, and

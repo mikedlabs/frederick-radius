@@ -91,7 +91,7 @@ function Leaders({ rows, unit }: { rows: LeaderRow[]; unit: string }) {
                 className="block h-2 rounded-r-[4px]"
                 style={{
                   width: `${Math.max(2, (r.count / max) * 100)}%`,
-                  background: "var(--app-brand-2)",
+                  background: "var(--app-cool)",
                   opacity: 0.85,
                 }}
               />
@@ -101,7 +101,7 @@ function Leaders({ rows, unit }: { rows: LeaderRow[]; unit: string }) {
             </span>
           </>
         );
-        const rowCls = "flex items-center gap-3 px-3 py-2";
+        const rowCls = "flex min-h-11 items-center gap-3 px-3 py-2";
         return (
           <li key={r.label} style={i > 0 ? { borderTop: "1px solid var(--app-border)" } : undefined}>
             {r.href ? (
@@ -198,7 +198,7 @@ export default function NumbersPage() {
       <p className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
         These counts come from the shipped datasets at build time and update
         when the guide rebuilds.
-        <Link href="/trust" className="inline-flex items-center gap-1 font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
+        <Link href="/trust" className="tap-44-y inline-flex items-center gap-1 font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
           How Radius checks data
           <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         </Link>

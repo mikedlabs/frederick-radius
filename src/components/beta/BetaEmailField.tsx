@@ -35,7 +35,7 @@ export default function BetaEmailField() {
         role="status"
         aria-live="polite"
         className={state === "done" ? "text-[13px] font-semibold" : "sr-only"}
-        style={state === "done" ? { color: "var(--app-brand-2)" } : undefined}
+        style={state === "done" ? { color: "var(--app-positive)" } : undefined}
       >
         {state === "done" ? "Sent. Check your email for your access code, then come on in." : ""}
       </p>

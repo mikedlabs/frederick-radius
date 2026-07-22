@@ -1072,7 +1072,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
             <div className="sv-colophon-row">
               <span className="k">Share this list with a friend</span>
               <ShareButton
-                title="My Frederick radius"
+                title="My saved Frederick list"
                 text="Places I'm keeping an eye on in Frederick County"
                 url={shareUrl}
                 className="v tap-44-y inline-flex items-center gap-1 font-semibold"
@@ -1101,46 +1101,24 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
 }
 
 
-/**
- * EmptyState — honest, never a dead end (voice rule): the blank page of the
- * guide, stated plainly. A serif line that says what this page BECOMES (not
- * just that it's empty), a ruled list of what it keeps, and four confident
- * doorways to the surfaces that fill it. No fake shelf, no pre-stuffed seeds,
- * no box art.
- */
+/** Honest and never a dead end: one plain sentence plus real ways to find
+ * something worth saving. No fake shelf or pre-filled content. */
 function EmptyState() {
-  // What this page actually keeps — the real set, not a rhetorical trio.
-  const KEEPS: { label: string; desc: string }[] = [
-    { label: "Places", desc: "Restaurants, parks, and shops you want to remember." },
-    { label: "Events", desc: "Shows and things to do, kept until they pass." },
-    { label: "Notes", desc: "Your own notes and tags, and the places you have been." },
-  ];
   const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
     { href: "/search", label: "Search", Icon: Search },
     { href: "/map", label: "Map", Icon: MapIcon },
     { href: "/events", label: "Events", Icon: Calendar },
-    { href: "/guide", label: "Ask", Icon: Compass },
+    { href: "/ask", label: "Ask", Icon: Compass },
   ];
 
   return (
-    <div className="space-y-5">
-      <div className="sv-empty-hero">
-        <h2>Your corner of the county, kept in one place.</h2>
-        <p>
-          Save any place or event and it lands here, grouped by town and ready to
-          plan. Add a note or mark somewhere you have been, and this becomes your
-          own record of Frederick County.
-        </p>
-      </div>
-
-      <ul className="sv-empty-keeps" aria-label="What Saved keeps">
-        {KEEPS.map(({ label, desc }) => (
-          <li key={label}>
-            <b>{label}</b>
-            <span>{desc}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-4">
+      <p
+        className="max-w-sm px-0.5 font-serif text-[18px] font-semibold leading-snug"
+        style={{ color: "var(--app-ink)" }}
+      >
+        Save a place or event to keep it here for later.
+      </p>
 
       <div className="space-y-2">
         <p className="px-0.5 text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>

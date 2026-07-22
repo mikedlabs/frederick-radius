@@ -322,7 +322,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     ? "var(--app-cool)"
     : when.text === "Anytime"
       ? "var(--app-ink)"
-      : "var(--app-brand-2)";
+      : "var(--app-brand)";
 
   const townName = town
     ? MUNICIPALITY_BY_SLUG[town]?.name ?? towns.find((t) => t.slug === town)?.name ?? town
@@ -412,7 +412,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             <Fragment key={p.key}>
               <EbChip
                 on={activePreset === p.key}
-                color="var(--app-brand-2)"
+                color="var(--app-brand)"
                 onClick={() => pickPreset(p)}
               >
                 {p.label}
@@ -420,7 +420,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               {i === 1 && (
                 <EbChip
                   on={day === tomorrowKey}
-                  color="var(--app-brand-2)"
+                  color="var(--app-brand)"
                   onClick={() => {
                     haptic("light");
                     pickDay(day === tomorrowKey ? null : tomorrowKey);
@@ -676,7 +676,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                   <EbChip
                     key={p.key}
                     on={activePreset === p.key}
-                    color="var(--app-brand-2)"
+                    color="var(--app-brand)"
                     onClick={() => pickPreset(p)}
                   >
                     {p.label}

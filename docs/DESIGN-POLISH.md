@@ -90,7 +90,7 @@ Mono is reserved for counts/coordinates/distances, applied inconsistently. Add `
 
 ### Report (field tool)
 - **`ReportClient.tsx:243,265`** — phantom `--app-brand-tint-2` → `--app-brand-tint-14`; drop raw hex fallbacks (see systemic table).
-- **`:322`** — success message is slate `--app-brand-2,#2F5470` (name/fallback mismatch; `--app-brand-2` is spruce). Use `text-[var(--app-positive)]` for ok (civic green), `text-[var(--app-brand)]` for error.
+- **`:322`** — success message is slate `--app-brand-2,#2F5470` (name/fallback mismatch; `--app-brand-2` is Catoctin Forest). Use `text-[var(--app-positive)]` for ok, `text-[var(--app-brand)]` for error.
 - **Radius fallbacks + `bg-white`** (209,214,242,284,317,…) — same corrections as collect; card elevation `shadow-[0_-8px_24px_…]` → `.tactile-e3`, border → `--app-border`.
 - **Header hierarchy** (204-226) — no serif anchor. Add `<h2 className="text-title …">Report a spot</h2>` as the card's first child; pull the crosshair instruction out of the button row into a full-width `.text-meta` line.
 - **Moderation honesty** (before submit btn) — add one `.text-meta` line off the `passcode` state: `{passcode ? "Posts to the map right away." : "Reviewed before it appears on the map."}`. Sets expectations for the queue-vs-live outcome that's currently only revealed *after* submit.

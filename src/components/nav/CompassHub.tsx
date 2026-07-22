@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   Activity,
   Archive,
@@ -15,6 +15,7 @@ import {
   CalendarDays,
   Camera,
   Car,
+  ChevronDown,
   Coffee,
   Compass,
   Dog,
@@ -47,7 +48,6 @@ import {
 import {
   AMENITY_MAP_TOOLS,
   RADIUS_TOOL_GROUPS,
-  RADIUS_TOOLS,
   type RadiusTool,
   type RadiusToolIcon,
   type RadiusToolTone,
@@ -55,6 +55,7 @@ import {
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
+import { toolMatchesQuery } from "@/lib/search/toolQuery";
 
 /** One Lucide component per registry icon key, so the directory renders
  *  straight from the shared RADIUS_TOOL_GROUPS instead of a hand-kept copy of
@@ -109,6 +110,7 @@ const TONE_COLOR: Record<RadiusToolTone, string> = {
 };
 
 type DirectoryItem = {
+  id: string;
   href: string;
   label: string;
   description: string;
@@ -121,6 +123,7 @@ type DirectoryItem = {
 
 function toDirectoryItem(tool: RadiusTool): DirectoryItem {
   return {
+    id: tool.id,
     href: tool.href,
     label: tool.label,
     description: tool.description,
@@ -135,6 +138,7 @@ function toDirectoryItem(tool: RadiusTool): DirectoryItem {
  *  require every registered tool to render), so it joins the county-data
  *  section here, behind the same flag. */
 const TIME_MACHINE: DirectoryItem = {
+  id: "time-machine",
   href: "/from-above/time-machine",
   label: "Time Machine",
   description: "Scrub a block through decades of aerial imagery.",
@@ -143,7 +147,66 @@ const TIME_MACHINE: DirectoryItem = {
   keywords: ["time machine", "aerial", "historic imagery"],
 };
 
-const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+type CompassSection = {
+  id: string;
+  label: string;
+  items: DirectoryItem[];
+};
+
+/** Build the directory once from the registry. When a home town has not been
+ * chosen, Settings becomes the single setup row instead of rendering two links
+ * to the same destination. */
+export function buildCompassSections(homeSlug: string | null): CompassSection[] {
+  const home = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
+
+  return RADIUS_TOOL_GROUPS.map((group) => {
+    let items = group.tools.map(toDirectoryItem);
+    if (group.id === "yours") {
+      if (home) {
+        items = [
+          {
+            id: `home-${home.slug}`,
+            href: `/m/${home.slug}`,
+            label: home.name,
+            description: "Open the guide for your home area.",
+            icon: MapPin,
+            color: "var(--app-brand-press)",
+            keywords: ["home", "my town", "home area"],
+          },
+          ...items,
+        ];
+      } else {
+        items = items.map((item) =>
+          item.id === "settings"
+            ? {
+                ...item,
+                label: "Choose your home town",
+                description: "Choose a home area for nearby results and local shortcuts.",
+              }
+            : item,
+        );
+      }
+    }
+    if (group.id === "county-data" && CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED) {
+      items = [...items, TIME_MACHINE];
+    }
+    return { id: group.id, label: group.label, items };
+  });
+}
+
+/** Public essentials has a visual amenity picker, but every other registered
+ * tool must remain in the rows beneath it. Deriving the split prevents a new
+ * tool such as Scanner from disappearing from the browse view. */
+export function splitEssentialItems(items: DirectoryItem[]) {
+  const amenityIds = new Set(AMENITY_MAP_TOOLS.map((tool) => tool.id));
+  return {
+    openAll: items.find((item) => item.id === "public-essentials") ?? null,
+    amenities: items.filter((item) => amenityIds.has(item.id)),
+    rows: items.filter(
+      (item) => item.id !== "public-essentials" && !amenityIds.has(item.id),
+    ),
+  };
+}
 
 function subscribeHomeTown(onChange: () => void) {
   window.addEventListener("storage", onChange);
@@ -152,18 +215,13 @@ function subscribeHomeTown(onChange: () => void) {
 
 const noHomeTown = () => null;
 
-function itemMatches(item: DirectoryItem, query: string): boolean {
-  if (!query) return true;
-  return `${item.label} ${item.description} ${(item.keywords ?? []).join(" ")}`
-    .toLocaleLowerCase()
-    .includes(query);
-}
-
 export default function CompassHub() {
   const router = useRouter();
   const homeSlug = useSyncExternalStore(subscribeHomeTown, getHomeMuni, noHomeTown);
-  const home = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
   const [query, setQuery] = useState("");
+  const [openSectionId, setOpenSectionId] = useState<string | null>(
+    RADIUS_TOOL_GROUPS[0]?.id ?? null,
+  );
   const normalizedQuery = query.trim().toLocaleLowerCase();
 
   const warm = (href: string) => router.prefetch(href);
@@ -173,40 +231,29 @@ export default function CompassHub() {
     onPointerDown: () => warm(href),
   });
 
-  // One directory built from the single tool registry. The Yours section leads
-  // with the reader's own home-town shortcut (client state), and the
-  // county-data section appends the gated Time Machine — everything else maps
-  // straight from RADIUS_TOOL_GROUPS, so the index can never drift from the
-  // toolbox again.
-  const sections = useMemo(() => {
-    return RADIUS_TOOL_GROUPS.map((group, index) => {
-      let items = group.tools.map(toDirectoryItem);
-      if (group.id === "yours") {
-        items = [
-          {
-            href: home ? `/m/${home.slug}` : "/settings",
-            label: home ? home.name : "Choose your home town",
-            description: home
-              ? "Open the guide for your home area."
-              : "Choose a home area for nearby results.",
-            icon: MapPin,
-            color: "var(--app-brand-press)",
-            keywords: ["home", "my town", "home area"],
-          },
-          ...items,
-        ];
-      }
-      if (group.id === "county-data" && CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED) {
-        items = [...items, TIME_MACHINE];
-      }
-      return { id: group.id, label: group.label, numeral: NUMERALS[index], items };
-    });
-  }, [home]);
+  const sections = useMemo(() => buildCompassSections(homeSlug), [homeSlug]);
+
+  useEffect(() => {
+    const openHashSection = () => {
+      const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (!hash.startsWith("cat-")) return;
+      const sectionId = hash.slice(4);
+      if (!sections.some((section) => section.id === sectionId)) return;
+      setOpenSectionId(sectionId);
+      window.requestAnimationFrame(() => {
+        document.getElementById(hash)?.scrollIntoView({ block: "start" });
+      });
+    };
+
+    openHashSection();
+    window.addEventListener("hashchange", openHashSection);
+    return () => window.removeEventListener("hashchange", openHashSection);
+  }, [sections]);
 
   const visibleSections = sections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => itemMatches(item, normalizedQuery)),
+      items: section.items.filter((item) => toolMatchesQuery(item, normalizedQuery)),
     }))
     .filter((section) => section.items.length > 0);
 
@@ -215,53 +262,29 @@ export default function CompassHub() {
     0,
   );
 
-  return (
-    <div className="space-y-7">
-      {/* Field-guide plate masthead — the wayfinding hub speaks the same
-          paper-cream plate language as every sibling surface (eyebrow +
-          serif title + brand rule) instead of a one-off dark gradient hero.
-          The compass motif rides as a small eyebrow mark, not a banner. */}
-      <header className="relative -mx-4 -mt-6 overflow-hidden border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 py-8 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:py-10 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
-        <div
-          className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border"
-          style={{ borderColor: "color-mix(in srgb, var(--app-brand) 28%, transparent)" }}
-          aria-hidden
-        >
-          <span className="absolute inset-10 rounded-full border border-black/7" />
-          <span
-            className="absolute inset-[5.2rem] rounded-full border"
-            style={{ borderColor: "color-mix(in srgb, var(--app-brand) 20%, transparent)" }}
-          />
-          <span
-            className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: "var(--app-brand)", boxShadow: "0 0 0 8px color-mix(in srgb, var(--app-brand) 12%, transparent)" }}
-          />
-        </div>
-        <p className="relative font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--app-brand-press)]">
-          <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          Frederick County compass
-        </p>
-        <h1
-          className="relative mt-4 max-w-[8ch] font-serif text-[clamp(3.4rem,14vw,6rem)] font-semibold leading-[0.82] tracking-[-0.055em] text-balance"
-        >
-          What do you need?
-        </h1>
-        <p
-          className="relative mt-5 max-w-[28rem] text-[13.5px] leading-relaxed text-[var(--app-ink-2)] sm:text-[15px]"
-        >
-          Open a Radius guide, map, calendar, or practical tool without hunting through the app.
-        </p>
-        <div className="relative mt-6 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--app-ink-3)]">
-          <span className="h-px w-10" style={{ background: "var(--app-brand)" }} aria-hidden />
-          {RADIUS_TOOLS.length} tools, grouped
-        </div>
-      </header>
+  const toggleSection = (sectionId: string) => {
+    const next = openSectionId === sectionId ? null : sectionId;
+    setOpenSectionId(next);
+    const url = new URL(window.location.href);
+    url.hash = next ? `cat-${next}` : "";
+    window.history.replaceState({}, "", url);
+  };
 
-      {/* Filter — one field over the whole index. Typing what you want narrows
-          every section at once, the grammar the Ask toolbox already uses. */}
-      <div>
-        <label className="relative block">
-          <span className="sr-only">Filter tools and guides</span>
+  return (
+    <div className="space-y-5">
+      <header className="-mx-4 -mt-6 border-y border-black/10 bg-[var(--app-bg-elevated-solid)] px-5 pb-5 pt-6 text-[var(--app-ink)] shadow-[var(--app-elev-1)] sm:-mx-5 sm:px-8 sm:py-7 lg:mx-0 lg:mt-0 lg:rounded-[8px] lg:border lg:px-10">
+        <p className="font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--app-brand-press)]">
+          <Compass className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          Frederick County tools
+        </p>
+        <h1 className="mt-2 font-sans text-[clamp(2rem,8vw,3rem)] font-semibold leading-none tracking-[-0.035em] text-balance">
+          All tools
+        </h1>
+        <p className="mt-2 max-w-xl text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Search by need or open a section below.
+        </p>
+        <label className="relative mt-4 block">
+          <span className="sr-only">Filter tools</span>
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
             style={{ color: "var(--app-ink-3)" }}
@@ -271,91 +294,154 @@ export default function CompassHub() {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter tools, guides, and public essentials"
+            placeholder="Find a tool"
             className="min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2 pl-9 pr-3 text-[13px] outline-none placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           />
         </label>
         {normalizedQuery ? (
-          <p className="mt-2 px-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }} role="status">
+          <p className="relative mt-2 px-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }} role="status">
             {resultCount} {resultCount === 1 ? "tool" : "tools"} found
           </p>
         ) : null}
-      </div>
+      </header>
 
-      {visibleSections.map((section) => (
-        <section
-          key={section.id}
-          id={`cat-${section.id}`}
-          aria-labelledby={`compass-${section.id}`}
-          className="space-y-3 scroll-mt-24"
-        >
-          <SectionHeading id={`compass-${section.id}`} numeral={section.numeral} title={section.label} />
-          {section.id === "essentials" && !normalizedQuery ? (
-            <AmenityReveal intentProps={intentProps} />
-          ) : (
-            <LedgerList items={section.items} intentProps={intentProps} />
-          )}
-        </section>
-      ))}
+      {normalizedQuery
+        ? visibleSections.map((section) => (
+            <SearchResultSection key={section.id} section={section} intentProps={intentProps} />
+          ))
+        : sections.map((section) => (
+            <CompassSectionDisclosure
+              key={section.id}
+              section={section}
+              open={openSectionId === section.id}
+              onToggle={() => toggleSection(section.id)}
+              intentProps={intentProps}
+            />
+          ))}
 
       {visibleSections.length === 0 ? (
-        <p className="px-2 py-10 text-center text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-          No tool matches that search.
-        </p>
+        <CompassSearchFallback query={query.trim()} intentProps={intentProps} />
       ) : null}
 
-      {/* About the guide — informational surfaces, kept apart from the working
-          tools as a quiet footer rather than a tile in the grid. */}
-      {!normalizedQuery ? (
-        <footer className="border-t pt-4 text-[12px]" style={{ borderColor: "var(--app-border)" }}>
-          <p className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-            About the guide
-          </p>
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            <Link href="/about" prefetch={false} className="tap-44-y font-semibold" style={{ color: "var(--app-ink-2)" }}>
-              About Frederick Radius
-            </Link>
-            <Link href="/trust" prefetch={false} className="tap-44-y font-semibold" style={{ color: "var(--app-ink-2)" }}>
-              Where the data comes from
-            </Link>
-          </div>
-        </footer>
-      ) : null}
     </div>
   );
 }
 
-/** A printed-index section heading: roman numeral, serif title, and the
- *  fg-rule running to the edge — a table of contents, not a stack of hero
- *  headers. */
-function SectionHeading({
-  id,
-  numeral,
-  title,
-  description,
+function CompassSectionDisclosure({
+  section,
+  open,
+  onToggle,
+  intentProps,
 }: {
-  id: string;
-  numeral: string;
-  title: string;
-  description?: string;
+  section: CompassSection;
+  open: boolean;
+  onToggle: () => void;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+}) {
+  const examples = section.items.slice(0, 2).map((item) => item.label).join(" · ");
+  const contentId = `compass-${section.id}-content`;
+  const headingId = `compass-${section.id}`;
+
+  return (
+    <section id={`cat-${section.id}`} aria-labelledby={headingId} className="scroll-mt-24">
+      <h2 id={headingId}>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={contentId}
+          className="tactile-interactive flex min-h-[58px] w-full items-center gap-3 border-y px-1 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+          style={{ borderColor: "var(--app-border-strong)" }}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline gap-2">
+              <span className="font-serif text-[21px] font-semibold leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
+                {section.label}
+              </span>
+              <span className="font-mono text-[9px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {section.items.length}
+              </span>
+            </span>
+            <span className="mt-1 block truncate text-[10.5px] font-normal" style={{ color: "var(--app-ink-3)" }}>
+              {examples}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform${open ? " rotate-180" : ""}`}
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </button>
+      </h2>
+      <div id={contentId} hidden={!open} className="pt-2.5">
+        {section.id === "essentials" ? (
+          <AmenityReveal items={section.items} intentProps={intentProps} />
+        ) : (
+          <LedgerList items={section.items} intentProps={intentProps} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SearchResultSection({
+  section,
+  intentProps,
+}: {
+  section: CompassSection;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
 }) {
   return (
-    <div>
-      <div className="flex items-center gap-2.5 px-0.5">
-        <span
-          aria-hidden
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] font-mono text-[10px] font-bold tabular-nums"
-          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+    <section aria-labelledby={`compass-search-${section.id}`} className="space-y-2.5">
+      <h2 id={`compass-search-${section.id}`} className="font-sans text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
+        {section.label}
+      </h2>
+      <LedgerList items={section.items} intentProps={intentProps} />
+    </section>
+  );
+}
+
+function CompassSearchFallback({
+  query,
+  intentProps,
+}: {
+  query: string;
+  intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
+}) {
+  const encodedQuery = encodeURIComponent(query);
+  const askHref = `/ask?q=${encodedQuery}`;
+  const searchHref = `/search?q=${encodedQuery}`;
+
+  return (
+    <div
+      className="rounded-[var(--app-radius-md)] border px-4 py-6 text-center"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+    >
+      <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        There is no matching tool, but Ask Radius can still look for an answer.
+      </p>
+      <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+        <Link
+          href={askHref}
+          prefetch={false}
+          {...intentProps(askHref)}
+          className="tactile-interactive inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-brand)] px-4 text-[13px] font-semibold text-[var(--app-on-brand)] outline-none transition hover:bg-[var(--app-brand-press)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-2"
         >
-          {numeral}
-        </span>
-        <h2 id={id} className="font-serif text-[24px] font-semibold leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
-          {title}
-        </h2>
-        <div className="fg-rule flex-1" />
+          Ask Radius this
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+        <Link
+          href={searchHref}
+          prefetch={false}
+          {...intentProps(searchHref)}
+          className="tactile-interactive inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated-solid)] px-4 text-[13px] font-semibold outline-none transition hover:bg-[var(--app-bg-elevated)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          style={{ borderColor: "var(--app-border-strong)", color: "var(--app-ink)" }}
+        >
+          Search places and events
+        </Link>
       </div>
-      {description ? <p className="mt-2 pl-[2.1rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{description}</p> : null}
     </div>
   );
 }
@@ -389,14 +475,14 @@ function LedgerList({
             href={item.href}
             prefetch={false}
             {...intentProps(item.href)}
-            className="tactile-interactive group flex min-h-[58px] items-center gap-3 px-1 py-2.5 transition hover:bg-black/[0.025] sm:px-3"
+            className="tactile-interactive group flex min-h-[54px] items-center gap-3 px-1 py-2 transition hover:bg-black/[0.025] sm:px-3"
           >
             <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px]" style={{ color: item.color, background: `color-mix(in srgb, ${item.color} 10%, transparent)` }}>
               <item.icon className="h-[17px] w-[17px]" strokeWidth={2} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{item.label}</span>
-              <span className="mt-1 block text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
+              <span className="mt-0.5 block line-clamp-1 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{item.description}</span>
             </span>
             <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-35 transition group-hover:translate-x-0.5 group-hover:opacity-70" strokeWidth={2.25} aria-hidden />
           </Link>
@@ -412,15 +498,15 @@ function LedgerList({
  *  seating, play areas, and the rest), each opening the map to that layer. The
  *  amenities guide and the emergency-vet contact stay as their own rows below. */
 function AmenityReveal({
+  items,
   intentProps,
 }: {
+  items: DirectoryItem[];
   intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown">;
 }) {
-  const openAll = RADIUS_TOOLS.find((tool) => tool.id === "public-essentials");
-  const rows = ["emergency", "amenities-guide", "emergency-vet"]
-    .map((id) => RADIUS_TOOLS.find((tool) => tool.id === id))
-    .filter((tool): tool is RadiusTool => Boolean(tool))
-    .map(toDirectoryItem);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const { openAll, amenities, rows } = splitEssentialItems(items);
+  const visibleAmenities = showAllAmenities ? amenities : amenities.slice(0, 6);
 
   return (
     <div className="space-y-3">
@@ -438,33 +524,45 @@ function AmenityReveal({
               prefetch={false}
               {...intentProps(openAll.href)}
               className="tap-44-y inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-brand-press)" }}
+              style={{ color: "var(--app-ink)" }}
             >
               Open all
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
           ) : null}
         </div>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {AMENITY_MAP_TOOLS.map((tool) => {
-            const Icon = TOOL_ICONS[tool.icon];
-            const color = TONE_COLOR[tool.tone];
+        <ul id="compass-amenity-list" className="mt-3 flex flex-wrap gap-2">
+          {visibleAmenities.map((item) => {
+            const Icon = item.icon;
             return (
-              <li key={tool.id}>
+              <li key={item.id}>
                 <Link
-                  href={tool.href}
+                  href={item.href}
                   prefetch={false}
-                  {...intentProps(tool.href)}
+                  {...intentProps(item.href)}
                   className="tactile-interactive flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12.5px] font-semibold outline-none transition hover:bg-[var(--app-bg-elevated)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
                 >
-                  <Icon className="h-4 w-4 shrink-0" style={{ color }} strokeWidth={2} aria-hidden />
-                  {tool.label}
+                  <Icon className="h-4 w-4 shrink-0" style={{ color: item.color }} strokeWidth={2} aria-hidden />
+                  {item.label}
                 </Link>
               </li>
             );
           })}
         </ul>
+        {amenities.length > 6 ? (
+          <button
+            type="button"
+            onClick={() => setShowAllAmenities((value) => !value)}
+            className="tap-44-y mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+            aria-expanded={showAllAmenities}
+            aria-controls="compass-amenity-list"
+          >
+            {showAllAmenities ? "Show fewer amenities" : `Show ${amenities.length - 6} more amenities`}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform${showAllAmenities ? " rotate-180" : ""}`} aria-hidden />
+          </button>
+        ) : null}
       </div>
       <LedgerList items={rows} intentProps={intentProps} />
     </div>

@@ -81,11 +81,33 @@ describe("Ask Radius agent timeout fallback", () => {
     });
     expect(result.sources.length).toBeGreaterThan(0);
     expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
+    expect(result.sources.map((source) => source.name)).not.toContain("K Town Takeout");
+    expect(result.sources.map((source) => source.name)).not.toContain("The Original Popcorn House");
     expect(result.sources.every((source) => /^At 6:00 PM · (?:Open|Closing soon)\b/.test(source.status ?? ""))).toBe(true);
     expect(result.answer).toContain("scheduled to be open around 6:00 PM");
     expect(result.answer).toContain("90 minutes before your 7:30 PM show");
     expect(result.answer).toContain("does not have verified noise-level data");
     expect(result.answer).not.toMatch(/(?:is|are|feels?|should be) quiet/i);
     expect(result.answer).not.toMatch(/live[- ]music|music calendar|can.t verify/i);
+  });
+
+  it("evaluates a direct dinner time and removes obvious counter-service results", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T21:00:00.000Z"));
+    const result = await askFrederick(
+      "I want a quiet dinner near downtown Frederick at 7:30 tonight",
+      {
+        origin: { lng: -77.4109, lat: 39.4137 },
+        municipality: "frederick",
+        contextLabel: "Downtown Frederick",
+      },
+    );
+
+    expect(result.status).toBe("matches");
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources.map((source) => source.name)).not.toContain("K Town Takeout");
+    expect(result.sources.map((source) => source.name)).not.toContain("The Original Popcorn House");
+    expect(result.sources.every((source) => /^At 7:30 PM · (?:Open|Closing soon)\b/.test(source.status ?? ""))).toBe(true);
+    expect(result.answer).toContain("scheduled to be open at 7:30 PM");
   });
 });

@@ -11,8 +11,9 @@
  */
 import type { Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { BRAND } from "@/lib/brand";
 
-const DEFAULT_COLOR = "#E14328";
+const DEFAULT_COLOR = BRAND.colors.brick;
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
@@ -86,18 +87,18 @@ export function bucketOf(slug: string): Bucket {
  *  Water-ish amenities split to Creek slate #4A7090 so eight different civic
  *  things stop sharing one identical blue. Keep in sync with categories.ts. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#E14328", brewery: "#C0871F", wine: "#6B2D5A", bar: "#7E1F1F",
-  coffee: "#8B5A2B", bakery: "#B26B00", music: "#7E2C6F",
-  outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#C0871F",
-  library: "#20506A", shopping: "#B26B00", wellness: "#A02929",
-  civic: "#20506A", services: "#4A4A48", lodging: "#5B1E55",
-  transit: "#20506A", parking: "#4A4A48",
-  restroom: "#20506A", water: "#4A7090", trash: "#4A4A48", recycle: "#1E6B3A",
-  dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
-  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#20506A", ev: "#1E6B3A",
-  publicart: "#7E2C6F",
+  food: BRAND.colors.brick, brewery: BRAND.colors.functionalAmber, wine: "#6B2D5A", bar: "#7E1F1F",
+  coffee: "#8B5A2B", bakery: BRAND.colors.functionalAmber, music: BRAND.colors.plum,
+  outdoors: BRAND.colors.forest, arts: BRAND.colors.plum, family: BRAND.colors.functionalAmber,
+  library: BRAND.colors.creek, shopping: BRAND.colors.functionalAmber, wellness: "#A02929",
+  civic: BRAND.colors.creek, services: "#4A4A48", lodging: "#5B1E55",
+  transit: BRAND.colors.creek, parking: "#4A4A48",
+  restroom: BRAND.colors.creek, water: "#4A7090", trash: "#4A4A48", recycle: BRAND.colors.forest,
+  dogwaste: BRAND.colors.forest, bench: "#4A4A48", bike: BRAND.colors.forest, aed: "#A02929",
+  shelter: "#4A4A48", picnic: BRAND.colors.forest, wifi: BRAND.colors.creek, ev: BRAND.colors.forest,
+  publicart: BRAND.colors.plum,
   outlet: "#4A4A48", dogwater: "#4A7090",
-  rhazard: "#C2410C", rcond: "#20506A", rtip: "#B07A1E", rnote: "#7A7975",
+  rhazard: "#C2410C", rcond: BRAND.colors.creek, rtip: "#B07A1E", rnote: "#7A7975",
   pin: "#7A7975",
 };
 
@@ -109,13 +110,13 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
  *  most distinctive. Every curated-place bucket now rolls into one of seven
  *  families; the tally + tint expressions in AppMap read this one table. */
 export const CLUSTER_FAMILIES: ReadonlyArray<{ key: string; buckets: readonly Bucket[]; color: string }> = [
-  { key: "cf_food", buckets: ["food", "bakery"], color: "#E14328" },
-  { key: "cf_drink", buckets: ["brewery", "wine", "bar"], color: "#C0871F" },
+  { key: "cf_food", buckets: ["food", "bakery"], color: BRAND.colors.brick },
+  { key: "cf_drink", buckets: ["brewery", "wine", "bar"], color: BRAND.colors.functionalAmber },
   { key: "cf_coffee", buckets: ["coffee"], color: "#8B5A2B" },
-  { key: "cf_outdoors", buckets: ["outdoors"], color: "#1E6B3A" },
-  { key: "cf_culture", buckets: ["arts", "music", "publicart", "family", "library"], color: "#7E2C6F" },
-  { key: "cf_shops", buckets: ["shopping", "services", "wellness", "lodging"], color: "#B26B00" },
-  { key: "cf_civic", buckets: ["civic", "transit", "parking"], color: "#20506A" },
+  { key: "cf_outdoors", buckets: ["outdoors"], color: BRAND.colors.forest },
+  { key: "cf_culture", buckets: ["arts", "music", "publicart", "family", "library"], color: BRAND.colors.plum },
+  { key: "cf_shops", buckets: ["shopping", "services", "wellness", "lodging"], color: BRAND.colors.functionalAmber },
+  { key: "cf_civic", buckets: ["civic", "transit", "parking"], color: BRAND.colors.creek },
 ];
 
 function colorOf(slug: string): string {

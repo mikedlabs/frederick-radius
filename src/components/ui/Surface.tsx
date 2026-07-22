@@ -2,13 +2,13 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Surface — the canonical elevated container (Visual System v2).
+ * Surface — the canonical paper container.
  *
  * Replaces the hand-repeated
  * `rounded-[…] border bg-[var(--app-bg-elevated)] shadow-[…]` pattern
- * with one tactile primitive: layered ink-tinted elevation + a top
- * inner highlight + a crisp inner edge so it reads as physical paper.
- * `interactive` adds the spring lift + crisp press. Polymorphic:
+ * with one restrained primitive. Most content belongs on the paper plane;
+ * higher elevations are reserved for drawers, dialogs, and true overlays.
+ * `interactive` adds a quiet edge change and press response. Polymorphic:
  * pass `href` to render a Next link, or `as` for the element tag.
  * Server-component safe (no hooks, no client boundary).
  */
@@ -29,7 +29,7 @@ type SurfaceProps = {
   interactive?: boolean;
   as?: Tag;
   href?: string;
-  /** Border radius; defaults to the large app radius. */
+  /** Border radius; defaults to the 14px card radius. */
   radius?: string;
   className?: string;
   style?: CSSProperties;

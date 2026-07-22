@@ -5,6 +5,7 @@
  */
 
 import { ACCENTS } from "@/data/categories";
+import { BRAND } from "@/lib/brand";
 
 /** Default event length when a feed gives a start but no end. */
 const DEFAULT_EVENT_MS = 3 * 60 * 60 * 1000;
@@ -73,7 +74,7 @@ export function buildActivities({
       title: e.title,
       subtitle: `Happening at ${e.venue_name}`,
       href: `/events/${e.slug}`,
-      accent: "#A03A22",
+      accent: ACCENTS.terracotta,
       icon: "music",
     });
   }
@@ -99,11 +100,11 @@ export function buildActivities({
     list.push({
       id: "civic-spike",
       kind: "civic",
-      label: "County pulse",
+      label: "Live conditions",
       title: `${civicAlertCount} active civic reports`,
       subtitle: "Updated by Frederick County FixIt",
       href: "/",
-      accent: "#B26B00",
+      accent: BRAND.colors.functionalAmber,
       icon: "alert",
     });
   }
@@ -121,7 +122,7 @@ export function buildActivities({
         title: e.title,
         subtitle: `${e.venue_name} · in ${minutesUntil} min`,
         href: `/events/${e.slug}`,
-        accent: "#C99632",
+        accent: ACCENTS.amber,
         icon: "sparkles",
       });
       break;

@@ -10,6 +10,7 @@ import { GuideContents, GuideContentsLive } from "@/components/beta/GuideContent
 import { buildFlightSlides } from "@/lib/beta-flight";
 import { formatEasternClock } from "@/lib/format/easternClock";
 import { safeRedirectPath } from "@/lib/safe-redirect";
+import RippleMark from "@/components/brand/RippleMark";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -87,18 +88,11 @@ export default async function BetaPage({
         {/* Masthead: the app's own identity left, today's dateline right. */}
         <div className="flex items-center justify-between py-6">
           <div className="flex items-center gap-2.5">
-            <span
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full shadow-[var(--app-shadow-1)]"
-              style={{ background: "var(--app-brand)" }}
-              aria-hidden
-            >
-              <Disc />
+            <span className="shrink-0" style={{ color: "var(--app-brand)" }} aria-hidden>
+              <RippleMark size={34} />
             </span>
-            <span className="font-serif text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Frederick
-              <span className="-mt-0.5 block text-[10.5px] font-medium uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                Radius
-              </span>
+            <span className="font-brand text-[18px] leading-none tracking-[-0.015em]" style={{ color: "var(--app-ink)" }}>
+              Frederick Radius
             </span>
           </div>
           <time
@@ -244,8 +238,8 @@ export default async function BetaPage({
         </section>
 
         <div className="border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
-          <p className="text-center font-serif text-[16px] italic" style={{ color: "var(--app-ink-2)" }}>
-            Around here.
+          <p className="text-center font-sans text-[16px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            Frederick County starts where you are.
           </p>
         </div>
 
@@ -288,17 +282,6 @@ function Eyebrow({ id, children }: { id?: string; children: React.ReactNode }) {
       <span aria-hidden className="block h-[3px] w-7 translate-y-[-2px] rounded-full" style={{ background: "var(--app-brand)" }} />
       {children}
     </h2>
-  );
-}
-
-/** The TopBar's disc mark, duplicated here because /beta renders outside
- *  the app shell (no TopBar) but must wear the same identity. */
-function Disc() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
-      <circle cx="12" cy="12" r="9" fill="none" stroke="white" strokeWidth="2" />
-      <circle cx="12" cy="12" r="3" fill="white" />
-    </svg>
   );
 }
 

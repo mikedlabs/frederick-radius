@@ -29,11 +29,11 @@ export default function FoodTruckToday() {
         <Truck className="h-5 w-5" strokeWidth={2} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <span className="block font-sans text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           Food trucks & carts
         </span>
         <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {count} local trucks and carts. See who&rsquo;s rolling and where to find them.
+          {count}{" "}local trucks and carts. See who&rsquo;s rolling and where to find them.
         </span>
       </span>
       <ChevronRight

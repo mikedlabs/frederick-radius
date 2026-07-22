@@ -5,6 +5,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { suppressedDaypartCategories } from "@/lib/today/craving-lead";
+import { isRecommendable } from "@/lib/relevance";
 
 /**
  * Server loader for /today's "Right now, around here" section: the daypart's
@@ -41,7 +42,12 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
       href: need.href,
       category: need.category,
       picks: ranked
-        .filter((p) => p.category === need.category && isOpenNow(p.open_status))
+        .filter(
+          (p) =>
+            p.category === need.category &&
+            isOpenNow(p.open_status) &&
+            isRecommendable(p),
+        )
         .slice(0, 4)
         .map((p) => ({ slug: p.slug, name: p.name, rating: p.google_rating ?? null })),
     }))

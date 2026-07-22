@@ -145,7 +145,8 @@ export const getWorthALookToday = unstable_cache(
   // kept serving slow proxy URLs.
   // VERCEL_GIT_COMMIT_SHA is set on every Vercel build; falls back
   // to "dev" locally so the dev server still caches normally.
-  ["worth-a-look:today", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  // v2 applies the shared recommendation gate to private membership venues.
+  ["worth-a-look:today:v2", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // 60-minute revalidate — well under the daily rotation but cheap
   // enough that an admin write to places-client.json shows up fast.
   { revalidate: 3600, tags: ["worth-a-look", "places"] },

@@ -1,4 +1,4 @@
-import { summarizeAirQualityAlert } from "@/lib/air-quality";
+import { alertPriority } from "@/lib/alert-priority";
 
 export type PulseAlertSignal = {
   event: string;
@@ -10,24 +10,7 @@ export type PulseAlertSignal = {
 /** Lower numbers are more consequential. This compares unlike NWS products
  * only for the Pulse lead; the official detail remains intact in the tile. */
 export function pulseAlertPriority(a: PulseAlertSignal): number {
-  const copy = `${a.event} ${a.headline} ${a.description}`;
-  if (/tornado|flash flood|severe thunderstorm|hurricane|tropical storm|blizzard|ice storm|extreme wind|snow squall/i.test(copy)
-      && /warning|emergency/i.test(copy)) return 0;
-  if (a.severity === "Extreme") return 1;
-  if (a.severity === "Severe" && !/air quality/i.test(copy)) return 2;
-  const air = summarizeAirQualityAlert(a);
-  if (air) {
-    if (air.level === "maroon" || air.level === "purple") return 3;
-    if (air.level === "red") return 5;
-    if (air.level === "orange") return 6;
-    // Descriptive severity is a fallback only when there is no operative
-    // issued code. A Code Orange bulletin may discuss an earlier Purple period.
-    if (!air.level && /hazardous|very unhealthy/i.test(copy)) return 3;
-    if (!air.level && /\bunhealthy\b.*general population/i.test(copy)) return 5;
-    return 6;
-  }
-  if (/\bwarning\b/i.test(copy)) return 4;
-  return 7;
+  return alertPriority(a);
 }
 
 function aqiPriority(categoryId: number): number {
@@ -47,4 +30,44 @@ export function shouldAqiLead(
   const rank = aqiPriority(categoryId);
   if (!Number.isFinite(rank)) return false;
   return !alert || rank < pulseAlertPriority(alert);
+}
+
+/** Keep a small but real utility outage visible without describing it as a
+ * county-scale emergency. A thousand customers or one percent of the served
+ * area is high severity; smaller active totals are elevated. */
+export function powerOutageTone(
+  totalOut: number,
+  totalServed: number,
+): "danger" | "warning" {
+  const share = totalServed > 0 ? totalOut / totalServed : 0;
+  return totalOut >= 1_000 || share >= 0.01 ? "danger" : "warning";
+}
+
+export type PulseStatusSignals = {
+  weather: boolean;
+  fireRescue: boolean;
+  traffic: boolean;
+  power: boolean;
+  schools: boolean;
+  air: boolean;
+  /** A fresh official police/public-safety release selected for breaking treatment. */
+  police: boolean;
+};
+
+/**
+ * The masthead and the breaking strip must read from the same situation model.
+ * Keeping this as one named boundary prevents a newly promoted signal from
+ * appearing below an "All clear" headline simply because it was omitted from
+ * an inline boolean expression on the page.
+ */
+export function pulseStatusState(
+  signals: PulseStatusSignals,
+  urgentFeedsDegraded: boolean,
+): { hasActive: boolean; heroDegraded: boolean; allClear: boolean } {
+  const hasActive = Object.values(signals).some(Boolean);
+  return {
+    hasActive,
+    heroDegraded: !hasActive && urgentFeedsDegraded,
+    allClear: !hasActive && !urgentFeedsDegraded,
+  };
 }

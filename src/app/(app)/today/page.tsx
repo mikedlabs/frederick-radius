@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
-import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
+import SkyHero from "@/components/today/SkyHero";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
 // clock) now lives in TodayCard inside the SkyHero — without a second
@@ -24,17 +24,9 @@ import EventCard from "@/components/event/EventCard";
 import TonightHeadline from "@/components/today/TonightHeadline";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import SectionHeading from "@/components/ui/SectionHeading";
 import Skeleton from "@/components/ui/Skeleton";
-import HourlyForecast from "@/components/today/HourlyForecast";
-import HourlyDisclosure from "@/components/today/HourlyDisclosure";
-import HourlySummary from "@/components/today/HourlySummary";
-import WeeklyForecast from "@/components/today/WeeklyForecast";
-import WeeklyCard from "@/components/today/WeeklyCard";
-import WeeklySummary from "@/components/today/WeeklySummary";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import EmergencyPrompt from "@/components/today/EmergencyPrompt";
-import BeerTeaser from "@/components/today/BeerTeaser";
 import WorthALook from "@/components/today/WorthALook";
 import WeekendPreview from "@/components/today/WeekendPreview";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -57,7 +49,7 @@ import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
-import GoldenHourCard from "@/components/today/GoldenHourCard";
+import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { leanFromForecast } from "@/lib/today/weatherLean";
@@ -83,8 +75,8 @@ import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
  *   3. Headliner      → THE headline of the page when a real draw is on
  *                       (TonightHeadline); nothing renders on a quiet day
  *   4. What's on      → the rest of today's public program
- *   5. MastheadNotes  → dated local context that self-hides
- *   6. The full briefing + More for today (collapsed)
+ *   5. Discovery      → one focused open-now shelf, ideas, and saved places
+ *   6. Essentials     → standing utilities collapsed behind one clear row
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
  *  to FIND what you need, not a suggestion engine that tells you an idea you
@@ -230,7 +222,8 @@ export default async function HomePage() {
     <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
       <Suspense
         fallback={
-          <section className="mt-5 space-y-3" aria-label="Events today">
+          <section className="mt-5 space-y-3" aria-label="Events today" aria-busy="true">
+            <span className="sr-only" role="status">Loading today&rsquo;s events.</span>
             <Skeleton.Block height={220} round="var(--app-radius-lg)" />
           </section>
         }
@@ -313,9 +306,6 @@ export default async function HomePage() {
             <h1 className="font-serif text-[22px] font-semibold leading-none tracking-tight sm:text-[26px]" style={{ color: "var(--app-ink)" }}>
               {frame.title}
             </h1>
-            <p className="mt-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {frame.sub}
-            </p>
           </header>
         );
       })()}
@@ -339,12 +329,12 @@ export default async function HomePage() {
         <Link
           href="/pulse?open=weather"
           prefetch={false}
-          aria-label="Open the full forecast"
           className="group relative block outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <Suspense fallback={<Skeleton.Block height={110} round="var(--app-radius-md)" />}>
             <TodayCard />
           </Suspense>
+          <span className="sr-only">Open the full forecast.</span>
           <ChevronRight
             aria-hidden
             strokeWidth={2.25}
@@ -396,13 +386,19 @@ export default async function HomePage() {
           {headliner}
           {whatsOn}
           {availableNow}
-          {lean !== "wet" && <GoldenHourCard now={now} />}
+          {lean !== "wet" && (
+            <Suspense fallback={null}>
+              <WeatherSafeGoldenHour now={now} />
+            </Suspense>
+          )}
         </>
       ) : (
         <>
           {availableNow}
           {headliner}
-          <GoldenHourCard now={now} />
+          <Suspense fallback={null}>
+            <WeatherSafeGoldenHour now={now} />
+          </Suspense>
           {whatsOn}
         </>
       )}
@@ -454,11 +450,6 @@ export default async function HomePage() {
         <WorthALook />
       </Suspense>
 
-      {/* FREDERICK BEER — a signature county draw gets a real door from the home
-          surface (owner ask: the beer page needed a better way to be seen). The
-          color ribbon is the same spectrum that heads /beer. */}
-      <BeerTeaser />
-
       {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
           "here sometimes" context sits together instead of interrupting the core
           sections. Each self-hides out of its window. */}
@@ -467,7 +458,9 @@ export default async function HomePage() {
         <WeekendPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
       {/* Seasonal pools (summer only; self-hides out of season). */}
-      <PoolsToday now={now} />
+      <Suspense fallback={null}>
+        <PoolsToday now={now} />
+      </Suspense>
       {/* Rare dated context: holiday, school, creek, and community notes. */}
       <MastheadNotes now={now} />
 
@@ -476,127 +469,26 @@ export default async function HomePage() {
           me now," and the around-you geo surface duplicated that. It still
           lives on the map. */}
 
-      {/* GOOD TO HAVE — the standing local utilities, lifted OUT of the old
-          "More weather & local tools" drawer (they were never weather, and a
-          visitor never found "where to stay" behind a weather label). One
-          VISIBLE zone under a single secondary heading, then the toolbox door,
-          so the bottom of the page reads as a calm essentials shelf. */}
-      <section aria-label="Essentials" className="mt-6">
-        <SectionHeading size="sm" title="Essentials" />
-        <div className="mt-3 space-y-3">
-          {/* Emergency essentials lead the shelf — the one utility a visitor
-              most needs to have found BEFORE the moment they need it (beta
-              safety request). Where to stay, the food-truck roster, and the
-              parking / reservations hand-offs follow. */}
+      {/* Standing utilities remain available without making every visit scroll
+          through a second directory. Active safety information still leads the
+          page above; this quieter shelf is for reference and trip planning. */}
+      <CollapsibleSection
+        title="Essentials"
+        storageKey="fr.today.essentials"
+        defaultOpen={false}
+        headingLevel={2}
+        className="mt-6 border-t pt-2"
+      >
+        <div className="mt-2 space-y-3">
           <EmergencyPrompt />
           <VisitorStayPrompt />
           <FoodTruckToday />
           <PartnerAppsRow />
         </div>
-      </section>
-
-      {/* THE TOOLBOX — the calm door into the full Compass directory, part of
-          the same good-to-have zone. Every subject group is one tap away. */}
-      <ToolboxTeaser />
-
-      {/* WEATHER DETAILS — the one honest collapse, now weather-only: the
-          hourly / 7-day disclosure pills and the forecast/almanac hand-off.
-          The utilities that used to share this drawer moved up into "Good to
-          have"; the label now says exactly what is inside. */}
-      <CollapsibleSection
-        title="Weather details"
-        storageKey="fr.today.briefing"
-        defaultOpen={false}
-        className="mt-6 border-t pt-2"
-      >
-      <div className="mt-2 space-y-3">
-      {/* /today keeps the cinematic sky at the top of the page; this collapse
-          holds the DETAILED forecast — the hourly / 7-day pills — for readers
-          who want depth, then hands off to /pulse for the full almanac. */}
-      <div className="relative">
-        {(() => {
-          // Sky-aware wash on the weather sub-card stack so the
-          // supplemental cards (Hourly / Weekly / More Details) read
-          // as part of the same atmospheric scene as the SkyHero
-          // above instead of a flat paper break. Tint is the BOTTOM
-          // stop of the current time-of-day sky (the most-desaturated
-          // stop, so it doesn't fight the chrome inside the cards),
-          // mixed at 9-14% into the elevated paper bg. Fades to plain
-          // elevated by ~75% so the bottom of the stack stays neutral
-          // and dividers + ink stay easy to read.
-          const sky = currentSkyPalette();
-          const strength = sky.tone === "dark" ? 14 : 10;
-          const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
-          return (
-            <div className="deck-card mt-3 rounded-[var(--app-radius-lg)]">
-            <div
-              className="relative z-0 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
-              style={{
-                borderColor: "var(--app-border)",
-                background: stackBg,
-              }}
-            >
-          {/* (CivicAlerts moved UP to the top-level "Heads up" slot — an
-              active warning belongs before the plan, not inside the
-              collapsed weather panel.) */}
-          {/* All three weather subsections (Hourly · 7-Day · More
-              Details) are disclosure pills for visual uniformity, and
-              all three default CLOSED — each collapsed pill carries a
-              real summary ("12 hours, peaks 80° at 7 PM"), so the
-              panel stays compact and the page opens light on weather.
-              Each remembers the user's expand choice in localStorage. */}
-          <HourlyDisclosure
-            summary={
-              <Suspense fallback={<Skeleton.Block height={14} width="68%" round="var(--app-radius-sm)" />}>
-                <HourlySummary />
-              </Suspense>
-            }
-          >
-            <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
-              <HourlyForecast />
-            </Suspense>
-          </HourlyDisclosure>
-          <WeeklyCard
-            summary={
-              <Suspense fallback={<Skeleton.Block height={14} width="68%" round="var(--app-radius-sm)" />}>
-                <WeeklySummary />
-              </Suspense>
-            }
-          >
-            <Suspense fallback={<Skeleton.Block height={260} round="0" />}>
-              <WeeklyForecast />
-            </Suspense>
-          </WeeklyCard>
-            </div>
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Weather DEPTH (the multi-day strip + almanac grid) now lives on
-          /pulse, the civic dashboard that owns it — /today keeps only the
-          cinematic sky + the hourly / 7-day disclosure pills, then hands off.
-          One link instead of a second weather app inside the front door. */}
-      <Link
-        href="/pulse?open=weather"
-        className="tap-44 mt-1 inline-flex items-center gap-1 px-1 text-[13px] font-semibold"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Full forecast &amp; almanac
-        <ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} aria-hidden />
-      </Link>
-
-      </div>
       </CollapsibleSection>
 
-      {/* Closing beat — a quiet brand sign-off so the page ends on purpose
-          instead of dropping straight from a collapsed row into the footer. */}
-      <div className="mt-8 flex flex-col items-center gap-2 pb-2 text-center">
-        <span aria-hidden className="h-[3px] w-8 rounded-full" style={{ background: "var(--app-brand)" }} />
-        <p className="font-serif text-[15px]" style={{ color: "var(--app-ink-3)" }}>
-          Around here.
-        </p>
-      </div>
+      {/* A few high-use shortcuts stay visible. Compass owns the full directory. */}
+      <ToolboxTeaser />
     </EventSheetBoundary>
   );
 }
@@ -828,7 +720,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
       <DismissibleSection
         id="upcoming"
         title="Events today"
-        href="/events"
+        href={visibleTodayCount > 0 || feature ? "/events" : undefined}
         cta="See all"
         flat
         meta={
@@ -932,13 +824,17 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
             {/* Only an empty set we TRUST is stated as "no events." When the
                 feeds are degraded the banner above already explains the gap,
                 and this stays a neutral pointer instead of a false all-clear. */}
-            {sourceHealth.degraded
-              ? "Today's list may be incomplete. "
-              : "No events are on the calendar today. "}
-            <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-              Browse all events
-            </Link>
-            .
+            {sourceHealth.degraded ? (
+              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                Open the full events board.
+              </Link>
+            ) : (
+              <>
+                No events are on the calendar today. <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                  Browse all events.
+                </Link>
+              </>
+            )}
           </p>
         )}
       </DismissibleSection>

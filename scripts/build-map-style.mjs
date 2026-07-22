@@ -24,7 +24,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 
 // ── Brand Book No.01 tokens (mirror applyFrederickPalette.ts) ──────────
-const PAPER = "#EBE2CD";
+const PAPER = "#F4EEE2";
 const PAPER_2 = "#E4DAC3";
 const WATER = "#8DACC0";
 const WATER_LINE = "#4A7090";
@@ -33,9 +33,9 @@ const BUILDING = "#E1D5BD";
 const ROAD_MINOR = "#D8CDB1";
 const ROAD_MAJOR = "#C9BD9F";
 const ROAD_HWY = "#AD9E80";
-const LABEL = "#16140E";
+const LABEL = "#221C15";
 const LABEL_2 = "#5C5A50";
-const HALO = "#EBE2CD";
+const HALO = "#F4EEE2";
 
 const has = (id, ...needles) => needles.some((n) => id.includes(n));
 

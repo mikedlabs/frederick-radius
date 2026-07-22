@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
 import PageBloom from "@/components/ui/PageBloom";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/plan" },
-  title: "Plan an outing",
-  description:
-    "Build an outing from real Frederick County places based on your time and mood.",
+  title: PRODUCT_NAMES.outingPlanner.pageTitle,
+  description: PRODUCT_NAMES.outingPlanner.description,
   openGraph: {
     title: "Plan an outing in Frederick County",
     description: "Build a route from real Frederick County places.",
@@ -36,13 +36,13 @@ export default async function PlanPage({
       {!shared && (
         <header className="mb-5 max-w-xl space-y-2">
           <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
-            Plan
+            Outing planner
           </p>
           <h1
-            className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight"
+            className="font-sans text-[34px] font-semibold leading-[1.02] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Build a plan that fits.
+            Plan an outing in Frederick County.
           </h1>
           <p className="max-w-lg text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Choose the area, time, and focus. Radius will only use places that

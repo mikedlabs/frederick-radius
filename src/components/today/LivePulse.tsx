@@ -104,7 +104,7 @@ export default async function LivePulse() {
     <section
       className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)" }}
-      aria-label="Live county pulse"
+      aria-label="Live conditions in Frederick County"
     >
       <Link
         href="/pulse"
@@ -113,11 +113,11 @@ export default async function LivePulse() {
         <span className="inline-flex items-center gap-2">
           <Activity className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
           <span className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Live pulse · Frederick County
+            Live conditions · Frederick County
           </span>
         </span>
         <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: "var(--app-cool)" }}>
-          All dashboards
+          View conditions
           <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
         </span>
       </Link>

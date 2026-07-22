@@ -7,7 +7,7 @@ import RING from "@/data/county-ring.json" with { type: "json" };
  * show breadth without motion). The real county outline (county-ring.json)
  * projected with a cosine-latitude correction so the shape is geographically
  * true, plus a pin + label for all 13 communities. Frederick, the county
- * seat, gets the vermilion dot; the rest are spruce.
+ * seat, gets the Brick dot; the rest are Catoctin Forest.
  *
  * Server component on purpose: the SVG is rendered to HTML once, so the
  * 716-point boundary never ships to the client and there are no map tiles,
@@ -79,7 +79,7 @@ export default function CountyPlate() {
       viewBox={`-182 -14 ${W + 364} ${H + 28}`}
       fill="none"
     >
-      {/* The county body: a subtle spruce wash inside an engraved ink outline. */}
+      {/* The county body: a subtle Forest wash inside an engraved Ink outline. */}
       <path
         d={OUTLINE}
         fill="color-mix(in srgb, var(--app-brand-2) 7%, transparent)"

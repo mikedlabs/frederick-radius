@@ -37,7 +37,7 @@ function readableOn(hex: string): string {
   if (!m) return "#FFFFFF";
   const n = parseInt(m[1], 16);
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.62 ? "#16140E" : "#FFFFFF";
+  return lum > 0.62 ? "#221C15" : "#FFFFFF";
 }
 
 /** Minutes-to-arrival from state nowMs (never Date.now() in render). */

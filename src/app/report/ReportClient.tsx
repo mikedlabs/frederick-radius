@@ -213,7 +213,7 @@ export default function ReportClient({
   }, [category, activeSubtype, note, photo, passcode, collectedBy, def]);
 
   return (
-    <div className="relative bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
+    <main className="relative bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
       <div className="absolute inset-0">
         <Map
           ref={mapRef}
@@ -235,18 +235,18 @@ export default function ReportClient({
       {/* Center crosshair = where the report drops. */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
-          <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-          <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-          <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-          <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-          <line x1="35" y1="24" x2="45" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-          <circle cx="24" cy="24" r="3" fill="var(--app-brand,#E14328)" />
+          <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+          <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+          <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+          <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+          <line x1="35" y1="24" x2="45" y2="24" stroke="var(--app-brand,#B5462B)" strokeWidth="2.5" />
+          <circle cx="24" cy="24" r="3" fill="var(--app-brand,#B5462B)" />
         </svg>
       </div>
 
-      <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white shadow">
+      <h1 className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white shadow">
         Mark a spot
-      </div>
+      </h1>
 
       {/* In-app exit — this full-bleed surface has no TopBar/BottomNav, so
           without this X the only way out is the browser chrome. Prefer real
@@ -306,7 +306,7 @@ export default function ReportClient({
                 }}
                 aria-pressed={active}
                 className={`flex min-h-[50px] w-[76px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
-                  active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/12 bg-white/70"
+                  active ? "border-[var(--app-brand,#B5462B)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
                 <GlyphIcon Icon={CATEGORY_ICON[cat.key]} className="h-[18px] w-[18px]" />
@@ -328,7 +328,7 @@ export default function ReportClient({
                   onClick={() => setSubtype(on ? null : s.key)}
                   aria-pressed={on}
                   className={`tap-44 inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-medium ${
-                    on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/15 bg-white/70"
+                    on ? "border-[var(--app-brand,#B5462B)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/15 bg-white/70"
                   }`}
                 >
                   <GlyphIcon Icon={SUBTYPE_ICON[s.key]} className="h-3.5 w-3.5" />
@@ -349,9 +349,9 @@ export default function ReportClient({
             aria-label="Note"
             aria-required={category === "tip" || category === "note"}
             placeholder={category === "tip" || category === "note" ? "What is it? (required)" : "Add a detail (optional)"}
-            className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+            className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
           />
-          <label className={`tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#E14328)] text-[var(--app-brand,#E14328)]" : "border-[var(--app-ink)]/15"}`}>
+          <label className={`tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#B5462B)] text-[var(--app-brand,#B5462B)]" : "border-[var(--app-ink)]/15"}`}>
             <Camera className="h-4 w-4" strokeWidth={2} aria-hidden />
             {def?.photoRequired ? "Photo*" : ""}
             <input type="file" accept="image/*" capture="environment" aria-label={def?.photoRequired ? "Add photo (required)" : "Add photo (optional)"} className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
@@ -383,12 +383,12 @@ export default function ReportClient({
             }}
             placeholder="Passcode (optional)"
             autoComplete="off"
-            className="w-full rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+            className="min-h-11 w-full rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
           />
         )}
 
         {status && (
-          <p className={`text-center text-sm ${status.tone === "ok" ? "text-[var(--app-brand-2,#2F5470)]" : status.tone === "error" ? "text-[var(--app-brand,#E14328)]" : "text-[var(--app-ink)]/70"}`} role="status">
+          <p className={`text-center text-sm ${status.tone === "ok" ? "text-[var(--app-positive,#315A43)]" : status.tone === "error" ? "text-[var(--app-brand,#B5462B)]" : "text-[var(--app-ink)]/70"}`} role="status">
             {status.text}
           </p>
         )}
@@ -409,6 +409,6 @@ export default function ReportClient({
           {saving ? "Sending…" : `Mark ${def?.label?.toLowerCase() ?? "it"}`}
         </button>
       </div>
-    </div>
+    </main>
   );
 }

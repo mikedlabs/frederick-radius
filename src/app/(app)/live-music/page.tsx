@@ -275,14 +275,14 @@ export default async function LiveMusicPage() {
               <div className="mt-2.5 space-y-4">
                 {ledger.map((day) => (
                   <section key={day.key} aria-label={day.label}>
-                    {/* Day rule: mono date; weekends carry the spruce tick so a
+                    {/* Day rule: mono date; weekends carry the event tick so a
                         thumb scrolling for the weekend can catch them. */}
                     <div className="flex items-center gap-2">
                       {day.isWeekend && (
                         <span
                           aria-hidden
                           className="h-[3px] w-[14px] rounded-full"
-                          style={{ background: "var(--app-brand-2)" }}
+                          style={{ background: "var(--app-brand)" }}
                         />
                       )}
                       <span
@@ -302,6 +302,7 @@ export default async function LiveMusicPage() {
                         <li key={e.slug} style={{ borderColor: "var(--app-border)" }}>
                           <Link
                             href={`/events/${e.slug}`}
+                            aria-label={`${e.title}, ${day.label} at ${showTime(e.starts_at)}, ${venueLine(e)}`}
                             className="flex items-baseline gap-3 py-2.5"
                           >
                             <span

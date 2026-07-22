@@ -508,7 +508,7 @@ export default function FieldWheel() {
       <p className="fw-note">
         Prefer the full, searchable index?{" "}
         <Link href="/compass" prefetch={false} className="fw-note-link">
-          Open the compass
+          Open all tools
         </Link>
         .
       </p>
@@ -525,7 +525,7 @@ function FieldWheelStyles() {
 .fw{--fw-acc:var(--app-brand-press);max-width:420px;margin:0 auto;}
 .fw-masthead{text-align:center;padding:0 4px;}
 .fw-eyebrow{font-family:var(--font-mono,ui-monospace,monospace);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--app-ink-3);margin:0;}
-.fw-title{font-family:var(--font-serif,Georgia,serif);font-weight:600;font-size:clamp(2rem,8vw,2.6rem);line-height:1.02;letter-spacing:-.03em;margin:10px 0 0;color:var(--app-ink);text-wrap:balance;}
+.fw-title{font-family:var(--font-sans-base),ui-sans-serif,system-ui,sans-serif;font-weight:650;font-size:clamp(2rem,8vw,2.6rem);line-height:1.02;letter-spacing:-.03em;margin:10px 0 0;color:var(--app-ink);text-wrap:balance;}
 .fw-lede{margin:12px auto 0;max-width:34ch;font-size:14px;line-height:1.55;color:var(--app-ink-2);}
 
 .fw-instrument{position:relative;display:flex;flex-direction:column;height:clamp(500px,66vh,660px);margin:22px auto 0;
@@ -537,7 +537,7 @@ function FieldWheelStyles() {
 .fw-back{width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;color:var(--app-ink-2);border-radius:8px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;}
 .fw-appbar.fw-deep .fw-back{opacity:1;pointer-events:auto;}
 .fw-back:focus-visible{outline:2px solid var(--app-brand);outline-offset:2px;}
-.fw-appbar-title{flex:1;min-width:0;font-family:var(--font-serif,Georgia,serif);font-weight:600;font-size:17px;letter-spacing:-.015em;color:var(--app-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fw-appbar-title{flex:1;min-width:0;font-family:var(--font-sans-base),ui-sans-serif,system-ui,-apple-system,sans-serif;font-weight:600;font-size:17px;letter-spacing:-.015em;color:var(--app-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fw-rt{display:flex;align-items:center;gap:6px;font-family:var(--font-mono,ui-monospace,monospace);font-size:10px;font-weight:600;color:var(--app-ink-3);font-variant-numeric:tabular-nums;}
 .fw-live{width:6px;height:6px;border-radius:50%;background:var(--fw-acc);}
 

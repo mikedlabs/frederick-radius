@@ -80,8 +80,9 @@ export default function BottomDrawer({
           />
           <Drawer.Close
             aria-label={`Close ${title}`}
-            className="tap-44 absolute right-3 top-2 z-10 grid h-9 w-9 place-items-center rounded-full border transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95"
+            className="absolute top-2 z-10 grid h-11 w-11 place-items-center rounded-full border transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95"
             style={{
+              right: "max(0.75rem, env(safe-area-inset-right, 0px))",
               borderColor: "var(--app-control-border)",
               background: "var(--app-bg-elevated-solid)",
               color: "var(--app-ink-2)",
@@ -100,8 +101,12 @@ export default function BottomDrawer({
             </>
           ) : (
             <div
-              className="border-b px-4 pb-3 pr-14 pt-2"
-              style={{ borderColor: "var(--app-border)" }}
+              className="border-b pb-3 pt-2"
+              style={{
+                borderColor: "var(--app-border)",
+                paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+                paddingRight: "max(3.5rem, calc(env(safe-area-inset-right, 0px) + 3.5rem))",
+              }}
             >
               <Drawer.Title
                 className="font-serif text-[18px] font-semibold tracking-tight"

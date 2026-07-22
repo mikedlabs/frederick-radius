@@ -27,7 +27,7 @@ export default function DearFrederickIndex() {
       <PageBloom variant="warm-cool" />
 
       <header className="max-w-[42rem] space-y-3">
-        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+        <h1 className="display-1 font-editorial" style={{ color: "var(--app-ink)" }}>
           Dear Frederick
         </h1>
         <p className="font-serif text-[17px] leading-[1.6]" style={{ color: "var(--app-ink)" }}>

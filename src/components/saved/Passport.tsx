@@ -33,7 +33,7 @@ const BP_KEY = "fr:beer-passport:v1";
 
 const TONE: Record<StampTone, string> = {
   brand: "var(--app-brand-press)",
-  spruce: "var(--app-brand-2)",
+  forest: "var(--app-brand-2)",
   gold: "var(--app-accent-press)",
 };
 
@@ -341,7 +341,7 @@ export default function Passport({ placesBySlug }: { placesBySlug: Map<string, P
             <textPath href="#seal-arc" startOffset="50%" textAnchor="middle">FREDERICK COUNTY</textPath>
           </text>
           <text x="50" y="54" textAnchor="middle" fontSize="9" fontWeight="700" fill="currentColor" style={{ fontFamily: "var(--font-mono, ui-monospace)" }}>
-            FIELD GUIDE
+            PLACES VISITED
           </text>
         </svg>
 

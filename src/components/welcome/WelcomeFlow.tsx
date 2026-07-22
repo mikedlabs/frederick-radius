@@ -16,6 +16,7 @@ import {
 import { useMode, type Mode } from "@/hooks/useMode";
 import { setInterests } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
 
 /**
  * WelcomeFlow — the first-run onboarding funnel, cut to two steps.
@@ -62,9 +63,9 @@ const MOOD_TILES: Array<{
   Icon: typeof Coffee;
   color: string;
 }> = [
-  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: "#A03A22" },
-  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#1E6B3A" },
-  { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: "#C99632" },
+  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: BRAND.colors.brick },
+  { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#315A43" },
+  { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: BRAND.colors.ridge },
 ];
 
 export default function WelcomeFlow() {

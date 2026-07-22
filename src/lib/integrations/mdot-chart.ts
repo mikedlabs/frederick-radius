@@ -30,6 +30,13 @@ export type ChartIncident = {
   lanes_affected?: string;
 };
 
+export type ChartIncidentsResult = {
+  data: ChartIncident[];
+  /** True when CHART returned a parseable event collection, including empty. */
+  available: boolean;
+  asOf?: string;
+};
+
 /** One event in the CHARTExportClientService map-data payload. Defensive —
  *  only the fields we read are typed. */
 type RawEvent = {
@@ -343,28 +350,31 @@ export function qualifiesForToday(incident: ChartIncident, now: Date = new Date(
   return true;
 }
 
-export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
+export async function getChartIncidentsFrederickResult(
+  { deadlineMs = 5_000 }: { deadlineMs?: number } = {},
+): Promise<ChartIncidentsResult> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), deadlineMs);
   try {
     const res = await fetch(ENDPOINT, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "application/json",
       },
+      signal: ctrl.signal,
       next: { revalidate: 120 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { data: [], available: false };
     const data = await res.json().catch(() => null);
-    if (!data) return [];
+    if (!data) return { data: [], available: false };
     // The CHARTExport feed wraps events under `data`: { data: [...],
     // success, totalCount }. Accept that, an `events` key, or a bare array.
     const asObj = data as { data?: RawEvent[]; events?: RawEvent[] };
-    const events: RawEvent[] = Array.isArray(data)
-      ? (data as RawEvent[])
-      : Array.isArray(asObj.data)
-        ? asObj.data
-        : Array.isArray(asObj.events)
-          ? asObj.events
-          : [];
+    let events: RawEvent[];
+    if (Array.isArray(data)) events = data as RawEvent[];
+    else if (Array.isArray(asObj.data)) events = asObj.data;
+    else if (Array.isArray(asObj.events)) events = asObj.events;
+    else return { data: [], available: false };
 
     const incidents: ChartIncident[] = [];
     for (const raw of events) {
@@ -395,9 +405,19 @@ export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
         lanes_affected: cleanChartLaneStatus(raw.lanesStatus),
       });
     }
-    return dedupeChartIncidents(incidents)
-      .sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at));
+    return {
+      data: dedupeChartIncidents(incidents)
+        .sort((a, b) => +new Date(b.started_at) - +new Date(a.started_at)),
+      available: true,
+    };
   } catch {
-    return [];
+    return { data: [], available: false };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** Compatibility wrapper for map, Today, and notification consumers. */
+export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
+  return (await getChartIncidentsFrederickResult()).data;
 }

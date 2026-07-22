@@ -34,6 +34,7 @@ const AXE_PATH = path.join(process.cwd(), "node_modules/axe-core/axe.min.js");
 // hand sweep used, plus /numbers (added after).
 const ROUTES = [
   "/today",
+  "/map",
   "/ask",
   "/events",
   "/search?q=animal+control",
@@ -139,6 +140,27 @@ test.describe("UX gate: render health + WCAG A/AA", () => {
       await expect(page.locator("main h1"), `${route} should have one page heading`).toHaveCount(1);
       const mainText = ((await main.innerText()) ?? "").replace(/\s+/g, " ").trim();
       expect(mainText.length, `${route} should render real content, not a blank shell`).toBeGreaterThan(20);
+
+      if (route === "/map") {
+        const geometry = await page.evaluate(() => {
+          const header = document.querySelector("header");
+          const mainElement = document.querySelector("main");
+          return {
+            headerBottom: header?.getBoundingClientRect().bottom ?? 0,
+            mainTop: mainElement?.getBoundingClientRect().top ?? 0,
+            documentHeight: document.documentElement.scrollHeight,
+            viewportHeight: window.innerHeight,
+          };
+        });
+        expect(
+          geometry.mainTop,
+          "/map content should start below the TopBar instead of sliding under it",
+        ).toBeGreaterThanOrEqual(geometry.headerBottom - 1);
+        expect(
+          geometry.documentHeight,
+          "/map should not add a reading-page scroll tail below its viewport-locked canvas",
+        ).toBeLessThanOrEqual(geometry.viewportHeight + 2);
+      }
 
       // Search and Nearby intentionally render compact states. Preserve their
       // stronger interaction check because text alone could pass on an empty

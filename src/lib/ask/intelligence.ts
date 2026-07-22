@@ -5,7 +5,13 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
 import { parseAskIntent, type AskIntent } from "@/lib/ask/intent";
-import { clockLine, normalizePlainTextAnswer, optionCountInstruction, scopeAskEvents } from "@/lib/ask/context";
+import {
+  clockLine,
+  concisePlainTextAnswer,
+  optionCountInstruction,
+  requestedOptionCount,
+  scopeAskEvents,
+} from "@/lib/ask/context";
 import { buildAskPlanPreview } from "@/lib/ask/plan-preview";
 import type { AskAction, AskPlanPreview, AskSource } from "@/lib/ask/contracts";
 import { filterCitedSources, sourceIsCited } from "@/lib/ask/citations";
@@ -151,7 +157,7 @@ function mergePlaceHits(
 }
 
 const outputSchema = z.object({
-  answer: z.string().min(1).max(800),
+  answer: z.string().min(1).max(650),
   placeSlugs: z.array(z.string()).max(12).default([]),
   eventSlugs: z.array(z.string()).max(12).default([]),
   followUps: z.array(z.object({
@@ -161,7 +167,7 @@ const outputSchema = z.object({
   confidence: z.enum(["high", "medium"]),
 });
 
-const INSTRUCTIONS = `You are the decision engine inside Frederick Radius, a local field guide for Frederick County, Maryland.
+const INSTRUCTIONS = `You are the decision engine inside Frederick Radius, a current local information service for Frederick County, Maryland.
 
 Use tools before answering. Use the fewest tools that fully answer the request, normally 1 to 3. Build a plan for multi-stop requests. Check weather or parking only when it changes the decision.
 
@@ -180,7 +186,7 @@ Writing rules:
 - Honor an explicitly requested number of options when the tool evidence supports that number. This overrides the one-or-two-choice default. If fewer verified choices are available, state the shortfall instead of inventing or padding.
 - If the user asks for multiple, several, or a few options without a number, return more than one evidence-backed choice when possible. Include the returned slug for every place or event named in the answer so each source can be cited.
 - Use complete grammatical sentences with naturally varied lengths. Do not use clipped fragments, slogans, rhetorical groups of three, filler, metaphors, or em dashes.
-- Keep the answer to one concise paragraph of no more than 100 words unless an explicit option count requires a little more room. Even then, stay concise.
+- Keep the answer to one concise paragraph of no more than 80 words unless an explicit option count requires a little more room. Even then, stay concise.
 - Return plain text only. Do not use markdown, headings, bullets, numbered lists, emphasis marks, or links.
 - Sound like a calm local expert. Follow-ups must materially change the decision, such as reducing the walk or moving the plan indoors.`;
 
@@ -370,7 +376,13 @@ export async function runRadiusAgent(
       timeout: { totalMs: AGENT_TOTAL_TIMEOUT_MS, stepMs: AGENT_STEP_TIMEOUT_MS },
     });
     if (!output) return null;
-    const answer = normalizePlainTextAnswer(output.answer);
+    const requested = requestedOptionCount(query);
+    const maxWords = typeof requested === "number"
+      ? Math.min(120, Math.max(80, requested * 22))
+      : requested === "multiple"
+        ? 100
+        : 80;
+    const answer = concisePlainTextAnswer(output.answer, maxWords);
     const sources: AskSource[] = [];
     const showDistance = Boolean(context.origin && context.canShowDistance !== false);
     for (const slug of output.placeSlugs) {

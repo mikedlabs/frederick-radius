@@ -6,6 +6,7 @@ import { getScannerPatterns } from "@/lib/scanner/scannerPatterns";
 import ScannerBoard from "@/components/scanner/ScannerBoard";
 import ScannerPatterns from "@/components/scanner/ScannerPatterns";
 import PageBloom from "@/components/ui/PageBloom";
+import { PRODUCT_NAMES } from "@/lib/product-names";
 
 /**
  * /scanner — the county's public dispatch feed, made legible.
@@ -21,7 +22,7 @@ import PageBloom from "@/components/ui/PageBloom";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "County scanner",
+  title: PRODUCT_NAMES.publicDispatch.pageTitle,
   description:
     "Recent public dispatch calls around Frederick County in plain language: crashes, wires down, fires, rescues. Medical and personal calls are never listed.",
   alternates: { canonical: "/scanner" },
@@ -42,10 +43,10 @@ export default async function ScannerPage() {
           Recent public safety
         </p>
         <h1
-          className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+          className="mt-1 font-sans text-[30px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          The county scanner
+          Public dispatch calls
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           The last several hours of public dispatch calls around Frederick
@@ -80,7 +81,7 @@ export default async function ScannerPage() {
           href="https://www.frederickscanner.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 underline"
+          className="tap-44-y inline-flex items-center gap-0.5 underline"
           style={{ color: "var(--app-cool)" }}
         >
           FrederickScanner.com

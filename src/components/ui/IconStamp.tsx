@@ -1,18 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * IconStamp — THE one icon backplate for the app: a tinted paper chip,
- * like a pressed field-guide seal. This is the single, deliberate icon
- * language; nothing else should hand-roll a saturated/glossy stamp.
+ * IconStamp — the guide's compact legend marker. A quiet paper square with a
+ * colored registration edge replaces the generic pastel icon bubble.
  *
- * Material (printed-paper, not plastic):
- *  - backplate tinted with the accent at ~14% over elevated paper
- *  - the icon drawn IN the accent (no white-on-color blocks)
- *  - a hairline edge + a soft top highlight (the tactile system's
- *    --app-edge / --app-hi) for a pressed-into-the-page read
- *  - a soft, accent-TINTED lift beneath (not a grey drop shadow) so the
- *    chip sits just off the page — quiet depth, never flat oatmeal
- *  - a continuous-corner squircle, sized for the thumb
+ * It is intentionally flat. The icon supplies meaning; a shadow or glossy
+ * colored tile would make every directory row compete for attention.
  *
  * The stamp normalizes the icon's size AND stroke weight via CSS, so a
  * row of stamps reads as one set regardless of what each caller passes.
@@ -46,12 +39,9 @@ export default function IconStamp({
       style={{
         width: dim,
         height: dim,
-        // Continuous-corner squircle (~32% keeps it a soft square, not a pill).
-        borderRadius: `${Math.round(dim * 0.32)}px`,
-        background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated))`,
-        // Hairline edge + top highlight (pressed seal) + a soft accent-tinted
-        // lift (quiet depth, warm — not a grey plastic shadow).
-        boxShadow: `var(--app-edge), var(--app-hi), 0 6px 14px -8px color-mix(in srgb, ${accent} 34%, transparent)`,
+        borderRadius: "var(--app-radius-sm)",
+        background: `color-mix(in srgb, ${accent} 7%, var(--app-bg-elevated))`,
+        boxShadow: `inset 2px 0 0 ${accent}, inset 0 0 0 1px color-mix(in srgb, ${accent} 20%, transparent)`,
         color: accent,
         // Drives the [&>svg] size utilities above.
         ["--stamp-ic" as string]: `${ICONS[size]}px`,

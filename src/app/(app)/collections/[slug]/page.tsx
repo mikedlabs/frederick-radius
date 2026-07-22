@@ -113,12 +113,12 @@ export default async function CollectionPage({
           style={{ color: "var(--app-ink-2)" }}
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          All collections
+          All local lists
         </Link>
       </nav>
 
       <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
-        <p className="eyebrow" style={{ color: collection.accent }}>Local field guide</p>
+        <p className="eyebrow" style={{ color: collection.accent }}>Local list</p>
         <h1
           className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]"
           style={{ color: "var(--app-ink)" }}

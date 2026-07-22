@@ -57,6 +57,7 @@ import { applyEventNotices } from "@/lib/events/notices";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { easternDayKey } from "@/lib/tz";
 import { unstable_cache } from "next/cache";
+import { createSingleFlight } from "@/lib/single-flight";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -73,6 +74,36 @@ export type EventSourceHealth = {
   degraded: boolean;
   unavailable: string[];
 };
+
+/**
+ * The persistent cache stores one event array, not both `unified` and its
+ * nearly identical `publicEvents` subset. Serializing both pushed the cache
+ * entry above Next's 2 MB limit, so the write failed and every Today request
+ * fetched every live calendar again. Public eligibility is deterministic and
+ * cheap to derive after the cache read.
+ */
+export type UnifiedEventsCachePayload = Pick<
+  UnifiedEvents,
+  "unified" | "sourceHealth"
+>;
+
+export function compactUnifiedEvents(
+  result: UnifiedEvents,
+): UnifiedEventsCachePayload {
+  return {
+    unified: result.unified,
+    sourceHealth: result.sourceHealth,
+  };
+}
+
+export function hydrateUnifiedEvents(
+  cached: UnifiedEventsCachePayload,
+): UnifiedEvents {
+  return {
+    ...cached,
+    publicEvents: cached.unified.filter(isPublicEvent),
+  };
+}
 
 /**
  * Resolve to `fallback` if `p` rejects OR doesn't settle within `ms`.
@@ -298,19 +329,28 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
   return out;
 }
 
-// Cache the whole assembly per 5-minute bucket so /today + /events stop paying
-// the multi-feed fetch (~8s on a cold/uncached render) on EVERY request. The
-// cached value is the same serializable EventWithMeta set the pages already
-// ship across the RSC boundary to client components, so it round-trips
-// through the data cache cleanly. `now` is rounded to a 300s bucket (the cache
-// key), matching revalidate, so within a window every render is a HIT and the
-// page is fast even though it renders dynamically. The pages still window the
-// set against the REAL now (eventsForMode), so "tonight/weekend" stay exact.
-// Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
+// Cache the compact current assembly under one stable key so /today + /events
+// stop paying the multi-feed fetch (~8s on a cold/uncached render) on EVERY
+// request. The
+// cached value carries the unified EventWithMeta set only; `publicEvents` is a
+// deterministic subset rebuilt after the cache read. Keeping both arrays in
+// the cache duplicated almost the entire corpus and crossed Next's 2 MB item
+// ceiling. A time bucket must NOT be an unstable_cache argument: arguments are
+// part of its key, which created a brand-new cold entry every five minutes and
+// defeated stale-while-revalidate. The stable entry can now return its last
+// good value while Next refreshes it after 300 seconds. The pages still window
+// the set against their real `now`, so "tonight/weekend" stay exact.
 // The deploy SHA is a second key segment so a shape change ALSO auto-busts the
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
+const assembleOnce = createSingleFlight<number, UnifiedEventsCachePayload>();
+
 const cachedAssemble = unstable_cache(
-  (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
+  () => {
+    const bucket = Math.floor(Date.now() / 300_000);
+    return assembleOnce(bucket, async () =>
+      compactUnifiedEvents(await assembleRaw(new Date(bucket * 300_000))),
+    );
+  },
   // v19: titles now drop trailing embedded weekday/date/time fragments and
   // de-shout ALL-CAPS ("REBEKAH FOSTER … Thursday 7/9/26 6:30PM"), and the
   // new same-day cross-source fuzzy dedupe collapses duplicate rows of one
@@ -318,7 +358,11 @@ const cachedAssemble = unstable_cache(
   // v18: venue-feed events with clearly non-music titles (yoga/trivia/
   // bingo/paint/run club) no longer get the blanket "music" category —
   // the cached rows' category/category_name change.
-  ["unified-events-v23", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  // v24: cache one event array under a stable invocation key instead of
+  // serializing both `unified` and its `publicEvents` subset in a new entry
+  // every five minutes. This keeps the item below Next's 2 MB cache limit and
+  // lets stale-while-revalidate work.
+  ["unified-events-v24", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the 300s TTL + a cold-miss request.
@@ -326,5 +370,11 @@ const cachedAssemble = unstable_cache(
 );
 
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
-  return cachedAssemble(Math.floor(now.getTime() / 300_000));
+  // The app always requests a current feed snapshot, while diagnostics may
+  // deliberately assemble a historical/future instant. Preserve that explicit
+  // behavior without fragmenting the hot user-facing cache by timestamp.
+  const isCurrent = Math.abs(now.getTime() - Date.now()) <= 300_000;
+  if (!isCurrent) return assembleRaw(now);
+
+  return hydrateUnifiedEvents(await cachedAssemble());
 }

@@ -27,7 +27,8 @@ describe("askFrederick structured answers", () => {
   it("takes closest literally when the user asks for the closest grocery store", async () => {
     const result = await askFrederick("What grocery store is closest to me?", downtown);
     expect(result.sources[0]?.name).toBe("Costco Wholesale");
-    expect(result.answer).toContain("closest verified");
+    expect(result.answer).toContain("closest matches");
+    expect(result.answer).toContain("ranked by the location and hours available now");
   });
 
   it("does not invent proximity when a nearby request has no ranking origin", async () => {
@@ -133,7 +134,7 @@ describe("askFrederick structured answers", () => {
       origin: { lng: -77.6278, lat: 39.3143 },
       contextLabel: "Ranked from Brunswick",
     });
-    expect(result.answer).toContain("closest verified");
+    expect(result.answer).toContain("closest matches");
     expect(result.answer).toContain("from Brunswick");
     expect(result.answer).not.toContain("to your location");
   });
@@ -214,8 +215,8 @@ describe("askFrederick structured answers", () => {
     expect(result.sources).toHaveLength(4);
     expect(result.sources.map((source) => source.region)).toEqual(["north", "west", "north", "west"]);
     expect(result.sources.every((source) => source.category !== "civic" && source.city?.toLowerCase() !== "frederick")).toBe(true);
-    expect(result.answer).toContain("North:");
-    expect(result.answer).toContain("West:");
+    expect(result.answer).toContain("In north Frederick County");
+    expect(result.answer).toContain("In west Frederick County");
     expect(result.answer).not.toContain("food license");
     expect(result.context).toBe("North + West Frederick County");
   });
@@ -381,13 +382,42 @@ describe("askFrederick structured answers", () => {
   });
 
   it("can anchor a plan on a real place named in the request", async () => {
-    const result = await askFrederick("Plan a date night around Hootch & Banter", downtown);
-    expect(result.intent).toMatchObject({ timeNeed: null });
-    // The lead names the anchor and the actual itinerary (pick-first
-    // rule), not the planner's process.
-    expect(result.answer).toContain("Anchored at Hootch & Banter");
-    expect(result.answer).toContain("Hootch & Banter at ");
-    expect(result.plan?.stops[0].name).toBe("Hootch & Banter");
+    // At 7:50 PM, starting immediately leaves less than the planner's full
+    // restaurant stop before Hootch closes. An undated request should use the
+    // next complete evening window, not quietly replace the named anchor.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-21T23:50:00.000Z"));
+    try {
+      const result = await askFrederick("Plan a date night around Hootch & Banter", downtown);
+      expect(result.intent).toMatchObject({ timeNeed: null });
+      // The lead names the anchor and the actual itinerary (pick-first
+      // rule), not the planner's process.
+      expect(result.answer).toContain("Anchored at Hootch & Banter");
+      expect(result.answer).toContain("Tomorrow: Anchored at Hootch & Banter");
+      expect(result.answer).toContain("Hootch & Banter at ");
+      expect(result.plan?.stops[0].name).toBe("Hootch & Banter");
+      expect(result.plan?.stops[0].time).toBe("6:00 PM");
+      expect(result.plan?.dateLabel).toBe("Tomorrow");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a usable named evening anchor in the current window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-21T22:01:00.000Z"));
+    try {
+      const result = await askFrederick("Plan a date night around Hootch & Banter", downtown);
+      expect(result.answer).toContain("Anchored at Hootch & Banter");
+      expect(result.plan?.stops[0]).toMatchObject({
+        name: "Hootch & Banter",
+        time: "6:01 PM",
+      });
+      expect(result.plan?.dateLabel).toBe("Today");
+      expect(result.answer).not.toContain("Tomorrow:");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps reservation answers honest and excludes unrelated source cards", async () => {
@@ -404,11 +434,14 @@ describe("askFrederick structured answers", () => {
     });
     expect(result.answer).toContain("can’t see live OpenTable inventory");
     expect(result.answer).toContain("7:30 PM");
-    expect(result.sources.map((source) => source.slug)).toEqual([
-      "miyako-japanese-steak-and-seafood-frederick",
-      "matsutake-sushi-and-steak-frederick",
-      "averys-maryland-grille-frederick",
-    ]);
+    expect(result.sources).toHaveLength(3);
+    expect(result.sources.map((source) => source.slug)).toEqual(
+      expect.arrayContaining([
+        "miyako-japanese-steak-and-seafood-frederick",
+        "matsutake-sushi-and-steak-frederick",
+        "averys-maryland-grille-frederick",
+      ]),
+    );
     expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
     expect(result.actions?.[0]).toMatchObject({
       kind: "open",

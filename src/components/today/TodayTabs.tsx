@@ -63,7 +63,7 @@ export default function TodayTabs({
         className="mb-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
         style={
           verified
-            ? { color: "var(--app-positive)", background: "rgba(22,163,74,0.12)" }
+            ? { color: "var(--state-open)", background: "var(--state-open-bg)" }
             : { color: "var(--app-ink-3)", background: "var(--app-bg-sunken)" }
         }
       >

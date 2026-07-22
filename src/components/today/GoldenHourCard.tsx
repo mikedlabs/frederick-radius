@@ -45,7 +45,7 @@ export default function GoldenHourCard({ now }: { now: Date }) {
           <Sun className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-accent)" }} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-serif text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <p className="font-sans text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             {heading}
           </p>
           <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>

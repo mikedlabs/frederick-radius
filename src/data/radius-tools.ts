@@ -1,3 +1,5 @@
+import { PRODUCT_NAMES } from "@/lib/product-names";
+
 export type RadiusToolIcon =
   | "activity"
   | "archive"
@@ -444,8 +446,8 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "collections",
-        label: "Collections",
-        description: "Open local shortlists for different situations.",
+        label: PRODUCT_NAMES.localLists.uiLabel,
+        description: PRODUCT_NAMES.localLists.description,
         href: "/collections",
         icon: "compass",
         tone: "accent",
@@ -459,13 +461,13 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     tools: [
       {
         id: "county-pulse",
-        label: "County Pulse",
-        description: "Check weather, roads, outages, schools, and public feeds.",
+        label: PRODUCT_NAMES.liveConditions.uiLabel,
+        description: PRODUCT_NAMES.liveConditions.description,
         href: "/pulse",
         icon: "activity",
         tone: "brand",
         featured: true,
-        keywords: ["traffic", "power outage", "outage", "school closings", "road conditions", "pulse"],
+        keywords: ["traffic", "power outage", "outage", "school closings", "road conditions", "live conditions", "pulse"],
       },
       {
         id: "contacts",

@@ -58,7 +58,7 @@ function EventSheetSkeleton({ onClose }: { onClose: () => void }) {
     <>
       <SheetHandle onClose={onClose} closeLabel="Close" />
       <div
-        className="px-5 pb-[max(env(safe-area-inset-bottom,0px)+88px,88px)] pt-4"
+        className="px-5 pb-[88px] pt-4"
         role="status"
         aria-label="Loading event"
       >
@@ -102,7 +102,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
        *  everything) so the sheet often ends flush at the viewport bottom —
        *  the footer needs enough padding to clear the floating BottomNav
        *  pill, where the place sheet's long scroll never parks there. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom,0px)+88px,88px)]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[88px]">
         {/* Hero — the venue's photo when the event carries one, with the
          *  category eyebrow + title overlaid (same cinematic pattern as
          *  the place sheet). Photoless events get a category-tinted

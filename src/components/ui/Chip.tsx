@@ -22,7 +22,7 @@ const TONE: Record<Tone, string> = {
   neutral: "var(--app-ink-3)",
   brand: "var(--app-brand)",
   cool: "var(--app-cool)",
-  positive: "var(--app-positive, #1E6B3A)",
+  positive: "var(--app-positive, #315A43)",
   warning: "var(--app-warning)",
   danger: "var(--app-danger)",
   accent: "var(--app-accent-press)", // text-safe gold (the tone color is the chip's TEXT; gold base fails AA)

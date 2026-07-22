@@ -10,7 +10,7 @@ import librariesData from "@/data/libraries.json";
  * CivicPlaces — county parks and public libraries pinned from Frederick County
  * GIS (authoritative, static; they don't move, so the data is baked into the
  * bundle). One opt-in layer, OFF by default, mirroring FireStations. Parks are
- * spruce with a tree; libraries are the cool blue with a book. Self-contained
+ * Catoctin Forest with a tree; libraries are Creek blue with a book. Self-contained
  * (owns markers + popup) so AppMap mounts it with one line.
  */
 

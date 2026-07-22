@@ -71,6 +71,60 @@ function planStart(intent: AskIntent, query: string): string | undefined {
   return new Date(`${parts.year}-${parts.month}-${parts.day}T${String(clock.start).padStart(2, "0")}:00:00${offset}`).toISOString();
 }
 
+function nextFullEveningAfter(startAt: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(startAt)).map((part) => [part.type, part.value]),
+  );
+  // Move the calendar date rather than adding 24 hours so DST transitions do
+  // not move the retry away from 6 PM Eastern.
+  const nextDay = new Date(Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day) + 1,
+  ));
+  return easternWallToUtcISO(
+    nextDay.getUTCFullYear(),
+    nextDay.getUTCMonth() + 1,
+    nextDay.getUTCDate(),
+    18,
+    0,
+  );
+}
+
+function planDateLabel(startAt: string, now = new Date()): string {
+  const start = new Date(startAt);
+  const key = (date: Date) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+  const today = key(now);
+  const startDay = key(start);
+  if (startDay === today) return "Today";
+
+  const todayParts = today.split("-").map(Number);
+  const tomorrow = new Date(Date.UTC(
+    todayParts[0],
+    todayParts[1] - 1,
+    todayParts[2] + 1,
+    12,
+  ));
+  if (startDay === key(tomorrow)) return "Tomorrow";
+
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(start);
+}
+
 function querySeed(query: string): number {
   let hash = 2166136261;
   for (const char of query) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
@@ -99,11 +153,33 @@ export function buildAskPlanPreview(
     seed: intent.surpriseMe ? querySeed(query) : undefined,
     anchor_slug: anchorSlug,
   };
-  const plan = buildPlan(input);
+  let plan = buildPlan(input);
+  const namedAnchorWasOmitted = Boolean(
+    anchorSlug && !plan.stops.some((stop) => stop.place?.slug === anchorSlug),
+  );
+  const canRetryAtNextEvening = Boolean(
+    namedAnchorWasOmitted &&
+      input.start_at &&
+      intent.timeNeed === null &&
+      !intent.requestedDate &&
+      !intent.requestedDateTime &&
+      (intent.audience === "date" || /\b(?:an |the )?evening(?: out)?\b/i.test(query)),
+  );
+  // Keep the existing current-evening plan when the named place fits. Only a
+  // dropped anchor earns one retry at the next complete evening window. This
+  // preserves verified-hours filtering without silently replacing the place
+  // the user explicitly asked to plan around.
+  if (canRetryAtNextEvening) {
+    plan = buildPlan({
+      ...input,
+      start_at: nextFullEveningAfter(input.start_at!),
+    });
+  }
   if (plan.stops.length === 0) return null;
   return {
     title: plan.title,
     summary: plan.summary,
+    dateLabel: planDateLabel(plan.stops[0].at),
     href: `/plan?p=${encodeURIComponent(plan.share)}`,
     stops: plan.stops.map((stop) => ({
       order: stop.order,

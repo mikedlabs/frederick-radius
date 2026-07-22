@@ -26,7 +26,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // or amenities.json — same loader-free discipline as places.
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import WithinReach from "./WithinReach";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { isOpenNow } from "@/lib/hours";
 import Link from "next/link";
@@ -1202,7 +1202,7 @@ export default function RadiusBuilder({
                         {parts.monthShort}
                       </span>
                       <span
-                        className="font-serif text-[15px] font-semibold leading-none"
+                        className="font-sans text-[15px] font-semibold leading-none"
                         style={{ color: "var(--app-ink)" }}
                       >
                         {parts.day}
@@ -1372,7 +1372,7 @@ export default function RadiusBuilder({
           </header>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {groups.map((g) => {
-              const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#A03A22";
+              const color = CATEGORY_BY_SLUG[g.key]?.color ?? ACCENTS.terracotta;
               const isOpen = expanded.has(g.key) || seeAll;
               return (
                 <button
@@ -1395,7 +1395,7 @@ export default function RadiusBuilder({
                   />
                   <span className="relative min-w-0 flex-1 truncate">
                     <span
-                      className="block font-serif text-[14px] font-semibold leading-tight tracking-tight"
+                      className="block font-sans text-[14px] font-semibold leading-tight tracking-tight"
                       style={{ color: "var(--app-ink)" }}
                     >
                       {g.label}

@@ -134,8 +134,11 @@ export function IconTile({
   return (
     <span
       aria-hidden
-      className="grid h-9 w-9 place-items-center rounded-full"
-      style={{ background: `color-mix(in srgb, ${tone} 12%, transparent)` }}
+      className="grid h-9 w-9 place-items-center rounded-[var(--app-radius-sm)]"
+      style={{
+        background: `color-mix(in srgb, ${tone} 7%, transparent)`,
+        boxShadow: `inset 2px 0 0 ${tone}, inset 0 0 0 1px color-mix(in srgb, ${tone} 18%, transparent)`,
+      }}
     >
       <Icon className="h-4 w-4" strokeWidth={2} style={{ color: tone }} />
     </span>

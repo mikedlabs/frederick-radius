@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img">
+  <title>Frederick Radius</title>
+
+
+  <g transform="translate(0 0) scale(5.12)" opacity="1">
+    <g fill="none" stroke="#F4EEE2" stroke-linecap="round" stroke-width="5">
+      <path d="M29 76 A 21 21 0 0 1 71 76" stroke-opacity="1"/>
+      <path d="M11 76 A 39 39 0 0 1 89 76" stroke-opacity="1"/>
+    </g>
+    <circle cx="50" cy="76" r="9.5" fill="#F4EEE2"/>
+  </g>
+</svg>

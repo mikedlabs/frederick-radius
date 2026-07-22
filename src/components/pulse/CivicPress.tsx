@@ -1,13 +1,15 @@
 import { Siren, ArrowUpRight, Construction } from "lucide-react";
-import type { CivicPressItem } from "@/lib/integrations/civic-press";
+import {
+  featuredPoliceRelease,
+  type CivicPressItem,
+} from "@/lib/integrations/civic-press";
 
 /**
  * The City + County press desk, two ways:
  *
- *   <PoliceBreakingStrip> — the latest police / public-safety release,
- *     given prominent "breaking" treatment at the top of /pulse. Vermilion,
- *     a live dot, the headline in serif, posted-when in mono. This is the
- *     thing a resident most wants to know fast. Absent when there's nothing.
+ *   <PoliceBreakingStrip> — a fresh, urgent police / public-safety release,
+ *     given prominent "breaking" treatment at the top of /pulse. Routine and
+ *     older releases stay in the standing list.
  *
  *   <PoliceBlotter> — the standing list of recent police releases for the
  *     Police section lower on the page (the running blotter), excluding the
@@ -44,16 +46,14 @@ function SourceTag({ item }: { item: CivicPressItem }) {
 }
 
 export function PoliceBreakingStrip({ item, now }: { item: CivicPressItem; now: number }) {
-  const ms = now - new Date(item.publishedAt).getTime();
-  // "Breaking" should mean genuinely current, not merely posted sometime
-  // yesterday. Older releases still stay prominent, but read as "Latest."
-  const fresh = Number.isFinite(ms) && ms >= 0 && ms < 6 * 3600 * 1000;
+  // Fail closed even if a future caller bypasses the page-level selector.
+  if (!featuredPoliceRelease([item], now)) return null;
   return (
     <a
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${fresh ? "Breaking" : "Latest"} from ${item.source} police: ${item.title}`}
+      aria-label={`Breaking from ${item.source} police: ${item.title}`}
       className="tactile-interactive group block overflow-hidden rounded-[var(--app-radius-lg)] border"
       style={{
         borderTopColor: "var(--app-border)",
@@ -75,9 +75,9 @@ export function PoliceBreakingStrip({ item, now }: { item: CivicPressItem; now: 
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
             <span aria-hidden className="pulse-dot inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-            {fresh ? "Breaking · Police & safety" : "Latest · Police & safety"}
+            Breaking · Police &amp; safety
           </p>
-          <p className="mt-1 font-serif text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <p className="mt-1 font-sans text-[16px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             {item.title}
           </p>
           <p className="mt-1.5 flex items-center gap-2 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
@@ -146,7 +146,7 @@ export function AdvisoryCard({ items, now }: { items: CivicPressItem[]; now: num
       }}
     >
       <header className="flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-        <h2 className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h2 className="inline-flex items-center gap-2.5 font-sans text-[17px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 10%, transparent)", color: "var(--app-cool)" }}>
             <Construction className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </span>

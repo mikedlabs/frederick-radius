@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
-import { getFcpsAlerts } from "@/lib/integrations/fcps";
-import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
-import { getFrederickOutages } from "@/lib/integrations/firstenergy";
+import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
+import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
+import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
 
 /**
  * /api/pulse/status — lightweight summary of /pulse content for
@@ -26,40 +26,45 @@ export const revalidate = 300;
 
 export async function GET() {
   // Track whether any feed FAILED, distinctly from a feed that succeeded and
-  // returned nothing. A failed feed makes a zero count untrustworthy: we must
-  // not let a provider outage read as "all clear" (audit FR-002). Each catch
-  // flips `degraded` and falls back to an empty result so the others still show.
-  let degraded = false;
-  const fail = <T>(fallback: T) => (): T => {
-    degraded = true;
-    return fallback;
-  };
-  const [alerts, fcps, traffic, outages] = await Promise.all([
-    getNwsAlerts().catch(fail([] as Awaited<ReturnType<typeof getNwsAlerts>>)),
-    getFcpsAlerts().catch(fail([] as Awaited<ReturnType<typeof getFcpsAlerts>>)),
-    getChartIncidentsFrederick().catch(fail([] as Awaited<ReturnType<typeof getChartIncidentsFrederick>>)),
-    getFrederickOutages().catch(fail({ total_out: 0, total_served: 0, munis: [] } as Awaited<ReturnType<typeof getFrederickOutages>>)),
+  // returned nothing. The source integrations report that state explicitly so
+  // an upstream 404 or malformed response cannot read as "all clear."
+  const [alertResult, fcpsResult, trafficResult, outageResult] = await Promise.all([
+    getNwsAlertsResult().catch(() => ({ alerts: [], available: false })),
+    getFcpsAlertsResult().catch(() => ({ data: [], available: false })),
+    getChartIncidentsFrederickResult().catch(() => ({ data: [], available: false })),
+    getFrederickOutagesResult().catch(() => ({
+      data: { total_out: 0, total_served: 0, munis: [] },
+      available: false,
+    })),
   ]);
+
+  const degraded = !alertResult.available || !fcpsResult.available || !trafficResult.available || !outageResult.available;
+  const alerts = alertResult.alerts;
+  const fcps = fcpsResult.data;
+  const traffic = trafficResult.data;
+  const outages = outageResult.data;
 
   const now = Date.now();
   const activeAlerts = alerts.filter(
     (a) => !a.ends_at || Date.parse(a.ends_at) > now,
   );
-  const schoolAlerts = fcps.filter((a) => a.status !== "unknown");
+  const schoolAlerts = fcps.filter(
+    (alert) => alert.status === "closed" || alert.status === "delayed" || alert.status === "early_dismissal",
+  );
+  const highTraffic = traffic.filter((incident) => incident.severity === "High");
   const outagesActive = outages.total_out >= 25;
 
   // "alert" if anything weather-grade is up (NWS alerts) or if power
-  // outages crossed the 25-customer threshold; "caution" for the
-  // lower-severity school + traffic signals on their own; "quiet"
-  // when nothing's active.
+  // outages crossed the 25-customer threshold, or a High-severity road event
+  // is live; "caution" for school schedule changes; "quiet" otherwise.
   let tone: "alert" | "caution" | "quiet" = "quiet";
-  if (activeAlerts.length > 0 || outagesActive) tone = "alert";
-  else if (schoolAlerts.length > 0 || traffic.length > 0) tone = "caution";
+  if (activeAlerts.length > 0 || outagesActive || highTraffic.length > 0) tone = "alert";
+  else if (schoolAlerts.length > 0) tone = "caution";
 
   const count =
     activeAlerts.length +
     schoolAlerts.length +
-    traffic.length +
+    highTraffic.length +
     (outagesActive ? 1 : 0);
 
   return NextResponse.json(

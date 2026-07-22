@@ -67,11 +67,11 @@ const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
   ["/brunch", 0],
   ["/happy-hour", 0],
   ["/deals", 0],
-  ["/live-music", 0],
-  ["/trails", 0],
-  ["/rivers", 0],
-  ["/parking", 0],
-  ["/transit", 0],
+  ["/live-music", 2],
+  ["/trails", 1],
+  ["/rivers", 1],
+  ["/parking", 1],
+  ["/transit", 1],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */

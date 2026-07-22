@@ -21,6 +21,7 @@ import type { Amenity } from "@/lib/loaders/amenities";
 import { metersToMinutes, type TravelMode } from "@/lib/geo";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
+import { BRAND } from "@/lib/brand";
 
 /**
  * WithinReach — the map's "you can reach X in N minutes" outcomes strip.
@@ -50,7 +51,7 @@ type Group = {
 const GROUPS: Group[] = [
   { key: "coffee", label: "Coffee", icon: Coffee, color: "var(--app-brand)", cats: ["coffee", "bakery"] },
   { key: "eat", label: "Eat", icon: Utensils, color: "#A02929", cats: ["restaurant", "pizza"] },
-  { key: "drinks", label: "Drinks", icon: Beer, color: "#B26B00", cats: ["bar", "brewery"] },
+  { key: "drinks", label: "Drinks", icon: Beer, color: BRAND.colors.functionalAmber, cats: ["bar", "brewery"] },
   { key: "park", label: "Park", icon: Trees, color: "var(--app-brand-2)", cats: ["park", "trail", "playground", "outdoors"] },
   { key: "art", label: "Art", icon: Palette, color: "#7E2C6F", cats: ["gallery", "museum", "theater"] },
   { key: "shops", label: "Shops", icon: ShoppingBag, color: "var(--app-cool)", cats: ["shopping", "market", "book-store"] },

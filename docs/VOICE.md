@@ -12,7 +12,7 @@ A neighbor who knows the county and has nothing to prove.
 
 ## What it is (say it this plainly)
 
-> A local guide to places and events across Frederick County.
+> Current local information for Frederick County, organized around where you are.
 
 That's the entire brand. There is no metaphor underneath it. No sweep, no
 signal, no "always on." The product's competence is the story; the copy
@@ -32,12 +32,15 @@ holds the geometry; the words stay human. If someone doesn't parse "Radius"
 on day one, the product teaches them by being useful, not by explaining
 itself.
 
-- **Tagline (locked):** *Around here.*
-- **Descriptor (the line under the name):** *A local guide to places and
-  events across Frederick County.*
+- **Canonical tagline:** *Frederick County starts where you are.*
+- **Product description when more detail is useful:** *Current local
+  information for Frederick County, organized around where you are.*
 
-Backup tagline register, if a surface needs a fuller line: *The whole
-county, close up.* / *Frederick County, the way a local knows it.*
+"Around here" remains useful as ordinary interface language, but it is not a
+required tagline and should not be repeated as a decorative signature.
+
+Do not invent backup taglines for individual pages. Use a literal page title
+and explain the job in one sentence.
 
 ---
 

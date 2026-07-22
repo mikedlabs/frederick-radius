@@ -24,7 +24,7 @@ const KIND_META: Record<ShipKind, { icon: LucideIcon; ink: string }> = {
   usps: { icon: Building2, ink: "var(--app-cool)" },
   ship_store: { icon: Package, ink: "var(--app-brand)" },
   parcel_locker: { icon: PackageOpen, ink: "var(--app-accent-press)" },
-  mailbox: { icon: Mailbox, ink: "var(--app-brand-2)" },
+  mailbox: { icon: Mailbox, ink: "var(--app-cool)" },
 };
 
 const CARRIER_LABEL: Record<string, string> = {
@@ -191,6 +191,7 @@ function ShipRow({ p, first }: { p: ShipPoint; first: boolean }) {
         href={directionsHref(p)}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label={`Get directions to ${p.name}${p.address ? ` at ${p.address}` : ` in ${muniName(p.municipality)}`}`}
         className="tactile-interactive flex min-h-[56px] items-center gap-3 px-3 py-2.5"
       >
         <span

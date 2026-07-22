@@ -43,7 +43,7 @@ export function recommendationTier(p: PlaceCardData): TierResult {
 
   // ── Tier 3 — Needs review. Real, but a gate is soft. ──
   if (p.is_operational === "closed_temporarily") return { tier: 3, reason: "temporarily closed" };
-  if (!isRecommendable(p)) return { tier: 3, reason: "B2B / non-discoverable leak" };
+  if (!isRecommendable(p)) return { tier: 3, reason: "not eligible for recommendation" };
 
   // Curated picks always lead — a hand-blessed local standout outranks the
   // data proxy (a seed gem with no Google profile still earns Tier 1).

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 
 /**
  * Sitewide minimal footer (June-9 deep audit P2: "decide the rule").
@@ -6,7 +7,7 @@ import Link from "next/link";
  * Before this, footers were inconsistent — place pages had a smart
  * contextual one, /about had socials, and /guide, /today, and town pages
  * had none. This is the ONE quiet baseline every app page now carries:
- * five wayfinding links + a correction door, which also gives the
+ * structural site links + a correction door, which also gives the
  * crawler a consistent internal-link mesh across all ~1,700 URLs.
  * Page-specific footers (the place page's category + correction block)
  * render above it and stay.
@@ -36,42 +37,72 @@ export default function AppFooter() {
       className="mt-12 border-t pt-5 pb-2"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <nav aria-label="Site">
-        <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {LINKS.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                prefetch={false}
-                className="tap-44 inline-flex min-h-11 items-center hover:underline"
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
-          <li>
-            <a
-              href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction"
-              className="tap-44 inline-flex min-h-11 items-center hover:underline"
-            >
-              Suggest a correction
-            </a>
-          </li>
-        </ul>
-      </nav>
-      <p className="mt-3 text-meta" style={{ color: "var(--app-ink-3)" }}>
-        Frederick Radius helps people find open places, local events, and
-        practical information across Frederick County, Maryland.
-      </p>
+      {/* The full link mesh remains visible on wider screens. On a phone it is
+          still present in the document, but tucked behind one native disclosure
+          instead of taking several rows at the end of every page. */}
+      <div className="hidden sm:block">
+        <SiteLinks />
+      </div>
+
       {/* Independence + reliance disclaimer (civic-facing app): keeps the
           product honest and prevents anyone mistaking it for an official
           government service or relying on it for emergencies. */}
-      <p className="mt-1.5 max-w-[68ch] text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        An independent local guide. Not affiliated with, endorsed by, or operated
-        by the City of Frederick, Frederick County Government, or any
-        municipality. Information may be out of date; never rely on it for
-        emergencies or public-safety decisions.
+      <p className="max-w-[68ch] text-[11px] leading-relaxed sm:mt-3" style={{ color: "var(--app-ink-3)" }}>
+        Frederick Radius is an independent local guide. It is not affiliated with
+        or endorsed by the City of Frederick, Frederick County Government, or any
+        municipality. Information can change; call 911 for emergencies and use
+        official sources for public-safety decisions.
       </p>
+
+      <details className="group mt-2 sm:hidden">
+        <summary
+          className="tap-44 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold [&::-webkit-details-marker]:hidden"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          About and site links
+          <ChevronDown
+            className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+            strokeWidth={2.25}
+            aria-hidden
+          />
+        </summary>
+        <SiteLinks mobile />
+      </details>
     </footer>
+  );
+}
+
+function SiteLinks({ mobile = false }: { mobile?: boolean }) {
+  return (
+    <nav aria-label="Site">
+      <ul
+        className={
+          mobile
+            ? "grid grid-cols-2 gap-x-4 border-t text-xs"
+            : "flex flex-wrap items-center gap-x-4 gap-y-2 text-xs"
+        }
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      >
+        {LINKS.map((link) => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              prefetch={false}
+              className="tap-44 inline-flex min-h-11 items-center hover:underline"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+        <li className={mobile ? "col-span-2" : undefined}>
+          <a
+            href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20correction"
+            className="tap-44 inline-flex min-h-11 items-center hover:underline"
+          >
+            Suggest a correction
+          </a>
+        </li>
+      </ul>
+    </nav>
   );
 }

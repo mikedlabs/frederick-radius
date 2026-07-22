@@ -97,7 +97,7 @@ describe("brandHue — AA contrast math", () => {
   });
 
   it("cream really is the reference text color", () => {
-    expect(CREAM).toBe("#EEE6D4");
+    expect(CREAM).toBe("#F4EEE2");
   });
 });
 

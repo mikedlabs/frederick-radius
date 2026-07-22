@@ -71,7 +71,7 @@ export default function ContactsPage() {
         added as they&rsquo;re confirmed. Spotted a wrong or missing number?{" "}
         <a
           href="mailto:hello@frederickradius.app?subject=Frederick%20Radius%20contacts%20fix"
-          className="underline"
+          className="inline-flex min-h-11 items-center align-middle underline"
           style={{ color: "var(--app-cool)" }}
         >
           Send a correction.

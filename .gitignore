@@ -79,6 +79,8 @@ ux-shots/
 
 # Local browser-audit captures and generated quality reports
 /output/
+/tmp/
+__pycache__/
 
 # Generated mockup renders (reproducible from the .html + render script)
 .mockups/render/

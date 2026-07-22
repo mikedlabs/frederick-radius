@@ -47,7 +47,7 @@ function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string 
   ].filter(Boolean).join("  ·  ");
 
   return (
-    <div className="px-4 pb-3 text-[#281e14]">
+    <div className="px-4 pb-3 text-[var(--app-ink)]">
       {/* Family-gradient header band */}
       <div
         className="-mx-4 -mt-1 px-4 pb-4 pt-2"
@@ -55,22 +55,23 @@ function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string 
       >
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white/80">{fam.label}</p>
         <div className="mt-1 flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 font-serif text-[26px] font-semibold leading-tight tracking-[-0.02em] text-[#fffaf2]">
+          <h2 className="min-w-0 flex-1 font-serif text-[26px] leading-tight tracking-[-0.02em] text-[var(--app-on-brand)]">
             {beer.name}
           </h2>
-          {beer.flagship && <Star className="mt-1.5 h-4 w-4 shrink-0 text-[#f7d98a]" strokeWidth={2} fill="currentColor" aria-label="Flagship" />}
+          {beer.flagship && <Star className="mt-1.5 h-4 w-4 shrink-0 text-[var(--app-amber)]" strokeWidth={2} fill="currentColor" aria-label="Flagship" />}
         </div>
         <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.05em] text-white/90">{meta}</p>
       </div>
 
       {beer.notes && (
-        <p className="mt-4 text-[14px] leading-relaxed text-[#3a2a17]">{beer.notes}</p>
+        <p className="mt-4 text-[14px] leading-relaxed text-[var(--app-ink-2)]">{beer.notes}</p>
       )}
 
       {/* Brewery — a photo link to its canonical page */}
       <Link
         href={`/places/${beer.brewerySlug}`}
-        className="mt-4 flex items-center gap-3 rounded-[12px] border border-black/12 bg-[#faf5ea] p-2.5 transition active:scale-[0.99]"
+        className="mt-4 flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-2.5 transition active:scale-[0.99]"
+        style={{ borderColor: "var(--app-border)" }}
       >
         <BreweryPhoto
           brewerySlug={beer.brewerySlug}
@@ -81,8 +82,8 @@ function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string 
           className="h-14 w-14 shrink-0 rounded-[10px]"
         />
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#85501f]">Brewery</span>
-          <span className="block truncate font-serif text-[16px] font-semibold text-[#281e14]">{beer.breweryName}</span>
+          <span className="block font-mono text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[var(--app-amber-text)]">Brewery</span>
+          <span className="block truncate font-sans text-[16px] font-semibold text-[var(--app-ink)]">{beer.breweryName}</span>
         </span>
         <ArrowRight className="h-4 w-4 shrink-0 text-black/35" strokeWidth={2.25} aria-hidden />
       </Link>
@@ -97,18 +98,18 @@ function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string 
           style={
             saved
               ? { background: "var(--app-brand)", color: "var(--app-on-brand)" }
-              : { border: "1px solid rgba(0,0,0,0.15)", background: "#faf5ea", color: "#281e14" }
+              : { border: "1px solid var(--app-control-border)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }
           }
         >
           <Star className="h-4 w-4" strokeWidth={2.25} fill={saved ? "currentColor" : "none"} aria-hidden />
-          {saved ? "Saved to My taps" : "Save to My taps"}
+          {saved ? "Saved" : "Save this pour"}
         </button>
         {beer.untappd && (
           <a
             href={beer.untappd}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#382517] text-[13px] font-semibold text-[#fffaf2] transition active:scale-[0.98]"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-[var(--app-ink)] text-[13px] font-semibold text-[var(--app-on-brand)] transition active:scale-[0.98]"
           >
             Open on Untappd
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

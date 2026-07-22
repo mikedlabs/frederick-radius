@@ -78,7 +78,7 @@ export default function OverheadMap({
         <AttributionControl compact position="bottom-right" />
         {/* Frederick — the home point. */}
         <Marker longitude={FREDERICK_CENTER.lng} latitude={FREDERICK_CENTER.lat} anchor="center">
-          <span aria-hidden className="block h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-brand-2)", boxShadow: "0 0 0 3px color-mix(in srgb, var(--app-brand-2) 28%, transparent)" }} />
+          <span aria-hidden className="block h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-brand)", boxShadow: "0 0 0 3px color-mix(in srgb, var(--app-brand) 28%, transparent)" }} />
         </Marker>
 
         {planes.map((p) => {

@@ -110,9 +110,9 @@ export default function AppMapDeck({
                 // Type-tinted dot so a town, event, or layer reads as a
                 // different thing from a place at a glance.
                 const dot =
-                  r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                  r.type === "event" ? "var(--app-brand, #B5462B)"
                   : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
-                  : r.type === "action" ? "var(--app-brand, #E14328)"
+                  : r.type === "action" ? "var(--app-brand, #B5462B)"
                   : "var(--app-ink-3, #7A828C)";
                 return (
                   <li key={r.id}>

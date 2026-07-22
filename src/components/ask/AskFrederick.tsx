@@ -44,7 +44,6 @@ import type { TodayPrompt } from "@/lib/today-prompts";
 import { track } from "@/lib/track";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import SaveButton from "@/components/saved/SaveButton";
-import RadiusToolbox from "@/components/ask/RadiusToolbox";
 
 const ASK_CACHE_LIMIT = 24;
 const ASK_CACHE_TTL_MS = 45_000;
@@ -88,12 +87,7 @@ const WORKSPACE_ASKS = [
   },
 ] as const;
 
-const LOADING_MESSAGES = [
-  "Radius is checking local data.",
-  "Radius is comparing the strongest matches.",
-  "Radius is checking the details behind the leading options.",
-  "Radius is building the answer and attaching its sources.",
-] as const;
+const LOADING_MESSAGE = "Radius is checking current local data and sources.";
 
 type AskCacheEntry = { at: number; result: AskResult };
 type AskMode = "compact" | "workspace";
@@ -102,6 +96,8 @@ type AskOptions = {
   position?: { lat: number; lng: number } | null;
   scope?: Scope;
   skipNearbyGate?: boolean;
+  /** The URL already contains a complete, shareable question. */
+  selfContained?: boolean;
 };
 
 type ShareStatus = "idle" | "copied" | "shared" | "error";
@@ -201,6 +197,12 @@ export function explicitAreaInQuery(query: string): Scope | null {
     if (new RegExp(`\\b${name}\\b`, "i").test(query)) {
       return `town:${municipality.slug}`;
     }
+  }
+  // In ordinary Frederick conversation, an unqualified "downtown" means
+  // downtown Frederick. Check named municipalities first so phrases such as
+  // "downtown Brunswick" still keep the town the visitor actually named.
+  if (/\b(?:downtown(?:\s+frederick)?|dtf)\b/i.test(query)) {
+    return "town:frederick";
   }
   return null;
 }
@@ -309,26 +311,25 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
 
   return (
     <article
-      className="overflow-hidden rounded-[20px] border"
+      className="overflow-hidden border-y"
       style={{
         borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated-solid)",
-        boxShadow: "var(--app-elev-1)",
+        background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)",
       }}
     >
-      <div className="grid grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[116px_minmax(0,1fr)]">
-        <div className="relative min-h-[116px] overflow-hidden bg-[var(--app-bg-sunken)]">
+      <div className="grid grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[104px_minmax(0,1fr)]">
+        <div className="relative min-h-[112px] overflow-hidden bg-[var(--app-bg-sunken)]">
           {source.photo_url ? (
             <>
               <Image
                 src={source.photo_url}
                 alt=""
                 fill
-                sizes="(max-width: 640px) 92px, 116px"
+                sizes="(max-width: 640px) 80px, 104px"
                 unoptimized={source.photo_url.startsWith("/api/place-photo")}
                 placeholder="blur"
                 blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover transition duration-300 hover:scale-[1.025]"
+                className="object-cover"
               />
               {photoNeedsCredit ? (
                 <span className="absolute bottom-0 right-0 bg-black/70 px-1.5 py-1 text-[8px] leading-none text-white">
@@ -339,11 +340,7 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
           ) : (
             <span
               className="absolute inset-0 grid place-items-center"
-              style={{
-                background:
-                  "linear-gradient(145deg, color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid)), var(--app-bg-sunken))",
-                color: "var(--app-brand-press)",
-              }}
+              style={{ background: "var(--app-bg-sunken)", color: "var(--app-brand-press)" }}
             >
               <MapPin className="h-7 w-7" strokeWidth={1.5} aria-hidden />
             </span>
@@ -363,7 +360,7 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
                 href={source.href}
                 target={external ? "_blank" : undefined}
                 rel={external ? "noopener noreferrer" : undefined}
-                className="mt-1 block font-serif text-[17px] font-semibold leading-tight tracking-tight hover:underline"
+                className="mt-1 block font-sans text-[17px] font-semibold leading-tight tracking-tight hover:underline"
                 style={{ color: "var(--app-ink)" }}
               >
                 {source.name}
@@ -434,7 +431,7 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
           onClick={() => haptic("light")}
-          className="tap-44 inline-flex flex-1 items-center justify-center gap-1.5 rounded-[12px] px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+          className="tap-44 inline-flex flex-1 items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
           style={{ color: "var(--app-brand-press)" }}
         >
           {sourceOpenLabel(source)}
@@ -449,7 +446,7 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
             href={`tel:${phone}`}
             onClick={() => haptic("light")}
             aria-label={`Call ${source.name} at ${source.phone}`}
-            className="tap-44 inline-flex items-center justify-center gap-1.5 rounded-[12px] px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+            className="tap-44 inline-flex items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -498,7 +495,7 @@ function AskPlanCard({ plan }: { plan: AskPlanPreview }) {
           className="shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          {plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}
+          {plan.dateLabel} · {plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}
         </span>
       </div>
 
@@ -529,7 +526,7 @@ function AskPlanCard({ plan }: { plan: AskPlanPreview }) {
               <div className="flex items-start justify-between gap-3">
                 <Link
                   href={stop.href}
-                  className="font-serif text-[16px] font-semibold leading-tight hover:underline"
+                  className="font-sans text-[16px] font-semibold leading-tight hover:underline"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {stop.name}
@@ -725,7 +722,6 @@ export default function AskFrederick({
 }: AskFrederickProps = {}) {
   const [q, setQ] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
-  const [loadingStage, setLoadingStage] = useState(0);
   const [res, setRes] = useState<AskResult | null>(null);
   const [requestFailure, setRequestFailure] =
     useState<AskRequestFailure | null>(null);
@@ -739,11 +735,11 @@ export default function AskFrederick({
   const [hasCachedPosition, setHasCachedPosition] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const areaChooserRef = useRef<HTMLDivElement | null>(null);
-  const loadingRef = useRef<HTMLDivElement | null>(null);
   const answerHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
+  const visibleResultRef = useRef<AskResult | null>(null);
   const pendingNearbyQueryRef = useRef<string | null>(null);
   const urlQueryRef = useRef<string | null>(null);
   const askRef = useRef<(query: string, options?: AskOptions) => Promise<void>>(
@@ -755,6 +751,7 @@ export default function AskFrederick({
   const hasDevicePosition =
     geolocation.state.status === "granted" || hasCachedPosition;
   const contextLabel = activeContextLabel(currentScope, hasDevicePosition);
+  visibleResultRef.current = res;
 
   useEffect(() => {
     setCurrentScope(getScope());
@@ -777,18 +774,6 @@ export default function AskFrederick({
   }, []);
 
   useEffect(() => {
-    if (!loading) return;
-    const compareTimer = window.setTimeout(() => setLoadingStage(1), 1_300);
-    const detailsTimer = window.setTimeout(() => setLoadingStage(2), 3_200);
-    const sourcesTimer = window.setTimeout(() => setLoadingStage(3), 5_600);
-    return () => {
-      window.clearTimeout(compareTimer);
-      window.clearTimeout(detailsTimer);
-      window.clearTimeout(sourcesTimer);
-    };
-  }, [loading]);
-
-  useEffect(() => {
     if (!showAreaChooser || !nearbyGateQuery) return;
     const frame = window.requestAnimationFrame(() => {
       areaChooserRef.current?.focus({ preventScroll: true });
@@ -799,18 +784,6 @@ export default function AskFrederick({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [nearbyGateQuery, showAreaChooser]);
-
-  useEffect(() => {
-    if (!loading) return;
-    const timer = window.setTimeout(() => {
-      loadingRef.current?.focus({ preventScroll: true });
-      loadingRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
-    }, 80);
-    return () => window.clearTimeout(timer);
-  }, [loading]);
 
   useEffect(() => {
     if (!res || loading) return;
@@ -850,21 +823,28 @@ export default function AskFrederick({
         ? ""
         : new URLSearchParams(window.location.search).get("q") ?? "";
     const text = (browserQuery || initialQuery).trim().slice(0, MAX_QUERY_LENGTH);
-    if (!text || urlQueryRef.current === text) return;
+    // Next's router cache can retain this client instance while restoring a
+    // fresh server snapshot on Back. In that case the remembered URL already
+    // matches, but the answer state is empty. Let `ask` rehydrate the answer
+    // from its bounded cache instead of leaving a question-only workspace.
+    if (!text || (urlQueryRef.current === text && visibleResultRef.current)) return;
     urlQueryRef.current = text;
-    void askRef.current(text);
+    void askRef.current(text, { selfContained: true });
   }, [initialQuery]);
 
   async function ask(query: string, options: AskOptions = {}): Promise<void> {
     const text = query.trim().slice(0, MAX_QUERY_LENGTH);
     if (!text) return;
+    const contextualQuery = options.selfContained
+      ? text
+      : contextualizeAskQuery(text, lastQueryRef.current);
     const position = options.position === undefined ? readCachedPosition() : options.position;
     const selectedScope = options.scope ?? getScope();
-    const resolvedScope = requestScope(text, selectedScope, Boolean(position));
+    const resolvedScope = requestScope(contextualQuery, selectedScope, Boolean(position));
 
     if (
       !options.skipNearbyGate &&
-      nearbyQueryNeedsAreaChoice(text, selectedScope, Boolean(position))
+      nearbyQueryNeedsAreaChoice(contextualQuery, selectedScope, Boolean(position))
     ) {
       pendingNearbyQueryRef.current = text;
       setQ(text);
@@ -878,7 +858,12 @@ export default function AskFrederick({
       return;
     }
 
-    const contextualQuery = contextualizeAskQuery(text, lastQueryRef.current);
+    // Keep the answer workspace aligned with the scope that was actually sent
+    // to the API. A town named in the question can override the saved county
+    // scope for this answer; without this update the results were correctly
+    // town-scoped but the UI still called them "county-wide picks."
+    setCurrentScope(resolvedScope);
+
     inputRef.current?.blur();
     // A deliberate county or town choice must survive all the way to the API.
     // Supplying this scope also prevents the Ask surface from falling through
@@ -907,7 +892,6 @@ export default function AskFrederick({
     setRequestFailure(null);
     setNearbyGateQuery(null);
     setShowAreaChooser(false);
-    setLoadingStage(0);
     haptic("light");
     track("ask_submit", { surface: workspace ? "workspace" : "compact" });
 
@@ -1159,13 +1143,11 @@ export default function AskFrederick({
       ) : null}
 
       <div
-        className={workspace ? "rounded-[26px] border p-3 sm:p-4" : undefined}
+        className={workspace ? "border-y py-3 sm:py-4" : undefined}
         style={
           workspace
             ? {
                 borderColor: "var(--app-border-strong, var(--app-border))",
-                background: "var(--app-bg-elevated-solid)",
-                boxShadow: "var(--app-elev-2)",
               }
             : undefined
         }
@@ -1180,16 +1162,6 @@ export default function AskFrederick({
             <span className="truncate">{contextLabel}</span>
           </p>
           <div className="flex shrink-0 items-center gap-0.5">
-            {workspace ? (
-              <a
-                href="#radius-tools"
-                className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-                Tools
-              </a>
-            ) : null}
             <button
               type="button"
               onClick={() => setShowAreaChooser((open) => !open)}
@@ -1217,18 +1189,19 @@ export default function AskFrederick({
         <form
           role="search"
           aria-label="Ask Radius"
+          aria-busy={loading}
           onSubmit={(event) => {
             event.preventDefault();
             void ask(q);
           }}
           className={
             workspace
-              ? "mt-2 overflow-hidden rounded-[18px] border bg-[var(--app-bg-elevated-solid)] p-2"
+              ? "mt-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-2"
               : "mt-2 flex items-center gap-2 rounded-[14px] border bg-[var(--app-bg-elevated-solid)] py-1 pl-4 pr-1.5"
           }
           style={{
             borderColor: "var(--app-border-strong, var(--app-border))",
-            boxShadow: workspace ? "inset 0 1px 0 rgba(255,255,255,0.55)" : "var(--app-elev-1)",
+            boxShadow: workspace ? "var(--app-edge)" : "var(--app-elev-1)",
           }}
         >
           {workspace ? (
@@ -1257,7 +1230,7 @@ export default function AskFrederick({
               }
               className={`${res ? "min-h-[52px]" : "min-h-[78px]"} w-full resize-none bg-transparent px-2.5 py-2 text-[16px] leading-relaxed outline-none placeholder:text-[var(--app-ink-3)]`}
               style={{ color: "var(--app-ink)" }}
-              aria-label="Ask Frederick Radius"
+              aria-label="Ask Radius"
             />
           ) : (
             <input
@@ -1271,7 +1244,7 @@ export default function AskFrederick({
               }
               className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--app-ink-3)]"
               style={{ color: "var(--app-ink)" }}
-              aria-label="Ask Frederick Radius"
+              aria-label="Ask Radius"
             />
           )}
 
@@ -1302,7 +1275,7 @@ export default function AskFrederick({
               type="submit"
               disabled={!q.trim() || loading}
               aria-label="Ask Radius"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] transition active:scale-95 disabled:opacity-35"
+              className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-[10px] transition active:scale-95 disabled:opacity-35"
               style={{
                 background: "var(--app-brand-press)",
                 color: "var(--app-on-brand, #fff)",
@@ -1340,7 +1313,7 @@ export default function AskFrederick({
                 type="button"
                 onClick={() => void ask(prompt.query)}
                 disabled={loading}
-                className="min-h-8 shrink-0 rounded-full border px-2.5 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-45"
+                className="tap-44 min-h-11 shrink-0 rounded-full border px-3 text-[10.5px] font-semibold transition active:scale-[0.98] disabled:opacity-45"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "transparent",
@@ -1363,34 +1336,39 @@ export default function AskFrederick({
           >
             Questions to try
           </h2>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {WORKSPACE_ASKS.map((prompt) => (
+          <div className="mt-2 grid border-t sm:grid-cols-2" style={{ borderColor: "var(--app-border)" }}>
+            {WORKSPACE_ASKS.map((prompt, index) => (
               <button
                 key={prompt.label}
                 type="button"
                 onClick={() => runIntent(prompt.query)}
-                className="tap-44 min-h-11 min-w-0 rounded-full border px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
+                className="tap-44 grid min-h-[52px] min-w-0 grid-cols-[28px_minmax(0,1fr)_16px] items-center gap-2 border-b px-1 text-left text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70 sm:odd:border-r"
                 style={{
                   borderColor: "var(--app-border)",
-                  background: "var(--app-bg-elevated-solid)",
                   color: "var(--app-ink-2)",
                 }}
               >
-                {prompt.label}
+                <span className="font-mono text-[9px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>{prompt.label}</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             ))}
           </div>
         </section>
       ) : null}
 
-      <div aria-live="polite" aria-atomic="true" aria-busy={loading}>
+      <div>
+        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {loading ? "Radius is working on your question." : ""}
+        </span>
         {loading ? (
           <div
-            ref={loadingRef}
-            tabIndex={-1}
+            aria-hidden
             className={
               workspace
-                ? "mt-5 rounded-[18px] border px-4 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                ? "mt-5 border-y px-1 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                 : "mt-3 border-l-2 px-3 py-2 outline-none"
             }
             style={{
@@ -1405,33 +1383,9 @@ export default function AskFrederick({
                 style={{ background: "var(--app-brand)" }}
                 aria-hidden
               />
-              {LOADING_MESSAGES[loadingStage]}
+              {LOADING_MESSAGE}
             </div>
-            {workspace ? (
-              <div className="mt-3 grid grid-cols-4 gap-1.5" aria-hidden>
-                {LOADING_MESSAGES.map((_, index) => (
-                  <span
-                    key={index}
-                    className="h-1 rounded-full transition-colors"
-                    style={{
-                      background:
-                        index <= loadingStage ? "var(--app-brand)" : "var(--app-border)",
-                    }}
-                  />
-                ))}
-              </div>
-            ) : null}
           </div>
-        ) : res ? (
-          <span className="sr-only">
-            {requestFailure
-              ? "Radius could not complete that request."
-              : res.plan
-                ? "Radius plan ready."
-                : `Radius answer ready with ${res.sources.length} ${
-                    res.sources.length === 1 ? "source" : "sources"
-                  }.`}
-          </span>
         ) : null}
       </div>
 
@@ -1443,13 +1397,12 @@ export default function AskFrederick({
           >
             <section
               aria-labelledby="ask-answer-heading"
-              className={workspace ? "rounded-[22px] border p-4 sm:p-5" : undefined}
+              className={workspace ? "border-y px-1 py-4 sm:py-5" : undefined}
               style={
                 workspace
                   ? {
                       borderColor: "var(--app-border)",
-                      background: "var(--app-bg-elevated-solid)",
-                      boxShadow: "var(--app-elev-1)",
+                      background: "color-mix(in srgb, var(--app-bg-elevated-solid) 52%, transparent)",
                     }
                   : undefined
               }
@@ -1562,7 +1515,7 @@ export default function AskFrederick({
                         href={action.href}
                         target={action.href.startsWith("http") ? "_blank" : undefined}
                         rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                        className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
                         style={
                           index === 0
                             ? {
@@ -1589,7 +1542,7 @@ export default function AskFrederick({
                         key={`${action.label}-${action.query}`}
                         type="button"
                         onClick={() => runAction(action)}
-                        className="tap-44 min-h-11 rounded-full border px-3.5 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                        className="tap-44 min-h-11 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
                         style={
                           index === 0
                             ? {
@@ -1634,7 +1587,7 @@ export default function AskFrederick({
                     {res.sources.length} {res.sources.length === 1 ? "match" : "matches"}
                   </span>
                 </div>
-                <div className={`grid gap-2.5 ${visibleSources.length > 1 ? "sm:grid-cols-2" : ""}`}>
+                <div className="grid gap-2.5">
                   {visibleSources.map((source, index) => (
                     <AskSourceCard
                       key={`${source.category}-${source.slug}-${source.href}`}
@@ -1647,7 +1600,7 @@ export default function AskFrederick({
                   <button
                     type="button"
                     onClick={() => setShowAllSources((value) => !value)}
-                    className="tap-44 mt-2 flex min-h-11 w-full items-center justify-center rounded-[14px] border text-[11.5px] font-semibold transition active:scale-[0.99]"
+                    className="tap-44 mt-2 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-sm)] border text-[11.5px] font-semibold transition active:opacity-75"
                     style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
                   >
                     {showAllSources ? "Show fewer matches" : `Show all ${res.sources.length} matches`}
@@ -1659,7 +1612,24 @@ export default function AskFrederick({
           </div>
       ) : null}
 
-      {workspace ? <RadiusToolbox compact={Boolean(res)} /> : null}
+      {workspace ? (
+        <Link
+          href="/compass"
+          prefetch={false}
+          className="tap-44-y mt-5 flex min-h-11 items-center justify-between gap-3 border-t px-1 py-2.5 text-[12px] font-semibold transition active:opacity-70"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
+            Need a specific tool? Browse all Radius tools.
+          </span>
+          <ArrowRight
+            className="h-4 w-4 shrink-0"
+            style={{ color: "var(--app-brand-press)" }}
+            aria-hidden
+          />
+        </Link>
+      ) : null}
     </section>
   );
 }

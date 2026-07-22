@@ -75,14 +75,14 @@ export default async function NonprofitsPage({
               className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]"
               style={{ color: "var(--app-ink)" }}
             >
-              <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+              <HeartHandshake className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
               Nonprofits
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               Every registered nonprofit in the county, by cause. Built from the public IRS
               exempt-organizations record, so it is the whole roll, not a curated few.
             </p>
-            <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-brand-2)" }} />
+            <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-cool)" }} />
           </div>
           <FieldStamp id="nonprofits" top="PUBLIC RECORD" bottom="IRS EO BMF" size={80} className="mt-0.5" />
         </div>
@@ -96,7 +96,7 @@ export default async function NonprofitsPage({
           style={
             active
               ? { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
-              : { borderColor: "var(--app-brand-2)", background: "var(--app-brand-2)", color: "var(--app-on-brand, #fff)" }
+              : { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
           }
         >
           All
@@ -111,7 +111,7 @@ export default async function NonprofitsPage({
               className="tap-44 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
               style={
                 on
-                  ? { borderColor: "var(--app-brand-2)", background: "var(--app-brand-2)", color: "var(--app-on-brand, #fff)" }
+                  ? { borderColor: "var(--app-cool)", background: "var(--app-cool)", color: "var(--app-on-brand, #fff)" }
                   : { borderColor: "var(--app-border)", color: "var(--app-ink-2)" }
               }
             >

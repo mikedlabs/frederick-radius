@@ -20,7 +20,7 @@ export default function BeerTeaser() {
       <BeerColorRibbon height={10} />
       <div className="flex items-center gap-3 p-3.5">
         <div className="min-w-0 flex-1">
-          <p className="font-serif text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+          <p className="font-sans text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
             The county in a glass
           </p>
           <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>

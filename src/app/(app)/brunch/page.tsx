@@ -112,6 +112,7 @@ export default function BrunchPage() {
                         href={s.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Open the brunch source for ${s.name}`}
                         className="tap-44-y mt-2 inline-flex items-center gap-1 text-[11px]"
                         style={{ color: "var(--app-ink-3)" }}
                       >

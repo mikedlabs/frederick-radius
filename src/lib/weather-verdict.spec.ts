@@ -103,6 +103,17 @@ describe("weatherVerdict safety overrides", () => {
     expect(v.line).not.toMatch(/good day|patio|easy day/i);
   });
 
+  it("uses the shared lead when the feed returns two same-tier watches", () => {
+    const v = weatherVerdict(input({
+      shortForecast: "Clear",
+      activeAlerts: [
+        { event: "Flood Watch", headline: "Flood Watch", severity: "Severe" },
+        { event: "Severe Thunderstorm Watch", headline: "Severe Thunderstorm Watch", severity: "Severe" },
+      ],
+    }));
+    expect(v.brief).toBe("Severe Thunderstorm Watch is active.");
+  });
+
   it("turns a Code Purple air-quality alert into specific health guidance", () => {
     const v = weatherVerdict(input({
       shortForecast: "Sunny",

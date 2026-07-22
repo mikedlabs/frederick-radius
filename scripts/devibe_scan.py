@@ -8,7 +8,8 @@ looking AI-generated. Stdlib only; read-only. See docs/DESIGN_TELLS.md for how w
 read the results (the field-guide app is the target; /pitch is a separate world).
 
 Usage:
-    python3 scripts/devibe_scan.py src                 # scan
+    python3 scripts/devibe_scan.py src                 # public product scan
+    python3 scripts/devibe_scan.py src --surface all   # every surface
     python3 scripts/devibe_scan.py src --severity high # high-signal only
     python3 scripts/devibe_scan.py src --json          # machine-readable (CI)
 Exit code = number of HIGH findings, so CI can gate on it.
@@ -16,6 +17,37 @@ Exit code = number of HIGH findings, so CI can gate on it.
 Mark a deliberate choice with an `unslop-ignore` comment on the line to skip it.
 """
 import os, re, sys, json, argparse
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# The default report answers one question: what does the public Frederick Radius
+# product look like? These paths are explicitly separate worlds: the no-index
+# pitch deck, prod-disabled prototypes, private admin tools, and the small set of
+# helpers imported only by the pitch deck. `--surface all` includes all of them
+# so accepted debt never disappears from the repository-wide report.
+PUBLIC_APP_EXCLUDED_PREFIXES = (
+    "src/app/pitch/",
+    "src/components/marketing/",
+    "src/app/(app)/proto/",
+    "src/components/proto/",
+    "src/app/admin/",
+    "src/components/admin/",
+)
+PUBLIC_APP_EXCLUDED_FILES = {
+    "src/components/ui/animated-button.tsx",
+    "src/components/ui/glass-card.tsx",
+    "src/components/ui/gradient-text.tsx",
+    "src/data/city-data-engine.ts",
+}
+
+# globals.css is shared, but its first legacy token block is expressly owned by
+# `.marketing-shell` under /pitch. Keep scanning the rest of globals.css rather
+# than hiding the most important public-product stylesheet wholesale.
+PUBLIC_APP_EXCLUDED_BLOCKS = {
+    "src/app/globals.css": (
+        ("INTERNAL PITCH DECK", "APP (Warm Civic)"),
+    ),
+}
 EXTS = {".html", ".htm", ".css", ".scss", ".sass", ".less", ".js", ".jsx",
         ".ts", ".tsx", ".vue", ".svelte", ".astro", ".mdx"}
 SKIP_DIRS = {"node_modules", ".git", "dist", "build", ".next", "out", "vendor",
@@ -84,21 +116,57 @@ def compile_rules(min_sev):
         r["suppress_rx"] = re.compile(r["suppress"], re.IGNORECASE) if r.get("suppress") else None
         out.append(r)
     return out
-def iter_files(path):
-    if os.path.isfile(path): yield path; return
+def repo_path(path):
+    return os.path.relpath(os.path.abspath(path), PROJECT_ROOT).replace(os.sep, "/")
+
+
+def excluded_from_public(path):
+    rel = repo_path(path)
+    return rel in PUBLIC_APP_EXCLUDED_FILES or any(
+        rel.startswith(prefix) for prefix in PUBLIC_APP_EXCLUDED_PREFIXES
+    )
+
+
+def iter_files(path, surface="all"):
+    if os.path.isfile(path):
+        if surface == "public" and excluded_from_public(path): return
+        yield path
+        return
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for f in files:
             if f.endswith(".min.js") or f.endswith(".min.css"): continue
-            if os.path.splitext(f)[1].lower() in EXTS: yield os.path.join(root, f)
-def scan(path, min_sev):
+            fp = os.path.join(root, f)
+            if surface == "public" and excluded_from_public(fp): continue
+            if os.path.splitext(f)[1].lower() in EXTS: yield fp
+
+
+def public_excluded_lines(path, lines):
+    """Return 1-based line numbers owned by an explicitly separate surface."""
+    blocks = PUBLIC_APP_EXCLUDED_BLOCKS.get(repo_path(path), ())
+    excluded = set()
+    for start_marker, end_marker in blocks:
+        inside = False
+        for number, line in enumerate(lines, 1):
+            if start_marker in line:
+                inside = True
+            if inside:
+                excluded.add(number)
+            if inside and end_marker in line:
+                inside = False
+    return excluded
+
+
+def scan(path, min_sev, surface):
     rules = compile_rules(min_sev); findings = []
-    for fp in iter_files(path):
+    for fp in iter_files(path, surface):
         try:
             with open(fp, "r", encoding="utf-8", errors="ignore") as fh: lines = fh.readlines()
         except Exception: continue
         if len(lines) == 1 and len(lines[0]) > 5000: continue
+        excluded_lines = public_excluded_lines(fp, lines) if surface == "public" else set()
         for i, line in enumerate(lines, 1):
+            if i in excluded_lines: continue
             if "unslop-ignore" in line.lower(): continue
             for r in rules:
                 if r["suppress_rx"] and r["suppress_rx"].search(line): continue
@@ -106,32 +174,61 @@ def scan(path, min_sev):
                     if rx.search(line):
                         findings.append({"rule": r["id"],"label":r["label"],"sev":r["sev"],"fix":r["fix"],"file":fp,"line":i,"snippet":line.strip()[:160]}); break
     return findings
-def verdict(by_sev, weighted):
-    if by_sev.get("high",0)>=3 or weighted>=15: return "STRONG AI-default look"
-    if by_sev.get("high",0)>=1 or weighted>=6: return "Some AI defaults present"
-    if weighted>0: return "Mostly clean, minor tells"
+def verdict(by_sev):
+    # Repeated class occurrences should create review pressure, not turn a large
+    # product into a scarier verdict than a five-file landing page. HIGH signals
+    # gate the scan; MEDIUM/LOW hits remain visible as pattern debt.
+    if by_sev.get("high", 0) >= 3: return "High-signal AI defaults present"
+    if by_sev.get("high", 0) >= 1: return "Some high-signal AI defaults present"
+    if by_sev.get("medium", 0) >= 1: return "No high-signal defaults; repeated patterns need review"
+    if by_sev.get("low", 0) >= 1: return "Clean, with minor copy or asset tells"
     return "Clean, no tells detected"
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("path")
     ap.add_argument("--severity", choices=["high","medium","low"], default="low")
+    ap.add_argument("--surface", choices=["public", "all"], default="public")
     ap.add_argument("--json", action="store_true"); ap.add_argument("--max", type=int, default=10)
     args = ap.parse_args()
     if not os.path.exists(args.path): print("path not found", file=sys.stderr); sys.exit(2)
-    findings = scan(args.path, args.severity); by_sev={}; by_rule={}
+    findings = scan(args.path, args.severity, args.surface); by_sev={}; by_rule={}
     for f in findings:
         by_sev[f["sev"]]=by_sev.get(f["sev"],0)+1; by_rule.setdefault(f["rule"],[]).append(f)
-    weighted = sum(W[s]*n for s,n in by_sev.items()); files_scanned = sum(1 for _ in iter_files(args.path))
+    weighted = sum(W[s]*n for s,n in by_sev.items())
+    files_scanned = sum(1 for _ in iter_files(args.path, args.surface))
+    all_files = sum(1 for _ in iter_files(args.path, "all"))
+    high_count = by_sev.get("high", 0)
     sev_order={"high":0,"medium":1,"low":2}
     rule_ids = sorted(by_rule, key=lambda rid:(sev_order[by_rule[rid][0]["sev"]], -len(by_rule[rid])))
-    print(f"\n  scan: {args.path}")
-    print(f"  files scanned: {files_scanned}   findings: {len(findings)}   vibe score: {weighted}")
-    print(f"  verdict: {verdict(by_sev, weighted)}")
-    print(f"  high: {by_sev.get('high',0)}   medium: {by_sev.get('medium',0)}   low: {by_sev.get('low',0)}\n")
-    for rid in rule_ids:
-        items = by_rule[rid]; f0 = items[0]
-        print(f"  [{f0['sev'].upper()}] {f0['label']}  ({len(items)} hits)")
-        for it in items[:args.max]:
-            print(f"        {it['file']}:{it['line']}  {it['snippet']}")
-        if len(items) > args.max: print(f"        ... +{len(items)-args.max} more")
-        print()
+    report = {
+        "path": args.path,
+        "surface": args.surface,
+        "files_scanned": files_scanned,
+        "files_excluded": all_files - files_scanned,
+        "findings": findings,
+        "counts": {
+            "high": high_count,
+            "medium": by_sev.get("medium", 0),
+            "low": by_sev.get("low", 0),
+        },
+        "pressure_score": weighted,
+        "verdict": verdict(by_sev),
+    }
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(f"\n  scan: {args.path}   surface: {args.surface}")
+        print(
+            f"  files scanned: {files_scanned}   excluded: {all_files-files_scanned}   "
+            f"findings: {len(findings)}   pressure score: {weighted}"
+        )
+        print(f"  verdict: {verdict(by_sev)}")
+        print(f"  high: {high_count}   medium: {by_sev.get('medium',0)}   low: {by_sev.get('low',0)}\n")
+        for rid in rule_ids:
+            items = by_rule[rid]; f0 = items[0]
+            print(f"  [{f0['sev'].upper()}] {f0['label']}  ({len(items)} hits)")
+            for it in items[:args.max]:
+                print(f"        {it['file']}:{it['line']}  {it['snippet']}")
+            if len(items) > args.max: print(f"        ... +{len(items)-args.max} more")
+            print()
+    sys.exit(min(high_count, 255))
 if __name__ == "__main__": main()

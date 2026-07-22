@@ -17,7 +17,6 @@ body{font-family:'Inter',system-ui,sans-serif;width:440px}
 const doc = (css, body) => `<!doctype html><html><head>${HEAD}<style>${BASE}${css}</style></head><body>${body}</body></html>`;
 
 const intents = [["Eat & drink","🍽","var(--brick)",298],["Coffee","☕","var(--tan)",90],["Get outside","🌲","var(--green)",171],["Shops & makers","🛍","var(--cool)",322],["Arts & culture","🎭","var(--plum)",98],["Take the kids","🧸","var(--gold)",96],["Stay the night","🛏","#5B1E55",42],["Faith & worship","⛪","#5B3A8F",167]];
-const events = [["5:00","Alive @ Five","Carroll Creek Amphitheater"],["6:30","Sky Stage Open Mic","Sky Stage"],["7:00","Mack Berry Band","Tenth Ward Distilling"],["8:00","First Friday Art Walk","Market Street"]];
 
 // ── 01 · RADIAL DIAL ────────────────────────────────────────────────
 function radial(){

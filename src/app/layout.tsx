@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Fraunces,
-  Inter,
-  JetBrains_Mono,
-} from "next/font/google";
+import "@fontsource-variable/public-sans/wght.css";
+import "@fontsource-variable/public-sans/wght-italic.css";
+import "@fontsource/libre-caslon-display/400.css";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -13,43 +11,15 @@ import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
+import { PLATFORM_BRAND } from "@/lib/platform-brand";
 
 /**
- * Typography (Premium Overhaul Phase 1, the documented system).
- * Fraunces is the display face: page titles, town and place headers,
- * section heads, the field-guide editorial voice. It replaces Newsreader,
- * which resolves the documentation versus production contradiction.
- * Inter is the functional UI face: navigation, labels, buttons, body,
- * dense lists. It reads as an instrument at small sizes.
- * JetBrains Mono carries every number and code-like value (times,
- * distances, counts, coordinates), the instrument tics.
- *
- * Variable names stay generic so the downstream tokens (--font-sans /
- * --font-serif / --font-mono in globals.css) hold steady.
+ * Brand typography is self-hosted through Fontsource so production builds do
+ * not depend on a live Google Fonts request. Libre Caslon Display is the
+ * wordmark and rare editorial moments; Public Sans carries product titles,
+ * UI, body copy, labels, and tabular data. Keeping the product to these two
+ * faces is part of the Frederick Radius brand contract.
  */
-// VARIABLE fonts, one file per family/style instead of a static file per
-// weight. The explicit weight arrays forced 15 static woff2 downloads
-// (4 Inter + 8 Fraunces + 3 Mono); all three families are variable on Google
-// Fonts, so omitting `weight` serves the single variable axis file — same
-// rendered weights (100-900 covers every use), ~4 requests instead of 15.
-const sans = Inter({
-  variable: "--font-sans-base",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const display = Fraunces({
-  variable: "--font-display",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-const mono = JetBrains_Mono({
-  variable: "--font-mono-base",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
@@ -74,11 +44,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {
     template: "%s · Frederick Radius",
-    default: "Frederick Radius: A local guide to Frederick County",
+    default: PLATFORM_BRAND.title,
   },
-  description:
-    "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
-  applicationName: "Frederick Radius",
+  description: PLATFORM_BRAND.description,
+  applicationName: PLATFORM_BRAND.name,
   // Single author across all routes: the product is a MAD Productions
   // tool. The personal maker credit lives in the /about body, not the
   // metadata.
@@ -101,19 +70,17 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: BASE,
-    siteName: "Frederick Radius",
-    title: "Frederick Radius: A local guide to Frederick County",
-    description:
-      "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
+    siteName: PLATFORM_BRAND.name,
+    title: PLATFORM_BRAND.title,
+    description: PLATFORM_BRAND.description,
     images: [{ url: `${BASE}/api/og`, width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Frederick Radius",
+    title: PLATFORM_BRAND.name,
     // Match the OpenGraph description rather than the old generic
     // marketing line, so the share card says what the product does.
-    description:
-      "Frederick Radius helps people find open places, local events, and practical information across Frederick County, Maryland.",
+    description: PLATFORM_BRAND.description,
     images: [`${BASE}/api/og`],
   },
   robots: { index: true, follow: true },
@@ -124,7 +91,7 @@ export const metadata: Metadata = {
     // "default" = dark status-bar text on the themed cream bar. "black-translucent"
     // rendered WHITE text over the light paper ground, hiding the clock/battery.
     statusBarStyle: "default",
-    title: "Radius",
+    title: PLATFORM_BRAND.shortName,
   },
 };
 
@@ -139,11 +106,14 @@ export const viewport: Viewport = {
   // tints warm-paper in light mode. The marketing/dark surfaces (and iOS
   // dark-mode users) get the ink ground so the bar doesn't clash.
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#16140E" },
-    // Must match the actual paper ground (--app-bg = #EBE2CD, deepened in the
-    // 2026 readability pass) or installed PWAs show a status-bar/page seam.
+    // The product has no dark theme. Keep installed-app chrome on Cream even
+    // when the device prefers dark mode so it never frames a light page with
+    // an unrelated dark bar.
+    { media: "(prefers-color-scheme: dark)", color: PLATFORM_BRAND.themeColor },
+    // Must match the canonical paper ground (--app-bg = #F4EEE2) or installed
+    // PWAs show a status-bar/page seam.
     // Viewport metadata can't read CSS vars, so this literal is kept in sync.
-    { media: "(prefers-color-scheme: light)", color: "#EBE2CD" },
+    { media: "(prefers-color-scheme: light)", color: PLATFORM_BRAND.themeColor },
   ],
 };
 
@@ -243,9 +213,6 @@ export default function RootLayout({
       <body
         suppressHydrationWarning
         className={cn(
-          sans.variable,
-          display.variable,
-          mono.variable,
           "antialiased min-h-screen selection:bg-[color:var(--app-brand)] selection:text-white",
         )}
       >

@@ -127,7 +127,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
        *  the inner had `overflow-y-auto` but no height constraint,
        *  so content past the cap just got clipped — users couldn't
        *  reach the bottom details. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">
         {/* Cinematic hero — full-bleed, 4:3 aspect, with a bottom
          *  gradient that fades the photo into the sheet. The category
          *  eyebrow + place name overlay the gradient so the first

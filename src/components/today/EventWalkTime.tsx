@@ -41,7 +41,7 @@ export default function EventWalkTime({ dest }: { dest: LngLat }) {
 
   return (
     <p className="mt-1 flex items-center gap-1 px-0.5 font-mono text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-      <Footprints className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand-2)" }} />
+      <Footprints className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-cool)" }} />
       {minutes} min walk
     </p>
   );

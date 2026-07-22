@@ -1,0 +1,544 @@
+{
+  "brand": {
+    "name": "Frederick Radius",
+    "tagline": "Frederick County starts where you are.",
+    "description": "Current local information for Frederick County, organized around where you are.",
+    "domain": "frederickradius.app",
+    "system": "Frederick Radius Brand System",
+    "version": "1.2",
+    "updated": "2026-07-22",
+    "colors": {
+      "brick": "#B5462B",
+      "cream": "#F4EEE2",
+      "ink": "#221C15",
+      "forest": "#315A43",
+      "creek": "#285D73",
+      "plum": "#7E2C6F",
+      "amber": "#C58A32",
+      "ridge": "#3F5E8F",
+      "surface": "#FBF8F0",
+      "paperDeep": "#EAE1D1",
+      "border": "#D8CDBA",
+      "mutedInk": "#6C6357",
+      "controlBorder": "#927F63",
+      "functionalAmber": "#925E16"
+    },
+    "type": {
+      "display": "Libre Caslon Display",
+      "text": "Public Sans",
+      "textRuntime": "Public Sans Variable"
+    }
+  },
+  "generatedAt": "2026-07-22T07:27:26.258Z",
+  "source": "scripts/build-brand-assets.ts",
+  "fonts": [
+    {
+      "file": "fonts/LibreCaslonDisplay-Regular.ttf",
+      "family": "Libre Caslon Display",
+      "format": "TrueType",
+      "style": "normal",
+      "weight": "400",
+      "role": "Installable desktop font for the wordmark and rare editorial or hero moments",
+      "license": "licenses/OFL-Libre-Caslon-Display.txt"
+    },
+    {
+      "file": "fonts/PublicSans-Variable.ttf",
+      "family": "Public Sans",
+      "format": "TrueType variable",
+      "style": "normal",
+      "weight": "100 900",
+      "role": "Installable desktop font for product titles, interface, text, and data",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/PublicSans-VariableItalic.ttf",
+      "family": "Public Sans",
+      "format": "TrueType variable",
+      "style": "italic",
+      "weight": "100 900",
+      "role": "Installable desktop italic for emphasis and attribution",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-Regular.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "normal",
+      "weight": "400",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-Italic.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "italic",
+      "weight": "400",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-Medium.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "normal",
+      "weight": "500",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-MediumItalic.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "italic",
+      "weight": "500",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-SemiBold.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "normal",
+      "weight": "600",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-SemiBoldItalic.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "italic",
+      "weight": "600",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-Bold.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "normal",
+      "weight": "700",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/static/PublicSans-BoldItalic.ttf",
+      "family": "Public Sans",
+      "format": "TrueType static",
+      "style": "italic",
+      "weight": "700",
+      "role": "Compatibility desktop font for design software without variable-font support",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/libre-caslon-display-400.woff2",
+      "family": "Libre Caslon Display",
+      "format": "WOFF2",
+      "style": "normal",
+      "weight": "400",
+      "role": "Browser font used by the guide and generated assets",
+      "license": "licenses/OFL-Libre-Caslon-Display.txt"
+    },
+    {
+      "file": "fonts/public-sans-variable.woff2",
+      "family": "Public Sans",
+      "format": "WOFF2 variable",
+      "style": "normal",
+      "weight": "100 900",
+      "role": "Browser font used by the guide and generated assets",
+      "license": "licenses/OFL-Public-Sans.txt"
+    },
+    {
+      "file": "fonts/public-sans-variable-italic.woff2",
+      "family": "Public Sans",
+      "format": "WOFF2 variable",
+      "style": "italic",
+      "weight": "100 900",
+      "role": "Browser italic used by the guide and generated assets",
+      "license": "licenses/OFL-Public-Sans.txt"
+    }
+  ],
+  "assets": [
+    {
+      "file": "marks/ripple-full-brick.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Primary mark at 48px and larger",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-full-cream.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Reverse primary mark at 48px and larger",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-compact-brick.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Compact mark from 24px to 47px",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-compact-cream.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Reverse compact mark from 24px to 47px",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-favicon-brick.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Single-arc favicon mark below 24px",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-favicon-cream.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Reverse single-arc favicon mark below 24px",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "marks/ripple-full-cream-tile.svg",
+      "width": 512,
+      "height": 512,
+      "role": "Brick app icon",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/horizontal-brick.svg",
+      "width": 1200,
+      "height": 220,
+      "role": "Primary horizontal lockup",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/horizontal-cream.svg",
+      "width": 1200,
+      "height": 220,
+      "role": "Primary horizontal lockup",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/descriptor-brick.svg",
+      "width": 1200,
+      "height": 280,
+      "role": "Horizontal lockup with brand tagline",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/descriptor-cream.svg",
+      "width": 1200,
+      "height": 280,
+      "role": "Horizontal lockup with brand tagline",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/stacked-brick.svg",
+      "width": 800,
+      "height": 800,
+      "role": "Stacked lockup with brand tagline",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "lockups/stacked-cream.svg",
+      "width": 800,
+      "height": 800,
+      "role": "Reverse stacked lockup with brand tagline",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/avatar.svg",
+      "width": 1024,
+      "height": 1024,
+      "role": "Canonical social avatar",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-cover.svg",
+      "width": 1640,
+      "height": 624,
+      "role": "Facebook cover with a centered desktop and mobile safe-area lockup",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-cover-photo.svg",
+      "width": 1640,
+      "height": 624,
+      "role": "Natural-photography Facebook cover with mobile-safe lockup",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/feed-brand.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Square brand post",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/feed-portrait.svg",
+      "width": 1080,
+      "height": 1350,
+      "role": "Portrait brand post",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/photo-post-template.svg",
+      "width": 1080,
+      "height": 1350,
+      "role": "Editable owned-photography post template",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/photo-story-template.svg",
+      "width": 1080,
+      "height": 1920,
+      "role": "Editable owned-photography story template",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/feed-event-template.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Editable square event template",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/feed-live-template.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Editable open-now template",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/story-brand.svg",
+      "width": 1080,
+      "height": 1920,
+      "role": "Story brand frame",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/og-default.svg",
+      "width": 1200,
+      "height": 630,
+      "role": "Default Open Graph share card",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "posters/you-are-here.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "Portrait poster using owned Frederick photography",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "posters/whole-county.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "Portrait countywide launch poster using owned Frederick photography",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "posters/product-today.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "18 by 24 product poster using the current Today interface",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "posters/ask-radius.svg",
+      "width": 1800,
+      "height": 2400,
+      "role": "18 by 24 Ask Radius activation poster using the current interface",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "nfc/general-front.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 general NFC card front with 0.125 inch bleed at 300 dpi",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "nfc/general-back.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 general NFC card back with printed URL and tested-QR placeholder",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "nfc/partner-front.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 partner or venue NFC card front template",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "nfc/partner-back.svg",
+      "width": 1088,
+      "height": 713,
+      "role": "CR80 partner or venue NFC card back template with URL and QR placeholders",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    }
+  ],
+  "platform": {
+    "iconVersion": "20260722b",
+    "themeColor": "#F4EEE2",
+    "generatedBy": "scripts/build-push-icons.ts",
+    "assets": [
+      {
+        "file": "public/icons/icon.svg",
+        "url": "/icons/icon.svg?v=20260722b",
+        "role": "PWA launcher SVG"
+      },
+      {
+        "file": "public/icons/icon-192.png",
+        "url": "/icons/icon-192.png?v=20260722b",
+        "role": "192 px launcher and push icon"
+      },
+      {
+        "file": "public/icons/icon-512.png",
+        "url": "/icons/icon-512.png?v=20260722b",
+        "role": "512 px launcher"
+      },
+      {
+        "file": "public/icons/icon-maskable.svg",
+        "url": "/icons/icon-maskable.svg?v=20260722b",
+        "role": "Maskable launcher SVG"
+      },
+      {
+        "file": "public/icons/icon-maskable-512.png",
+        "url": "/icons/icon-maskable-512.png?v=20260722b",
+        "role": "512 px maskable launcher"
+      },
+      {
+        "file": "src/app/apple-icon.png",
+        "url": "/apple-icon.png?v=20260722b",
+        "role": "180 px Apple touch icon"
+      },
+      {
+        "file": "public/icons/badge-72.png",
+        "url": "/icons/badge-72.png?v=20260722b",
+        "role": "72 px monochrome notification badge"
+      },
+      {
+        "file": "src/app/icon.png",
+        "role": "32 px browser app icon"
+      },
+      {
+        "file": "src/app/favicon.ico",
+        "role": "16, 32, and 48 px multi-image favicon"
+      }
+    ],
+    "dynamic": [
+      {
+        "route": "/apple-splash",
+        "role": "Installed-app launch image"
+      },
+      {
+        "route": "/api/og",
+        "role": "1200 by 630 Open Graph or 1080 by 1920 story image"
+      }
+    ]
+  }
+}

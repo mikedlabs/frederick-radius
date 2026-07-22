@@ -26,10 +26,6 @@ const viewports = [
   { name: "desktop-1440x900", width: 1440, height: 900 },
 ];
 
-function cleanRoute(path) {
-  return path.replace(/\?.*$/, "");
-}
-
 await mkdir(SCREENSHOTS, { recursive: true });
 await mkdir(PROBES, { recursive: true });
 

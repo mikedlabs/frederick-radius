@@ -44,7 +44,7 @@ export default function InstallPrompt() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="tactile-interactive absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-full transition active:scale-[0.9]"
+        className="tactile-interactive absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -85,7 +85,7 @@ export default function InstallPrompt() {
               <button
                 type="button"
                 onClick={promptInstall}
-                className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
+                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
                 style={{ background: "var(--app-brand)" }}
               >
                 <Download className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -95,7 +95,7 @@ export default function InstallPrompt() {
             <button
               type="button"
               onClick={dismiss}
-              className="text-meta-lg font-semibold transition active:opacity-70"
+              className="tap-44 inline-flex min-h-11 items-center px-1 text-meta-lg font-semibold transition active:opacity-70"
               style={{ color: "var(--app-ink-3)" }}
             >
               Maybe later

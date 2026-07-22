@@ -14,8 +14,8 @@
  * on Google photo names). Decode with sharp, downsize to 48x48 raw RGB, and
  * hand the pixels to the pure math in src/lib/color/brandHue.ts:
  * saturation-weighted hue clustering with gray rejection, then the clamp
- * (S 0.35-0.75, L 0.30-0.55) and the WCAG AA guarantee — cream #EEE6D4 must
- * clear 4.5:1 on the wallet's `color-mix(in srgb, hue 60%, #16140E)` ground,
+ * (S 0.35-0.75, L 0.30-0.55) and the WCAG AA guarantee — cream #F4EEE2 must
+ * clear 4.5:1 on the wallet's `color-mix(in srgb, hue 60%, #221C15)` ground,
  * computed in-script via the same mix math, darkening L until it passes.
  *
  * Output: src/data/place-hues.json — { slug: "#RRGGBB" }, sorted, plus _doc.

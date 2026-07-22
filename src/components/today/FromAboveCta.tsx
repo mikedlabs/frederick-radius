@@ -66,7 +66,7 @@ export default function FromAboveCta() {
           From above
         </span>
         <span
-          className="block font-serif text-[17px] font-semibold leading-tight tracking-tight"
+          className="block font-sans text-[17px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           Six years over Frederick

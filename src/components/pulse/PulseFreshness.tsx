@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const AUTO_REFRESH_MS = 2 * 60_000;
 
 /**
  * PulseFreshness — a live "updated Ns ago" counter that ticks every second,
@@ -15,6 +18,7 @@ import { useEffect, useState } from "react";
  */
 export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   const [sec, setSec] = useState<number | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const tick = () => setSec(Math.max(0, Math.round((Date.now() - renderedAt) / 1000)));
@@ -24,6 +28,20 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, [renderedAt]);
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - renderedAt < AUTO_REFRESH_MS) return;
+      router.refresh();
+    };
+    const id = window.setInterval(refreshIfVisible, AUTO_REFRESH_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [renderedAt, router]);
 
   if (sec === null) return null;
 

@@ -93,7 +93,7 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
               {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
             </span>
             {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
-            {event.is_free && <span style={{ color: "var(--app-positive)" }}> · Free</span>}
+            {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
           </p>
           {/* The picture under the headline — the venue photo when the event
               carries one. A photoless headliner stays typographic; no plate,
