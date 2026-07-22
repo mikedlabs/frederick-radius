@@ -1,4 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import RippleMark from "@/components/brand/RippleMark";
 import { BRAND, RIPPLE_GEOMETRY, rippleDetailForSize } from "./brand";
 
 function luminance(hex: string): number {
@@ -53,5 +56,33 @@ describe("Frederick Radius brand contract", () => {
     expect(RIPPLE_GEOMETRY.full.opacities.every((opacity) => opacity === 1)).toBe(true);
     expect(RIPPLE_GEOMETRY.compact.opacities.every((opacity) => opacity === 1)).toBe(true);
     expect(RIPPLE_GEOMETRY.favicon.opacities).toEqual([1]);
+  });
+
+  it("keeps every optical Ripple frame vertically balanced", () => {
+    for (const [detail, geometry] of Object.entries({
+      full: RIPPLE_GEOMETRY.full,
+      compact: RIPPLE_GEOMETRY.compact,
+      favicon: RIPPLE_GEOMETRY.favicon,
+    })) {
+      const outerRadius = Math.max(
+        ...geometry.paths.map((path) => Number(path.match(/A\s+(\d+(?:\.\d+)?)/)?.[1])),
+      );
+      const top = geometry.baseline - outerRadius - geometry.strokeWidth / 2 + geometry.opticalOffsetY;
+      const bottom = Math.max(
+        geometry.baseline + geometry.strokeWidth / 2,
+        geometry.baseline + geometry.dotRadius,
+      ) + geometry.opticalOffsetY;
+
+      expect((top + bottom) / 2, detail).toBeCloseTo(50, 0);
+    }
+  });
+
+  it("keeps tile previews on the same scale as launcher artwork", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RippleMark, { size: 44, tile: true, detail: "full" }),
+    );
+    expect(markup).toContain(
+      `transform="translate(14 14) scale(.72) translate(0 ${RIPPLE_GEOMETRY.full.opticalOffsetY})"`,
+    );
   });
 });

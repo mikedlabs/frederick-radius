@@ -15,7 +15,7 @@
   <rect x="784" y="150" width="220" height="220" rx="10" fill="#F4EEE2"/>
   <rect x="784" y="150" width="220" height="220" rx="10" fill="none" stroke="#927F63" stroke-width="3" stroke-dasharray="10 8"/>
   <text x="894" y="251" text-anchor="middle" fill="#6C6357" font-family="Public Sans" font-size="18" font-weight="750" letter-spacing="1.4"><tspan x="894" dy="0">ADD TESTED</tspan><tspan x="894" dy="25">QR CODE</tspan></text>
-  <g transform="translate(841 478) scale(1.05)" opacity="1">
+  <g transform="translate(841 478) scale(1.05) translate(0 -10)" opacity="1">
     <g fill="none" stroke="#F4EEE2" stroke-linecap="round" stroke-width="5">
       <path d="M29 76 A 21 21 0 0 1 71 76" stroke-opacity="1"/>
       <path d="M11 76 A 39 39 0 0 1 89 76" stroke-opacity="1"/>

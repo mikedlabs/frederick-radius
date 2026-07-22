@@ -10,7 +10,7 @@
   <path d="M0 620 L300 390 L500 560 L720 300 L1080 650 V880 H0 Z" fill="#927F63"/>
   <text x="540" y="460" text-anchor="middle" fill="#D8CDBA" font-family="Public Sans" font-size="28" font-weight="700" letter-spacing="3">ADD OWNED FREDERICK PHOTO</text>
   <rect x="0" y="880" width="1080" height="470" fill="#F4EEE2"/>
-  <g transform="translate(74 930) scale(.88)" opacity="1">
+  <g transform="translate(74 930) scale(.88) translate(0 -8)" opacity="1">
     <g fill="none" stroke="#B5462B" stroke-linecap="round" stroke-width="4">
       <path d="M31 78 A 19 19 0 0 1 69 78" stroke-opacity="1"/>
       <path d="M15 78 A 35 35 0 0 1 85 78" stroke-opacity="1"/>

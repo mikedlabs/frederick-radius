@@ -1,108 +1,123 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { Download, Share, X } from "lucide-react";
+import RippleMark from "@/components/brand/RippleMark";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
-import { Download, X, Share, Plus } from "lucide-react";
+import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
 
 /**
- * InstallPrompt — the "add to home screen" nudge.
- *
- * Redesigned to feel inviting, not intrusive: a slim brand-gradient
- * glass card that slides in gently (pop-in), with a generous, obvious
- * dismiss so it never feels like a trap. The useInstallPrompt hook
- * gates WHEN it appears; this is purely how it looks when it does.
- *
- * Suppressed on the full-bleed map and the focused Ask workspace. Both
- * surfaces use the lower viewport for primary controls or answer content;
- * the install nudge can wait for a less time-sensitive page.
+ * A small return-path to the field guide, shown only after someone has used
+ * the product and come back. It never pretends iOS can install itself:
+ * browser chrome owns Add to Home Screen, so the guide shows exact steps.
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
-  const { show, ios, promptInstall, dismiss } = useInstallPrompt();
-  if (!show || pathname === "/map" || pathname.startsWith("/ask")) return null;
+  const { show, ios, prompting, promptInstall, dismiss } = useInstallPrompt();
+  const [stepsVisible, setStepsVisible] = useState(false);
+
+  if (!show || isInstallPromptSuppressedPath(pathname)) return null;
 
   return (
-    <div
-      role="complementary"
+    <aside
       aria-labelledby="install-title"
-      className="pop-in fixed inset-x-3 z-[var(--z-prompt)] mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
+      className="pop-in fixed z-[var(--z-prompt)] mx-auto max-w-sm overflow-y-auto overscroll-contain rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
-        // 5rem (was Tailwind bottom-20) PLUS the home-indicator inset — every
-        // sibling floating element adds env(safe-area-inset-bottom) but this
-        // one didn't, so on a notched phone it sat under the home bar
-        // (2026-07 shell-hardening P1).
-        bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
+        left: "max(0.75rem, env(safe-area-inset-left, 0px))",
+        right: "max(0.75rem, env(safe-area-inset-right, 0px))",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + 68px)",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-bottomnav-reserve, 0px) - 80px)",
         borderColor: "var(--app-border)",
-        // Soft brand wash fading to elevated paper — warm and on-brand
-        // rather than a stark white takeover.
-        background:
-          "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 60%)",
+        background: "var(--app-bg-elevated)",
         boxShadow: "var(--app-elev-3), var(--app-hi)",
       }}
     >
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss"
+        aria-label="Close install reminder"
         className="tactile-interactive absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-4 w-4" strokeWidth={2} aria-hidden />
       </button>
-      <div className="flex items-start gap-3 p-3.5 pr-10">
-        <div
-          aria-hidden
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-          style={{
-            background: "linear-gradient(140deg, var(--app-brand) 0%, var(--app-brand-2) 100%)",
-            boxShadow: "var(--app-shadow-1), inset 0 1px 0 rgba(255,255,255,0.25)",
-          }}
-        >
-          <Download className="h-5 w-5 text-white" strokeWidth={2} />
-        </div>
+
+      <div className="flex items-start gap-3 p-4 pr-11">
+        <RippleMark size={44} tile detail="full" className="shrink-0" />
+
         <div className="min-w-0 flex-1">
-          <p id="install-title" className="font-serif text-[15px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Install Frederick Radius
+          <p
+            id="install-title"
+            className="font-sans text-[15px] font-semibold leading-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Keep Frederick Radius handy
           </p>
+
           {ios ? (
-            <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Tap{" "}
-              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
-                <Share className="h-3 w-3" aria-hidden /> Share
-              </span>{" "}
-              in Safari, then{" "}
-              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
-                <Plus className="h-3 w-3" aria-hidden /> Add to Home Screen
-              </span>.
-            </p>
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Add it from the Share menu for a cleaner way back to your local guide.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setStepsVisible((visible) => !visible)}
+                aria-expanded={stepsVisible}
+                aria-controls="install-ios-steps"
+                className="tactile-interactive mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
+                style={{ background: "var(--app-brand)" }}
+              >
+                <Share className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                {stepsVisible ? "Hide steps" : "Show me how"}
+              </button>
+              <span className="sr-only" aria-live="polite">
+                {stepsVisible ? "Home screen instructions are shown below." : ""}
+              </span>
+
+              {stepsVisible && (
+                <ol
+                  id="install-ios-steps"
+                  className="mt-3 list-decimal space-y-1.5 border-l-2 pl-7 text-[12px] leading-relaxed"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                >
+                  <li>Open your browser&rsquo;s <strong>Share</strong> menu.</li>
+                  <li>Choose <strong>Add to Home Screen</strong>.</li>
+                  <li>Leave <strong>Open as Web App</strong> on if it appears, then tap <strong>Add</strong>.</li>
+                </ol>
+              )}
+            </>
           ) : (
-            <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Add it to your home screen so it opens full screen and loads fast, like an app.
-            </p>
-          )}
-          <div className="mt-2.5 flex items-center gap-3">
-            {!ios && (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Add the guide to your home screen so it opens in its own window and is easy to find again.
+              </p>
               <button
                 type="button"
                 onClick={promptInstall}
-                className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
+                disabled={prompting}
+                className="tactile-interactive mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70"
                 style={{ background: "var(--app-brand)" }}
               >
                 <Download className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                Install
+                {prompting ? "Opening…" : "Add to home screen"}
               </button>
-            )}
+            </>
+          )}
+
+          <div className="mt-2.5 flex items-center gap-3">
             <button
               type="button"
               onClick={dismiss}
               className="tap-44 inline-flex min-h-11 items-center px-1 text-meta-lg font-semibold transition active:opacity-70"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Maybe later
+              Not now
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

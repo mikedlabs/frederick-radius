@@ -171,6 +171,25 @@ The product should feel like a well-edited local field guide with live informati
 - Remove cards, labels, and buttons that do not help someone decide or act.
 - Use headings to name content, not to add a slogan above it.
 
+### The product proof sequence
+
+The interface earns the brand promise in this order:
+
+1. **State the scope.** Use the user's precise location when they gave it,
+   then their chosen town or the county. Do not quietly substitute a rough
+   network location for a named place.
+2. **Lead with the useful current fact.** The place, condition, event, or
+   service comes before a catalog count, decorative label, or pitch.
+3. **Show why it is trustworthy.** Put the source, checked time, and any
+   material uncertainty beside a live claim, not behind a generic trust page.
+4. **Offer one honest next move.** Give a clear action such as directions,
+   a phone number, a reservation link, or a way to widen the search. Do not
+   imply that Radius completed an action it cannot complete.
+
+If a surface cannot satisfy this sequence, simplify it until it can. The
+product should feel like someone who knows the county and is careful with
+facts, not a feed trying to fill space.
+
 ### Surfaces
 
 - Cream is the default page ground. Surface is for cards, sheets, and menus.
@@ -179,6 +198,9 @@ The product should feel like a well-edited local field guide with live informati
 - Dark Ink frames are reserved for live-status artwork, important contrast moments, or media. They should not become the default appearance of Beer, Live conditions, All tools, or other product pages.
 - Beer keeps the same Cream, Ink, Brick, and ruled-paper foundation as the rest of the app. Real beer colors and taproom photography may carry the subject; Ochre Amber is limited to active taste choices, flagship markers, and beer-specific metadata.
 - Oversized Ripple arcs may run off an edge on a hero, onboarding screen, empty state, or social image. Do not place them behind every section.
+- The normal product shell is plain Cream, rules, typography, real local
+  material, and useful data. A Ripple bloom is an opt-in editorial moment,
+  never a default page background. Use one visual idea at a time.
 
 ### Interaction
 
@@ -198,6 +220,17 @@ Motion should explain state or place, not advertise the interface.
 - Use gentle ease-out motion. Avoid bouncing cards, looping blobs, or decorative parallax.
 - The Ripple may expand once during launch or a meaningful live-state change.
 - Respect reduced-motion preferences and preserve all information without animation.
+
+### Release gate
+
+Before a new or materially changed public surface ships, review it at a 375px
+phone width and a wide desktop width. Check that the primary task is visible
+without reading a long introduction, the active scope is clear, every visible
+control works on touch, and live statements show their source or freshness.
+Review Today, Ask Radius, Beer, Live conditions, All tools, and the map as a
+set whenever a shared visual token, navigation rule, or data-display pattern
+changes. The app should remain one field guide, not a collection of separately
+designed screens.
 
 ## Photography
 

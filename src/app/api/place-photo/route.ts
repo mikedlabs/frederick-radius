@@ -55,7 +55,7 @@ function rippleSvg(accent: string, w: number, hgt: number): string {
   const paths = RIPPLE_GEOMETRY.full.paths
     .map((path, index) => `<path d="${path}" stroke-opacity="${RIPPLE_GEOMETRY.full.opacities[index]}"/>`)
     .join("");
-  return `<g transform="translate(${x} ${y}) scale(${scale})" fill="none" stroke="${accent}" stroke-linecap="round" stroke-width="2.2">${paths}</g><circle cx="${w - 44}" cy="${Math.round(hgt * 0.48)}" r="6" fill="${accent}"/>`;
+  return `<g transform="translate(${x} ${y}) scale(${scale}) translate(0 ${RIPPLE_GEOMETRY.full.opticalOffsetY})"><g fill="none" stroke="${accent}" stroke-linecap="round" stroke-width="2.2">${paths}</g><circle cx="50" cy="${RIPPLE_GEOMETRY.full.baseline}" r="${RIPPLE_GEOMETRY.full.dotRadius}" fill="${accent}"/></g>`;
 }
 
 /**

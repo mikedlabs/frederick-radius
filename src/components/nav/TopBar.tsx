@@ -123,7 +123,7 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md lg:max-w-screen-lg lg:pl-24 items-center gap-2"
+          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-2 lg:max-w-screen-lg lg:pl-24"
           // Horizontal padding is max(1rem base, side-inset): a notched
           // phone in landscape puts the notch on a side edge, which could
           // clip the search field / back button. max() keeps the 1rem base
@@ -152,7 +152,7 @@ export default function TopBar() {
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
               aria-label="Frederick Radius, home"
-              className="tap-44 flex items-center gap-2.5 font-brand text-[18px] tracking-[-0.015em]"
+              className="tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]"
               style={{ color: "var(--app-brand)" }}
             >
               {/* Canonical horizontal lockup: the 24px+ two-arc Ripple beside
@@ -162,7 +162,7 @@ export default function TopBar() {
               {/* The wordmark yields on the narrowest phones so functional
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
-              <span className="hidden whitespace-nowrap leading-none sm:block" style={{ color: "var(--app-ink)" }}>
+              <span className="hidden whitespace-nowrap leading-none min-[375px]:block" style={{ color: "var(--app-ink)" }}>
                 Frederick Radius
               </span>
             </Link>

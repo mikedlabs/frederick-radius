@@ -20,6 +20,7 @@ import {
   Heart,
   Hotel,
   Users,
+  Download,
 } from "lucide-react";
 import { resetModeState } from "@/hooks/useMode";
 import { ACCENTS } from "@/data/categories";
@@ -34,6 +35,9 @@ import {
 } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
 import { BRAND } from "@/lib/brand";
+import { isIos, isStandalone } from "@/lib/pwa-display";
+
+type InstallPromptWindow = Window & { __frBeforeInstallPrompt?: Event };
 
 /**
  * PreferencesPanel — the editable settings hub.
@@ -83,6 +87,7 @@ export default function PreferencesPanel() {
   const [interests, setInterestsState] = useState<Set<string>>(new Set());
   const [muniEditing, setMuniEditing] = useState(false);
   const [communityOn, setCommunityOn] = useState(true);
+  const [installAvailable, setInstallAvailable] = useState(false);
 
   useEffect(() => {
     // SSR-safe: server renders the initial null/empty, the stored
@@ -92,6 +97,22 @@ export default function PreferencesPanel() {
     setMuni(getHomeMuni());
     setInterestsState(new Set(getInterests()));
     setCommunityOn(getCommunityNotes());
+  }, []);
+
+  useEffect(() => {
+    const refreshInstallAvailability = () => {
+      const browserWindow = window as InstallPromptWindow;
+      setInstallAvailable(
+        !isStandalone() && (isIos() || Boolean(browserWindow.__frBeforeInstallPrompt)),
+      );
+    };
+    refreshInstallAvailability();
+    window.addEventListener("fr:beforeinstallprompt-ready", refreshInstallAvailability);
+    window.addEventListener("appinstalled", refreshInstallAvailability);
+    return () => {
+      window.removeEventListener("fr:beforeinstallprompt-ready", refreshInstallAvailability);
+      window.removeEventListener("appinstalled", refreshInstallAvailability);
+    };
   }, []);
 
   const changeMuni = useCallback((slug: string | null) => {
@@ -347,6 +368,44 @@ export default function PreferencesPanel() {
           style={{ color: "var(--app-ink-3)" }}
         />
       </Link>
+
+      {installAvailable && (
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("fr:open-install"))}
+          className="flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-lg)] border p-4 text-left transition active:scale-[0.99]"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated)",
+          }}
+        >
+          <span className="inline-flex items-center gap-3">
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            </span>
+            <span>
+              <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                Add to Home Screen
+              </span>
+              <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                Keep Frederick Radius easy to find on this device.
+              </span>
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.5}
+            aria-hidden
+            style={{ color: "var(--app-ink-3)" }}
+          />
+        </button>
+      )}
 
       {/* RESET */}
       <button

@@ -3,7 +3,7 @@
 import { track } from "@/lib/track";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, Check, AlertCircle, Send, Share, Plus } from "lucide-react";
+import { Bell, BellOff, Check, AlertCircle, Send } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 import { isIos, isStandalone } from "@/lib/pwa-display";
 import { getHomeMuni } from "@/lib/personalize";
@@ -299,16 +299,17 @@ export default function NotificationsCard() {
         </header>
         <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           On iPhone and iPad, notifications work once Frederick Radius is on
-          your Home Screen. Tap{" "}
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
-            <Share className="h-3 w-3" aria-hidden /> Share
-          </span>{" "}
-          in Safari, then{" "}
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
-            <Plus className="h-3 w-3" aria-hidden /> Add to Home Screen
-          </span>
-          . Open it from there, then come back here to turn them on.
+          your Home Screen. Open the Share menu, choose Add to Home Screen,
+          then open the app from there before you turn notifications on.
         </p>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("fr:open-install"))}
+          className="tactile-interactive mt-3 inline-flex min-h-11 items-center rounded-[var(--app-radius-sm)] border px-3 text-[13px] font-semibold transition active:scale-[0.98]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
+        >
+          Add Frederick Radius to Home Screen
+        </button>
       </article>
     );
   }

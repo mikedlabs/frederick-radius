@@ -16,6 +16,31 @@ const platformFile = (url: string) =>
     ? path.join(ROOT, "src/app/apple-icon.png")
     : publicFile(url);
 
+async function visibleCreamBounds(file: string) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let minX = info.width;
+  let minY = info.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      const offset = (y * info.width + x) * info.channels;
+      const [red, green, blue, alpha] = data.subarray(offset, offset + 4);
+      // Cream's exact edges are anti-aliased, so use a tolerant but clearly
+      // distinct range instead of comparing only exact pixels.
+      if (red > 210 && green > 200 && blue > 180 && alpha > 200) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  return { minX, minY, maxX, maxY, width: info.width, height: info.height };
+}
+
 describe("platform brand surfaces", () => {
   it("keeps the install manifest linked to the canonical brand", () => {
     const value = manifest();
@@ -51,6 +76,20 @@ describe("platform brand surfaces", () => {
 
     const browserIcon = await sharp(path.join(ROOT, "src/app/icon.png")).metadata();
     expect([browserIcon.width, browserIcon.height]).toEqual([32, 32]);
+  });
+
+  it("keeps launcher artwork centered with deliberate breathing room", async () => {
+    for (const icon of [PLATFORM_BRAND.icons.any512, PLATFORM_BRAND.icons.maskable512, PLATFORM_BRAND.icons.apple180]) {
+      const bounds = await visibleCreamBounds(platformFile(icon));
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+      const minimumMargin = Math.round(bounds.width * 0.12);
+
+      expect(bounds.minX, icon).toBeGreaterThanOrEqual(minimumMargin);
+      expect(bounds.maxX, icon).toBeLessThanOrEqual(bounds.width - minimumMargin - 1);
+      expect(Math.abs(centerX - bounds.width / 2), icon).toBeLessThanOrEqual(1);
+      expect(Math.abs(centerY - bounds.height / 2), icon).toBeLessThanOrEqual(1);
+    }
   });
 
   it("draws install SVGs from the canonical Ripple and palette", async () => {

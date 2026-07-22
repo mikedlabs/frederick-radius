@@ -7,7 +7,7 @@
 </style></defs>
   <rect width="1088" height="713" fill="#F4EEE2"/>
   <rect x="0" y="0" width="1088" height="20" fill="#315A43"/>
-  <g transform="translate(76 66) scale(.82)" opacity="1">
+  <g transform="translate(76 66) scale(.82) translate(0 -10)" opacity="1">
     <g fill="none" stroke="#B5462B" stroke-linecap="round" stroke-width="5">
       <path d="M29 76 A 21 21 0 0 1 71 76" stroke-opacity="1"/>
       <path d="M11 76 A 39 39 0 0 1 89 76" stroke-opacity="1"/>

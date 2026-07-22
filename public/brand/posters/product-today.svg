@@ -13,7 +13,7 @@
   </defs>
   <rect width="1800" height="2400" fill="#F4EEE2"/>
   <rect x="0" y="0" width="790" height="2400" fill="#B5462B"/>
-  <g transform="translate(112 114) scale(1.12)" opacity="1">
+  <g transform="translate(112 114) scale(1.12) translate(0 -10)" opacity="1">
     <g fill="none" stroke="#F4EEE2" stroke-linecap="round" stroke-width="5">
       <path d="M29 76 A 21 21 0 0 1 71 76" stroke-opacity="1"/>
       <path d="M11 76 A 39 39 0 0 1 89 76" stroke-opacity="1"/>

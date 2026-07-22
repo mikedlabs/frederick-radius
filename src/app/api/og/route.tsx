@@ -274,7 +274,7 @@ export async function GET(request: Request) {
             opacity: brandFrame ? 0.16 : 0.09,
           }}
         >
-          <g fill="none" stroke={brandFrame ? PAPER : BRICK} strokeLinecap="round" strokeWidth={2.4}>
+          <g transform={`translate(0 ${RIPPLE_GEOMETRY.full.opticalOffsetY})`} fill="none" stroke={brandFrame ? PAPER : BRICK} strokeLinecap="round" strokeWidth={2.4}>
             {RIPPLE_GEOMETRY.full.paths.map((path) => <path key={path} d={path} />)}
           </g>
         </svg>
@@ -290,12 +290,14 @@ export async function GET(request: Request) {
           }}
         >
           <svg viewBox="0 0 100 100" width={story ? 58 : 44} height={story ? 58 : 44}>
-            <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={5}>
-              {RIPPLE_GEOMETRY.compact.paths.map((path, index) => (
-                <path key={path} d={path} strokeOpacity={RIPPLE_GEOMETRY.compact.opacities[index]} />
-              ))}
+            <g transform={`translate(0 ${RIPPLE_GEOMETRY.compact.opticalOffsetY})`}>
+              <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={5}>
+                {RIPPLE_GEOMETRY.compact.paths.map((path, index) => (
+                  <path key={path} d={path} strokeOpacity={RIPPLE_GEOMETRY.compact.opacities[index]} />
+                ))}
+              </g>
+              <circle cx="50" cy={RIPPLE_GEOMETRY.compact.baseline} r={RIPPLE_GEOMETRY.compact.dotRadius} fill="currentColor" />
             </g>
-            <circle cx="50" cy={RIPPLE_GEOMETRY.compact.baseline} r={RIPPLE_GEOMETRY.compact.dotRadius} fill="currentColor" />
           </svg>
           <div style={{ fontFamily: SERIF, fontSize: story ? 42 : 32, fontWeight: 400, letterSpacing: -0.5 }}>
             Frederick Radius

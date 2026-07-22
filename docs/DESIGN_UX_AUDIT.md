@@ -1,4 +1,11 @@
-# Frederick Radius — Design System & UX Audit
+# Frederick Radius — Historical Design System & UX Audit
+
+> **Historical reference, not a current design authority.** This audit records
+> earlier findings and implementation work. For current brand, type, color,
+> motion, and copy decisions, use [`docs/brand/BRAND_GUIDE.md`](brand/BRAND_GUIDE.md),
+> [`docs/STYLE.md`](STYLE.md), and [`docs/VOICE.md`](VOICE.md). Some findings
+> below intentionally preserve the terminology and typography that were true
+> when the audit was written, so do not treat them as a release specification.
 
 > One source of truth for fixing the experience **as a system**, in a
 > coordinated pass — instead of patching surfaces one at a time.

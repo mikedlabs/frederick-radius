@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, ArrowRight } from "lucide-react";
 
-// Bumped to v10 so the sharper first-run orientation line shows once even
+// Bumped to v11 so the sharper first-run orientation line shows once even
 // for people who dismissed the older welcome strip (fresh copy, fresh key).
-const STORAGE_KEY = "fr:beta-intro-dismissed:v10";
+const STORAGE_KEY = "fr:beta-intro-dismissed:v11";
 
 /**
  * BetaIntroCard — a SLIM first-visit welcome strip.
@@ -63,7 +63,7 @@ export default function BetaIntroCard() {
       </span>
       <Link href="/about" onClick={dismiss} className="min-w-0 flex-1">
         <span className="block text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-          New here? What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time around here.
+          Frederick Radius organizes current local information for Frederick County around where you are.
         </span>
         <span className="inline-flex items-center gap-0.5 text-[11px]" style={{ color: "var(--app-brand-press)" }}>
           How it works

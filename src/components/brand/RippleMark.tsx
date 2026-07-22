@@ -28,6 +28,9 @@ export default function RippleMark({
   const stroke = tile ? BRAND.colors.cream : "currentColor";
   const resolvedDetail = detail === "auto" ? rippleDetailForSize(size) : detail;
   const geometry = RIPPLE_GEOMETRY[resolvedDetail];
+  const markTransform = tile
+    ? `translate(14 14) scale(.72) translate(0 ${geometry.opticalOffsetY})`
+    : `translate(0 ${geometry.opticalOffsetY})`;
   return (
     <svg
       viewBox="0 0 100 100"
@@ -37,26 +40,28 @@ export default function RippleMark({
       aria-hidden
     >
       {tile && <path d={RIPPLE_GEOMETRY.squircle} fill={BRAND.colors.brick} />}
-      <g
-        fill="none"
-        stroke={stroke}
-        strokeLinecap="round"
-        strokeWidth={geometry.strokeWidth}
-      >
-        {geometry.paths.map((path, index) => (
-          <path
-            key={path}
-            d={path}
-            strokeOpacity={geometry.opacities[index]}
-          />
-        ))}
+      <g transform={markTransform}>
+        <g
+          fill="none"
+          stroke={stroke}
+          strokeLinecap="round"
+          strokeWidth={geometry.strokeWidth}
+        >
+          {geometry.paths.map((path, index) => (
+            <path
+              key={path}
+              d={path}
+              strokeOpacity={geometry.opacities[index]}
+            />
+          ))}
+        </g>
+        <circle
+          cx="50"
+          cy={geometry.baseline}
+          r={geometry.dotRadius}
+          fill={stroke}
+        />
       </g>
-      <circle
-        cx="50"
-        cy={geometry.baseline}
-        r={geometry.dotRadius}
-        fill={stroke}
-      />
     </svg>
   );
 }

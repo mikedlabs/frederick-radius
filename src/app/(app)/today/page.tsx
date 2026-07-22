@@ -239,7 +239,7 @@ export default async function HomePage() {
     // link opens the sheet on a skeleton and fetches just that event.
     // Real anchors, SEO, and modified clicks all pass through untouched.
     <EventSheetBoundary fetchMissing className="relative">
-      <PageBloom />
+      <PageBloom motif />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
           present a days-old render as "Right now." The client compares the

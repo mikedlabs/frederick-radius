@@ -173,7 +173,10 @@ function ripple(
   opacity = 1,
 ): string {
   const geometry = RIPPLE_GEOMETRY[detail];
-  return `<g${transform ? ` transform="${transform}"` : ""} opacity="${opacity}">
+  const groupTransform = [transform, `translate(0 ${geometry.opticalOffsetY})`]
+    .filter(Boolean)
+    .join(" ");
+  return `<g transform="${groupTransform}" opacity="${opacity}">
     <g fill="none" stroke="${color}" stroke-linecap="round" stroke-width="${geometry.strokeWidth}">
       ${geometry.paths.map((d, index) => `<path d="${d}" stroke-opacity="${geometry.opacities[index]}"/>`).join("\n      ")}
     </g>
@@ -183,7 +186,7 @@ function ripple(
 
 function rippleField(color: string, transform: string, opacity: number): string {
   const geometry = RIPPLE_GEOMETRY.full;
-  return `<g transform="${transform}" opacity="${opacity}" fill="none" stroke="${color}" stroke-linecap="round" stroke-width="2.4">
+  return `<g transform="${transform} translate(0 ${geometry.opticalOffsetY})" opacity="${opacity}" fill="none" stroke="${color}" stroke-linecap="round" stroke-width="2.4">
     ${geometry.paths.map((d) => `<path d="${d}"/>`).join("\n    ")}
   </g>`;
 }

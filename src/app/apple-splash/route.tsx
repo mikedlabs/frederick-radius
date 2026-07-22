@@ -61,14 +61,16 @@ export async function GET(request: Request) {
             overflow: "hidden",
           }}
         >
-          {/* The Ripple, exact handoff geometry on the 100-grid. */}
+          {/* Match the Apple launcher tile: 72% art with the same optical correction. */}
           <svg viewBox="0 0 100 100" width={tile} height={tile}>
-            <g fill="none" stroke={BRAND.colors.cream} strokeLinecap="round" strokeWidth={RIPPLE_GEOMETRY.full.strokeWidth}>
-              {RIPPLE_GEOMETRY.full.paths.map((path, index) => (
-                <path key={path} d={path} strokeOpacity={RIPPLE_GEOMETRY.full.opacities[index]} />
-              ))}
+            <g transform={`translate(14 14) scale(.72) translate(0 ${RIPPLE_GEOMETRY.full.opticalOffsetY})`}>
+              <g fill="none" stroke={BRAND.colors.cream} strokeLinecap="round" strokeWidth={RIPPLE_GEOMETRY.full.strokeWidth}>
+                {RIPPLE_GEOMETRY.full.paths.map((path, index) => (
+                  <path key={path} d={path} strokeOpacity={RIPPLE_GEOMETRY.full.opacities[index]} />
+                ))}
+              </g>
+              <circle cx="50" cy={RIPPLE_GEOMETRY.full.baseline} r={RIPPLE_GEOMETRY.full.dotRadius} fill={BRAND.colors.cream} />
             </g>
-            <circle cx="50" cy={RIPPLE_GEOMETRY.full.baseline} r={RIPPLE_GEOMETRY.full.dotRadius} fill={BRAND.colors.cream} />
           </svg>
         </div>
         <div

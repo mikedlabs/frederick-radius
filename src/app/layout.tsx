@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "@fontsource-variable/public-sans/wght.css";
 import "@fontsource-variable/public-sans/wght-italic.css";
 import "@fontsource/libre-caslon-display/400.css";
@@ -155,6 +156,18 @@ export default function RootLayout({
       style={{ "--season-accent": seasonAccent, "--season-depth": seasonAccent } as React.CSSProperties}
     >
       <head>
+        {/* Capture Chromium's one-shot install event before React hydrates.
+            The visible prompt still owns when to ask; this only prevents a
+            fast browser event from disappearing before the app can use it. */}
+        <Script id="fr-install-event-capture" strategy="beforeInteractive">
+          {`(function () {
+            window.addEventListener("beforeinstallprompt", function (event) {
+              event.preventDefault();
+              window.__frBeforeInstallPrompt = event;
+              window.dispatchEvent(new Event("fr:beforeinstallprompt-ready"));
+            });
+          })();`}
+        </Script>
         {/* Preconnect to the Vercel Blob CDN where the downloaded
             place photos live. A blank preconnect lets the browser
             start the TLS handshake AND DNS lookup the moment the

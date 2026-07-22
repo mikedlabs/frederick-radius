@@ -49,6 +49,11 @@ export const RIPPLE_GEOMETRY = {
     opacities: [1, 1, 1],
     strokeWidth: 4,
     dotRadius: 8,
+    // The Ripple's arcs rise from the dot, so its geometric frame is not its
+    // visual frame. This shared optical correction keeps the mark centered in
+    // the header, app tile, favicon, and exported artwork without redrawing
+    // the symbol differently on every surface.
+    opticalOffsetY: -8,
   },
   compact: {
     baseline: 76,
@@ -59,6 +64,7 @@ export const RIPPLE_GEOMETRY = {
     opacities: [1, 1],
     strokeWidth: 5,
     dotRadius: 9.5,
+    opticalOffsetY: -10,
   },
   favicon: {
     baseline: 74,
@@ -66,6 +72,7 @@ export const RIPPLE_GEOMETRY = {
     opacities: [1],
     strokeWidth: 7,
     dotRadius: 11,
+    opticalOffsetY: -16,
   },
   squircle:
     "M0 23.33 C0 7.5 7.5 0 23.33 0 H76.67 C92.5 0 100 7.5 100 23.33 V76.67 C100 92.5 92.5 100 76.67 100 H23.33 C7.5 100 0 92.5 0 76.67 Z",

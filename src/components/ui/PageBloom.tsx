@@ -2,10 +2,10 @@ import type { CSSProperties } from "react";
 import RippleMark from "@/components/brand/RippleMark";
 
 /**
- * PageBloom keeps the public API used by existing routes, but the visual is no
- * longer an aurora or mesh wash. Each page gets a quiet paper field and one
- * oversized crop of the real Radius mark, like a registration mark extending
- * beyond the edge of a printed county guide.
+ * PageBloom keeps the field-guide paper treatment available for rare moments,
+ * but it is deliberately quiet by default. An oversized Ripple is a
+ * registration mark for a hero, onboarding, or editorial feature, not a
+ * watermark behind every ordinary tool page.
  *
  * Route variants only choose the ink used for that mark. They do not create a
  * different decorative background for every page; the content remains the
@@ -13,10 +13,13 @@ import RippleMark from "@/components/brand/RippleMark";
  */
 export default function PageBloom({
   variant = "warm-cool",
+  motif = false,
   className = "",
   style,
 }: {
   variant?: "warm-cool" | "warm" | "cool" | "single";
+  /** Opt in only when the page genuinely needs an editorial brand moment. */
+  motif?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -42,13 +45,17 @@ export default function PageBloom({
             "linear-gradient(to bottom, color-mix(in srgb, var(--app-bg-elevated-solid) 42%, transparent), transparent)",
         }}
       />
-      <div
-        className="absolute -right-24 -top-32 opacity-[0.055]"
-        style={{ color: tone }}
-      >
-        <RippleMark size={330} detail="full" />
-      </div>
-      <div className="aurora-grain" />
+      {motif && (
+        <>
+          <div
+            className="absolute -right-24 -top-32 opacity-[0.055]"
+            style={{ color: tone }}
+          >
+            <RippleMark size={330} detail="full" />
+          </div>
+          <div className="aurora-grain" />
+        </>
+      )}
     </div>
   );
 }

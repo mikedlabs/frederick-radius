@@ -2,7 +2,7 @@
   <title>Frederick Radius</title>
 
 
-  <g transform="translate(0 0) scale(5.12)" opacity="1">
+  <g transform="translate(0 0) scale(5.12) translate(0 -8)" opacity="1">
     <g fill="none" stroke="#F4EEE2" stroke-linecap="round" stroke-width="4">
       <path d="M31 78 A 19 19 0 0 1 69 78" stroke-opacity="1"/>
       <path d="M15 78 A 35 35 0 0 1 85 78" stroke-opacity="1"/>

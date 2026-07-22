@@ -1,123 +1,236 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  canOfferInstallAutomatically,
+  isInstallCooldownActive,
+  isIos,
+  isStandalone,
+} from "@/lib/pwa-display";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const STORAGE_KEY = "fr:install-prompt:v1";
-const ENGAGEMENT_KEY = "fr:engagement:v1";
+type InstallWindow = Window & {
+  __frBeforeInstallPrompt?: BeforeInstallPromptEvent;
+};
 
-type Engagement = { sessions: number; interactions: number; firstSeen: number };
+type Engagement = {
+  sessions: number;
+  interactions: number;
+  lastSessionAt: number;
+};
+
+const STORAGE_KEY = "fr:install-prompt:v2";
+const ENGAGEMENT_KEY = "fr:engagement:v2";
+const SESSION_GAP_MS = 30 * 60 * 1000;
+const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+const REVEAL_DELAY_MS = 6_000;
+
+function fallbackEngagement(): Engagement {
+  return { sessions: 0, interactions: 0, lastSessionAt: 0 };
+}
 
 function readEngagement(): Engagement {
-  if (typeof window === "undefined") return { sessions: 0, interactions: 0, firstSeen: 0 };
+  if (typeof window === "undefined") return fallbackEngagement();
   try {
-    const raw = window.localStorage.getItem(ENGAGEMENT_KEY);
-    return raw ? JSON.parse(raw) : { sessions: 0, interactions: 0, firstSeen: 0 };
+    const parsed = JSON.parse(window.localStorage.getItem(ENGAGEMENT_KEY) ?? "null") as Partial<Engagement> | null;
+    if (!parsed || typeof parsed !== "object") return fallbackEngagement();
+    return {
+      sessions: Number.isFinite(parsed.sessions) ? Math.max(0, parsed.sessions ?? 0) : 0,
+      interactions: Number.isFinite(parsed.interactions) ? Math.max(0, parsed.interactions ?? 0) : 0,
+      lastSessionAt: Number.isFinite(parsed.lastSessionAt) ? Math.max(0, parsed.lastSessionAt ?? 0) : 0,
+    };
   } catch {
-    return { sessions: 0, interactions: 0, firstSeen: 0 };
+    return fallbackEngagement();
   }
 }
 
-function writeEngagement(e: Engagement) {
-  if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(ENGAGEMENT_KEY, JSON.stringify(e)); } catch {}
+function writeEngagement(engagement: Engagement) {
+  try {
+    window.localStorage.setItem(ENGAGEMENT_KEY, JSON.stringify(engagement));
+  } catch {
+    // Storage is a convenience for timing, not a requirement for using the app.
+  }
 }
 
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return Boolean(nav.standalone);
+function beginSession(): Engagement {
+  const previous = readEngagement();
+  const now = Date.now();
+  const isNewSession = !previous.lastSessionAt || now - previous.lastSessionAt > SESSION_GAP_MS;
+  const next: Engagement = {
+    ...previous,
+    sessions: previous.sessions + (isNewSession ? 1 : 0),
+    lastSessionAt: now,
+  };
+  writeEngagement(next);
+  return next;
 }
 
-// The share -> Add to Home Screen flow only exists in iOS Safari.
-// In iOS Chrome/Firefox/Edge (CriOS/FxiOS/EdgiOS/OPiOS) the same
-// instruction is wrong, so the sheet must not show there.
-function isIosSafari(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent;
-  if (!/iPad|iPhone|iPod/.test(ua)) return false;
-  return !/CriOS|FxiOS|EdgiOS|OPiOS|mercury/i.test(ua);
+function recordInteraction(): Engagement {
+  const previous = readEngagement();
+  const next: Engagement = {
+    ...previous,
+    interactions: previous.interactions + 1,
+  };
+  writeEngagement(next);
+  return next;
 }
 
-// Brief: never show again once dismissed. A single persisted flag,
-// permanent (not the prior 30-day window).
-function wasDismissed(): boolean {
+function cooldownActive(): boolean {
   if (typeof window === "undefined") return true;
   try {
-    return Boolean(window.localStorage.getItem(STORAGE_KEY));
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const value = JSON.parse(raw) as { notBefore?: unknown };
+    return isInstallCooldownActive(value.notBefore);
   } catch {
     return false;
   }
 }
 
+function deferInstallOffer() {
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ notBefore: Date.now() + COOLDOWN_MS }),
+    );
+  } catch {
+    // A declined nudge should never block the rest of the app.
+  }
+}
+
+function capturedInstallEvent(): BeforeInstallPromptEvent | null {
+  if (typeof window === "undefined") return null;
+  return (window as InstallWindow).__frBeforeInstallPrompt ?? null;
+}
+
+function clearCapturedInstallEvent() {
+  if (typeof window === "undefined") return;
+  delete (window as InstallWindow).__frBeforeInstallPrompt;
+}
+
+/**
+ * Turns browser-specific install behavior into one honest product surface.
+ * Chromium gets its native browser prompt. iPhone and iPad get exact manual
+ * instructions because browser chrome owns Add to Home Screen; a page-opened
+ * Web Share sheet is not the same installation surface.
+ */
 export function useInstallPrompt(): {
   show: boolean;
   ios: boolean;
+  prompting: boolean;
   promptInstall: () => Promise<void>;
   dismiss: () => void;
 } {
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [eligible, setEligible] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const ios = isIosSafari();
+  const [deferred, setDeferred] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const [ios, setIos] = useState(false);
+  const [prompting, setPrompting] = useState(false);
 
   useEffect(() => {
-    // Track engagement: sessions + interactions
-    const e = readEngagement();
-    const now = Date.now();
-    const lastSession = e.firstSeen ? now - e.firstSeen : Infinity;
-    const isNewSession = lastSession > 30 * 60 * 1000;
-    const updated: Engagement = {
-      sessions: e.sessions + (isNewSession ? 1 : 0),
-      interactions: e.interactions + 1,
-      firstSeen: e.firstSeen || now,
-    };
-    writeEngagement(updated);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time read of persisted engagement to derive client-only install eligibility (SSR-unsafe storage)
-    setDismissed(wasDismissed());
+    const iosDevice = isIos();
+    const baseEligible = !isStandalone() && !cooldownActive();
+    setIos(iosDevice);
+    setDeferred(!baseEligible);
 
-    // Don't slam the prompt on arrival — that's what read as intrusive.
-    // Let the user settle in first: hold it back a few seconds (and a
-    // touch longer on a true first session, when they're still getting
-    // oriented). Still a first-visit prompt, just not the instant the
-    // page paints. Dismiss-forever behavior is unchanged.
-    const baseEligible = !isStandalone() && !wasDismissed();
-    const delayMs = updated.sessions <= 1 ? 18_000 : 8_000;
-    let eligibleTimer: ReturnType<typeof setTimeout> | undefined;
-    if (baseEligible) {
-      eligibleTimer = setTimeout(() => setEligible(true), delayMs);
-    }
-
-    const handler = (event: Event) => {
+    const assignDeferredEvent = (event: Event) => {
       event.preventDefault();
-      setDeferredEvent(event as BeforeInstallPromptEvent);
+      const installEvent = event as BeforeInstallPromptEvent;
+      (window as InstallWindow).__frBeforeInstallPrompt = installEvent;
+      setDeferredEvent(installEvent);
     };
-    window.addEventListener("beforeinstallprompt", handler);
+
+    const onCapturedInstallReady = () => {
+      const next = capturedInstallEvent();
+      if (next) setDeferredEvent(next);
+    };
+    const captured = capturedInstallEvent();
+    if (captured) setDeferredEvent(captured);
+    window.addEventListener("beforeinstallprompt", assignDeferredEvent);
+    window.addEventListener("fr:beforeinstallprompt-ready", onCapturedInstallReady);
+
+    let engagement = beginSession();
+    let revealTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleReveal = () => {
+      if (
+        !baseEligible
+        || !canOfferInstallAutomatically(engagement.sessions, engagement.interactions)
+        || revealTimer
+      ) return;
+      revealTimer = setTimeout(() => setEligible(true), REVEAL_DELAY_MS);
+    };
+    scheduleReveal();
+
+    const onInteraction = () => {
+      engagement = recordInteraction();
+      scheduleReveal();
+    };
+    const onManualOpen = () => {
+      // A person who deliberately asks from Settings is different from an
+      // automatic reminder. Let that intent override the quiet cooldown.
+      if (!isStandalone() && (iosDevice || capturedInstallEvent())) {
+        setEligible(true);
+        setDeferred(false);
+      }
+    };
+    const onInstalled = () => {
+      clearCapturedInstallEvent();
+      setDeferredEvent(null);
+      setInstalled(true);
+      setEligible(false);
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // No action required; the standalone check prevents future nudges.
+      }
+    };
+
+    window.addEventListener("pointerdown", onInteraction, { passive: true });
+    window.addEventListener("keydown", onInteraction);
+    window.addEventListener("fr:open-install", onManualOpen);
+    window.addEventListener("appinstalled", onInstalled);
+
     return () => {
-      if (eligibleTimer) clearTimeout(eligibleTimer);
-      window.removeEventListener("beforeinstallprompt", handler);
+      if (revealTimer) clearTimeout(revealTimer);
+      window.removeEventListener("beforeinstallprompt", assignDeferredEvent);
+      window.removeEventListener("fr:beforeinstallprompt-ready", onCapturedInstallReady);
+      window.removeEventListener("pointerdown", onInteraction);
+      window.removeEventListener("keydown", onInteraction);
+      window.removeEventListener("fr:open-install", onManualOpen);
+      window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
   const dismiss = () => {
-    try { window.localStorage.setItem(STORAGE_KEY, Date.now().toString()); } catch {}
-    setDismissed(true);
+    deferInstallOffer();
+    setDeferred(true);
+    setEligible(false);
   };
 
   const promptInstall = async () => {
-    if (deferredEvent) {
+    if (!deferredEvent || prompting) return;
+    setPrompting(true);
+    try {
       await deferredEvent.prompt();
       const result = await deferredEvent.userChoice;
-      if (result.outcome === "dismissed") dismiss();
+      clearCapturedInstallEvent();
       setDeferredEvent(null);
+      if (result.outcome === "accepted") {
+        setInstalled(true);
+        setEligible(false);
+      } else {
+        dismiss();
+      }
+    } finally {
+      setPrompting(false);
     }
   };
 
-  const show = eligible && !dismissed && (Boolean(deferredEvent) || ios);
-  return { show, ios, promptInstall, dismiss };
+  const show = eligible && !deferred && !installed && (Boolean(deferredEvent) || ios);
+  return { show, ios, prompting, promptInstall, dismiss };
 }

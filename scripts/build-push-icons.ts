@@ -31,7 +31,9 @@ const APP = path.resolve(process.cwd(), "src/app");
 
 function ripple(detail: RippleDetail, color: string, transform = ""): string {
   const geometry = RIPPLE_GEOMETRY[detail];
-  return `<g${transform ? ` transform="${transform}"` : ""}>
+  const opticalTransform = `translate(0 ${geometry.opticalOffsetY})`;
+  const groupTransform = [transform, opticalTransform].filter(Boolean).join(" ");
+  return `<g transform="${groupTransform}">
     <g fill="none" stroke="${color}" stroke-linecap="round" stroke-width="${geometry.strokeWidth}">
       ${geometry.paths.map((d, index) => `<path d="${d}" stroke-opacity="${geometry.opacities[index]}"/>`).join("\n      ")}
     </g>
@@ -47,7 +49,7 @@ function svg(body: string, viewBox = "0 0 100 100"): string {
 // clipped to the tile and uses the full canonical geometry at 48px+.
 const ICON_SVG = svg(`<defs><clipPath id="tile"><path d="${RIPPLE_GEOMETRY.squircle}"/></clipPath></defs>
   <path d="${RIPPLE_GEOMETRY.squircle}" fill="${BRAND.colors.brick}"/>
-  <g clip-path="url(#tile)">${ripple("full", BRAND.colors.cream)}</g>`);
+  <g clip-path="url(#tile)">${ripple("full", BRAND.colors.cream, "translate(14 14) scale(.72)")}</g>`);
 
 // Monochrome favicon-scale Ripple — Android tints by alpha only, so the
 // simplified one-arc form survives at notification-badge size.
@@ -56,11 +58,11 @@ const BADGE_SVG = svg(ripple("favicon", "#FFFFFF"));
 // `purpose:maskable`: full-bleed ground, with every essential mark pixel held
 // inside the standard 80% safe circle so Android's masks cannot crop an arc.
 const MASKABLE_SVG = svg(`<rect width="100" height="100" fill="${BRAND.colors.brick}"/>
-  ${ripple("full", BRAND.colors.cream, "translate(17 17) scale(.66)")}`);
+  ${ripple("full", BRAND.colors.cream, "translate(19 19) scale(.62)")}`);
 
 // iOS supplies its own rounded mask, so Apple gets an opaque full-bleed tile.
 const APPLE_SVG = svg(`<rect width="100" height="100" fill="${BRAND.colors.brick}"/>
-  ${ripple("full", BRAND.colors.cream)}`);
+  ${ripple("full", BRAND.colors.cream, "translate(14 14) scale(.72)")}`);
 
 // Browser tabs need the simplified mark, not three low-opacity lines that
 // disappear at 16px.
