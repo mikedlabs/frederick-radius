@@ -31,7 +31,7 @@ export const KEYED_FEEDS: FeedDef[] = [
   { name: "Hood College", env: "HOOD_CALENDAR_URL", powers: "Hood events calendar" },
   { name: "FCPS", env: "FCPS_FEED_URL", powers: "Frederick County Public Schools calendar" },
   { name: "PulsePoint", env: "PULSEPOINT_AGENCY_ID", powers: "Live fire / EMS incidents" },
-  { name: "FredScanner", env: "SCANNER_SLACK_BOT_TOKEN", powers: "Live public 911/dispatch incidents (also needs SCANNER_INCIDENTS_CHANNEL)" },
+  { name: "Parking occupancy", env: "PARKING_OCCUPANCY_URL", powers: "Live garage space counts on /parking and map peeks (also needs PARKING_OCCUPANCY_KEY)" },
 ];
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.
@@ -44,6 +44,8 @@ export const KEYLESS_FEEDS: FeedDef[] = [
   { name: "SeeClickFix", powers: "311 reported issues" },
   { name: "Local news RSS", powers: "Headlines (Patch, FNP, MD Matters)" },
   { name: "MD Farmers Markets", powers: "Seasonal market listings" },
+  { name: "FredScanner", powers: "Live public 911 dispatch incidents (public page; a Slack bot token is an optional realtime upgrade)" },
+  { name: "r/frederickmd", powers: "Reddit radar for the admin desk (public RSS; Reddit API creds are an optional depth upgrade)" },
   { name: "TransIT Frederick", powers: "Bus route shapes" },
   { name: "MARC / rail", powers: "Brunswick-line rail schedule" },
   { name: "Venue live-music calendars", powers: "Live music at breweries, wineries, distilleries & bars (per-venue iCal — see live-music-venues.ts)" },
