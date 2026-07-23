@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
-import { eventIntentOf } from "@/lib/events/intents";
+import { isCompetitiveSportsEvent } from "@/lib/events/competitive-sports";
 import { isKeysEvent } from "@/lib/today/keysEvent";
 import EventCard from "@/components/event/EventCard";
 import EmptyState from "@/components/ui/EmptyState";
@@ -33,7 +33,8 @@ export default async function CountySportsEvents({
   const assembled = await eventsPromise.catch(() => null);
   const rows = getVisibleEvents(
     (assembled?.publicEvents ?? []).filter(
-      (e: EventWithMeta) => eventIntentOf(e) === "sports" && !isKeysEvent(e),
+      (e: EventWithMeta) =>
+        isCompetitiveSportsEvent(e) && !isKeysEvent(e),
     ),
     now,
   ).slice(0, MAX_ROWS);

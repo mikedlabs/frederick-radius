@@ -108,8 +108,11 @@ function normalize(
       title: a.event,
       tail: until || firstSentence(a.headline || a.description),
       scope: summarizeArea(a.area),
-      url: a.url,
-      external: true,
+      // Pulse already carries the Frederick-specific timing, guidance, scope,
+      // and full NWS bulletin. Open that native detail first; its source action
+      // remains the final handoff to weather.gov.
+      url: "/pulse?open=alerts",
+      external: false,
     });
   }
   for (const a of nps) {

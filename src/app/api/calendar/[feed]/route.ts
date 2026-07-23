@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
+import { eventIntentOf } from "@/lib/events/intents";
+import { getLocalSportsGames } from "@/lib/integrations/local-sports";
 import { buildIcsFeed, type IcsInput } from "@/lib/ics";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import type { SportsGame } from "@/lib/sports/types";
 
 export const revalidate = 3600;
 
@@ -19,6 +22,7 @@ export const revalidate = 3600;
  * Feeds:
  *   all.ics        — every public event in the next 30 days
  *   live-music.ics — live-music shows (same matcher /live-music uses)
+ *   sports.ics     — local sports events plus official local-team schedules
  *
  * Honesty rules: only real dated events (unparseable starts dropped),
  * cancelled/postponed events EXCLUDED (a subscribed calendar deletes
@@ -39,6 +43,10 @@ const FEEDS: Record<
     name: "Live music in Frederick County · Frederick Radius",
     match: (e) => isLiveMusicEvent(e),
   },
+  sports: {
+    name: "Frederick County sports · Frederick Radius",
+    match: (e) => eventIntentOf(e) === "sports",
+  },
 };
 
 function toIcsInput(e: EventWithMeta): IcsInput {
@@ -57,6 +65,37 @@ function toIcsInput(e: EventWithMeta): IcsInput {
     url: `${ORIGIN}/events/${e.slug}`,
     all_day: e.is_all_day,
   };
+}
+
+export function localGameIcsInput(game: SportsGame): IcsInput {
+  const start = Date.parse(game.startsAt);
+  const homeAway =
+    game.homeAway === "home"
+      ? "Home game"
+      : game.homeAway === "away"
+        ? "Away game"
+        : "Neutral-site game";
+  const timing = game.timeTba ? " Time TBA." : "";
+  return {
+    uid: `local-sports-${game.id}`,
+    title: `${game.teamName} ${game.homeAway === "away" ? "at" : "vs."} ${game.opponent}${game.timeTba ? " (Time TBA)" : ""}`,
+    starts_at: game.startsAt,
+    ends_at: new Date(start + 2 * 60 * 60 * 1000).toISOString(),
+    description: `${game.sport}. ${homeAway}.${timing} Verified by ${game.teamName}'s official athletics calendar.`,
+    venue_name: game.venue ?? undefined,
+    address: game.location ?? undefined,
+    url: `${ORIGIN}/sports`,
+    all_day: game.timeTba,
+  };
+}
+
+function localMatchKey(game: SportsGame): string {
+  return [
+    game.startsAt,
+    ...[game.teamName, game.opponent]
+      .map((value) => value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim())
+      .sort(),
+  ].join("|");
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ feed: string }> }) {
@@ -80,7 +119,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ feed: s
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
     .slice(0, MAX_EVENTS);
 
-  const body = buildIcsFeed(def.name, rows.map(toIcsInput));
+  const inputs = rows.map(toIcsInput);
+  if (key === "sports") {
+    const seen = new Set<string>();
+    const localGames = (await getLocalSportsGames(now))
+      .filter((game) => {
+        const ms = Date.parse(game.startsAt);
+        if (!Number.isFinite(ms) || ms < now.getTime() || ms > horizonMs) {
+          return false;
+        }
+        if (game.state === "cancelled" || game.state === "postponed") return false;
+        const matchKey = localMatchKey(game);
+        if (seen.has(matchKey)) return false;
+        seen.add(matchKey);
+        return true;
+      })
+      .map(localGameIcsInput);
+    inputs.push(...localGames);
+    inputs.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  }
+
+  const body = buildIcsFeed(def.name, inputs.slice(0, MAX_EVENTS));
   return new NextResponse(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",

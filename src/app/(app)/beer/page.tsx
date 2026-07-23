@@ -22,7 +22,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: PRODUCT_NAMES.beer.pageTitle,
   description:
-    "A visual guide to 174 signature pours across 17 Frederick County breweries, with flavor matching and a device-only brewery passport. Verify availability before you go.",
+    "A source-checked guide to Frederick County breweries, with taproom filters and brewery-owned live menus when available.",
   alternates: { canonical: "/beer" },
 };
 
@@ -85,7 +85,11 @@ export default function BeerPage() {
       >
         <div className="max-w-[42rem] text-[11px] leading-relaxed text-black/60">
           <p className="font-semibold text-black/72">Before you go</p>
-          <p className="mt-1">Signature beers are based on a {BEER_SNAPSHOT_MONTH} snapshot of brewery sites and Untappd. Check the brewery&rsquo;s current tap list and hours before making a special trip.</p>
+          <p className="mt-1">
+            The beer finder and index use a {BEER_SNAPSHOT_MONTH} reference
+            snapshot from brewery sites and Untappd. They are not live menus.
+            Check brewery-owned current details before making a special trip.
+          </p>
         </div>
         <Link
           href="/trust"

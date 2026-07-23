@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { BreweryLogo } from "./BreweryLogo";
 
 export type BreweryPhotoMap = Readonly<Record<string, string | null>>;
 
@@ -12,6 +11,7 @@ type BreweryPhotoProps = {
   src?: string | null;
   alt?: string;
   decorative?: boolean;
+  compactFallback?: boolean;
   priority?: boolean;
   sizes: string;
   className?: string;
@@ -19,17 +19,16 @@ type BreweryPhotoProps = {
 };
 
 /**
- * A real taproom photograph with a brewery-mark fallback. Beer visuals should
- * still feel specific when a remote place photo is missing or temporarily
- * unavailable; falling back to the actual brewery identity is more useful
- * than generic glass illustration.
+ * A publishable taproom photograph with a typographic fallback. We do not
+ * silently substitute downloaded third-party photography or an unsourced
+ * brewery mark when photo attribution is unavailable.
  */
 export function BreweryPhoto({
-  brewerySlug,
   breweryName,
   src,
   alt,
   decorative = false,
+  compactFallback = false,
   priority = false,
   sizes,
   className = "",
@@ -37,9 +36,17 @@ export function BreweryPhoto({
 }: BreweryPhotoProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showPhoto = Boolean(src && failedSrc !== src);
+  const initials = breweryName
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "FR";
 
   return (
-    <span className={`relative block overflow-hidden bg-[var(--app-ink)] ${className}`}>
+    <span className={`relative block overflow-hidden bg-[var(--app-bg-sunken)] ${className}`}>
       {showPhoto && src ? (
         <Image
           src={src}
@@ -52,14 +59,39 @@ export function BreweryPhoto({
           onError={() => setFailedSrc(src)}
         />
       ) : (
-        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_30%_20%,rgba(197,138,50,.16),transparent_46%),linear-gradient(145deg,var(--app-ink-2),var(--app-ink))] p-[18%]">
-          <BreweryLogo
-            brewerySlug={brewerySlug}
-            breweryName={breweryName}
-            decorative={decorative}
-            sizes={sizes}
-            className="h-full w-full bg-[var(--app-bg-elevated-solid)] object-contain p-[8%] shadow-[0_18px_46px_rgba(0,0,0,.38)]"
-          />
+        <span
+          aria-hidden={decorative || undefined}
+          aria-label={decorative ? undefined : `${breweryName} photo unavailable`}
+          role={decorative ? undefined : "img"}
+          className={`absolute inset-0 flex flex-col ${
+            compactFallback ? "items-center justify-center p-2" : "justify-between p-[12%]"
+          }`}
+          style={{
+            background:
+              "radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--app-amber) 20%, transparent), transparent 35%), linear-gradient(145deg, var(--app-bg-elevated-solid), var(--app-bg-sunken))",
+          }}
+        >
+          <span
+            aria-hidden
+            className={`font-sans font-semibold leading-none tracking-[-0.08em] ${
+              compactFallback
+                ? "text-[clamp(2rem,10vw,3.5rem)]"
+                : "text-[clamp(2.6rem,14vw,5rem)]"
+            }`}
+            style={{ color: "color-mix(in srgb, var(--app-amber-text) 24%, transparent)" }}
+          >
+            {initials}
+          </span>
+          {!compactFallback ? (
+            <span className="max-w-[14rem]">
+              <span className="block font-sans text-[clamp(.8rem,3.5vw,1.05rem)] font-semibold leading-tight text-[var(--app-ink)]">
+                {breweryName}
+              </span>
+              <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--app-ink-3)]">
+                Frederick County brewery
+              </span>
+            </span>
+          ) : null}
         </span>
       )}
     </span>

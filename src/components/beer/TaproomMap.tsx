@@ -28,16 +28,17 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
     <section id="taproom-map" aria-labelledby="taproom-map-heading" className="scroll-mt-24">
       <header className="mb-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-press)" }}>Brewery map</p>
-        <h2
-          id="taproom-map-heading"
-          className="mt-1 font-serif text-[32px] leading-tight tracking-[-0.035em] sm:text-[42px]"
-          style={{ color: "var(--app-ink)" }}
-        >
-          See breweries across the county.
-        </h2>
+          <h2
+            id="taproom-map-heading"
+            className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px]"
+            style={{ color: "var(--app-ink)" }}
+          >
+            See every brewery on the map
+          </h2>
         </div>
-        <p className="max-w-[22rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Compare the downtown cluster with breweries in Brunswick, Thurmont, Mount Airy, and the countryside.</p>
+        <p className="max-w-[22rem] text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Open the county view to compare the downtown cluster with rural brewery stops.
+        </p>
       </header>
 
       {open ? (

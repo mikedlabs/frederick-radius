@@ -11,11 +11,12 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
-import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
+import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
+import { foodTruckStopDirectionsUrl } from "@/lib/food-trucks/presentation";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import FoodTruckBoard, { type FoodTruckBoardItem } from "@/components/food-trucks/FoodTruckBoard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -70,15 +71,9 @@ function scheduleTime(stop: FoodTruckScheduleStop): string {
   return stop.endsAt ? `${start}–${formatTime(stop.endsAt)}` : start;
 }
 
-function directionsUrl(stop: FoodTruckScheduleStop): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address ?? stop.venueName)}`;
-}
-
-function vendorUrl(vendor: FoodTruckScheduleStop["vendors"][number]): string | undefined {
-  if (vendor.url) return vendor.url;
+function vendorHref(vendor: FoodTruckScheduleStop["vendors"][number]): string | undefined {
   if (!vendor.slug) return undefined;
-  const rosterEntry = FOOD_TRUCK_BY_SLUG.get(vendor.slug);
-  return rosterEntry ? truckFeedUrl(rosterEntry) ?? undefined : undefined;
+  return FOOD_TRUCK_BY_SLUG.has(vendor.slug) ? `#truck-${vendor.slug}` : undefined;
 }
 
 function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
@@ -98,19 +93,17 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
         </div>
         <h3 className="mt-2 font-serif text-[21px] font-semibold leading-[1.08]" style={{ color: "var(--app-ink)" }}>
           {stop.vendors.map((vendor, index) => {
-            const href = vendorUrl(vendor);
+            const href = vendorHref(vendor);
             const label = `${vendor.name}${index < stop.vendors.length - 1 ? " ·" : ""}`;
             return href ? (
-              <a
+              <Link
                 key={`${vendor.name}-${href}`}
                 href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Open ${vendor.name} from the published schedule`}
+                aria-label={`Find ${vendor.name} in the vendor roster`}
                 className="mr-1 underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
               >
                 {label}
-              </a>
+              </Link>
             ) : (
               <span key={vendor.name} className="mr-1">{label}</span>
             );
@@ -125,7 +118,7 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           <a
-            href={directionsUrl(stop)}
+            href={foodTruckStopDirectionsUrl(stop)}
             target="_blank"
             rel="noopener noreferrer"
             className="tap-44 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11.5px] font-semibold"
@@ -141,7 +134,7 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
             className="tap-44 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11.5px] font-semibold"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            Official schedule
+            {stop.sourceName} source
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           </a>
         </div>

@@ -5645,8 +5645,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 .food-truck-vendor-card {
   display: grid;
-  grid-template-columns: minmax(7.4rem, .76fr) minmax(0, 1.24fr);
-  min-height: 12.5rem;
+  grid-template-columns: minmax(8.6rem, .82fr) minmax(0, 1.18fr);
+  min-height: 14rem;
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
@@ -5662,55 +5662,98 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: var(--app-bg-sunken);
 }
 
+.food-truck-vendor-visual[data-size="detail"] {
+  min-height: 12.5rem;
+  border-radius: 0;
+}
+
 .food-truck-vendor-card > .food-truck-vendor-visual {
   border-radius: 0;
   border-right: 1px solid var(--app-border);
 }
 
 .food-truck-vendor-fallback {
+  --truck-tone: var(--app-brand-press);
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
   overflow: hidden;
-  padding: .8rem;
-  color: var(--app-ink);
+  padding: .85rem;
+  color: var(--app-bg-elevated-solid);
   background:
-    linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated)) 0 58%, var(--app-bg-sunken) 58% 100%);
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--app-bg) 20%, transparent) 0 1px, transparent 1.2px) 0 0 / 10px 10px,
+    linear-gradient(145deg, color-mix(in srgb, var(--truck-tone) 86%, var(--app-ink)) 0 67%, color-mix(in srgb, var(--truck-tone) 62%, var(--app-ink)) 67% 100%);
+  isolation: isolate;
 }
 
 .food-truck-vendor-fallback[data-kind="treats"] {
-  background: linear-gradient(155deg, color-mix(in srgb, var(--app-cool) 10%, var(--app-bg-elevated)) 0 58%, var(--app-bg-sunken) 58% 100%);
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--app-bg) 20%, transparent) 0 1px, transparent 1.2px) 0 0 / 10px 10px,
+    linear-gradient(145deg, color-mix(in srgb, var(--truck-tone) 82%, var(--app-ink)) 0 67%, color-mix(in srgb, var(--truck-tone) 58%, var(--app-ink)) 67% 100%);
+}
+
+.food-truck-vendor-fallback::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -2.6rem;
+  bottom: -2.8rem;
+  width: 7.2rem;
+  height: 7.2rem;
+  border: 1px solid color-mix(in srgb, var(--app-bg) 30%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 .75rem color-mix(in srgb, var(--app-bg) 7%, transparent),
+    0 0 0 1.5rem color-mix(in srgb, var(--app-bg) 5%, transparent);
+}
+
+.food-truck-fallback-kicker,
+.food-truck-fallback-footer {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono), monospace;
+  font-size: .48rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .76;
 }
 
 .food-truck-vendor-mark {
-  position: absolute;
-  top: .45rem;
-  left: .65rem;
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
   font-family: var(--font-display), Georgia, serif;
-  font-size: 3.5rem;
-  line-height: 1;
-  color: color-mix(in srgb, var(--app-brand) 24%, transparent);
+  font-size: clamp(2.9rem, 9vw, 4.25rem);
+  font-weight: 400;
+  line-height: .82;
+  letter-spacing: -.07em;
+  color: currentColor;
+}
+
+.food-truck-fallback-rule {
+  position: relative;
+  z-index: 1;
+  width: 2.4rem;
+  height: 2px;
+  margin-block: .55rem .45rem;
+  background: currentColor;
+  opacity: .72;
 }
 
 .food-truck-vendor-cuisine {
   position: relative;
   z-index: 1;
-  max-width: 10ch;
-  font-family: var(--font-display), Georgia, serif;
-  font-size: 1.35rem;
-  line-height: .95;
-  letter-spacing: -.025em;
+  max-width: 15ch;
+  font-size: .66rem;
+  font-weight: 650;
+  line-height: 1.15;
 }
 
-.food-truck-vendor-icon {
-  position: absolute;
-  right: .55rem;
-  bottom: .55rem;
-  width: 2.1rem;
-  height: 2.1rem;
-  color: var(--app-brand-press);
-  opacity: .64;
+.food-truck-fallback-footer {
+  margin-top: .8rem;
 }
 
 .food-truck-media-credit {
@@ -5722,6 +5765,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   color: white;
   background: rgba(20, 16, 12, .65);
   font-size: .5rem;
+  text-decoration: none;
+}
+
+.food-truck-vendor-visual[data-size="detail"] .food-truck-vendor-mark {
+  font-size: clamp(4.5rem, 22vw, 7.25rem);
+}
+
+.food-truck-vendor-visual[data-size="detail"] .food-truck-vendor-cuisine {
+  max-width: 24ch;
+  font-size: .78rem;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -5752,8 +5805,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .food-truck-stop-card { grid-template-columns: 3.55rem minmax(0, 1fr); }
   .food-truck-beacon-preview { grid-template-columns: 1fr; }
   .food-truck-beacon-map { min-height: 10.75rem; border-right: 0; border-bottom: 1px solid var(--app-border); }
-  .food-truck-vendor-card { grid-template-columns: minmax(7.1rem, .72fr) minmax(0, 1.28fr); min-height: 11.75rem; }
-  .food-truck-vendor-cuisine { font-size: 1.15rem; }
+  .food-truck-vendor-card { grid-template-columns: minmax(8rem, .8fr) minmax(0, 1.2fr); min-height: 13.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

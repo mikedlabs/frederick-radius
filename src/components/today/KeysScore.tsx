@@ -17,6 +17,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { track } from "@/lib/track";
 import LiveCountdown from "@/components/ui/LiveCountdown";
 import type { KeysScore as Score } from "@/lib/integrations/keysScore";
@@ -40,6 +42,20 @@ const INK = "#1A150E";
 /** The official Keys ticket page — the stable fallback when a game has no
  *  per-game Ticketmaster link (the score payload carries none). */
 const KEYS_TICKETS_URL = "https://www.milb.com/frederick/tickets";
+
+/**
+ * Tickets only make sense when the Keys are playing at Nymeo Field. Away
+ * games keep an official, non-commerce action so the card never implies that
+ * Frederick tickets apply at the opponent's ballpark.
+ */
+export function keysScoreAction(
+  score: Pick<Score, "keysHome" | "state" | "url">,
+): { href: string; label: string; isTickets: boolean } {
+  if (score.keysHome && score.state === "pre") {
+    return { href: KEYS_TICKETS_URL, label: "Home game tickets", isTickets: true };
+  }
+  return { href: score.url, label: "Official Keys schedule", isTickets: false };
+}
 
 function firstPitch(iso: string): string {
   const t = new Date(iso);
@@ -90,6 +106,7 @@ function ScoreRow({
   won,
   final,
   isKeys = false,
+  side,
 }: {
   name: string;
   runs: number | null;
@@ -97,19 +114,26 @@ function ScoreRow({
   final: boolean;
   /** The Keys' own row reads in orange — the home identity — vs cream for the opponent. */
   isKeys?: boolean;
+  side: "Home" | "Away";
 }) {
   const lost = final && !won;
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span
-        className="min-w-0 truncate text-[14px]"
+        className="flex min-w-0 items-baseline gap-1.5 text-[14px]"
         style={{
           color: isKeys ? KEYS_ORANGE_DEEP : INK,
           fontWeight: won || isKeys ? 700 : 500,
           opacity: lost ? 0.58 : 1,
         }}
       >
-        {name}
+        <span className="min-w-0 truncate">{name}</span>
+        <span
+          className="shrink-0 font-mono text-[8.5px] font-bold uppercase tracking-[0.1em]"
+          style={{ color: "rgba(26,21,14,0.58)" }}
+        >
+          {side}
+        </span>
       </span>
       <span
         className="shrink-0 font-mono text-[21px] tabular-nums"
@@ -164,102 +188,140 @@ export default function KeysScore() {
   const keysWon = score.state === "final" && (score.keys.runs ?? 0) > (score.opponent.runs ?? 0);
   const oppWon = score.state === "final" && (score.opponent.runs ?? 0) > (score.keys.runs ?? 0);
   const matchupWord = score.keysHome ? "vs." : "at";
+  const action = keysScoreAction(score);
 
   return (
-    <div
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
-      style={{
-        background: `linear-gradient(152deg, ${PLATE} 0%, ${PLATE_DEEP} 100%)`,
-        color: INK,
-        boxShadow: "var(--app-elev-1), inset 0 0 0 1px rgba(223,70,1,0.22)",
-      }}
-    >
-      {/* Orange pennant rule along the top edge — the team-color signature. */}
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, ${KEYS_ORANGE} 0%, ${KEYS_ORANGE_DEEP} 100%)` }}
-      />
-      {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
-      <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: INK, opacity: 0.09 }}>
-        <BaseballGlyph size={112} />
-      </span>
-
-      <div className="relative mb-2 flex items-center justify-between gap-2">
+    <div>
+      <div
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
+        style={{
+          background: `linear-gradient(152deg, ${PLATE} 0%, ${PLATE_DEEP} 100%)`,
+          color: INK,
+          boxShadow: "var(--app-elev-1), inset 0 0 0 1px rgba(223,70,1,0.22)",
+        }}
+      >
+        {/* Orange pennant rule along the top edge — the team-color signature. */}
         <span
-          className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: KEYS_ORANGE_DEEP }}
-        >
-          <BaseballGlyph size={13} />
-          Frederick Keys {matchupWord} {score.opponent.name}
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-[3px]"
+          style={{ background: `linear-gradient(90deg, ${KEYS_ORANGE} 0%, ${KEYS_ORANGE_DEEP} 100%)` }}
+        />
+        {/* Oversized baseball watermark, letterpressed off the top-right corner. */}
+        <span aria-hidden className="pointer-events-none absolute -right-5 -top-4" style={{ color: INK, opacity: 0.09 }}>
+          <BaseballGlyph size={112} />
         </span>
-        <span className="flex shrink-0 items-center gap-1.5">
-          <span
-            className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{ borderColor: "rgba(26,21,14,0.24)", color: "rgba(26,21,14,0.78)" }}
-          >
-            {score.keysHome ? "Home" : "Away"}
-          </span>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-            style={
-              chip.live
-                ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
-                : { background: "rgba(26,21,14,0.15)", color: "rgba(26,21,14,0.75)" }
-            }
-          >
-            {chip.live && (
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse"
-              />
-            )}
-            {chip.text}
-          </span>
-        </span>
-      </div>
 
-      <div className="relative space-y-1">
-        <ScoreRow name={score.keys.name} runs={score.keys.runs} won={keysWon} final={score.state === "final"} isKeys />
-        <ScoreRow name={score.opponent.name} runs={score.opponent.runs} won={oppWon} final={score.state === "final"} />
-      </div>
-
-      <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
-        {detailLine(score)}
-        {score.state === "pre" && (
-          <LiveCountdown
-            targetIso={score.startsAt}
-            prefix=" · in"
-            className="font-semibold"
+        <div className="relative mb-2 flex items-center justify-between gap-2">
+          <span
+            className="inline-flex min-w-0 items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em]"
             style={{ color: KEYS_ORANGE_DEEP }}
-          />
-        )}
-      </p>
+          >
+            <BaseballGlyph size={13} />
+            <span className="truncate">
+              Frederick Keys {matchupWord} {score.opponent.name}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span
+              className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+              style={{
+                borderColor: score.keysHome ? KEYS_ORANGE_DEEP : "rgba(26,21,14,0.3)",
+                color: score.keysHome ? KEYS_ORANGE_DEEP : INK,
+                background: score.keysHome ? "rgba(223,70,1,0.08)" : "rgba(26,21,14,0.06)",
+              }}
+            >
+              {score.keysHome ? "Home · Nymeo" : "Away"}
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+              style={
+                chip.live
+                  ? { background: KEYS_ORANGE_DEEP, color: "#FFFDF8" }
+                  : { background: "rgba(26,21,14,0.15)", color: "rgba(26,21,14,0.75)" }
+              }
+            >
+              {chip.live && (
+                <span
+                  aria-hidden
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-pulse"
+                />
+              )}
+              {chip.text}
+            </span>
+          </span>
+        </div>
 
-      {/* Pre-game only: tickets are the decision fact before first pitch.
-          Sits ABOVE the stretched box-score link (z-2 vs z-1). */}
-      {score.state === "pre" && (
+        <div className="relative space-y-1">
+          <ScoreRow
+            name={score.keys.name}
+            runs={score.keys.runs}
+            won={keysWon}
+            final={score.state === "final"}
+            isKeys
+            side={score.keysHome ? "Home" : "Away"}
+          />
+          <ScoreRow
+            name={score.opponent.name}
+            runs={score.opponent.runs}
+            won={oppWon}
+            final={score.state === "final"}
+            side={score.keysHome ? "Away" : "Home"}
+          />
+        </div>
+
+        <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
+          {detailLine(score)}
+          {score.state === "pre" && (
+            <LiveCountdown
+              targetIso={score.startsAt}
+              prefix=" · in"
+              className="font-semibold"
+              style={{ color: KEYS_ORANGE_DEEP }}
+            />
+          )}
+        </p>
+
+        {/* Only a home pre-game can sell Frederick tickets. Away and completed
+            games keep a clear route to the official Keys schedule instead. */}
         <a
-          href={KEYS_TICKETS_URL}
+          href={action.href}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={
+            action.isTickets
+              ? `Tickets for the Frederick Keys home game against ${score.opponent.name}`
+              : `Official Frederick Keys schedule for the ${score.keysHome ? "home" : "away"} game against ${score.opponent.name}`
+          }
           className="tap-44-y relative z-20 mt-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
           style={{ borderColor: KEYS_ORANGE_DEEP, color: KEYS_ORANGE_DEEP }}
         >
-          Get tickets
+          {action.label}
         </a>
-      )}
 
-      {/* The card's primary action — the official schedule/box score. A
-          stretched link so the whole plate stays tappable without nesting
-          an anchor inside an anchor. */}
-      <a
-        href={score.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`Frederick Keys ${score.keysHome ? "home versus" : "away at"} ${score.opponent.name}, ${chip.text}`}
-        className="absolute inset-0 z-10"
-      />
+        {/* The card's primary action — the official schedule/box score. A
+            stretched link so the whole plate stays tappable without nesting
+            an anchor inside an anchor. */}
+        <a
+          href={score.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Frederick Keys ${score.keysHome ? "home versus" : "away at"} ${score.opponent.name}, ${chip.text}`}
+          className="absolute inset-0 z-10"
+        />
+      </div>
+
+      <Link
+        href="/sports"
+        className="tap-44-y group mt-1.5 flex items-center justify-end gap-1 text-[12px] font-semibold"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        More Frederick sports
+        <ChevronRight
+          aria-hidden
+          className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+          strokeWidth={2.25}
+        />
+      </Link>
     </div>
   );
 }

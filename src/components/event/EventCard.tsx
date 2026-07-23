@@ -20,6 +20,7 @@ import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
 import { eventAttendanceLabel } from "@/lib/events/attendance";
+import type { EventCardVisual } from "@/components/event/eventVisuals";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
 // the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
@@ -33,6 +34,7 @@ export default function EventCard({
   hideDate = false,
   whyItMatters,
   priorityImage = true,
+  visual,
 }: {
   event: EventWithMeta;
   /**
@@ -77,13 +79,19 @@ export default function EventCard({
    * images compete for bandwidth and hurt the real LCP.
    */
   priorityImage?: boolean;
+  /**
+   * A source-aware visual selected by the events surface. This may be a
+   * clearly labeled photograph of the venue rather than an event image.
+   */
+  visual?: EventCardVisual;
 }) {
+  const featureImage = visual?.src ?? event.hero_image;
   // A photoless "feature" demotes to the glance row. The 3:2 glyph plate
   // read as a tall, mostly empty media block on a phone (beta trust audit
   // 2026-07-08), and the photo policy already says photoless leads keep the
   // calm glance row — enforced HERE at the card seam so every caller
   // (EventsExplorer leads, the /today hero) gets it without local gating.
-  if (variant === "feature" && !event.hero_image) variant = "glance";
+  if (variant === "feature" && !featureImage) variant = "glance";
 
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -270,15 +278,15 @@ export default function EventCard({
   }
 
   // Feature variant — the editorial lead card for a horizon group, a
-  // PHOTO-LED hero: the event borrows its venue's photo (≈85% of the live set
-  // carry one), filling a 3:2 face with the title/when overlaid in white over a
+  // PHOTO-LED hero: a verified event or venue photograph fills a 3:2 face
+  // with the title/when overlaid in white over a
   // legibility scrim. A photoless event never reaches this branch (the guard
   // above demotes it to glance), so the plate fallback below is defensive
   // only. This is the one above-fold image, so it carries priority;
   // everything else lazy-loads.
   if (variant === "feature") {
     const reasons = eventReasons(event);
-    const onPhoto = Boolean(event.hero_image);
+    const onPhoto = Boolean(featureImage);
     const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
     const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
     const eyebrowColor = onPhoto ? "color-mix(in srgb, " + accent + " 45%, #fff)" : accentText;
@@ -296,10 +304,10 @@ export default function EventCard({
         {onPhoto ? (
           <>
             <Image
-              src={event.hero_image!}
+              src={featureImage!}
               alt=""
               fill
-              unoptimized={event.hero_image!.startsWith("/api/place-photo")}
+              unoptimized={featureImage!.startsWith("/api/place-photo")}
               priority={priorityImage}
               sizes="(max-width: 640px) 100vw, 720px"
               placeholder="blur"
@@ -325,7 +333,13 @@ export default function EventCard({
           {statusText && (
             <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
           )}
-          {event.distance_m !== undefined && (
+          {visual?.caption ? (
+            <span
+              className="ml-auto max-w-[62%] truncate rounded-full bg-black/45 px-2 py-1 text-[9px] font-semibold tracking-[0.02em] text-white backdrop-blur-sm"
+            >
+              {visual.caption}
+            </span>
+          ) : event.distance_m !== undefined && (
             <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums" style={{ color: onPhoto ? "rgba(255,255,255,0.85)" : "var(--app-ink-3)", textShadow: onPhoto ? "0 1px 3px rgba(0,0,0,0.5)" : "none" }}>{formatDistance(event.distance_m)}</span>
           )}
         </div>
@@ -345,6 +359,9 @@ export default function EventCard({
             {date.weekday && <span className="font-mono tabular-nums">{date.weekday} {date.month} {date.day}</span>}
             {date.time && <span className="font-mono tabular-nums">{" · "}{date.time}</span>}
             {venueLabel ? ` · ${venueLabel}` : ""}
+            {visual?.caption && event.distance_m !== undefined
+              ? ` · ${formatDistance(event.distance_m)}`
+              : ""}
           </p>
           {whyItMatters && (
             <p className="mt-1 line-clamp-1 text-[12.5px] leading-snug" style={{ color: capColor }}>

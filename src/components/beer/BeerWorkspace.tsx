@@ -112,7 +112,7 @@ export default function BeerWorkspace({
         className="grid grid-cols-4 border-y"
         style={{ borderColor: "var(--app-border-strong)" }}
       >
-        {MODES.map((item, index) => {
+        {MODES.map((item) => {
           const active = item.key === mode;
           return (
             <button
@@ -123,18 +123,13 @@ export default function BeerWorkspace({
               aria-selected={active}
               aria-controls="beer-workspace-panel"
               onClick={() => chooseMode(item.key)}
-              className="relative min-h-[58px] min-w-0 border-r px-2 py-2 text-left last:border-r-0 sm:px-3"
+              className="relative flex min-h-12 min-w-0 items-center justify-center px-1.5 py-2 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] sm:px-3"
               style={{
-                borderColor: "var(--app-border)",
-                background: active ? "color-mix(in srgb, var(--app-amber) 8%, transparent)" : "transparent",
                 color: active ? "var(--app-ink)" : "var(--app-ink-2)",
                 boxShadow: active ? "inset 0 -3px 0 var(--app-amber-text)" : undefined,
               }}
             >
-              <span className="block font-mono text-[8px] font-bold tabular-nums tracking-[0.12em]" style={{ color: active ? "var(--app-amber-text)" : "var(--app-ink-3)" }}>
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="mt-1 block text-[11px] font-semibold leading-tight sm:text-[12px]">
+              <span className="block text-[11px] font-semibold leading-tight sm:text-[12px]">
                 {item.label}
               </span>
             </button>

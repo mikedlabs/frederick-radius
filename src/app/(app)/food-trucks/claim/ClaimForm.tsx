@@ -11,8 +11,14 @@ type TruckOption = { slug: string; name: string; kind: "food" | "treats" };
  * owner-controlled step. The confirmation copy says exactly that, so nobody
  * expects an instant live pin.
  */
-export default function ClaimForm({ trucks }: { trucks: TruckOption[] }) {
-  const [truckSlug, setTruckSlug] = useState("");
+export default function ClaimForm({
+  trucks,
+  initialTruckSlug = "",
+}: {
+  trucks: TruckOption[];
+  initialTruckSlug?: string;
+}) {
+  const [truckSlug, setTruckSlug] = useState(initialTruckSlug);
   const [operatorName, setOperatorName] = useState("");
   const [contact, setContact] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,7 +77,7 @@ export default function ClaimForm({ trucks }: { trucks: TruckOption[] }) {
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Radius reviews every claim by hand and will reach out at the contact you gave. Once
-          your claim is approved you get a private link for posting a live pin when you are out.
+          your claim is approved, you get a private link for posting a live pin when you are out.
         </p>
       </div>
     );

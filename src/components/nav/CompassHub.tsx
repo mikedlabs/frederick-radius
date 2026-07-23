@@ -170,6 +170,15 @@ const COMMON_TASK_LABELS: Partial<Record<(typeof COMMON_TASK_IDS)[number], strin
   "public-essentials": "Essentials",
 };
 
+const GUIDE_IDS = [
+  "food-trucks",
+  "beer-tools",
+  "sports",
+  "live-music",
+  "trails",
+  "rivers",
+] as const;
+
 const SECTION_ICONS: Record<string, LucideIcon> = {
   "eat-drink": UtensilsCrossed,
   "get-around": Map,
@@ -253,6 +262,21 @@ export function commonCompassTasks(sections: CompassSection[]): DirectoryItem[] 
   });
 }
 
+/** A visible front shelf for the destinations that were otherwise one category
+ * tap and one list scan away. It is derived from the registry, so it cannot
+ * become a second hand-maintained navigation system. */
+export function featuredCompassGuides(
+  sections: CompassSection[],
+): DirectoryItem[] {
+  const byId = new globalThis.Map(
+    sections.flatMap((section) => section.items).map((item) => [item.id, item]),
+  );
+  return GUIDE_IDS.flatMap((id) => {
+    const item = byId.get(id);
+    return item ? [item] : [];
+  });
+}
+
 function subscribeHomeTown(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
@@ -290,6 +314,10 @@ export default function CompassHub() {
 
   const sections = useMemo(() => buildCompassSections(homeSlug), [homeSlug]);
   const commonTasks = useMemo(() => commonCompassTasks(sections), [sections]);
+  const featuredGuides = useMemo(
+    () => featuredCompassGuides(sections),
+    [sections],
+  );
   const activeSection = sections.find((section) => section.id === activeSectionId) ?? null;
   const recentItems = useMemo(() => {
     const byHref = new globalThis.Map(
@@ -414,6 +442,10 @@ export default function CompassHub() {
         <CommonTasks items={commonTasks} intentProps={intentProps} />
       ) : null}
 
+      {!normalizedQuery && featuredGuides.length > 0 ? (
+        <FeaturedGuides items={featuredGuides} intentProps={intentProps} />
+      ) : null}
+
       {!normalizedQuery && recentItems.length > 0 ? (
         <RecentTools items={recentItems} intentProps={intentProps} />
       ) : null}
@@ -442,6 +474,56 @@ export default function CompassHub() {
         )}
 
     </div>
+  );
+}
+
+function FeaturedGuides({
+  items,
+  intentProps,
+}: {
+  items: DirectoryItem[];
+  intentProps: (href: string) => Pick<
+    React.ComponentProps<typeof Link>,
+    "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick"
+  >;
+}) {
+  return (
+    <nav aria-labelledby="compass-featured-guides-heading" className="space-y-2">
+      <p
+        id="compass-featured-guides-heading"
+        className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        Local guides
+      </p>
+      <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={`${item.id}|guide`} className="shrink-0">
+              <Link
+                href={item.href}
+                prefetch={false}
+                {...intentProps(item.href)}
+                className="tactile-interactive flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                style={{
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-ink)",
+                }}
+              >
+                <Icon
+                  className="h-4 w-4 shrink-0"
+                  strokeWidth={2}
+                  style={{ color: item.color }}
+                  aria-hidden
+                />
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
