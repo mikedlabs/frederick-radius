@@ -7,10 +7,11 @@ import {
 } from "@/lib/place-status-overrides";
 
 describe("manual place status overrides", () => {
-  it("keeps a source-backed temporary closure above Google OPERATIONAL", () => {
-    expect(manualPlaceStatusOverride("wiles-branch-dog-park-middletown")?.status)
-      .toBe("closed_temporarily");
-    expect(publicPlaceBySlug("wiles-branch-dog-park-middletown")).toBeUndefined();
+  it("does not keep a removed closure override after an official reopening", () => {
+    expect(
+      manualPlaceStatusOverride("wiles-branch-dog-park-middletown"),
+    ).toBeUndefined();
+    expect(publicPlaceBySlug("wiles-branch-dog-park-middletown")).toBeDefined();
   });
 
   it("does not suppress another record with the same name", () => {
@@ -34,12 +35,18 @@ describe("manual place status overrides", () => {
     expect(isOperational(unrelated)).toBe(true);
   });
 
-  it("surfaces a missed review without automatically reopening", () => {
-    const override = manualPlaceStatusOverride("wiles-branch-dog-park-middletown");
-    expect(override).toBeDefined();
+  it("surfaces a missed review without treating its date as an automatic reopening", () => {
     expect(
-      isManualPlaceStatusReviewCurrent(override!, new Date("2026-07-23T12:00:00Z")),
+      isManualPlaceStatusReviewCurrent(
+        {
+          status: "closed_temporarily",
+          effective_at: "2026-07-04",
+          review_after: "2026-07-22",
+          source: "https://example.com/official-closure",
+          note: "Closed until further notice.",
+        },
+        new Date("2026-07-23T12:00:00Z"),
+      ),
     ).toBe(false);
-    expect(publicPlaceBySlug("wiles-branch-dog-park-middletown")).toBeUndefined();
   });
 });

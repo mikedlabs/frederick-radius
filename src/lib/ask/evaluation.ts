@@ -6,6 +6,9 @@ export type AskEvalCase = {
   intent: AskIntentKind;
   requirePlace?: boolean;
   requireEvent?: boolean;
+  /** An honest empty result is acceptable when no current schedule can prove
+   * a place open. Any returned place must carry a real open state. */
+  requireSafeOpenIfPresent?: boolean;
   maxLeadDistanceM?: number;
   forbidLead?: RegExp;
   allowedPlaceCategories?: string[];
@@ -18,7 +21,7 @@ export const ASK_EVAL_CASES: AskEvalCase[] = [
   { name: "downtown breakfast sandwich", query: "good breakfast sandwich near me", intent: "place", requirePlace: true, maxLeadDistanceM: 4_000, forbidLead: /dunkin/i },
   { name: "downtown breakfast", query: "breakfast downtown", intent: "place", requirePlace: true, maxLeadDistanceM: 2_500 },
   { name: "coffee nearby", query: "independent coffee near me", intent: "place", requirePlace: true, maxLeadDistanceM: 4_000, forbidLead: /starbucks|dunkin/i },
-  { name: "restaurant open", query: "restaurants open now near me", intent: "place", requirePlace: true, maxLeadDistanceM: 5_000 },
+  { name: "restaurant open", query: "restaurants open now near me", intent: "place", requireSafeOpenIfPresent: true, maxLeadDistanceM: 5_000, allowedPlaceCategories: ["restaurant"] },
   { name: "pizza downtown", query: "pizza downtown Frederick", intent: "place", requirePlace: true, maxLeadDistanceM: 2_500 },
   { name: "brewery", query: "local brewery near me", intent: "place", requirePlace: true, maxLeadDistanceM: 6_000 },
   { name: "groceries", query: "grocery store near me", intent: "place", requirePlace: true, maxLeadDistanceM: 8_000 },

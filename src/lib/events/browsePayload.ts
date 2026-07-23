@@ -27,9 +27,10 @@ export type EventBrowseSummary = {
  * JSON boundary. Event detail pages load their own complete record.
  *
  * This intentionally returns EventWithMeta for compatibility with the shared
- * cards and predicates. Those consumers read this structural subset; omitted
- * provenance, ticketing, long-form and detail-only fields are never touched by
- * the board.
+ * cards and predicates. Those consumers read this structural subset; ticketing,
+ * long-form and detail-only fields are omitted. The source URL remains because
+ * it is the honest join action for an online event without a separate meeting
+ * URL.
  */
 export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
   return {
@@ -49,6 +50,9 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     audience: e.audience,
     is_free: e.is_free,
     price_text: e.price_text,
+    attendance_mode: e.attendance_mode,
+    online_url: e.online_url,
+    source_url: e.source_url,
     hero_image: e.hero_image,
     status: e.status,
     distance_m: e.distance_m,

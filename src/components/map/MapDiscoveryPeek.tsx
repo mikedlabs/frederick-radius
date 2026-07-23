@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Info, X } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import type { MapDiscovery } from "./mapDiscoveries";
+import { discoveryTrustLine } from "./mapContent";
 
 function evidenceCue(item: MapDiscovery["evidence"][number]): string | null {
   const parts: string[] = [];
@@ -67,6 +68,7 @@ export default function MapDiscoveryPeek({
       <span className="map-finding-eyebrow">{discovery.eyebrow}</span>
       <h2 id={titleId} className="map-finding-title font-serif">{discovery.title}</h2>
       <p className="map-finding-summary">{discovery.summary}</p>
+      <p className="map-finding-trust">{discoveryTrustLine(discovery.evidence)}</p>
 
       <div className="map-finding-actions">
         <details className="map-finding-proof">

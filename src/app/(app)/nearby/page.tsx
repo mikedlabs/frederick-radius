@@ -4,6 +4,7 @@ import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/p
 import { isCravingPlace } from "@/data/cravings";
 import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
+import { isRecommendable } from "@/lib/relevance";
 import { parseScope, resolveDecisionContext, SCOPE_COOKIE } from "@/lib/scope";
 
 export const metadata: Metadata = {
@@ -66,6 +67,10 @@ export default async function NowPage({
     approximateStatus: approx.status,
   });
   const places = publicPlaces()
+    // This page gives recommendations, not raw directory matches. Keep offices,
+    // schools, private clubs, and other non-customer records available to
+    // Search and Map without letting them lead a "where can I get..." answer.
+    .filter(isRecommendable)
     // Filter to craving-eligible FIRST (the matcher only reads category + name,
     // both on the raw Place), then decorate only that subset instead of
     // decorating all ~1,700 places and discarding most. A per-request CPU cut

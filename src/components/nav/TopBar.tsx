@@ -10,7 +10,8 @@ import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
-import { consumeFindRequest } from "@/lib/findBridge";
+import { consumeFindRequest, requestFind } from "@/lib/findBridge";
+import { haptic } from "@/lib/haptics";
 
 
 export default function TopBar() {
@@ -47,14 +48,16 @@ export default function TopBar() {
     };
   }, [hidden]);
 
-  // /map and /search each own a full search control. Suppress the global
-  // trigger on those routes so people never have to choose between two
-  // search boxes that do the same job. The wordmark/back control, pulse,
-  // Compass, and the ⌘K shortcut remain available.
+  // These routes own the middle of the header because their primary workspace
+  // already contains a full search or query control. Mobile search still gets
+  // one compact header button where it is useful; /search and /ask suppress
+  // that duplicate, while /map hands the same button to its local search.
   const pageOwnsSearch = pathname === "/map"
     || pathname === "/search"
     || pathname === "/compass"
     || pathname.startsWith("/ask");
+  const mapOwnsSearch = pathname === "/map";
+  const showMobileSearch = !pageOwnsSearch || mapOwnsSearch;
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -94,12 +97,6 @@ export default function TopBar() {
     if (consumeFindRequest("global")) window.requestAnimationFrame(open);
     return () => window.removeEventListener("fr:open-search", open);
   }, []);
-
-  // Keep the center Find destination visually in sync with the dialog no
-  // matter which trigger opened it (bottom nav, desktop field, or keyboard).
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("fr:search-state", { detail: { open: searchOpen } }));
-  }, [searchOpen]);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -224,11 +221,9 @@ export default function TopBar() {
             )
           ) : (
             <>
-              {/* Mobile already has the prominent center Find action in the
-                  fixed primary nav. Repeating the same search control here
-                  made every page open with two competing discovery doors.
-                  Keep the middle of the top bar calm until the desktop layout,
-                  where the bottom nav is gone and this search becomes primary. */}
+              {/* Mobile uses the circular header action rendered just after
+                  this flexible spacer. Desktop gets the wider field because
+                  the side rail leaves room for a descriptive search control. */}
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
               <button
                 type="button"
@@ -247,6 +242,30 @@ export default function TopBar() {
                 </kbd>
               </button>
             </>
+          )}
+
+          {showMobileSearch && (
+            <button
+              type="button"
+              aria-label={mapOwnsSearch ? "Search this map" : "Search Frederick County"}
+              aria-haspopup={mapOwnsSearch ? undefined : "dialog"}
+              aria-controls={mapOwnsSearch ? "map-search-input" : "radius-find-dialog"}
+              aria-expanded={mapOwnsSearch ? undefined : searchOpen}
+              title={mapOwnsSearch ? "Search this map" : "Search Frederick County"}
+              onClick={() => {
+                haptic("light");
+                if (mapOwnsSearch) requestFind("map");
+                else setSearchOpen(true);
+              }}
+              className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
+              style={{
+                borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
+                color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
+                background: searchOpen ? "var(--app-brand-tint-6)" : undefined,
+              }}
+            >
+              <Search className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            </button>
           )}
 
           {/* (Removed the header "My Radius" bookmark — it duplicated the
@@ -296,7 +315,7 @@ export default function TopBar() {
             }}
           >
             <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className={pathname === "/map" ? "hidden text-[14px] font-medium leading-none min-[430px]:inline" : "text-[14px] font-medium leading-none"}>All tools</span>
+            <span className="hidden text-[14px] font-medium leading-none sm:inline">All tools</span>
           </Link>}
         </div>
       </header>

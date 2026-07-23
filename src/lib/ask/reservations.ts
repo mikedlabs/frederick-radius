@@ -46,6 +46,7 @@ export function cleanReservationSearchQuery(query: string): string {
     .replace(/\b(?:this\s+|next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, " ")
     .replace(/\b20\d{2}-\d{1,2}-\d{1,2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/gi, " ")
     .replace(/\b(?:i\s+want|i(?:'d|\s+would)\s+like|can\s+you|please)\b/gi, " ")
+    .replace(/^\s*(?:and|then|so)\b|\b(?:and|then|so)\b\s*$/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

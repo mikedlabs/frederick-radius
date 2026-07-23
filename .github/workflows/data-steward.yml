@@ -3,9 +3,10 @@ name: data-steward
 # Nightly data steward. Probes the critical feeds (informational), then
 # runs the committed-artifact refresh scripts that keep the app's local
 # data fresh: business status, rolling hours, transit GTFS, and park amenities. Each
-# refresh is guarded with `|| true` so one upstream hiccup never aborts
-# the others. If anything changed on disk, it opens a PR (PR-gated, never
-# a direct push to a content branch) so a human reviews the data diff.
+# Hours and business-status failures are release-significant and fail loudly.
+# Lower-risk transit and park rebuilds remain fail-soft. If anything changed on
+# disk, the workflow opens a PR (PR-gated, never a direct push to a content
+# branch) so a human reviews the data diff.
 
 on:
   schedule:
@@ -41,35 +42,39 @@ jobs:
       - name: Feed health (informational)
         run: tsx scripts/feed-health.ts || true
 
-      # Refresh committed data artifacts. Guard each so a single failure
-      # (e.g. a missing key or a transient upstream error) does not abort
-      # the rest of the nightly refresh.
+      # Core place freshness cannot silently no-op. A missing secret, database
+      # failure, or failed paid refresh turns the workflow red.
       - name: Refresh business status
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-        run: npm run refresh:business-status || true
+        run: npm run refresh:business-status
 
       # Materialize the server cron's place_hours_refresh table into the
       # committed snapshot. The PR remains the human approval/deploy boundary.
       - name: Pull rolling hours snapshot
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run refresh:hours || true
+        run: npm run refresh:hours
 
+      # These secondary sources remain fail-soft so a temporary government
+      # endpoint outage does not hide a successful place-data refresh.
       - name: Rebuild transit GTFS
         run: npm run build:transit || true
 
       - name: Rebuild park amenities
         run: npm run build:park-amenities || true
 
-      # Rebuild the exact public snapshot and enforce critical/high data gates.
-      # This is what turns an expired temporary-closure review (or a new bogus
-      # 24/7 schedule) into a visible nightly failure instead of waiting for the
-      # next deployment to notice it. Medium editorial-copy debt stays advisory.
+      # Rebuild the exact public snapshot and enforce critical safety gates.
+      # High-severity coverage debt is reported separately below: it must stay
+      # visible, but it cannot prevent an incremental refresh PR from opening.
       - name: Rebuild public place snapshot
         run: npm run build:client-places
 
-      - name: Enforce data gates
+      - name: Enforce critical data gates
+        run: npm run gates
+
+      - name: Report high-severity data debt
+        continue-on-error: true
         run: npm run gates -- --fail-high
 
       # On any change, open (or update) a PR so a human reviews the data
@@ -85,8 +90,9 @@ jobs:
             Automated nightly refresh from the data-steward workflow.
 
             Ran: refresh:business-status, refresh:hours, build:transit, build:park-amenities,
-            build:client-places, and high/critical data gates.
-            (each guarded with `|| true`). Review the data diff before merging.
+            build:client-places, and the data-quality scorecard. Critical gates
+            block this PR; existing high-severity coverage debt remains visible
+            without blocking an incremental refresh. Review the diff before merging.
           labels: |
             data-pipeline
             automated

@@ -51,6 +51,13 @@ export type PlanInputs = {
   /** A place explicitly named by Ask Radius ("make a plan around this"). */
   anchor_slug?: string;
   /**
+   * Require a fresh, verified schedule to cover every stop. Ask Radius sets
+   * this for dated, "tonight," and other live-clock plans. An undated idea
+   * ("plan a date night") may still use a strong place whose hours need
+   * confirmation, but the stop remains visibly "Hours unconfirmed."
+   */
+  require_verified_hours?: boolean;
+  /**
    * Optional integer that nudges candidate ranking deterministically.
    * Same inputs with a different seed yield a *different but valid*
    * plan — the user's "Shuffle" affordance. Omitted = stable ranking.
@@ -134,6 +141,22 @@ const MEALS = new Set(["restaurant", "pizza", "food-truck"]);
 const DRINKS = new Set(["bar", "brewery", "winery", "distillery"]);
 const TREATS = new Set(["coffee", "bakery", "ice-cream"]);
 const SHOPPING = new Set(["shopping", "antiques", "book-store", "market"]);
+const DATE_FILLER_CATEGORIES = new Set(["shopping", "market"]);
+const DATE_EVENING_CATEGORIES = new Set([
+  "restaurant",
+  "pizza",
+  "bar",
+  "brewery",
+  "winery",
+  "distillery",
+  "theater",
+  "music",
+  "museum",
+  "gallery",
+  "arts",
+  "ice-cream",
+]);
+const DATE_MIN_GOOGLE_RATING = 4;
 
 const DURATION_MIN: Record<string, number> = {
   coffee: 40, bakery: 30, restaurant: 80, pizza: 60, bar: 60, brewery: 70,
@@ -273,14 +296,16 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
     .filter((p) => {
       if (input.municipality && p.municipality !== input.municipality) return false;
       if (!isRecommendable(p) || !allowCategory(p.category) || !isPublicPlanCandidate(p)) return false;
-      // A date-night request should not start at a daytime errand/snack stop
-      // merely because it is close and highly rated. Keep the evening set to
-      // destinations that can carry an actual night out.
-      if (
-        input.audience === "date" &&
-        slot === "evening" &&
-        ["market", "coffee", "bakery"].includes(p.category)
-      ) return false;
+      // Audience constraints are gates, not ranking nudges. A generic shop or
+      // a place with a weak known rating should never become a date-plan stop
+      // simply because it is nearby and the planner still has a slot to fill.
+      // An explicit anchor remains the user's choice and is not silently
+      // discarded by these recommendation-only safeguards.
+      if (input.audience === "date" && input.anchor_slug !== p.slug) {
+        if (DATE_FILLER_CATEGORIES.has(p.category)) return false;
+        if (slot === "evening" && !DATE_EVENING_CATEGORIES.has(p.category)) return false;
+        if (p.google_rating != null && p.google_rating < DATE_MIN_GOOGLE_RATING) return false;
+      }
       if (input.local_only && isChainName(p.name)) return false;
       if (input.budget === "free" && !(p.tags ?? []).includes("free")) return false;
       if (input.budget === "value" && p.price_band != null && p.price_band > 2) return false;
@@ -304,6 +329,12 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
       const jitter = seed === 0
         ? 0
         : ((hashStr(`${p.slug}:${seed}`) % 1000) / 1000 - 0.5) * 1.2;
+      // A generic restaurant with a high aggregate score is not
+      // automatically a date-night pick. Curated date-night evidence should
+      // outrank a blank listing that merely has a higher rating.
+      const audienceEvidence = input.audience === "date" && (p.tags ?? []).includes("date-night")
+        ? 2.5
+        : 0;
       const score =
         (base +
           (input.anchor_slug === p.slug ? 100 : 0) +
@@ -311,6 +342,7 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
           rating +
           openWeight(d.open_status.state) +
           tagBonus(p, input.vibe, input.audience) +
+          audienceEvidence +
           audienceCategoryScore(p.category, input.audience, slot) +
           (input.parking_priority ? (fieldNotesFor(p.slug)?.parking?.text ? 2.4 : -0.4) : 0) +
           jitter) /
@@ -321,15 +353,11 @@ function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[
       if (c.distance >= (input.max_distance_m ?? 20_000) || c.score <= 0) return false;
       if (!fitsVibe(c.d.category, input.vibe)) return false;
       if (c.d.open_status.state === "closed") return false;
-      // A time-specific plan should not route someone to a place whose hours
-      // Radius cannot confirm for that window.
+      // Only a genuinely time-specific plan requires fresh schedule proof.
+      // General idea-building can keep a strong place with unknown hours, but
+      // schedule() marks it "Hours unconfirmed" instead of implying it is open.
       if (
-        input.start_at &&
-        (c.d.open_status.state === "unknown" || c.d.open_status.state === "unverified")
-      ) return false;
-      if (
-        input.audience === "date" &&
-        slot === "evening" &&
+        input.require_verified_hours &&
         (c.d.open_status.state === "unknown" || c.d.open_status.state === "unverified")
       ) return false;
       return true;
@@ -341,8 +369,21 @@ function durationFor(cat: string): number {
   return DURATION_MIN[cat] ?? DEFAULT_DURATION;
 }
 
+function planCategoryNoun(category: string): string {
+  const labels: Record<string, string> = {
+    arts: "arts venue",
+    music: "music venue",
+    shopping: "shop",
+    "public-art": "public art stop",
+    tours: "tour",
+    "ice-cream": "ice cream shop",
+    agritourism: "farm",
+  };
+  return labels[category] ?? category.replace(/-/g, " ");
+}
+
 function whyFor(d: PlaceCardData): string {
-  const category = CATEGORY_BY_SLUG[d.category]?.name?.toLowerCase() ?? d.category.replace(/-/g, " ");
+  const category = planCategoryNoun(d.category);
   if (d.google_rating) {
     return `Google lists this ${category} in ${d.city} with a ${d.google_rating.toFixed(1)} rating.`;
   }
@@ -378,11 +419,19 @@ function estimateTravel(from: LngLat, to: LngLat): { minutes: number; meters: nu
   return { minutes: Math.max(6, Math.ceil(meters / 500) + 3), meters, mode: "drive" };
 }
 
-function confirmedOpenForStop(place: Place, at: Date, durationMin: number): boolean {
+function availableForStop(
+  place: Place,
+  at: Date,
+  durationMin: number,
+  requireVerifiedHours: boolean,
+): boolean {
   const start = getOpenStatus(place.hours, { verified: place.hours_verified }, at).state;
   const nearEnd = new Date(at.getTime() + Math.max(1, durationMin - 5) * 60_000);
   const end = getOpenStatus(place.hours, { verified: place.hours_verified }, nearEnd).state;
-  return start === "open" && (end === "open" || end === "closing-soon");
+  const confirmedOpen = start === "open" && (end === "open" || end === "closing-soon");
+  if (confirmedOpen) return true;
+  if (start === "closed" || end === "closed") return false;
+  return !requireVerifiedHours;
 }
 
 /** Lay stops out on the clock from the start time. Pure. */
@@ -456,7 +505,15 @@ function schedule(
 
 export function buildPlan(input: PlanInputs): Plan {
   const { origin, now } = resolve(input);
-  const resolvedInput: PlanInputs = { ...input, start_at: now.toISOString() };
+  // Older callers already used start_at as their signal that the itinerary
+  // was for a real clock window. Preserve that safe default. Ask Radius can
+  // explicitly pass false for an undated draft that still needs clock labels.
+  const requireVerifiedHours = input.require_verified_hours ?? Boolean(input.start_at);
+  const resolvedInput: PlanInputs = {
+    ...input,
+    start_at: now.toISOString(),
+    require_verified_hours: requireVerifiedHours,
+  };
   const candidates = scoredCandidates(resolvedInput, origin, now);
   const slot = slotFor(now);
 
@@ -477,7 +534,12 @@ export function buildPlan(input: PlanInputs): Plan {
         const arrival = new Date(cursor + (travel?.minutes ?? 0) * 60_000);
         const duration = durationFor(candidate.d.category);
         if (arrival.getTime() + duration * 60_000 > windowEnd) return false;
-        return confirmedOpenForStop(candidate.d as Place, arrival, duration);
+        return availableForStop(
+          candidate.d as Place,
+          arrival,
+          duration,
+          requireVerifiedHours,
+        );
       })
       .sort((a, b) => {
         if (input.anchor_slug) {

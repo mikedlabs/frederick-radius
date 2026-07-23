@@ -1141,6 +1141,47 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * silence the ring — an inline `animation` can't be overridden by a media
  * query. The dot itself stays; only the pulse halo stops. */
 .fr-ev-pulse { animation: fr-ev-pulse 2.6s ease-out infinite; }
+.fr-event-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 180ms ease, transform 100ms ease;
+}
+.fr-event-marker:active {
+  transform: scale(.94);
+}
+.fr-event-marker .fr-ev-pulse {
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: var(--event-color);
+}
+.fr-event-marker-face {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  box-shadow: var(--app-shadow-2);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+.fr-event-marker[data-group] .fr-event-marker-face {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--event-color) 34%, #fff),
+    var(--app-shadow-2);
+}
 @media (prefers-reduced-motion: reduce) {
   .fr-ev-pulse { animation: none; }
 }
@@ -2629,10 +2670,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. Search and three decision controls pin to the top. A separate,
-   persistent layer rail makes visible map state directly reversible. Deeper
-   controls open in a bottom sheet on phones and a side tray on desktop so the
-   map remains the canvas instead of disappearing behind a dropdown.
+   dock-*. The cold map exposes one search and one contents door; every other
+   choice is progressively disclosed in a phone tray or desktop inspector.
    ========================================================================== */
 
 /* Host marker on the map container: with the dock now at the TOP, the map's
@@ -2683,10 +2722,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 46px;
+  height: 52px;
   padding: 0 14px;
   color: var(--app-ink-3);
-  border-bottom: 1px solid var(--app-border);
+  border-right: 1px solid var(--app-border);
 }
 .dock-search-input {
   flex: 1 1 auto;
@@ -2702,14 +2741,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .dock-search-input::placeholder {
   color: var(--app-ink-3);
 }
-.dock-search-kbd {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  color: var(--app-ink-3);
-  border: 1px solid var(--app-border);
-  border-radius: 5px;
-  padding: 2px 6px;
-  background: var(--app-bg-sunken);
+.dock-search-input::-webkit-search-cancel-button {
+  appearance: none;
+  -webkit-appearance: none;
 }
 .dock-search-clear {
   display: grid;
@@ -2740,7 +2774,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--app-shadow-3);
-  max-height: 320px;
+  max-height: 246px;
   overflow-y: auto;
 }
 .dock-search-result {
@@ -2748,7 +2782,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 14px;
+  min-height: 48px;
+  padding: 7px 12px;
   text-align: left;
 }
 .dock-search-result:hover {
@@ -2781,11 +2816,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dock-search-more {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding-inline: 12px;
+  border-top: 1px solid var(--app-border);
+  color: var(--app-brand-press);
+  background: color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated));
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 520px) {
+  .dock-search-results {
+    max-height: 190px;
+  }
+  /* Three decisions plus a full-results handoff keep at least three quarters
+     of a short phone map visible. Desktop has room for the fourth row. */
+  .dock-search-result-item[data-rank="4"] {
+    display: none;
+  }
+}
 
-/* The pinned head: search plus the three core map questions. */
+/* The pinned head: one search plus one explicit contents door. */
 .dock-head {
   position: relative;
   z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   border-radius: var(--app-radius-md);
   border: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-bg-elevated) 94%, transparent);
@@ -2799,10 +2861,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
 }
 
-/* Deep controls are a real map tray, not a dropdown attached to the search.
-   On phones it rises above the bottom navigation; on desktop it becomes a
-   compact right-side inspector. The rest of the map remains visible and can
-   still be panned while the tray is open. */
+/* Deep controls are a map tray, not a dropdown attached to the search.
+   Mobile height is written by MapDock as one quarter of the actual map canvas,
+   so controls cannot quietly consume half the map on a short phone. */
 .dock-pane {
   position: fixed;
   top: auto;
@@ -2810,7 +2871,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   left: max(10px, env(safe-area-inset-left, 0px));
   right: max(10px, env(safe-area-inset-right, 0px));
   z-index: calc(var(--z-sticky) + 2);
-  max-height: min(62dvh, 560px);
+  max-height: var(--map-pane-cap, 116px);
   overflow: hidden;
   background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
   backdrop-filter: blur(16px) saturate(1.08);
@@ -2832,24 +2893,77 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   transform: translateY(0) scale(1);
   transition-delay: 0s;
 }
-.dock-pane::before {
-  content: "";
-  display: block;
-  width: 38px;
-  height: 4px;
-  margin: 8px auto 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-ink-3) 35%, transparent);
-}
 .dock-pane-scroll {
-  max-height: min(62dvh, 560px);
+  max-height: var(--map-pane-cap, 116px);
   overflow-y: auto;
   /* Momentum scrolling for the dock pane on iOS (harmless no-op on modern
      Safari where it's the default; restores it on older WebKit). */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 8px 14px 16px;
+  padding: 12px 14px 16px;
   scrollbar-width: thin;
+}
+
+/* The first Contents tap opens a shallow instrument ribbon. It is one
+   horizontally scrolling row, so the map remains the dominant surface
+   instead of being replaced by a six-row menu. Deeper panes retain their
+   vertical controls, but remain capped to one quarter of the map above. */
+@media (max-width: 1023.98px) {
+  .dock-pane[data-pane="contents"],
+  .dock-pane[data-pane="contents"] .dock-pane-scroll {
+    max-height: 84px;
+  }
+  .dock-pane[data-pane="contents"] .dock-pane-scroll {
+    padding: 10px;
+    overflow: hidden;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-list {
+    display: flex;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-list::-webkit-scrollbar {
+    display: none;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-row {
+    width: 118px;
+    flex: 0 0 118px;
+    min-width: 118px;
+    min-height: 56px;
+    grid-template-columns: 28px auto;
+    gap: 7px;
+    padding: 6px 9px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-bg-elevated);
+    scroll-snap-align: start;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-row:last-child {
+    border-bottom: 1px solid var(--app-border);
+  }
+  .dock-pane[data-pane="contents"] .dock-content-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-copy small,
+  .dock-pane[data-pane="contents"] .dock-content-row > svg {
+    display: none;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-copy strong {
+    font-size: 12px;
+    white-space: nowrap;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -2875,10 +2989,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 .dock-pane-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 2px;
+  margin-inline: -2px;
+  padding: 0 4px;
+  background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
+  backdrop-filter: blur(16px) saturate(1.08);
+  -webkit-backdrop-filter: blur(16px) saturate(1.08);
 }
 .dock-pane-title {
   font-size: 18px;
@@ -2892,6 +3013,87 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13px;
   font-weight: 600;
   color: var(--app-ink-3);
+}
+.dock-back {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: -6px;
+  padding: 0 7px 0 2px;
+  color: var(--app-ink-3);
+  font-size: 12px;
+  font-weight: 650;
+}
+.dock-content-list {
+  overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-elevated);
+}
+.dock-content-row {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 10px;
+  text-align: left;
+  color: var(--app-ink-3);
+  border-bottom: 1px solid var(--app-border);
+  transition: background 0.14s, color 0.14s, transform 0.08s;
+}
+.dock-content-row:last-child {
+  border-bottom: 0;
+}
+.dock-content-row:hover {
+  background: var(--app-bg-sunken);
+}
+.dock-content-row:active {
+  transform: scale(0.992);
+}
+.dock-content-row[data-on] {
+  color: var(--app-brand-press);
+  background: var(--app-brand-tint-6);
+}
+.dock-content-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--app-ink-2);
+  background: var(--app-bg-sunken);
+  border: 1px solid var(--app-border);
+}
+.dock-content-row[data-on] .dock-content-icon {
+  color: var(--app-brand-press);
+  border-color: color-mix(in srgb, var(--app-brand) 28%, var(--app-border));
+  background: color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated));
+}
+.dock-content-copy {
+  min-width: 0;
+}
+.dock-content-copy strong,
+.dock-content-copy small {
+  display: block;
+}
+.dock-content-copy strong {
+  color: var(--app-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.dock-content-copy small {
+  margin-top: 2px;
+  color: var(--app-ink-3);
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Mono section kickers: PLACES · YOURS · OVERLAYS · EVENTS · THE DAY. */
@@ -2907,49 +3109,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin-top: 4px;
 }
 
-/* Category grid — the Places pane's "whole guide at a glance": every intent as
-   a tile (icon chip + label + count), grouped by family. Color per tile via
-   --c; a lit tile tints toward its color. Two columns; each tile clears 44px. */
-/* Most-needed shortcuts: a wrap of one-tap need chips (icon medallion + label)
-   above the category grid — categories, the everyday amenities, open-now and
-   near-me together, so the common answer never needs a tab. Color per chip. */
-.dock-needs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 6px;
-}
-.dock-need {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 13px 0 9px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--c) 22%, var(--app-border));
-  background: color-mix(in srgb, var(--c) 6%, var(--app-bg-elevated));
-  color: var(--app-ink);
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-need:active {
-  transform: scale(0.97);
-}
-.dock-need-ic {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  color: #fff;
-  background: var(--c);
-}
-.dock-need[data-on] {
-  background: color-mix(in srgb, var(--c) 16%, var(--app-bg-elevated));
-  border-color: color-mix(in srgb, var(--c) 55%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent);
-}
+/* Category grid — the Places pane's whole guide at a glance. */
 
 /* Progressive-disclosure rows in the map's Places pane. The map stays the
    main surface: common choices remain visible, while the complete category
@@ -3066,82 +3226,29 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-variant-numeric: tabular-nums;
 }
 
-/* Frederick map setups compose several existing layers into one useful view.
-   They live inside Layers as a compact horizontal field-guide index, keeping
-   the permanent map chrome quiet while making the deep data approachable. */
-.dock-setups {
-  display: flex;
-  gap: 8px;
-  margin-inline: -2px;
-  padding: 1px 2px 7px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: inline proximity;
-  scrollbar-width: none;
-}
-.dock-setups::-webkit-scrollbar {
-  display: none;
-}
-.dock-setup {
-  flex: 0 0 176px;
-  min-height: 76px;
-  scroll-snap-align: start;
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 11px;
+/* Active live layers answer the trust questions the toggle alone cannot:
+   what is on the map, how current it is, and what to tap next. */
+.dock-layer-status-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 9px;
+  padding: 9px 10px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-sm);
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--app-cool) 7%, var(--app-bg-elevated)), var(--app-bg-elevated));
-  color: var(--app-ink);
-  text-align: left;
-  box-shadow: 0 4px 12px -10px color-mix(in srgb, var(--app-ink) 35%, transparent);
-  transition: border-color 0.14s, transform 0.08s, background 0.14s;
+  background: color-mix(in srgb, var(--app-cool) 5%, var(--app-bg-sunken));
 }
-.dock-setup:hover {
-  border-color: color-mix(in srgb, var(--app-cool) 38%, var(--app-border));
-}
-.dock-setup:active {
-  transform: translateY(1px);
-}
-.dock-setup-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  color: var(--app-cool);
-  background: color-mix(in srgb, var(--app-cool) 13%, var(--app-bg-elevated));
-}
-.dock-setup-copy {
-  min-width: 0;
-}
-.dock-setup-copy strong,
-.dock-setup-copy small {
-  display: block;
-}
-.dock-setup-copy strong {
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1.15;
-}
-.dock-setup-copy small {
-  margin-top: 4px;
+.dock-layer-status {
   color: var(--app-ink-3);
-  font-size: 10px;
-  line-height: 1.3;
+  font-size: 10.5px;
+  line-height: 1.42;
+}
+.dock-layer-status strong {
+  color: var(--app-ink-2);
+  font-weight: 700;
 }
 
-/* "Read this area" is the map's synthesis tool, not another map layer. Its
-   cards use a quiet editorial hierarchy and keep the full explanation one tap
-   away on the selected finding card. */
-.dock-read-area {
-  color: var(--app-brand-press);
-  border-color: color-mix(in srgb, var(--app-brand) 32%, var(--app-border));
-  background: color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated));
-}
+/* Highlights is the map's synthesis tool, not another map layer. Its cards
+   stay inside Map contents until the viewport has evidence worth showing. */
 .dock-discoveries {
   padding-top: 2px;
 }
@@ -3425,174 +3532,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 0 2px;
 }
 
-/* Row 2 of the control bar: an always-visible, horizontally scrolling
-   category chip row — the map's primary action (pick a kind of place) made
-   one tap, Google/Apple-Maps style. A compact More button (the When/Where/
-   Layers depth plus the Places sub-intents) and the Map ↔ list toggle pin to
-   the right and never scroll. Surfacing the categories here replaced the old
-   single Filters button that buried them three taps deep (owner ask
-   2026-07-21: the map "feels messy" / hard to use). */
-/* Row 1 — search takes the room; More + the map/list toggle are compact
-   square icon buttons pinned to its right, OFF the category row so the
-   categories below can use the full width. */
-/* (The old horizontal chip-scroll strip, its "More"/Filters pill, and main's
-   parallel dock-topline/icbtn row experiment were all replaced by the single
-   Browse-places door; their styles are gone. .dock-filters-n survives as the
-   door's active-filter count badge.) */
-.dock-filters-n {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-brand) 16%, var(--app-bg-elevated));
-  color: var(--app-brand-press);
-}
-
-/* Three stable map questions sit directly below search. Open-panel emphasis and
-   active-filter status are deliberately separate visual states. They share the available
-   width instead of competing as a long Browse pill plus mystery icon buttons.
-   A quiet registration rule carries state without turning the map chrome into
-   a row of colored capsules. */
-.dock-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 5px;
-}
-.dock-action {
-  position: relative;
-  min-width: 0;
-  min-height: 44px;
+/* One control owns progressive disclosure. Its count is the only cold-bar
+   indication of non-default state, so the map never grows another chip rail. */
+.dock-contents {
+  min-width: 92px;
+  max-width: 148px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: var(--app-radius-sm);
-  color: var(--app-ink-3);
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--app-ink-2);
   background: transparent;
-  font-size: 11.5px;
-  font-weight: 650;
+  border-radius: 0 var(--app-radius-md) var(--app-radius-md) 0;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1;
-  transition: color 0.14s, background 0.14s, border-color 0.14s, transform 0.08s;
+  transition: color 0.14s, background 0.14s, transform 0.08s;
 }
-.dock-action:active {
-  transform: scale(0.97);
-}
-.dock-action > span {
+.dock-contents > span {
   min-width: 0;
+  max-width: 112px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dock-action[data-on] {
-  color: var(--app-brand-press);
-}
-.dock-action[data-on]::after {
-  content: "";
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 99px;
-  background: var(--app-brand);
-  transform: translateX(-50%);
-}
-.dock-action[aria-expanded="true"],
-.dock-action[aria-pressed="true"] {
-  color: var(--app-brand-press);
-  border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
-  background: var(--app-brand-tint-6);
-}
-.dock-action[aria-expanded="true"]::after,
-.dock-action[aria-pressed="true"]::after {
-  content: "";
-  top: auto;
-  left: auto;
-  width: auto;
-  transform: none;
-  position: absolute;
-  inset-inline: 9px;
-  bottom: 0;
-  height: 2px;
-  background: var(--app-brand);
-}
-
-/* Persistent map-layer rail. It behaves like an instrument panel: three
-   common switches are always present and every less-common active layer stays
-   visible until it is removed. Horizontal scrolling preserves map acreage on
-   a phone; the scrollbar is intentionally hidden. */
-.dock-layer-rail {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  width: max-content;
-  max-width: 100%;
-  margin: 7px auto 0;
-  padding: 4px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  border: 1px solid color-mix(in srgb, var(--app-border) 86%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-bg-elevated) 91%, transparent);
-  backdrop-filter: blur(14px) saturate(1.08);
-  -webkit-backdrop-filter: blur(14px) saturate(1.08);
-  box-shadow: var(--app-shadow-2);
-}
-.dock-layer-rail::-webkit-scrollbar {
-  display: none;
-}
-.dock-layer-toggle,
-.dock-layer-more {
-  flex: 0 0 auto;
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  color: var(--app-ink-2);
-  background: transparent;
-  font-size: 11.5px;
-  font-weight: 650;
-  white-space: nowrap;
-  transition: color 0.14s, background 0.14s, border-color 0.14s, transform 0.08s;
-}
-.dock-layer-toggle:active,
-.dock-layer-more:active {
+.dock-contents:active {
   transform: scale(0.97);
 }
-.dock-layer-dot {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border: 1.5px solid currentColor;
-  border-radius: 999px;
-  opacity: 0.58;
-}
-.dock-layer-toggle[data-on],
-.dock-layer-more[data-on] {
+.dock-contents[data-on],
+.dock-contents[aria-expanded="true"] {
   color: var(--app-brand-press);
-  border-color: color-mix(in srgb, var(--app-brand) 30%, var(--app-border));
-  background: color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated));
-}
-.dock-layer-toggle[data-on] .dock-layer-dot {
-  border-color: var(--app-brand);
-  background: var(--app-brand);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-brand) 12%, transparent);
-  opacity: 1;
-}
-.dock-layer-more {
-  color: var(--app-ink);
-  border-color: var(--app-border);
-  background: var(--app-bg-elevated);
+  background: var(--app-brand-tint-6);
 }
 .dock-layer-count {
   min-width: 18px;
@@ -3655,11 +3626,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     top: 4px;
   }
   .dock-head {
-    display: flex;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) 72px;
   }
   .dock-search-wrap {
-    flex: 0 1 240px;
     min-width: 170px;
   }
   .dock-search {
@@ -3667,21 +3636,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border-right: 1px solid var(--app-border);
     border-bottom: 0;
   }
-  .dock-actions {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding: 4px;
+  .dock-contents {
+    min-width: 72px;
+    padding-inline: 8px;
   }
-  .dock-action {
-    min-height: 44px;
-    padding-inline: 3px;
-  }
-  .dock-action > span {
+  .dock-contents > span:not(.dock-layer-count) {
     display: none;
+  }
+  .dock-open:not([data-pane="contents"]) .dock-head {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
   .dock-pane,
   .dock-pane-scroll {
-    max-height: min(170px, calc(var(--app-browse-map-height) - 20px));
+    max-height: min(var(--map-pane-cap, 100px), calc(var(--app-browse-map-height) - 118px));
+  }
+  .dock-pane[data-pane="contents"],
+  .dock-pane[data-pane="contents"] .dock-pane-scroll {
+    max-height: 84px;
   }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
@@ -4021,10 +3994,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   z-index: var(--z-sticky);
   margin-inline: auto;
   max-width: 460px;
-  display: flex;
-  align-items: stretch;
+  max-height: min(48dvh, 360px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 10px 10px 10px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--app-radius-lg);
   border: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
@@ -4043,19 +4019,66 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-radius: 999px;
   color: var(--app-ink-3);
   background: var(--app-bg-sunken);
+  z-index: 4;
 }
 .map-peek-body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 11px;
   min-width: 0;
-  flex: 1 1 auto;
   text-align: left;
-  min-height: 64px;
+  min-height: 78px;
   padding-right: 40px;
+}
+.map-peek-visual,
+.map-peek-thumb {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-bg-sunken);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-bg-elevated) 38%, transparent);
+}
+.map-peek-category-mark {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--map-peek-color);
+  background:
+    radial-gradient(circle at 70% 20%, color-mix(in srgb, var(--map-peek-color) 18%, transparent), transparent 42%),
+    color-mix(in srgb, var(--map-peek-color) 9%, var(--app-bg-sunken));
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 32px;
+  line-height: 1;
+}
+.map-peek-photo-credit {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  left: 3px;
+  z-index: 2;
+  display: block;
+  overflow: hidden;
+  padding: 3px 4px;
+  color: #fff;
+  background: color-mix(in srgb, #181612 66%, transparent);
+  border-radius: 4px;
+  font-size: 7px;
+  line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-peek-photo-credit > span {
+  font-size: inherit;
 }
 .map-peek-text {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -4081,12 +4104,29 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+.map-peek-title-button {
+  max-width: 100%;
+  text-align: left;
+}
+.map-peek-address {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--app-ink-2);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .map-peek-meta {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 12px;
   color: var(--app-ink-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .map-peek-dot {
   color: var(--app-ink-3);
@@ -4096,25 +4136,119 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 11px;
   color: var(--app-ink-3);
 }
-.map-peek-nearby {
+.map-peek-details-link {
+  width: fit-content;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--app-brand-press);
+  font-size: 11px;
+  font-weight: 700;
+}
+.map-peek-detail,
+.map-peek-source {
   display: block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.map-peek-detail {
+  color: var(--app-ink-2);
   font-size: 11px;
   line-height: 1.35;
-  color: var(--app-ink-3);
 }
-.map-peek-nearby strong {
+.map-peek-source {
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+.map-parking-rate {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--app-ink-2);
-  font-weight: 650;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@media (max-width: 520px) {
+  .map-parking-peek {
+    gap: 7px;
+    padding: 12px;
+  }
+  .map-parking-peek .map-peek-body {
+    width: 100%;
+    align-items: flex-start;
+    padding-right: 44px;
+  }
+  .map-parking-peek .map-peek-acts {
+    width: 100%;
+  }
+  .map-parking-peek .map-peek-act-go {
+    justify-content: center;
+    width: 100%;
+  }
+}
+.map-peek-around {
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-sunken);
+}
+.map-peek-around summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: var(--app-ink-2);
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 700;
+}
+.map-peek-around summary::-webkit-details-marker {
+  display: none;
+}
+.map-peek-around summary > span {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding-inline: 4px;
+  border-radius: 999px;
+  color: var(--app-ink-3);
+  background: var(--app-bg-elevated);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+}
+.map-peek-around summary > svg {
+  margin-left: auto;
+  transition: transform 140ms ease;
+}
+.map-peek-around[open] summary > svg {
+  transform: rotate(180deg);
+}
+.map-peek-around-body {
+  display: grid;
+  gap: 5px;
+  padding: 0 9px 9px;
+  color: var(--app-ink-3);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.map-peek-around-body strong {
+  color: var(--app-ink-2);
+  font-weight: 700;
 }
 .map-peek-acts {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 7px;
 }
 .map-peek-act {
   display: inline-flex;
@@ -4140,8 +4274,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-color: var(--app-brand);
   color: var(--app-on-brand, #fff);
 }
+.map-peek-act-share {
+  min-width: 44px;
+  justify-content: center;
+  padding-inline: 11px;
+}
+.map-parking-peek .map-peek-acts {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 520px) {
+  .map-peek {
+    gap: 8px;
+    padding: 12px;
+  }
+  .map-peek .map-peek-body {
+    width: 100%;
+    padding-right: 44px;
+  }
+  .map-peek .map-peek-acts {
+    width: 100%;
+    gap: 7px;
+  }
+  .map-peek .map-peek-act {
+    justify-content: center;
+  }
+}
+@media (max-width: 350px) {
+  .map-peek-act-share > span {
+    display: none;
+  }
+}
 
-/* Selected "Read this area" finding. It is intentionally wider and more
+/* Selected map highlight. It is intentionally wider and more
    narrative than a place peek, but still leaves most of the map visible. */
 .map-finding-peek {
   position: absolute;
@@ -4221,6 +4385,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: 13px;
   line-height: 1.48;
 }
+.map-finding-trust {
+  margin-top: 7px;
+  color: var(--app-ink-3);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  line-height: 1.4;
+}
 .map-finding-actions {
   display: flex;
   align-items: flex-start;
@@ -4299,9 +4470,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    attribution corners just below the dock instead of hiding them or letting
    them compete with the place actions. */
 @media (max-width: 1023.98px) {
+  .dock-host[data-map-peek="open"] .dock {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
   .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-left,
   .dock-host[data-map-peek="open"] .mapboxgl-ctrl-bottom-right {
-    top: 96px !important;
+    top: 10px !important;
     bottom: auto !important;
   }
 }
@@ -5239,195 +5415,393 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ── Food-truck board ────────────────────────────────────────────────
-   Vendor-approved photography is not available for every truck. The page
-   pairs owned Frederick photography with cuisine-led editorial panels rather
-   than using unrelated stock food or scraping social images. */
-.food-truck-hero {
+   The schedule is the product. Vendor imagery appears only when Radius holds
+   explicit display permission; the fallback is a restrained route-board mark,
+   never an unrelated food photo assigned to a real business. */
+.food-truck-masthead {
   position: relative;
-  min-height: clamp(25rem, 68vw, 36rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(15rem, .55fr);
+  gap: 1rem;
   overflow: hidden;
+  padding: clamp(1.25rem, 4vw, 2.25rem);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-xl);
-  background: var(--app-ink);
+  color: var(--app-ink);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 56%),
+    var(--app-bg-elevated);
   box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
   isolation: isolate;
 }
 
-.food-truck-hero-shade {
+.food-truck-masthead::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(180deg, rgba(20, 16, 12, .28) 0%, rgba(20, 16, 12, .36) 38%, rgba(20, 16, 12, .92) 100%),
-    linear-gradient(90deg, rgba(20, 16, 12, .62) 0%, rgba(20, 16, 12, .2) 72%, transparent 100%);
+  inset: 0 auto 0 0;
+  width: .32rem;
+  background: var(--app-brand);
 }
 
-.food-truck-hero-photo {
-  filter: brightness(.72) saturate(.78) contrast(1.04);
-  transform: scale(1.01);
-}
+.food-truck-masthead-copy { align-self: center; max-width: 39rem; }
+.food-truck-masthead-copy > p:first-child { color: var(--app-brand-press); }
 
-.food-truck-hero-copy {
-  position: absolute;
-  z-index: 2;
-  inset: auto 1.25rem 1.45rem;
-  max-width: 38rem;
-  color: var(--app-on-brand);
-  padding-left: 1rem;
-  border-left: 3px solid var(--app-brand);
-}
-
-.food-truck-hero-copy > p:first-child { opacity: .82; }
-
-.food-truck-hero-copy h1 {
-  margin-top: .55rem;
-  max-width: 9ch;
+.food-truck-masthead-copy h1 {
+  margin-top: .6rem;
+  max-width: 11ch;
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(3rem, 10vw, 5.6rem);
+  font-size: clamp(2.75rem, 8vw, 5.2rem);
   font-weight: 400;
-  line-height: .92;
+  line-height: .91;
   letter-spacing: -.045em;
   text-wrap: balance;
 }
 
-.food-truck-hero-copy h1 + p {
-  margin-top: .9rem;
-  max-width: 35rem;
-  font-size: clamp(.82rem, 2vw, .98rem);
-  line-height: 1.5;
-  color: color-mix(in srgb, var(--app-on-brand) 88%, transparent);
-}
-
-.food-truck-hero-counts {
-  display: flex;
-  gap: .55rem;
+.food-truck-masthead-copy h1 + p {
   margin-top: 1rem;
+  max-width: 35rem;
+  color: var(--app-ink-2);
+  font-size: clamp(.82rem, 2vw, .95rem);
+  line-height: 1.55;
 }
 
-.food-truck-hero-counts span {
-  display: inline-flex;
+.food-truck-route-board {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-height: 14.5rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 18%, transparent);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-bg);
+  background: var(--app-ink);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--app-bg) 12%, transparent);
+}
+
+.food-truck-route-board > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: baseline;
-  gap: .35rem;
-  padding: .42rem .68rem;
-  border: 1px solid color-mix(in srgb, var(--app-on-brand) 32%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-ink) 54%, transparent);
-  backdrop-filter: blur(8px);
-  font-size: .69rem;
-  font-weight: 650;
+  gap: .25rem 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-bg) 15%, transparent);
 }
 
-.food-truck-hero-counts strong {
+.food-truck-route-board span {
   font-family: var(--font-mono), monospace;
-  font-size: .86rem;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  opacity: .7;
 }
 
-.food-truck-photo-credit {
+.food-truck-route-board strong {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2.15rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.food-truck-route-board small { font-size: .66rem; opacity: .6; }
+
+.food-truck-route-icon {
+  width: 3.4rem;
+  height: 3.4rem;
+  margin: .8rem 1rem 0 auto;
+  color: var(--app-brand);
+}
+
+.food-truck-stop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.food-truck-stop-card {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated);
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+}
+
+.food-truck-stop-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .15rem;
+  padding: 1rem .35rem;
+  border-right: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-sunken));
+}
+
+.food-truck-stop-date span {
+  font-family: var(--font-mono), monospace;
+  font-size: .55rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: var(--app-brand-press);
+}
+
+.food-truck-stop-date strong {
+  margin-top: .4rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.85rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--app-ink);
+}
+
+.food-truck-empty-board {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .9rem;
+  align-items: start;
+  padding: 1.1rem;
+  border: 1px dashed var(--app-border-strong);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-sunken);
+}
+
+.food-truck-beacon-preview {
+  display: grid;
+  grid-template-columns: minmax(15rem, .8fr) minmax(0, 1.2fr);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-bg-elevated);
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+}
+
+.food-truck-beacon-map {
+  position: relative;
+  min-height: 13rem;
+  overflow: hidden;
+  border-right: 1px solid var(--app-border);
+  background:
+    radial-gradient(circle at 32% 35%, color-mix(in srgb, var(--app-cool) 8%, transparent) 0 5rem, transparent 5.05rem),
+    linear-gradient(145deg, var(--app-bg-sunken), color-mix(in srgb, var(--app-brand) 7%, var(--app-bg)));
+}
+
+.food-truck-beacon-road {
+  position: absolute;
+  height: .45rem;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
+  background: var(--app-bg-elevated);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-bg) 70%, transparent);
+}
+
+.food-truck-beacon-road-a { width: 130%; top: 42%; left: -14%; transform: rotate(-18deg); }
+.food-truck-beacon-road-b { width: 110%; top: 57%; left: 15%; transform: rotate(59deg); }
+
+.food-truck-beacon-pulse {
   position: absolute;
   z-index: 2;
-  top: .8rem;
-  right: .85rem;
-  color: color-mix(in srgb, var(--app-on-brand) 78%, transparent);
-  font-size: .58rem;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(34, 28, 21, .5);
+  top: 38%;
+  left: 43%;
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border: 3px solid var(--app-bg-elevated);
+  border-radius: 999px;
+  color: var(--app-on-brand);
+  background: var(--app-brand);
+  box-shadow: 0 0 0 .55rem color-mix(in srgb, var(--app-brand) 18%, transparent), var(--app-elev-2);
 }
 
-.food-truck-how[open] summary svg:last-child { transform: rotate(180deg); }
+.food-truck-beacon-label {
+  position: absolute;
+  z-index: 3;
+  right: .75rem;
+  bottom: .75rem;
+  left: .75rem;
+  padding: .55rem .7rem;
+  border: 1px solid var(--app-border);
+  border-radius: .7rem;
+  color: var(--app-ink-2);
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent);
+  box-shadow: var(--app-elev-1);
+  backdrop-filter: blur(9px);
+  font-size: .64rem;
+}
 
-.food-truck-card {
-  border-color: var(--app-border);
+.food-truck-beacon-label strong { color: var(--app-ink); }
+
+.food-truck-vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.food-truck-vendor-card {
+  display: grid;
+  grid-template-columns: minmax(7.4rem, .76fr) minmax(0, 1.24fr);
+  min-height: 12.5rem;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-elevated);
   box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  scroll-margin-top: 6rem;
+  transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.food-truck-card-art {
-  --ft-bg: var(--app-brand);
-  --ft-ink: var(--app-on-brand);
+.food-truck-vendor-visual {
+  min-height: 8rem;
+  border-radius: inherit;
+  background: var(--app-bg-sunken);
+}
+
+.food-truck-vendor-card > .food-truck-vendor-visual {
+  border-radius: 0;
+  border-right: 1px solid var(--app-border);
+}
+
+.food-truck-vendor-fallback {
   position: relative;
   display: flex;
-  min-height: 8.35rem;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
   overflow: hidden;
-  padding: 1rem;
-  color: var(--ft-ink);
+  padding: .8rem;
+  color: var(--app-ink);
   background:
-    linear-gradient(145deg,
-      color-mix(in srgb, var(--ft-bg) 76%, var(--app-ink)) 0%,
-      color-mix(in srgb, var(--ft-bg) 58%, var(--app-ink)) 100%);
-  isolation: isolate;
+    linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated)) 0 58%, var(--app-bg-sunken) 58% 100%);
 }
 
-.food-truck-card-art::before {
-  content: "";
+.food-truck-vendor-fallback[data-kind="treats"] {
+  background: linear-gradient(155deg, color-mix(in srgb, var(--app-cool) 10%, var(--app-bg-elevated)) 0 58%, var(--app-bg-sunken) 58% 100%);
+}
+
+.food-truck-vendor-mark {
   position: absolute;
-  z-index: -1;
-  inset: .8rem auto .8rem 0;
-  width: 3px;
-  background: color-mix(in srgb, var(--ft-ink) 72%, transparent);
-}
-
-.food-truck-card-art::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  opacity: .1;
-  background: linear-gradient(90deg, transparent 0 58%, var(--ft-ink) 58% 58.5%, transparent 58.5% 100%);
-}
-
-.food-truck-card-art[data-flavor="comfort"] { --ft-bg: var(--app-amber); }
-.food-truck-card-art[data-flavor="world"] { --ft-bg: var(--app-cool); }
-.food-truck-card-art[data-flavor="fresh"] { --ft-bg: var(--app-brand-2); }
-.food-truck-card-art[data-flavor="sweet"] { --ft-bg: var(--app-accent); }
-
-.food-truck-card-art p {
-  max-width: 13ch;
+  top: .45rem;
+  left: .65rem;
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(1.55rem, 5.6vw, 2.08rem);
-  font-weight: 400;
-  line-height: .92;
-  letter-spacing: -.035em;
-  text-wrap: balance;
+  font-size: 3.5rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--app-brand) 24%, transparent);
 }
 
-.food-truck-card-number {
-  position: absolute;
-  top: .82rem;
-  left: 1rem;
-  font-family: var(--font-mono), monospace;
-  font-size: .66rem;
-  font-weight: 700;
-  letter-spacing: .12em;
-  opacity: .72;
+.food-truck-vendor-cuisine {
+  position: relative;
+  z-index: 1;
+  max-width: 10ch;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.35rem;
+  line-height: .95;
+  letter-spacing: -.025em;
 }
 
-.food-truck-card-kind {
+.food-truck-vendor-icon {
   position: absolute;
-  top: .82rem;
-  right: 1rem;
-  font-family: var(--font-mono), monospace;
-  font-size: .57rem;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  opacity: .68;
+  right: .55rem;
+  bottom: .55rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  color: var(--app-brand-press);
+  opacity: .64;
+}
+
+.food-truck-media-credit {
+  position: absolute;
+  right: .35rem;
+  bottom: .3rem;
+  padding: .18rem .3rem;
+  border-radius: .25rem;
+  color: white;
+  background: rgba(20, 16, 12, .65);
+  font-size: .5rem;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .food-truck-card:hover {
+  .food-truck-vendor-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
   }
 }
 
+@media (max-width: 760px) {
+  .food-truck-masthead { grid-template-columns: 1fr; }
+  .food-truck-route-board {
+    grid-template-columns: 1fr 1fr auto;
+    min-height: auto;
+  }
+  .food-truck-route-board > div { border-right: 1px solid color-mix(in srgb, var(--app-bg) 15%, transparent); border-bottom: 0; }
+  .food-truck-route-icon { align-self: center; margin: 0 .85rem; width: 2rem; height: 2rem; }
+  .food-truck-stop-grid, .food-truck-vendor-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 480px) {
-  .food-truck-hero { min-height: 29rem; border-radius: var(--app-radius-lg); }
-  .food-truck-hero-copy { inset: auto 1rem 1.05rem; padding-left: .8rem; }
-  .food-truck-photo-credit { display: none; }
+  .food-truck-masthead { padding: 1.15rem; border-radius: var(--app-radius-lg); }
+  .food-truck-masthead-copy h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
+  .food-truck-route-board > div { padding: .75rem; }
+  .food-truck-route-board strong { font-size: 1.7rem; }
+  .food-truck-route-icon { display: none; }
+  .food-truck-route-board { grid-template-columns: 1fr 1fr; }
+  .food-truck-stop-card { grid-template-columns: 3.55rem minmax(0, 1fr); }
+  .food-truck-beacon-preview { grid-template-columns: 1fr; }
+  .food-truck-beacon-map { min-height: 10.75rem; border-right: 0; border-bottom: 1px solid var(--app-border); }
+  .food-truck-vendor-card { grid-template-columns: minmax(7.1rem, .72fr) minmax(0, 1.28fr); min-height: 11.75rem; }
+  .food-truck-vendor-cuisine { font-size: 1.15rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .food-truck-card { transition: none; }
+  .food-truck-vendor-card { transition: none; }
+}
+
+/* Operator-confirmed food-truck map beacon. The 44px target is stable while
+   the visible pulse stays compact enough not to cover nearby places. */
+.fr-food-truck-marker {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.fr-food-truck-glyph {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 2px solid var(--app-bg-elevated-solid, #fff);
+  border-radius: 999px;
+  color: var(--app-on-brand);
+  background: var(--app-brand);
+  box-shadow: var(--app-elev-2);
+}
+
+.fr-food-truck-pulse {
+  position: absolute;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-brand) 30%, transparent);
+  animation: food-truck-map-pulse 2.2s ease-out infinite;
+}
+
+@keyframes food-truck-map-pulse {
+  0% { opacity: .8; transform: scale(.9); }
+  72%, 100% { opacity: 0; transform: scale(1.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-food-truck-pulse { animation: none; transform: scale(1.25); opacity: .28; }
 }

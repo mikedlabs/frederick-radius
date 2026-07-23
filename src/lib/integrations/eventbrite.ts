@@ -24,12 +24,22 @@ import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
 import { EVENTBRITE_ORGANIZERS } from "@/data/eventbrite-organizers";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const BASE = "https://www.eventbriteapi.com/v3/organizers";
 const FETCH_TIMEOUT_MS = 15_000;
 
 export function eventbriteConfigured(): boolean {
-  return Boolean((process.env.EVENTBRITE_TOKEN ?? "").trim()) && EVENTBRITE_ORGANIZERS.length > 0;
+  return (
+    process.env.EVENTBRITE_ENABLED === "1" &&
+    Boolean((process.env.EVENTBRITE_TOKEN ?? "").trim()) &&
+    EVENTBRITE_ORGANIZERS.length > 0
+  );
 }
 
 type EbVenue = {
@@ -101,10 +111,16 @@ export function normalizeEventbrite(raw: unknown): LiveEvent[] {
  * Each organizer is fetched independently and fail-soft, so one bad id
  * cannot sink the others.
  */
-export async function fetchEventbrite(): Promise<LiveEvent[]> {
+export async function fetchEventbriteResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
+  if (process.env.EVENTBRITE_ENABLED !== "1") return eventAdapterDisabled();
   const token = (process.env.EVENTBRITE_TOKEN ?? "").trim();
-  if (!token || EVENTBRITE_ORGANIZERS.length === 0) return [];
+  if (!token || EVENTBRITE_ORGANIZERS.length === 0) {
+    return eventAdapterDisabled();
+  }
   const all: LiveEvent[] = [];
+  let failed = 0;
   for (const org of EVENTBRITE_ORGANIZERS) {
     const url =
       `${BASE}/${encodeURIComponent(org.id)}/events/` +
@@ -115,14 +131,21 @@ export async function fetchEventbrite(): Promise<LiveEvent[]> {
       const res = await fetch(url, { signal: ctrl.signal, next: { revalidate: 3600 } });
       if (!res.ok) {
         console.error(`[eventbrite] HTTP ${res.status} for organizer ${org.id}`);
+        failed += 1;
         continue;
       }
       all.push(...normalizeEventbrite(await res.json()));
     } catch (err) {
       console.warn(`[eventbrite] fetch failed for organizer ${org.id}:`, err);
+      failed += 1;
     } finally {
       clearTimeout(timer);
     }
   }
-  return all;
+  return failed > 0 ? eventAdapterFailed(all) : eventAdapterOk(all);
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchEventbrite(): Promise<LiveEvent[]> {
+  return (await fetchEventbriteResult()).items;
 }

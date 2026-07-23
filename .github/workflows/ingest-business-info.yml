@@ -21,6 +21,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: ingest-business-info
+  cancel-in-progress: false
 
 jobs:
   ingest:
@@ -48,17 +53,23 @@ jobs:
       # business-info.json contains Radius-authored prose, so gate it here.
       - name: Verify Radius-authored copy
         run: npm run style:lint
-      - name: Commit refreshed data
-        run: |
-          git config user.name  "frederick-radius-bot"
-          git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/business-info.json src/data/descriptions.json; then
-            git add src/data/business-info.json src/data/descriptions.json
-            git commit -m "data: refresh business deep-info (automated)"
-            # Rebase onto any commits that landed during the run, then push,
-            # so a moving main can't reject the bot's data commit.
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-          else
-            echo "No business-info or description-candidate changes."
-          fi
+      # Extracted copy and specials are public product data, not an invisible
+      # cache. A review PR lets CI and a human inspect source drift before it
+      # changes recommendations.
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/business-info-refresh
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh business deep-info (automated)"
+          title: "data: refresh business information"
+          body: |
+            Automated business website extraction refresh.
+
+            The workflow ran the Radius copy checks before opening this PR.
+            Review source links, hours or specials, and generated description
+            candidates before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

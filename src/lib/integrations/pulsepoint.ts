@@ -14,9 +14,10 @@
  * public-safety call types are returned; anything unrecognized
  * (including every medical code) is dropped.
  *
- * Config: set PULSEPOINT_AGENCY_ID to the participating agency's id
- * (the `?agencyid=` value on webapp.pulsepoint.org). Unset → no calls,
- * empty result, section hides.
+ * Config: this restricted, reverse-engineered source has TWO gates.
+ * PULSEPOINT_ENABLED must be exactly "1" to record the explicit policy
+ * approval, and PULSEPOINT_AGENCY_ID must name the participating agency.
+ * Either one missing means no request is made.
  */
 import crypto from "node:crypto";
 
@@ -27,6 +28,14 @@ export type PulsePointIncident = {
   received_at: string;
   lat?: number;
   lng?: number;
+};
+
+export type PulsePointIncidentsResult = {
+  data: PulsePointIncident[];
+  /** True only when PulsePoint returned a decryptable, structurally valid feed. */
+  available: boolean;
+  /** Distinguishes a missing deployment setting from an upstream failure. */
+  configured: boolean;
 };
 
 // Non-medical public-safety call types only. Unknown/medical codes are
@@ -52,8 +61,12 @@ function agencyId(): string | null {
   return process.env.PULSEPOINT_AGENCY_ID || null;
 }
 
+export function pulsepointPolicyEnabled(): boolean {
+  return process.env.PULSEPOINT_ENABLED === "1";
+}
+
 export function pulsepointConfigured(): boolean {
-  return Boolean(agencyId());
+  return pulsepointPolicyEnabled() && Boolean(agencyId());
 }
 
 /** OpenSSL-compatible MD5 EVP_BytesToKey → 32-byte AES-256 key. */
@@ -91,19 +104,27 @@ function num(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-export async function getPulsePointIncidents(): Promise<PulsePointIncident[]> {
+export async function getPulsePointIncidentsResult(): Promise<PulsePointIncidentsResult> {
+  // The manifest keeps PulsePoint pending_review. An agency id by itself must
+  // never silently activate a source whose privacy/licensing review has not
+  // been recorded. This separate switch is the deliberate approval boundary.
+  if (!pulsepointPolicyEnabled()) {
+    return { data: [], available: false, configured: false };
+  }
   const id = agencyId();
-  if (!id) return [];
+  if (!id) return { data: [], available: false, configured: false };
   try {
     const res = await fetch(
       `https://web.pulsepoint.org/DB/giba.php?agency_id=${encodeURIComponent(id)}`,
       { headers: { Accept: "application/json" }, next: { revalidate: 60 } }
     );
-    if (!res.ok) return [];
+    if (!res.ok) return { data: [], available: false, configured: true };
     const env = (await res.json().catch(() => null)) as
       | { ct?: string; iv?: string; s?: string }
       | null;
-    if (!env?.ct || !env.iv || !env.s) return [];
+    if (!env?.ct || !env.iv || !env.s) {
+      return { data: [], available: false, configured: true };
+    }
 
     const key = deriveKey(passphrase(), Buffer.from(env.s, "hex"));
     const decipher = crypto.createDecipheriv(
@@ -123,7 +144,9 @@ export async function getPulsePointIncidents(): Promise<PulsePointIncident[]> {
     }
     const active =
       (parsed as { incidents?: { active?: RawIncident[] } })?.incidents?.active;
-    if (!Array.isArray(active)) return [];
+    if (!Array.isArray(active)) {
+      return { data: [], available: false, configured: true };
+    }
 
     const seen = new Set<string>();
     const items: PulsePointIncident[] = [];
@@ -148,8 +171,17 @@ export async function getPulsePointIncidents(): Promise<PulsePointIncident[]> {
       });
     }
     items.sort((a, b) => +new Date(b.received_at) - +new Date(a.received_at));
-    return items.slice(0, 20);
+    return {
+      data: items.slice(0, 20),
+      available: true,
+      configured: true,
+    };
   } catch {
-    return [];
+    return { data: [], available: false, configured: true };
   }
+}
+
+/** Compatibility wrapper for alert-only surfaces that hide on an empty set. */
+export async function getPulsePointIncidents(): Promise<PulsePointIncident[]> {
+  return (await getPulsePointIncidentsResult()).data;
 }

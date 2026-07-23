@@ -8,7 +8,7 @@
  * deduped, municipality-resolved. Pure transform, nothing fetched.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolveMunicipality } from "@/lib/connect";
+import { resolveFrederickMunicipality } from "@/lib/location";
 
 const DIR = new URL("../src/data/osm-amenities/", import.meta.url).pathname;
 const OUT = new URL("../src/data/amenities.json", import.meta.url).pathname;
@@ -129,6 +129,8 @@ for (const kind of Object.keys(FILES) as AmenityKind[]) {
     if (!pt) continue;
     const [lng, lat] = pt;
     if (lat < s || lat > n || lng < w || lng > e) continue;
+    const municipality = resolveFrederickMunicipality({ lng, lat });
+    if (!municipality) continue;
     const id = `${kind}-${p._osm_type ?? "n"}-${p._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -137,7 +139,7 @@ for (const kind of Object.keys(FILES) as AmenityKind[]) {
       kind,
       name: p.name?.trim() || KIND_LABEL[kind],
       detail: detailFor(kind, p),
-      municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+      municipality: municipality.municipality.slug,
       lng,
       lat,
     });
@@ -180,6 +182,8 @@ try {
     if (!kind || !point) continue;
     const [lng, lat] = point;
     if (lat < s || lat > n || lng < w || lng > e) continue;
+    const municipality = resolveFrederickMunicipality({ lng, lat });
+    if (!municipality) continue;
     const id = `${kind}-${properties._osm_type ?? "n"}-${properties._osm_id ?? `${lng.toFixed(6)},${lat.toFixed(6)}`}`;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -188,7 +192,7 @@ try {
       kind,
       name: properties.name?.trim() || KIND_LABEL[kind],
       detail: detailFor(kind, properties),
-      municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+      municipality: municipality.municipality.slug,
       lng,
       lat,
     });

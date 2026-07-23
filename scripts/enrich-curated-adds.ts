@@ -13,6 +13,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { resolveFrederickMunicipality } from "@/lib/location";
 
 const KEY = process.env.GOOGLE_PLACES_API_KEY;
 if (!KEY) {
@@ -54,8 +55,6 @@ function overlap(a: string, b: string): number {
   for (const x of A) if (B.has(x)) n++;
   return n / A.size;
 }
-const inCounty = (lat: number, lng: number) => lat > 39.15 && lat < 39.78 && lng < -76.95 && lng > -77.75;
-
 const MASK = [
   "places.id", "places.displayName", "places.formattedAddress", "places.location",
   "places.primaryType", "places.types", "places.rating", "places.userRatingCount",
@@ -118,11 +117,14 @@ async function main() {
     }
     const lat = p.location.latitude!, lng = p.location.longitude!;
     const sim = Math.max(overlap(c.name, p.displayName.text), overlap(p.displayName.text, c.name));
-    const county = inCounty(lat, lng);
-    if (!county) { failed.push(`${c.name} → "${p.displayName.text}" OUT OF COUNTY (${lat.toFixed(3)},${lng.toFixed(3)})`); continue; }
+    // A search result receives no Frederick municipality until its returned
+    // point clears the real county outline. Never trust the town in the query
+    // as proof that Google matched the intended county.
+    const countyMunicipality = resolveFrederickMunicipality({ lng, lat });
+    if (!countyMunicipality) { failed.push(`${c.name} → "${p.displayName.text}" OUT OF COUNTY (${lat.toFixed(3)},${lng.toFixed(3)})`); continue; }
     if (sim < 0.45) { weak.push(`${c.name} → matched "${p.displayName.text}" (sim ${sim.toFixed(2)})`); }
 
-    const { slug: muni } = muniFor(c.town);
+    const muni = countyMunicipality.municipality.slug;
     enriched.push({
       google_place_id: p.id,
       name: p.displayName.text,

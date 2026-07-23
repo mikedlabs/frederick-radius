@@ -267,7 +267,7 @@ describe("buildMapDiscoveries", () => {
     }))).toEqual([]);
   });
 
-  it("ranks Read this area from the viewport center instead of device origin", () => {
+  it("ranks Highlights from the viewport center instead of device origin", () => {
     const centerPark = place({ slug: "center-park", name: "Center Park", category: "park", geom: { lng: -77.410, lat: 39.4143 } });
     const edgePark = place({ slug: "edge-park", name: "Edge Park", category: "park", geom: { lng: -77.419, lat: 39.4143 } });
     const amenities: Amenity[] = [

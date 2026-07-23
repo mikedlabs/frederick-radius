@@ -572,7 +572,7 @@ function isInsideBounds(point: Coord, bounds: MapDiscoveryBounds): boolean {
 
 /** Clip every source before any recipe joins it. A point just beyond the
  * viewport may be geographically close, but it is not something the user
- * asked Radius to read when they tapped "Read this area." */
+ * asked Radius to consider when they opened Highlights. */
 function viewportInput(input: BuildMapDiscoveriesInput): BuildMapDiscoveriesInput {
   if (!input.bounds) return input;
   const { bounds } = input;
@@ -585,7 +585,7 @@ function viewportInput(input: BuildMapDiscoveriesInput): BuildMapDiscoveriesInpu
     transitStops: input.transitStops.filter((stop) => isInsideBounds(stop, bounds)),
     cemeteries: input.cemeteries.filter((cemetery) => isInsideBounds(cemetery, bounds)),
     aerialPhotos: input.aerialPhotos.filter((photo) => isInsideBounds(photo, bounds)),
-    // "Read this area" belongs to the camera. A device fix can inform other
+    // Highlights belong to the camera. A device fix can inform other
     // Radius rankings, but it must not pull this tray toward a different town.
     origin: {
       lng: (bounds.west + bounds.east) / 2,

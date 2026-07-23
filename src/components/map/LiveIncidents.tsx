@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { AlertTriangle } from "lucide-react";
 import { RECENT_INCIDENT_MS, type GeocodedIncident } from "@/lib/integrations/scannerIncidents";
+import {
+  liveLayerHealth,
+  type LiveLayerHealth,
+} from "@/lib/live-layer-health";
 
 /**
  * LiveIncidents — the map's live public-safety layer, fed by the FredScanner
@@ -39,12 +43,20 @@ function agoLabel(iso: string, now: number): string {
   return `${Math.round(mins / 60)}h ago`;
 }
 
-export default function LiveIncidents({ show }: { show: boolean }) {
+export default function LiveIncidents({
+  show,
+  onHealth,
+}: {
+  show: boolean;
+  onHealth?: (health: LiveLayerHealth) => void;
+}) {
   const [incidents, setIncidents] = useState<GeocodedIncident[]>([]);
   const [selected, setSelected] = useState<GeocodedIncident | null>(null);
   // Wall-clock now (ms) for the "X min ago" label, stamped on poll/tick so no
   // Date.now() runs during render (react-hooks purity).
   const [nowMs, setNowMs] = useState(0);
+  const onHealthRef = useRef(onHealth);
+  useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
 
   useEffect(() => {
     // When off, poll nothing and render nothing (see the `if (!show)` guard
@@ -56,14 +68,39 @@ export default function LiveIncidents({ show }: { show: boolean }) {
     const load = async () => {
       try {
         const r = await fetch("/api/scanner/incidents", { cache: "no-store" });
-        if (!r.ok) return;
+        if (!r.ok) {
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "FrederickScanner",
+              unavailable: true,
+            }),
+          );
+          return;
+        }
         const d = (await r.json()) as { incidents?: GeocodedIncident[] };
         if (alive && Array.isArray(d.incidents)) {
           setIncidents(d.incidents);
           setNowMs(Date.now());
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "FrederickScanner",
+              count: d.incidents.length,
+              timestamp:
+                d.incidents
+                  .map((incident) => incident.at)
+                  .sort()
+                  .at(-1) ?? new Date(),
+              maxAgeMs: RECENT_INCIDENT_MS * 2,
+            }),
+          );
         }
       } catch {
-        /* keep last known */
+        onHealthRef.current?.(
+          liveLayerHealth({
+            source: "FrederickScanner",
+            unavailable: true,
+          }),
+        );
       }
     };
     load();

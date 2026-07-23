@@ -36,4 +36,8 @@ describe("food-truck roster", () => {
     expect(truckFeedUrl(truck({ website: "https://example.com" }))).toBe("https://example.com");
     expect(truckFeedUrl(truck({}))).toBeNull();
   });
+
+  it("keeps a current location link on every public roster entry", () => {
+    expect(FOOD_TRUCKS.filter((entry) => !truckFeedUrl(entry))).toEqual([]);
+  });
 });

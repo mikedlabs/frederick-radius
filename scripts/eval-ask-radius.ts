@@ -26,6 +26,16 @@ for (const test of ASK_EVAL_CASES) {
   if (test.requireEvent && (!leadEvent || leadEvent.type !== "event")) {
     failures.push(`${test.name}: no event result in deterministic seed set`);
   }
+  if (
+    test.requireSafeOpenIfPresent &&
+    leadPlace?.type === "place" &&
+    leadPlace.place.open_status.state !== "open" &&
+    leadPlace.place.open_status.state !== "closing-soon"
+  ) {
+    failures.push(
+      `${test.name}: returned ${leadPlace.place.name} without verified open status`,
+    );
+  }
   if (leadPlace?.type === "place") {
     if (test.maxLeadDistanceM != null && (leadPlace.place.distance_m ?? Infinity) > test.maxLeadDistanceM) {
       failures.push(`${test.name}: lead ${leadPlace.place.name} is ${Math.round(leadPlace.place.distance_m ?? 0)}m away`);

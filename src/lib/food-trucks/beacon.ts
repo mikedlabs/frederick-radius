@@ -1,11 +1,9 @@
 /**
  * Food-truck live layer, phase 2: the operator beacon.
  *
- * `live.ts` (phase 1) answers "is it out?" for the few trucks that park at a
- * fixed brewery home, using that venue's verified hours. Roaming trucks — the
- * majority — have no such proxy. This is the honest answer for them: when an
- * operator is actually out, they drop a beacon (a live pin + a stated "until"),
- * and it shows on the card and the map ONLY while it's genuinely live.
+ * Venue hours are never treated as proof that a truck is serving. When an
+ * operator is actually out, they drop a beacon (a live pin + a stated
+ * "until"), and it shows on the card and map only while it is genuinely live.
  *
  * The cardinal rule: the map must never claim a truck is out when it isn't. So
  * a beacon carries its own expiry (the operator's stated close time, capped),

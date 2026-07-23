@@ -33,6 +33,15 @@ const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole
 const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happening|calendar)\b/i;
 const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
 const PLACE_RE = /\b(where|food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|hotel|motel|lodging|place to stay|museum|patio|open|nearby|near me)\b/i;
+const ACTIVITY_RE = /\b(?:(?:anything|something) fun|things? to do|what (?:should|can|could) (?:i|we) do|anything going on)\b/i;
+const ACTIVITY_TIME_RE = /\b(?:today|tonight|this evening|tomorrow|this weekend|next weekend|this morning|this afternoon|(?:(?:this|next)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|night))?)\b/i;
+
+/** Natural event discovery often omits the noun "event." Keep a dated
+ * activity request on the live-calendar path instead of fuzzy-searching
+ * "fun" across businesses. */
+export function isTimedActivityRequest(query: string): boolean {
+  return ACTIVITY_RE.test(query) && ACTIVITY_TIME_RE.test(query);
+}
 
 export type FixedAppointmentAnchor = {
   relation: "before" | "after";
@@ -119,22 +128,27 @@ function labelFor(kind: AskIntentKind, q: string): string {
 export function parseAskIntent(query: string, now = new Date()): AskIntent {
   const q = query.trim();
   const fixedAppointment = parseFixedAppointmentAnchor(q, now);
+  const explicitPlaceList = (
+    /\b(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[a-z'-]+\s+){0,3}(?:restaurants?|places?|spots?|breweries?|cafes?|shops?)\b/i.test(q) &&
+    !/\b(?:plan|itinerary|route|then|followed by|compare)\b/i.test(q)
+  );
   const compoundPlan = (
     !fixedAppointment &&
     /\b(?:dinner|food|restaurant|drinks?)\b/i.test(q) &&
     /\b(?:show|concert|live music|event|performance)\b/i.test(q) &&
     /\b(?:and|then|plus|followed by|before|after)\b/i.test(q)
   );
-  const plan = PLAN_RE.test(q) || compoundPlan;
+  const plan = (PLAN_RE.test(q) && !explicitPlaceList) || compoundPlan;
   const civic = CIVIC_RE.test(q);
-  const event = EVENT_RE.test(q) && !(fixedAppointment && PLACE_RE.test(q));
+  const event = (EVENT_RE.test(q) || isTimedActivityRequest(q)) &&
+    !(fixedAppointment && PLACE_RE.test(q));
   const kind: AskIntentKind = civic
     ? "civic"
     : plan
       ? "plan"
       : event
         ? "event"
-        : PLACE_RE.test(q)
+        : PLACE_RE.test(q) || explicitPlaceList
           ? "place"
           : "explore";
 

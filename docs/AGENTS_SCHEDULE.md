@@ -8,7 +8,7 @@
 > runs on GitHub Actions; if it's a safe, idempotent refresh of a known
 > source, it runs on Vercel cron.
 
-**Last updated:** 2026-06-04
+**Last updated:** 2026-07-23
 
 ---
 
@@ -18,10 +18,11 @@
 | --- | --- | --- | --- |
 | Every 30 min | `notify-civic-alerts` | Pushes new civic alerts to subscribers. | Vercel cron (`/api/cron/notify-civic-alerts`) |
 | Nightly 09:00 UTC | `ingest/all` | Full civic/venue/business ingest into the live store. | Vercel cron (`/api/ingest/all`) |
-| Nightly 07:00 UTC | `business-status` | Refreshes open/closed + hours from Google Places. | Vercel cron (`/api/cron/business-status`) |
+| Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
+| Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
 | Nightly 09:30 UTC | `data-health` | Server-side data freshness/health snapshot. | Vercel cron (`/api/cron/data-health`) |
 | Daily 12:00/13:00 UTC | `daily-briefing` | Builds the daily briefing payload. | Vercel cron (`/api/cron/daily-briefing`) |
-| Nightly 06:00 UTC | **data-steward** | Runs feed-health (informational), then `refresh:business-status`, `refresh:hours`, `build:transit`, `build:park-amenities` (each `\|\| true`). Opens a PR on any change to committed data artifacts. | GitHub Actions (`.github/workflows/data-steward.yml`) |
+| Nightly 06:00 UTC | **data-steward** | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements. | GitHub Actions (`.github/workflows/data-steward.yml`) |
 | Daily 12:00 UTC | **feed-health** | Probes the critical external feeds and exits non-zero if any critical endpoint is down — the job goes red so you can alert. | GitHub Actions (`.github/workflows/feed-health.yml`) |
 | Weekly Mon 07:00 UTC | **discovery** | `npm run discover` dry run ($0, no API call). Publishes the candidate count + cost projection to the job summary and an artifact. | GitHub Actions (`.github/workflows/discovery.yml`) |
 
@@ -46,10 +47,13 @@ touch the repo.
 produces a *repo* artifact rather than a live-store write:
 
 - **data-steward** regenerates committed data files (transit GTFS, park
-  amenities, business status) and opens a **PR** so the data diff is
-  reviewed before it merges. It never pushes straight to a content
-  branch. Each refresh is guarded with `|| true` so one flaky upstream
-  source can't abort the rest of the nightly run.
+amenities, business status) and opens a **PR** so the data diff is
+reviewed before it merges. It never pushes straight to a content
+branch. The core hours and business-status pulls fail loudly when their
+configuration or persistence breaks. Secondary transit and park rebuilds
+remain fail-soft. Critical publication gates still block the PR; known
+high-severity coverage debt is reported without preventing an incremental
+refresh from being reviewed.
 - **feed-health** is the tripwire: it has no `|| true`, so a dead
   critical feed fails the job and turns the workflow red. Wire a
   Slack/email alert on this workflow's failure if you want a page.

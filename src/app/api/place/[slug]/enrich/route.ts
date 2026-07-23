@@ -31,16 +31,17 @@ import { parseGoogleHours } from "@/lib/googleHours";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
+import { isValidCoord } from "@/lib/geo";
+import { patchRecord, type Overrides } from "@/lib/overrides";
 
 // Wrong-business quarantine (UX audit P0): these slugs were bound to a
 // DIFFERENT business's Google listing, and the base record's stored
 // google_place_id points at that wrong business — so this on-demand path
 // would re-serve the law office's hours to the restaurant's sheet. Serve
 // EMPTY until the slug is re-enriched with the correct listing.
+const PLACE_OVERRIDES = OVERRIDES_RAW as Overrides;
 const QUARANTINED = new Set(
-  Object.entries(
-    (OVERRIDES_RAW as { patch?: Record<string, { clearEnrichment?: boolean }> }).patch ?? {},
-  )
+  Object.entries(PLACE_OVERRIDES.patch ?? {})
     .filter(([, p]) => p.clearEnrichment)
     .map(([slug]) => slug),
 );
@@ -83,8 +84,20 @@ async function enrichSlug(
   slug: string,
   fields: GoogleFieldSet,
 ): Promise<EnrichResponse> {
-  const p = PLACE_BY_SLUG[slug];
-  if (!p || QUARANTINED.has(slug) || manualPlaceStatusOverride(slug)) return EMPTY;
+  const rawPlace = PLACE_BY_SLUG[slug];
+  // A human coordinate correction must be allowed to rescue a source row, but
+  // the corrected point still has to clear the county gate before paid work.
+  const p = rawPlace
+    ? patchRecord(rawPlace, PLACE_OVERRIDES.patch)
+    : undefined;
+  if (
+    !p ||
+    !isValidCoord(p.geom) ||
+    QUARANTINED.has(slug) ||
+    manualPlaceStatusOverride(slug)
+  ) {
+    return EMPTY;
+  }
 
   const data =
     p.google_place_id && /^ChIJ/.test(p.google_place_id)

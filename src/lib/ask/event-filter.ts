@@ -1,9 +1,15 @@
 import type { Event } from "@/data/events";
 import type { AskIntent } from "@/lib/ask/intent";
 import { eventOccursOnDate } from "@/lib/ask/time";
+import { isRangeListing } from "@/lib/eventHorizon";
 import { easternDayKey, easternParts } from "@/lib/tz";
 
-export function eventFitsAskIntent(event: Event, intent: AskIntent, now = new Date()): boolean {
+export function eventFitsAskIntent(
+  event: Event,
+  intent: AskIntent,
+  now = new Date(),
+  query = "",
+): boolean {
   if (intent.budget === "free" && !event.is_free) return false;
   const start = new Date(event.starts_at);
   const end = new Date(event.ends_at);
@@ -13,11 +19,18 @@ export function eventFitsAskIntent(event: Event, intent: AskIntent, now = new Da
 
   if (intent.requestedDate) {
     if (!eventOccursOnDate(event, intent.requestedDate)) return false;
+    // A months-long row can represent a weekly series with no occurrence
+    // dates. It proves the series exists, not that it meets tomorrow. Its
+    // actual opening day is still a valid date claim.
+    if (isRangeListing(event) && easternDayKey(start) !== intent.requestedDate) return false;
     if (intent.requestedDateTime) {
       const requested = new Date(intent.requestedDateTime);
       // "Events at 7" includes something already running and events beginning
       // within the next two hours, but not an unrelated matinee or midnight row.
       return end > requested && start.getTime() <= requested.getTime() + 2 * 60 * 60 * 1_000;
+    }
+    if (/\b(?:night|evening)\b/i.test(query)) {
+      return event.is_all_day === true || easternParts(start).hour >= 16;
     }
     return true;
   }
@@ -28,6 +41,10 @@ export function eventFitsAskIntent(event: Event, intent: AskIntent, now = new Da
   const endKey = easternDayKey(end);
   const begins = easternParts(start);
   const runningToday = startKey <= currentKey && endKey >= currentKey && end > now;
+  const unprovenRunningRange = isRangeListing(event) && startKey !== currentKey;
+  if (unprovenRunningRange && ["today", "tonight", "morning", "afternoon"].includes(intent.timeNeed)) {
+    return false;
+  }
   if (intent.timeNeed === "today") return runningToday;
   if (intent.timeNeed === "tonight") {
     return runningToday && (begins.hour >= 16 || start <= now || event.is_all_day === true);

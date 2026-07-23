@@ -13,7 +13,11 @@
  */
 
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import {
+  haversineMeters,
+  isInFrederickCountyArea,
+  type LngLat,
+} from "@/lib/geo";
 
 export type MunicipalityHit = {
   municipality: Municipality;
@@ -60,6 +64,23 @@ export function resolveMunicipality(point: LngLat): MunicipalityHit {
 
   // nearest is never null: MUNICIPALITIES is a non-empty const.
   return containing ?? nearest!;
+}
+
+/**
+ * Catalog-safe municipality resolution.
+ *
+ * resolveMunicipality() is intentionally total for user-location labels, so
+ * even Baltimore has a "nearest" Frederick municipality. Ingestion must not
+ * use that behavior: a source row first has to clear the county outline, then
+ * and only then may it receive a municipality. This nullable variant makes
+ * that ordering explicit and prevents a neighboring-county business from
+ * silently wearing the nearest Frederick town label.
+ */
+export function resolveFrederickMunicipality(
+  point: LngLat,
+): MunicipalityHit | null {
+  if (!isInFrederickCountyArea(point.lng, point.lat)) return null;
+  return resolveMunicipality(point);
 }
 
 /**

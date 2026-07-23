@@ -35,14 +35,18 @@ export default function BeerPage() {
     .filter((place): place is PlaceCardData => Boolean(place))
     .map(slimForList);
   const breweryPhotos = Object.fromEntries(
-    breweryCards.map((place) => [place.slug, place.google_photo_url ?? null]),
+    BREWERIES.map((brewery) => [
+      brewery.slug,
+      breweryCards.find((place) => place.slug === brewery.slug)?.google_photo_url ??
+        null,
+    ]),
   ) as BreweryPhotoMap;
 
   return (
     <div className="space-y-8 pb-4 sm:space-y-10">
-      {/* Zone 1 — compact masthead (replaced the tall BeerHero) so the Flavor
-          Field is nearly above the fold. */}
-      <BeerMasthead />
+      {/* A restrained photo masthead establishes that this is a local brewery
+          guide before the workspace asks the reader to choose a task. */}
+      <BeerMasthead photos={breweryPhotos} />
 
       {/* One task is expanded at a time. The catalog, taprooms, events, map,
           finder, and saved pours still exist, but no longer compete as eight

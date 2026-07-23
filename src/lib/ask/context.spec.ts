@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsParking, wantsWeather, wantIntentOf, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -80,7 +80,7 @@ describe("eventContextLines", () => {
     expect(picked.map((e) => e.slug)).toEqual(["freddie"]);
   });
 
-  it("an in-progress range listing (flattened residency) joins tonight with its honest 'through' line", () => {
+  it("does not claim an in-progress range listing occurs tonight without a dated occurrence", () => {
     const six = new Date("2026-07-15T18:00:00-04:00");
     const residency = ev({
       slug: "freddie-range",
@@ -90,8 +90,30 @@ describe("eventContextLines", () => {
       ends_at: "2026-08-19T23:59:59-04:00",
     });
     const { block, picked } = eventContextLines([residency], "tonight", six);
-    expect(picked.map((e) => e.slug)).toEqual(["freddie-range"]);
-    expect(block).toContain("through Aug 19");
+    expect(picked).toEqual([]);
+    expect(block).toContain("(no listed events in this window)");
+  });
+
+  it("tomorrow night keeps dated evening events and excludes daytime and range-only rows", () => {
+    const pool = [
+      ev({
+        slug: "morning",
+        starts_at: "2026-07-16T10:00:00-04:00",
+        ends_at: "2026-07-16T11:00:00-04:00",
+      }),
+      ev({
+        slug: "evening",
+        starts_at: "2026-07-16T19:00:00-04:00",
+        ends_at: "2026-07-16T21:00:00-04:00",
+      }),
+      ev({
+        slug: "range-only",
+        starts_at: "2025-07-03T12:00:00-04:00",
+        ends_at: "2027-01-01T00:00:00-05:00",
+      }),
+    ];
+    const { picked } = eventContextLines(pool, "tomorrow", WED_6PM, "Anything fun tomorrow night");
+    expect(picked.map((e) => e.slug)).toEqual(["evening"]);
   });
 
   it("an empty window says so explicitly instead of omitting the block", () => {
@@ -165,7 +187,18 @@ describe("wantsParking / wantsWeather", () => {
     expect(wantsWeather("will it rain this weekend")).toBe(true);
     expect(wantsWeather("what's the forecast tomorrow")).toBe(true);
     expect(wantsWeather("is it going to be sunny")).toBe(true);
+    expect(wantsWeather("what is the air quality")).toBe(true);
+    expect(wantsAirQuality("what is the AQI")).toBe(true);
     expect(wantsWeather("what should we do this weekend")).toBe(false);
+  });
+
+  it("does not replace a weather-aware activity request with a forecast-only answer", () => {
+    expect(wantsWeatherAnswer("What is the air quality?")).toBe(true);
+    expect(wantsWeatherAnswer("Is the air quality safe for kids?")).toBe(true);
+    expect(wantsWeatherAnswer("Will it rain tomorrow?")).toBe(true);
+    expect(
+      wantsWeatherAnswer("Something indoors with kids because it is raining"),
+    ).toBe(false);
   });
 });
 
@@ -180,6 +213,13 @@ describe("wantIntentOf", () => {
   it("a named cuisine is a food ask; a meal word scopes it", () => {
     expect(wantIntentOf("any good thai food?", WED_6PM)).toEqual({ key: "food", cuisine: "thai", area: null });
     expect(wantIntentOf("tacos for dinner", WED_6PM)).toEqual({ key: "dinner", cuisine: "mexican", area: null });
+  });
+  it("treats a numbered date-night restaurant request as dinner discovery", () => {
+    expect(wantIntentOf("three date-night restaurants downtown", WED_6PM)).toEqual({
+      key: "dinner",
+      cuisine: null,
+      area: { kind: "downtown" },
+    });
   });
   it("craving nouns resolve; town qualifiers scope them", () => {
     expect(wantIntentOf("coffee in brunswick", WED_6PM)).toEqual({

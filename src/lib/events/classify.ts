@@ -1,4 +1,8 @@
 import type { EventStatus } from "@/lib/event-status";
+import {
+  hasActionableAttendance,
+  type EventAttendanceInput,
+} from "@/lib/events/attendance";
 
 /**
  * Event eligibility lanes — the "belongs-to-feed ≠ should-be-promoted"
@@ -67,6 +71,9 @@ export function classifyEvent(
 }
 
 /** True only for events that may lead the public "What's on" surfaces. */
-export function isPublicEvent(e: { title: string; status?: EventStatus | string; category?: string }): boolean {
-  return classifyEvent(e) === "public";
+export function isPublicEvent(
+  e: { title: string; status?: EventStatus | string; category?: string } &
+    EventAttendanceInput,
+): boolean {
+  return classifyEvent(e) === "public" && hasActionableAttendance(e);
 }

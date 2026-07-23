@@ -18,6 +18,9 @@ const INPUT: PlanInputs = {
   duration_hours: 3,
   start_at: "2026-05-17T22:00:00.000Z", // an evening in America/New_York
   start_near: { lng: -77.4105, lat: 39.4143 },
+  // This suite exercises grounding/share/swap mechanics. Strict timed-plan
+  // behavior is covered separately in src/lib/integrations/planner.spec.ts.
+  require_verified_hours: false,
 };
 
 describe("plan spec encode/decode", () => {
@@ -32,6 +35,7 @@ describe("plan spec encode/decode", () => {
         vibe: INPUT.vibe,
         duration_hours: INPUT.duration_hours,
         start_at: INPUT.start_at,
+        require_verified_hours: false,
       },
     });
   });

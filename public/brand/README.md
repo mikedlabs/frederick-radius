@@ -87,6 +87,9 @@ files are in `licenses/`.
 - `photo-story-template`: Replace the 9:16 placeholder area with owned Frederick photography.
 - `story-brand`: 1080 by 1920 story frame.
 - `og-default`: 1200 by 630 share card.
+- `og-food-trucks`: 1200 by 630 food-truck page share card. It prioritizes
+  the campaign message and keeps the owned Frederick night photograph dark and
+  subordinate.
 
 ## Posters
 

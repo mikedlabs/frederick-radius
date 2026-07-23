@@ -52,7 +52,7 @@ describe("events browse payload", () => {
 
     expect(slim.description).toHaveLength(160);
     expect("ticket_url" in slim).toBe(false);
-    expect("source_url" in slim).toBe(false);
+    expect(slim.source_url).toBe("https://example.com/source");
   });
 
   it("collapses repeated long-tail series but keeps nearby dates distinct", () => {

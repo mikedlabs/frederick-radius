@@ -7,6 +7,12 @@ describe("Ask Radius navigation context", () => {
     expect(tabIndexForPath("/ask")).toBe(-1);
     expect(tabIndexForPath("/ask/history")).toBe(-1);
     expect(TABS).toHaveLength(4);
+    expect(TABS.map(({ href, label }) => ({ href, label }))).toEqual([
+      { href: "/today", label: "Today" },
+      { href: "/map", label: "Map" },
+      { href: "/events", label: "Events" },
+      { href: "/my-radius", label: "Saved" },
+    ]);
   });
 
   it("makes Ask discoverable from an installed app", () => {

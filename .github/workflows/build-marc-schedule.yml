@@ -13,6 +13,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: build-marc-schedule
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -25,15 +30,19 @@ jobs:
       - run: npm ci
       - name: Rebuild MARC schedule from GTFS
         run: npm run build:marc-schedule
-      - name: Commit if changed
-        run: |
-          git config user.name "frederick-radius-bot"
-          git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/marc-schedule.json; then
-            git add src/data/marc-schedule.json
-            git commit -m "data: refresh MARC schedule from GTFS (automated)"
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-          else
-            echo "No MARC schedule changes."
-          fi
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/marc-schedule-refresh
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh MARC schedule from GTFS (automated)"
+          title: "data: refresh MARC schedule"
+          body: |
+            Automated MARC GTFS schedule refresh.
+
+            Review the feed date and Brunswick Line service-window changes
+            before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

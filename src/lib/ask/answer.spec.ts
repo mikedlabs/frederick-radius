@@ -136,6 +136,20 @@ describe("askFrederick structured answers", () => {
     }
   });
 
+  it("does not use a distant closed restaurant as a near-me fallback", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));
+    try {
+      const result = await askFrederick("restaurants open now near me", downtown);
+
+      expect(result.sources).toEqual([]);
+      expect(result.answer).toContain("open right now from fresh hours");
+      expect(result.answer).not.toContain("nearby matches below");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns an honest empty answer for unsupported product language", async () => {
     const result = await askFrederick(
       "Where can I buy zxqv quux near Frederick?",
@@ -234,10 +248,42 @@ describe("askFrederick structured answers", () => {
     expect(result.sources).toHaveLength(4);
     expect(result.sources.map((source) => source.region)).toEqual(["north", "west", "north", "west"]);
     expect(result.sources.every((source) => source.category !== "civic" && source.city?.toLowerCase() !== "frederick")).toBe(true);
-    expect(result.answer).toContain("In north Frederick County");
-    expect(result.answer).toContain("In west Frederick County");
+    expect(result.answer).toContain("In northern Frederick County");
+    expect(result.answer).toContain("In western Frederick County");
     expect(result.answer).not.toContain("food license");
     expect(result.context).toBe("North + West Frederick County");
+  });
+
+  it("ignores regions in the user's dining history before a direct regional question", async () => {
+    const query = "I have eaten downtown and central Frederick. What are good restaurants in northern or western Frederick County?";
+    const result = await askFrederick(query, downtown);
+    expect(result.intent?.regions).toEqual(["north", "west"]);
+    expect(result.sources).toHaveLength(4);
+    expect(result.sources.map((source) => source.region)).toEqual(["north", "west", "north", "west"]);
+    expect(result.sources.every((source) => source.city?.toLowerCase() !== "frederick")).toBe(true);
+    expect(result.answer).not.toContain("central Frederick County, try");
+  });
+
+  it("never fills an empty dated activity window with unrelated businesses", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-23T04:30:00.000Z"));
+    try {
+      const result = await askFrederick("Anything fun tomorrow night?", downtown);
+      expect(result.intent).toMatchObject({ kind: "event", timeNeed: "tomorrow" });
+      expect(result.usedModel).toBe(false);
+      expect(result.sources.every((source) => source.href.startsWith("/events/"))).toBe(true);
+      expect(result.sources.some((source) => /funeral|zoning|family support/i.test(source.name))).toBe(false);
+      expect(result.sources.every((source) => /Jul 24/i.test(source.eyebrow ?? ""))).toBe(true);
+      if (result.sources.length === 0) {
+        expect(result.answer).toContain("couldn’t find a current Radius event");
+        expect(result.actions?.[0]).toMatchObject({
+          label: "Open the full calendar",
+          href: "/events",
+        });
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("turns a natural request into an editable grounded itinerary", async () => {
@@ -253,10 +299,11 @@ describe("askFrederick structured answers", () => {
     expect(result.plan?.href).toMatch(/^\/plan\?p=/);
     expect(result.plan?.stops.length).toBeGreaterThanOrEqual(2);
     expect(result.plan?.stops.every((stop) => stop.href.startsWith("/"))).toBe(true);
-    expect(result.plan?.stops.every((stop) => stop.status !== "Hours unconfirmed")).toBe(true);
+    expect(result.plan?.stops.every((stop) => stop.status !== "Check hours")).toBe(true);
+    expect(result.answer).toContain("Hours are not confirmed for every stop");
   });
 
-  it("builds a lower-walking parent plan without unconfirmed stops", async () => {
+  it("builds a lower-walking parent draft and labels unconfirmed hours", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-17T14:00:00.000Z"));
     try {
@@ -270,7 +317,8 @@ describe("askFrederick structured answers", () => {
       expect(result.answer).not.toContain("walkable");
       expect(result.plan?.stops).toHaveLength(2);
       expect(result.plan?.stops[0]?.time).toBe("6:00 PM");
-      expect(result.plan?.stops.every((stop) => stop.status !== "Hours unconfirmed")).toBe(true);
+      expect(result.plan?.stops.every((stop) => stop.status !== "Check hours")).toBe(true);
+      expect(result.answer).toContain("Hours are not confirmed for every stop");
       expect(result.plan?.stops.some((stop) => Boolean(stop.tip))).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -367,7 +415,15 @@ describe("askFrederick structured answers", () => {
     expect(result.answer).toContain("does not have live truck locations yet");
     expect(result.sources.length).toBeGreaterThan(0);
     expect(result.sources.every((source) => source.category === "food-truck")).toBe(true);
-    expect(result.sources.some((source) => /usually at/i.test(source.eyebrow ?? ""))).toBe(true);
+    expect(
+      result.sources.every((source) =>
+        /own feed|does not have a current service schedule|resident kitchen/i.test(source.reason ?? "")
+      ),
+    ).toBe(true);
+    expect(result.sources.find((source) => source.name === "The Alley Wagon")).toMatchObject({
+      href: "/places/monocacy-brewing-frederick",
+    });
+    expect(result.actions?.some((action) => action.href === "/food-trucks")).toBe(true);
   });
 
   it("uses the postal layer for the nearest blue mailbox", async () => {
@@ -412,11 +468,11 @@ describe("askFrederick structured answers", () => {
       // The lead names the anchor and the actual itinerary (pick-first
       // rule), not the planner's process.
       expect(result.answer).toContain("Anchored at Hootch & Banter");
-      expect(result.answer).toContain("Tomorrow: Anchored at Hootch & Banter");
       expect(result.answer).toContain("Hootch & Banter at ");
       expect(result.plan?.stops[0].name).toBe("Hootch & Banter");
-      expect(result.plan?.stops[0].time).toBe("6:00 PM");
-      expect(result.plan?.dateLabel).toBe("Tomorrow");
+      expect(result.plan?.stops[0].time).toBe("7:50 PM");
+      expect(result.plan?.stops[0].status).toBe("Hours unconfirmed");
+      expect(result.answer).toContain("Hours are not confirmed for every stop");
     } finally {
       vi.useRealTimers();
     }
@@ -439,7 +495,7 @@ describe("askFrederick structured answers", () => {
     }
   });
 
-  it("keeps reservation answers honest and excludes unrelated source cards", async () => {
+  it("keeps a timed reservation handoff honest when schedules are stale", async () => {
     const result = await askFrederick(
       "i want a steak dinner tonight use open table to make a rev for 7:30pm tonight",
       downtown,
@@ -453,15 +509,8 @@ describe("askFrederick structured answers", () => {
     });
     expect(result.answer).toContain("can’t see live OpenTable inventory");
     expect(result.answer).toContain("7:30 PM");
-    expect(result.sources).toHaveLength(3);
-    expect(result.sources.map((source) => source.slug)).toEqual(
-      expect.arrayContaining([
-        "miyako-japanese-steak-and-seafood-frederick",
-        "matsutake-sushi-and-steak-frederick",
-        "averys-maryland-grille-frederick",
-      ]),
-    );
-    expect(result.sources.every((source) => source.category === "restaurant")).toBe(true);
+    expect(result.sources).toEqual([]);
+    expect(result.answer).toContain("won’t pad the answer");
     expect(result.actions?.[0]).toMatchObject({
       kind: "open",
     });
@@ -474,5 +523,94 @@ describe("askFrederick structured answers", () => {
       "Closest matches",
       "Make it a dinner plan",
     ]);
+  });
+
+  it("uses verified patio evidence and is honest about unmeasured noise", async () => {
+    const result = await askFrederick("quiet patio where I can read", downtown);
+    expect(result.sources[0]?.name).toBe("The Wine Kitchen on the Creek");
+    expect(result.sources.some((source) => /Threaded|H Mart/i.test(source.name))).toBe(false);
+    expect(result.answer).toContain("does not have verified noise-level data");
+    expect(result.answer).not.toMatch(/\bis quiet\b/i);
+  });
+
+  it("answers a nearest-stop question from the committed GTFS stop layer", async () => {
+    const result = await askFrederick("Where is the nearest bus stop?", downtown);
+    expect(result.usedModel).toBe(false);
+    expect(result.intelligence?.tools).toEqual(["transit"]);
+    expect(result.sources[0]).toMatchObject({
+      name: "Square Corner (East Patrick Street at North Market Street)",
+      category: "transit",
+      confidence: "high",
+    });
+    expect(result.sources[0]?.href).toContain("show=transit");
+    expect(result.sources[0]?.distance).toBeTruthy();
+    expect(result.answer).toContain("fare-free");
+  });
+
+  it("evaluates late-night food at a real late-night hour", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-23T16:00:00.000Z"));
+    try {
+      const result = await askFrederick("late night food near me", downtown);
+      expect(result.sources).toEqual([]);
+      expect(result.answer).toContain("couldn’t verify a late-night place open at 11:00 PM from fresh hours");
+      expect(result.answer).not.toContain("Wag's Restaurant");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("honors a numbered date-night list with actual date-night records", async () => {
+    const result = await askFrederick("three date-night restaurants downtown", downtown);
+    expect(result.intent).toMatchObject({ kind: "place", audience: "date" });
+    expect(result.plan).toBeUndefined();
+    expect(result.sources).toHaveLength(3);
+    expect(result.sources.map((source) => source.name)).toEqual([
+      "Isabella's Taverna & Tapas Bar",
+      "The Wine Kitchen on the Creek",
+      "Hootch & Banter",
+    ]);
+  });
+
+  it("does not repeat a city already contained in a business name", async () => {
+    const result = await askFrederick("independent coffee near me", downtown);
+    expect(result.sources[0]?.name).toBe("Voila in Frederick");
+    expect(result.answer).not.toContain("Voila in Frederick in Frederick");
+  });
+
+  it("keeps rainy-day family discovery focused on indoor places", async () => {
+    const result = await askFrederick(
+      "something indoors with kids because it is raining",
+      downtown,
+    );
+    expect(result.sources.length).toBeGreaterThan(0);
+    expect(result.sources[0]?.name).toBe("The Little Pottery Shop");
+    expect(result.sources.some((source) => source.name === "Hill Street Skate Park")).toBe(false);
+    expect(result.sources.some((source) => /forecast|air quality/i.test(source.name))).toBe(false);
+    expect(result.answer).not.toMatch(/National Weather Service forecast is/i);
+  });
+
+  it("answers air quality from AirNow or fails honestly without business-name noise", async () => {
+    const result = await askFrederick("What is the air quality?", downtown);
+    expect(result.usedModel).toBe(false);
+    expect(result.sources.every((source) => source.slug === "airnow-aqi")).toBe(true);
+    expect(result.sources.some((source) => /Airborne|Airbrush|Urban Air/i.test(source.name))).toBe(false);
+    expect(result.answer).toMatch(/AirNow|fresh AirNow observation/);
+    expect(result.actions?.[0]).toMatchObject({
+      label: "Open air quality",
+      href: "/pulse?open=air",
+    });
+  });
+
+  it("treats an explicitly selected whole county as a valid planning scope", async () => {
+    const result = await askFrederick("Plan an easy afternoon near me", {
+      contextLabel: "Whole county",
+      fallbackReason: null,
+      canShowDistance: false,
+    });
+    expect(result.status).toBe("matches");
+    expect(result.plan?.stops.length).toBeGreaterThanOrEqual(2);
+    expect(result.context).toBe("Whole county");
+    expect(result.answer).not.toContain("needs a real area");
   });
 });

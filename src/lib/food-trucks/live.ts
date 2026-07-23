@@ -2,19 +2,16 @@ import { clientPlaces } from "@/lib/loaders/places-client";
 import type { Hours } from "@/data/places";
 
 /**
- * Food-truck live layer, phase 1: the home-base reading.
+ * Food-truck home-base resolver.
  *
  * Most trucks roam (their daily spot lives on their own feed), but a few
- * park permanently at a brewery kitchen. For those, "is it out right now?"
- * is answerable honestly TODAY: the brewery's posted, verified hours are a
- * true proxy for whether the truck is serving. So resolve a truck's
- * `homeBase` string to its place record and hand the hours to a client
- * component that computes open/closed on the visitor's clock.
+ * are associated with a brewery kitchen. Venue hours can help someone plan a
+ * visit, but they are not evidence that the truck is serving. This resolver
+ * only joins a truck's `homeBase` string to the venue record so the interface
+ * can label the relationship and show the venue's hours separately.
  *
- * This is deliberately the honest slice: it only speaks for trucks with a
- * real permanent home whose venue hours we actually hold. Roaming trucks
- * keep the "follow their feed" path until the operator-beacon or a real
- * schedule feed lands. Pure resolution (no network); safe on server + client.
+ * Roaming trucks keep the official schedule/feed path until an operator
+ * beacon confirms a live location. Pure resolution; safe on server + client.
  */
 
 export type HomeBaseResolved = {
@@ -22,7 +19,9 @@ export type HomeBaseResolved = {
   name: string;
   /** Place slug, so the card can link through to the venue. */
   slug: string;
-  hours: Hours;
+  /** Fresh, publishable venue hours when available. Home-base identity does
+   * not disappear merely because the venue schedule needs re-verification. */
+  hours?: Hours;
   verified: boolean;
 };
 
@@ -30,11 +29,11 @@ const norm = (s: string): string => (s || "").toLowerCase().replace(/[^a-z0-9]/g
 
 /**
  * Resolve a truck's free-text `homeBase` ("Monocacy Brewing Company") to a
- * place with hours. Exact normalized-name match first, then a forgiving
+ * place. Exact normalized-name match first, then a forgiving
  * prefix match either direction ("Monocacy Brewing Company" ~ "Monocacy
  * Brewing"), guarded by a length floor so short venue names can't
- * over-match. Returns null when nothing resolves or the match has no hours,
- * so the card falls back to the static "Usually at X" line.
+ * over-match. Fresh hours are attached when the public place loader can
+ * safely publish them; stale hours never erase the known venue relationship.
  */
 export function resolveHomeBase(homeBase: string | undefined): HomeBaseResolved | null {
   if (!homeBase) return null;
@@ -50,11 +49,11 @@ export function resolveHomeBase(homeBase: string | undefined): HomeBaseResolved 
       return pk.startsWith(target) || target.startsWith(pk);
     });
   }
-  if (!match || !match.hours) return null;
+  if (!match) return null;
   return {
     name: match.name,
     slug: match.slug,
-    hours: match.hours as Hours,
+    hours: match.hours as Hours | undefined,
     verified: Boolean(match.hours_verified),
   };
 }

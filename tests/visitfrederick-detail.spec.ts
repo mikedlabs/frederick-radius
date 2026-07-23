@@ -25,6 +25,7 @@ describe("parseVisitFrederickDetail", () => {
     expect(d).not.toBeNull();
     expect(d!.venue_name).toBe("Frederick City Hall");
     expect(d!.address).toBe("101 N. Court St., Frederick, MD 21701");
+    expect(d!.municipality).toBe("frederick");
     expect(d!.geom).toEqual({ lng: -77.4127749, lat: 39.4157432 });
     expect(d!.description).toContain("250th anniversary");
   });
@@ -59,6 +60,28 @@ describe("parseVisitFrederickDetail", () => {
     const d = parseVisitFrederickDetail(html);
     expect(d?.venue_name).toBe("Sky Stage");
     expect(d?.geom).toEqual({ lng: -77.411, lat: 39.414 });
+  });
+
+  it("uses a known structured locality instead of the RSS county-seat fallback", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Event",
+      name: "Brunswick Market",
+      location: {
+        "@type": "Place",
+        name: "Brunswick Main Street",
+        address: {
+          streetAddress: "1 W Potomac St",
+          addressLocality: "Brunswick",
+          addressRegion: "MD",
+          postalCode: "21716",
+        },
+        geo: { latitude: 39.3134, longitude: -77.628 },
+      },
+    })}</script>`;
+    expect(parseVisitFrederickDetail(html)?.municipality).toBe("brunswick");
+
+    const mountAiry = html.replaceAll("Brunswick", "Mt. Airy");
+    expect(parseVisitFrederickDetail(mountAiry)?.municipality).toBe("mount-airy");
   });
 
   it("returns null for no JSON-LD, and never throws on malformed JSON", () => {

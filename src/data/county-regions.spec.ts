@@ -8,6 +8,12 @@ describe("Frederick County regions", () => {
     expect(parseCountyRegions(query)).toEqual(["north", "west"]);
   });
 
+  it("does not treat the places before a direct question as requested regions", () => {
+    const query = "I have eaten downtown and central Frederick. What are good restaurants in northern or western Frederick County?";
+    expect(countyDecisionClause(query)).toContain("good restaurants in northern or western");
+    expect(parseCountyRegions(query)).toEqual(["north", "west"]);
+  });
+
   it("supports short directional requests", () => {
     expect(parseCountyRegions("Take me somewhere worth the drive north or west of Frederick")).toEqual(["north", "west"]);
   });

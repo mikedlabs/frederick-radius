@@ -76,6 +76,25 @@ export default function MapDiscoveryOverlay({ discovery }: { discovery: MapDisco
             "circle-stroke-width": 1.5,
           }}
         />
+        <Layer
+          id="radius-finding-label"
+          type="symbol"
+          minzoom={11}
+          layout={{
+            "text-field": ["get", "label"],
+            "text-size": ["interpolate", ["linear"], ["zoom"], 11, 10, 15, 12],
+            "text-anchor": "top",
+            "text-offset": [0, 1.15],
+            "text-max-width": 12,
+            "text-optional": true,
+          }}
+          paint={{
+            "text-color": BRAND.colors.ink,
+            "text-halo-color": BRAND.colors.surface,
+            "text-halo-width": 1.5,
+            "text-halo-blur": 0.35,
+          }}
+        />
       </Source>
     </>
   );

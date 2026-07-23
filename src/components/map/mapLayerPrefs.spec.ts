@@ -29,10 +29,10 @@ describe("mapLayerPrefs", () => {
     expect(readMapLayerPrefs()).toEqual({});
   });
 
-  it("keeps an explicit transit Off choice while dropping other false noise", () => {
+  it("drops false noise now that every layer defaults off", () => {
     writeMapLayerPrefs({ cats: [], amenities: [], civic: false, transit: false, trails: false, aerial: false, cemeteries: false });
-    expect(readMapLayerPrefs()).toEqual({ transit: false });
-    expect(window.localStorage.getItem("fr:map-layers:v1")).toBe('{"transit":false}');
+    expect(readMapLayerPrefs()).toEqual({});
+    expect(window.localStorage.getItem("fr:map-layers:v2")).toBeNull();
   });
 
   it("keeps only the truthy flags", () => {
@@ -43,7 +43,19 @@ describe("mapLayerPrefs", () => {
   });
 
   it("survives corrupt storage", () => {
-    window.localStorage.setItem("fr:map-layers:v1", "{not json");
+    window.localStorage.setItem("fr:map-layers:v2", "{not json");
     expect(readMapLayerPrefs()).toEqual({});
+  });
+
+  it("migrates legacy choices without restoring auto-seeded Transit", () => {
+    window.localStorage.setItem(
+      "fr:map-layers:v1",
+      JSON.stringify({ transit: true, radar: true, parking: true }),
+    );
+    expect(readMapLayerPrefs()).toEqual({ radar: true, parking: true });
+    expect(window.localStorage.getItem("fr:map-layers:v1")).toBeNull();
+    expect(window.localStorage.getItem("fr:map-layers:v2")).toBe(
+      '{"parking":true,"radar":true}',
+    );
   });
 });

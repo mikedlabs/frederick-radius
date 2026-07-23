@@ -29,9 +29,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Load the latest pipeline manifest
+        run: |
+          git fetch origin data-snapshots --depth=1
+          git show origin/data-snapshots:data/sources.yaml > /tmp/frederick-radius-sources.yaml
+
       - name: Check freshness
         id: fresh
         continue-on-error: true
+        env:
+          SOURCE_MANIFEST: /tmp/frederick-radius-sources.yaml
         run: |
           set -o pipefail
           npm run pipeline:freshness 2>&1 | tee freshness.log

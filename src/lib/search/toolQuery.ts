@@ -132,6 +132,34 @@ function hasAny(terms: ReadonlySet<string>, choices: readonly string[]): boolean
  */
 const QUERY_INTENTS: readonly QueryIntent[] = [
   {
+    id: "search",
+    score: (terms) => {
+      const placeOrMeal = hasAny(terms, [
+        "breakfast", "coffee", "dinner", "grocery", "lunch", "pharmacy",
+        "restaurant", "shop", "store",
+      ]);
+      const dateNight = terms.has("date") && terms.has("night");
+      const familyIdea = hasAny(terms, ["family", "kid", "kids"]) && hasAny(terms, ["friendly", "idea", "outing"]);
+      const market = terms.has("market") && hasAny(terms, ["farmer", "farmers"]);
+      return placeOrMeal || dateNight || familyIdea || market ? 90 : 0;
+    },
+  },
+  {
+    id: "county-pulse",
+    score: (terms) => {
+      const airQuality =
+        hasAny(terms, ["aqi", "smoke"])
+        || (terms.has("air") && terms.has("quality"));
+      const roadStatus =
+        hasAny(terms, ["road", "roads"])
+        && hasAny(terms, ["closure", "closures", "condition", "conditions"]);
+      const direct = hasAny(terms, [
+        "alert", "alerts", "outage", "outages", "weather",
+      ]);
+      return airQuality || roadStatus || direct ? 100 : 0;
+    },
+  },
+  {
     id: "power-outlets",
     score: (terms) => {
       const personalDevice = hasAny(terms, [

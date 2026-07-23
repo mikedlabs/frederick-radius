@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { MapPin } from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 import { beaconLabel, readBeacon, type LiveBeacon, type TruckBeacon } from "@/lib/food-trucks/beacon";
 
 /**
@@ -55,6 +55,16 @@ export default function TruckLiveStatus({
           {live.note}
         </p>
       ) : null}
+      <a
+        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${live.lat},${live.lng}`)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="tap-44 inline-flex items-center gap-1 text-[11.5px] font-semibold underline"
+        style={{ color: accent }}
+      >
+        Directions
+        <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+      </a>
     </div>
   );
 }

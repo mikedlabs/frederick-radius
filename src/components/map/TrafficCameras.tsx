@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import { Video, ExternalLink } from "lucide-react";
 import type { TrafficCamera } from "@/lib/integrations/chartCameras";
+import {
+  liveLayerHealth,
+  type LiveLayerHealth,
+} from "@/lib/live-layer-health";
 
 /**
  * TrafficCameras — the map's SHA/CHART traffic-camera layer. FrederickScanner
@@ -12,9 +16,17 @@ import type { TrafficCamera } from "@/lib/integrations/chartCameras";
  * its markers + popup) so AppMap mounts it with one line. Locations are static,
  * so it fetches once when the layer turns on. Empty if CHART is unreachable.
  */
-export default function TrafficCameras({ show }: { show: boolean }) {
+export default function TrafficCameras({
+  show,
+  onHealth,
+}: {
+  show: boolean;
+  onHealth?: (health: LiveLayerHealth) => void;
+}) {
   const [cameras, setCameras] = useState<TrafficCamera[]>([]);
   const [selected, setSelected] = useState<TrafficCamera | null>(null);
+  const onHealthRef = useRef(onHealth);
+  useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
 
   useEffect(() => {
     if (!show || cameras.length > 0) return;
@@ -22,11 +34,33 @@ export default function TrafficCameras({ show }: { show: boolean }) {
     (async () => {
       try {
         const r = await fetch("/api/traffic-cameras");
-        if (!r.ok) return;
+        if (!r.ok) {
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "Maryland CHART",
+              unavailable: true,
+            }),
+          );
+          return;
+        }
         const d = (await r.json()) as { cameras?: TrafficCamera[] };
-        if (alive && Array.isArray(d.cameras)) setCameras(d.cameras);
+        if (alive && Array.isArray(d.cameras)) {
+          setCameras(d.cameras);
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "Maryland CHART",
+              count: d.cameras.length,
+              timestamp: new Date(),
+            }),
+          );
+        }
       } catch {
-        /* fail-soft */
+        onHealthRef.current?.(
+          liveLayerHealth({
+            source: "Maryland CHART",
+            unavailable: true,
+          }),
+        );
       }
     })();
     return () => {

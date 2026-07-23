@@ -1,9 +1,11 @@
 # Frederick Radius data source manifest.
 #
 # This file is the single source of truth for every data source the app
-# uses or plans to use. The daily worker only processes rows with
-# status: active. Other statuses are intentional gates:
-#   active           validated, schema and transform exist, worker runs it
+# uses or plans to use. The daily worker processes only active rows whose
+# collection owner is `pipeline`; runtime and workflow sources are refreshed
+# by their named owner. Other statuses are intentional gates:
+#   active           validated and used by the product. `collection` says who
+#                    refreshes it: pipeline, runtime, or workflow.
 #   scaffold         mapped from code, not yet wired to the worker; its
 #                    schema and transform are generated when it is
 #                    activated, through the diagnose-failure command
@@ -33,8 +35,9 @@ sources:
     license: open, attribution requested
     contact: https://www.openbrewerydb.org
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:34.946Z
+    last_success: 2026-07-23T04:55:34.946Z
     schema_file: schemas/open_brewery_db.json
     transform_file: transforms/open_brewery_db.ts
     notes: |
@@ -44,20 +47,23 @@ sources:
   - id: mdot_chart
     name: Maryland CHART Traffic Incidents
     owner: Maryland Department of Transportation
-    url: https://chart.maryland.gov/Incidents/GetIncidents
+    url: https://chartexp1.sha.maryland.gov/CHARTExportClientService/getEventMapDataJSON.do
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
     license: public domain, State of Maryland
     contact: https://chart.maryland.gov
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:35.450Z
+    last_success: 2026-07-23T04:55:35.450Z
     schema_file: schemas/mdot_chart.json
     transform_file: transforms/mdot_chart.ts
     notes: |
-      Statewide live incident feed, no key. The transform filters to
-      Frederick County and normalizes coordinates and times.
+      Statewide live incident feed, no key. The old
+      chart.maryland.gov/Incidents/GetIncidents URL became an HTML page;
+      this is CHART's current JSON export endpoint. The transform filters
+      to Frederick County and removes signal/camera maintenance noise.
 
   - id: seeclickfix
     name: SeeClickFix Frederick County 311
@@ -69,8 +75,9 @@ sources:
     license: public read access
     contact: https://seeclickfix.com
     status: active
-    last_validated: 2026-05-18
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:35.788Z
+    last_success: 2026-07-23T04:55:35.788Z
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
@@ -91,8 +98,9 @@ sources:
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:37.536Z
+    last_success: 2026-07-23T04:55:37.536Z
     schema_file: schemas/nws_forecast.json
     transform_file: transforms/nws_forecast.ts
     notes: |
@@ -109,8 +117,9 @@ sources:
     license: public domain
     contact: https://www.weather.gov/disclaimer
     status: active
-    last_validated: null
-    last_success: null
+    collection: pipeline
+    last_validated: 2026-07-23T04:55:37.723Z
+    last_success: 2026-07-23T04:55:37.723Z
     schema_file: schemas/nws_alerts.json
     transform_file: transforms/nws_alerts.ts
     notes: |
@@ -164,12 +173,17 @@ sources:
     refresh_cadence: daily
     license: Open Database License
     contact: https://www.openstreetmap.org/copyright
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: County business and amenity points. Heavy query, mirrors exist.
+    transform_file: src/lib/integrations/overpass.ts
+    notes: |
+      Runtime county amenity discovery. fetchOsmFrederick() queries a
+      failover list of Overpass mirrors, filters every row to the Frederick
+      County boundary, and powers public restrooms, water, bike parking,
+      benches, trash receptacles, and other map layers.
 
   - id: google_places
     name: Google Places
@@ -180,12 +194,18 @@ sources:
     refresh_cadence: weekly
     license: Google Places terms, attribution required
     contact: https://developers.google.com/maps
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Enrichment only. Requires GOOGLE_PLACES_API_KEY.
+    transform_file: scripts/enrich-places.ts
+    notes: |
+      Enrichment only. Requires GOOGLE_PLACES_API_KEY. The monthly
+      enrich-places workflow refreshes curated records. The dry-run-first
+      backfill:photo-attributions command fills exact per-photo source
+      metadata in request-capped batches without overwriting ratings, hours,
+      status, or descriptions.
 
   - id: wikimedia_commons
     name: Wikimedia Commons
@@ -213,6 +233,7 @@ sources:
     license: unknown, confirm with owner
     contact: https://downtownfrederick.org
     status: active
+    collection: runtime
     last_validated: 2026-07-19
     last_success: 2026-07-19
     schema_file: null
@@ -242,6 +263,7 @@ sources:
     license: unknown, confirm with owner
     contact: https://celebratefrederick.com
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -257,13 +279,14 @@ sources:
   - id: hood_college
     name: Hood College Calendar
     owner: Hood College
-    url: https://www.trumba.com/calendars/hood-college-events.ics
+    url: https://go.activecalendar.com/hood/page/ical/
     endpoint_type: ical
     format: json
     refresh_cadence: weekly
     license: public calendar
     contact: https://www.hood.edu
     status: active
+    collection: runtime
     last_validated: 2026-05-18
     last_success: null
     schema_file: null
@@ -272,7 +295,8 @@ sources:
       Campus events. Live via the no-DB iCal path in
       src/lib/integrations/ical-live.ts (FEEDS, source "hood"),
       alongside the already-live Celebrate Frederick + Frederick
-      County feeds. Override the URL with HOOD_CALENDAR_URL.
+      County feeds. HOOD_CALENDAR_URL is an optional move-safe override,
+      not a credential.
 
   - id: frederick_county_calendar
     name: Frederick County Calendar
@@ -284,6 +308,7 @@ sources:
     license: public, Frederick County
     contact: https://www.frederickcountymd.gov
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -299,6 +324,261 @@ sources:
       because the source's own category field bears no relation to the
       event (see feedCategory() in the transform).
 
+  - id: city_frederick_calendar
+    name: City of Frederick Calendar
+    owner: City of Frederick
+    url: https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.cityoffrederickmd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official CivicPlus calendar in the runtime event registry.
+
+  - id: great_frederick_fair_calendar
+    name: Great Frederick Fair Calendar
+    owner: The Great Frederick Fair
+    url: https://calendar.google.com/calendar/ical/gffcal%40gmail.com/public/basic.ics
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://thegreatfrederickfair.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Fair and fairgrounds events in the runtime event registry.
+
+  - id: mount_airy_calendar
+    name: Town of Mount Airy Calendar
+    owner: Town of Mount Airy
+    url: https://www.mountairymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.mountairymd.gov
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official CivicPlus calendar in the runtime event registry.
+
+  - id: thurmont_calendar
+    name: Town of Thurmont Calendar
+    owner: Town of Thurmont
+    url: https://www.thurmont.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public municipal calendar; source link retained
+    contact: https://www.thurmont.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Official calendar; facility bookings and utility notices are filtered.
+
+  - id: heritage_frederick_calendar
+    name: Heritage Frederick Events
+    owner: Heritage Frederick
+    url: https://frederickhistory.org/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://frederickhistory.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party history talks, tours, and exhibits.
+
+  - id: monocacy_brewing_calendar
+    name: Monocacy Brewing Events
+    owner: Monocacy Brewing Company
+    url: https://monocacybrewing.com/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public business calendar; source link retained
+    contact: https://monocacybrewing.com
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party taproom events in the runtime event registry.
+
+  - id: maryland_school_deaf_calendar
+    name: Maryland School for the Deaf Calendar
+    owner: Maryland School for the Deaf
+    url: https://www.msd.edu/apps/events/ical/
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://www.msd.edu
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Public campus events; internal meetings are filtered downstream.
+
+  - id: delaplaine_calendar
+    name: Delaplaine Arts Center Events
+    owner: Delaplaine Arts Center
+    url: https://delaplaine.org/events/?ical=1
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://delaplaine.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party arts classes and exhibits.
+
+  - id: islamic_society_frederick_calendar
+    name: Islamic Society of Frederick Calendar
+    owner: Islamic Society of Frederick
+    url: https://calendar.google.com/calendar/ical/c_c6114ad8fc9e85edfd02c33a366bc2b049ef9b8c41d8ddad0274956761a4a59f%40group.calendar.google.com/public/basic.ics
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://isfmd.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party faith-community events.
+
+  - id: evangelical_lutheran_calendar
+    name: Evangelical Lutheran Church Calendar
+    owner: Evangelical Lutheran Church, Frederick
+    url: https://www.twinspires.org/gencal.cfm?event_category=All
+    endpoint_type: ical
+    format: ical
+    refresh_cadence: hourly
+    license: public organization calendar; source link retained
+    contact: https://www.twinspires.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party public church events; recurring internal meetings are filtered.
+
+  - id: civil_war_medicine_events
+    name: National Museum of Civil War Medicine Events
+    owner: National Museum of Civil War Medicine
+    url: https://www.civilwarmed.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://www.civilwarmed.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Tribe Events API; non-Maryland satellite events are filtered.
+
+  - id: maryland_ensemble_events
+    name: Maryland Ensemble Theatre Events
+    owner: Maryland Ensemble Theatre
+    url: https://marylandensemble.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://marylandensemble.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Tribe Events API; venue-less online streams are filtered.
+
+  - id: catoctin_land_trust_events
+    name: Catoctin Land Trust Events
+    owner: Catoctin Land Trust
+    url: https://catoctinlandtrust.org/wp-json/tribe/events/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public organization event API; source link retained
+    contact: https://catoctinlandtrust.org
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: First-party conservation events and outings.
+
+  - id: fcc_calendar
+    name: Frederick Community College Calendar
+    owner: Frederick Community College
+    url: https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://www.frederick.edu
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Modern Campus calendar with an explicit request-time date window.
+
+  - id: mount_st_marys_calendar
+    name: Mount St. Mary's University Events
+    owner: Mount St. Mary's University
+    url: https://api.presence.io/msmary/v1/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public institutional calendar; source link retained
+    contact: https://msmary.edu
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: Presence student-engagement API for public campus events.
+
   - id: airnow
     name: AirNow Air Quality
     owner: US EPA AirNow
@@ -308,12 +588,16 @@ sources:
     refresh_cadence: hourly
     license: AirNow terms, attribution required
     contact: https://www.airnow.gov
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Requires AIRNOW_API_KEY.
+    transform_file: src/lib/integrations/airnow.ts
+    notes: |
+      Active runtime integration used by Today and Pulse when
+      AIRNOW_API_KEY is configured. The adapter distinguishes a successful
+      empty observation from an unavailable response and rejects stale data.
 
   - id: nps
     name: National Park Service
@@ -324,8 +608,9 @@ sources:
     refresh_cadence: weekly
     license: public domain, NPS
     contact: https://www.nps.gov
-    status: scaffold
-    last_validated: 2026-05-26
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/nps.ts
@@ -335,19 +620,21 @@ sources:
       and Monocacy National Battlefield. Gated on NPS_API_KEY (free,
       server-only at developer.nps.gov/get-started). Absent the key,
       returns [] and the alert section silently skips NPS sources.
-      Status stays scaffold because the daily worker does not fetch
-      it — this is request-time.
+      This is active request-time data, so collection is runtime rather
+      than pipeline. NPS_API_KEY is required; without it the adapter is
+      intentionally unconfigured.
 
   - id: fcps_news
     name: Frederick County Public Schools News
     owner: Frederick County Public Schools
-    url: https://www.fcps.org/news.rss
+    url: https://www.fcps.org/syndication/rss.aspx?feed=datasummary&item_description=portlet_xml_summary&item_name=portlet_xml_title&item_pubdate=portlet_last_modified&key=%2FAAGY2FPAufgUrJw7OxqsYwSBXFdTp%2BBNc5BCpRcIw8jq5pyNj8YKVVG3nKyM4pYNB7knPKvIRZyPRd8wyu8lwgUC2E%3D&max_items=8&portal_id=74633453&serverid=74633369&target_object_id=74815149&userid=5&v=2.0
     endpoint_type: rss
     format: rss
     refresh_cadence: daily
     license: public
     contact: https://www.fcps.org
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -405,22 +692,24 @@ sources:
   - id: firstenergy_outages
     name: FirstEnergy Outages, Potomac Edison
     owner: FirstEnergy
-    url: https://outages-mdwv.firstenergycorp.com/data/interval_generation_data/2/report.js
+    url: https://kubra.io/stormcenter/api/v1/stormcenters/6c715f0e-bbec-465f-98cc-0b81623744be/views/5ed3ddf1-3a6f-4cfd-8957-eba54b5baaad/currentState?preview=false
     endpoint_type: scrape
     format: json
     refresh_cadence: hourly
     license: unknown, confirm with owner
     contact: https://www.firstenergycorp.com
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/firstenergy.ts
     notes: |
-      Live runtime via getFrederickOutages() — consumed by /pulse and
-      LivePulse on /now. Public-data report.js endpoint (not a documented
-      API). Scrape-class: format may change without notice, so the
-      fetcher tolerates schema drift and returns [] on parse failure.
+      Live runtime via getFrederickOutagesResult() — consumed by /pulse and
+      LivePulse on /now. The KUBRA currentState document resolves the rotating
+      deployment and report path; the adapter does not pin a stale report.js.
+      Scrape-class: format may change without notice, so the fetcher marks the
+      source unavailable on schema drift instead of claiming zero outages.
       License from FirstEnergy is unconfirmed; we cite Potomac Edison
       in the /pulse Power tile as the source attribution.
 
@@ -449,12 +738,16 @@ sources:
     refresh_cadence: on_demand
     license: Google Maps terms
     contact: https://developers.google.com/maps
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: On demand travel time, not a batch source. Requires a key.
+    transform_file: src/lib/integrations/google-routes.ts
+    notes: |
+      Active on-demand travel-time adapter used by /api/travel-time.
+      Requires GOOGLE_PLACES_API_KEY with Routes API access and limits each
+      matrix to one origin by at most 25 destinations.
 
   # ------------------------------------------------------------------ #
   # Pending review. Policy decision required before any fetch.          #
@@ -477,7 +770,9 @@ sources:
     notes: |
       Public safety incident data. The project guidance calls for a
       strict privacy review of public safety layers. Do not fetch until
-      a human approves and the review is recorded here.
+      a human approves and the review is recorded here. Runtime activation
+      requires both PULSEPOINT_ENABLED=1 and PULSEPOINT_AGENCY_ID, so an
+      agency id alone cannot bypass this pending-review gate.
 
   # ------------------------------------------------------------------ #
   # Pending approval. Candidates for the discover-sources command.      #
@@ -525,14 +820,14 @@ sources:
     refresh_cadence: hourly
     license: US federal government open data, public domain
     contact: https://aviationweather.gov
-    status: scaffold
-    last_validated: 2026-05-26
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/aviationweather.ts
     notes: |
-      Live runtime integration, not a daily-worker source (same posture
-      as airnow + ticketmaster + mapillary_objects). getKfdkMetar()
+      Active runtime integration, not a daily-worker source. getKfdkMetar()
       reads the hourly METAR and the AlmanacFooter on /now surfaces a
       dewpoint comfort label ("Sticky" / "Muggy" / "Oppressive" /
       "Very dry") ONLY at the edges of the comfort spectrum — the
@@ -595,15 +890,16 @@ sources:
     license: public access; redistribution terms not stated
     contact: https://www.frederickcountymd.gov/105/Transit-Services
     status: active
+    collection: workflow
     last_validated: 2026-07-22
     last_success: 2026-07-22
     schema_file: null
-    transform_file: null
+    transform_file: scripts/build-transit-gtfs.ts
     notes: >-
       Static GTFS published through the county's Passio system. Validated
       2026-07-22: 17 fixed routes, 392 stops, and a service window from
-      2026-07-21 through 2026-08-21. Includes the 15 Connector introduced in
-      the county's July 6, 2026 service change. Realtime vehicle positions and
+      2026-07-21 through 2026-08-21. Includes the 15 Connector introduced in the
+      county's July 6, 2026 service change. Realtime vehicle positions and
       TripUpdates are separate feeds and must not inherit this snapshot date.
 
   - id: mta_marc_rt
@@ -625,18 +921,24 @@ sources:
   - id: visit_frederick
     name: Visit Frederick Events
     owner: Tourism Council of Frederick County
-    url: https://www.visitfrederick.org/events
-    endpoint_type: scrape
-    format: json
-    refresh_cadence: daily
-    license: unknown, confirm with owner
+    url: https://www.visitfrederick.org/event/rss/
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: public publisher RSS; link and attribution retained
     contact: https://www.visitfrederick.org
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Tourism events. Scrape or iCal, confirm before use.
+    transform_file: src/lib/integrations/visitfrederick.ts
+    notes: |
+      Active keyless Simpleview RSS integration. The feed supplies dates but
+      not reliable clock times or coordinates, so the adapter uses all-day
+      semantics and town-level placement until the linked official detail
+      page supplies valid Event JSON-LD. Source links and Visit Frederick
+      attribution remain on every row.
 
   # Sports games — owner: "people need to know about sports games".
   # Registered as real candidates, NOT fabricated: none publishes a
@@ -647,21 +949,23 @@ sources:
   - id: frederick_keys
     name: Frederick Keys (MLB Draft League)
     owner: Frederick Keys / MiLB
-    url: https://www.milb.com/frederick/schedule
-    endpoint_type: scrape
+    url: https://statsapi.mlb.com/api/v1/schedule?sportId=13&teamId=493
+    endpoint_type: rest_json
     format: json
-    refresh_cadence: daily
-    license: unknown, confirm with owner (MiLB terms)
+    refresh_cadence: hourly
+    license: public schedule API; display links return to the Frederick Keys
     contact: https://www.milb.com/frederick
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/frederickKeys.ts
     notes: |
-      Home games at Nymeo Field. No public iCal/RSS found; schedule is
-      a PDF + the MiLB site. Needs a resilient parser + license OK
-      before activation. Do NOT fabricate the schedule.
+      Active, keyless runtime schedule. The adapter keeps only games where
+      Frederick is the home team, maps official game status, and uses the
+      known Nymeo Field location. Ticketmaster may enrich a duplicate with
+      price and ticket data; the unified event spine collapses the pair.
   - id: hood_athletics
     name: Hood College Blazers Athletics
     owner: Hood College Athletics
@@ -1132,16 +1436,15 @@ sources:
     license: Eventbrite API terms, requires OAuth token, attribution required
     contact: Eventbrite Platform / API
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/eventbrite.ts
     notes: |
-      Real-time ticketed + free events, location filterable — a primary
-      Live-Now feed for in-city happenings at businesses. OAuth token
-      required at activation; respect rate limits and attribution. Public
-      search was deprecated, so this needs an organizer/partner token —
-      flag for the Visit Frederick / DFP partner conversation.
+      The runtime adapter is wired but policy-gated. It requires an approved
+      partner/token posture recorded here, then EVENTBRITE_ENABLED=1 plus
+      EVENTBRITE_TOKEN. Eventbrite retired public area search, so Radius polls
+      only reviewed organizer ids and rejects rows without an in-county venue.
 
   - id: bandsintown
     name: Bandsintown — Live Music
@@ -1153,14 +1456,15 @@ sources:
     license: Bandsintown API terms, requires app id, attribution required
     contact: Bandsintown for Artists / API
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/bandsintown.ts
     notes: |
-      Live music at Frederick venues — fills the gap where shows are only
-      promoted on social. Query by venue/city; needs a free app id at
-      activation. Pairs with songkick for coverage redundancy.
+      The runtime adapter is wired but policy-gated. Activation requires an
+      approved API posture recorded here, then BANDSINTOWN_ENABLED=1 plus
+      BANDSINTOWN_APP_ID. The API is artist-scoped, so Radius queries only the
+      curated local/returning artist registry and keeps in-county coordinates.
 
   - id: ticketmaster
     name: Ticketmaster Discovery API
@@ -1171,25 +1475,36 @@ sources:
     refresh_cadence: hourly
     license: Ticketmaster Discovery API terms, requires API key, attribution required
     contact: https://developer.ticketmaster.com
-    status: scaffold
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/ticketmaster.ts
     notes: |
-      Live runtime integration, not a daily-worker source (same posture
-      as google_places and mapillary_objects). fetchTicketmasterMusic()
-      is wired into getLiveEvents() in src/lib/integrations/ical-live.ts,
-      so a real classification=Music geo search for Frederick County
-      drops straight into the live-events spine, the explorer, and the
-      map event pins. The owner is the activation: gated entirely on
-      TICKETMASTER_API_KEY (a free key from developer.ticketmaster.com,
-      server-only). Absent the key, fetchTicketmasterMusic() returns []
-      and this is fully inert, so it is safe to ship before the key is
-      set. status stays non-active so the worker never fetches it; this
-      is a request-time integration, not a pipeline source. schema_file
-      stays null by design: the normalizer in ticketmaster.ts is the
-      transform, covered by tests/ticketmaster.spec.ts.
+      Active request-time music and sports discovery, gated on
+      TICKETMASTER_API_KEY. Results are coordinate-filtered to Frederick
+      County, retain the ticket source URL, and join the unified event spine.
+      It is runtime-owned, so the daily pipeline never fetches it.
+
+  - id: seatgeek
+    name: SeatGeek Events
+    owner: SeatGeek
+    url: https://api.seatgeek.com/2/events
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: SeatGeek API terms, requires client id, attribution retained
+    contact: https://platform.seatgeek.com/
+    status: pending_approval
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/seatgeek.ts
+    notes: |
+      The area-discovery adapter is wired but policy-gated. Activation
+      requires approval recorded here, then SEATGEEK_ENABLED=1 plus
+      SEATGEEK_CLIENT_ID. It keeps only rows with in-county coordinates.
 
   - id: songkick
     name: Songkick — Concerts & Venues
@@ -1292,40 +1607,142 @@ sources:
   - id: fcpl_libraries
     name: Frederick County Public Libraries — Branches & Programs
     owner: Frederick County Public Libraries
-    url: https://www.fcpl.org/
-    endpoint_type: scrape
-    format: html
-    refresh_cadence: weekly
+    url: https://frederick.librarycalendar.com/events/feed/json
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: daily
     license: county government public information
     contact: Frederick County Public Libraries
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/ingest/fcpl.ts
     notes: |
-      Branch hours + program calendar — free family Live-Now content and
-      a strong civic anchor per municipality. Look for a LibCal/Bibliocommons
-      events feed at activation (structured) before HTML scraping.
+      Active daily Vercel-cron ingest at /api/ingest/fcpl. The official
+      LibraryCalendar JSON feed is too large and slow for the request path,
+      so the workflow parses, time-budgets, upserts, records ingest health,
+      and revalidates the shared event cache.
 
   - id: fc_parks_rec
     name: Frederick County Parks & Recreation — Programs
     owner: Frederick County Parks & Recreation
-    url: https://www.recreater.com/
-    endpoint_type: scrape
-    format: html
-    refresh_cadence: weekly
+    url: https://www.recreater.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
     license: county government public information
     contact: Frederick County Division of Parks and Recreation
-    status: pending_approval
-    last_validated: null
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/ical-live.ts
     notes: |
-      Rec programs, leagues, and park events — recurring location-aware
-      Live-Now content. Check for a registration-platform API
-      (CommunityPass/RecTrac) at activation before scraping.
+      Active official CivicPlus RSS calendar in the runtime live-event
+      registry (source "parks"). Program and ranger-event rows pass through
+      the shared public-event and facility-booking filters.
+
+  - id: fcvfra_events
+    name: Frederick County Volunteer Fire & Rescue Events
+    owner: Frederick County Volunteer Fire & Rescue Association
+    url: https://www.fcvfra.com/apps/public/events/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: daily
+    license: public association event listing; source link retained
+    contact: https://www.fcvfra.com
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/ingest/fcvfra.ts
+    notes: |
+      Active daily Vercel-cron ingest at /api/ingest/fcvfra. The deterministic
+      parser extracts public fire-company carnivals, bingo, and food events,
+      records run health, and revalidates the shared event cache.
+
+  - id: squarespace_venue_events
+    name: Venue Squarespace Event Feeds
+    owner: Participating Frederick venues
+    url: internal://src/data/live-music-venues
+    endpoint_type: registry
+    format: json
+    refresh_cadence: hourly
+    license: first-party public business event pages; source link retained
+    contact: Per-venue source registry
+    status: active
+    collection: runtime
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/squarespace-live.ts
+    notes: |
+      Runtime reads only configured venue event pages with structured
+      Squarespace JSON and keeps each venue's source URL on the event.
+
+  - id: venue_event_extraction
+    name: Venue Event Extraction Workflow
+    owner: Frederick Radius
+    url: internal://config/venue-sources.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: source-specific; every output row retains its public source URL
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-venue-events.ts
+    notes: |
+      Daily extraction from the reviewed venue registry. Deterministic feeds
+      are preferred; model extraction is limited to configured pages or images.
+      The workflow validates copy/provenance and opens a review PR.
+
+  - id: business_info_extraction
+    name: Business Website Information Workflow
+    owner: Frederick Radius
+    url: internal://config/business-info.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: source-specific; every output row retains the business website URL
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-business-info.ts
+    notes: |
+      Request-capped extraction of known-for details, specials, reservation
+      links, and published hours from business-owned websites. Radius copy
+      checks run before the workflow opens a review PR.
+
+  - id: municipal_civic_extraction
+    name: Municipal Civic Information Workflow
+    owner: Frederick Radius
+    url: internal://config/municipal-civic-sources.json
+    endpoint_type: extraction_workflow
+    format: json
+    refresh_cadence: daily
+    license: municipal public information; source URL retained per field
+    contact: Frederick Radius product
+    status: active
+    collection: workflow
+    last_validated: 2026-07-23
+    last_success: null
+    schema_file: null
+    transform_file: scripts/ingest-municipal-civic.ts
+    notes: |
+      Reads only configured official municipal pages, stamps source and
+      freshness per record, and opens a review PR instead of pushing generated
+      civic instructions directly to production.
 
   - id: usgs_water
     name: USGS — Monocacy River Water Data
@@ -1337,6 +1754,7 @@ sources:
     license: US federal government open data, public domain
     contact: USGS Water Resources
     status: active
+    collection: runtime
     last_validated: 2026-05-26
     last_success: null
     schema_file: null
@@ -1405,20 +1823,17 @@ sources:
     format: json
     refresh_cadence: monthly
     license: |
-      Mapillary API terms; requires a free access token. Imagery is
-      CC-BY-SA; derived map-feature detections are openly licensed and
-      explicitly intended for OSM import. Confirm exact CC terms +
-      attribution string at activation.
+      Mapillary API terms; requires an access token. Map-feature use keeps
+      visible, linked Mapillary attribution. Imagery has separate CC BY-SA
+      attribution requirements and is not served by this integration.
     contact: Mapillary developer platform
     status: pending_approval
-    last_validated: null
+    last_validated: 2026-07-23
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/mapillary.ts
     notes: |
-      The ToS-clean "use street imagery to find trash cans" path
-      (Google Street View forbids automated extraction; Mapillary is
-      purpose-built for it). map_features exposes CV-detected point
+      Mapillary's map_features API exposes CV-detected point
       objects with lat/lng; the waste class is object--trash-can
       (verify the exact value + bbox-filter against Frederick at
       activation — Mapillary coverage is itself capture-dependent, so
@@ -1431,19 +1846,20 @@ sources:
       (DPW data remains the most authoritative route). Needs a free
       token; never fabricate pins from low-confidence detections.
 
-      STATUS (2026-05-17): path (2) is VERIFIED + WIRED LIVE.
+      STATUS (2026-05-17): path (2) is VERIFIED + WIRED, but remains
+      policy-gated until the attribution/terms review is recorded here.
       src/lib/integrations/mapillary.ts → fetchMapillaryTrash() is
       called server-side in the map page and merged into AppMap's
       amenity layer (extraAmenities prop), so the secret never reaches
       the client. Token verified working; object--trash-can confirmed
       as the class with ~51 detections downtown. Gated ONLY on
-      MAPILLARY_TOKEN presence now (the old MAPILLARY_TRASH flag was
-      removed — the owner is the activation). mapillaryToken()
+      both MAPILLARY_ENABLED=1 and MAPILLARY_TOKEN. The explicit enable
+      flag records the policy decision; a stored token alone cannot activate
+      collection. mapillaryToken()
       sanitizes a trailing "|" / quotes / whitespace (a hand-pasted
       dotenv value commonly carries that — it was a multi-round red
       herring). PROD: MAPILLARY_TOKEN must be added to Vercel env for
-      the live site; absent it, fetchMapillaryTrash() returns [] and
-      this is fully inert. status stays non-active so fetch_all (no
-      token-auth) never tries to fetch it — this is a runtime
-      integration, not a pipeline source. schema_file/transform_file
-      stay null by design.
+      the live site only after MAPILLARY_ENABLED=1 records the explicit
+      activation; absent either setting, fetchMapillaryTrash() returns [].
+      Every Mapillary popup names
+      and links the source rather than mislabeling it as OpenStreetMap.

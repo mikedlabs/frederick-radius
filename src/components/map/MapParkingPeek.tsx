@@ -4,11 +4,13 @@ import { CornerUpRight, SquareParking, X } from "lucide-react";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import {
   parkingSpacesLabel,
   parkingTone,
   type ParkingPin,
 } from "@/lib/map/parking";
+import { formatMapTimestamp } from "./mapContent";
 
 /**
  * MapParkingPeek — the quick-peek card for a downtown garage.
@@ -16,10 +18,9 @@ import {
  * A garage isn't a saveable place (no category, hours, or open_status), so
  * this is a small parking-specific sibling of MapPeek rather than a reuse:
  * it shares the .map-peek* card language for a consistent look, but its
- * content is the three things that matter when you're deciding where to
- * park — the garage name, the LIVE spaces line (only a real number when the
- * feed has one, else no number), the hourly rate when the data carries it,
- * and a Directions handoff.
+ * content answers the parking decision in order: which garage, whether the
+ * feed reports space, how far away it is, what it costs, how fresh the feed
+ * is, and the Directions handoff.
  *
  * Honesty: the spaces line comes straight from parkingSpacesLabel, which
  * returns null when availability is unknown — we then say "Live spaces not
@@ -35,9 +36,11 @@ const TONE_COLOR = {
 
 export default function MapParkingPeek({
   pin,
+  userLoc,
   onClose,
 }: {
   pin: ParkingPin;
+  userLoc: LngLat | null;
   onClose: () => void;
 }) {
   const tone = parkingTone(pin);
@@ -45,9 +48,13 @@ export default function MapParkingPeek({
   const spacesColor = TONE_COLOR[tone];
 
   const directionsUrl = directionsHref(pin.lat, pin.lng);
+  const distance = userLoc
+    ? formatDistance(haversineMeters(userLoc, { lng: pin.lng, lat: pin.lat }))
+    : null;
+  const updated = formatMapTimestamp(pin.updated);
 
   return (
-    <div className="map-peek" role="dialog" aria-label={pin.name}>
+    <div className="map-peek map-parking-peek" role="dialog" aria-label={pin.name}>
       <button
         type="button"
         className="map-peek-close tap-44"
@@ -71,7 +78,7 @@ export default function MapParkingPeek({
         </span>
         <span className="map-peek-text">
           <span className="map-peek-cat" style={{ color: "var(--app-cool)" }}>
-            Downtown parking
+            Parking garage
           </span>
           <span className="map-peek-name font-serif">{pin.name}</span>
           <span className="map-peek-meta">
@@ -80,14 +87,16 @@ export default function MapParkingPeek({
             ) : (
               <span style={{ color: "var(--app-ink-3)" }}>Live spaces not reported</span>
             )}
-            {pin.rate && (
-              <>
-                <span aria-hidden className="map-peek-dot">
-                  ·
-                </span>
-                <span className="map-peek-dist">{pin.rate}</span>
-              </>
-            )}
+          </span>
+          <span className="map-peek-detail">
+            {pin.address}
+            {distance ? ` · ${distance} away` : ""}
+          </span>
+          {pin.rate && <span className="map-parking-rate">{pin.rate}</span>}
+          <span className="map-peek-source">
+            {updated
+              ? `Parking feed updated ${updated}`
+              : "Availability not reported · City garage information"}
           </span>
         </span>
       </div>

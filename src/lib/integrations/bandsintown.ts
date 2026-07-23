@@ -21,12 +21,21 @@ import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { deriveEventStatus } from "@/lib/event-status";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const BASE = "https://rest.bandsintown.com/artists";
 const FETCH_TIMEOUT_MS = 12_000;
 
 export function bandsintownConfigured(): boolean {
-  return Boolean((process.env.BANDSINTOWN_APP_ID ?? "").trim());
+  return (
+    process.env.BANDSINTOWN_ENABLED === "1" &&
+    Boolean((process.env.BANDSINTOWN_APP_ID ?? "").trim())
+  );
 }
 
 type BitEvent = {
@@ -88,22 +97,38 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
  * note above). Callers pass the local-artist set; there is no area
  * query to make here.
  */
-export async function fetchBandsintownForArtists(artists: string[]): Promise<LiveEvent[]> {
+export async function fetchBandsintownForArtistsResult(
+  artists: string[],
+): Promise<EventAdapterResult<LiveEvent>> {
+  if (process.env.BANDSINTOWN_ENABLED !== "1") return eventAdapterDisabled();
   const appId = (process.env.BANDSINTOWN_APP_ID ?? "").trim();
-  if (!appId || artists.length === 0) return [];
+  if (!appId || artists.length === 0) return eventAdapterDisabled();
   const all: LiveEvent[] = [];
+  let failed = 0;
   for (const artist of artists) {
     const url = `${BASE}/${encodeURIComponent(artist)}/events?app_id=${encodeURIComponent(appId)}`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
       const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-      if (res.ok) all.push(...normalizeBandsintown(await res.json(), artist));
+      if (res.ok) {
+        all.push(...normalizeBandsintown(await res.json(), artist));
+      } else {
+        failed += 1;
+      }
     } catch {
       // one artist failing must not sink the rest
+      failed += 1;
     } finally {
       clearTimeout(timer);
     }
   }
-  return all;
+  return failed > 0 ? eventAdapterFailed(all) : eventAdapterOk(all);
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchBandsintownForArtists(
+  artists: string[],
+): Promise<LiveEvent[]> {
+  return (await fetchBandsintownForArtistsResult(artists)).items;
 }

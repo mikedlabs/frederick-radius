@@ -9,12 +9,24 @@ import {
 const NOW = new Date("2026-07-15T16:00:00.000Z");
 
 describe("hours freshness truth boundary", () => {
-  it("stays staged until the refresh snapshot is ready", () => {
+  it("requires an explicit rollback to accept an old verified schedule", () => {
     const previous = process.env.HOURS_FRESHNESS_ENFORCED;
     process.env.HOURS_FRESHNESS_ENFORCED = "0";
     try {
       expect(hoursFreshnessEnforced()).toBe(false);
       expect(mayAssertOpenState(true, "2026-06-01T00:00:00.000Z", NOW)).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.HOURS_FRESHNESS_ENFORCED;
+      else process.env.HOURS_FRESHNESS_ENFORCED = previous;
+    }
+  });
+
+  it("enforces freshness when the deployment variable is missing", () => {
+    const previous = process.env.HOURS_FRESHNESS_ENFORCED;
+    delete process.env.HOURS_FRESHNESS_ENFORCED;
+    try {
+      expect(hoursFreshnessEnforced()).toBe(true);
+      expect(mayAssertOpenState(true, "2026-06-01T00:00:00.000Z", NOW)).toBe(false);
     } finally {
       if (previous === undefined) delete process.env.HOURS_FRESHNESS_ENFORCED;
       else process.env.HOURS_FRESHNESS_ENFORCED = previous;

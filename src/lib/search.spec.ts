@@ -55,6 +55,23 @@ describe("search — normalize drops noise but keeps real keywords", () => {
     expect(hits).toHaveLength(0);
   });
 
+  it("does not invent a fuzzy result from unrelated multi-word fragments", () => {
+    expect(search("zzzxxyy-no-match", 5)).toHaveLength(0);
+  });
+
+  it("keeps useful one-word and complete multi-word typo recovery", () => {
+    expect(
+      search("brewrey near me", 5).some((hit) => hit.type === "place"),
+    ).toBe(true);
+    expect(
+      search("carrol creek", 5).some(
+        (hit) =>
+          hit.type === "place" &&
+          hit.place.slug === "carroll-creek-linear-park-frederick",
+      ),
+    ).toBe(true);
+  });
+
   it("still resolves a real business name that includes Frederick", () => {
     expect(
       search("Frederick Bodywork", 5).some(
@@ -114,16 +131,26 @@ describe("qualifiedSearch — event intent survives location language", () => {
 });
 
 describe("qualifiedSearch — natural category plurals", () => {
-  it("finds open restaurants for the exact conversational query", () => {
+  it("parses the conversational query and never returns unverified restaurants as open", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-15T16:00:00.000Z"));
     try {
-      const { hits } = qualifiedSearch("restaurants open now near me", 20, undefined, {
+      const { hits, meta } = qualifiedSearch("restaurants open now near me", 20, undefined, {
         origin: { lng: -77.4105, lat: 39.4143 },
       });
       const places = hits.flatMap((hit) => hit.type === "place" ? [hit.place] : []);
-      expect(places.length).toBeGreaterThan(0);
+      expect(meta.qualifiers).toMatchObject({
+        cleanedQuery: "restaurant",
+        openNow: true,
+        nearMe: true,
+      });
       expect(places.every((place) => place.category === "restaurant")).toBe(true);
+      expect(
+        places.every((place) =>
+          place.open_status.state === "open" ||
+          place.open_status.state === "closing-soon"
+        ),
+      ).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -258,6 +285,21 @@ describe("qualifiedSearch — county regions are real geographic constraints", (
     const names = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
     expect(names).not.toContain("North Frederick Elementary School Pta");
     expect(names.every((name) => !/elementary school pta/i.test(name))).toBe(true);
+  });
+});
+
+describe("search — word boundaries protect meaning", () => {
+  it("does not treat read as evidence inside Threaded, bread, or ready", () => {
+    const { hits } = qualifiedSearch(
+      "quiet patio where I can read",
+      20,
+      undefined,
+      { origin: { lng: -77.4105, lat: 39.4143 } },
+    );
+    const names = hits.flatMap((hit) => hit.type === "place" ? [hit.place.name] : []);
+    expect(names).toContain("The Wine Kitchen on the Creek");
+    expect(names).not.toContain("Threaded by Melissa");
+    expect(names).not.toContain("H Mart Frederick");
   });
 });
 

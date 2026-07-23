@@ -727,10 +727,10 @@ export default function RightNow({
             style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
           >
             <h2 id="nearby-town-fallback-heading" className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              Closest verified options
+              Verified options beyond town
             </h2>
             <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Radius has no verified listing for {activeNoun} in {townName} yet. These are the nearest matches outside town.
+              Radius has no verified listing for {activeNoun} in {townName} yet. These matches are outside town, with open places first.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -750,7 +750,7 @@ export default function RightNow({
               </Link>
             </div>
           </div>
-          <ul className="space-y-2" aria-label={`Closest ${activeNoun} outside ${townName}`}>
+          <ul className="space-y-2" aria-label={`${activeNoun} options outside ${townName}`}>
             {nearbyTownFallback.map(({ place, distance }) => (
               <li key={place.slug}>
                 <p className="mb-1 px-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>

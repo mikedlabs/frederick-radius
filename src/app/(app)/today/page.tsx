@@ -377,6 +377,24 @@ export default async function HomePage() {
         <TomorrowPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
 
+      {/* The next useful move belongs before the calendar. These rows are
+          local, time-aware, and open-now checked, so they answer the first
+          question after conditions: "What can I do nearby?" */}
+      <DaypartNeeds
+        rows={buildDaypartRows(now, lean)}
+        note={
+          lean === "wet"
+            ? "Storms are close by, so indoor picks lead."
+            : lean === "hot"
+              ? "It is a hot one, so cool-down picks lead."
+              : null
+        }
+      />
+
+      {/* A real operator beacon upgrades this card to a live location.
+          Otherwise it opens the confirmed weekly food-truck board. */}
+      <FoodTruckToday />
+
       {/* The two gears — see the EVENING GEAR note above. Same sections, same
           Suspense boundaries, different order. TodayAsk moved OUT of the gears
           to sit directly below the weather (owner call); GoldenHourCard
@@ -409,22 +427,6 @@ export default async function HomePage() {
           one of two type registers (SectionHeading lg/sm), so hierarchy comes
           from typography, not five competing header styles. ─────────────────── */}
 
-      {/* RIGHT NOW, AROUND HERE — the daypart's most-wanted PLACES, open now
-          (owner ask 2026-07-20: list the common AM / midday / evening needs).
-          Rows built server-side; self-hides when nothing in the daypart is open.
-          Its lead rail de-dupes against the CravingStrip "I want…" lead above,
-          so the page never says "dinner" twice back-to-back (buildDaypartRows). */}
-      <DaypartNeeds
-        rows={buildDaypartRows(now, lean)}
-        note={
-          lean === "wet"
-            ? "Storms are close by, so indoor picks lead."
-            : lean === "hot"
-              ? "It is a hot one, so cool-down picks lead."
-              : null
-        }
-      />
-
       {/* FROM YOUR SAVED + the save-derived shortcut, kept together (both read
           the user's own saves): the returning user's open-now saved places, then
           the one quiet "you keep a lot of ___" nudge. Each self-hides
@@ -432,23 +434,30 @@ export default async function HomePage() {
       <FromYourSaved />
       <TasteNudge />
 
-      {/* NEED AN IDEA — the editorial collections rail (one of the two rails, now
-          separated from the daypart rail by the saved list above). */}
-      <Suspense
-        fallback={
-          <section className="mt-6" aria-label="Need an idea?">
-            <Skeleton.Block height={120} round="var(--app-radius-lg)" />
-          </section>
-        }
+      {/* Discovery is useful, but it is not part of the immediate briefing.
+          Keep it one deliberate reveal instead of two more full-page zones. */}
+      <CollapsibleSection
+        title="More ideas for today"
+        storageKey="fr.today.more-ideas"
+        defaultOpen={false}
+        headingLevel={2}
+        className="mt-6 border-t pt-2"
       >
-        <CuratedPicks />
-      </Suspense>
-
-      {/* WORTH A LOOK — the daily rotation, demoted from a third swipe rail to a
-          calm vertical list so the eye doesn't hit three rails in a row. */}
-      <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
-        <WorthALook />
-      </Suspense>
+        <div className="space-y-5">
+          <Suspense
+            fallback={
+              <section aria-label="Loading local ideas">
+                <Skeleton.Block height={120} round="var(--app-radius-lg)" />
+              </section>
+            }
+          >
+            <CuratedPicks />
+          </Suspense>
+          <Suspense fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}>
+            <WorthALook />
+          </Suspense>
+        </div>
+      </CollapsibleSection>
 
       {/* ── SOMETIMES-ON CLUSTER — the dated and seasonal beats, grouped so the
           "here sometimes" context sits together instead of interrupting the core
@@ -482,7 +491,6 @@ export default async function HomePage() {
         <div className="mt-2 space-y-3">
           <EmergencyPrompt />
           <VisitorStayPrompt />
-          <FoodTruckToday />
           <PartnerAppsRow />
         </div>
       </CollapsibleSection>

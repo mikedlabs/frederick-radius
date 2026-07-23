@@ -1,7 +1,7 @@
 import "server-only";
 import { rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
 import type { WeatherLean } from "@/lib/today/weatherLean";
 import { suppressedDaypartCategories } from "@/lib/today/craving-lead";
@@ -21,6 +21,12 @@ export type DaypartPick = {
   rating: number | null;
   photo?: string | null;
   photoCredit?: string | null;
+  /** Always identify the town when the server is showing countywide picks. */
+  where?: string | null;
+  /** Filled by the live, context-aware /api/want refresh in DaypartNeeds. */
+  distance?: string | null;
+  /** Live hours line such as "Open until 9pm". */
+  fact?: string | null;
 };
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
 
@@ -40,8 +46,12 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
   const allNeeds = daypartNeeds(easternHour(now), lean);
   const kept = allNeeds.filter((need) => !suppressed.has(need.category));
   const needs = kept.length > 0 ? kept : allNeeds;
-  // One ranked, open-preferring pass over the catalog; each need filters it.
-  const ranked = rankPlaces({ origin: FREDERICK_CENTER, now, preferOpen: true, limit: 500 });
+  // The initial HTML is an honest COUNTY-WIDE quality ranking. It must not use
+  // downtown Frederick as a silent stand-in for the visitor's location: that
+  // made a five-mile-away place look "around here." DaypartNeeds immediately
+  // refreshes the active shelf through /api/want, which honors the shared town
+  // scope or a cached device fix and then prints that context in the UI.
+  const ranked = rankPlaces({ now, preferOpen: true, limit: 500 });
   return needs
     .map((need) => ({
       label: need.label,
@@ -61,6 +71,12 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
           rating: p.google_rating ?? null,
           photo: p.google_photo_url ?? null,
           photoCredit: p.google_photo_attribution?.authors[0]?.display_name ?? null,
+          where:
+            p.city?.trim() ||
+            MUNICIPALITY_BY_SLUG[p.municipality]?.name ||
+            "Frederick County",
+          distance: null,
+          fact: null,
         })),
     }))
     .filter((row) => row.picks.length > 0);

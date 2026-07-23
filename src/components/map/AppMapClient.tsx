@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import type { MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
+import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
@@ -75,6 +75,7 @@ export default function AppMapClient({
   events = [],
   transitStops = [],
   marcStations = [],
+  foodTruckPins = [],
   fullBleed = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
@@ -126,6 +127,8 @@ export default function AppMapClient({
    *  Forwarded to AppMap; empty on embeds. */
   transitStops?: TransitStopPin[];
   marcStations?: MarcStationPin[];
+  /** Operator-confirmed, self-expiring food-truck pins. */
+  foodTruckPins?: FoodTruckMapPin[];
   /** Full-bleed canvas: the map fills the parent, no card border, no
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
@@ -186,6 +189,7 @@ export default function AppMapClient({
           events={events}
           transitStops={transitStops}
           marcStations={marcStations}
+          foodTruckPins={foodTruckPins}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}
@@ -204,7 +208,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }

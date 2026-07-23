@@ -39,6 +39,11 @@ import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { easternWallToUtcISO } from "@/lib/tz";
 import { isInsideFrederickCounty } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import {
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const FEED_URL = "https://www.visitfrederick.org/event/rss/";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -81,6 +86,26 @@ const REGION_TO_MUNICIPALITY: Record<string, string> = {
   rosemont: "rosemont",
   urbana: "urbana",
 };
+
+/**
+ * Resolve the structured address locality on a Visit Frederick detail page to
+ * the town scope users expect. The RSS region tags are often county-wide, so
+ * rows for Brunswick or Middletown can arrive with the Frederick fallback even
+ * though the event's JSON-LD names the correct locality. Only exact, known
+ * locality names are accepted; an unfamiliar postal city keeps the RSS scope
+ * rather than being guessed from a nearby centroid.
+ */
+function municipalityFromLocality(locality: unknown): string | undefined {
+  if (typeof locality !== "string") return undefined;
+  const normalized = locality
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ");
+  if (!normalized) return undefined;
+  if (normalized === "mt airy") return "mount-airy";
+  return REGION_TO_MUNICIPALITY[normalized];
+}
 
 // Category classification, two-stage. Visit Frederick's OWN category tags are
 // the most reliable signal (a human curator chose them), so map those first;
@@ -238,6 +263,8 @@ export function normalizeVisitFrederickRss(xml: string, now: Date = new Date()):
 export type VfDetail = {
   venue_name: string;
   address: string;
+  /** Exact known locality from the detail page, never a nearest-town guess. */
+  municipality?: string;
   /** Precise venue coordinate, only when finite AND inside the county. */
   geom: { lng: number; lat: number } | null;
   description: string;
@@ -318,6 +345,7 @@ export function parseVisitFrederickDetail(html: string): VfDetail | null {
     return {
       venue_name: typeof loc.name === "string" ? loc.name.trim() : "",
       address,
+      municipality: municipalityFromLocality(addr.addressLocality),
       geom,
       description: typeof ev.description === "string" ? ev.description.trim() : "",
     };
@@ -371,7 +399,9 @@ async function fetchVisitFrederickDetail(url: string): Promise<VfDetail | null> 
  * is HTTP-cached (revalidate 3600) and each detail page a day, so concurrent
  * /today + /events renders share cache entries.
  */
-export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
+export async function fetchVisitFrederickResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   let base: LiveEvent[];
@@ -383,16 +413,16 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
     });
     if (!res.ok) {
       console.error(`[visit-frederick] HTTP ${res.status}`);
-      return [];
+      return eventAdapterFailed();
     }
     base = normalizeVisitFrederickRss(await res.text());
   } catch (err) {
     console.warn("[visit-frederick] fetch failed:", err);
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
-  if (base.length === 0) return base;
+  if (base.length === 0) return eventAdapterOk(base);
 
   // Enrich each row from its detail page. Fail-soft PER PAGE (a failed page
   // keeps the centroid row the RSS produced), bounded by an OVERALL wall-time
@@ -409,6 +439,7 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
         venue_name: d.venue_name || e.venue_name,
         address: d.address || e.address,
         description,
+        municipality: d.municipality ?? e.municipality,
         // Precise coord -> mark "geocoded" so the card shows a real distance.
         // No coord -> stay on the town centroid (no placement -> "area").
         ...(d.geom ? { geom: d.geom, placement: "geocoded" as const } : {}),
@@ -417,11 +448,16 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
     const budget = new Promise<LiveEvent[]>((resolve) => {
       budgetTimer = setTimeout(() => resolve(base), DETAIL_ENRICH_BUDGET_MS);
     });
-    return await Promise.race([enrich, budget]);
+    return eventAdapterOk(await Promise.race([enrich, budget]));
   } catch (err) {
     console.warn("[visit-frederick] enrichment failed, using un-enriched feed:", err);
-    return base;
+    return eventAdapterOk(base);
   } finally {
     clearTimeout(budgetTimer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
+  return (await fetchVisitFrederickResult()).items;
 }

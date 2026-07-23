@@ -375,6 +375,9 @@ export function cleanVenueName(raw: string | null | undefined): string | null {
   if (/^(?:md|maryland|frederick\s+county(?:,?\s*(?:md|maryland))?)$/i.test(v)) {
     return null;
   }
+  // Preserve the official capitalization when a feed lowercases the city
+  // portion of this recurring venue name.
+  if (/^frederick fairgrounds$/i.test(v)) return "Frederick Fairgrounds";
   return v;
 }
 

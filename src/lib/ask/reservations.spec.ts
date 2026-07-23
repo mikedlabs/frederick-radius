@@ -14,6 +14,11 @@ describe("reservation requests", () => {
       .toBe("a steak dinner");
   });
 
+  it("does not send a dangling connector to OpenTable", () => {
+    expect(cleanReservationSearchQuery("I want a steak dinner tonight and use OpenTable for 7:30 PM"))
+      .toBe("a steak dinner");
+  });
+
   it("builds a location-aware handoff without claiming live availability", () => {
     const url = new URL(openTableSearchUrl("a steak dinner", { lng: -77.4109, lat: 39.4137 }));
     expect(url.hostname).toBe("www.opentable.com");

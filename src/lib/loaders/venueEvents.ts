@@ -9,6 +9,10 @@ import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 import { isNonMusicTitle } from "@/lib/events/live-music";
+import {
+  eventAttendanceMode,
+  isLikelyEventActionUrl,
+} from "@/lib/events/attendance";
 
 /**
  * Venue events — produced by the extraction agent
@@ -31,6 +35,8 @@ export type VenueEvent = {
   description_origin?: "source-excerpt" | "radius-summary";
   price?: string;
   ticket_url?: string;
+  attendance_mode?: "physical" | "online" | "mixed";
+  online_url?: string;
   venue_slug: string;
   venue_name: string;
   category?: string;
@@ -120,10 +126,26 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     e.category || place?.category || (isNonMusicTitle(e.title) ? "community" : "music");
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   const isFree = e.price ? /free|no cover/i.test(e.price) : false;
+  const attendance_mode = eventAttendanceMode({
+    title,
+    venue_name: e.venue_name,
+    address: place?.address,
+    attendance_mode: e.attendance_mode,
+    online_url: e.online_url,
+    ticket_url: e.ticket_url,
+    source_url: e.source.url,
+  });
+  const online_url =
+    attendance_mode !== "physical"
+      ? [e.online_url, e.ticket_url, e.source.url].find((value) =>
+          isLikelyEventActionUrl(value),
+        )
+      : undefined;
+  const physical = attendance_mode !== "online";
   // A resolved venue gives us the real Place geom → placement "venue"
   // (precise). The FREDERICK_CENTER fallback is the Frederick centroid,
   // so an unresolved venue resolves to "area" and never claims a distance.
-  const placement = place ? ("venue" as const) : undefined;
+  const placement = physical && place ? ("venue" as const) : undefined;
   return {
     slug: cleanEventSlug({ presenter, title, startsAt: e.starts_at }),
     title,
@@ -134,11 +156,15 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     timezone: "America/New_York",
     is_all_day: false,
     is_recurring: false,
-    venue_place_slug: place?.slug,
+    venue_place_slug: physical ? place?.slug : undefined,
     placement,
-    hero_image: place?.google_photo_url,
-    venue_name: cleanFeedText(e.venue_name),
-    address: formatAddress(cleanFeedText(place?.address ?? "")),
+    hero_image: physical ? place?.google_photo_url : undefined,
+    venue_name:
+      attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name),
+    address:
+      attendance_mode === "online"
+        ? ""
+        : formatAddress(cleanFeedText(place?.address ?? "")),
     geom,
     municipality,
     category,
@@ -146,6 +172,8 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     is_free: isFree,
     price_text: e.price,
     ticket_url: e.ticket_url,
+    attendance_mode,
+    online_url,
     // "venue-extract", not "manual": these lineups are extracted from
     // venue sites programmatically, so they carry the scraped tier until
     // a person or a ticketing API confirms them.
@@ -158,7 +186,10 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality,
     distance_m: undefined,
-    geo_confidence: eventGeoConfidence({ placement, geom }),
+    geo_confidence:
+      attendance_mode === "online"
+        ? "unknown"
+        : eventGeoConfidence({ placement, geom }),
   };
 }
 

@@ -32,6 +32,7 @@ import {
 } from "@/lib/scope";
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -421,7 +422,7 @@ export default function EventsExplorer({
 
   const mapPins = useMemo(
     () =>
-      filtered.map((e) => ({
+      filtered.filter(hasPhysicalAttendance).map((e) => ({
         slug: e.slug,
         title: e.title,
         geom: e.geom,

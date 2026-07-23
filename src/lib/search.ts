@@ -3,7 +3,7 @@
 // places-enrichment.json into the SearchOverlay client bundle.
 import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
-import { fuzzyNameScore, FUZZY_THRESHOLD } from "@/lib/search/fuzzy";
+import { fuzzyNameScore, fuzzyThresholdForQuery } from "@/lib/search/fuzzy";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
@@ -19,6 +19,7 @@ import {
   SANDWICH_EVIDENCE_RE,
   type SearchQualifiers,
 } from "@/lib/search/qualifiers";
+import { isTimedActivityRequest } from "@/lib/ask/intent";
 
 export type SearchHit =
   | {
@@ -101,6 +102,9 @@ function termVariants(term: string): string[] {
 
 function fieldScore(haystack: string, terms: string[]): number {
   const lower = haystack.toLowerCase();
+  const words = lower
+    .split(/[^\p{L}\p{N}'-]+/gu)
+    .filter(Boolean);
   let score = 0;
   for (const t of terms) {
     if (!t) continue;
@@ -110,7 +114,7 @@ function fieldScore(haystack: string, terms: string[]): number {
     for (const variant of termVariants(t)) {
       if (lower === variant) best = Math.max(best, 3);
       else if (lower.startsWith(variant)) best = Math.max(best, 2);
-      else if (lower.includes(variant)) best = Math.max(best, 1);
+      else if (words.includes(variant)) best = Math.max(best, 1);
     }
     score += best;
   }
@@ -302,6 +306,7 @@ const EVENT_INTENTS: EventIntent[] = [
 ];
 
 function detectEventIntent(query: string): EventIntent | null {
+  if (isTimedActivityRequest(query)) return EVENT_INTENTS[0];
   const q = ` ${query.toLowerCase()} `;
   const lower = query.toLowerCase();
   for (const intent of EVENT_INTENTS) {
@@ -489,11 +494,17 @@ export function search(
   // at 4+ chars: shorter typos are indistinguishable from prefixes the
   // substring pass already handles.
   if (!options.onlyPlaces && !options.placeFilter && query.trim().length >= 4) {
+    // Run the typo net on normalized terms, not conversational filler or
+    // location context. A single typo keeps pg_trgm's permissive floor;
+    // multi-word fallbacks must clear the stronger confidence threshold so
+    // unrelated fragments cannot manufacture a "match."
+    const fuzzyQuery = terms.join(" ");
+    const fuzzyThreshold = fuzzyThresholdForQuery(fuzzyQuery);
     if (!hits.some((h) => h.type === "place")) {
       const close: { p: PlaceCardData; f: number }[] = [];
       for (const p of clientPlaces()) {
-        const f = fuzzyNameScore(query, p.name);
-        if (f >= FUZZY_THRESHOLD) close.push({ p, f });
+        const f = fuzzyNameScore(fuzzyQuery, p.name);
+        if (f >= fuzzyThreshold) close.push({ p, f });
       }
       close.sort((a, b) => b.f - a.f);
       for (const { p, f } of close.slice(0, 3)) {
@@ -502,8 +513,8 @@ export function search(
     }
     if (!hits.some((h) => h.type === "municipality")) {
       for (const m of MUNICIPALITIES) {
-        const f = fuzzyNameScore(query, m.name);
-        if (f >= FUZZY_THRESHOLD) hits.push({ type: "municipality", municipality: m, score: f * 12 });
+        const f = fuzzyNameScore(fuzzyQuery, m.name);
+        if (f >= fuzzyThreshold) hits.push({ type: "municipality", municipality: m, score: f * 12 });
       }
     }
   }

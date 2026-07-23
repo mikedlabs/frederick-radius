@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askWeatherContext, askWeatherSafetyLine, type AskWeatherSnapshot } from "./weather";
+import { askAirQualityLine, askWeatherContext, askWeatherSafetyLine, type AskWeatherSnapshot } from "./weather";
 
 describe("askWeatherContext", () => {
   it("puts active alerts and unhealthy air ahead of the forecast", () => {
@@ -35,5 +35,23 @@ describe("askWeatherContext", () => {
 
   it("fails soft when every provider is unavailable", () => {
     expect(askWeatherContext({ forecast: null, alerts: [], aqi: null })).toBe("");
+    expect(askAirQualityLine({ forecast: null, alerts: [], aqi: null })).toContain(
+      "couldn’t load a fresh AirNow observation",
+    );
+  });
+
+  it("answers an explicit air-quality question even when conditions are good", () => {
+    expect(askAirQualityLine({
+      forecast: null,
+      alerts: [],
+      aqi: {
+        parameter: "PM2.5",
+        aqi: 38,
+        category: { id: 1, name: "Good", color: "#315A43" },
+        reportingArea: "Frederick",
+        dateObserved: "2026-07-23",
+        hourObserved: 9,
+      },
+    })).toBe("AirNow reports AQI 38, Good, for Frederick.");
   });
 });

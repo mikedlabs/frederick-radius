@@ -14,6 +14,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: enrich-curated-places
+  cancel-in-progress: false
 
 jobs:
   enrich:
@@ -33,15 +38,31 @@ jobs:
             exit 0
           fi
           npm run enrich -- --live --confirm --max-cost 10
-      - name: Commit if changed
-        run: |
-          git config user.name "frederick-radius-bot"
-          git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/places-enrichment.json; then
-            git add src/data/places-enrichment.json
-            git commit -m "data: refresh Google enrichment for curated places (automated)"
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-          else
-            echo "No enrichment changes."
-          fi
+      - name: Rebuild public place snapshot
+        run: npm run build:client-places
+
+      - name: Enforce critical data gates
+        run: npm run gates
+
+      - name: Report high-severity data debt
+        continue-on-error: true
+        run: npm run gates -- --fail-high
+
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/curated-place-enrichment
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh Google enrichment for curated places (automated)"
+          title: "data: refresh curated place enrichment"
+          body: |
+            Cost-capped monthly Google enrichment refresh for curated places.
+
+            The workflow rebuilt the public place snapshot and enforced
+            critical data gates. High-severity coverage debt is reported in the
+            workflow without blocking an incremental review PR. Review closures,
+            hours, contact details, and photo attribution before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

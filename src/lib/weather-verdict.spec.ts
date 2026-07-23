@@ -243,6 +243,30 @@ Fine particulate matter due to wildfire smoke may be Unhealthy (Red Alert) to Ve
     expect(v.line).not.toMatch(/good day|patio|great time|fine day/i);
   });
 
+  it("does not call weather unavailable when only safety feeds are missing", () => {
+    const v = weatherVerdict(input({
+      temp: 79,
+      forecastHigh: 84,
+      shortForecast: "Mostly Sunny",
+      alertsAvailable: false,
+      airQualityAvailable: false,
+      weatherAvailable: true,
+    }));
+    expect(v.line).toMatch(/current weather is available/i);
+    expect(v.brief).toBe("Some safety data is temporarily unavailable.");
+    expect(v.brief).not.toMatch(/weather data is temporarily unavailable/i);
+  });
+
+  it("still calls weather unavailable when current weather is actually missing", () => {
+    const v = weatherVerdict(input({
+      alertsAvailable: true,
+      airQualityAvailable: true,
+      weatherAvailable: false,
+    }));
+    expect(v.line).toMatch(/current weather data is temporarily unavailable/i);
+    expect(v.brief).toBe("Weather data is temporarily unavailable.");
+  });
+
   it("lets a tornado warning outrank a Code Orange air alert", () => {
     const v = weatherVerdict(input({
       activeAlerts: [

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Source, Layer, Popup, useMap } from "react-map-gl/mapbox";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { BRAND } from "@/lib/brand";
+import { directionsHref } from "@/lib/map/directionsHref";
 
 /**
  * Map overlays (data brief 6.3/6.4).
@@ -31,10 +32,18 @@ const COLOR: Partial<Record<OverlayKey, string>> = {
 };
 
 const ENDPOINT = new Map(OVERLAYS.map((o) => [o.key, o.endpoint] as const));
+const OVERLAY = new Map(OVERLAYS.map((o) => [o.key, o] as const));
+const KIND_LABEL: Record<OverlayKey, string> = {
+  parks: "County park",
+  art: "Public art",
+  markets: "Farmers market",
+  bridges: "Covered bridge",
+};
 
 type PopupState = {
   lng: number;
   lat: number;
+  key: OverlayKey;
   name: string;
   address?: string;
   sourceUrl?: string;
@@ -82,7 +91,13 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
     const onClick = (e: mapboxgl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
       if (!f) return;
+      const layerId = f.layer?.id;
+      if (!layerId) return;
       const p = (f.properties ?? {}) as Record<string, string>;
+      const key = active.find((candidate) =>
+        layerId === `ov-${candidate}-pt` || layerId === `ov-${candidate}-fill`,
+      );
+      if (!key) return;
       // Anchor at the marker for points; at the tap for area fills.
       const at =
         f.geometry.type === "Point"
@@ -90,6 +105,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
           : { lng: e.lngLat.lng, lat: e.lngLat.lat };
       setPopup({
         ...at,
+        key,
         name: p.name || p.title || "Untitled",
         address: p.Address || p.Location || undefined,
         sourceUrl: p.source_url || undefined,
@@ -177,6 +193,18 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
               a hairline rule, then the quiet detail line. */}
           <div style={{ padding: "2px 2px 4px" }}>
             <div
+              style={{
+                marginBottom: 3,
+                color: "var(--app-brand-press, #9E3824)",
+                fontSize: 9.5,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              {KIND_LABEL[popup.key]}
+            </div>
+            <div
               className="font-serif"
               style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.25, color: "var(--app-ink, #221C15)" }}
             >
@@ -191,16 +219,39 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
                 {popup.address}
               </div>
             )}
-            {popup.sourceUrl && (
+            <div style={{ marginTop: 5, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3, #5C5A50)" }}>
+              {OVERLAY.get(popup.key)?.sources}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <a
-                href={popup.sourceUrl}
+                href={directionsHref(popup.lat, popup.lng)}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: 11, fontWeight: 600, color: "var(--app-brand, #B5462B)", marginTop: 4, display: "inline-block" }}
+                style={{
+                  minHeight: 40,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "0 12px",
+                  borderRadius: 999,
+                  background: "var(--app-brand, #B5462B)",
+                  color: "var(--app-on-brand, #FCFBF8)",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                }}
               >
-                More
+                Directions ↗
               </a>
-            )}
+              {popup.sourceUrl && (
+                <a
+                  href={popup.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11, fontWeight: 650, color: "var(--app-brand, #B5462B)" }}
+                >
+                  Source ↗
+                </a>
+              )}
+            </div>
           </div>
         </Popup>
       )}

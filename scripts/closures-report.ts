@@ -54,10 +54,38 @@ for (const p of PLACES) {
   }
 }
 
+// One suppressed place is one audit row even when two controls catch it
+// (for example the canonical denylist and a curated closed_permanently flag).
+// Preserve every reason in the source field so deduplication does not erase
+// provenance while the report's count remains an honest business count.
+const deduped = new Map<string, ClosureRow>();
+for (const row of rows) {
+  const key = row.place_id
+    ? `place:${row.place_id}`
+    : `name:${row.name.toLowerCase().replace(/[^a-z0-9]+/g, "")}`;
+  const existing = deduped.get(key);
+  if (!existing) {
+    deduped.set(key, row);
+    continue;
+  }
+  const sources = new Set(
+    [...existing.source.split(" + "), ...row.source.split(" + ")].filter(Boolean),
+  );
+  deduped.set(key, {
+    name: existing.name,
+    place_id: existing.place_id ?? row.place_id,
+    date_marked: existing.date_marked ?? row.date_marked,
+    source: [...sources].join(" + "),
+  });
+}
+const uniqueRows = [...deduped.values()].sort((a, b) =>
+  a.name.localeCompare(b.name),
+);
+
 const out = {
   generated_at: new Date().toISOString(),
-  count: rows.length,
-  closures: rows.sort((a, b) => a.name.localeCompare(b.name)),
+  count: uniqueRows.length,
+  closures: uniqueRows,
 };
 
 writeFileSync(
@@ -65,4 +93,4 @@ writeFileSync(
   JSON.stringify(out, null, 2) + "\n",
 );
 
-console.log(`Wrote src/data/closures.json with ${rows.length} suppressed places.`);
+console.log(`Wrote src/data/closures.json with ${uniqueRows.length} suppressed places.`);

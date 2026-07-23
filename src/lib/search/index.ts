@@ -60,6 +60,11 @@ export type SearchResult = {
    *  already granted location (no prompt). Set for place results only. */
   lat?: number;
   lng?: number;
+  /** Map search ranks from the current viewport; keep that computed distance
+   *  so identical business names can be distinguished before selection. */
+  distance_m?: number;
+  /** Street-level disambiguation for map search results. */
+  address?: string;
 };
 
 /**
@@ -199,6 +204,8 @@ function hitToResult(h: SearchHit): SearchResult {
       thumbnail: p.google_photo_url,
       lat: p.geom?.lat,
       lng: p.geom?.lng,
+      distance_m: p.distance_m,
+      address: p.address,
     };
   }
   if (h.type === "event") {

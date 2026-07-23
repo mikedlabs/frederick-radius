@@ -1,13 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
-import type { DaypartRow } from "@/lib/loaders/daypartPicks";
+import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { getWantAnswer } from "@/lib/want-cache";
+import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
+import { SCOPE_CHANGE_EVENT } from "@/lib/scope";
+
+type WantRow = {
+  slug: string;
+  name: string;
+  photo: string | null;
+  where: string | null;
+  distance: string | null;
+  fact: string;
+};
+
+type WantAnswer = {
+  hero: WantRow | null;
+  also: WantRow[];
+  browseHref: string;
+  contextLabel: string;
+};
+
+type LiveShelf = {
+  picks: DaypartPick[];
+  href: string;
+  contextLabel: string;
+};
 
 /**
  * The daypart's open-now place needs, shown as one focused shelf at a time.
@@ -23,13 +48,94 @@ export default function DaypartNeeds({
   note?: string | null;
 }) {
   const [selectedCategory, setSelectedCategory] = useState(rows[0]?.category ?? "");
-  if (rows.length === 0) return null;
+  const [liveShelves, setLiveShelves] = useState<Record<string, LiveShelf>>({});
+  const [contextRevision, setContextRevision] = useState(0);
 
-  const active = rows.find((row) => row.category === selectedCategory) ?? rows[0];
+  const baseActive = rows.find((row) => row.category === selectedCategory) ?? rows[0] ?? null;
+  const activeCategory = baseActive?.category ?? "";
+  const activeHref = baseActive?.href ?? "";
+  const liveActive = baseActive ? liveShelves[baseActive.category] : undefined;
+  const active = useMemo(
+    () =>
+      baseActive && liveActive
+        ? { ...baseActive, picks: liveActive.picks, href: liveActive.href }
+        : baseActive,
+    [baseActive, liveActive],
+  );
+  const contextLabel = liveActive?.contextLabel ?? "Across Frederick County";
+
+  // The server renders useful cards immediately, then this shared decision
+  // endpoint applies the user's real browsing context. It is the same ranking
+  // path used by Today's "I want…" answers, so town scope, device location,
+  // hours, chain penalties, and category matching cannot drift between the two
+  // sections.
+  useEffect(() => {
+    if (!baseActive) return;
+    let current = true;
+    getWantAnswer(`cat:${baseActive.category}`, null)
+      .then((raw) => {
+        if (!current) return;
+        const answer = raw as WantAnswer;
+        const open = [answer.hero, ...answer.also]
+          .filter((row): row is WantRow => Boolean(row))
+          .slice(0, 4)
+          .map((row) => ({
+            slug: row.slug,
+            name: row.name,
+            rating: null,
+            photo: row.photo,
+            photoCredit: null,
+            where: row.where,
+            distance: row.distance,
+            fact: row.fact,
+          }));
+        setLiveShelves((previous) => ({
+          ...previous,
+          [baseActive.category]: {
+            picks: open,
+            href: answer.browseHref || baseActive.href,
+            contextLabel: answer.contextLabel || "Across Frederick County",
+          },
+        }));
+      })
+      .catch(() => {
+        // Keep the already-rendered countywide shelf. A live refresh is an
+        // enhancement, never a reason to replace useful content with an error.
+      });
+    return () => {
+      current = false;
+    };
+  }, [activeCategory, activeHref, baseActive, contextRevision]);
+
+  // A visitor can grant location from the header after this component mounts.
+  // Same-tab storage changes are otherwise invisible, so listen to the
+  // explicit location and scope signals and ask the shared ranker again.
+  useEffect(() => {
+    const refresh = () => {
+      setLiveShelves({});
+      setContextRevision((revision) => revision + 1);
+    };
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+    window.addEventListener(SCOPE_CHANGE_EVENT, refresh);
+    return () => {
+      window.removeEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
+      window.removeEventListener(SCOPE_CHANGE_EVENT, refresh);
+    };
+  }, []);
+
+  if (!active) return null;
 
   return (
-    <section aria-label="Right now, around here" className="mt-6">
-      <SectionHeading title="Right now, around here" />
+    <section aria-label="Open places right now" className="mt-6">
+      <div className="flex items-end justify-between gap-3">
+        <SectionHeading title="Open now" />
+        <p
+          className="pb-0.5 text-right font-mono text-[10px] font-medium"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {contextLabel}
+        </p>
+      </div>
       {note ? (
         <p className="mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           {note}
@@ -100,7 +206,7 @@ export default function DaypartNeeds({
       >
         <div className="flex items-center justify-between gap-3 px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {active.picks.length} open {active.picks.length === 1 ? "place" : "places"}
+            {active.picks.length} confirmed open
           </p>
           <Link
             href={active.href}
@@ -113,8 +219,9 @@ export default function DaypartNeeds({
           </Link>
         </div>
 
-        <ul className="mt-2 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {active.picks.map((place) => (
+        {active.picks.length > 0 ? (
+          <ul className="mt-2 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {active.picks.map((place) => (
             <li key={place.slug} className="shrink-0">
               <Link
                 href={`/places/${place.slug}`}
@@ -161,14 +268,25 @@ export default function DaypartNeeds({
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ background: "var(--app-positive)" }}
                     />
-                    Open
-                    {place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
+                    {place.fact || "Open now"}
+                    {place.distance ? <span>· {place.distance}</span> : null}
+                    {!place.distance && place.where ? <span>· {place.where}</span> : null}
+                    {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
                   </span>
                 </span>
               </Link>
             </li>
-          ))}
-        </ul>
+            ))}
+          </ul>
+        ) : (
+          <p
+            className="mt-2 rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-[12.5px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            Nothing in this group is confirmed open right now. Use “See all”
+            for places opening later.
+          </p>
+        )}
       </div>
     </section>
   );

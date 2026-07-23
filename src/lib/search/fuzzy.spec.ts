@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { FUZZY_THRESHOLD, fuzzyNameScore, trigramSimilarity } from "./fuzzy";
+import {
+  FUZZY_MULTI_WORD_THRESHOLD,
+  FUZZY_THRESHOLD,
+  fuzzyNameScore,
+  fuzzyThresholdForQuery,
+  trigramSimilarity,
+} from "./fuzzy";
 
 describe("trigramSimilarity", () => {
   it("scores identical words as 1", () => {
@@ -52,5 +58,20 @@ describe("fuzzyNameScore", () => {
     expect(fuzzyNameScore("brewrey", "Dancing Bear Toys and Games")).toBeLessThan(
       FUZZY_THRESHOLD,
     );
+  });
+});
+
+describe("fuzzyThresholdForQuery", () => {
+  it("keeps the permissive typo floor for one meaningful word", () => {
+    expect(fuzzyThresholdForQuery("brewrey")).toBe(FUZZY_THRESHOLD);
+  });
+
+  it("requires stronger evidence when several words can match by accident", () => {
+    expect(fuzzyThresholdForQuery("carrol creek")).toBe(
+      FUZZY_MULTI_WORD_THRESHOLD,
+    );
+    expect(
+      fuzzyNameScore("zzzxxyy-no-match", "New Market Grange No."),
+    ).toBeLessThan(fuzzyThresholdForQuery("zzzxxyy-no-match"));
   });
 });

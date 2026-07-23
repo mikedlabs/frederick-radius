@@ -215,6 +215,10 @@ describe("cleanVenueName", () => {
       "Frederick County Fairgrounds",
     );
   });
+
+  it("restores the official capitalization of Frederick Fairgrounds", () => {
+    expect(cleanVenueName("frederick Fairgrounds")).toBe("Frederick Fairgrounds");
+  });
 });
 
 describe("cleanDescription", () => {

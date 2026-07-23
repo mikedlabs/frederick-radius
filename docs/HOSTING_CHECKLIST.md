@@ -31,6 +31,8 @@
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel | Auth (magic link) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`) | Vercel | Auth client |
 | `GOOGLE_PLACES_API_KEY` | Vercel | Place photos + enrichment |
+| `HOURS_REFRESH_CRON=1` | Vercel | Runs the paid, seven-day rolling hours refresh into Postgres. Without it, stale schedules remain safely withheld. |
+| `BUSINESS_STATUS_CRON=1` | Vercel | Runs the paid rotating closure-status check. The Vercel route reports mismatches; the GitHub data-steward job creates the reviewable snapshot. |
 | `TICKETMASTER_API_KEY` | Vercel | Concert + Keys-game events |
 | `BANDSINTOWN_APP_ID` | Vercel | Venue lineups (Bentztown etc.) |
 | `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` | Vercel | Web push notifications |
@@ -44,7 +46,7 @@
 | `AIRNOW_API_KEY` | Vercel | Air-quality data |
 | `NPS_API_KEY` | Vercel | National Park info |
 | `MAPILLARY_TOKEN` | Vercel | Street-level imagery / trash-can layer |
-| `PULSEPOINT_AGENCY_ID` | Vercel | Live incident feed |
+| `PULSEPOINT_ENABLED` + `PULSEPOINT_AGENCY_ID` | Vercel | Restricted incident feed; enable only after the review recorded in `data/sources.yaml` |
 | `FCPS_FEED_URL`, `HOOD_CALENDAR_URL` | Vercel | School + Hood College calendars |
 | `NWS_USER_AGENT` | Vercel | Weather API courtesy header |
 | `SLACK_WEBHOOK_URL` | GitHub Actions | Agent failure notifications |
@@ -52,8 +54,24 @@
 ## Feature flags (set to "1"/"on" in Vercel to toggle behavior)
 `HOURS_GATE`, `RADIUS_DEDUPE`, `RADIUS_PRUNE_THIN`, `RADIUS_RELEVANCE`,
 `RADIUS_EVENT_NOISE_FILTER`, `RADIUS_EVENTS_BY_TOWN`, `RADIUS_OBDB`,
-`COF_PARCELS`, `BUSINESS_STATUS_CRON` — these gate data-cleaning passes.
+`COF_PARCELS` — these gate data-cleaning passes.
 Safe defaults are baked in; leave unset unless tuning.
+
+`HOURS_FRESHNESS_ENFORCED` is different: strict freshness is on by default.
+Set it to `0` only as an emergency rollback. Doing so permits stale schedules
+to support open/closed claims and should not be normal production
+configuration.
+
+## GitHub data-workflow secrets
+
+| Secret | Why it matters |
+|---|---|
+| `GOOGLE_PLACES_API_KEY` | Runs the rotating business-status snapshot, cost-capped enrichment, and manually dispatched photo-attribution backfill. |
+| `DATABASE_URL` | Pulls the Vercel hours-refresh table into the reviewed committed snapshot. |
+
+The manual photo-attribution workflow is request-capped and opens a PR. It
+does not run on a schedule or publish legacy photo references without exact
+attribution.
 
 ---
 

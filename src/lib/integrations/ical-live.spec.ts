@@ -30,7 +30,13 @@ describe("splitLocation venue sanity", () => {
 
 // ── DFP Vibemap parser ──────────────────────────────────────────────
 
-import { parseVibemapEvents, type FeedSpec, type VibemapRow } from "./ical-live";
+import {
+  feedCategory,
+  parseVibemapEvents,
+  resolveKnownEventVenue,
+  type FeedSpec,
+  type VibemapRow,
+} from "./ical-live";
 
 const DFP_FEED: FeedSpec = {
   source: "dfp",
@@ -46,6 +52,43 @@ const DFP_FEED: FeedSpec = {
 const NOW = new Date("2026-07-19T12:00:00Z");
 const HORIZON = new Date("2026-08-18T12:00:00Z");
 const FETCHED = "2026-07-19T12:00:00.000Z";
+
+describe("official-feed classification and venue corrections", () => {
+  it("classifies tennis as sports instead of matching the phrase match play as theater", () => {
+    expect(
+      feedCategory(
+        DFP_FEED,
+        "Friday Night Lights Tennis",
+        "Instruction, drills, and match play.",
+      ),
+    ).toBe("sports");
+    expect(feedCategory(DFP_FEED, "Community Match Play", "Open to residents.")).toBe(
+      "community",
+    );
+  });
+
+  it("still recognizes specific theater language", () => {
+    expect(
+      feedCategory(
+        DFP_FEED,
+        "A New Frederick Story",
+        "A stage play at the Weinberg Center.",
+      ),
+    ).toBe("theater");
+  });
+
+  it("restores the court named by the official City event page", () => {
+    expect(
+      resolveKnownEventVenue("city-frederick", "Friday Night Lights Tennis", {
+        venue: "Frederick",
+        address: "Frederick",
+      }),
+    ).toEqual({
+      venue: "Fleming Avenue Courts",
+      address: "500 Fleming Avenue, Frederick, MD 21701",
+    });
+  });
+});
 
 function vmRow(over: {
   title?: string;

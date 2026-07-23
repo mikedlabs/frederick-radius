@@ -29,7 +29,7 @@
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-07-22T20:18:49.859Z",
+  "generatedAt": "2026-07-23T16:05:54.717Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -341,6 +341,56 @@
       ]
     },
     {
+      "file": "social/facebook-page-launch-photo.svg",
+      "width": 1080,
+      "height": 1350,
+      "role": "Photo-led Facebook Page launch post using owned Frederick photography",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-season-spring.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Spring card for the owned-photography Facebook season carousel",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-season-summer.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Summer card for the owned-photography Facebook season carousel",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-season-fall.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Fall card for the owned-photography Facebook season carousel",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/facebook-season-winter.svg",
+      "width": 1080,
+      "height": 1080,
+      "role": "Winter card for the owned-photography Facebook season carousel",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
       "file": "social/facebook-group-launch.svg",
       "width": 1080,
       "height": 1350,
@@ -405,6 +455,16 @@
       "width": 1200,
       "height": 630,
       "role": "Default Open Graph share card",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/og-food-trucks.svg",
+      "width": 1200,
+      "height": 630,
+      "role": "Food-truck page Open Graph card using owned Frederick night photography",
       "exports": [
         "svg",
         "png"

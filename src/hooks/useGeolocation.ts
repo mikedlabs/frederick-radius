@@ -27,6 +27,17 @@ export type GeoState =
 
 const STORAGE_KEY = "fr_geo_v1";
 const TTL_MS = 1000 * 60 * 30; // 30 min cache
+/** Same-document signal for surfaces that need to re-rank after a location
+ * fix changes. The browser `storage` event does not fire in the tab that made
+ * the change, so sessionStorage alone cannot keep independent components in
+ * sync. */
+export const GEOLOCATION_CHANGE_EVENT = "fr:geolocation-change";
+
+function announceLocationChange(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(GEOLOCATION_CHANGE_EVENT));
+  }
+}
 
 /**
  * Read the cached geolocation fix WITHOUT prompting or mounting the hook.
@@ -120,6 +131,7 @@ export function useGeolocation() {
           // storage may be full or disabled
         }
         setState({ status: "granted", position });
+        announceLocationChange();
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -137,6 +149,7 @@ export function useGeolocation() {
       try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
     }
     setState({ status: "idle" });
+    announceLocationChange();
   }, []);
 
   return { state, request, clear };

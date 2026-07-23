@@ -361,10 +361,18 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   // before any action-positive planning copy. A forecast that says showers
   // later cannot authorize "get out before then" while either safety feed is
   // unavailable or stale.
-  if (!alertsAvailable || !airQualityAvailable || !weatherAvailable) {
+  if (!weatherAvailable) {
     return {
-      line: "Current weather or air-safety data is temporarily unavailable. Check official conditions before heading out.",
+      line: "Current weather data is temporarily unavailable. Check official conditions before heading out.",
       brief: "Weather data is temporarily unavailable.",
+      tone: "mixed",
+    };
+  }
+
+  if (!alertsAvailable || !airQualityAvailable) {
+    return {
+      line: "Current weather is available, but some safety data is temporarily unavailable. Check official conditions before heading out.",
+      brief: "Some safety data is temporarily unavailable.",
       tone: "mixed",
     };
   }

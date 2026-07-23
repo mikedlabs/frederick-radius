@@ -22,6 +22,14 @@ export type Event = {
   price_text?: string;
   ticket_url?: string;
   rsvp_url?: string;
+  /**
+   * How a user can attend. Physical is the default for legacy/curated rows;
+   * live adapters stamp online/mixed when the publisher exposes it or uses a
+   * recognized title/venue convention.
+   */
+  attendance_mode?: "physical" | "online" | "mixed";
+  /** Direct join, registration, or event page for online participation. */
+  online_url?: string;
   organizer?: string;
   /**
    * Presenting organization extracted from an "Organization-Event Name"
@@ -185,6 +193,7 @@ function aliveAtFiveSeason(): Event[] {
         food: "Rotating food vendors on site each week.",
       },
       ticket_url: "https://downtownfrederick.org/aliveatfive/",
+      source_url: "https://downtownfrederick.org/aliveatfive/",
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,

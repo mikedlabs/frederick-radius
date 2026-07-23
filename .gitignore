@@ -48,6 +48,7 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/.playwright-cli/
 
 # data pipeline: raw and clean snapshots live on the data-snapshots
 # branch, never on main, to keep history small.
@@ -60,9 +61,6 @@ next-env.d.ts
 /data/drift-decisions.json
 /data/place-drift.json
 scripts/find-duplicates-report.json
-# Lighthouse / perf audit snapshots: local-only, do not commit
-.perf/
-scripts/.lighthouse/
 # Lighthouse / perf audit snapshots: local-only, do not commit
 .perf/
 scripts/.lighthouse/
@@ -83,7 +81,6 @@ ux-shots/
 __pycache__/
 
 # Generated mockup renders (reproducible from the .html + render script)
-.mockups/render/
 .mockups/render/
 .mockups/*.built.html
 

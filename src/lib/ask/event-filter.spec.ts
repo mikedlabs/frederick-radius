@@ -22,4 +22,15 @@ describe("eventFitsAskIntent", () => {
     expect(eventFitsAskIntent(event("2026-07-20T23:00:00Z", "2026-07-21T01:00:00Z"), intent, now)).toBe(true);
     expect(eventFitsAskIntent(event("2026-07-20T16:00:00Z", "2026-07-20T18:00:00Z"), intent, now)).toBe(false);
   });
+
+  it("does not turn an in-progress series range into a dated occurrence", () => {
+    const intent = parseAskIntent("anything fun tomorrow night", now);
+    const range = event("2026-06-26T16:00:00Z", "2026-09-18T16:00:00Z");
+    const evening = event("2026-07-19T22:30:00Z", "2026-07-20T00:30:00Z");
+    const matinee = event("2026-07-19T17:00:00Z", "2026-07-19T19:00:00Z");
+
+    expect(eventFitsAskIntent(range, intent, now, "anything fun tomorrow night")).toBe(false);
+    expect(eventFitsAskIntent(evening, intent, now, "anything fun tomorrow night")).toBe(true);
+    expect(eventFitsAskIntent(matinee, intent, now, "anything fun tomorrow night")).toBe(false);
+  });
 });

@@ -1,25 +1,27 @@
 # Coverage scorecard
 
-Per-municipality place coverage + enrichment depth, generated from the slim
-client set (`src/data/places-client.json`) + `field-notes.json`. Regenerate
-with `npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
+Per-municipality place coverage + enrichment depth, generated from the
+published client set, source schedules, enrichment, and field notes.
+A stored schedule is inventory; published fresh hours are the schedules
+currently allowed to support an open-now claim. Regenerate with
+`npm run coverage:scorecard`. The Downtown-Frederick centre of gravity
 (BACKLOG Cluster A) is the share of the dataset in the first row.
 
-_Generated 2026-06-26 — 1632 places._
+_Generated 2026-07-23 — 1616 places._
 
-| Municipality | Places | With hours | With rating | With photo | Field-notes | Local favorites |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Frederick | 869 | 720 (83%) | 792 (91%) | 737 (85%) | 52 | 327 |
-| Thurmont | 119 | 84 (71%) | 109 (92%) | 107 (90%) | 5 | 36 |
-| Brunswick | 98 | 66 (67%) | 88 (90%) | 82 (84%) | 2 | 26 |
-| Walkersville | 87 | 66 (76%) | 81 (93%) | 77 (89%) | 2 | 29 |
-| Middletown | 86 | 53 (62%) | 73 (85%) | 74 (86%) | 4 | 27 |
-| New Market | 79 | 53 (67%) | 66 (84%) | 61 (77%) | 4 | 13 |
-| Mount Airy | 67 | 52 (78%) | 62 (93%) | 62 (93%) | 5 | 28 |
-| Emmitsburg | 60 | 41 (68%) | 55 (92%) | 54 (90%) | 2 | 19 |
-| Myersville | 57 | 42 (74%) | 49 (86%) | 50 (88%) | 3 | 17 |
-| Woodsboro | 43 | 24 (56%) | 34 (79%) | 30 (70%) | 2 | 12 |
-| Burkittsville | 37 | 18 (49%) | 35 (95%) | 37 (100%) | 2 | 10 |
-| Urbana | 26 | 17 (65%) | 20 (77%) | 20 (77%) | 2 | 9 |
-| Rosemont | 4 | 1 (25%) | 3 (75%) | 3 (75%) | 0 | 2 |
-| **Total** | **1632** | 1237 (76%) | 1467 (90%) | 1394 (85%) | **85** | **555** |
+| Municipality | Places | Stored schedule | Published fresh hours | With rating | Publishable photo | Field-notes | Local favorites |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Frederick | 854 | 679 (80%) | 0 (0%) | 761 (89%) | 0 (0%) | 50 | 315 |
+| Thurmont | 117 | 81 (69%) | 0 (0%) | 106 (91%) | 0 (0%) | 4 | 34 |
+| Brunswick | 97 | 65 (67%) | 0 (0%) | 87 (90%) | 0 (0%) | 2 | 25 |
+| Walkersville | 87 | 66 (76%) | 0 (0%) | 81 (93%) | 0 (0%) | 2 | 29 |
+| Middletown | 85 | 52 (61%) | 0 (0%) | 72 (85%) | 0 (0%) | 4 | 27 |
+| New Market | 79 | 53 (67%) | 0 (0%) | 66 (84%) | 0 (0%) | 4 | 13 |
+| Mount Airy | 67 | 52 (78%) | 0 (0%) | 62 (93%) | 0 (0%) | 5 | 28 |
+| Emmitsburg | 60 | 41 (68%) | 0 (0%) | 55 (92%) | 0 (0%) | 2 | 19 |
+| Myersville | 56 | 41 (73%) | 0 (0%) | 49 (88%) | 0 (0%) | 3 | 17 |
+| Woodsboro | 42 | 23 (55%) | 0 (0%) | 33 (79%) | 0 (0%) | 2 | 12 |
+| Burkittsville | 37 | 18 (49%) | 0 (0%) | 35 (95%) | 0 (0%) | 2 | 10 |
+| Urbana | 31 | 20 (65%) | 3 (10%) | 23 (74%) | 0 (0%) | 2 | 9 |
+| Rosemont | 4 | 1 (25%) | 0 (0%) | 3 (75%) | 0 (0%) | 0 | 2 |
+| **Total** | **1616** | 1192 (74%) | 3 (0%) | 1433 (89%) | 0 (0%) | **82** | **540** |

@@ -69,3 +69,21 @@ export function fuzzyNameScore(query: string, name: string): number {
 
 /** pg_trgm's default match threshold; below this, matches read as noise. */
 export const FUZZY_THRESHOLD = 0.3;
+
+/**
+ * Multi-word fuzzy searches need a stronger floor than a single typo.
+ *
+ * A one-word misspelling such as "brewrey" scores about 0.33 and should
+ * still find Brewery. With several query words, however, averaging one weak
+ * coincidence across otherwise unrelated words can also clear 0.30
+ * ("zzzxxyy-no-match" → "New Market Grange No."). Requiring 0.45 for a
+ * multi-word fallback keeps useful compound corrections such as
+ * "carrol creek" while rejecting those accidental neighbors.
+ */
+export const FUZZY_MULTI_WORD_THRESHOLD = 0.45;
+
+export function fuzzyThresholdForQuery(query: string): number {
+  return words(query).length > 1
+    ? FUZZY_MULTI_WORD_THRESHOLD
+    : FUZZY_THRESHOLD;
+}
