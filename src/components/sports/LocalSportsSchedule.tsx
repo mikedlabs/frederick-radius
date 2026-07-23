@@ -145,7 +145,7 @@ export default async function LocalSportsSchedule({
                       style={{
                         background:
                           game.homeAway === "home"
-                            ? "var(--app-positive-soft)"
+                            ? "var(--app-positive-tint-14)"
                             : "var(--app-bg-sunken)",
                         color:
                           game.homeAway === "home"
