@@ -26,11 +26,23 @@ export type FoodTruck = {
   /** Short noun label for the card ("Wood-fired pizza", "Shaved ice"). */
   cuisine: string;
   kind: FoodTruckKind;
+  /** Permanent partner kitchens stay distinct from roaming trucks. */
+  serviceModel?: "mobile" | "resident";
   /** One calm line, optional. */
   blurb?: string;
   /** Where they reliably park, for the few with a permanent home. */
   homeBase?: string;
   website?: string;
+  /** Owner or publisher-approved menu/order/catering links. */
+  menuUrl?: string;
+  bookingUrl?: string;
+  dietary?: string[];
+  /** Only add media with documented display permission and credit. */
+  media?: {
+    src: string;
+    alt: string;
+    credit?: string;
+  };
   instagram?: string;
   facebook?: string;
 };
@@ -46,6 +58,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "The Alley Wagon",
     cuisine: "Brewpub fare",
     kind: "food",
+    serviceModel: "resident",
     homeBase: "Monocacy Brewing Company",
     blurb: "The Alley Wagon serves as the kitchen on wheels at Monocacy Brewing.",
   },
@@ -55,6 +68,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Acai bowls & smoothies",
     kind: "food",
     blurb: "Blendabowl serves acai and pitaya bowls, smoothies, and vegan or gluten-free options.",
+    dietary: ["Vegan options", "Gluten-free options", "Dairy-free options"],
     facebook: "https://facebook.com/profile.php?id=61574773000675",
   },
   {
@@ -70,6 +84,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Bub-B-Que BBQ & Catering",
     cuisine: "Barbecue",
     kind: "food",
+    blurb: "Bub-B-Que serves barbecue and offers catering around Frederick County.",
     facebook: "https://facebook.com/Bubbque",
   },
   {
@@ -82,11 +97,12 @@ export const FOOD_TRUCKS: FoodTruck[] = [
   },
   {
     slug: "dop-pizza",
-    name: "Dop Pizza",
+    name: "dōp Pizza",
     cuisine: "Wood-fired pizza",
     kind: "food",
+    serviceModel: "resident",
     homeBase: "RAK Brewing",
-    blurb: "Dop Pizza makes wood-fired Neapolitan pies from a mobile kitchen.",
+    blurb: "dōp Pizza serves wood-fired Neapolitan pies at RAK Brewing.",
     facebook: "https://facebook.com/doppizza.co",
   },
   {
@@ -110,6 +126,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Gravel & Grind Coffee Cart",
     cuisine: "Coffee",
     kind: "food",
+    blurb: "Gravel & Grind serves coffee from a mobile cart and bicycle shop in downtown Frederick.",
     instagram: "https://instagram.com/gravelandgrind",
   },
   {
@@ -117,6 +134,8 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Grilled Cheese Please!",
     cuisine: "Grilled cheese",
     kind: "food",
+    blurb: "Grilled Cheese Please! serves grilled cheese sandwiches at stops across the region.",
+    website: "https://grilledcheeseplease.online/schedule",
     facebook: "https://facebook.com/grilledcheeseplease1",
   },
   {
@@ -139,6 +158,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "M&L's Ragin Cajun",
     cuisine: "Cajun & Southern",
     kind: "food",
+    blurb: "M&L's Ragin Cajun serves Cajun and Southern dishes from its mobile kitchen.",
     instagram: "https://instagram.com/mlsragincajun_llc",
   },
   {
@@ -178,6 +198,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     name: "Whistle Punk Farm",
     cuisine: "Farm-to-fork",
     kind: "food",
+    blurb: "Whistle Punk Farm brings seasonal farm cooking to events and community stops.",
     facebook: "https://facebook.com/WhistlePunkFoodTruck",
   },
   // ── Treats (ice cream, shaved ice, dessert on wheels) ────────────────
@@ -196,6 +217,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Shaved ice",
     kind: "treats",
     blurb: "Kotei Kids serves organic, vegan shaved ice.",
+    dietary: ["Vegan", "Gluten-free", "Kosher options"],
     website: "https://koteikidsshavedice.com",
   },
 ];

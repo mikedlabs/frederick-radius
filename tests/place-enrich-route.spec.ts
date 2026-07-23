@@ -21,6 +21,14 @@ vi.mock("@/data/places", () => ({
       google_place_id: "ChIJtest",
       geom: { lng: -77.41, lat: 39.414 },
     },
+    "outside-place": {
+      slug: "outside-place",
+      name: "Outside Place",
+      address: "1 Main St",
+      city: "Boonsboro",
+      google_place_id: "ChIJoutside",
+      geom: { lng: -77.6528, lat: 39.5062 },
+    },
   },
 }));
 vi.mock("@/data/places-overrides.json", () => ({ default: { patch: {} } }));
@@ -42,6 +50,9 @@ function request(mode?: "experience") {
 }
 
 const context = { params: Promise.resolve({ slug: "test-place" }) };
+const outsideContext = {
+  params: Promise.resolve({ slug: "outside-place" }),
+};
 
 describe("GET /api/place/[slug]/enrich", () => {
   beforeEach(() => {
@@ -69,6 +80,27 @@ describe("GET /api/place/[slug]/enrich", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("60");
     expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("never spends on a source row outside the county catalog area", async () => {
+    const response = await GET(
+      new Request(
+        "https://frederickradius.app/api/place/outside-place/enrich",
+        {
+          headers: {
+            Referer:
+              "https://frederickradius.app/places/outside-place",
+            "x-forwarded-for": "203.0.113.22",
+          },
+        },
+      ),
+      outsideContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ photos: [], hours: [] });
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+    expect(mocks.resolveAndEnrich).not.toHaveBeenCalled();
   });
 
   it("never permits Google content to enter a shared cache", async () => {

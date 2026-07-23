@@ -5,10 +5,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 type BeerMode = "find" | "index" | "taprooms" | "tonight";
 
 const MODES: ReadonlyArray<{ key: BeerMode; label: string }> = [
-  { key: "find", label: "Find a beer" },
-  { key: "index", label: "All beers" },
   { key: "taprooms", label: "Taprooms" },
+  { key: "find", label: "Find a beer" },
   { key: "tonight", label: "This week" },
+  { key: "index", label: "Beer index" },
 ];
 
 const HASH_MODE: Record<string, BeerMode> = {
@@ -28,7 +28,7 @@ const MODE_HASH: Record<BeerMode, string> = {
 };
 
 export function beerModeForHash(hash: string): BeerMode | null {
-  if (!hash || hash === "#") return "find";
+  if (!hash || hash === "#") return "taprooms";
   return HASH_MODE[hash.toLocaleLowerCase()] ?? null;
 }
 
@@ -67,7 +67,7 @@ export default function BeerWorkspace({
   taprooms: ReactNode;
   tonight: ReactNode;
 }) {
-  const [mode, setMode] = useState<BeerMode>("find");
+  const [mode, setMode] = useState<BeerMode>("taprooms");
 
   useEffect(() => {
     const syncFromUrl = () => {

@@ -28,15 +28,15 @@ import {
 // use getCachedLiveEvents instead.
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
-  fetchTicketmasterMusic,
-  fetchTicketmasterSports,
+  fetchTicketmasterMusicResult,
+  fetchTicketmasterSportsResult,
 } from "@/lib/integrations/ticketmaster";
-import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { fetchBandsintownForArtistsResult } from "@/lib/integrations/bandsintown";
 import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
-import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
-import { fetchEventbrite } from "@/lib/integrations/eventbrite";
-import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
-import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
+import { fetchSeatGeekResult } from "@/lib/integrations/seatgeek";
+import { fetchEventbriteResult } from "@/lib/integrations/eventbrite";
+import { fetchVisitFrederickResult } from "@/lib/integrations/visitfrederick";
+import { fetchFrederickKeysResult } from "@/lib/integrations/frederickKeys";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import {
   cleanVenueName,
@@ -47,7 +47,7 @@ import {
   titleIsJustVenue,
 } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
-import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
+import { fetchSquarespaceVenueEventsResult } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { upgradeEventGeoms } from "@/lib/integrations/mapboxGeocode";
 import { getIngestedSeries } from "@/lib/loaders/ingested";
@@ -58,6 +58,11 @@ import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { easternDayKey } from "@/lib/tz";
 import { unstable_cache } from "next/cache";
 import { createSingleFlight } from "@/lib/single-flight";
+import {
+  eventAdapterFailed,
+  eventAdapterIsDegraded,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -138,6 +143,23 @@ function withTimeout<T>(
 // A single slow/hanging events upstream can't stall the board past this.
 const FEED_MS = 8000;
 
+function readAdapter<T>(
+  resultPromise: Promise<EventAdapterResult<T>>,
+  source: string,
+  unavailable: Set<string>,
+): Promise<T[]> {
+  const markUnavailable = () => unavailable.add(source);
+  return withTimeout(
+    resultPromise,
+    FEED_MS,
+    eventAdapterFailed<T>(),
+    markUnavailable,
+  ).then((result) => {
+    if (eventAdapterIsDegraded(result)) markUnavailable();
+    return result.items;
+  });
+}
+
 // Exported for offline diagnostics only (tsx scripts can't call the
 // unstable_cache wrapper — no Next incremental cache outside the runtime).
 // App code must keep calling assembleUnifiedEvents.
@@ -147,30 +169,33 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const markUnavailable = (source: string) => () => unavailable.add(source);
 
   const [liveResult, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
-    withTimeout(getLiveEvents(60), FEED_MS, {
+    // The unified assembly owns Ticketmaster as a separately monitored
+    // adapter below. Excluding it from this municipal-feed fanout prevents the
+    // same Discovery request from running twice on every cold assembly.
+    withTimeout(getLiveEvents(60, { includeTicketmaster: false }), FEED_MS, {
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
       sources_succeeded: [] as string[],
       sources_failed: [] as string[],
     }, markUnavailable("municipal calendars")),
-    withTimeout(fetchTicketmasterMusic(), FEED_MS, [], markUnavailable("Ticketmaster music")),
-    withTimeout(fetchTicketmasterSports(), FEED_MS, [], markUnavailable("Ticketmaster sports")),
-    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), FEED_MS, [], markUnavailable("Bandsintown")),
+    readAdapter(fetchTicketmasterMusicResult(), "Ticketmaster music", unavailable),
+    readAdapter(fetchTicketmasterSportsResult(), "Ticketmaster sports", unavailable),
+    readAdapter(fetchBandsintownForArtistsResult(BANDSINTOWN_ARTISTS), "Bandsintown", unavailable),
     // SeatGeek area discovery (Phase 4 item 3): inert without
     // SEATGEEK_CLIENT_ID, fail-soft like the others.
-    withTimeout(fetchSeatGeek(), FEED_MS, [], markUnavailable("SeatGeek")),
+    readAdapter(fetchSeatGeekResult(), "SeatGeek", unavailable),
     // Eventbrite organizer registry (Phase 4 item 4): inert without
     // EVENTBRITE_TOKEN or an empty registry.
-    withTimeout(fetchEventbrite(), FEED_MS, [], markUnavailable("Eventbrite")),
+    readAdapter(fetchEventbriteResult(), "Eventbrite", unavailable),
     // Visit Frederick destination-marketing events RSS (keyless Simpleview
     // feed). Partner-confidence county listings; fail-soft to [].
-    withTimeout(fetchVisitFrederick(), FEED_MS, [], markUnavailable("Visit Frederick")),
+    readAdapter(fetchVisitFrederickResult(), "Visit Frederick", unavailable),
     // Frederick Keys home games from the keyless MLB Stats API. Dedupes against
     // Ticketmaster on the clean slug; fail-soft to [].
-    withTimeout(fetchFrederickKeys(), FEED_MS, [], markUnavailable("Frederick Keys")),
+    readAdapter(fetchFrederickKeysResult(), "Frederick Keys", unavailable),
     // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
-    withTimeout(fetchSquarespaceVenueEvents(60), FEED_MS, [], markUnavailable("venue calendars")),
+    readAdapter(fetchSquarespaceVenueEventsResult(60), "venue calendars", unavailable),
     // Cron-ingested PUBLIC draws (FCPL library + FCVFRA fire-company carnivals
     // /bingo) lifted into the rails so the gap-town events that have no other
     // feed read as real "what's on", not a tucked civic row. County CivicEngage

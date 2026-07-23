@@ -5,7 +5,6 @@ import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronRight, MapPin, I
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
 import Image from "next/image";
-import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { haptic } from "@/lib/haptics";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -594,12 +593,6 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               Tell us
             </a>
           </span>
-          <span aria-hidden>·</span>
-          {/* Owner front door. The claim->manage->post->push flow is built,
-              but switching it on for owners is a deferred owner call, so this
-              quiet valve (same register as the "soon" promises) reads as
-              coming-soon rather than a live link. */}
-          <ClaimComingSoon lead="Run this business?" />
         </p>
         </div>
       </div>

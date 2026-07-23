@@ -45,14 +45,16 @@ describe("Compass browse model", () => {
     expect(settingsLinks[0].label).toBe("Choose your home town");
   });
 
-  it("derives the restrained common-task strip from registered tools", () => {
+  it("derives quick access from registered tools", () => {
     const tasks = commonCompassTasks(buildCompassSections(null));
 
     expect(tasks.map((item) => item.id)).toEqual([
-      "open-now",
+      "places",
+      "nearby",
       "events",
+      "county-map",
+      "parking",
       "public-essentials",
-      "county-pulse",
     ]);
     expect(tasks.every((item) => RADIUS_TOOLS.some((tool) => tool.id === item.id))).toBe(true);
   });

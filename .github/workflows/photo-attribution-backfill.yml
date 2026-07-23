@@ -1,0 +1,77 @@
+name: Google photo attribution backfill
+
+# Manual and request-capped on purpose. Legacy Google photo resource names are
+# not published until the exact per-photo source metadata is refreshed. This
+# workflow advances a reviewed batch, rebuilds the public snapshot, and opens a
+# PR; it never spends or deploys on a schedule.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Maximum Google Place Details requests (1-500)
+        required: true
+        default: "100"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: google-photo-attribution-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Validate request ceiling
+        env:
+          REQUEST_LIMIT: ${{ inputs.limit }}
+        run: |
+          case "$REQUEST_LIMIT" in
+            ''|*[!0-9]*) echo "limit must be an integer"; exit 1 ;;
+          esac
+          if [ "$REQUEST_LIMIT" -lt 1 ] || [ "$REQUEST_LIMIT" -gt 500 ]; then
+            echo "limit must be between 1 and 500"
+            exit 1
+          fi
+
+      - name: Refresh exact photo metadata
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          REQUEST_LIMIT: ${{ inputs.limit }}
+        run: npm run backfill:photo-attributions -- --limit "$REQUEST_LIMIT" --live --confirm
+
+      - name: Rebuild public place data
+        run: |
+          npm run build:client-places
+          npm run coverage:scorecard
+
+      - name: Test photo policy
+        run: npx vitest run src/lib/google-photo-backfill.spec.ts src/lib/google-photo-policy.spec.ts src/lib/loaders/places-client-photo-policy.spec.ts
+
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/google-photo-attribution-backfill
+          commit-message: "data: backfill exact Google photo attribution"
+          title: "data: restore attributable business photos"
+          body: |
+            Request-capped Google photo metadata refresh.
+
+            This updates only photo resource names and their exact Google Maps
+            attribution records, then rebuilds the slim public place snapshot.
+            Review the coverage diff and spot-check photo attribution before
+            merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

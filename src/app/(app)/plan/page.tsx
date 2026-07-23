@@ -35,18 +35,14 @@ export default async function PlanPage({
 
       {!shared && (
         <header className="mb-5 max-w-xl space-y-2">
-          <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
-            Outing planner
-          </p>
           <h1
             className="font-sans text-[34px] font-semibold leading-[1.02] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Plan an outing in Frederick County.
+            Build an outing that fits.
           </h1>
           <p className="max-w-lg text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Choose the area, time, and focus. Radius will only use places that
-            fit the schedule.
+            Choose where and when. Refine the rest only if it matters.
           </p>
         </header>
       )}

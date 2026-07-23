@@ -1,29 +1,37 @@
 import { z } from "zod";
 
-/**
- * Runtime validator for the CHART incident feed. The casing of CHART
- * fields has changed before, so every field is optional and the object
- * passes through unknown keys. The transform is responsible for
- * rejecting rows that lack usable coordinates.
- */
+const event = z
+  .object({
+    id: z.union([z.string(), z.number()]).optional(),
+    incidentType: z.string().optional(),
+    description: z.string().optional(),
+    name: z.string().optional(),
+    county: z.string().optional(),
+    direction: z.string().optional(),
+    lat: z.union([z.string(), z.number()]).optional(),
+    lon: z.union([z.string(), z.number()]).optional(),
+    startDateTime: z.union([z.string(), z.number()]).optional(),
+    lanesStatus: z.string().optional(),
+    closed: z.boolean().optional(),
+    trafficAlert: z.boolean().optional(),
+    additionalData: z
+      .object({
+        actionTypes: z
+          .array(
+            z.object({ actionType: z.string().optional() }).passthrough(),
+          )
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+/** CHART's current export wraps the statewide event array under `data`. */
 export const schema = z
   .object({
-    Id: z.union([z.string(), z.number()]).optional(),
-    EventType: z.string().optional(),
-    Description: z.string().optional(),
-    County: z.string().optional(),
-    Road: z.string().optional(),
-    Direction: z.string().optional(),
-    Location: z.string().optional(),
-    Lat: z.union([z.string(), z.number()]).optional(),
-    Lng: z.union([z.string(), z.number()]).optional(),
-    Long: z.union([z.string(), z.number()]).optional(),
-    Started: z.string().optional(),
-    EstimatedClearance: z.string().optional(),
-    Severity: z.string().optional(),
-    LanesAffected: z.string().optional(),
+    data: z.array(event),
   })
-  .passthrough()
-  .array();
+  .passthrough();
 
 export type MdotChartRaw = z.infer<typeof schema>;

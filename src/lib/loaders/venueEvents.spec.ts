@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import {
+  venueEventsToCards,
+  type VenueEvent,
+} from "@/lib/loaders/venueEvents";
+
+function event(overrides: Partial<VenueEvent> = {}): VenueEvent {
+  return {
+    title: "Neighborhood workshop",
+    starts_at: "2026-08-01T18:00:00.000Z",
+    venue_slug: "unmatched-test-venue",
+    venue_name: "Workshop host",
+    source: {
+      url: "https://example.com/events/neighborhood-workshop",
+      fetchedAt: "2026-07-23T12:00:00.000Z",
+    },
+    ...overrides,
+  };
+}
+
+describe("venue event attendance normalization", () => {
+  it("does not turn an online-only extracted event into a downtown pin", () => {
+    const [card] = venueEventsToCards([
+      event({
+        title: "Online neighborhood workshop",
+        venue_name: "Virtual",
+      }),
+    ]);
+
+    expect(card.attendance_mode).toBe("online");
+    expect(card.venue_name).toBe("Online");
+    expect(card.address).toBe("");
+    expect(card.venue_place_slug).toBeUndefined();
+    expect(card.geo_confidence).toBe("unknown");
+    expect(card.online_url).toBe(
+      "https://example.com/events/neighborhood-workshop",
+    );
+  });
+
+  it("keeps a hybrid event attached to its physical venue", () => {
+    const [card] = venueEventsToCards([
+      event({
+        title: "Neighborhood workshop (hybrid)",
+        venue_name: "Workshop host",
+        ticket_url: "https://example.com/register/neighborhood-workshop",
+      }),
+    ]);
+
+    expect(card.attendance_mode).toBe("mixed");
+    expect(card.venue_name).toBe("Workshop host");
+    expect(card.online_url).toBe(
+      "https://example.com/register/neighborhood-workshop",
+    );
+  });
+});

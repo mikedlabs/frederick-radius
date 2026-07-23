@@ -34,6 +34,15 @@ describe("toolMatchesQuery", () => {
     ["something tonight", "events"],
     ["what can I do tonight", "events"],
     ["trash can near me", "trash-cans"],
+    ["coffee", "search"],
+    ["breakfast", "search"],
+    ["kid friendly", "search"],
+    ["date night", "search"],
+    ["farmers market", "search"],
+    ["weather", "county-pulse"],
+    ["air quality", "county-pulse"],
+    ["road closures", "county-pulse"],
+    ["power outage", "county-pulse"],
   ])("matches %s to %s", (query, id) => {
     expect(toolMatchesQuery(tool(id), query)).toBe(true);
   });

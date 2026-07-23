@@ -45,4 +45,15 @@ describe("restricted membership venue recommendation gate", () => {
       }),
     ).toBe(false);
   });
+
+  it("keeps an explicitly non-customer address out of recommendations", () => {
+    expect(
+      isRecommendable({
+        name: "Druidcraft Coffee Roasting (Office Only)",
+        primary_type: "coffee_roastery",
+        source: "discovered",
+        slug: "druidcraft-coffee-roasting-office-only-middletown",
+      }),
+    ).toBe(false);
+  });
 });

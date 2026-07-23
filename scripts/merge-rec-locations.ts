@@ -14,8 +14,8 @@
  *                     coordinate conflict when our pin is >400m off — the
  *                     Ballenger Creek mis-geocode class).
  *       · unmatched → a NEW place record (build-discovered shape; source
- *                     "fc-gis", Verified tier), municipality by nearest
- *                     centroid (resolve precisely at apply time).
+ *                     "fc-gis", Verified tier), but only after the point
+ *                     clears the county boundary; municipality resolves next.
  *   - Amenity kinds (shelter · field · facility) are NOT place cards.
  *     They roll UP onto their parent park as counts + facts, keyed by the
  *     feature's `park` field.
@@ -23,8 +23,8 @@
  *     not the directory).
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { MUNICIPALITIES } from "@/data/municipalities";
 import type { RecLocation } from "@/lib/integrations/fcRecLocations";
+import { resolveFrederickMunicipality } from "@/lib/location";
 
 const REC = new URL("../src/data/rec-locations.json", import.meta.url).pathname;
 const CLIENT = new URL("../src/data/places-client.json", import.meta.url).pathname;
@@ -50,16 +50,6 @@ function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: numbe
   return R * 2 * Math.asin(Math.sqrt(x));
 }
 
-function nearestMunicipality(lat: number, lng: number): string {
-  let best = "frederick", bestD = Infinity;
-  for (const m of MUNICIPALITIES as { slug: string; centroid?: { lat: number; lng: number } }[]) {
-    if (!m.centroid) continue;
-    const d = haversine({ lat, lng }, m.centroid);
-    if (d < bestD) { bestD = d; best = m.slug; }
-  }
-  return best;
-}
-
 function main() {
   const recs = JSON.parse(readFileSync(REC, "utf8")) as RecLocation[];
   const places = JSON.parse(readFileSync(CLIENT, "utf8")) as Place[];
@@ -69,6 +59,13 @@ function main() {
 
   const enrich: { slug: string; name: string; addPhoto?: string; coordConflictMeters?: number }[] = [];
   const newPlaces: Record<string, unknown>[] = [];
+  const rejectedPlacement: Array<{
+    objectId: string | number;
+    name: string;
+    lat: number;
+    lng: number;
+    reason: "outside-county-area";
+  }> = [];
   const taken = new Set(places.map((p) => p.slug));
   const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "")
     .trim().replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 60);
@@ -93,8 +90,22 @@ function main() {
       if (bestD > 400) { e.coordConflictMeters = Math.round(bestD); conflicts++; }
       if (e.addPhoto || e.coordConflictMeters) enrich.push(e);
     } else {
+      const municipality = resolveFrederickMunicipality({
+        lat: r.lat,
+        lng: r.lng,
+      });
+      if (!municipality) {
+        rejectedPlacement.push({
+          objectId: r.objectId,
+          name: r.name,
+          lat: r.lat,
+          lng: r.lng,
+          reason: "outside-county-area",
+        });
+        continue;
+      }
       created++;
-      const muni = nearestMunicipality(r.lat, r.lng);
+      const muni = municipality.municipality.slug;
       let slug = `${slugify(r.name)}-${muni}`; let n = 2;
       while (taken.has(slug)) slug = `${slugify(r.name)}-${muni}-${n++}`;
       taken.add(slug);
@@ -126,14 +137,15 @@ function main() {
     .map((r) => ({ name: r.name, lat: r.lat, lng: r.lng, difficulty: r.difficulty, features: r.passportFeatures, photoUrl: r.photoUrl }));
 
   const plan = { generatedAt: new Date().toISOString(), source: "fc-gis (survey123 rec locations)",
-    summary: { destinationFeatures: destRecs.length, matched, enrichments: enrich.length, coordConflicts: conflicts, newPlaces: created, amenityParks: Object.keys(rollup).length, passportMarkers: passport.length },
-    enrich, newPlaces, amenityRollup: rollup, passport };
+    summary: { destinationFeatures: destRecs.length, matched, enrichments: enrich.length, coordConflicts: conflicts, newPlaces: created, placementRejected: rejectedPlacement.length, amenityParks: Object.keys(rollup).length, passportMarkers: passport.length },
+    enrich, newPlaces, placementRejected: rejectedPlacement, amenityRollup: rollup, passport };
   writeFileSync(OUT, JSON.stringify(plan, null, 2));
 
   console.log(`\n  Rec → place merge plan (DRY RUN) → src/data/rec-merge-plan.json`);
   console.log(`  destination features (park/playground/trail): ${destRecs.length}`);
   console.log(`    matched to existing places: ${matched}  (enrichments queued: ${enrich.length}; coord conflicts: ${conflicts})`);
   console.log(`    new places to add:          ${created}`);
+  console.log(`    placement rejects retained: ${rejectedPlacement.length}`);
   console.log(`  amenity rollup: ${Object.keys(rollup).length} parks gain shelter/field/facility counts`);
   console.log(`  passport markers (separate): ${passport.length}`);
   if (conflicts) {

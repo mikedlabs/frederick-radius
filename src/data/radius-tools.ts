@@ -148,7 +148,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "beer-tools",
-        label: "Beer tools",
+        label: "Frederick beer",
         description: "Match a pour, browse taprooms, and use your beer passport.",
         href: "/beer#find-your-pour",
         icon: "beer",
@@ -172,7 +172,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     tools: [
       {
         id: "county-map",
-        label: "County map",
+        label: "Map Frederick County",
         description: "Browse the full county map and its practical layers.",
         href: "/map?in=county",
         icon: "map",
@@ -182,7 +182,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "nearby",
-        label: "Nearby",
+        label: "Near me",
         description: "Rank useful places from a real location or chosen town.",
         href: "/nearby",
         icon: "map-pin",
@@ -427,7 +427,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "sports",
-        label: "Catch a game",
+        label: "Sports",
         description: "Follow pro, college, and high-school teams, then find places to play.",
         href: "/sports",
         icon: "activity",
@@ -467,7 +467,11 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "activity",
         tone: "brand",
         featured: true,
-        keywords: ["traffic", "power outage", "outage", "school closings", "road conditions", "live conditions", "pulse"],
+        keywords: [
+          "traffic", "weather", "air quality", "aqi", "smoke", "alerts",
+          "power outage", "outage", "school closings", "road closures",
+          "road conditions", "live conditions", "pulse",
+        ],
       },
       {
         id: "contacts",
@@ -495,7 +499,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     tools: [
       {
         id: "numbers",
-        label: "The county, counted",
+        label: "County numbers",
         description: "See counts calculated from the current Radius datasets.",
         href: "/numbers",
         icon: "sigma",
@@ -504,7 +508,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
       },
       {
         id: "rhythm",
-        label: "The county rhythm",
+        label: "Business hours by day",
         description: "See how posted business hours change through the week.",
         href: "/rhythm",
         icon: "activity",
@@ -639,7 +643,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     tools: [
       {
         id: "mark-a-spot",
-        label: "Mark a spot",
+        label: "Add a map note",
         description: "Add a useful field note to the map.",
         href: "/report",
         icon: "map-pin",

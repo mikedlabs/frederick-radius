@@ -16,6 +16,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { getPlaceDetails } from "@/lib/integrations/google-places";
+import { partitionFrederickCountyRows } from "@/lib/placement-trust";
 
 type Clean = {
   google_place_id: string;
@@ -40,7 +41,14 @@ const flag = (n: string) => process.argv.includes(n);
 
 async function main() {
   const clean = JSON.parse(readFileSync(IN, "utf8")) as Clean[];
-  const calls = clean.length;
+  // A stale or hand-edited Phase 1 artifact must not turn into paid calls.
+  // Partition before the cost projection and retain the source file unchanged.
+  const placement = partitionFrederickCountyRows(clean, (row) => ({
+    lng: row.lng,
+    lat: row.lat,
+  }));
+  const targets = placement.accepted;
+  const calls = targets.length;
   const listCost = calls * PRICE_DETAILS;
   const afterFree = Math.max(0, calls - FREE_EVENTS) * PRICE_DETAILS;
   const maxCost = parseFloat(arg("--max-cost", "60")!) || 60;
@@ -51,6 +59,11 @@ async function main() {
   console.log(`  List cost             $${listCost.toFixed(2)}`);
   console.log(`  After 5,000/mo free   $${afterFree.toFixed(2)}`);
   console.log(`  Hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  if (placement.rejected.length > 0) {
+    console.log(
+      `  Placement rejects     ${placement.rejected.length} (retained in discovered-clean.json; no paid call)`,
+    );
+  }
 
   const live = flag("--live");
   if (!live) {
@@ -87,8 +100,8 @@ async function main() {
     review_author?: string;
   }> = [];
   let ok = 0, miss = 0;
-  for (let i = 0; i < clean.length; i++) {
-    const c = clean[i];
+  for (let i = 0; i < targets.length; i++) {
+    const c = targets[i];
     const d = await getPlaceDetails(c.google_place_id, "full").catch(() => null);
     if (d) {
       ok++;
@@ -111,7 +124,7 @@ async function main() {
       miss++;
       out.push({ ...c }); // keep the place; just unenriched
     }
-    if ((i + 1) % 100 === 0) console.log(`  …${i + 1}/${clean.length} (ok ${ok}, miss ${miss})`);
+    if ((i + 1) % 100 === 0) console.log(`  …${i + 1}/${targets.length} (ok ${ok}, miss ${miss})`);
   }
   writeFileSync(OUT, JSON.stringify(out, null, 2));
   console.log(`\n  Done. enriched ${ok}, unenriched ${miss}, total ${out.length}.`);

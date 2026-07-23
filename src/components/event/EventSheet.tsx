@@ -15,6 +15,12 @@ import { formatDistance } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { haptic } from "@/lib/haptics";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import {
+  eventAttendanceLabel,
+  eventAttendanceMode,
+  eventOnlineActionUrl,
+  hasPhysicalAttendance,
+} from "@/lib/events/attendance";
 
 /**
  * EventSheet — the event side of the shared sheet system (app-like
@@ -86,14 +92,25 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
   const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
-  const ticketHref = event.ticket_url ?? event.rsvp_url;
-  const ticketLabel = event.ticket_url ? "Tickets" : "RSVP";
+  const attendance = eventAttendanceMode(event);
+  const physicalAttendance = hasPhysicalAttendance(event);
+  const onlineActionHref = eventOnlineActionUrl(event);
+  const ticketHref =
+    event.ticket_url ?? event.rsvp_url ??
+    (attendance !== "physical" ? onlineActionHref : null);
+  const ticketLabel =
+    event.ticket_url ? "Tickets" :
+    event.rsvp_url ? "RSVP" :
+    attendance === "online" ? "Online details" :
+    "Online option";
+  const attendanceLabel = eventAttendanceLabel(event);
   // Directions are a promise of a real doorstep: only offer them when the
   // coordinate is addressable (same rule that gates distance stamping —
   // an area-centroid event must never hand out turn-by-turn to a point
   // that isn't the event).
   const preciseGeo =
-    event.geo_confidence === "venue_match" || event.geo_confidence === "exact_address";
+    physicalAttendance &&
+    (event.geo_confidence === "venue_match" || event.geo_confidence === "exact_address");
 
   return (
     <>
@@ -215,16 +232,20 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  Some feed events carry NO venue name (the title was the venue
            *  and the normalizer blanked the duplicate) — the whole row
            *  hides rather than render an orphaned pin. */}
-          {(event.venue_name || event.address) && (
+          {(attendanceLabel || (physicalAttendance && event.address)) && (
             <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              {event.venue_name ? (
+              {attendanceLabel ? (
                 <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-2)" }}>
-                  <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                  <span className="font-medium">{event.venue_name}</span>
+                  {physicalAttendance ? (
+                    <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                  )}
+                  <span className="font-medium">{attendanceLabel}</span>
                 </span>
               ) : null}
-              {event.address ? <span>{event.address}</span> : null}
-              {event.distance_m !== undefined && (
+              {physicalAttendance && event.address ? <span>{event.address}</span> : null}
+              {physicalAttendance && event.distance_m !== undefined && (
                 <span>
                   <span className="font-mono tabular-nums">{formatDistance(event.distance_m)}</span> away
                 </span>
@@ -254,7 +275,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </p>
           )}
 
-          {/* Actions — tickets when they exist, directions always. */}
+          {/* Actions adapt to how the event can actually be attended. */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {ticketHref && !isCancelled && (
               <a
@@ -294,7 +315,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  map with the venue's peek open and the Eat & drink lens on,
            *  which also surfaces the nearest garage line. Only for events
            *  at a KNOWN venue; a guessed point gets no plan built on it. */}
-          {event.venue_place_slug && !isCancelled && (
+          {physicalAttendance && event.venue_place_slug && !isCancelled && (
             <div className="mt-4 rounded-[var(--app-radius-md)] border border-dashed p-3" style={{ borderColor: "var(--app-border)" }}>
               <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 Make a night of it

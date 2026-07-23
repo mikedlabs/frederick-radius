@@ -1,0 +1,105 @@
+/**
+ * Mechanical audit for data/sources.yaml.
+ *
+ * The manifest is the product's source-of-truth ledger, so a runtime adapter
+ * cannot remain labelled scaffold/pending after it starts feeding users. This
+ * check also catches active rows with no owner or a stale/missing code pointer.
+ */
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { parse } from "yaml";
+
+type Collection = "pipeline" | "runtime" | "workflow";
+type SourceRow = {
+  id: string;
+  status: string;
+  collection?: Collection;
+  transform_file?: string | null;
+};
+
+const REQUIRED_ACTIVE: Record<string, Collection> = {
+  // Business/place spine.
+  google_places: "workflow",
+  business_info_extraction: "workflow",
+  osm_overpass: "runtime",
+  // Event spine and high-value direct ingests.
+  dfp_events: "runtime",
+  visit_frederick: "runtime",
+  frederick_keys: "runtime",
+  ticketmaster: "runtime",
+  fcpl_libraries: "workflow",
+  fcvfra_events: "workflow",
+  venue_event_extraction: "workflow",
+  squarespace_venue_events: "runtime",
+};
+
+const REQUIRED_POLICY_GATED = [
+  "pulsepoint",
+  "mapillary_objects",
+  "eventbrite_frederick",
+  "bandsintown",
+  "seatgeek",
+] as const;
+
+export function auditSourceRows(rows: SourceRow[], root = process.cwd()): string[] {
+  const issues: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!row.id) {
+      issues.push("source row is missing id");
+      continue;
+    }
+    if (seen.has(row.id)) issues.push(`${row.id}: duplicate id`);
+    seen.add(row.id);
+    if (row.status !== "active") {
+      if (row.collection) issues.push(`${row.id}: non-active row declares collection=${row.collection}`);
+      continue;
+    }
+    if (!row.collection) issues.push(`${row.id}: active source has no collection owner`);
+    if (!row.transform_file) {
+      issues.push(`${row.id}: active source has no code/transform pointer`);
+    } else if (!existsSync(resolve(root, row.transform_file))) {
+      issues.push(`${row.id}: code/transform pointer does not exist (${row.transform_file})`);
+    }
+  }
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  for (const [id, collection] of Object.entries(REQUIRED_ACTIVE)) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: implemented source is missing from the manifest`);
+    } else if (row.status !== "active" || row.collection !== collection) {
+      issues.push(
+        `${id}: implemented source must be active/${collection}, found ${row.status}/${row.collection ?? "unowned"}`,
+      );
+    }
+  }
+  for (const id of REQUIRED_POLICY_GATED) {
+    const row = byId.get(id);
+    if (!row) {
+      issues.push(`${id}: policy-gated adapter is missing from the manifest`);
+    } else if (!["pending_approval", "pending_review"].includes(row.status)) {
+      issues.push(`${id}: policy-gated adapter must stay pending, found ${row.status}`);
+    }
+  }
+  return issues;
+}
+
+export function auditSourceManifest(text: string, root = process.cwd()): string[] {
+  const doc = parse(text) as { sources?: SourceRow[] };
+  return auditSourceRows(doc.sources ?? [], root);
+}
+
+function main() {
+  const path = resolve("data/sources.yaml");
+  const issues = auditSourceManifest(readFileSync(path, "utf8"));
+  if (issues.length > 0) {
+    console.error(`Source registry audit failed (${issues.length}):`);
+    for (const issue of issues) console.error(`  - ${issue}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log("Source registry audit passed.");
+}
+
+main();

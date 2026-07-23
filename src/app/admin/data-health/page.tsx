@@ -5,7 +5,6 @@ import { PLACES } from "@/data/places";
 import { rankPlaces, hoursCoverage, getNeedsReviewPlaces, getHiddenFromDiscovery } from "@/lib/loaders/places";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
-import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import { getLiveEvents } from "@/lib/integrations/ical-live";
@@ -129,8 +128,9 @@ async function Board() {
   const reviewEvents = getNeedsReviewEvents();
 
   // Live-feed connectivity — the at-a-glance "is it collecting data?"
-  // board. Keyless feeds are live wherever the network allows; keyed
-  // feeds are dark until their env var is set in the deployment.
+  // board. This is configuration state, not an uptime claim: keyless feeds
+  // need no credential but can still be unavailable upstream. Runtime
+  // availability and content drift live in the tripwire/snapshot sections.
   const feeds = feedStatuses();
   const dark = darkFeedCount();
 
@@ -310,20 +310,19 @@ async function Board() {
         )}
       </Section>
 
-      {/* ── Live feed connectivity — the "is it collecting data?" board.
-          Keyed feeds go green when their env var is set in the
-          deployment, amber ("needs key") until then; keyless feeds are
-          live wherever outbound network is allowed. ──────────────────── */}
+      {/* ── Feed configuration. This intentionally does not call a keyless
+          source "live": no credential required and upstream health are
+          different facts. Runtime health lives in tripwires/snapshots. ── */}
       <Section
         title="Live feed connectivity"
         aside={
           <StatusPill tone={dark === 0 ? "positive" : "warning"}>
-            {dark === 0 ? "All keyed feeds live" : `${dark} keyed feed${dark === 1 ? "" : "s"} dark`}
+            {dark === 0 ? "All required settings present" : `${dark} keyed feed${dark === 1 ? "" : "s"} dark`}
           </StatusPill>
         }
         description={
           dark === 0
-            ? "Every keyed feed has its API key configured."
+            ? "Every keyed adapter has its required deployment settings. Runtime checks below determine whether each source is actually answering."
             : "Dark feeds fail soft to empty, nothing breaks, but those layers stay blank until the key is set in the Vercel project env."
         }
       >
@@ -338,13 +337,13 @@ async function Board() {
                 subtitle={f.powers}
                 badge={
                   f.configured ? (
-                    <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Live</span>
+                    <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Configured</span>
                   ) : (
                     <code
                       className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{ background: toneTint("warning", 14), color: toneInkOnTint("warning") }}
                     >
-                      set {f.env}
+                      set {f.missingEnvs.join(" + ")}
                     </code>
                   )
                 }
@@ -353,11 +352,11 @@ async function Board() {
           </HairlineList>
         </div>
 
-        <Disclosure summary={`${feeds.keyless.length} keyless feeds (live without a key)`}>
+        <Disclosure summary={`${feeds.keyless.length} feeds need no credential`}>
           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {feeds.keyless.map((f) => (
               <div key={f.name} className="flex items-center gap-2 text-[12px]">
-                <StatusDot tone="positive" />
+                <StatusDot tone="neutral" />
                 <span className="font-medium" style={{ color: "var(--app-ink-2)" }}>{f.name}</span>
                 <span className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>· {f.powers}</span>
               </div>
@@ -387,13 +386,11 @@ async function Board() {
         title="Placement (needs review)"
         description={
           <>
-            Coordinates that fall outside the Frederick County bbox
-            (lat&nbsp;{FREDERICK_COUNTY_BBOX.south}–{FREDERICK_COUNTY_BBOX.north},
-            lng&nbsp;{FREDERICK_COUNTY_BBOX.west}–{FREDERICK_COUNTY_BBOX.east})
-            or are missing entirely. These are dropped from every public
-            surface so a mispositioned marker can never reach a user.
-            Fix the source row in <code>src/data/places.ts</code> or{" "}
-            <code>src/data/events.ts</code> and the row clears next build.
+            Coordinates that are missing, malformed, or outside the real
+            Frederick County outline and its documented straddle allowance.
+            They stay out of public results, but the rejected source row remains
+            here with its address and reason so an editor can correct or
+            deliberately remove it.
           </>
         }
       >
@@ -407,34 +404,47 @@ async function Board() {
           />
         </div>
         {(reviewPlaces.length > 0 || reviewEvents.length > 0) && (
-          <Disclosure summary={`Show the first ${Math.min(20, reviewPlaces.length + reviewEvents.length)} rows`}>
+          <Disclosure summary={`Show up to ${Math.min(100, reviewPlaces.length + reviewEvents.length)} rows`}>
             <HairlineList>
-              {reviewPlaces.slice(0, 20).map((p, i) => (
+              {reviewPlaces.slice(0, 100).map((p, i) => (
                 <HairlineRow
                   key={`p:${p.slug}`}
                   index={i}
                   title={
-                    <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex flex-wrap items-center gap-1.5">
                       <Tag tone="muted">place</Tag>
-                      <span className="font-mono text-[12px]">{p.slug}</span>
+                      <span style={{ color: "var(--app-ink)" }}>{p.name}</span>
+                      <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                        {p.slug}
+                      </span>
                     </span>
                   }
-                  meta={p.geom ? `${p.geom.lng.toFixed(4)}, ${p.geom.lat.toFixed(4)}` : "no geom"}
+                  meta={[
+                    p.rejection_reason.replace(/-/g, " "),
+                    p.source,
+                    p.address || "no address",
+                    `declared ${p.municipality || "no municipality"}`,
+                    p.geom
+                      ? `${p.geom.lng.toFixed(4)}, ${p.geom.lat.toFixed(4)}`
+                      : "no coordinate",
+                  ].join(" · ")}
                 />
               ))}
-              {reviewEvents.slice(0, 20).map((e, i) => (
-                <HairlineRow
-                  key={`e:${e.slug}`}
-                  index={reviewPlaces.slice(0, 20).length + i}
-                  title={
-                    <span className="inline-flex items-center gap-1.5">
-                      <Tag tone="cool">event</Tag>
-                      <span className="font-mono text-[12px]">{e.slug}</span>
-                    </span>
-                  }
-                  meta={e.geom ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}` : "no geom"}
-                />
-              ))}
+              {reviewEvents
+                .slice(0, Math.max(0, 100 - reviewPlaces.length))
+                .map((e, i) => (
+                  <HairlineRow
+                    key={`e:${e.slug}`}
+                    index={reviewPlaces.slice(0, 100).length + i}
+                    title={
+                      <span className="inline-flex items-center gap-1.5">
+                        <Tag tone="cool">event</Tag>
+                        <span className="font-mono text-[12px]">{e.slug}</span>
+                      </span>
+                    }
+                    meta={e.geom ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}` : "no geom"}
+                  />
+                ))}
             </HairlineList>
           </Disclosure>
         )}

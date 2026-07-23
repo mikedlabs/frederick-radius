@@ -41,6 +41,10 @@ export const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
   "defibrillator", "shelter", "wifi", "ev-charging",
+  // Moderated, expiring community reports use the amenity source and its
+  // grouped visibility controls, even though they are time-sensitive context
+  // rather than physical amenities.
+  "report-hazard", "report-condition", "report-tip", "report-note",
   // A playground is an amenity people look for, not a business — it
   // rides the amenity tray/layer, not the place cluster.
   "playground",

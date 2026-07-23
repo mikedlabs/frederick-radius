@@ -79,6 +79,8 @@ export const liveEventSchema = z
      *  coordinates (DFP Vibemap venue lat/lng) set "geocoded" so cards
      *  may show a real distance; same strip risk as is_all_day. */
     placement: z.enum(["geocoded", "venue"]).optional(),
+    attendance_mode: z.enum(["physical", "online", "mixed"]).optional(),
+    online_url: z.string().url().optional(),
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),

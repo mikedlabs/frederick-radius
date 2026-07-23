@@ -40,6 +40,9 @@ export type OsmPlace = {
   /** Reference photo URL — set only for field-collected amenities (osm_id
    *  prefixed "field:"), surfaced in the map popup. */
   photo?: string;
+  /** Real observation/submission time carried by first-party map records.
+   *  OSM responses omit it; community reports use it for freshness. */
+  observed_at?: string;
 };
 
 type OverpassElement = {

@@ -12,6 +12,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: ingest-venue-events
+  cancel-in-progress: false
 
 jobs:
   ingest:
@@ -36,15 +41,22 @@ jobs:
         run: |
           npm run style:lint
           npx vitest run tests/venue-events-copy.spec.ts tests/squarespace-events.spec.ts
-      - name: Commit refreshed data
-        run: |
-          git config user.name "frederick-radius-bot"
-          git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/venue-events.json; then
-            git add src/data/venue-events.json
-            git commit -m "data: refresh venue events (automated)"
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-          else
-            echo "No venue event changes."
-          fi
+      # Generated event rows affect every discovery surface. Keep the data diff
+      # behind the same human-review and CI boundary as application code.
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/venue-event-refresh
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh venue events (automated)"
+          title: "data: refresh venue events"
+          body: |
+            Automated venue-event extraction refresh.
+
+            The workflow ran the Radius copy/provenance checks before opening
+            this PR. Review event times, source links, and unexpected row-count
+            changes before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

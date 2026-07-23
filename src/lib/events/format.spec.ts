@@ -35,14 +35,14 @@ describe("formatEventWhen", () => {
     expect(when).toBe("Tue, Jul 7 · All day");
   });
 
-  it("prints 'All day' when starts_at equals ends_at (zero-duration row)", () => {
+  it("prints the known start time when a feed has no duration", () => {
     const when = formatEventWhen(
       base({
         starts_at: "2026-07-07T14:00:00.000Z",
         ends_at: "2026-07-07T14:00:00.000Z",
       }),
     );
-    expect(when).toBe("Tue, Jul 7 · All day");
+    expect(when).toBe("Tue, Jul 7 · 10:00 AM");
   });
 
   it("keeps a real multi-day range as a date range", () => {

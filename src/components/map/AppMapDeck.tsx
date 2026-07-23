@@ -118,7 +118,11 @@ export default function AppMapDeck({
                   <li key={r.id}>
                     <button
                       type="button"
-                      onClick={() => pickSearch(r)}
+                      data-map-search-result={r.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        pickSearch(r);
+                      }}
                       className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
                     >
                       <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />

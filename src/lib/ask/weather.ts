@@ -68,3 +68,9 @@ export function askWeatherSafetyLine(snapshot: AskWeatherSnapshot): string | nul
   }
   return parts.length > 0 ? parts.join(" ") : null;
 }
+
+export function askAirQualityLine(snapshot: AskWeatherSnapshot): string {
+  return snapshot.aqi
+    ? `AirNow reports AQI ${snapshot.aqi.aqi}, ${snapshot.aqi.category.name}, for ${snapshot.aqi.reportingArea}.`
+    : "I couldn’t load a fresh AirNow observation right now.";
+}

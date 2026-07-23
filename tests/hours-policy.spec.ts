@@ -7,10 +7,8 @@ import {
 
 /**
  * Hours policy gate (data brief 4.3): open and closed states render only
- * from verified hours, and once enforcement is on, only from hours
- * verified inside the freshness window. The flag exists so the policy
- * can deploy ahead of the rolling refresh without blanking every open
- * state in the app; these tests pin both modes.
+ * from verified hours inside the freshness window. The policy is strict
+ * unless an operator deliberately sets the emergency rollback to 0.
  */
 const NOW = new Date("2026-06-10T12:00:00Z");
 
@@ -45,7 +43,13 @@ describe("mayAssertOpenState", () => {
     expect(mayAssertOpenState(false, "2026-06-10T00:00:00Z", NOW)).toBe(false);
   });
 
-  it("flag off: verified hours assert regardless of age (current production behavior)", () => {
+  it("defaults to strict freshness when no deployment flag is set", () => {
+    expect(mayAssertOpenState(true, "2026-01-01T00:00:00Z", NOW)).toBe(false);
+    expect(mayAssertOpenState(true, undefined, NOW)).toBe(false);
+  });
+
+  it("explicit rollback: verified hours assert regardless of age", () => {
+    process.env.HOURS_FRESHNESS_ENFORCED = "0";
     expect(mayAssertOpenState(true, "2026-01-01T00:00:00Z", NOW)).toBe(true);
     expect(mayAssertOpenState(true, undefined, NOW)).toBe(true);
   });

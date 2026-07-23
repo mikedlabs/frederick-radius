@@ -42,13 +42,17 @@ export function formatEventWhen(e: Event): string {
     minute: "2-digit",
     hour12: true,
   });
-  // All-day rows (and zero-duration rows, which carry no real clock) get an
-  // honest "All day" instead of a bogus midnight/zero time range — the same
-  // convention eventDateBlock uses below.
-  if (e.is_all_day || e.starts_at === e.ends_at) {
+  // Only an explicit all-day flag earns "All day." Some feeds preserve a real
+  // start clock but have no duration, represented as ends_at === starts_at.
+  // Calling a 6 PM artist talk "All day" is worse than withholding its unknown
+  // end, so zero-duration rows print the known start time only.
+  if (e.is_all_day) {
     return sameDay
       ? `${dateFmt.format(start)} · All day`
       : `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
+  }
+  if (e.starts_at === e.ends_at) {
+    return `${dateFmt.format(start)} · ${timeFmt.format(start)}`;
   }
   if (sameDay) {
     return `${dateFmt.format(start)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`;

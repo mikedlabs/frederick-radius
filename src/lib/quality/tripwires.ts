@@ -5,6 +5,16 @@ import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { askFrederick } from "@/lib/ask/answer";
+import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
+import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
+import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
+import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
+import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
+import {
+  getPulsePointIncidentsResult,
+  pulsepointConfigured,
+} from "@/lib/integrations/pulsepoint";
 import ENRICHMENT from "@/data/places-enrichment.json" with { type: "json" };
 import BUSINESS_INFO from "@/data/business-info.json" with { type: "json" };
 import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
@@ -26,7 +36,37 @@ import VENUE_EVENTS from "@/data/venue-events.json" with { type: "json" };
  * so the cron can never be broken by its own watchdog.
  */
 
-type EnrichmentRow = { photo_names?: string[] };
+type EnrichmentRow = {
+  photo_names?: string[];
+  photo_attributions?: GooglePhotoAttribution[];
+};
+
+/** Catch the other global-thumbnail failure: the upstream resource names may
+ * still resolve, but Radius cannot legally/truthfully publish them because the
+ * exact per-photo attribution records never reached the dataset. */
+export function photoMetadataCoverageAnomaly(
+  rows: readonly EnrichmentRow[],
+): Anomaly | null {
+  const named = rows.filter((row) => (row.photo_names?.length ?? 0) > 0);
+  if (named.length === 0) return null;
+  const publishable = named.filter(
+    (row) =>
+      publishableGooglePhotoNames(
+        row.photo_names ?? [],
+        row.photo_attributions ?? [],
+      ).length > 0,
+  ).length;
+  const ratio = publishable / named.length;
+  return ratio < 0.25
+    ? {
+        source: "google-photo-metadata",
+        kind: "photo_rot",
+        detail:
+          `${publishable}/${named.length} photo-bearing enrichment rows have an exact publishable attribution pair. ` +
+          "Run the request-capped photo-attribution backfill and review its PR.",
+      }
+    : null;
+}
 
 /**
  * Sample real photo names across the catalog and fetch them at thumbnail
@@ -40,6 +80,12 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
     .filter(([, v]) => Array.isArray(v.photo_names) && v.photo_names.length > 0)
     .sort(([a], [b]) => a.localeCompare(b));
   if (rows.length === 0) return [];
+  const metadataAnomaly = photoMetadataCoverageAnomaly(
+    rows.map(([, row]) => row),
+  );
+  // Do not spend photo-media requests proving that legacy names resolve when
+  // the app is intentionally suppressing them for missing attribution.
+  if (metadataAnomaly) return [metadataAnomaly];
   const step = Math.max(1, Math.floor(rows.length / sample));
   const picks = Array.from({ length: sample }, (_, i) => rows[Math.min(i * step, rows.length - 1)]);
 
@@ -198,6 +244,72 @@ export function ingestFreshnessTripwire(now: Date = new Date()): Anomaly[] {
   return out;
 }
 
+export type AvailabilityCheck = {
+  source: string;
+  available: boolean;
+};
+
+/** Turn a successful-empty vs unavailable distinction into operator-visible
+ * anomalies. These feeds power "all clear" claims, so a quiet response is only
+ * green when the upstream actually answered. */
+export function availabilityAnomalies(
+  checks: AvailabilityCheck[],
+): Anomaly[] {
+  return checks
+    .filter((check) => !check.available)
+    .map((check) => ({
+      source: check.source,
+      kind: "live_source_failed" as const,
+      detail:
+        "The live source could not be verified. Public surfaces must show an unavailable state, not an all-clear.",
+    }));
+}
+
+async function within<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise<T>((resolve) => {
+      timer = setTimeout(() => resolve(fallback), 10_000);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+/** Canary the live-condition sources whose empty sets can otherwise look like
+ * good news. PulsePoint participates only when the deployment intentionally
+ * configures it; its absence is already reported by the feed registry. */
+export async function conditionsTripwire(): Promise<Anomaly[]> {
+  const [traffic, power, schools, weather, safety] = await Promise.all([
+    within(
+      getChartIncidentsFrederickResult(),
+      { data: [], available: false },
+    ),
+    within(
+      getFrederickOutagesResult(),
+      { data: { total_out: 0, total_served: 0, munis: [] }, available: false },
+    ),
+    within(getFcpsAlertsResult(), { data: [], available: false }),
+    within(getNwsAlertsResult(), { alerts: [], available: false }),
+    pulsepointConfigured()
+      ? within(
+          getPulsePointIncidentsResult(),
+          { data: [], available: false, configured: true },
+        )
+      : Promise.resolve(null),
+  ]);
+
+  const checks: AvailabilityCheck[] = [
+    { source: "MDOT CHART", available: traffic.available },
+    { source: "Potomac Edison", available: power.available },
+    { source: "FCPS", available: schools.available },
+    { source: "NWS alerts", available: weather.available },
+  ];
+  if (safety) {
+    checks.push({ source: "PulsePoint", available: safety.available });
+  }
+  return availabilityAnomalies(checks);
+}
+
 export type TripwireReport = {
   anomalies: Anomaly[];
   /** One line per check: name + green/red. */
@@ -206,20 +318,22 @@ export type TripwireReport = {
 
 /** Run every tripwire (concurrently — they're independent networks). */
 export async function runTripwires(now: Date = new Date()): Promise<TripwireReport> {
-  const [photos, transit, events, ask] = await Promise.all([
+  const [photos, transit, events, ask, conditions] = await Promise.all([
     photoTripwire(),
     transitTripwire(),
     eventsTripwire(now),
     askCanaryTripwire(),
+    conditionsTripwire(),
   ]);
   const ingest = ingestFreshnessTripwire(now);
   return {
-    anomalies: [...photos, ...transit, ...events, ...ask, ...ingest],
+    anomalies: [...photos, ...transit, ...events, ...ask, ...conditions, ...ingest],
     checks: [
       { name: "photos", green: photos.length === 0 },
       { name: "transit", green: transit.length === 0 },
       { name: "events-today", green: events.length === 0 },
       { name: "ask-canary", green: ask.length === 0 },
+      { name: "live-conditions", green: conditions.length === 0 },
       { name: "ingest-freshness", green: ingest.length === 0 },
     ],
   };

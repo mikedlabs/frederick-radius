@@ -11,16 +11,16 @@ never breaks — it just contributes nothing until configured.
 | Feed | Env var | Unlocks | Where to get it |
 | --- | --- | --- | --- |
 | Ticketmaster | `TICKETMASTER_API_KEY` | Concerts + Frederick Keys home games | developer.ticketmaster.com (free Discovery API key) |
-| Bandsintown | `BANDSINTOWN_APP_ID` | Live music by tracked artists | artists.bandsintown.com API (request an app id) |
-| SeatGeek | `SEATGEEK_CLIENT_ID` | Ticketed concerts/shows near Frederick | seatgeek.com/account/develop |
-| Eventbrite | `EVENTBRITE_TOKEN` | Events from the curated organizer registry | eventbrite.com → Developer → personal OAuth token |
+| Bandsintown | `BANDSINTOWN_ENABLED=1` and `BANDSINTOWN_APP_ID` | Live music by tracked artists | Enable only after approval is recorded in `data/sources.yaml` |
+| SeatGeek | `SEATGEEK_ENABLED=1` and `SEATGEEK_CLIENT_ID` | Ticketed concerts/shows near Frederick | Enable only after approval is recorded in `data/sources.yaml` |
+| Eventbrite | `EVENTBRITE_ENABLED=1` and `EVENTBRITE_TOKEN` | Events from the curated organizer registry | Enable only after approval is recorded in `data/sources.yaml` |
 | Google Places | `GOOGLE_PLACES_API_KEY` | Place details, photos, hours, nearby | console.cloud.google.com (Places API) |
-| Mapillary | `MAPILLARY_TOKEN` | Street-level imagery + litter points | mapillary.com/dashboard/developers |
+| Mapillary | `MAPILLARY_ENABLED=1` and `MAPILLARY_TOKEN` | Street-object detections | Enable only after the attribution/terms review is recorded in `data/sources.yaml` |
 | AirNow | `AIRNOW_API_KEY` | Air-quality index | docs.airnowapi.org |
 | NPS | `NPS_API_KEY` | Park alerts + events (Catoctin, Monocacy) | nps.gov/subjects/developer |
 | Hood College | `HOOD_CALENDAR_URL` | Hood events calendar | a working public iCal URL (the old Trumba one is HTTP 410 — see below) |
 | FCPS | `FCPS_FEED_URL` | Frederick County Public Schools calendar | district calendar export URL |
-| PulsePoint | `PULSEPOINT_AGENCY_ID` | Live fire / EMS incidents | PulsePoint agency id for Frederick County |
+| PulsePoint | `PULSEPOINT_ENABLED=1` and `PULSEPOINT_AGENCY_ID` | Non-medical fire, rescue, and traffic incidents | Enable only after the privacy/licensing review is recorded in `data/sources.yaml`; then set the Frederick County agency id |
 
 Keyless feeds (County GIS, USGS, NWS, Overpass, MDOT CHART, SeeClickFix, news
 RSS, MD Farmers Markets, TransIT, MARC, the per-venue iCals) need no secret and

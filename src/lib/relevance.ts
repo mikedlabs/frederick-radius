@@ -154,6 +154,12 @@ export const RECOMMEND_ALLOW_SLUGS: ReadonlySet<string> = new Set([
 const RESTRICTED_MEMBERSHIP_VENUE_RE =
   /\b(?:fraternal\s+order\s+of\s+eagles|eagles?\s+(?:lodge|aerie)|aerie\s+(?:no\.?\s*)?#?\d+|elks?\s+lodge|moose\s+lodge|american\s+legion(?:\s+post)?|v\.?f\.?w\.?|veterans\s+of\s+foreign\s+wars)\b/i;
 
+// Some business records explicitly say that the mapped address is an office,
+// not a customer destination. Keep them searchable, but never recommend them
+// as somewhere to get coffee, food, or another walk-in need.
+const NON_CUSTOMER_DESTINATION_RE =
+  /\b(?:office only|not open to (?:the )?public)\b/i;
+
 export function isRestrictedMembershipVenue(
   name: string | null | undefined,
 ): boolean {
@@ -188,6 +194,7 @@ export function isRecommendable(p: {
   slug: string;
 }): boolean {
   if (isRestrictedMembershipVenue(p.name)) return false;
+  if (p.name && NON_CUSTOMER_DESTINATION_RE.test(p.name)) return false;
   if (RECOMMEND_ALLOW_SLUGS.has(p.slug)) return true;
   const t = p.primary_type?.trim().toLowerCase();
   if (!t || !RECOMMENDATION_DENY_TYPES.has(t)) return true;

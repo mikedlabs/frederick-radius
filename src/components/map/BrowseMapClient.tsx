@@ -8,7 +8,7 @@ import AppMapClient, {
   type MapLineFC,
   type CemeteryPin,
 } from "@/components/map/AppMapClient";
-import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
+import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import type { ParkingPin } from "@/lib/map/parking";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
@@ -21,6 +21,7 @@ import {
 import { defaultTimeMode, type TimeMode } from "@/components/map/dockCaption";
 import { INTENTS, INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { isOpenNow } from "@/lib/hours";
+import { OPEN_NOW_MINIMUM_COVERAGE } from "@/lib/hours-availability";
 import { isLiveMusicEvent } from "@/lib/events/live-music";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
@@ -123,6 +124,7 @@ export default function BrowseMapClient({
   weekEvents,
   transitStops,
   marcStations,
+  foodTruckPins,
 }: {
   /** ALL pin-slim places (unfiltered; open_status baked per ISR render). */
   places: MapPinPlace[];
@@ -145,6 +147,8 @@ export default function BrowseMapClient({
   /** Bus-stop dots + MARC stations for the Transit layer (phase 3). */
   transitStops: TransitStopPin[];
   marcStations: MarcStationPin[];
+  /** Operator-confirmed live locations; empty until a vendor drops a beacon. */
+  foodTruckPins: FoodTruckMapPin[];
 }) {
   const sp = useSearchParams();
   const intentParam = sp.get("intent") ?? undefined;
@@ -231,7 +235,16 @@ export default function BrowseMapClient({
   // open right this minute (open or closing-soon). open_status is
   // server-baked per ISR render, so "now" here is bounded-stale
   // (≤ revalidate + the 5-minute decoration bucket) — same as before.
-  const openNow = openParam === "now";
+  const reliableHoursCount = allPlaces.filter(
+    (place) =>
+      place.open_status.state !== "unknown" &&
+      place.open_status.state !== "unverified",
+  ).length;
+  const reliableHoursCoverage =
+    allPlaces.length > 0 ? reliableHoursCount / allPlaces.length : 0;
+  const openNowAvailable =
+    reliableHoursCoverage >= OPEN_NOW_MINIMUM_COVERAGE;
+  const openNow = openParam === "now" && openNowAvailable;
   const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
   const afterOpen = openNow
     ? subFiltered.filter((p) => isOpenNow(p.open_status))
@@ -269,21 +282,30 @@ export default function BrowseMapClient({
       : defaultTimeMode(counts);
 
   const matchTime = eventTimePredicate(timeMode, now);
-  const seenCells = new Set<string>();
+  const eventCells = new Set<string>();
   const events: EventPin[] = [];
-  for (const e of weekEvents) {
-    if (!matchTime(e.starts_at, e.ends_at)) continue;
-    if (
-      musicTonight &&
-      !isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title })
-    )
-      continue;
-    // One pin per ~11m cell so stacked venue listings don't shingle.
-    const cell = `${e.lat.toFixed(4)}:${e.lng.toFixed(4)}`;
-    if (seenCells.has(cell)) continue;
-    seenCells.add(cell);
-    events.push(e);
-    if (events.length >= 80) break;
+  // Events are powerful map context after someone asks for a time. They are
+  // not neutral county furniture: inferred windows created a downtown pile of
+  // calendar pucks before the visitor made a choice.
+  if (timeModeExplicit || musicTonight) {
+    for (const e of weekEvents) {
+      if (!matchTime(e.starts_at, e.ends_at)) continue;
+      if (
+        musicTonight &&
+        !isLiveMusicEvent({ category: e.category, venue_place_slug: e.venue_place_slug, title: e.title })
+      )
+        continue;
+      // Keep every occurrence at an accepted venue cell. AppMap groups these
+      // into one count marker and a chronological drawer, so co-located events
+      // are no longer silently discarded. Cap distinct cells (not events) to
+      // keep the DOM marker budget bounded.
+      const cell = `${e.lat.toFixed(4)}:${e.lng.toFixed(4)}`;
+      if (!eventCells.has(cell)) {
+        if (eventCells.size >= 80) continue;
+        eventCells.add(cell);
+      }
+      events.push(e);
+    }
   }
 
   // Count for the dock's Live-music chip: tonight's confirmed shows,
@@ -325,6 +347,7 @@ export default function BrowseMapClient({
       events={events}
       transitStops={transitStops}
       marcStations={marcStations}
+      foodTruckPins={foodTruckPins}
       fullBleed
       // Center on the user's known location and measure from there when
       // arriving via a category tile (?intent=…) OR under a "near me" scope
@@ -355,6 +378,11 @@ export default function BrowseMapClient({
         subKey: activeSub?.key,
         openNow,
         openNowCount,
+        openNowAvailable,
+        openNowUnavailableLabel:
+          allPlaces.length > 0
+            ? `Verified hours are available for ${reliableHoursCount.toLocaleString("en-US")} of ${allPlaces.length.toLocaleString("en-US")} places.`
+            : "Open-now filtering is unavailable until place hours are verified.",
         dealsOn,
         dealsTodayCount,
         musicTonight,

@@ -14,18 +14,26 @@ vi.mock("@/lib/integrations/ical-live", () => ({
   getLiveEvents: vi.fn(async () => ({ events: [], sources_succeeded: [], sources_failed: [] })),
 }));
 vi.mock("@/lib/integrations/ticketmaster", () => ({
-  fetchTicketmasterMusic: vi.fn(async () => []),
-  fetchTicketmasterSports: vi.fn(async () => []),
+  fetchTicketmasterMusicResult: vi.fn(async () => ({ items: [], state: "ok" })),
+  fetchTicketmasterSportsResult: vi.fn(async () => ({ items: [], state: "disabled" })),
 }));
 vi.mock("@/lib/integrations/bandsintown", () => ({
-  fetchBandsintownForArtists: vi.fn(async () => []),
+  fetchBandsintownForArtistsResult: vi.fn(async () => ({ items: [], state: "disabled" })),
 }));
-vi.mock("@/lib/integrations/seatgeek", () => ({ fetchSeatGeek: vi.fn(async () => []) }));
-vi.mock("@/lib/integrations/eventbrite", () => ({ fetchEventbrite: vi.fn(async () => []) }));
-vi.mock("@/lib/integrations/visitfrederick", () => ({ fetchVisitFrederick: vi.fn(async () => []) }));
-vi.mock("@/lib/integrations/frederickKeys", () => ({ fetchFrederickKeys: vi.fn(async () => []) }));
+vi.mock("@/lib/integrations/seatgeek", () => ({
+  fetchSeatGeekResult: vi.fn(async () => ({ items: [], state: "disabled" })),
+}));
+vi.mock("@/lib/integrations/eventbrite", () => ({
+  fetchEventbriteResult: vi.fn(async () => ({ items: [], state: "disabled" })),
+}));
+vi.mock("@/lib/integrations/visitfrederick", () => ({
+  fetchVisitFrederickResult: vi.fn(async () => ({ items: [], state: "ok" })),
+}));
+vi.mock("@/lib/integrations/frederickKeys", () => ({
+  fetchFrederickKeysResult: vi.fn(async () => ({ items: [], state: "ok" })),
+}));
 vi.mock("@/lib/integrations/squarespace-live", () => ({
-  fetchSquarespaceVenueEvents: vi.fn(async () => []),
+  fetchSquarespaceVenueEventsResult: vi.fn(async () => ({ items: [], state: "disabled" })),
 }));
 vi.mock("@/lib/loaders/ingested", () => ({ getIngestedSeries: vi.fn(async () => []) }));
 vi.mock("@/lib/loaders/venueEvents", () => ({
@@ -41,6 +49,8 @@ vi.mock("@/lib/loaders/eventThumb", () => ({ withVenueThumbs: vi.fn((events: unk
 
 import { assembleRaw } from "@/lib/loaders/unifiedEvents";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
+import { fetchVisitFrederickResult } from "@/lib/integrations/visitfrederick";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
 
@@ -48,10 +58,15 @@ const NOW = new Date("2026-07-15T16:00:00.000Z");
 
 describe("assembleRaw — assembly seam", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(getLiveEvents).mockResolvedValue({
       events: [],
       sources_succeeded: [],
       sources_failed: [],
+    });
+    vi.mocked(fetchVisitFrederickResult).mockResolvedValue({
+      items: [],
+      state: "ok",
     });
   });
 
@@ -61,6 +76,12 @@ describe("assembleRaw — assembly seam", () => {
     expect(Array.isArray(r.publicEvents)).toBe(true);
     expect(r.sourceHealth.degraded).toBe(false);
     expect(r.sourceHealth.unavailable).toEqual([]);
+    // getLiveEvents owns the Ticketmaster music query. assembleRaw must not
+    // issue the same Discovery API request a second time.
+    expect(fetchTicketmasterMusicResult).toHaveBeenCalledTimes(1);
+    expect(getLiveEvents).toHaveBeenCalledWith(60, {
+      includeTicketmaster: false,
+    });
   });
 
   it("keeps the public lane a strict subset of the unified set", async () => {
@@ -91,6 +112,17 @@ describe("assembleRaw — assembly seam", () => {
     expect(r.sourceHealth.degraded).toBe(true);
     expect(r.sourceHealth.unavailable).toContain("municipal calendars");
     // The curated seeds still assemble; a dead feed never yields a dead board.
+    expect(Array.isArray(r.unified)).toBe(true);
+  });
+
+  it("distinguishes a healthy empty adapter from an upstream outage", async () => {
+    vi.mocked(fetchVisitFrederickResult).mockResolvedValueOnce({
+      items: [],
+      state: "failed",
+    });
+    const r = await assembleRaw(NOW);
+    expect(r.sourceHealth.degraded).toBe(true);
+    expect(r.sourceHealth.unavailable).toContain("Visit Frederick");
     expect(Array.isArray(r.unified)).toBe(true);
   });
 

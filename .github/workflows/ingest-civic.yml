@@ -14,6 +14,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: ingest-municipal-civic
+  cancel-in-progress: false
 
 jobs:
   ingest:
@@ -30,17 +35,19 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run ingest:civic
-      - name: Commit refreshed data
-        run: |
-          git config user.name  "frederick-radius-bot"
-          git config user.email "bot@users.noreply.github.com"
-          if ! git diff --quiet -- src/data/municipal-civic.json; then
-            git add src/data/municipal-civic.json
-            git commit -m "data: refresh municipal civic (automated)"
-            # Rebase onto any commits that landed during the run, then push,
-            # so a moving main can't reject the bot's data commit.
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
-          else
-            echo "No civic data changes."
-          fi
+      - name: Open review PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/municipal-civic-refresh
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh municipal civic (automated)"
+          title: "data: refresh municipal civic information"
+          body: |
+            Automated municipal-source extraction refresh.
+
+            Review source links, effective dates, and any changed instructions
+            before merging. CI runs on this PR before the data can reach users.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

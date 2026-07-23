@@ -28,8 +28,12 @@ type SourceRow = {
   id: string;
   url: string;
   status: string;
+  /** Which system owns freshness for an active source. */
+  collection?: "pipeline" | "runtime" | "workflow";
   resolve_json_path?: string;
   format?: string;
+  schema_file?: string | null;
+  transform_file?: string | null;
 };
 
 function today(): string {
@@ -159,10 +163,30 @@ async function main(): Promise<void> {
   const rows: SourceRow[] = (sources?.items ?? []).map((n) => (n as { toJSON: () => SourceRow }).toJSON());
 
   const active = rows.filter((r) => r.status === "active");
-  console.log(`Processing ${active.length} active sources of ${rows.length} total.`);
+  const missingOwner = active.filter(
+    (r) => !["pipeline", "runtime", "workflow"].includes(r.collection ?? ""),
+  );
+  if (missingOwner.length > 0) {
+    console.error(
+      `Active sources missing a collection owner: ${missingOwner.map((r) => r.id).join(", ")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const managed = active.filter((r) => r.collection === "pipeline");
+  console.log(
+    `Processing ${managed.length} pipeline-managed active sources of ${active.length} active (${rows.length} total).`,
+  );
 
   const failures: string[] = [];
-  for (const row of active) {
+  for (const row of managed) {
+    if (!row.schema_file || !row.transform_file) {
+      console.error(
+        `[${row.id}] configuration error: pipeline source needs schema_file and transform_file`,
+      );
+      failures.push(row.id);
+      continue;
+    }
     const stamp = new Date().toISOString();
     try {
       const r = await processSource(row);

@@ -14,6 +14,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { PLACES } from "@/data/places";
+import { isValidCoord } from "@/lib/geo";
 import {
   getPlaceDetails,
   resolveAndEnrich,
@@ -43,7 +44,10 @@ async function main() {
   const existing: Record<string, PlaceEnrichment & { enriched_at: string }> =
     JSON.parse(readFileSync(OUT, "utf8"));
 
+  const rejectedPlacement = PLACES.filter((p) => !isValidCoord(p.geom));
   let targets = PLACES.filter((p) => {
+    // County membership is a prerequisite for any paid detail call.
+    if (!isValidCoord(p.geom)) return false;
     if (all) return true;
     if (dfpThin) {
       if (p.source !== "dfp") return false;
@@ -68,6 +72,11 @@ async function main() {
   console.log(`  list cost             $${listCost.toFixed(2)}`);
   console.log(`  after 5,000/mo free   ~$0.00`);
   console.log(`  hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  if (rejectedPlacement.length > 0) {
+    console.log(
+      `  placement rejects     ${rejectedPlacement.length} (retained in source data; no paid call)`,
+    );
+  }
   if (listCost > maxCost) {
     console.log(`  ABORT: projected list cost exceeds the cap.\n`);
     process.exit(1);

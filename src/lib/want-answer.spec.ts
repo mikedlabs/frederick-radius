@@ -136,7 +136,7 @@ describe("buildWantAnswer context", () => {
     expect(ranked[0]?.slug).toBe("local-fit");
   });
 
-  it("returns the complete open brewery set for the Beer page filter", () => {
+  it("returns a complete, deduplicated brewery set without treating stale hours as open", () => {
     const answer = buildWantAnswer(
       "breweries",
       null,
@@ -144,7 +144,10 @@ describe("buildWantAnswer context", () => {
       new Date("2026-07-18T00:00:00Z"),
     );
     expect(answer?.open).toBeDefined();
-    expect(answer?.open?.length).toBeGreaterThan(5);
+    expect(answer?.total).toBeGreaterThan(10);
+    expect(
+      answer?.open?.every((row) => /^(?:Open|Closing soon)\b/.test(row.fact)),
+    ).toBe(true);
     expect(new Set(answer?.open?.map((row) => row.slug)).size).toBe(answer?.open?.length);
   });
 });

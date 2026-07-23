@@ -25,6 +25,11 @@
  */
 import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { cleanFeedText } from "@/lib/format/text";
+import {
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const STATSAPI = "https://statsapi.mlb.com/api/v1/schedule";
 const KEYS_TEAM_ID = 493;
@@ -115,7 +120,9 @@ export function normalizeStatsApiSchedule(
  * Fetch the Frederick Keys schedule (next ~120 days) from statsapi. Keyless,
  * fail-soft to [] on any network/parse error, HTTP-cached (revalidate 3600).
  */
-export async function fetchFrederickKeys(now: Date = new Date()): Promise<LiveEvent[]> {
+export async function fetchFrederickKeysResult(
+  now: Date = new Date(),
+): Promise<EventAdapterResult<LiveEvent>> {
   const start = now.toISOString().slice(0, 10);
   const endMs = now.getTime() + 120 * 24 * 60 * 60 * 1000;
   const end = new Date(endMs).toISOString().slice(0, 10);
@@ -128,13 +135,20 @@ export async function fetchFrederickKeys(now: Date = new Date()): Promise<LiveEv
     const res = await fetch(url, { signal: ctrl.signal, next: { revalidate: 3600 } });
     if (!res.ok) {
       console.error(`[frederick-keys] HTTP ${res.status}`);
-      return [];
+      return eventAdapterFailed();
     }
-    return normalizeStatsApiSchedule(await res.json());
+    return eventAdapterOk(normalizeStatsApiSchedule(await res.json()));
   } catch (err) {
     console.warn("[frederick-keys] fetch failed:", err);
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchFrederickKeys(
+  now: Date = new Date(),
+): Promise<LiveEvent[]> {
+  return (await fetchFrederickKeysResult(now)).items;
 }

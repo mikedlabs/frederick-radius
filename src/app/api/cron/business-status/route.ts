@@ -14,11 +14,13 @@
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { PLACES } from "@/data/places";
+import { isValidCoord } from "@/lib/geo";
 import {
   getPlaceDetails,
   googlePlacesConfigured,
   googleStatusToOperational,
 } from "@/lib/integrations/google-places";
+import { selectRotatingStatusTargets } from "@/lib/business-status-refresh";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +42,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ enabled: true, error: "GOOGLE_PLACES_API_KEY not set" }, { status: 500 });
   }
 
-  const targets = PLACES.filter((p) => p.google_place_id).slice(0, BATCH);
+  const allTargets = PLACES.filter(
+    (p) => p.google_place_id && isValidCoord(p.geom),
+  );
+  const cycleDay = Math.floor(Date.now() / 86_400_000);
+  const targets = selectRotatingStatusTargets(allTargets, BATCH, cycleDay);
   const mismatches: Array<{ slug: string; name: string; current: string; google: string }> = [];
 
   for (const p of targets) {
@@ -55,6 +61,8 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     enabled: true,
+    cycleDay,
+    catalog: allTargets.length,
     checked: targets.length,
     mismatches,
     note: "Add closed places to the denylist or run npm run refresh:business-status to refresh the override.",

@@ -14,6 +14,8 @@ export type FeedDef = {
   name: string;
   /** Env var that must be set for the feed to collect. Omitted = keyless. */
   env?: string;
+  /** Additional required settings when one credential is not enough. */
+  additionalEnvs?: readonly string[];
   /** What this feed powers in the product. */
   powers: string;
 };
@@ -21,17 +23,20 @@ export type FeedDef = {
 // KEYED — dark until the env var exists in the deployment.
 export const KEYED_FEEDS: FeedDef[] = [
   { name: "Ticketmaster", env: "TICKETMASTER_API_KEY", powers: "Concerts + Frederick Keys home games" },
-  { name: "Bandsintown", env: "BANDSINTOWN_APP_ID", powers: "Live music by tracked artists" },
-  { name: "SeatGeek", env: "SEATGEEK_CLIENT_ID", powers: "Ticketed concerts + shows near Frederick" },
-  { name: "Eventbrite", env: "EVENTBRITE_TOKEN", powers: "Events from a curated organizer registry" },
+  { name: "Bandsintown", env: "BANDSINTOWN_ENABLED", additionalEnvs: ["BANDSINTOWN_APP_ID"], powers: "Policy-approved live music by tracked artists" },
+  { name: "SeatGeek", env: "SEATGEEK_ENABLED", additionalEnvs: ["SEATGEEK_CLIENT_ID"], powers: "Policy-approved ticketed concerts and shows" },
+  { name: "Eventbrite", env: "EVENTBRITE_ENABLED", additionalEnvs: ["EVENTBRITE_TOKEN"], powers: "Policy-approved events from a curated organizer registry" },
   { name: "Google Places", env: "GOOGLE_PLACES_API_KEY", powers: "Place details, photos, hours, nearby search" },
-  { name: "Mapillary", env: "MAPILLARY_TOKEN", powers: "Street-level imagery + litter points" },
+  { name: "Mapillary", env: "MAPILLARY_ENABLED", additionalEnvs: ["MAPILLARY_TOKEN"], powers: "Policy-approved street-object detections" },
   { name: "AirNow", env: "AIRNOW_API_KEY", powers: "Air-quality index" },
   { name: "National Park Service", env: "NPS_API_KEY", powers: "Park alerts + events (Catoctin, Monocacy)" },
-  { name: "Hood College", env: "HOOD_CALENDAR_URL", powers: "Hood events calendar" },
-  { name: "FCPS", env: "FCPS_FEED_URL", powers: "Frederick County Public Schools calendar" },
-  { name: "PulsePoint", env: "PULSEPOINT_AGENCY_ID", powers: "Live fire / EMS incidents" },
-  { name: "Parking occupancy", env: "PARKING_OCCUPANCY_URL", powers: "Live garage space counts on /parking and map peeks (also needs PARKING_OCCUPANCY_KEY)" },
+  {
+    name: "PulsePoint",
+    env: "PULSEPOINT_ENABLED",
+    additionalEnvs: ["PULSEPOINT_AGENCY_ID"],
+    powers: "Policy-approved, non-medical fire, rescue, and traffic incidents",
+  },
+  { name: "Parking occupancy", env: "PARKING_OCCUPANCY_URL", powers: "Live garage space counts on /parking and map peeks (PARKING_OCCUPANCY_KEY is optional when the owner feed requires it)" },
 ];
 
 // KEYLESS — public endpoints; live wherever outbound network is allowed.
@@ -39,6 +44,8 @@ export const KEYLESS_FEEDS: FeedDef[] = [
   { name: "Frederick County GIS", powers: "County boundary, parks, trails, public art" },
   { name: "USGS Water", powers: "River + creek gauge levels" },
   { name: "National Weather Service", powers: "Forecast + weather alerts" },
+  { name: "Hood College", powers: "Hood events calendar (HOOD_CALENDAR_URL is an optional override)" },
+  { name: "FCPS", powers: "School closures and delays (FCPS_FEED_URL is an optional override)" },
   { name: "Overpass / OpenStreetMap", powers: "Public amenities (restrooms, water, bike parking)" },
   { name: "MDOT CHART", powers: "Live traffic incidents" },
   { name: "SeeClickFix", powers: "311 reported issues" },
@@ -53,22 +60,39 @@ export const KEYLESS_FEEDS: FeedDef[] = [
 
 export type FeedStatus = FeedDef & {
   keyless: boolean;
-  /** Keyless feeds are always considered configured. */
+  /** Configuration only. A configured or keyless feed can still be down. */
   configured: boolean;
+  /** Exact deployment settings still needed before the adapter may run. */
+  missingEnvs: string[];
 };
 
 export function feedStatuses(): { keyed: FeedStatus[]; keyless: FeedStatus[] } {
   return {
-    keyed: KEYED_FEEDS.map((f) => ({
+    keyed: KEYED_FEEDS.map((f) => {
+      const required = [f.env, ...(f.additionalEnvs ?? [])].filter(
+        (name): name is string => Boolean(name),
+      );
+      const missingEnvs = required.filter((name) => {
+        const value = process.env[name];
+        return name.endsWith("_ENABLED") ? value !== "1" : !value;
+      });
+      return {
+        ...f,
+        keyless: false,
+        configured: missingEnvs.length === 0,
+        missingEnvs,
+      };
+    }),
+    keyless: KEYLESS_FEEDS.map((f) => ({
       ...f,
-      keyless: false,
-      configured: Boolean(f.env && process.env[f.env]),
+      keyless: true,
+      configured: true,
+      missingEnvs: [],
     })),
-    keyless: KEYLESS_FEEDS.map((f) => ({ ...f, keyless: true, configured: true })),
   };
 }
 
 /** Count of keyed feeds still missing their env var — the headline number. */
 export function darkFeedCount(): number {
-  return KEYED_FEEDS.filter((f) => !(f.env && process.env[f.env])).length;
+  return feedStatuses().keyed.filter((feed) => !feed.configured).length;
 }

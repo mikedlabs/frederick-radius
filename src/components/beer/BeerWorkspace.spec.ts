@@ -14,12 +14,12 @@ describe("BeerWorkspace", () => {
       }),
     );
 
-    expect(html).toContain("Finder content");
+    expect(html).toContain("Taproom content");
     expect(html).not.toContain("Index content");
-    expect(html).not.toContain("Taproom content");
+    expect(html).not.toContain("Finder content");
     expect(html).not.toContain("Event content");
     expect(html).toContain("Find a beer");
-    expect(html).toContain("All beers");
+    expect(html).toContain("Beer index");
     expect(html).toContain("Taprooms");
     expect(html).toContain("This week");
     expect(html).toContain("grid-cols-4");
@@ -34,7 +34,7 @@ describe("BeerWorkspace", () => {
     expect(beerModeForHash("#taproom-map")).toBe("taprooms");
     expect(beerModeForHash("#on-tap-now")).toBe("tonight");
     expect(beerModeForHash("#beer-week")).toBe("tonight");
-    expect(beerModeForHash("")).toBe("find");
+    expect(beerModeForHash("")).toBe("taprooms");
     expect(beerModeForHash("#unknown-section")).toBeNull();
   });
 });

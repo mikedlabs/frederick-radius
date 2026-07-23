@@ -3,7 +3,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { buildPlan, decodeSpec } from "@/lib/integrations/planner";
 
 describe("buildPlan", () => {
-  it("keeps a food date night out of daytime errand categories", () => {
+  it("keeps an hours-unconfirmed food draft out of daytime errand categories", () => {
     const plan = buildPlan({
       audience: "date",
       vibe: "food",
@@ -11,12 +11,54 @@ describe("buildPlan", () => {
       start_at: "2026-07-16T22:00:00.000Z",
       start_near: FREDERICK_CENTER,
       max_distance_m: 2_400,
+      require_verified_hours: false,
     });
 
     expect(plan.stops.length).toBeGreaterThanOrEqual(2);
     expect(plan.stops.map((stop) => stop.place?.category).filter(Boolean)).not.toContain("market");
     expect(plan.stops.map((stop) => stop.place?.category).filter(Boolean)).not.toContain("coffee");
     expect(plan.stops.map((stop) => stop.place?.category).filter(Boolean)).not.toContain("bakery");
+  });
+
+  it("applies date quality and category floors to a general draft", () => {
+    const plan = buildPlan({
+      audience: "date",
+      vibe: "easy",
+      duration_hours: 3,
+      start_at: "2026-07-23T03:54:00.000Z",
+      start_near: FREDERICK_CENTER,
+      municipality: "frederick",
+      require_verified_hours: false,
+    });
+
+    expect(plan.stops.length).toBeGreaterThan(0);
+    expect(
+      plan.stops.every(
+        (stop) =>
+          !["shopping", "market", "park", "coffee", "bakery"].includes(
+            stop.place?.category ?? "",
+          ),
+      ),
+    ).toBe(true);
+    expect(
+      plan.stops.every((stop) => {
+        const rating = (stop.place as (typeof stop.place & { google_rating?: number }))?.google_rating;
+        return rating == null || rating >= 4;
+      }),
+    ).toBe(true);
+  });
+
+  it("returns no late-night stops when fresh schedules cannot prove them open", () => {
+    const plan = buildPlan({
+      audience: "date",
+      vibe: "easy",
+      duration_hours: 3,
+      start_at: "2026-07-23T03:54:00.000Z",
+      start_near: FREDERICK_CENTER,
+      municipality: "frederick",
+    });
+
+    expect(plan.stops).toEqual([]);
   });
 
   it("keeps every stop inside a deliberately selected town", () => {
@@ -39,7 +81,7 @@ describe("buildPlan", () => {
     ).toBe(true);
   });
 
-  it("validates each stop at its scheduled time and stays inside the time budget", () => {
+  it("keeps a general draft inside the time budget without claiming unknown hours", () => {
     const start = new Date("2026-07-17T22:00:00.000Z");
     const plan = buildPlan({
       audience: "date",
@@ -47,16 +89,31 @@ describe("buildPlan", () => {
       duration_hours: 4,
       start_at: start.toISOString(),
       municipality: "frederick",
+      require_verified_hours: false,
     });
 
     expect(plan.stops.length).toBeGreaterThan(0);
-    expect(plan.stops.every((stop) => stop.open === "open")).toBe(true);
+    expect(plan.stops.every((stop) => stop.open !== "closed")).toBe(true);
+    expect(plan.stops.some((stop) => stop.open === "unknown")).toBe(true);
     expect(plan.stops.map((stop) => stop.place?.category)).not.toContain("shopping");
     expect(plan.stops.map((stop) => stop.place?.category)).not.toContain("playground");
 
     const last = plan.stops[plan.stops.length - 1];
     const end = new Date(last.at).getTime() + last.duration_min * 60_000;
     expect(end - start.getTime()).toBeLessThanOrEqual(4 * 60 * 60_000);
+  });
+
+  it("does not use stale hours for a dated plan", () => {
+    const plan = buildPlan({
+      audience: "date",
+      vibe: "food",
+      duration_hours: 4,
+      start_at: "2026-07-17T22:00:00.000Z",
+      municipality: "frederick",
+      require_verified_hours: true,
+    });
+
+    expect(plan.stops).toEqual([]);
   });
 
   it("freezes the start time but removes exact coordinates from share links", () => {

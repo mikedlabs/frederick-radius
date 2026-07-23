@@ -43,7 +43,6 @@ import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import { MobileActionBar, MobileBarLink } from "@/components/ui/MobileActionBar";
 import SourceBadge from "@/components/place/SourceBadge";
-import ClaimComingSoon from "@/components/business/ClaimComingSoon";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
@@ -182,12 +181,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const moreVenueEvents = eventsAtThisVenue.slice(3);
   const firstNearbyPlaces = place.nearby_places.slice(0, 3);
   const moreNearbyPlaces = place.nearby_places.slice(3, 5);
-  // /nearby only understands the curated municipality set. For places in an
-  // unincorporated community (Jefferson, Ijamsville, etc.), center the map on
-  // the actual record instead of silently broadening to a county-wide list.
-  const exploreAreaHref = town
-    ? `/nearby?town=${encodeURIComponent(place.municipality)}`
-    : `/map?at=${place.geom.lat.toFixed(5)},${place.geom.lng.toFixed(5)}`;
+  // Preserve the exact place context. A municipality-wide list can silently
+  // jump several miles away, especially near town boundaries.
+  const exploreAreaHref = `/map?c=${place.geom.lng.toFixed(5)},${place.geom.lat.toFixed(5)},15.5`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -566,10 +562,6 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           >
             Report incorrect info
           </a>
-          {/* Owner front door. The claim -> manage -> post -> push flow is
-              built, but turning it on for owners is a deferred owner call, so
-              this reads as a calm coming-soon promise, not a live link. */}
-          <ClaimComingSoon lead="Own this business?" />
           <ShareButton
             title={place.name}
             text={safeBlurb(place)}

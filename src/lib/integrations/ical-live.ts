@@ -18,7 +18,8 @@ import {
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
 import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events/normalize";
-import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
+import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
+import { eventAdapterIsDegraded } from "@/lib/integrations/event-adapter-result";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status entries that are not events.
@@ -67,6 +68,10 @@ export type LiveEvent = {
    *  Ticketed feeds (Ticketmaster, SeatGeek) fetch this and previously
    *  threw it away; EventCard already renders it. Never guessed. */
   price_text?: string;
+  /** Structured attendance semantics. Physical is the legacy default. */
+  attendance_mode?: "physical" | "online" | "mixed";
+  /** Direct join/registration/event page for online participation. */
+  online_url?: string;
   /** Promo/artist image from ticketed feeds. EventCard already renders
    *  hero images; only sources that vouch for one set it. */
   hero_image?: string;
@@ -443,11 +448,13 @@ const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   // "Cardio Sculpt" rendered on the live-music radar (2026-07-17 review).
   { slug: "community", words: ["cardio", "zumba", "fitness class", "exercise", "workout", "pilates", "barre", "aerobics", "sculpt", "learn to"] },
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
-  { slug: "theater", words: ["theater", "play", "stage", "broadway", "show", "comedy", "weinberg"] },
   // Sports is checked early so a game beats the family/outdoors/market
   // fallbacks ("youth soccer at the park" is sports, not outdoors).
-  // Tight, low-noise terms only (no bare "game"/"match").
-  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "frederick keys", "blazers", "athletics", "tournament", "playoff", "doubleheader", "scrimmage", " vs ", "vs."] },
+  // Tight, low-noise terms only (no bare "game"/"match"/"play").
+  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "tennis", "pickleball", "football", "golf tournament", "frederick keys", "blazers", "athletics", "tournament", "playoff", "doubleheader", "scrimmage", " vs ", "vs."] },
+  // Bare "play", "stage", and "show" are intentionally excluded. They
+  // misclassified phrases such as "tennis match play" as theater.
+  { slug: "theater", words: ["theater", "theatre", "stage play", "stage production", "playwright", "broadway", "performing arts", "comedy", "weinberg"] },
   { slug: "gallery", words: ["art", "exhibit", "gallery", "first saturday", "first friday", "mural", "delaplaine"] },
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
   { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
@@ -493,6 +500,34 @@ export function feedCategory(feed: FeedSpec, title: string, description: string)
     inferCategory(title, description, feed.default_category),
     feed.default_category,
   );
+}
+
+type EventVenue = { venue: string; address: string };
+
+/**
+ * Correct narrow, first-party venue omissions without pretending a feed's
+ * town-centroid coordinate is a precise event pin. CivicPlus sometimes sends
+ * only "Frederick" in RSS even when the official event detail names a venue.
+ */
+export function resolveKnownEventVenue(
+  source: FeedSpec["source"],
+  title: string,
+  location: EventVenue,
+): EventVenue {
+  if (
+    source === "city-frederick" &&
+    /^Friday Night Lights(?: Tennis)?(?:\s*[-:|].*)?$/i.test(title.trim())
+  ) {
+    // Official City event detail and court directory:
+    // cityoffrederickmd.gov/Calendar.aspx?EID=22216
+    // cityoffrederickmd.gov/675/Tennis-Court-Information
+    return {
+      venue: "Fleming Avenue Courts",
+      address: "500 Fleming Avenue, Frederick, MD 21701",
+    };
+  }
+
+  return location;
 }
 
 
@@ -862,7 +897,11 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFe
       const status = deriveEventStatus(rawTitle, item.status);
       const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
       const description = (item.description ?? "").trim();
-      const { venue, address } = splitLocation(item.location, feed.default_venue);
+      const { venue, address } = resolveKnownEventVenue(
+        feed.source,
+        title,
+        splitLocation(item.location, feed.default_venue),
+      );
       // cleanDescription runs cleanFeedText AND strips dumped "Event date:
       // … Time: … Location:" metadata at the live source (see normalize.ts).
       const cleanedDesc = clampDescription(cleanDescription(description), 300);
@@ -974,9 +1013,13 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFet
       if (start < now || start > horizon) continue;
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
-      const { venue, address } = splitLocation(
-        pick("calendarEvent:Location"),
-        feed.default_venue,
+      const { venue, address } = resolveKnownEventVenue(
+        feed.source,
+        title,
+        splitLocation(
+          pick("calendarEvent:Location"),
+          feed.default_venue,
+        ),
       );
       const inferredCategory = feedCategory(feed, title, description);
 
@@ -1508,7 +1551,10 @@ export function getCachedLiveEventsForSources(
   )();
 }
 
-export async function getLiveEvents(windowDays = 60): Promise<{
+export async function getLiveEvents(
+  windowDays = 60,
+  options: { includeTicketmaster?: boolean } = {},
+): Promise<{
   events: LiveEvent[];
   sources_succeeded: string[];
   sources_failed: string[];
@@ -1517,7 +1563,8 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   // parallel. Ticketmaster is inert ([]) without TICKETMASTER_API_KEY,
   // so this path is unchanged until that key is set. Both yield the
   // same LiveEvent shape, so they share the dedupe/filter/sort below.
-  const [feedResults, ticketmasterEvents] = await Promise.all([
+  const includeTicketmaster = options.includeTicketmaster !== false;
+  const [feedResults, ticketmasterResult] = await Promise.all([
     Promise.all(
       // Skip env-gated feeds whose URL is unset (DFP, Hood) so a dead
       // or unconfigured source costs zero network and zero log noise.
@@ -1529,7 +1576,9 @@ export async function getLiveEvents(windowDays = 60): Promise<{
         })),
       ),
     ),
-    fetchTicketmasterMusic(),
+    includeTicketmaster
+      ? fetchTicketmasterMusicResult()
+      : Promise.resolve({ items: [], state: "disabled" as const }),
   ]);
 
   // Ticketmaster has no window parameter; clamp its results to the same
@@ -1538,13 +1587,15 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   const horizonMs = Date.now() + windowDays * 86_400_000;
   const results: Array<{ source: LiveEvent["source"]; evts: LiveEvent[]; ok: boolean }> = [
     ...feedResults,
-    {
-      source: "ticketmaster",
-      evts: ticketmasterEvents.filter(
-        (e) => +new Date(e.starts_at) <= horizonMs,
-      ),
-      ok: true,
-    },
+    ...(ticketmasterResult.state === "disabled"
+      ? []
+      : [{
+          source: "ticketmaster" as const,
+          evts: ticketmasterResult.items.filter(
+            (e) => +new Date(e.starts_at) <= horizonMs,
+          ),
+          ok: !eventAdapterIsDegraded(ticketmasterResult),
+        }]),
   ];
 
   // Deduplicate by composite key — same title + day + time + venue across feeds

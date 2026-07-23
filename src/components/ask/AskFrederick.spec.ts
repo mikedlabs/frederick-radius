@@ -36,14 +36,15 @@ describe("Ask Radius nearby context", () => {
     expect(queryNeedsNearbyContext("What events are happening tonight?")).toBe(false);
   });
 
-  it("accepts only a device fix or an explicit area for a nearby question", () => {
+  it("accepts the whole county, a town, or a device fix as a deliberate area", () => {
     expect(hasResolvedNearbyArea(null, false)).toBe(false);
     expect(hasResolvedNearbyArea("nearme", false)).toBe(false);
-    expect(hasResolvedNearbyArea("county", false)).toBe(false);
+    expect(hasResolvedNearbyArea("county", false)).toBe(true);
     expect(hasResolvedNearbyArea("town:urbana", false)).toBe(true);
     expect(hasResolvedNearbyArea(null, true)).toBe(true);
     expect(nearbyQueryNeedsAreaChoice("Breakfast near me", null, false)).toBe(true);
     expect(nearbyQueryNeedsAreaChoice("Breakfast near me", "county", false)).toBe(true);
+    expect(nearbyQueryNeedsAreaChoice("Breakfast near me", "town:urbana", false)).toBe(false);
     expect(
       nearbyQueryNeedsAreaChoice(
         "Coffee near me in Frederick County",

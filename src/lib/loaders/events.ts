@@ -17,6 +17,10 @@ import {
   type Placement,
 } from "@/lib/validation/placement";
 import { cleanDescription } from "@/lib/events/normalize";
+import {
+  eventAttendanceMode,
+  hasPhysicalAttendance,
+} from "@/lib/events/attendance";
 
 /**
  * Systemic guard: never surface an event whose venue is a known-closed
@@ -138,10 +142,13 @@ export type EventWithMeta = Event &
 const SEED_VERIFIED_AT = "2026-05-14T00:00:00Z";
 
 function decorate(e: Event, origin?: LngLat): EventWithMeta {
-  const geo_confidence = eventGeoConfidence(e);
+  const attendance_mode = eventAttendanceMode(e);
+  const physical = hasPhysicalAttendance({ ...e, attendance_mode });
+  const geo_confidence = physical ? eventGeoConfidence(e) : "unknown";
   const precise = geo_confidence === "venue_match" || geo_confidence === "exact_address";
   return {
     ...e,
+    attendance_mode,
     // Description cleaned at the loader boundary so a feed's raw metadata
     // dump ("Event date: … Event Time: … Location: …") never reaches a card
     // reason, the detail body, or an OG/meta blurb — one strip, every
@@ -150,7 +157,7 @@ function decorate(e: Event, origin?: LngLat): EventWithMeta {
     // A distance is a promise: only stamp it when the coordinate is
     // addressable. An area-centroid event still lists, but never claims
     // "113 ft away" (audit #2 P1). See lib/events/geo-confidence.
-    distance_m: origin && precise ? haversineMeters(origin, e.geom) : undefined,
+    distance_m: origin && precise && physical ? haversineMeters(origin, e.geom) : undefined,
     geo_confidence,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,

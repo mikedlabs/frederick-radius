@@ -7,12 +7,11 @@
  * posted" pattern (the unverified state, which the card components
  * already translate into honest silence or "Likely open").
  *
- * Enforcement is staged behind HOURS_FRESHNESS_ENFORCED until the rolling
- * refresh snapshot has enough coverage to keep the Open-now experience useful.
- * Turning the rule on before materializing that snapshot would convert every
- * place to unknown at once. The refresh job supplies recent verification
- * timestamps; once coverage is ready, set the flag and the same read boundary
- * becomes strict without another code change.
+ * Freshness is enforced by default. HOURS_FRESHNESS_ENFORCED=0 is an explicit
+ * emergency rollback only; a missing deployment variable must never turn old
+ * schedules back into current open-or-closed claims. The refresh job supplies
+ * recent verification timestamps and restores useful coverage one checked
+ * batch at a time.
  */
 
 export const HOURS_MAX_AGE_DAYS = 7;
@@ -20,7 +19,7 @@ export const HOURS_MAX_AGE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function hoursFreshnessEnforced(): boolean {
-  return process.env.HOURS_FRESHNESS_ENFORCED === "1";
+  return process.env.HOURS_FRESHNESS_ENFORCED !== "0";
 }
 
 /**

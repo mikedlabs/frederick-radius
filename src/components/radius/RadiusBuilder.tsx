@@ -40,6 +40,7 @@ import {
   formatDistance,
 } from "@/lib/geo";
 import { roundCoord } from "@/lib/walkTime";
+import { radiusResultLine } from "@/components/map/mapContent";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -1102,9 +1103,13 @@ export default function RadiusBuilder({
               <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {minutes}-min {MODE_VERB[mode]} · {center.label}
               </p>
-              {!placesReady && (
+              {!placesReady ? (
                 <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                   Finding places…
+                </p>
+              ) : (
+                <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                  {radiusResultLine(inside.length, openNowCount, openOnly)}
                 </p>
               )}
             </div>
@@ -1137,10 +1142,66 @@ export default function RadiusBuilder({
           >
             Within reach of {center.label}
           </h2>
-          <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-            {minutes}-min {MODE_VERB[mode]}
+          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {radiusResultLine(inside.length, openNowCount, openOnly)}
           </p>
         </div>
+
+        {/* Open status is the first decision after "what is reachable," not a
+            filter buried below events and category catalogs. Keep it beside
+            the answer it changes so a closed lead place never feels chosen
+            for the user. */}
+        {(openNowCount > 0 || openOnly) && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOpenOnly((v) => !v)}
+              aria-pressed={openOnly}
+              className="tactile tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
+              style={{
+                background: openOnly ? "var(--app-positive)" : "var(--app-bg-elevated)",
+                color: openOnly ? "white" : "var(--app-ink-2)",
+                border: `1px solid ${openOnly ? "var(--app-positive)" : "var(--app-border)"}`,
+              }}
+            >
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full"
+                style={{ background: openOnly ? "white" : "var(--app-positive)" }}
+              />
+              {openOnly ? "Showing open places" : `Show ${openNowCount.toLocaleString("en-US")} open now`}
+            </button>
+            {openOnly && (
+              <button
+                type="button"
+                onClick={() => setOpenOnly(false)}
+                className="tap-44 text-[12px] font-medium underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Show all {inside.length.toLocaleString("en-US")}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* A filtered-to-zero state belongs next to the status switch that
+            caused it, where recovery is immediate. */}
+        {placesReady && openOnly && displayedInside.length === 0 && (
+          <p
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            Nothing inside this radius is confirmed open right now.{" "}
+            <button
+              type="button"
+              onClick={() => setOpenOnly(false)}
+              className="font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-brand)" }}
+            >
+              Show all {inside.length.toLocaleString("en-US")}
+            </button>
+          </p>
+        )}
 
         {placesReady && displayedInside[0] && (
           // The lead place renders as a feature card — shown clearly, but no
@@ -1257,62 +1318,6 @@ export default function RadiusBuilder({
           a numeric count. The count moves below as the secondary line.
           Implicitly responds to a quick-pick tap too: the sentence
           rewrites the moment mode/minutes change. */}
-
-      {/* Open-now filter toggle — the tappable counterpart to the
-          ribbon's "open now" stat. Lives OUTSIDE the groups gate so a
-          user who filtered down to zero open places can always tap it
-          back off. Green = active (showing open only). */}
-      {(openNowCount > 0 || openOnly) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setOpenOnly((v) => !v)}
-            aria-pressed={openOnly}
-            className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-            style={{
-              background: openOnly ? "var(--app-positive)" : "var(--app-bg-elevated)",
-              color: openOnly ? "white" : "var(--app-ink-2)",
-              border: `1px solid ${openOnly ? "var(--app-positive)" : "var(--app-border)"}`,
-            }}
-          >
-            <span
-              aria-hidden
-              className="h-2 w-2 rounded-full"
-              style={{ background: openOnly ? "white" : "var(--app-positive)" }}
-            />
-            {openOnly ? "Showing open only" : "Show open only"}
-          </button>
-          {openOnly && (
-            <button
-              type="button"
-              onClick={() => setOpenOnly(false)}
-              className="text-[12px] font-medium underline-offset-2 hover:underline"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Show all {inside.length.toLocaleString()}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Filtered to open but nothing qualifies — a clear, recoverable
-          dead end instead of a silently empty page. */}
-      {placesReady && openOnly && displayedInside.length === 0 && (
-        <p
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-        >
-          Nothing inside this radius is confirmed open right now.{" "}
-          <button
-            type="button"
-            onClick={() => setOpenOnly(false)}
-            className="font-semibold underline underline-offset-2"
-            style={{ color: "var(--app-brand)" }}
-          >
-            Show all {inside.length.toLocaleString()}
-          </button>
-        </p>
-      )}
 
       {groups.length > 0 && (
         <section aria-label="Categories within reach" className="space-y-3">

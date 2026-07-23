@@ -13,9 +13,15 @@ import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { haversineMeters, isValidCoord } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
+import OVERRIDES from "@/data/places-overrides.json" with { type: "json" };
 
 const COUNTY = { s: 39.265, w: -77.7, n: 39.745, e: -77.15 };
 const enr = ENRICH as Record<string, { primary_type?: string; editorial_summary?: string }>;
+const categoryPatches = (
+  OVERRIDES as {
+    patch?: Record<string, { category?: string; clearEnrichment?: boolean }>;
+  }
+).patch ?? {};
 
 function norm(s: string): string {
   return (s || "")
@@ -92,7 +98,14 @@ function main() {
   const relevanceLeak = pub.filter(
     (p) => p.category !== "civic" && isNonDiscoverable(enr[p.slug]?.primary_type),
   );
-  const catDisagree = pub.filter((p) => {
+  // Compare Google's suggestion with the category the app actually ships,
+  // not the raw pre-decoration category. `decoratePlace` applies the same
+  // Google correction and human override precedence used by every public
+  // surface. Comparing against `publicPlaces()` directly produced hundreds
+  // of false alarms for corrections that were already live.
+  const catDisagree = dec.filter((p) => {
+    const humanDecision = categoryPatches[p.slug];
+    if (humanDecision?.category || humanDecision?.clearEnrichment) return false;
     const fromG = categoryFromPrimaryType(enr[p.slug]?.primary_type);
     return fromG && fromG !== p.category;
   });

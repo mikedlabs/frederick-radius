@@ -2,20 +2,18 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Baby, Beer, BusFront, Car, ChevronDown, ChevronRight, Church, Clock, Coffee, Droplets, Footprints, Heart, History, Hotel, Landmark, Layers3, LayoutGrid, LocateFixed, MoonStar, Music, NotebookPen, Palette, Search as SearchIcon, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wifi, Wine, X, Zap, type LucideIcon } from "lucide-react";
+import { Baby, Beer, Check, ChevronDown, ChevronLeft, ChevronRight, Church, Clock, Coffee, Heart, Hotel, Landmark, Layers3, LayoutGrid, LocateFixed, Music, NotebookPen, Palette, Search as SearchIcon, Share2, ShoppingBag, Tag, Toilet, Trees, Utensils, Waypoints, Wine, X, type LucideIcon } from "lucide-react";
 import { INTENTS } from "@/data/intents";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { AMENITY_GROUPS } from "./constants";
-import { orderNeedsForHour } from "./needsOrder";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import type { BrowseDockInfo } from "./types";
-import type { LngLat } from "@/lib/geo";
+import { formatDistance, type LngLat } from "@/lib/geo";
 import type { SearchResult } from "@/lib/search/index";
 import TimeScrubber from "./TimeScrubber";
 import { haptic } from "@/lib/haptics";
 import { parseScope, scopeTownSlug, setScope, subscribeScopeChange, SCOPE_PARAM, type Scope } from "@/lib/scope";
 import { track } from "@/lib/track";
-import { BRAND } from "@/lib/brand";
 import { consumeFindRequest } from "@/lib/findBridge";
 import {
   TIME_WINDOWS,
@@ -26,6 +24,8 @@ import {
   whenCaption,
 } from "./dockCaption";
 import type { MapDiscovery } from "./mapDiscoveries";
+import { mapContentsSummary } from "./mapContent";
+import type { LiveLayerHealth } from "@/lib/live-layer-health";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -46,52 +46,16 @@ const CATEGORY_FAMILIES: ReadonlyArray<{ label: string; keys: string[] }> = [
   { label: "Everyday & services", keys: ["wellness", "shop", "civic", "stay"] },
 ];
 
-type MapNeed =
-  | { kind: "intent"; key: string; label: string; Icon: LucideIcon; color: string }
-  | { kind: "amenity"; key: string; label: string; Icon: LucideIcon; color: string }
-  | { kind: "opennow"; label: string; Icon: LucideIcon; color: string }
-  | { kind: "nearme"; label: string; Icon: LucideIcon; color: string }
-  | { kind: "parking"; label: string; Icon: LucideIcon; color: string };
+// Community reports are time-sensitive map context, not a public amenity like
+// water or a restroom. Keep them out of the Places catalog and give them an
+// honest home beside incidents, parking, transit, and radar.
+const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
+  (group) => !group.comingSoon && group.key !== "community",
+);
 
-/** The handful of things most people open the map to find, surfaced as one-tap
- *  shortcuts ABOVE the full category grid. Mixes categories, the everyday
- *  amenities (restrooms, water, Wi-Fi, parking), open-now and near-me — so the
- *  common answer is instant, and a restroom is one tap, not four taps buried in
- *  a "Layers" tab. Colors are inlined intent/token hues (GL-paint parity). */
-const TOP_NEEDS: ReadonlyArray<MapNeed> = [
-  { kind: "opennow", label: "Open now", Icon: Clock, color: "var(--state-open)" },
-  { kind: "nearme", label: "Near me", Icon: LocateFixed, color: "#285D73" },
-  { kind: "intent", key: "coffee", label: "Coffee", Icon: Coffee, color: "#8B5A2B" },
-  { kind: "intent", key: "eat", label: "Food", Icon: Utensils, color: BRAND.colors.brick },
-  { kind: "amenity", key: "restroom", label: "Restrooms", Icon: Toilet, color: "#285D73" },
-  { kind: "parking", label: "Parking", Icon: Car, color: "#285D73" },
-  { kind: "intent", key: "outdoor", label: "Parks", Icon: Trees, color: "var(--app-brand-2)" },
-  { kind: "amenity", key: "wifi", label: "Wi-Fi", Icon: Wifi, color: "#285D73" },
-  { kind: "amenity", key: "water", label: "Water", Icon: Droplets, color: "#285D73" },
-  { kind: "intent", key: "family", label: "Kids", Icon: Baby, color: BRAND.colors.ridge },
-];
-
-type MapSetupKey = "tonight" | "getting-around" | "trail-day" | "field-kit" | "frederick-stories";
-
-/** Multi-layer Frederick views. These do not add another permanent control
- *  row: they live inside Layers and compose the existing filters in one tap.
- *  The map remains the answer; the panel closes as soon as a setup runs. */
-const MAP_SETUPS: ReadonlyArray<{
-  key: MapSetupKey;
-  label: string;
-  description: string;
-  Icon: LucideIcon;
-}> = [
-  { key: "tonight", label: "Tonight", description: "See evening events with parking and transit.", Icon: MoonStar },
-  { key: "getting-around", label: "Getting around", description: "See routes, incidents, parking, and cameras.", Icon: BusFront },
-  { key: "trail-day", label: "Trail day", description: "See outdoor places with trails, parks, and radar.", Icon: Footprints },
-  { key: "field-kit", label: "Field kit", description: "Find nearby restrooms, water, trash, seating, and bike help.", Icon: LocateFixed },
-  { key: "frederick-stories", label: "Frederick stories", description: "See aerial photos, the county cemetery inventory, and covered bridges.", Icon: History },
-];
-
-/** The four filter groups. What is purely kinds of places; the map drapes
- *  (trails, transit, aerial, …) and the Yours lenses live together in Layers. */
-type Pane = "what" | "when" | "where" | "discover" | "layers";
+/** The map begins as an observation surface. These controls are revealed only
+ *  after a person opens Map contents; none compete with the county on load. */
+type Pane = "contents" | "what" | "when" | "where" | "discover" | "layers";
 type PlaceReveal = "categories" | "amenities";
 
 /** Where the camera is pointed, per the user's own choice in the Where
@@ -104,19 +68,14 @@ type WhereSel =
 const TOWN_ZOOM = 13.4;
 
 /**
- * MapDock — ONE instrument for the /map browse surface, "maps-app" top
- * layout. Search and three decision controls stay at the top; map layers live
- * in a persistent horizontal rail so their state never disappears into a
- * menu. Deeper controls open as a bottom sheet on phones and a side tray on
- * desktop, leaving the map visible while the user compares layers.
+ * MapDock — the calm control surface for /map. Search and Map contents are the
+ * only cold controls. A deliberate contents tap reveals the deeper choices in
+ * a compact phone tray or desktop inspector while the map remains visible.
  *
- *   - Places — kinds of places (the intent chips + the sub strip); the chip
- *              row up top is the one-tap shortcut into the same intents.
- *   - When   — Open now, the event windows, the day scrubber.
- *   - Where  — Find me, the towns, Whole county (camera only).
- *   - Layers — the map drapes (Trails, Transit, Roads & alerts,
- *              Amenities, Aerial photos, Cemeteries, Farmers markets…)
- *              plus the Yours lenses (Saved, Field notes) and the Key.
+ *   - Places and amenities are stable catalogs, never reordered predictions.
+ *   - Events remain absent until a person chooses a time.
+ *   - Area moves the camera; it never silently filters results.
+ *   - Layers and source-backed connections live behind Map contents.
  *
  * State split:
  *   - URL params (?intent/?sub/?open/?t) are written here via
@@ -139,6 +98,12 @@ export type MapDockProps = {
   setQ: SetState<string>;
   searchMatches: SearchResult[];
   pickSearch: (r: SearchResult) => void;
+  /** Honest origin attached to map-search distances. */
+  searchDistanceOriginLabel: "from you" | "from map center";
+
+  /** Hook point for the server-side verified-hours coverage gate. */
+  openNowAvailable?: boolean;
+  openNowUnavailableLabel?: string;
 
   // ── Layers pane: lenses + overlays ──
   savedCount: number;
@@ -149,6 +114,10 @@ export type MapDockProps = {
   setFieldNotesOnly: SetState<boolean>;
 
   amenityCount: number;
+  /** Current points per public-amenity group. Zero-count choices stay out of
+   * the picker instead of opening a selected layer with nothing on the map. */
+  amenityGroupCounts: Record<string, number>;
+  communityReportCount: number;
   amenityGroups: Set<string>;
   setAmenityGroups: SetState<Set<string>>;
 
@@ -156,6 +125,7 @@ export type MapDockProps = {
   showCivic: boolean;
   setShowCivic: SetState<boolean>;
   transitCount: number;
+  transitHealth: LiveLayerHealth;
   showTransit: boolean;
   setShowTransit: SetState<boolean>;
   trailCount: number;
@@ -175,13 +145,16 @@ export type MapDockProps = {
   setShowParking: SetState<boolean>;
   showRadar: boolean;
   setShowRadar: SetState<boolean>;
+  radarHealth: LiveLayerHealth;
   /** Newest radar frame's unix seconds — stamps "radar as of 9:42 PM" so
    *  minutes-old tiles are never mistaken for real time. */
   radarFrameEpoch: number | null;
   showIncidents: boolean;
   setShowIncidents: SetState<boolean>;
+  incidentHealth: LiveLayerHealth;
   showCameras: boolean;
   setShowCameras: SetState<boolean>;
+  cameraHealth: LiveLayerHealth;
   showFireStations: boolean;
   setShowFireStations: SetState<boolean>;
   showCivicPlaces: boolean;
@@ -201,7 +174,7 @@ export type MapDockProps = {
   flyTo: (center: [number, number], zoom: number) => void;
   fitCounty: () => void;
 
-  // ── Read this area: evidence-backed connections already in the viewport. ──
+  // ── Highlights: evidence-backed connections already in the viewport. ──
   discoveries: MapDiscovery[];
   selectedDiscoveryId: string | null;
   onSelectDiscovery: (id: string) => void;
@@ -307,39 +280,47 @@ function Sect({ children }: { children: ReactNode }) {
 
 export default function MapDock(props: MapDockProps) {
   const { browse, onPaneOpenChange } = props;
+  const publicAmenityGroups = PUBLIC_AMENITY_GROUPS.filter(
+    (group) => (props.amenityGroupCounts[group.key] ?? 0) > 0,
+  );
   const router = useRouter();
   const pathname = usePathname() ?? "/map";
   const sp = useSearchParams();
 
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
-  // Time-aware needs: lead with what this hour most likely needs (Eastern),
-  // computed once per mount. The Open now / Near me anchors never move — only
-  // the content tail reorders — so habits can form on the top controls.
-  const [needsNow] = useState(() => {
-    let hour: number;
-    try {
-      hour = Number(
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          hour: "numeric",
-          hourCycle: "h23",
-        }).format(new Date()),
-      );
-    } catch {
-      hour = new Date().getHours();
-    }
-    return orderNeedsForHour(TOP_NEEDS, hour);
-  });
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   // The Layers tab's Key grid is collapsed by default so the panel stays a
   // low strip; one small chip reveals it.
   const [keyOpen, setKeyOpen] = useState(false);
   const [whereSel, setWhereSel] = useState<WhereSel>({ kind: "county" });
-  // Focus management for the drop-down panel: focus lands inside the panel
-  // when it OPENS, and the trigger (the Filters button) is restored on close.
+  // Focus management for the disclosure panel: focus lands inside it when it
+  // opens, and the Map contents trigger is restored when it closes.
   const paneRef = useRef<HTMLDivElement>(null);
+  const paneScrollRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+
+  // The map is the product, so its controls are sized against the map canvas
+  // rather than the browser viewport. A phone in landscape and a tall phone
+  // can have the same width but radically different working room.
+  useEffect(() => {
+    const dockElement = dockRef.current;
+    const host = dockElement?.closest<HTMLElement>(".dock-host");
+    if (!dockElement || !host) return;
+
+    const sizePane = () => {
+      const mapHeight = host.getBoundingClientRect().height;
+      const minimum = mapHeight < 320 ? 100 : 116;
+      const cap = Math.max(minimum, Math.floor(mapHeight * 0.25));
+      dockElement.style.setProperty("--map-pane-cap", `${cap}px`);
+    };
+    sizePane();
+    const observer = new ResizeObserver(sizePane);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
   // Match the readout to the scope that already seeded the map's camera.
   // localStorage is client-only, so this intentionally runs after hydration.
@@ -388,11 +369,19 @@ export default function MapDock(props: MapDockProps) {
   useEffect(() => {
     onPaneOpenChange(pane !== null);
   }, [pane, onPaneOpenChange]);
+  useEffect(() => {
+    if (pane === null) return;
+    if (paneScrollRef.current) paneScrollRef.current.scrollTop = 0;
+    window.requestAnimationFrame(() => paneRef.current?.focus());
+  }, [pane]);
 
   const closePane = () => {
+    const restoreTarget = restoreRef.current;
     setPane(null);
     setPlaceReveal(null);
-    restoreRef.current?.focus?.();
+    // The trigger stays inert until React commits the closed state. Restore
+    // focus on the following frame so browsers do not discard the focus call.
+    window.requestAnimationFrame(() => restoreTarget?.focus?.());
   };
 
   useEffect(() => {
@@ -433,6 +422,18 @@ export default function MapDock(props: MapDockProps) {
     router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
   };
 
+  /** Clear shareable layer state synchronously before React state changes.
+   * AppMap mirrors GIS overlays into the current URL in an effect. Without
+   * this first write, that effect can read the old address while Next's
+   * router.replace is still settling and resurrect amenity/show on reload. */
+  const clearLayerParamsImmediately = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("amenity");
+    url.searchParams.delete("show");
+    url.searchParams.delete("layers");
+    window.history.replaceState(window.history.state, "", url.toString());
+  };
+
   const pickIntent = (key: string | null) => {
     haptic("light");
     track("map_dock", { pane: "what", pick: key ?? "everything" });
@@ -452,6 +453,7 @@ export default function MapDock(props: MapDockProps) {
     closePane();
   };
   const toggleOpenNow = () => {
+    if (props.openNowAvailable === false) return;
     haptic("light");
     track("map_dock", { pane: "when", pick: browse.openNow ? "open-off" : "open-now" });
     setParams((q) => {
@@ -471,26 +473,20 @@ export default function MapDock(props: MapDockProps) {
     haptic("light");
     track("map_dock", { pane: "when", pick: browse.musicTonight ? "music-off" : "music-tonight" });
     setParams((q) => {
-      if (browse.musicTonight) q.delete("music");
-      else q.set("music", "tonight");
+      if (browse.musicTonight) {
+        q.delete("music");
+      } else {
+        q.delete("t");
+        q.set("music", "tonight");
+      }
     });
-  };
-  // One tap, the whole "what's good right now near me" question: open
-  // places + the live event window + fly to the device fix. Deliberately
-  // does NOT stack the deals filter (that would collapse the map to a
-  // handful of pins); deals stay one explicit tap away.
-  const goRightNow = () => {
-    haptic("light");
-    track("map_dock", { pane: "when", pick: "right-now" });
-    setParams((q) => {
-      q.set("open", "now");
-      q.set("t", "now");
-    });
-    props.goNearMe();
   };
   const pickWindow = (k: string) => {
     haptic("light");
     setParams((q) => {
+      // A general event window and the narrower live-music lens are mutually
+      // exclusive. Never leave a hidden `t` value waiting to reappear later.
+      q.delete("music");
       if (browse.timeModeExplicit && browse.timeMode === k) q.delete("t");
       else q.set("t", k);
     });
@@ -522,11 +518,14 @@ export default function MapDock(props: MapDockProps) {
   // ── Derived caption state ──
   const intent = browse.intentKey ? INTENTS.find((i) => i.key === browse.intentKey) : undefined;
   const sub = intent?.subIntents?.find((s) => s.key === browse.subKey);
+  const communityReportsOn = props.amenityGroups.has("community");
+  const publicAmenityCount = [...props.amenityGroups].filter((key) => key !== "community").length;
 
   // Layer drapes, in a stable order (drapes first, then Yours lenses) so
   // the Layers readout's lead word doesn't jump as toggles flip.
   const layerBits: string[] = [];
-  if (props.amenityGroups.size > 0) layerBits.push("Amenities");
+  if (publicAmenityCount > 0) layerBits.push("Amenities");
+  if (communityReportsOn) layerBits.push("Community reports");
   if (props.showCivic) layerBits.push("Roads & alerts");
   if (props.showTransit) layerBits.push("Transit");
   if (props.showTrails) layerBits.push("Trails");
@@ -573,7 +572,9 @@ export default function MapDock(props: MapDockProps) {
     openNow: browse.openNow,
     dealsOn: browse.dealsOn,
     musicTonight: browse.musicTonight,
-    timeMode: browse.timeMode,
+    // BrowseMapClient still computes the nearest useful event window so the
+    // Events pane can offer it, but an inferred window is not visible state.
+    timeMode: browse.timeModeExplicit || browse.musicTonight ? browse.timeMode : "all",
   });
   const whereText =
     whereSel.kind === "county" ? "County"
@@ -596,6 +597,25 @@ export default function MapDock(props: MapDockProps) {
 
   const timeActive = browse.openNow || browse.dealsOn || browse.musicTonight
     || browse.timeModeExplicit || props.scrubHour != null;
+  const firstAmenityLabel = [...props.amenityGroups]
+    .map((key) => PUBLIC_AMENITY_GROUPS.find((group) => group.key === key)?.label)
+    .find((label): label is string => Boolean(label));
+  const contentsSummary = mapContentsSummary({
+    area: whereText,
+    amenity: firstAmenityLabel,
+    intent: intent?.label,
+    time: timeActive ? when.text : undefined,
+    layer: layerBits[0] ?? lensLabels[0],
+  });
+  const refinementCount =
+    (intent ? 1 : 0) +
+    (browse.openNow ? 1 : 0) +
+    (browse.dealsOn ? 1 : 0) +
+    (browse.musicTonight ? 1 : 0) +
+    (browse.timeModeExplicit ? 1 : 0) +
+    (props.scrubHour != null ? 1 : 0) +
+    (whereSel.kind !== "county" ? 1 : 0) +
+    visibleLayerCount;
 
   const line = countLine({
     places: props.placeCount,
@@ -607,6 +627,7 @@ export default function MapDock(props: MapDockProps) {
   const clearAll = () => {
     haptic("light");
     track("map_dock", { pane: "clear", pick: "all" });
+    clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
     props.setShowTransit(false);
@@ -641,6 +662,7 @@ export default function MapDock(props: MapDockProps) {
   const clearLayers = () => {
     haptic("light");
     track("map_dock", { pane: "layers", pick: "clear" });
+    clearLayerParamsImmediately();
     props.setAmenityGroups(new Set());
     props.setShowCivic(false);
     props.setShowTransit(false);
@@ -657,74 +679,10 @@ export default function MapDock(props: MapDockProps) {
     props.setFieldNotesOnly(false);
     props.onAerialSeason("all");
     for (const key of [...props.activeOverlays]) props.toggleOverlay(key);
-  };
-
-  const runSetup = (key: MapSetupKey) => {
-    haptic("light");
-    track("map_setup", { setup: key });
-
-    // A setup is a deliberate complete view, not another handful of toggles
-    // layered onto an unknown previous state. Area/camera stay put unless the
-    // user chose Field kit, whose promise is explicitly nearby utility.
-    props.setAmenityGroups(new Set());
-    props.setShowCivic(false);
-    props.setShowTransit(false);
-    props.setShowTrails(false);
-    props.setShowAerial(false);
-    props.setShowCemeteries(false);
-    props.setShowParking(false);
-    props.setShowRadar(false);
-    props.setShowIncidents(false);
-    props.setShowCameras(false);
-    props.setShowFireStations(false);
-    props.setShowCivicPlaces(false);
-    props.setShowSavedOnly(false);
-    props.setFieldNotesOnly(false);
-    props.onAerialSeason("all");
-
-    const wantedOverlays: OverlayKey[] =
-      key === "trail-day" ? ["parks"]
-      : key === "frederick-stories" ? ["bridges"]
-      : [];
-    for (const overlay of OVERLAYS) {
-      const isOn = props.activeOverlays.includes(overlay.key);
-      const shouldBeOn = wantedOverlays.includes(overlay.key);
-      if (isOn !== shouldBeOn) props.toggleOverlay(overlay.key);
-    }
-
-    if (key === "tonight") {
-      props.setShowTransit(true);
-      props.setShowParking(true);
-    } else if (key === "getting-around") {
-      props.setShowCivic(true);
-      props.setShowTransit(true);
-      props.setShowParking(true);
-      props.setShowIncidents(true);
-      props.setShowCameras(true);
-    } else if (key === "trail-day") {
-      props.setShowTrails(true);
-      props.setShowRadar(true);
-      props.setShowCivicPlaces(true);
-      props.setAmenityGroups(new Set(["water", "safety"]));
-    } else if (key === "field-kit") {
-      props.setAmenityGroups(new Set([
-        "restroom", "water", "trash", "dog", "wifi", "outlet", "bike", "seating",
-      ]));
-      setWhereSel({ kind: "nearme" });
-      setScope("nearme");
-    } else {
-      props.setShowAerial(true);
-      props.setShowCemeteries(true);
-    }
-
     setParams((q) => {
-      for (const param of ["intent", "sub", "open", "deals", "music", "t", "amenity", "show", "layers"]) {
-        q.delete(param);
-      }
-      if (key === "tonight") q.set("t", "tonight");
-      if (key === "trail-day") q.set("intent", "outdoor");
-      if (key === "field-kit") q.set(SCOPE_PARAM, "nearme");
-      if (wantedOverlays.length > 0) q.set("layers", wantedOverlays.join(","));
+      q.delete("amenity");
+      q.delete("show");
+      q.delete("layers");
     });
   };
 
@@ -735,6 +693,14 @@ export default function MapDock(props: MapDockProps) {
       return;
     }
     if (pane === null) restoreRef.current = document.activeElement as HTMLElement | null;
+    setPane(next);
+  };
+  const openContentsPane = (
+    next: Exclude<Pane, "contents">,
+    reveal: PlaceReveal | null = null,
+  ) => {
+    haptic("light");
+    setPlaceReveal(reveal);
     setPane(next);
   };
   // This is a non-modal disclosure over the map. Escape closes it, while Tab
@@ -760,36 +726,14 @@ export default function MapDock(props: MapDockProps) {
       : null;
 
   const paneTitle =
-    pane === "what" ? "Kinds of places"
-    : pane === "when" ? "Time"
+    pane === "contents" ? "Map contents"
+    : pane === "what"
+      ? placeReveal === "amenities" ? "Public essentials" : "Places & businesses"
+    : pane === "when" ? "Events & time"
     : pane === "where" ? "Area"
-    : pane === "discover" ? "Read this area"
+    : pane === "discover" ? "Highlights"
     : pane === "layers" ? "Map layers"
     : "";
-
-  // The Most-needed shortcuts unify categories, amenities, open-now and near-me
-  // under "what do you need", so the common answer never requires tab-hopping.
-  const isNeedOn = (n: MapNeed): boolean =>
-    n.kind === "intent" ? browse.intentKey === n.key
-    : n.kind === "amenity" ? props.amenityGroups.has(n.key)
-    : n.kind === "opennow" ? browse.openNow
-    : n.kind === "parking" ? props.showParking
-    : whereSel.kind === "nearme";
-  const runNeed = (n: MapNeed) => {
-    haptic("light");
-    if (n.kind === "intent") pickIntent(browse.intentKey === n.key ? null : n.key);
-    else if (n.kind === "opennow") toggleOpenNow();
-    else if (n.kind === "nearme") props.goNearMe();
-    else if (n.kind === "parking") props.setShowParking((v) => !v);
-    else
-      props.setAmenityGroups((prev) => {
-        const next = new Set(prev);
-        if (next.has(n.key)) next.delete(n.key);
-        else next.add(n.key);
-        return next;
-      });
-    closePane();
-  };
 
   const togglePlaceReveal = (next: PlaceReveal) => {
     setPlaceReveal((current) => (current === next ? null : next));
@@ -804,17 +748,47 @@ export default function MapDock(props: MapDockProps) {
     });
   };
 
+  const shareCurrentView = async () => {
+    const url = window.location.href;
+    haptic("light");
+    track("map_share", { surface: "contents" });
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Frederick Radius map",
+          text: "Open this Frederick County map view.",
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("copied");
+        window.setTimeout(() => setShareStatus("idle"), 2200);
+      }
+    } catch (error) {
+      if ((error as { name?: string })?.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("copied");
+        window.setTimeout(() => setShareStatus("idle"), 2200);
+      } catch {
+        // Sharing is an enhancement. Leave the map untouched if both browser
+        // share and clipboard APIs are unavailable.
+      }
+    }
+  };
+
   return (
     <>
       <div
         className={`dock${pane ? " dock-open" : ""}`}
         data-map-dock
+        data-pane={pane ?? undefined}
+        ref={dockRef}
       >
-        {/* ── The top control bar: search row + a Filters / view-toggle bar,
-            pinned to the top of the map. ── */}
+        {/* The only persistent map choices: search and Map contents. */}
         <div className="dock-head">
           {/* Search, folded in as the top row — the map's ONE search. */}
-          <div className="dock-search-wrap">
+          <div className="dock-search-wrap" inert={pane !== null}>
             <div className="dock-search" role="search">
               <SearchIcon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2.2} />
               <input
@@ -832,7 +806,7 @@ export default function MapDock(props: MapDockProps) {
                 aria-label="Search this map"
                 className="dock-search-input"
               />
-              {props.q.trim().length > 0 ? (
+              {props.q.trim().length > 0 && (
                 <button
                   type="button"
                   className="dock-search-clear tap-44"
@@ -841,181 +815,83 @@ export default function MapDock(props: MapDockProps) {
                 >
                   <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
                 </button>
-              ) : (
-                <span aria-hidden className="dock-search-kbd">Find</span>
               )}
             </div>
-            {props.searchMatches.length > 0 && (
-              <ul className="dock-search-results">
-                {props.searchMatches.map((r) => {
+            {pane === null && props.searchMatches.length > 0 && (
+              <ul
+                className="dock-search-results"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {props.searchMatches.slice(0, 4).map((r, index) => {
                   const dot =
                     r.type === "event" ? "var(--app-brand, #B5462B)"
                     : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
                     : r.type === "action" ? "var(--app-brand, #B5462B)"
                     : "var(--app-ink-3, #7A828C)";
                   return (
-                    <li key={r.id}>
-                      <button type="button" onClick={() => props.pickSearch(r)} className="dock-search-result">
+                    <li key={r.id} className="dock-search-result-item" data-rank={index + 1}>
+                      <button
+                        type="button"
+                        data-map-search-result={r.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          props.pickSearch(r);
+                        }}
+                        className="dock-search-result"
+                      >
                         <span aria-hidden className="dock-search-result-dot" style={{ background: dot }} />
                         <span className="dock-search-result-text">
                           <span className="dock-search-result-title">{r.title}</span>
-                          <span className="dock-search-result-sub">{r.subtitle}</span>
+                          <span className="dock-search-result-sub">
+                            {r.type === "place"
+                              ? [
+                                  r.distance_m != null
+                                    ? `${formatDistance(r.distance_m)} ${props.searchDistanceOriginLabel}`
+                                    : null,
+                                  r.address?.trim() || r.subtitle,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : r.subtitle}
+                          </span>
                         </span>
                       </button>
                     </li>
                   );
                 })}
+                {props.searchMatches.length > 4 && (
+                  <li className="dock-search-more-item">
+                    <button
+                      type="button"
+                      className="dock-search-more"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        router.push(`/search?q=${encodeURIComponent(props.q.trim())}`);
+                      }}
+                    >
+                      See all results
+                      <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                    </button>
+                  </li>
+                )}
               </ul>
             )}
           </div>
 
-          {/* Three stable questions. Layers use the persistent rail below so
-              the map state remains visible and removable at all times. */}
-          <div className="dock-actions" role="group" aria-label="Map controls">
-            <button
-              type="button"
-              className="dock-action tap-44"
-              data-on={Boolean(intent) || undefined}
-              aria-expanded={pane === "what"}
-              aria-controls="dock-pane"
-              onClick={() => togglePane("what")}
-            >
-              <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span>{intent?.label ?? "Places"}</span>
-            </button>
-            <button
-              type="button"
-              className="dock-action tap-44"
-              data-on={timeActive || undefined}
-              aria-expanded={pane === "when"}
-              aria-controls="dock-pane"
-              onClick={() => togglePane("when")}
-            >
-              <Clock className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span>Time</span>
-            </button>
-            <button
-              type="button"
-              className="dock-action tap-44"
-              data-on={whereSel.kind !== "county" || undefined}
-              aria-expanded={pane === "where"}
-              aria-controls="dock-pane"
-              onClick={() => togglePane("where")}
-            >
-              <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span>Area</span>
-            </button>
-          </div>
-        </div>
-
-        {/* A persistent layer rail: common layers are always one tap away;
-            less-common active layers stay here until the user turns them off. */}
-        <div className="dock-layer-rail" role="group" aria-label="Map layer controls">
           <button
             type="button"
-            className="dock-layer-more dock-read-area tap-44"
-            data-on={pane === "discover" || Boolean(props.selectedDiscoveryId) || undefined}
-            aria-expanded={pane === "discover"}
+            className="dock-contents tap-44"
+            data-on={refinementCount > 0 || Boolean(props.selectedDiscoveryId) || undefined}
+            aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            onClick={() => togglePane("discover")}
+            aria-label={contentsSummary === "Contents" ? "Map contents" : `Map contents: ${contentsSummary}`}
+            title={contentsSummary}
+            onClick={() => togglePane("contents")}
           >
-            <Waypoints className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-            Read this area
-            {props.discoveries.length > 0 && <span className="dock-layer-count">{props.discoveries.length}</span>}
+            <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
+            <span>{contentsSummary}</span>
           </button>
-          <button
-            type="button"
-            className="dock-layer-more tap-44"
-            data-on={pane === "layers" || undefined}
-            aria-expanded={pane === "layers"}
-            aria-controls="dock-pane"
-            onClick={() => togglePane("layers")}
-          >
-            <Layers3 className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-            Layers
-            {visibleLayerCount > 0 && <span className="dock-layer-count">{visibleLayerCount}</span>}
-          </button>
-          <button
-            type="button"
-            className="dock-layer-toggle tap-44"
-            data-on={props.showTransit || undefined}
-            aria-pressed={props.showTransit}
-            onClick={() => props.setShowTransit((value) => !value)}
-          >
-            <span className="dock-layer-dot" aria-hidden />
-            Transit
-          </button>
-          {props.parkingCount > 0 && (
-            <button
-              type="button"
-              className="dock-layer-toggle tap-44"
-              data-on={props.showParking || undefined}
-              aria-pressed={props.showParking}
-              onClick={() => props.setShowParking((value) => !value)}
-            >
-              <span className="dock-layer-dot" aria-hidden />
-              Parking
-            </button>
-          )}
-          <button
-            type="button"
-            className="dock-layer-toggle tap-44"
-            data-on={props.showRadar || undefined}
-            aria-pressed={props.showRadar}
-            onClick={() => props.setShowRadar((value) => !value)}
-          >
-            <span className="dock-layer-dot" aria-hidden />
-            Radar
-          </button>
-
-          {props.amenityGroups.size > 0 && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-label="Hide all public amenities" onClick={() => props.setAmenityGroups(new Set())}>
-              <span className="dock-layer-dot" aria-hidden />
-              Amenities
-              <span className="dock-layer-count">{props.amenityGroups.size}</span>
-            </button>
-          )}
-          {props.showCivic && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCivic(false)}><span className="dock-layer-dot" aria-hidden />Roads &amp; alerts</button>
-          )}
-          {props.showTrails && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowTrails(false)}><span className="dock-layer-dot" aria-hidden />Trails</button>
-          )}
-          {props.showAerial && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowAerial(false)}><span className="dock-layer-dot" aria-hidden />Aerial</button>
-          )}
-          {props.showCemeteries && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCemeteries(false)}><span className="dock-layer-dot" aria-hidden />Cemeteries</button>
-          )}
-          {props.showIncidents && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowIncidents(false)}><span className="dock-layer-dot" aria-hidden />Incidents</button>
-          )}
-          {props.showCameras && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCameras(false)}><span className="dock-layer-dot" aria-hidden />Cameras</button>
-          )}
-          {props.showFireStations && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowFireStations(false)}><span className="dock-layer-dot" aria-hidden />Fire stations</button>
-          )}
-          {props.showCivicPlaces && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowCivicPlaces(false)}><span className="dock-layer-dot" aria-hidden />Parks &amp; libraries</button>
-          )}
-          {props.showSavedOnly && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setShowSavedOnly(false)}><span className="dock-layer-dot" aria-hidden />Saved</button>
-          )}
-          {props.fieldNotesOnly && (
-            <button type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.setFieldNotesOnly(false)}><span className="dock-layer-dot" aria-hidden />Field notes</button>
-          )}
-          {props.activeOverlays.map((key) => {
-            const overlay = OVERLAYS.find((item) => item.key === key);
-            if (!overlay) return null;
-            return (
-              <button key={key} type="button" className="dock-layer-toggle tap-44" data-on aria-pressed onClick={() => props.toggleOverlay(key)}>
-                <span className="dock-layer-dot" aria-hidden />
-                {overlay.label}
-              </button>
-            );
-          })}
-
         </div>
 
         {/* The deeper controls are a bottom sheet on phones and a side tray on
@@ -1023,77 +899,220 @@ export default function MapDock(props: MapDockProps) {
         <div
           className="dock-pane"
           id="dock-pane"
+          data-pane={pane ?? undefined}
           role="region"
           aria-label={paneTitle}
           aria-hidden={pane === null}
+          tabIndex={-1}
           // See EventsBoardDock: inert keeps the collapsed panel's controls
           // out of tab order + the a11y tree (2026-07 P3).
           inert={pane === null}
           ref={paneRef}
           onKeyDown={onPaneKeyDown}
         >
-          <div className="dock-pane-scroll">
-            <div className="dock-pane-head">
-              <h2 className="dock-pane-title">{paneTitle}</h2>
-              <button type="button" className="dock-done" onClick={closePane}>
-                Done
-              </button>
-            </div>
-
-            {/* The living mono count line — also the polite live region. */}
-            <div className="dock-countbar">
-              <div className="dock-countline" aria-live="polite">
-                {pane === "discover"
-                  ? `${props.discoveries.length} explained connection${props.discoveries.length === 1 ? "" : "s"} in this view.`
-                  : line}
-                {pane !== "discover" && (
-                  <span className="sr-only">
-                    {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
-                  </span>
-                )}
-              </div>
-              {pane !== "discover" && (pane === "layers" ? visibleLayerCount > 0 : dirty) && (
+          <div className="dock-pane-scroll" ref={paneScrollRef}>
+            {pane !== "contents" && (
+              <div className="dock-pane-head">
                 <button
                   type="button"
-                  className="dock-clear tap-44"
-                  onClick={pane === "layers" ? clearLayers : clearAll}
-                  aria-label={pane === "layers" ? "Hide all map layers" : "Clear all filters"}
+                  className="dock-back"
+                  onClick={() => {
+                    setPlaceReveal(null);
+                    setPane("contents");
+                  }}
                 >
-                  <X className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
-                  <span>{pane === "layers" ? "Clear layers" : "Reset"}</span>
+                  <ChevronLeft className="h-4 w-4" strokeWidth={2.3} aria-hidden />
+                  Back
                 </button>
-              )}
-            </div>
+                <h2 className="dock-pane-title">{paneTitle}</h2>
+                <button type="button" className="dock-done" onClick={closePane}>
+                  Done
+                </button>
+              </div>
+            )}
 
-            {/* ── PLACES — common decisions first. The old panel rendered ten
-                quick needs, every category, subcategories, and every public
-                amenity at once. Keep the depth, but reveal the two catalogs
-                only after the user asks for them. A selection closes the panel
-                so the map immediately becomes the answer again. */}
+            {/* The contents index already explains its rows. Keep the count
+                bar out of that clean first sheet unless there is state to
+                reset; deeper panes retain the live, viewport-honest count. */}
+            {(pane !== "contents" || dirty) && (
+              <div className="dock-countbar">
+                <div className="dock-countline" aria-live="polite">
+                  {pane === "discover"
+                    ? `${props.discoveries.length} highlight${props.discoveries.length === 1 ? "" : "s"} in this view.`
+                    : line}
+                  {pane !== "discover" && (
+                    <span className="sr-only">
+                      {` Showing ${what.main}, ${when.text}, ${whereText}, ${layers.main.toLowerCase()}.`}
+                    </span>
+                  )}
+                </div>
+                {pane !== "discover" && (pane === "layers" ? visibleLayerCount > 0 : dirty) && (
+                  <button
+                    type="button"
+                    className="dock-clear tap-44"
+                    onClick={pane === "layers" ? clearLayers : clearAll}
+                    aria-label={pane === "layers" ? "Hide all map layers" : "Clear all filters"}
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
+                    <span>{pane === "layers" ? "Clear layers" : "Reset"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {pane === "contents" && (
+              <div className="dock-content-list" role="group" aria-label="Choose what the map shows">
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Public essentials"
+                  data-on={publicAmenityCount > 0 || undefined}
+                  onClick={() => openContentsPane("what", "amenities")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Toilet className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Essentials</strong>
+                    <small>
+                      {publicAmenityCount > 0
+                        ? `${publicAmenityCount} ${publicAmenityCount === 1 ? "type" : "types"} showing`
+                        : "Restrooms, water, seating, power, and more"}
+                    </small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Events and time"
+                  data-on={timeActive || undefined}
+                  onClick={() => openContentsPane("when")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Events</strong>
+                    <small>{timeActive ? when.text : "Choose a time before events appear"}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label={props.showTransit ? "Hide transit" : "Show transit routes, stops, and vehicles"}
+                  data-on={props.showTransit || undefined}
+                  onClick={() => {
+                    haptic("light");
+                    props.setShowTransit((current) => !current);
+                    closePane();
+                  }}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Transit</strong>
+                    <small>{props.showTransit ? "Routes, stops, and vehicles showing" : "Routes, stops, and live vehicles"}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Towns and area"
+                  data-on={whereSel.kind !== "county" || undefined}
+                  onClick={() => openContentsPane("where")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <LocateFixed className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Area</strong>
+                    <small>{whereText}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Places and businesses"
+                  onClick={() => openContentsPane("what", "categories")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Places</strong>
+                    <small>{intent?.label ?? `${props.placeCount.toLocaleString("en-US")} mapped places`}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Map layers"
+                  data-on={visibleLayerCount > 0 || undefined}
+                  onClick={() => openContentsPane("layers")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Layers</strong>
+                    <small>
+                      {visibleLayerCount > 0
+                        ? `${visibleLayerCount} ${visibleLayerCount === 1 ? "layer" : "layers"} showing`
+                        : "Transit, parking, radar, trails, and local history"}
+                    </small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                {props.discoveries.length > 0 && (
+                  <button
+                    type="button"
+                    className="dock-content-row"
+                    aria-label="Connections in this view"
+                    data-on={Boolean(props.selectedDiscoveryId) || undefined}
+                    onClick={() => openContentsPane("discover")}
+                  >
+                    <span className="dock-content-icon" aria-hidden>
+                      <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                    </span>
+                    <span className="dock-content-copy">
+                      <strong>Connections</strong>
+                      <small>
+                        {props.discoveries.length} source-backed {props.discoveries.length === 1 ? "connection" : "connections"}
+                      </small>
+                    </span>
+                    <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Share this map view"
+                  onClick={() => void shareCurrentView()}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    {shareStatus === "copied"
+                      ? <Check className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                      : <Share2 className="h-[18px] w-[18px]" strokeWidth={2.1} />}
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>{shareStatus === "copied" ? "Link copied" : "Share this view"}</strong>
+                    <small>Includes the area and choices currently on the map</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+              </div>
+            )}
+
+            {/* ── PLACES — stable catalogs, never time-reordered guesses. A
+                selection closes the panel so the map becomes the answer. */}
             {pane === "what" && (
               <div>
-                <Sect>Quick find</Sect>
-                <div className="dock-needs">
-                  {needsNow.slice(0, 6).map((n) => {
-                    const on = isNeedOn(n);
-                    return (
-                      <button
-                        key={n.kind + ("key" in n ? n.key : n.label)}
-                        type="button"
-                        className="dock-need"
-                        data-on={on || undefined}
-                        aria-pressed={on}
-                        onClick={() => runNeed(n)}
-                        style={{ "--c": n.color } as React.CSSProperties}
-                      >
-                        <span aria-hidden className="dock-need-ic">
-                          <n.Icon className="h-[15px] w-[15px]" strokeWidth={2} />
-                        </span>
-                        {n.label}
-                      </button>
-                    );
-                  })}
-                </div>
                 {intent?.subIntents && intent.subIntents.length > 0 && (
                   <>
                     <Sect>Narrow {intent.label}</Sect>
@@ -1176,7 +1195,7 @@ export default function MapDock(props: MapDockProps) {
                 {/* Public amenities stay in the find flow, but the full
                     hand-mapped catalog no longer competes with the six most
                     common choices above. */}
-                {props.amenityCount > 0 && (
+                {props.amenityCount > 0 && publicAmenityGroups.length > 0 && (
                   <>
                     <button
                       type="button"
@@ -1190,7 +1209,7 @@ export default function MapDock(props: MapDockProps) {
                         <small>Water, trash, dog stations, and more</small>
                       </span>
                       <span className="dock-reveal-count">
-                        {AMENITY_GROUPS.filter((group) => !group.comingSoon).length}
+                        {publicAmenityGroups.length}
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 transition-transform${placeReveal === "amenities" ? " rotate-180" : ""}`}
@@ -1203,7 +1222,7 @@ export default function MapDock(props: MapDockProps) {
                         color="var(--app-cool)"
                         ariaLabel="Public amenities"
                         onPick={toggleAmenity}
-                        items={AMENITY_GROUPS.filter((g) => !g.comingSoon).map((g) => ({
+                        items={publicAmenityGroups.map((g) => ({
                           key: g.key,
                           label: g.label,
                           on: props.amenityGroups.has(g.key),
@@ -1218,27 +1237,50 @@ export default function MapDock(props: MapDockProps) {
             {/* ── WHEN ── */}
             {pane === "when" && (
               <div>
-                {/* The one-tap answer to the whole pane: open places, live
-                    events, centered on you. Everything below refines it. */}
+                <Sect>Events</Sect>
+                <div className="dock-chips">
+                  {TIME_WINDOWS.map((w) => (
+                    <Chip
+                      key={w.key}
+                      on={
+                        (browse.timeModeExplicit && browse.timeMode === w.key) ||
+                        (browse.musicTonight && w.key === "tonight")
+                      }
+                      color="var(--app-brand)"
+                      onClick={() => pickWindow(w.key)}
+                      count={browse.eventWindowCounts[w.key] ?? 0}
+                    >
+                      {w.label}
+                    </Chip>
+                  ))}
+                </div>
                 <button
                   type="button"
                   className="dock-opennow"
-                  onClick={goRightNow}
+                  data-on={browse.musicTonight || undefined}
+                  aria-pressed={browse.musicTonight}
+                  onClick={toggleMusicTonight}
                 >
-                  <Zap className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Right now, near me
+                  <Music className="h-4 w-4" strokeWidth={2.4} aria-hidden />
+                  Live music tonight
+                  <span className="dock-opennow-n">{browse.musicTonightCount.toLocaleString("en-US")}</span>
                 </button>
-                <Sect>Places</Sect>
+
+                <Sect>Places right now</Sect>
                 <button
                   type="button"
                   className="dock-opennow"
                   data-on={browse.openNow || undefined}
                   aria-pressed={browse.openNow}
+                  disabled={props.openNowAvailable === false}
+                  title={props.openNowAvailable === false ? props.openNowUnavailableLabel ?? "Open-now filtering is unavailable until more hours are verified" : undefined}
                   onClick={toggleOpenNow}
                 >
                   <Clock className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Open now
-                  <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
+                  {props.openNowAvailable === false ? "Open now unavailable" : "Open now"}
+                  {props.openNowAvailable !== false && (
+                    <span className="dock-opennow-n">{browse.openNowCount.toLocaleString("en-US")}</span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -1251,32 +1293,6 @@ export default function MapDock(props: MapDockProps) {
                   Deals today
                   <span className="dock-opennow-n">{browse.dealsTodayCount.toLocaleString("en-US")}</span>
                 </button>
-
-                <Sect>Events</Sect>
-                <button
-                  type="button"
-                  className="dock-opennow"
-                  data-on={browse.musicTonight || undefined}
-                  aria-pressed={browse.musicTonight}
-                  onClick={toggleMusicTonight}
-                >
-                  <Music className="h-4 w-4" strokeWidth={2.4} aria-hidden />
-                  Live music tonight
-                  <span className="dock-opennow-n">{browse.musicTonightCount.toLocaleString("en-US")}</span>
-                </button>
-                <div className="dock-chips">
-                  {TIME_WINDOWS.map((w) => (
-                    <Chip
-                      key={w.key}
-                      on={browse.timeMode === w.key}
-                      color="var(--app-brand)"
-                      onClick={() => pickWindow(w.key)}
-                      count={browse.eventWindowCounts[w.key] ?? 0}
-                    >
-                      {w.label}
-                    </Chip>
-                  ))}
-                </div>
 
                 <Sect>The day</Sect>
                 <TimeScrubber hour={props.scrubHour} onChange={props.setScrubHour} />
@@ -1330,14 +1346,14 @@ export default function MapDock(props: MapDockProps) {
               </div>
             )}
 
-            {/* ── READ THIS AREA — synthesized, source-visible connections.
+            {/* ── HIGHLIGHTS — synthesized, source-visible connections.
                 This is not another layer catalog. Each card names the literal
                 relationship it found; selecting one closes the tray and draws
                 only that small constellation on the map. ── */}
             {pane === "discover" && (
               <div className="dock-discoveries">
                 <p className="dock-discovery-intro">
-                  Radius connects facts that are already on this map. Every finding below can show why it appeared.
+                  These highlights connect what is happening with what is nearby. Open one to see the mapped facts behind it.
                 </p>
                 {props.discoveries.length > 0 ? (
                   <div className="dock-discovery-list">
@@ -1374,7 +1390,7 @@ export default function MapDock(props: MapDockProps) {
                   <div className="dock-discovery-empty">
                     <Waypoints className="h-5 w-5" strokeWidth={2} aria-hidden />
                     <p>Radius did not find a strong enough connection in this view.</p>
-                    <small>Move closer to a town or event, then read the area again.</small>
+                    <small>Move closer to a town or event to uncover stronger connections.</small>
                   </div>
                 )}
               </div>
@@ -1384,31 +1400,60 @@ export default function MapDock(props: MapDockProps) {
                 from the old bottom-left tray. ── */}
             {pane === "layers" && (
               <div>
-                <Sect>Quick setups</Sect>
-                <div className="dock-setups" role="group" aria-label="Frederick map setups">
-                  {MAP_SETUPS.map(({ key, label, description, Icon }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className="dock-setup"
-                      onClick={() => runSetup(key)}
-                    >
-                      <span aria-hidden className="dock-setup-icon">
-                        <Icon className="h-4 w-4" strokeWidth={2.1} />
-                      </span>
-                      <span className="dock-setup-copy">
-                        <strong>{label}</strong>
-                        <small>{description}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Map drapes + conditions only. Public amenities (restrooms,
-                    water, Wi-Fi, …) moved to the Places tab, where finding one
-                    is a first-class action rather than a layer toggle. */}
-                <Sect>Map layers</Sect>
+                {/* Put decisions with immediate consequences before the
+                    archival and exploratory layers. An active layer explains
+                    what it is showing and where the information comes from. */}
+                <Sect>Useful now</Sect>
                 <div className="dock-chips">
+                  {props.parkingCount > 0 && (
+                    <Chip
+                      on={props.showParking}
+                      color="var(--app-cool)"
+                      onClick={() => props.setShowParking((v) => !v)}
+                      count={props.parkingCount}
+                      title="Downtown city parking garages, tinted by live availability"
+                    >
+                      Parking
+                    </Chip>
+                  )}
+                  <Chip
+                    on={props.showTransit}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowTransit((v) => !v)}
+                    count={props.transitCount > 0 ? props.transitCount : null}
+                    disabled={props.transitHealth.status === "unavailable"}
+                    title={
+                      props.transitHealth.status === "unavailable"
+                        ? "The Frederick County TransIT route feed is unavailable"
+                        : "TransIT bus routes, stops, and live buses"
+                    }
+                  >
+                    {props.transitHealth.status === "unavailable" ? "Transit unavailable" : "Transit"}
+                  </Chip>
+                  <Chip
+                    on={props.showRadar}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowRadar((v) => !v)}
+                    disabled={props.radarHealth.status === "unavailable"}
+                    title={
+                      props.radarHealth.status === "unavailable"
+                        ? "The RainViewer frame feed is unavailable"
+                        : "Animated precipitation radar from RainViewer. Frames run a few minutes behind real time"
+                    }
+                  >
+                    {props.radarHealth.status === "unavailable" ? "Radar unavailable" : "Radar"}
+                  </Chip>
+                  {(props.communityReportCount > 0 || communityReportsOn) && (
+                    <Chip
+                      on={communityReportsOn}
+                      color="var(--app-warning-press)"
+                      onClick={() => toggleAmenity("community")}
+                      count={props.communityReportCount}
+                      title="Reviewed, unexpired reports submitted by the Frederick community"
+                    >
+                      Community reports
+                    </Chip>
+                  )}
                   {props.civicAvailable && (
                     <Chip
                       on={props.showCivic}
@@ -1420,14 +1465,104 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   )}
                   <Chip
-                    on={props.showTransit}
-                    color="var(--app-cool)"
-                    onClick={() => props.setShowTransit((v) => !v)}
-                    count={props.transitCount > 0 ? props.transitCount : null}
-                    title="TransIT bus routes and live buses"
+                    on={props.showIncidents}
+                    color="var(--app-brand)"
+                    onClick={() => props.setShowIncidents((v) => !v)}
+                    disabled={props.incidentHealth.status === "unavailable"}
+                    title={
+                      props.incidentHealth.status === "unavailable"
+                        ? "The public FrederickScanner incident feed is unavailable"
+                        : "Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
+                    }
                   >
-                    Transit
+                    {props.incidentHealth.status === "unavailable" ? "Incidents unavailable" : "Incidents"}
                   </Chip>
+                  <Chip
+                    on={props.showCameras}
+                    color="var(--app-cool)"
+                    onClick={() => props.setShowCameras((v) => !v)}
+                    disabled={props.cameraHealth.status === "unavailable"}
+                    title={
+                      props.cameraHealth.status === "unavailable"
+                        ? "The Maryland CHART camera feed is unavailable"
+                        : "Maryland CHART traffic cameras on I-70, US-15, US-340 and other main routes. Tap a camera to watch its live feed"
+                    }
+                  >
+                    {props.cameraHealth.status === "unavailable" ? "Cameras unavailable" : "Cameras"}
+                  </Chip>
+                </div>
+
+                {(props.showParking || props.showTransit || props.showRadar || communityReportsOn
+                  || props.showCivic || props.showIncidents || props.showCameras
+                  || props.transitHealth.status === "unavailable"
+                  || props.radarHealth.status === "unavailable"
+                  || props.incidentHealth.status === "unavailable"
+                  || props.cameraHealth.status === "unavailable") && (
+                  <div className="dock-layer-status-list" role="status" aria-live="polite">
+                    {props.showParking && (
+                      <p className="dock-layer-status">
+                        <strong>Parking</strong> · {props.parkingCount} downtown garages. Tap one for availability and directions.
+                      </p>
+                    )}
+                    {props.transitHealth.status === "unavailable" ? (
+                      <p className="dock-layer-status">
+                        <strong>Transit</strong> · The county route feed is unavailable, so this layer is off.
+                      </p>
+                    ) : props.showTransit && (
+                      <p className="dock-layer-status">
+                        <strong>Transit</strong> · {props.transitHealth.count} mapped routes from {props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.
+                      </p>
+                    )}
+                    {props.radarHealth.status === "unavailable" ? (
+                      <p className="dock-layer-status">
+                        <strong>Radar</strong> · The RainViewer feed is unavailable, so this layer is off.
+                      </p>
+                    ) : props.showRadar && (
+                      <p className="dock-layer-status">
+                        <strong>Radar</strong> · {props.radarHealth.status === "empty"
+                          ? "No frames are available from RainViewer."
+                          : radarClock
+                          ? <>Frame from <span className="font-mono">{radarClock}</span> Eastern. Radar runs a few minutes behind.</>
+                          : "Loading the newest available frame…"}
+                      </p>
+                    )}
+                    {communityReportsOn && (
+                      <p className="dock-layer-status">
+                        <strong>Community reports</strong> · {props.communityReportCount > 0
+                          ? `${props.communityReportCount} reviewed, current report${props.communityReportCount === 1 ? "" : "s"}.`
+                          : "No current reports."}
+                      </p>
+                    )}
+                    {props.showCivic && (
+                      <p className="dock-layer-status"><strong>Roads &amp; alerts</strong> · County-published issues and live traffic context.</p>
+                    )}
+                    {props.incidentHealth.status === "unavailable" ? (
+                      <p className="dock-layer-status">
+                        <strong>Incidents</strong> · The public dispatch feed is unavailable, so this layer is off.
+                      </p>
+                    ) : props.showIncidents && (
+                      <p className="dock-layer-status">
+                        <strong>Incidents</strong> · {props.incidentHealth.status === "empty"
+                          ? "No current public incidents in the latest FrederickScanner response."
+                          : `${props.incidentHealth.count} current public incident${props.incidentHealth.count === 1 ? "" : "s"} from ${props.incidentHealth.source}.`} Medical and personal calls stay hidden.
+                      </p>
+                    )}
+                    {props.cameraHealth.status === "unavailable" ? (
+                      <p className="dock-layer-status">
+                        <strong>Cameras</strong> · The Maryland CHART feed is unavailable, so this layer is off.
+                      </p>
+                    ) : props.showCameras && (
+                      <p className="dock-layer-status">
+                        <strong>Cameras</strong> · {props.cameraHealth.status === "empty"
+                          ? "The latest Maryland CHART response contains no Frederick County cameras."
+                          : `${props.cameraHealth.count} cameras from ${props.cameraHealth.source}. Tap a marker for the live road feed.`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <Sect>Explore Frederick</Sect>
+                <div className="dock-chips">
                   {props.trailCount > 0 && (
                     <Chip
                       on={props.showTrails}
@@ -1462,41 +1597,6 @@ export default function MapDock(props: MapDockProps) {
                       Cemeteries
                     </Chip>
                   )}
-                  {props.parkingCount > 0 && (
-                    <Chip
-                      on={props.showParking}
-                      color="var(--app-cool)"
-                      onClick={() => props.setShowParking((v) => !v)}
-                      count={props.parkingCount}
-                      title="Downtown city parking garages, tinted by live availability"
-                    >
-                      Parking
-                    </Chip>
-                  )}
-                  <Chip
-                    on={props.showRadar}
-                    color="var(--app-cool)"
-                    onClick={() => props.setShowRadar((v) => !v)}
-                    title="Animated precipitation radar from RainViewer. Frames run a few minutes behind real time"
-                  >
-                    Radar
-                  </Chip>
-                  <Chip
-                    on={props.showIncidents}
-                    color="var(--app-brand)"
-                    onClick={() => props.setShowIncidents((v) => !v)}
-                    title="Live public incidents from the FredScanner dispatch feed (crashes, wires down, fires). Medical and personal calls are never shown"
-                  >
-                    Incidents
-                  </Chip>
-                  <Chip
-                    on={props.showCameras}
-                    color="var(--app-cool)"
-                    onClick={() => props.setShowCameras((v) => !v)}
-                    title="Maryland CHART traffic cameras on I-70, US-15, US-340 and other main routes. Tap a camera to watch its live feed"
-                  >
-                    Cameras
-                  </Chip>
                   <Chip
                     on={props.showFireStations}
                     color="var(--app-cool)"
@@ -1527,12 +1627,6 @@ export default function MapDock(props: MapDockProps) {
                     </Chip>
                   ))}
                 </div>
-                {radarClock && (
-                  <p className="dock-hint" role="status">
-                    Radar as of <span className="font-mono">{radarClock}</span> Eastern.
-                    Frames arrive a few minutes behind real time.
-                  </p>
-                )}
                 {props.showAerial && (
                   <HeadRow
                     color="var(--app-accent-press)"

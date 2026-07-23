@@ -21,6 +21,12 @@ import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/ev
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const ENDPOINT = "https://app.ticketmaster.com/discovery/v2/events.json";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -186,9 +192,11 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
  * query (Ticketmaster requires apikey as a param) — server-only module,
  * so it never reaches the client.
  */
-export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
+export async function fetchTicketmasterMusicResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
   const key = (process.env.TICKETMASTER_API_KEY ?? "").trim();
-  if (!key) return [];
+  if (!key) return eventAdapterDisabled();
   const url =
     `${ENDPOINT}?apikey=${encodeURIComponent(key)}` +
     `&classificationName=Music&sort=date,asc&size=100&unit=miles` +
@@ -197,13 +205,18 @@ export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-    if (!res.ok) return [];
-    return normalizeTicketmaster(await res.json());
+    if (!res.ok) return eventAdapterFailed();
+    return eventAdapterOk(normalizeTicketmaster(await res.json()));
   } catch {
-    return []; // network/abort/parse — degrade silently, never fabricate
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
+  return (await fetchTicketmasterMusicResult()).items;
 }
 
 /**
@@ -223,9 +236,11 @@ export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
  * tournament, vs.) to "sports" too, but a Keys vs. Salem game whose
  * title doesn't trip any of those would otherwise read as "music."
  */
-export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
+export async function fetchTicketmasterSportsResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
   const key = (process.env.TICKETMASTER_API_KEY ?? "").trim();
-  if (!key) return [];
+  if (!key) return eventAdapterDisabled();
   const url =
     `${ENDPOINT}?apikey=${encodeURIComponent(key)}` +
     `&classificationName=Sports&sort=date,asc&size=100&unit=miles` +
@@ -234,12 +249,17 @@ export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-    if (!res.ok) return [];
+    if (!res.ok) return eventAdapterFailed();
     const events = normalizeTicketmaster(await res.json());
-    return events.map((e) => ({ ...e, category: "sports" }));
+    return eventAdapterOk(events.map((e) => ({ ...e, category: "sports" })));
   } catch {
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
+  return (await fetchTicketmasterSportsResult()).items;
 }

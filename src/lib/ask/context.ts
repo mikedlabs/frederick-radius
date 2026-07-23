@@ -105,7 +105,18 @@ export function wantsParking(query: string): boolean {
 /** Weather intent — explicit weather words only; the events grounder
  *  already covers "what should we do saturday". */
 export function wantsWeather(query: string): boolean {
-  return /\b(weather|forecast|rain(?:ing|y)?|umbrella|sunny|snow(?:ing)?|storm(?:s|y)?|temperature|humid(?:ity)?|hot out|cold out|heat advisory)\b/i.test(query);
+  return /\b(weather|forecast|rain(?:ing|y)?|umbrella|sunny|snow(?:ing)?|storm(?:s|y)?|temperature|humid(?:ity)?|hot out|cold out|heat advisory|air quality|aqi|wildfire smoke)\b/i.test(query);
+}
+
+export function wantsAirQuality(query: string): boolean {
+  return /\b(?:air quality|aqi|wildfire smoke)\b/i.test(query);
+}
+
+/** Distinguish a conditions question from a discovery request that merely
+ * mentions the weather ("something indoors with kids because it is raining").
+ * The latter still needs a place answer first. */
+export function wantsWeatherAnswer(query: string): boolean {
+  return wantsWeather(query) && !/\b(?:something|anything|things? to do|where (?:can|should|could) (?:i|we)|places?|indoors?|outdoors?|plan|visit|eat|drink)\b/i.test(query);
 }
 
 /**
@@ -185,7 +196,7 @@ export function wantIntentOf(query: string, now: Date): WantIntent | null {
       ? "breakfast"
       : /\blunch\b/.test(q)
         ? "lunch"
-        : /\b(dinner|supper)\b/.test(q)
+        : /\b(dinner|supper|date[- ]?night)\b/.test(q)
           ? "dinner"
           : /\blate[- ]?night\b/.test(q) && FOODISH.test(q)
             ? "late"
@@ -220,19 +231,12 @@ export function eventContextLines(
   const groups = groupByHorizon(events, bounds);
   const of = (key: string) => groups.find((g) => g.key === key)?.events ?? [];
 
-  // In-progress date-RANGE listings: a feed flattens a weekly residency
-  // ("Freddie Long at Pistarro's, through Aug 19") into one noon-anchored
-  // row, and the horizon logic honestly shelves it under "Coming up" while
-  // it runs — which made a band literally playing in Frederick today
-  // invisible to "Music tonight" (owner catch, Jul 2026). For the ask,
-  // a running range IS part of today's answer; its line prints the honest
-  // "through Aug 19" instead of a fake clock time.
-  const runningRanges = events.filter((e) => {
-    if (!isRangeListing(e)) return false;
-    const s = Date.parse(e.starts_at);
-    const end = Date.parse(e.ends_at);
-    return Number.isFinite(s) && Number.isFinite(end) && s <= bounds.now && end >= bounds.now;
-  });
+  // A feed can flatten a weekly series into one months-long range. That row
+  // proves only that the series is active, not that an occurrence happens on
+  // the day or evening the visitor asked about. Keep in-progress ranges out
+  // of exact-time answers unless the feed also supplies a dated occurrence.
+  // This prevents a 2025-2026 "Board Game Night" range from leading an answer
+  // for a specific Friday while exact Friday events sit later in the feed.
 
   let picked: AskEvent[];
   let label: string;
@@ -241,19 +245,18 @@ export function eventContextLines(
     // "today" bucket claims those events first — so a Saturday "this
     // weekend?" must include both buckets (live too: a street festival
     // running right now IS this weekend's answer).
-    picked = [...of("live"), ...of("today"), ...of("weekend"), ...runningRanges];
+    picked = [...of("live"), ...of("today"), ...of("weekend")];
     label = "THIS WEEKEND";
   } else if (anchor === "tomorrow") {
     const start = bounds.next24;
     const end = start + DAY_MS;
-    picked = [
-      ...events.filter((e) => {
-        const t = Date.parse(e.starts_at);
-        return Number.isFinite(t) && t >= start && t < end;
-      }),
-      // A residency running "through Aug 19" spans tomorrow too.
-      ...runningRanges.filter((e) => Date.parse(e.ends_at) >= end),
-    ];
+    const asksForEvening = /\b(?:night|evening)\b/i.test(query);
+    picked = events.filter((e) => {
+      if (isRangeListing(e)) return false;
+      const t = Date.parse(e.starts_at);
+      if (!Number.isFinite(t) || t < start || t >= end) return false;
+      return !asksForEvening || e.is_all_day || easternHour(e.starts_at) >= 16;
+    });
     label = "TOMORROW";
   } else if (anchor === "tonight") {
     // Evening only: what's still ahead from late afternoon on. LIVE rows
@@ -262,11 +265,10 @@ export function eventContextLines(
     picked = [
       ...of("live"),
       ...of("today").filter((e) => e.is_all_day || easternHour(e.starts_at) >= 16),
-      ...runningRanges,
     ];
     label = "TONIGHT";
   } else {
-    picked = [...of("live"), ...of("today"), ...runningRanges];
+    picked = [...of("live"), ...of("today")];
     label = "TODAY (including tonight)";
   }
 

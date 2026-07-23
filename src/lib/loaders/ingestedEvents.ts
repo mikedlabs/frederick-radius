@@ -26,6 +26,10 @@ import { isEventEnded } from "@/lib/eventWhenLabel";
 import { withVenueThumb } from "@/lib/loaders/eventThumb";
 import { upgradeEventGeom } from "@/lib/integrations/mapboxGeocode";
 import type { Event } from "@/data/events";
+import {
+  eventAttendanceMode,
+  isLikelyEventActionUrl,
+} from "@/lib/events/attendance";
 
 /** Ingest source domains we lift into the main rails (library + fire company).
  *  Everything else (county CivicEngage) stays civic-only to avoid double-count
@@ -71,6 +75,15 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
   if (!geom) return null;
   const category = s.category ?? "community";
   const slug = ingestedEventSlug(s.title, source, occ.startsAtUtc);
+  const attendance_mode = eventAttendanceMode({
+    title: s.title,
+    venue_name: s.venueName,
+    address: s.address,
+  });
+  const online_url =
+    attendance_mode !== "physical" && isLikelyEventActionUrl(occ.sourceUrl)
+      ? occ.sourceUrl
+      : undefined;
   return {
     slug,
     title: s.title,
@@ -83,8 +96,8 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
     is_recurring: s.isRecurring,
     // Honest recurrence legibility from the real collapsed count.
     recurrence_text: s.isRecurring ? `${s.count} upcoming dates` : undefined,
-    venue_name: s.venueName ?? "",
-    address: s.address ?? "",
+    venue_name: attendance_mode === "online" ? "Online" : (s.venueName ?? ""),
+    address: attendance_mode === "online" ? "" : (s.address ?? ""),
     geom,
     municipality: s.municipality,
     category,
@@ -92,6 +105,8 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
     // No reliable admission signal on these feeds — withhold the "Free" claim
     // rather than mislabel a bingo buy-in as free.
     is_free: false,
+    attendance_mode,
+    online_url,
     organizer: s.presenter,
     status: "scheduled",
     source,
@@ -100,7 +115,7 @@ function occurrenceToCard(s: IngestedSeries, occ: IngestedSeries["occurrences"][
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: muni?.name ?? s.municipality,
     distance_m: undefined,
-    geo_confidence: eventGeoConfidence({ geom }),
+    geo_confidence: attendance_mode === "online" ? "unknown" : eventGeoConfidence({ geom }),
   };
 }
 

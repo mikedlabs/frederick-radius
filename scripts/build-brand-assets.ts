@@ -331,6 +331,62 @@ function feedPortrait(fonts: string): string {
   );
 }
 
+function facebookPageLaunchPhoto(fonts: string, photoUrl: string): string {
+  return svgShell(
+    1080,
+    1350,
+    `<defs>
+    <linearGradient id="page-launch-photo-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".22"/>
+      <stop offset="56%" stop-color="${BRAND.colors.ink}" stop-opacity=".08"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".72"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="${BRAND.colors.cream}"/>
+  <image href="${photoUrl}" width="1080" height="850" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1080" height="850" fill="url(#page-launch-photo-shade)"/>
+  <rect x="58" y="0" width="8" height="850" fill="${BRAND.colors.brick}"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(96 72) scale(.86)")}
+  <text x="205" y="146" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="46" font-weight="400">${BRAND.name}</text>
+  <text x="96" y="782" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="21" font-weight="760" letter-spacing="3.8">FREDERICK COUNTY, MARYLAND</text>
+  <rect y="840" width="1080" height="510" fill="${BRAND.colors.cream}"/>
+  <rect y="840" width="1080" height="10" fill="${BRAND.colors.brick}"/>
+  <text x="88" y="934" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="3.8">PUBLIC BETA</text>
+  <text x="84" y="1062" fill="${BRAND.colors.ink}" font-family="Libre Caslon Display" font-size="76" font-weight="400" letter-spacing="-1.2">
+    <tspan x="84" dy="0">Frederick County starts</tspan><tspan x="84" dy="82">where you are.</tspan>
+  </text>
+  <text x="88" y="1250" fill="${BRAND.colors.mutedInk}" font-family="Public Sans" font-size="27" font-weight="500">Current local information, organized around your location.</text>
+  <text x="88" y="1310" fill="${BRAND.colors.brick}" font-family="Public Sans" font-size="21" font-weight="760" letter-spacing="3.8">FREDERICKRADIUS.APP</text>`,
+    fonts,
+  );
+}
+
+function facebookSeasonCard(
+  fonts: string,
+  photoUrl: string,
+  season: "SPRING" | "SUMMER" | "FALL" | "WINTER",
+): string {
+  return svgShell(
+    1080,
+    1080,
+    `<defs>
+    <linearGradient id="season-card-${season.toLowerCase()}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity=".25"/>
+      <stop offset="55%" stop-color="${BRAND.colors.ink}" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".78"/>
+    </linearGradient>
+  </defs>
+  <image href="${photoUrl}" width="1080" height="1080" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1080" height="1080" fill="url(#season-card-${season.toLowerCase()})"/>
+  <rect x="52" width="8" height="1080" fill="${BRAND.colors.brick}"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(90 70) scale(.82)")}
+  <text x="193" y="138" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="43" font-weight="400">${BRAND.name}</text>
+  <text x="88" y="936" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="82" font-weight="400">${season.charAt(0)}${season.slice(1).toLowerCase()} in Frederick.</text>
+  <text x="92" y="1010" fill="${BRAND.colors.cream}" fill-opacity=".88" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="3.8">FREDERICKRADIUS.APP</text>`,
+    fonts,
+  );
+}
+
 function facebookGroupLaunch(fonts: string, photoUrl: string): string {
   return svgShell(
     1080,
@@ -806,7 +862,9 @@ async function main() {
     textFont,
     textItalicFont,
     summerPhoto,
+    springPhoto,
     fallPhoto,
+    winterPhoto,
     nightPhoto,
     cartographicArtwork,
     todayUi,
@@ -816,7 +874,9 @@ async function main() {
     readFile(FONT_SOURCE.text),
     readFile(FONT_SOURCE.textItalic),
     readFile(path.join(ROOT, "public/images/seasons/summer/SUMMER MUST USE.jpg")),
+    readFile(path.join(ROOT, "public/images/seasons/spring/SPRING NEW 1.jpg")),
     readFile(path.join(ROOT, "public/images/seasons/fall/FALL COLORS.jpg")),
+    readFile(path.join(ROOT, "public/images/seasons/winter/WINTER SNOW.jpg")),
     readFile(path.join(ROOT, "public/images/seasons/spring/Frederick Night.jpg")),
     readFile(path.join(OUT, "campaign/cartographic-ripple-background.png")),
     readFile(path.join(OUT, "examples/ui-today-mobile.webp")),
@@ -828,7 +888,9 @@ async function main() {
     `data:font/woff2;base64,${textItalicFont.toString("base64")}`,
   );
   const summerPhotoUrl = `data:image/jpeg;base64,${summerPhoto.toString("base64")}`;
+  const springPhotoUrl = `data:image/jpeg;base64,${springPhoto.toString("base64")}`;
   const fallPhotoUrl = `data:image/jpeg;base64,${fallPhoto.toString("base64")}`;
+  const winterPhotoUrl = `data:image/jpeg;base64,${winterPhoto.toString("base64")}`;
   const nightPhotoUrl = `data:image/jpeg;base64,${nightPhoto.toString("base64")}`;
   const cartographicArtworkUrl = `data:image/png;base64,${cartographicArtwork.toString("base64")}`;
   const todayUiUrl = `data:image/webp;base64,${todayUi.toString("base64")}`;
@@ -925,7 +987,7 @@ async function main() {
       height: 624,
       role: "Natural-photography Facebook cover with mobile-safe lockup",
       png: true,
-      make: (fonts) => facebookPhotoCover(fonts, fallPhotoUrl),
+      make: (fonts) => facebookPhotoCover(fonts, summerPhotoUrl),
     },
     {
       file: "social/feed-brand.svg",
@@ -942,6 +1004,46 @@ async function main() {
       role: "Portrait brand post",
       png: true,
       make: feedPortrait,
+    },
+    {
+      file: "social/facebook-page-launch-photo.svg",
+      width: 1080,
+      height: 1350,
+      role: "Photo-led Facebook Page launch post using owned Frederick photography",
+      png: true,
+      make: (fonts) => facebookPageLaunchPhoto(fonts, summerPhotoUrl),
+    },
+    {
+      file: "social/facebook-season-spring.svg",
+      width: 1080,
+      height: 1080,
+      role: "Spring card for the owned-photography Facebook season carousel",
+      png: true,
+      make: (fonts) => facebookSeasonCard(fonts, springPhotoUrl, "SPRING"),
+    },
+    {
+      file: "social/facebook-season-summer.svg",
+      width: 1080,
+      height: 1080,
+      role: "Summer card for the owned-photography Facebook season carousel",
+      png: true,
+      make: (fonts) => facebookSeasonCard(fonts, summerPhotoUrl, "SUMMER"),
+    },
+    {
+      file: "social/facebook-season-fall.svg",
+      width: 1080,
+      height: 1080,
+      role: "Fall card for the owned-photography Facebook season carousel",
+      png: true,
+      make: (fonts) => facebookSeasonCard(fonts, fallPhotoUrl, "FALL"),
+    },
+    {
+      file: "social/facebook-season-winter.svg",
+      width: 1080,
+      height: 1080,
+      role: "Winter card for the owned-photography Facebook season carousel",
+      png: true,
+      make: (fonts) => facebookSeasonCard(fonts, winterPhotoUrl, "WINTER"),
     },
     {
       file: "social/facebook-group-launch.svg",

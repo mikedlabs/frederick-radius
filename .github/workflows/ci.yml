@@ -35,6 +35,8 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Audit data-source registry
+        run: npm run audit:sources
       - name: Unit tests
         run: npm test
       - name: Build

@@ -34,7 +34,7 @@ import { PARKING_GARAGES, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
-import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, wantsParking, wantsWeather, wantIntentOf, type WantIntent } from "@/lib/ask/context";
+import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, scopeAskEvents, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type WantIntent } from "@/lib/ask/context";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { PARKING_OFFICE } from "@/data/parking-garages";
 import { buildWantAnswer, type WantRow, type WantRefinable } from "@/lib/want-answer";
@@ -44,10 +44,13 @@ import { fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { parseSearchQualifiers } from "@/lib/search/qualifiers";
 import { PET_CARE_FACILITIES, PET_POISON_LINES } from "@/data/pet-emergency";
 import { emergencyRequestKind, type EmergencyRequestKind } from "@/lib/ask/emergency";
-import { askWeatherContext, askWeatherSafetyLine, loadAskWeather } from "@/lib/ask/weather";
+import { askAirQualityLine, askWeatherContext, askWeatherSafetyLine, loadAskWeather } from "@/lib/ask/weather";
 import { safeAskDescription } from "@/lib/ask/source-copy";
 import { eventFitsAskIntent } from "@/lib/ask/event-filter";
 import { placeMatchesDietary } from "@/lib/ask/dietary";
+import { parseAskDateTime } from "@/lib/ask/time";
+import { formatEventWhen } from "@/lib/events/format";
+import TRANSIT from "@/data/transit.json" with { type: "json" };
 
 /**
  * "Ask Frederick" — the grounded concierge brain.
@@ -356,6 +359,94 @@ function answerShippingRequest(request: ShippingRequest, intent: AskIntent, cont
   };
 }
 
+type TransitStop = { id: string; name: string; lat: number; lng: number };
+
+function requestedTransitStop(query: string): boolean {
+  return /\b(?:bus|transit)\s+stops?\b|\bstops?\s+for\s+(?:the\s+)?bus\b/i.test(query);
+}
+
+function answerTransitStopRequest(
+  intent: AskIntent,
+  context: QualifiedSearchContext,
+): AskResult {
+  const stops = (TRANSIT as { stops: TransitStop[] }).stops;
+  const showDistance = canExposeDistance(context);
+  if (!context.origin) {
+    return {
+      status: "empty",
+      configured: hasKey(),
+      usedModel: false,
+      answer: "I need a precise location or a selected town before I can rank bus stops. The transit map shows every Frederick County TransIT stop and the official schedules.",
+      sources: [{
+        slug: "frederick-transit",
+        name: "Frederick County TransIT",
+        category: "transit",
+        href: "/transit",
+        eyebrow: "Fare-free county bus service",
+        reason: "Routes, stops, schedules, and live vehicles",
+        phone: (TRANSIT as { phone?: string }).phone,
+        confidence: "high",
+      }],
+      context: context.contextLabel ?? "Frederick County",
+      intent,
+      actions: [{ label: "Open the transit map", kind: "open", href: "/transit" }],
+      intelligence: { tools: ["transit"], confidence: "high", retrieval: "keyword" },
+    };
+  }
+  const origin = context.origin;
+
+  const ranked = stops
+    .map((stop) => ({
+      stop,
+      distance: haversineMeters(origin, { lng: stop.lng, lat: stop.lat }),
+    }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3);
+  const fetchedOn = (TRANSIT as { staticFeed?: { fetchedOn?: string } }).staticFeed?.fetchedOn;
+  const updated = fetchedOn
+    ? new Date(`${fetchedOn}T12:00:00Z`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : null;
+  const sources = ranked.map(({ stop, distance }): AskSource => ({
+    slug: `transit-stop-${stop.id}`,
+    name: stop.name,
+    category: "transit",
+    href: `/map?at=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&show=transit`,
+    eyebrow: "Frederick County TransIT stop",
+    reason: showDistance
+      ? `${formatDistance(distance)} from ${rankingAnchor(context)}`
+      : `Mapped near ${rankingAnchor(context)}`,
+    detail: `${(TRANSIT as { fareFree?: boolean }).fareFree ? "Fare-free service" : "County bus stop"}${updated ? ` · Static GTFS updated ${updated}` : ""}`,
+    distance: showDistance ? formatDistance(distance) : undefined,
+    confidence: "high",
+  }));
+  const lead = ranked[0];
+  const answer = lead
+    ? showDistance
+      ? `${lead.stop.name} is the nearest mapped TransIT stop, about ${formatDistance(lead.distance)} from ${rankingAnchor(context)}. Frederick County buses are fare-free. Tap the stop on the map for its routes and any live arrival currently reporting.`
+      : `${lead.stop.name} is the closest mapped stop near ${rankingAnchor(context)}. Frederick County buses are fare-free. Tap the stop on the map for its routes and any live arrival currently reporting.`
+    : "I couldn’t find a mapped Frederick County TransIT stop.";
+
+  return {
+    status: sources.length > 0 ? "matches" : "empty",
+    configured: hasKey(),
+    usedModel: false,
+    answer,
+    sources,
+    context: context.contextLabel ?? "Frederick County",
+    intent,
+    actions: [
+      { label: "Open the transit map", kind: "open", href: "/transit" },
+      ...(lead ? [{ label: "Show nearby bus stops", kind: "open" as const, href: `/map?at=${lead.stop.lat.toFixed(6)},${lead.stop.lng.toFixed(6)}&show=transit` }] : []),
+    ],
+    intelligence: { tools: ["transit"], confidence: "high", retrieval: "keyword" },
+  };
+}
+
 function easternWeekday(now = new Date()): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -438,7 +529,14 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
       : null;
     return { truck, home, place, distance, feed: truckFeedUrl(truck) };
   })
-    .filter((candidate) => !context.municipality || candidate.place?.municipality === context.municipality)
+    // A town scope can exclude a home base in another town, but it must not
+    // erase roaming trucks. Their own feed is still the only honest way to
+    // learn today's stop.
+    .filter((candidate) =>
+      !context.municipality ||
+      !candidate.place ||
+      candidate.place.municipality === context.municipality
+    )
     .sort((a, b) => {
     if (a.home && !b.home) return -1;
     if (!a.home && b.home) return 1;
@@ -454,10 +552,15 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
       name: truck.name,
       category: "food-truck",
       city: home ? "Frederick County" : undefined,
-      href: home ? `/places/${home.slug}` : feed!,
+      // A brewery relationship is useful context, but it does not prove the
+      // truck is serving there today. The truck's own feed is the actionable
+      // source for a location question.
+      href: feed ?? (home ? `/places/${home.slug}` : "/food-trucks"),
       eyebrow: home ? `Usually at ${home.name}` : truck.cuisine,
       reason: home
-        ? `${truck.cuisine} with a reliable home base${showDistance && distance != null ? `, ${formatDistance(distance)} away` : ""}`
+        ? feed
+          ? `${truck.cuisine}; usually based at ${home.name}${showDistance && distance != null ? `, ${formatDistance(distance)} away` : ""}. Check its own feed for today's stop`
+          : `${truck.cuisine}; usually based at ${home.name}${showDistance && distance != null ? `, ${formatDistance(distance)} away` : ""}. Radius does not have a current service schedule for this truck`
         : `Roaming truck; check its own feed for today's stop`,
       detail: truck.blurb,
       distance: showDistance && distance != null ? formatDistance(distance) : undefined,
@@ -470,7 +573,7 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
     ? MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality
     : null;
   const answer = selectedTownName && sources.length === 0
-    ? `Radius does not have a verified food-truck home base in ${selectedTownName}, and it does not have live roaming locations. Open the countywide food-truck guide to check each truck's current feed.`
+    ? `Radius does not have a verified food-truck home base in ${selectedTownName}, and it does not have live truck locations yet. Open the countywide food-truck guide to check each truck's current feed.`
     : `Radius tracks ${FOOD_TRUCKS.length} local food and treat trucks. ${groundedHomes} have a reliable brewery home base; the others roam, and Radius does not have live truck locations yet, so their own feeds are the honest source for today's stop.`;
 
   return {
@@ -738,6 +841,17 @@ async function answerAmenityRequest(
 function followUps(query: string, intent: AskIntent, context: QualifiedSearchContext): AskAction[] {
   const actions: AskAction[] = [];
   if (intent.kind === "civic") return actions;
+  if (wantsWeatherAnswer(query)) {
+    return wantsAirQuality(query)
+      ? [
+          { label: "Open air quality", kind: "open", href: "/pulse?open=air" },
+          { label: "Check active alerts", kind: "open", href: "/pulse" },
+        ]
+      : [
+          { label: "Open the forecast", kind: "open", href: "/pulse?open=weather" },
+          { label: "Check active alerts", kind: "open", href: "/pulse" },
+        ];
+  }
   if (intent.reservation) {
     const mealQuery = cleanReservationSearchQuery(query);
     const bookingBits = [
@@ -1109,7 +1223,7 @@ function wantContextBlock(
     );
   };
   const gateBreakfast = !intent.cuisine && (intent.key === "breakfast" || intent.key === "brunch");
-  const asksForCurrentAvailability = /\b(?:right now|open now|open|now|today|tonight|this (?:morning|afternoon|evening))\b/i.test(query);
+  const asksForCurrentAvailability = /\b(?:right now|open now|open|now|today|tonight|late[- ]?night|this (?:morning|afternoon|evening))\b/i.test(query);
   // Ask is timeless unless the person supplies a clock. The Today strip is
   // explicitly a right-now surface, but a typed "coffee" request should not
   // silently become "which coffee shop is open this second?" and discard a
@@ -1234,6 +1348,9 @@ export async function askFrederick(
   if (/\bfood trucks?\b/i.test(q) && intent.kind !== "plan") {
     return answerFoodTruckRequest(intent, context);
   }
+  if (requestedTransitStop(q) && intent.kind !== "plan") {
+    return answerTransitStopRequest(intent, context);
+  }
   const shippingRequest = requestedShipping(q);
   const hasAnotherDiscoveryDomain = /\b(?:coffee|cafe|breakfast|brunch|lunch|dinner|restaurant|food|event|concert|show|live music|festival|park|trail|brewery)\b/i.test(q);
   if (shippingRequest && !hasAnotherDiscoveryDomain) {
@@ -1257,7 +1374,18 @@ export async function askFrederick(
   // A countywide search can honestly return countywide matches without a
   // location. A "near me" itinerary cannot: the planner otherwise defaults
   // to downtown Frederick and disguises that default as the user's area.
-  if (intent.kind === "plan" && proximityRequested && !context.origin) {
+  const deliberateCountyScope = (
+    !context.origin &&
+    !context.municipality &&
+    context.fallbackReason == null &&
+    /^whole county$/i.test(context.contextLabel ?? "")
+  );
+  if (
+    intent.kind === "plan" &&
+    proximityRequested &&
+    !context.origin &&
+    !deliberateCountyScope
+  ) {
     return {
       status: "empty",
       configured: hasKey(),
@@ -1364,7 +1492,7 @@ export async function askFrederick(
         usedModel: false,
         answer: "I couldn’t build a plan that honestly fits every constraint. Drop one filter and I’ll try again.",
         sources: [],
-        context: context.origin ? context.contextLabel ?? null : "downtown Frederick",
+        context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
         intent,
         actions: [
           { label: "Relax the filters", kind: "refine", query: `Plan an easy ${intent.durationHours} hour outing` },
@@ -1395,10 +1523,13 @@ export async function askFrederick(
           : reducedMobility
             ? " It stays to two stops with verified parking guidance."
             : "";
-        return `${dayLead}${anchorLead}${stopLine}${overflow}.${constraint} Swap any stop that is not your speed.`;
+        const hoursNote = plan.stops.some((stop) => stop.status === "Hours unconfirmed")
+          ? " Hours are not confirmed for every stop, so check each place before you leave."
+          : "";
+        return `${dayLead}${anchorLead}${stopLine}${overflow}.${constraint}${hoursNote} Swap any stop that is not your speed.`;
       })(),
       sources: [],
-      context: context.origin ? context.contextLabel ?? null : "downtown Frederick",
+      context: context.contextLabel ?? (context.origin ? null : "Frederick County"),
       intent,
       actions: [
         { label: "Surprise me again", kind: "refine", query: `${q}, surprise me with a different mix` },
@@ -1426,17 +1557,22 @@ export async function askFrederick(
   const scopedLoadedEventPool = loadedEventPool
     ? scopeAskEvents(loadedEventPool, context.municipality)
     : undefined;
-  const eventPool = scopedLoadedEventPool?.filter((event) => eventFitsAskIntent(event, intent, now) && eventMatchesTopic(event, q));
+  const eventPool = scopedLoadedEventPool?.filter((event) => eventFitsAskIntent(event, intent, now, q) && eventMatchesTopic(event, q));
   const retrieval = qualifiedSearch(q, 12, eventPool, context);
   const tasteProfile = buildTasteProfile(tasteSignals);
   const strictNearest = /\b(?:closest|nearest)\b/i.test(q);
+  const asksDateNightPlaces = /\bdate[- ]?night\b/i.test(q);
+  const asksIndoor = /\bindoors?\b/i.test(q);
+  const asksConditionsOnly = wantsWeatherAnswer(q);
   const tasteRankedHits = rerankWithTaste(retrieval.hits, tasteProfile);
+  const asksPatio = /\b(?:patio|outdoor seating|terrace)\b/i.test(q);
   const hasCompleteCompoundMatch = tasteRankedHits.some((hit) =>
     hit.type === "place" &&
     Boolean(hit.conceptCoverage && hit.conceptCoverage.total > 1 && hit.conceptCoverage.matched === hit.conceptCoverage.total),
   );
   const filteredHits = tasteRankedHits.filter((hit) => {
-    if (hit.type === "event") return eventFitsAskIntent(hit.event, intent, now) && eventMatchesTopic(hit.event, q);
+    if (asksConditionsOnly) return false;
+    if (hit.type === "event") return eventFitsAskIntent(hit.event, intent, now, q) && eventMatchesTopic(hit.event, q);
     if (hit.type !== "place") return true;
     // Once Radius has one place that proves every part of a combined request,
     // partial matches are not equivalent recommendations. Keep them out of
@@ -1452,6 +1588,32 @@ export async function askFrederick(
     if (intent.budget === "free" && !(p.tags ?? []).includes("free")) return false;
     if (intent.budget === "value" && p.price_band != null && p.price_band > 2) return false;
     if (!placeMatchesDietary(p, intent.dietary)) return false;
+    if (asksDateNightPlaces && !(p.tags ?? []).includes("date-night")) return false;
+    if (asksIndoor) {
+      const indoorEvidence = [
+        p.name,
+        p.short_blurb,
+        p.description,
+        p.primary_type,
+        ...(p.tags ?? []),
+        ...(p.subcategories ?? []),
+      ].filter(Boolean).join(" ");
+      if (
+        (p.tags ?? []).includes("outdoor") ||
+        !/\b(?:indoor|escape room|museum|gallery|library|arcade|bowling|theat(?:er|re)|cinema|studio|pottery|shop|store)\b/i.test(indoorEvidence)
+      ) return false;
+    }
+    if (asksPatio) {
+      const patioEvidence = [
+        p.short_blurb,
+        p.description,
+        p.field_note_tip,
+        ...(p.known_for ?? []),
+        ...(p.tags ?? []),
+        ...(p.subcategories ?? []),
+      ].filter(Boolean).join(" ");
+      if (!/\b(?:patio|outdoor seating|terrace)\b/i.test(patioEvidence)) return false;
+    }
     return true;
   });
   if (strictNearest && context.origin) {
@@ -1494,15 +1656,18 @@ export async function askFrederick(
   const weatherBlock = weatherSnapshot ? askWeatherContext(weatherSnapshot) : "";
   const weatherSafety = weatherSnapshot ? askWeatherSafetyLine(weatherSnapshot) : null;
   const currentForecast = weatherSnapshot?.forecast?.hourly[0] ?? weatherSnapshot?.forecast?.daily[0] ?? null;
-  const explicitWeatherAnswer = wantsWeather(q)
-    ? [
-        weatherSafety,
-        currentForecast
-          ? `The National Weather Service forecast is ${currentForecast.temperature}°${currentForecast.temperatureUnit} with ${currentForecast.shortForecast.toLowerCase()}${currentForecast.probabilityOfPrecipitation != null ? ` and a ${currentForecast.probabilityOfPrecipitation}% chance of precipitation` : ""}.`
-          : weatherSafety
-            ? null
-            : "I couldn’t load the official forecast, active-alert feed, or a fresh AirNow observation right now.",
-      ].filter(Boolean).join(" ")
+  const asksAirQuality = wantsAirQuality(q);
+  const explicitWeatherAnswer = wantsWeatherAnswer(q)
+    ? asksAirQuality
+      ? askAirQualityLine(weatherSnapshot ?? { forecast: null, alerts: [], aqi: null })
+      : [
+          weatherSafety,
+          currentForecast
+            ? `The National Weather Service forecast is ${currentForecast.temperature}°${currentForecast.temperatureUnit} with ${currentForecast.shortForecast.toLowerCase()}${currentForecast.probabilityOfPrecipitation != null ? ` and a ${currentForecast.probabilityOfPrecipitation}% chance of precipitation` : ""}.`
+            : weatherSafety
+              ? null
+              : "I couldn’t load the official forecast, active-alert feed, or a fresh AirNow observation right now.",
+        ].filter(Boolean).join(" ")
     : null;
   if (weatherSnapshot?.alerts.length) {
     const alert = weatherSnapshot.alerts[0];
@@ -1511,7 +1676,7 @@ export async function askFrederick(
   if (weatherSnapshot?.aqi) {
     sources.push({ slug: "airnow-aqi", name: `Air quality · AQI ${weatherSnapshot.aqi.aqi}`, category: "civic", city: weatherSnapshot.aqi.reportingArea, href: "https://www.airnow.gov/?city=Frederick&state=MD&country=USA", eyebrow: "Live AirNow observation", reason: weatherSnapshot.aqi.category.name, confidence: "high" });
   }
-  if (weatherBlock && wantsWeather(q)) {
+  if (weatherBlock && wantsWeatherAnswer(q) && !asksAirQuality) {
     sources.push({ slug: "pulse-weather", name: "Hourly and 7-day forecast", category: "civic", city: "", href: "/pulse?open=weather" });
   }
 
@@ -1527,15 +1692,29 @@ export async function askFrederick(
   // stay with shared search, which can prove that one place satisfies every
   // named concept. Mixed amenity requests are different: the amenity grounder
   // has already handled the second half.
-  const combinedDiscovery = !amenitySupplement && /\b(?:and|with|plus|both|combined?)\b/i.test(q);
-  const wantIntent = retrieval.meta.qualifiers.compoundIntent || intent.reservation || combinedDiscovery
+  const combinedDiscovery = !amenitySupplement && hasCompleteCompoundMatch;
+  const wantIntent = retrieval.meta.qualifiers.compoundIntent ||
+    intent.reservation ||
+    combinedDiscovery ||
+    asksDateNightPlaces ||
+    intent.regions.length > 0
     ? null
     : wantIntentOf(q, now);
+  const implicitLateNight = (
+    !intent.requestedDateTime &&
+    /\blate[- ]?night\b/i.test(q)
+  )
+    ? parseAskDateTime("at 11 PM", now)
+    : null;
   const requestedVisitAt = appointmentWindow?.at ?? (
-    intent.requestedDateTime ? new Date(intent.requestedDateTime) : now
+    intent.requestedDateTime
+      ? new Date(intent.requestedDateTime)
+      : implicitLateNight?.instant ?? now
   );
   const requestedVisitLabel = appointmentWindow?.timeLabel ?? (
-    intent.requestedDateTime ? intent.requestedTime ?? easternTimeLabel(requestedVisitAt) : undefined
+    intent.requestedDateTime
+      ? intent.requestedTime ?? easternTimeLabel(requestedVisitAt)
+      : implicitLateNight?.timeLabel ?? undefined
   );
   const want = wantIntent
     ? wantContextBlock(
@@ -1588,15 +1767,19 @@ export async function askFrederick(
     try {
       const ctx = eventContextLines(scopedLoadedEventPool, anchor, now, q);
       eventsBlock = `${ctx.block}\n`;
-      eventCitationPool = ctx.picked.map((e) => ({
+      const toAskEventSource = (e: (typeof ctx.picked)[number]): AskSource => ({
         slug: e.slug,
         name: e.title,
-        category: "event",
+        category: e.category || "event",
         city: e.municipality_name ?? "",
         href: `/events/${e.slug}`,
-      }));
+        eyebrow: formatEventWhen(e as Event),
+        reason: e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match",
+        confidence: "high",
+      });
+      eventCitationPool = ctx.picked.map(toAskEventSource);
       for (const e of rankForSources(ctx.picked, q).slice(0, answerSourceLimit)) {
-        sources.push({ slug: e.slug, name: e.title, category: "event", city: e.municipality_name ?? "", href: `/events/${e.slug}` });
+        sources.push(toAskEventSource(e));
       }
     } catch {
       /* events unavailable → the search hits below still ground the answer */
@@ -1714,7 +1897,7 @@ export async function askFrederick(
     : "";
 
   const officialAnswer = Boolean(useMunicipal || useTownResource || civic || dept);
-  const eventOnly = isEventSearchIntent(q);
+  const eventOnly = intent.kind === "event";
   // "Open now" intent: the questions that burned us are the TIME-anchored
   // kind, and "is anything open" is the place-side version. Confirmed-open
   // places lead the block so the model's picks are doors that are actually
@@ -1807,7 +1990,7 @@ export async function askFrederick(
           slug: e.slug,
           name: e.title,
           category: e.category,
-          city: e.municipality,
+          city: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
           href: `/events/${e.slug}`,
           eyebrow: `${intent.timeNeed === "tonight" ? "Tonight" : when || "Upcoming"}${clock ? ` · ${clock}` : ""}`,
           reason: e.venue_name ? `At ${e.venue_name}` : "Current Radius calendar match",
@@ -1853,11 +2036,14 @@ export async function askFrederick(
       intent.surpriseMe ||
       retrieval.meta.qualifiers.constrained ||
       wantsWeather(q) ||
-      isEventSearchIntent(q),
+      intent.kind === "event",
   );
   if (direct) {
     const openNowRequested = intent.kind === "place" && (
-      intent.timeNeed === "now" || retrieval.meta.qualifiers.openNow
+      intent.timeNeed === "now" ||
+      retrieval.meta.qualifiers.openNow ||
+      Boolean(implicitLateNight) ||
+      Boolean(requestedVisitLabel)
     );
     const verifiedOpenSources = openNowRequested
       ? sources.filter(sourceHasVerifiedOpenStatus)
@@ -1866,14 +2052,46 @@ export async function askFrederick(
     // beside them as recommendations. If none are open, keep the nearby
     // matches so the answer can show honest reopen times instead of ending
     // in an empty state.
-    const responseSources = openNowRequested && verifiedOpenSources.length > 0
-      ? verifiedOpenSources
+    const verifiedClosedSources = openNowRequested
+      ? sources
+          .filter((source) => /^Closed\b/i.test(source.status ?? ""))
+          .filter((source) => {
+            // A closed place can still be useful when it is genuinely nearby
+            // and the card says when it reopens. It is not a useful fallback
+            // when a precise "near me" request would have to cross the county.
+            if (
+              !retrieval.meta.qualifiers.nearMe ||
+              !retrieval.meta.nearMeApplied ||
+              !context.origin
+            ) return true;
+            if (!source.href.startsWith("/places/")) return false;
+            const place = clientPlaceBySlug(source.href.slice("/places/".length));
+            return Boolean(
+              place &&
+              haversineMeters(context.origin, place.geom) <= 5_000
+            );
+          })
+      : [];
+    const baseResponseSources = openNowRequested
+      ? verifiedOpenSources.length > 0
+        ? verifiedOpenSources
+        : verifiedClosedSources
       : sources;
+    const weatherDiscovery = wantsWeather(q) && !wantsWeatherAnswer(q);
+    const availableResponseSources = weatherDiscovery
+      ? [
+          ...baseResponseSources.filter((source) => !/^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
+          ...baseResponseSources.filter((source) => /^(?:nws-alert-|airnow-aqi|pulse-weather)/.test(source.slug)),
+        ]
+      : baseResponseSources;
+    const responseSources = typeof requestedOptions === "number"
+      ? availableResponseSources.slice(0, requestedOptions)
+      : availableResponseSources;
     const appointmentAnswer = appointmentWindow && fixedAppointment?.timeLabel
       ? [
           responseSources.length > 0
             ? `I found ${responseSources.length} ${retrieval.meta.qualifiers.downtown ? "downtown " : ""}${(want?.label ?? "dinner").toLowerCase()} match${responseSources.length === 1 ? "" : "es"} scheduled to be open around ${appointmentWindow.timeLabel}, leaving ${appointmentWindow.leadMinutes} minutes before your ${fixedAppointment.timeLabel} ${fixedAppointment.kind}.`
-            : `I couldn’t verify a ${retrieval.meta.qualifiers.downtown ? "downtown " : ""}${(want?.label ?? "dinner").toLowerCase()} match open around ${appointmentWindow.timeLabel} before your ${fixedAppointment.timeLabel} ${fixedAppointment.kind}.`,
+            : `I couldn’t verify a ${retrieval.meta.qualifiers.downtown ? "downtown " : ""}${(want?.label ?? "dinner").toLowerCase()} match open around ${appointmentWindow.timeLabel}, which would leave ${appointmentWindow.leadMinutes} minutes before your ${fixedAppointment.timeLabel} ${fixedAppointment.kind}.`,
           /\b(?:quiet|quieter|noise|conversation)\b/i.test(q)
             ? "Radius does not have verified noise-level data for these places, so I have not labeled any of them quiet."
             : null,
@@ -1888,7 +2106,9 @@ export async function askFrederick(
             ? { town: useTownResource.town.name, label: useTownResource.label, exact: true }
             : undefined,
         count: responseSources.length,
-        category: want?.label ?? retrieval.meta.qualifiers.categoryLabel,
+        category: asksDateNightPlaces
+          ? "date night"
+          : want?.label ?? retrieval.meta.qualifiers.categoryLabel,
         openNow: openNowRequested,
         downtown: retrieval.meta.qualifiers.downtown,
         nearMe: retrieval.meta.qualifiers.nearMe,
@@ -1899,14 +2119,23 @@ export async function askFrederick(
         eventIntent: isEventSearchIntent(q),
         regions: intent.regions,
         reservation: intent.reservation,
-        requestedTime: intent.requestedTime,
+        requestedTime: requestedVisitLabel ?? intent.requestedTime,
         sources: responseSources,
       });
     const supplements = [
-      !wantsWeather(q) ? weatherSafety : null,
+      !wantsWeatherAnswer(q) ? weatherSafety : null,
+      /\b(?:quiet|quieter|noise level|conversation)\b/i.test(q) && responseSources.length > 0 && !appointmentWindow
+        ? "Radius does not have verified noise-level data for these places, so I can’t confirm that they will be quiet."
+        : null,
       amenitySupplement?.answer,
     ].filter(Boolean);
     const answer = [primaryAnswer, ...supplements].join(" ");
+    const directActions = intent.kind === "event" && responseSources.length === 0
+      ? [
+          { label: "Open the full calendar", kind: "open" as const, href: "/events" },
+          { label: "Try this weekend", kind: "refine" as const, query: "What events are happening this weekend?" },
+        ]
+      : responseActions;
     return {
       status: responseSources.length > 0 ? "matches" : "empty",
       configured: hasKey(),
@@ -1915,7 +2144,7 @@ export async function askFrederick(
       sources: responseSources,
       context: retrieval.meta.contextLabel,
       intent,
-      actions: responseActions,
+      actions: directActions,
       intelligence: personalized ? {
         tools: ["places"],
         confidence: "high",
@@ -2036,17 +2265,21 @@ function deterministicAnswer({
     const sourceList = sources ?? [];
     const verifiedOpenCount = sourceList.filter(sourceHasVerifiedOpenStatus).length;
     if (verifiedOpenCount === 0) {
-      const subject = category?.trim().toLowerCase();
+      const subject = category?.trim().toLowerCase().replace(/^late night$/, "late-night");
       const nounPhrase = subject
         ? /^(?:a|an|the)\s/.test(subject)
           ? subject
           : `a ${subject} place`
         : "a place";
+      const requestedWindow = requestedTime ? ` at ${requestedTime}` : " right now";
+      if (sourceList.length === 0) {
+        return `I couldn’t verify ${nounPhrase} open${requestedWindow} from fresh hours. Try a broader category or check the full map.`;
+      }
       const allClosed = sourceList.length > 0 && sourceList.every((source) => /^Closed\b/i.test(source.status ?? ""));
       if (allClosed) {
-        return `I couldn’t verify ${nounPhrase} open right now. The nearby matches below are closed, and their cards show when they reopen.`;
+        return `I couldn’t verify ${nounPhrase} open${requestedWindow}. The nearby matches below are closed, and their cards show when they reopen.`;
       }
-      return `I couldn’t verify ${nounPhrase} open right now. These are the closest matches I found, but check their hours before you leave.`;
+      return `I couldn’t verify ${nounPhrase} open${requestedWindow}. These are the closest matches I found, but check their hours before you leave.`;
     }
   }
   if (count === 0) return "I couldn’t find a reliable match in Radius yet. Try a shorter search or open the full map.";
@@ -2068,8 +2301,8 @@ function deterministicAnswer({
     if (sourceList.length > 0) {
       const top = sourceList[0];
       return count > 1
-        ? `${top.name} is the closest fit for that time. ${count - 1} other ${count - 1 === 1 ? "event also matches" : "events also match"}.`
-        : `${top.name} is the only current match for that time.`;
+        ? `I found ${count} events in that window, including ${top.name}.`
+        : `I found one event in that window: ${top.name}.`;
     }
     return `Here ${count === 1 ? "is" : "are"} ${count} current calendar match${count === 1 ? "" : "es"}.`;
   }
@@ -2102,7 +2335,11 @@ function pickLead(
   opts: { downtown?: boolean; combined?: boolean } = {},
 ): string {
   const top = sources[0];
-  const where = top.city ? ` in ${top.city}` : "";
+  const normalizedName = top.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normalizedCity = top.city?.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const where = top.city && normalizedCity && !normalizedName.endsWith(normalizedCity)
+    ? ` in ${top.city}`
+    : "";
   const status = top.status ?? "";
   let liveFact = "";
   let m = status.match(/^At\s+(.+?)\s+·\s+(?:Open|Closing soon)\b/i);
@@ -2136,7 +2373,8 @@ function regionalAnswer(regions: readonly CountyRegion[], sources: readonly AskS
     const picks = sources.filter((source) => source.region === region).slice(0, 2);
     if (picks.length === 0) return [];
     const names = picks.map((pick) => `${pick.name}${pick.city ? ` in ${pick.city}` : ""}`).join(" and ");
-    return [`In ${region} Frederick County, try ${names}.`];
+    const area = COUNTY_REGION_LABELS[region].replace(/\s+Frederick County$/i, "").toLowerCase();
+    return [`In ${area} Frederick County, try ${names}.`];
   });
   return parts.length > 0
     ? `${parts.join(" ")} These choices stay outside central Frederick.`

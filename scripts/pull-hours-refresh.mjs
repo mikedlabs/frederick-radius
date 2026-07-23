@@ -30,6 +30,14 @@ const rows = await sql`
   ORDER BY slug
 `;
 
+if (rows.length === 0) {
+  await sql.end();
+  console.error(
+    "place_hours_refresh is empty. Verify the Vercel hours cron, feature flag, Google key, and database before replacing the committed snapshot.",
+  );
+  process.exit(1);
+}
+
 const out = {
   _doc:
     "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug. Each entry overrides the static enrichment hours and business status for that place, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.",

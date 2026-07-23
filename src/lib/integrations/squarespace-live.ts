@@ -24,6 +24,12 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { cleanFeedText } from "@/lib/format/text";
 import { clampDescription } from "@/lib/events/normalize";
 import type { VenueEvent } from "@/lib/loaders/venueEvents";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 // Same ceiling as the iCal feeds — the unified assembly awaits all sources in
 // parallel, so one slow page must not hold the page hostage.
@@ -79,7 +85,7 @@ async function fetchVenue(
   venue: { slug: string; squarespace: string },
   now: Date,
   horizon: Date,
-): Promise<VenueEvent[]> {
+): Promise<EventAdapterResult<VenueEvent>> {
   const fetchedAt = now.toISOString();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -106,7 +112,7 @@ async function fetchVenue(
         console.warn(
 `[squarespace-live] ${venue.slug}: HTTP ${res.status}`);
       }
-      return [];
+      return eventAdapterFailed();
     }
     // Squarespace events collections expose future shows in `upcoming`; some
     // (e.g. Rockwell Brewery) only populate the generic `items` array. Prefer
@@ -154,7 +160,7 @@ async function fetchVenue(
       });
     }
     console.log(`[squarespace-live] ${venue.slug}: parsed ${out.length} upcoming shows`);
-    return out;
+    return eventAdapterOk(out);
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     // Expected fail-soft: an unreliable upstream feed timed out / refused, we
@@ -165,7 +171,7 @@ async function fetchVenue(
       `[squarespace-live] ${venue.slug} ${aborted ? `timed out (>${FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
@@ -177,8 +183,12 @@ async function fetchVenue(
  * that errors contributes []. Inert (returns []) when no venue carries a
  * `squarespace` URL, so this path costs nothing until one is configured.
  */
-export async function fetchSquarespaceVenueEvents(windowDays = 60): Promise<VenueEvent[]> {
-  if (LIVE_MUSIC_SQUARESPACE_VENUES.length === 0) return [];
+export async function fetchSquarespaceVenueEventsResult(
+  windowDays = 60,
+): Promise<EventAdapterResult<VenueEvent>> {
+  if (LIVE_MUSIC_SQUARESPACE_VENUES.length === 0) {
+    return eventAdapterDisabled();
+  }
   const now = new Date();
   const horizon = new Date(now);
   horizon.setDate(horizon.getDate() + windowDays);
@@ -187,5 +197,17 @@ export async function fetchSquarespaceVenueEvents(windowDays = 60): Promise<Venu
       fetchVenue({ slug: v.slug, squarespace: v.squarespace }, now, horizon),
     ),
   );
-  return results.flat();
+  const events = results.flatMap((result) => result.items);
+  return results.some(
+    (result) => result.state === "failed" || result.state === "partial",
+  )
+    ? eventAdapterFailed(events)
+    : eventAdapterOk(events);
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchSquarespaceVenueEvents(
+  windowDays = 60,
+): Promise<VenueEvent[]> {
+  return (await fetchSquarespaceVenueEventsResult(windowDays)).items;
 }

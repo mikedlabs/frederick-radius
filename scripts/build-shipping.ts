@@ -24,8 +24,7 @@
  * (Taneytown, Boonsboro, Damascus, Waynesboro), which we drop.
  */
 import { writeFileSync } from "node:fs";
-import { isInFrederickCountyArea } from "@/lib/geo";
-import { resolveMunicipality } from "@/lib/connect";
+import { resolveFrederickMunicipality } from "@/lib/location";
 
 const OUT = new URL("../src/data/shipping.json", import.meta.url).pathname;
 
@@ -181,7 +180,8 @@ async function main() {
     const lat = el.type === "node" ? el.lat : el.center?.lat;
     const lng = el.type === "node" ? el.lon : el.center?.lon;
     if (typeof lat !== "number" || typeof lng !== "number") continue;
-    if (!isInFrederickCountyArea(lng, lat)) continue;
+    const municipality = resolveFrederickMunicipality({ lng, lat });
+    if (!municipality) continue;
 
     const rawName = t.name?.trim();
     const mapped = classify(t, rawName ?? "");
@@ -208,7 +208,7 @@ async function main() {
       name,
       detail: detailFor(mapped.kind, mapped.carrier, t),
       address: joinAddress(t),
-      municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+      municipality: municipality.municipality.slug,
       hours: t.opening_hours,
       phone: t.phone ?? t["contact:phone"],
       website: t.website ?? t["contact:website"],

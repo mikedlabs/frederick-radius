@@ -47,6 +47,7 @@ export default function BottomNav() {
   if (pathname.startsWith("/ask")) return null;
 
   const mapOwnsFind = pathname === "/map";
+  const findEmphasized = !mapOwnsFind || findOpen;
   const findCell = (
     <li key="find" className="flex px-0.5">
       <Link
@@ -65,15 +66,29 @@ export default function BottomNav() {
         style={{
           background: findOpen
             ? "var(--app-brand)"
-            : "color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid))",
-          color: findOpen ? "var(--app-on-brand)" : "var(--app-brand-press)",
-          border: "1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
+            : findEmphasized
+              ? "color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid))"
+              : "transparent",
+          color: findOpen
+            ? "var(--app-on-brand)"
+            : findEmphasized
+              ? "var(--app-brand-press)"
+              : "var(--app-ink-3)",
+          border: findEmphasized
+            ? "1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border))"
+            : "1px solid transparent",
         }}
       >
         <span
           aria-hidden
           className="absolute inset-x-2 top-0 h-[2px]"
-          style={{ background: findOpen ? "var(--app-on-brand)" : "var(--app-brand)" }}
+          style={{
+            background: findOpen
+              ? "var(--app-on-brand)"
+              : findEmphasized
+                ? "var(--app-brand)"
+                : "transparent",
+          }}
         />
         <Search width={20} height={20} strokeWidth={2.25} aria-hidden />
         <span className="text-[11px] font-semibold leading-tight tracking-tight">Find</span>

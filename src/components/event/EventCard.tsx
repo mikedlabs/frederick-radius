@@ -19,6 +19,7 @@ import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 import DatePlate from "@/components/event/DatePlate";
+import { eventAttendanceLabel } from "@/lib/events/attendance";
 
 // Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
 // the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
@@ -99,6 +100,7 @@ export default function EventCard({
   // text on cream). Cancelled already uses --app-danger, which passes. This one
   // value feeds every status spot below (inline text + white pills). (audit a11y)
   const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning-press)";
+  const venueLabel = eventAttendanceLabel(event);
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL
@@ -146,8 +148,8 @@ export default function EventCard({
         >
           <span className="absolute inset-0" aria-hidden />
           {event.title}
-          {event.venue_name && (
-            <span style={{ color: "var(--app-ink-3)" }}> · {event.venue_name}</span>
+          {venueLabel && (
+            <span style={{ color: "var(--app-ink-3)" }}> · {venueLabel}</span>
           )}
         </Link>
         <span
@@ -232,10 +234,10 @@ export default function EventCard({
             style={{ color: "var(--app-ink-3)" }}
           >
             <span className="font-mono tabular-nums">{date.time}</span>
-            {event.venue_name && (
+            {venueLabel && (
               <>
                 {" · "}
-                {event.venue_name}
+                {venueLabel}
               </>
             )}
             {event.is_free && (
@@ -342,7 +344,7 @@ export default function EventCard({
           <p className="mt-1 truncate text-[13px]" style={{ color: subColor }}>
             {date.weekday && <span className="font-mono tabular-nums">{date.weekday} {date.month} {date.day}</span>}
             {date.time && <span className="font-mono tabular-nums">{" · "}{date.time}</span>}
-            {event.venue_name ? ` · ${event.venue_name}` : ""}
+            {venueLabel ? ` · ${venueLabel}` : ""}
           </p>
           {whyItMatters && (
             <p className="mt-1 line-clamp-1 text-[12.5px] leading-snug" style={{ color: capColor }}>
@@ -416,7 +418,7 @@ export default function EventCard({
             </Link>
             <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
-              {event.venue_name ? <> · {event.venue_name}</> : null}
+              {venueLabel ? <> · {venueLabel}</> : null}
             </p>
             {reasons.length > 0 ? (
               <div className="pt-0.5"><ReasonChipRow reasons={reasons} /></div>
@@ -539,12 +541,12 @@ export default function EventCard({
                 )}
               </p>
               {/* Venue line — small, calm, single-line truncate. */}
-              {event.venue_name && (
+              {venueLabel && (
                 <p
                   className="mt-0.5 truncate text-[12px] leading-snug"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  {event.venue_name}
+                  {venueLabel}
                 </p>
               )}
               {/* Meta row — price/free + distance only. The category WORD is
@@ -626,7 +628,7 @@ export default function EventCard({
           </Link>
         </div>
         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          <span className="font-mono tabular-nums">{date.time}</span> · {event.venue_name}
+          <span className="font-mono tabular-nums">{date.time}</span>{venueLabel ? ` · ${venueLabel}` : ""}
         </p>
         <div className="mt-2 flex items-center gap-2">
           {cat && (

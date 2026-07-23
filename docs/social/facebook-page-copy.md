@@ -45,7 +45,11 @@ another municipality endorses the app.
 ## Images
 
 - Profile: `public/brand/social/avatar.png`
-- Page cover: `public/brand/social/facebook-cover-photo.png`
+- Page cover: `public/brand/social/facebook-cover-photo.png` (summer)
+- Photo-led Page launch: `public/brand/social/facebook-page-launch-photo.png`
+- Four-season carousel:
+  `facebook-season-summer.png`, `facebook-season-fall.png`,
+  `facebook-season-winter.png`, and `facebook-season-spring.png`
 - Community-group launch: `public/brand/social/facebook-group-launch.png`
 - Formal Page launch: `public/brand/social/feed-brand.png`
 
@@ -55,8 +59,13 @@ Profile alt text:
 
 Cover alt text:
 
-> An original aerial photograph of Downtown Frederick in fall, with the
+> An original summer photograph of Downtown Frederick, with the
 > Frederick Radius name and the words Frederick County starts where you are.
+
+Page-launch alt text:
+
+> An original summer photograph of Downtown Frederick. Text reads:
+> Frederick County starts where you are. Public beta.
 
 Group-launch alt text:
 
@@ -79,7 +88,22 @@ Group-launch alt text:
 >
 > Access code: `food-truck`
 
-Use `public/brand/social/feed-brand.png` with this post.
+Use `public/brand/social/facebook-page-launch-photo.png` with this post. The
+flat `feed-brand.png` remains available when a photo would compete with the
+surrounding content.
+
+## Four-season photo post
+
+> Frederick changes with the season. Radius should, too.
+>
+> These are four of my Frederick photographs from spring, summer, fall, and
+> winter. The app uses current conditions and local information to help the
+> page in front of you match the day outside.
+>
+> https://frederickradius.app/?utm_source=facebook&utm_medium=organic&utm_campaign=four_seasons
+
+Post the four square files in this order: summer, fall, winter, spring. Keep the
+caption short and let the photography carry the post.
 
 ## Frederick community-group food-truck post
 

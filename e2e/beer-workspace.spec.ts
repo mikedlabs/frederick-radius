@@ -10,8 +10,8 @@ test.describe("beer workspace deep links", () => {
       timeout: 120_000,
     });
 
-    const find = page.getByRole("tab", { name: "Find a beer" });
-    const index = page.getByRole("tab", { name: "All beers" });
+    const taprooms = page.getByRole("tab", { name: "Taprooms" });
+    const index = page.getByRole("tab", { name: "Beer index" });
     const week = page.getByRole("tab", { name: "This week" });
 
     await expect(week).toHaveAttribute("aria-selected", "true");
@@ -21,14 +21,14 @@ test.describe("beer workspace deep links", () => {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
-    await expect(find).toHaveAttribute("aria-selected", "true");
+    await expect(taprooms).toHaveAttribute("aria-selected", "true");
 
     // A real click proves hydration has attached the URL listeners before we
     // exercise a hash change that would otherwise be easy to race in a test.
     await index.click();
     await expect(index).toHaveAttribute("aria-selected", "true");
     await page.goBack();
-    await expect(find).toHaveAttribute("aria-selected", "true");
+    await expect(taprooms).toHaveAttribute("aria-selected", "true");
 
     await page.evaluate(() => {
       window.location.hash = "on-tap-now";
@@ -45,7 +45,7 @@ test.describe("beer workspace deep links", () => {
     await expect(page).toHaveURL(/#on-tap-now$/);
 
     await page.goBack();
-    await expect(find).toHaveAttribute("aria-selected", "true");
+    await expect(taprooms).toHaveAttribute("aria-selected", "true");
     await expect(page).toHaveURL(/\/beer$/);
 
     await page.evaluate(() => {

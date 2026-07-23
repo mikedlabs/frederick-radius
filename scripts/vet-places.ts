@@ -22,6 +22,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { getPlaceDetails } from "@/lib/integrations/google-places";
+import { PLACE_BY_SLUG } from "@/data/places";
+import { isValidCoord } from "@/lib/geo";
 
 const PRICE_DETAILS = 25.0 / 1000;
 const FREE_EVENTS = 5000;
@@ -85,7 +87,14 @@ function eqHours(a?: string[], b?: string[]): boolean {
 
 async function main() {
   const enrichment = JSON.parse(readFileSync(ENRICHMENT_PATH, "utf8")) as Record<string, Enriched>;
-  const allSlugs = Object.keys(enrichment).filter((s) => enrichment[s].google_place_id);
+  const rejectedPlacement = Object.keys(enrichment).filter((slug) => {
+    const place = PLACE_BY_SLUG[slug];
+    return !place || !isValidCoord(place.geom);
+  });
+  const allSlugs = Object.keys(enrichment).filter((slug) => {
+    const place = PLACE_BY_SLUG[slug];
+    return enrichment[slug].google_place_id && place && isValidCoord(place.geom);
+  });
 
   const sampleN = parseInt(arg("--sample", "0")!, 10) || 0;
   const targets = sampleN > 0 ? allSlugs.slice(0, sampleN) : allSlugs;
@@ -102,6 +111,11 @@ async function main() {
   console.log(`  List cost             $${cost.toFixed(2)}`);
   console.log(`  After 5,000/mo free   $${afterFree.toFixed(2)}`);
   console.log(`  Hard cap (--max-cost) $${maxCost.toFixed(2)}`);
+  if (rejectedPlacement.length > 0) {
+    console.log(
+      `  Placement rejects     ${rejectedPlacement.length} (retained in source data; no paid call)`,
+    );
+  }
 
   const live = flag("--live");
   const confirmed = flag("--confirm");

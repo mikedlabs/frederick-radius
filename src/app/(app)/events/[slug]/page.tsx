@@ -5,9 +5,8 @@ import Image from "next/image";
 import { AlertTriangle, ArrowRight, Ban, Calendar, ChevronDown, ExternalLink, MapPin, Music, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
-import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
-import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
-import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
+import { formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
+import { resolveEventPageBySlug } from "@/lib/loaders/eventResolver";
 /**
  * Event detail resolves the hand-authored static seed first
  * (getEventBySlug over EVENT_BY_SLUG); on a miss it falls back to the
@@ -56,6 +55,12 @@ import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
 import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 import { noticeForEvent } from "@/lib/events/notices";
+import {
+  eventAttendanceLabel,
+  eventAttendanceMode,
+  eventOnlineActionUrl,
+  hasPhysicalAttendance,
+} from "@/lib/events/attendance";
 
 function splitDescription(text: string, limit = 300): { preview: string; rest: string } {
   if (text.length <= limit) return { preview: text, rest: "" };
@@ -131,13 +136,15 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   if (!RESOLVABLE_SLUG.test(slug)) notFound();
-  const event = getEventBySlug(slug) ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
+  const resolution = await resolveEventPageBySlug(slug);
   // notFound() HERE, not just in the page body: metadata resolves before
   // the response streams, so the 404 status actually reaches the wire. A
   // body-only notFound() ships the not-found UI under a 200 — a soft 404
   // Google indexes (June-9 deep audit P0-2). Resolution mirrors the page
-  // exactly (seed, then the live-source union), so nothing real 404s.
-  if (!event) notFound();
+  // exactly (seed, then the cached visible union, then deep-link fallbacks), so
+  // a source timeout cannot make a currently visible event temporarily 404.
+  if (!resolution) notFound();
+  const event = resolution.event;
   const blurb = eventBlurb(event).slice(0, 160);
   return {
     title: event.title,
@@ -155,9 +162,8 @@ export async function generateMetadata(
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!RESOLVABLE_SLUG.test(slug)) notFound();
-  const seed = getEventBySlug(slug);
-  const resolved = seed ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
-  if (!resolved) notFound();
+  const resolution = await resolveEventPageBySlug(slug);
+  if (!resolution) notFound();
   // Owner notice override (src/data/event-notices.json): a hand-confirmed
   // cancellation must beat whatever the source row says — the Alive @ Five
   // heat cancellation reached no feed, only the owner. Stamped BEFORE any
@@ -167,21 +173,27 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
    
   const notice = noticeForEvent(slug, new Date());
   const event =
-    notice && notice.status !== "advisory" ? { ...resolved, status: notice.status } : resolved;
+    notice && notice.status !== "advisory"
+      ? { ...resolution.event, status: notice.status }
+      : resolution.event;
   // Canonicalize live-event URLs (Phase 2). A live event always carries
   // its clean stored slug; if we resolved one through a legacy
   // "live-..." link or any non-canonical form, send the visitor to the
   // clean URL. Temporary (307) rather than permanent, because live-feed
   // events are windowed and a permanently-cached redirect could outlive
   // the event it points at. Seed events keep their hand-authored slug.
-  if (!seed && event.slug !== slug) {
+  if (resolution.kind !== "seed" && event.slug !== slug) {
     redirect(`/events/${event.slug}`);
   }
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use
   // "manual"). A live event has no static ICS endpoint and no editorial
   // extras, so the calendar cell and the third action adapt off this.
-  const isLive = seed === null;
+  const isLive = resolution.kind !== "seed";
+  const attendance = eventAttendanceMode(event);
+  const physicalAttendance = hasPhysicalAttendance(event);
+  const onlineActionUrl = eventOnlineActionUrl(event);
+  const attendanceLabel = eventAttendanceLabel(event);
 
   const cat = CATEGORY_BY_SLUG[event.category];
   const desc = (event.description ?? "").trim();
@@ -189,24 +201,28 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
   const icsUrl = `/api/events/${event.slug}/ics`;
 
-  const nearbyFood: PlaceCardData[] = publicPlaces()
-    .filter((p) => ["restaurant", "coffee", "bar", "brewery", "bakery", "pizza"].includes(p.category))
-    .map((p) => decoratePlace(p, event.geom))
-    .filter((p) => (p.distance_m ?? Infinity) < 2000)
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-    .slice(0, 4);
+  const nearbyFood: PlaceCardData[] = physicalAttendance
+    ? publicPlaces()
+        .filter((p) => ["restaurant", "coffee", "bar", "brewery", "bakery", "pizza"].includes(p.category))
+        .map((p) => decoratePlace(p, event.geom))
+        .filter((p) => (p.distance_m ?? Infinity) < 2000)
+        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+        .slice(0, 4)
+    : [];
 
   // Distance cap: 1.5 km (~0.93 mi) — a reasonable walking
   // distance for a downtown event. Without this cap, a parking
   // record miscategorized 13 miles away (e.g. "US-40 Trailhead
   // Parking") would surface as "nearby parking" and erode trust
   // in the recommendation layer. Same pattern as nearbyFood above.
-  const nearbyParking: PlaceCardData[] = publicPlaces()
-    .filter((p) => p.category === "parking")
-    .map((p) => decoratePlace(p, event.geom))
-    .filter((p) => (p.distance_m ?? Infinity) < 1500)
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-    .slice(0, 3);
+  const nearbyParking: PlaceCardData[] = physicalAttendance
+    ? publicPlaces()
+        .filter((p) => p.category === "parking")
+        .map((p) => decoratePlace(p, event.geom))
+        .filter((p) => (p.distance_m ?? Infinity) < 1500)
+        .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
+        .slice(0, 3)
+    : [];
 
   // Map our lifecycle status to schema.org's enum — a postponed/cancelled game
   // (Frederick Keys feeds these) must not tell Google "scheduled".
@@ -221,6 +237,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // un-enriched Visit Frederick row whose detail page timed out, a venue-less
   // ingested library/fire row) carry "". Fall the name back to the town and
   // drop an empty address rather than emit blanks.
+  const physicalJsonLdLocation = {
+    "@type": "Place",
+    name: event.venue_name || event.municipality_name || "Frederick County",
+    ...(event.address ? { address: event.address } : {}),
+    geo: { "@type": "GeoCoordinates", latitude: event.geom.lat, longitude: event.geom.lng },
+  };
+  const virtualJsonLdLocation = onlineActionUrl
+    ? { "@type": "VirtualLocation", url: onlineActionUrl }
+    : undefined;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -231,13 +256,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     startDate: easternOffsetIso(event.starts_at),
     endDate: easternOffsetIso(event.ends_at),
     eventStatus: schemaEventStatus,
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    location: {
-      "@type": "Place",
-      name: event.venue_name || event.municipality_name || "Frederick County",
-      ...(event.address ? { address: event.address } : {}),
-      geo: { "@type": "GeoCoordinates", latitude: event.geom.lat, longitude: event.geom.lng },
-    },
+    eventAttendanceMode:
+      attendance === "online"
+        ? "https://schema.org/OnlineEventAttendanceMode"
+        : attendance === "mixed"
+          ? "https://schema.org/MixedEventAttendanceMode"
+          : "https://schema.org/OfflineEventAttendanceMode",
+    location:
+      attendance === "online"
+        ? virtualJsonLdLocation
+        : attendance === "mixed" && virtualJsonLdLocation
+          ? [physicalJsonLdLocation, virtualJsonLdLocation]
+          : physicalJsonLdLocation,
     organizer: event.organizer ? { "@type": "Organization", name: event.organizer } : undefined,
     isAccessibleForFree: event.is_free,
     offers: event.is_free
@@ -295,7 +325,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // A venue-less event has no same-venue shelf: a null/empty key would both
   // group unrelated venue-less rows together and render the broken header
   // "More at " — go straight to the county-wide list instead.
-  const eventVenueName = (event.venue_name ?? "").trim();
+  const eventVenueName = physicalAttendance ? (event.venue_name ?? "").trim() : "";
   const venueKey = event.venue_place_slug ?? (eventVenueName ? eventVenueName.toLowerCase() : null);
   const sameVenueUpcoming = venueKey
     ? upcomingPool
@@ -324,7 +354,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
           <li aria-hidden>·</li>
-          <li><Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link></li>
+          <li>
+            {physicalAttendance ? (
+              <Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link>
+            ) : (
+              <span>Online</span>
+            )}
+          </li>
         </ol>
       </nav>
 
@@ -503,9 +539,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
-            {eventVenueName && (
+            {attendanceLabel && (
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" aria-hidden /> {eventVenueName}
+                {physicalAttendance ? (
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {attendanceLabel}
               </span>
             )}
             {event.is_free ? (
@@ -531,11 +572,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           weather at the event start, closest parking, and the
           nearest food spot into one card. Self-hides if none of
           the three signals are available. */}
-      <EventSmartPairings
-        event={event}
-        nearbyFood={nearbyFood}
-        nearbyParking={nearbyParking}
-      />
+      {physicalAttendance && (
+        <EventSmartPairings
+          event={event}
+          nearbyFood={nearbyFood}
+          nearbyParking={nearbyParking}
+        />
+      )}
 
       {eventStatus !== "scheduled" ? (
         (() => {
@@ -571,11 +614,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         const thirdAction =
           event.ticket_url ? { href: event.ticket_url, external: true, Icon: Ticket, label: "Tickets" } :
           event.rsvp_url ? { href: event.rsvp_url, external: true, Icon: ExternalLink, label: "RSVP" } :
+          attendance !== "physical" && onlineActionUrl ? { href: onlineActionUrl, external: true, Icon: ExternalLink, label: "Online details" } :
           event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: "Venue page" } :
           event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
           null;
         const hasThird = thirdAction !== null;
-        const dirPrimary = !hasThird;
+        const dirPrimary = physicalAttendance && !hasThird;
+        const gridCols = 1 + (physicalAttendance ? 1 : 0) + (hasThird ? 1 : 0);
 
         const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
         const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
@@ -585,7 +630,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         const iconOnBrand = { color: "var(--app-on-brand)" };
 
         return (
-          <div className={`hidden ${hasThird ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-2 lg:grid`}>
+          <div className={`hidden ${gridCols >= 3 ? "lg:grid-cols-3" : gridCols === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-2 lg:grid`}>
             {isLive ? (
               <EventCalendarButton
                 event={{
@@ -605,16 +650,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 Add to calendar
               </a>
             )}
-            <a
-              href={directionsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={dirPrimary ? primaryCls : quietCls}
-              style={dirPrimary ? primaryStyle : quietStyle}
-            >
-              <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
-              Directions
-            </a>
+            {physicalAttendance && (
+              <a
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={dirPrimary ? primaryCls : quietCls}
+                style={dirPrimary ? primaryStyle : quietStyle}
+              >
+                <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
+                Directions
+              </a>
+            )}
             {thirdAction && (thirdAction.external ? (
               <a href={thirdAction.href} target="_blank" rel="noopener noreferrer" className={primaryCls} style={primaryStyle}>
                 <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
@@ -640,7 +687,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           never carry (the first ship hid the map on nearly everything,
           including hand-curated venue coords). A non-centroid geom is real
           enough to pin; centroids stay honestly hidden. */}
-      {(() => {
+      {physicalAttendance && (() => {
         // A resolved venue PLACE is the authoritative pin: its geom wins even
         // when it sits inside the 40m centroid epsilon (Carroll Creek
         // Amphitheater is ~30m from the downtown feed anchor, so the pure
@@ -894,7 +941,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 address: event.address,
                 is_all_day: event.is_all_day,
               }}
-              barVariant={event.ticket_url ? "quiet" : "primary"}
+              barVariant={event.ticket_url || onlineActionUrl ? "quiet" : "primary"}
               label="Add to calendar"
             />
             {event.ticket_url && (
@@ -907,13 +954,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 primary
               />
             )}
-            <MobileBarLink
-              href={directionsUrl}
-              icon={Navigation}
-              label="Directions"
-              ariaLabel={`Directions to ${event.venue_name || event.title}`}
-              external
-            />
+            {!event.ticket_url && attendance !== "physical" && onlineActionUrl && (
+              <MobileBarLink
+                href={onlineActionUrl}
+                icon={ExternalLink}
+                label="Online details"
+                ariaLabel={`Online details for ${event.title}`}
+                external
+                primary
+              />
+            )}
+            {physicalAttendance && (
+              <MobileBarLink
+                href={directionsUrl}
+                icon={Navigation}
+                label="Directions"
+                ariaLabel={`Directions to ${event.venue_name || event.title}`}
+                external
+              />
+            )}
           </>
         )}
         <SaveButton refType="event" refId={event.slug} label={event.title} barLabel="Save" />

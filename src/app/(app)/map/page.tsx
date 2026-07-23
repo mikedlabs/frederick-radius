@@ -43,6 +43,10 @@ import {
   nextScheduled,
 } from "@/lib/integrations/marcTrains";
 import type { MarcStationPin, TransitStopPin } from "@/components/map/types";
+import type { FoodTruckMapPin } from "@/components/map/types";
+import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
+import { FOOD_TRUCK_BY_SLUG } from "@/data/food-trucks";
+import { hasPhysicalAttendance } from "@/lib/events/attendance";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -434,6 +438,7 @@ async function BrowseMapArea() {
     communityReports,
     parkingOccupancy,
     allWeek,
+    foodTruckBeacons,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
     // missing layer instead of hanging the render into a 503.
@@ -483,7 +488,24 @@ async function BrowseMapArea() {
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
     withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 5000, [] as EventWithMeta[]),
+    withTimeout(getFreshestBeaconByTruck(), 2000, new Map()),
   ]);
+
+  const foodTruckPins: FoodTruckMapPin[] = [...foodTruckBeacons.values()].flatMap((beacon) => {
+    const truck = FOOD_TRUCK_BY_SLUG.get(beacon.truckSlug);
+    if (!truck) return [];
+    return [{
+      slug: truck.slug,
+      name: truck.name,
+      cuisine: truck.cuisine,
+      lat: beacon.lat,
+      lng: beacon.lng,
+      spot: beacon.spot,
+      note: beacon.note,
+      startedAt: beacon.startedAt,
+      expiresAt: beacon.expiresAt,
+    }];
+  });
   const civic: CivicPin[] = [
     ...incidents
       .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lng))
@@ -557,6 +579,7 @@ async function BrowseMapArea() {
       lng: r.lng,
       lat: r.lat,
       photo: r.photo,
+      observed_at: r.createdAt,
     };
   });
 
@@ -571,6 +594,7 @@ async function BrowseMapArea() {
   const weekEvents: EventPin[] = [];
   for (const e of allWeek) {
     if (isUtilityEvent(e)) continue;
+    if (!hasPhysicalAttendance(e)) continue;
     if (!Number.isFinite(e.geom?.lng) || !Number.isFinite(e.geom?.lat)) continue;
     const sMs = Date.parse(e.starts_at);
     if (!Number.isFinite(sMs) || sMs > weekHorizonMs) continue;
@@ -666,6 +690,7 @@ async function BrowseMapArea() {
         weekEvents={weekEvents}
         transitStops={transitStops}
         marcStations={marcStations}
+        foodTruckPins={foodTruckPins}
       />
     </div>
   );

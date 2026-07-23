@@ -246,7 +246,7 @@ export async function runRadiusAgent(
       ]);
       const eventIntent = parseAskIntent(toolQuery, now);
       const scopedPool = scopeAskEvents(pool, context.municipality)
-        .filter((event) => eventFitsAskIntent(event, eventIntent, now));
+        .filter((event) => eventFitsAskIntent(event, eventIntent, now, toolQuery));
       const hits = qualifiedSearch(toolQuery, 20, scopedPool, context).hits
         .filter((hit): hit is Extract<SearchHit, { type: "event" }> => hit.type === "event")
         .slice(0, limit);

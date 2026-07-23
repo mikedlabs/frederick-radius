@@ -138,6 +138,12 @@ export function buildAskPlanPreview(
   anchorSlug?: string,
 ): AskPlanPreview | null {
   const reducedMobility = /\b(?:less walking|minimal walking|can(?:not|'t) walk|limited mobility|mobility issues?|wheelchair|walker|easy parking|close parking)\b/i.test(query);
+  const requiresVerifiedHours = Boolean(
+    intent.requestedDate ||
+      intent.requestedDateTime ||
+      intent.timeNeed === "now" ||
+      /\b(?:right now|open now|today|tonight|tomorrow|this (?:morning|afternoon|evening)|late[- ]?night)\b/i.test(query),
+  );
   const input: PlanInputs = {
     audience: intent.audience,
     vibe: intent.vibe,
@@ -152,6 +158,10 @@ export function buildAskPlanPreview(
     max_stops: reducedMobility ? 2 : undefined,
     seed: intent.surpriseMe ? querySeed(query) : undefined,
     anchor_slug: anchorSlug,
+    // planStart also assigns a display clock to undated ideas. Pass the
+    // distinction explicitly so that clock alone does not turn a draft into
+    // an unsupported "open at this time" claim.
+    require_verified_hours: requiresVerifiedHours,
   };
   let plan = buildPlan(input);
   const namedAnchorWasOmitted = Boolean(

@@ -12,7 +12,14 @@ describe("DaypartNeeds", () => {
             category: "coffee",
             label: "Coffee",
             href: "/category/coffee",
-            picks: [{ slug: "first-cup", name: "First Cup", rating: 4.7 }],
+            picks: [
+              {
+                slug: "first-cup",
+                name: "First Cup",
+                rating: 4.7,
+                where: "Urbana",
+              },
+            ],
           },
           {
             category: "bakery",
@@ -29,6 +36,9 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Coffee");
     expect(html).toContain("Bakeries");
     expect(html).toContain("First Cup");
+    expect(html).toContain("Across Frederick County");
+    expect(html).toContain("Urbana");
+    expect(html).not.toContain("Right now, around here");
     expect(html).not.toContain("Second Loaf");
   });
 });

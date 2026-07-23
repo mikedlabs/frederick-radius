@@ -26,7 +26,6 @@ import {
 } from "@/data/categories";
 import { isInFrederickCountyArea } from "@/lib/geo";
 import {
-  hasReviewedAllWeek24hVisitability,
   isAllWeekAllDay,
   is24hVisitabilityReviewCurrent,
   REVIEWED_ALL_WEEK_24H_VISITABILITY,
@@ -38,10 +37,21 @@ import {
   isManualPlaceStatusReviewCurrent,
   MANUAL_PLACE_STATUS_OVERRIDES,
 } from "@/lib/place-status-overrides";
+import { isHoursFresh } from "@/lib/hours-freshness";
 
 const PLACES = PLACES_RAW as unknown as PlaceCardData[];
-const ENRICH = ENRICH_RAW as Record<string, { google_place_id?: string }>;
+const ENRICH = ENRICH_RAW as Record<
+  string,
+  {
+    google_place_id?: string;
+    has_hours?: boolean;
+    weekday_hours?: string[];
+  }
+>;
 const DESCRIPTIONS = DESCRIPTIONS_RAW as Record<string, PlaceDescriptionEntry>;
+const SOURCE_BY_SLUG = new Map(
+  SOURCE_PLACES.map((place) => [place.slug, place]),
+);
 type Severity = "critical" | "high" | "medium" | "low";
 type Gate = {
   id: string;
@@ -82,6 +92,19 @@ function isDecisionCopy(p: PlaceCardData): boolean {
 const pct = (n: number, d: number) => (d === 0 ? 0 : n / d);
 const fmtPct = (r: number) => `${(r * 100).toFixed(1)}%`;
 
+/** Stored schedule coverage is deliberately distinct from published freshness.
+ * Strict builds withhold stale schedules from places-client.json, so counting
+ * only the client field would make "do we possess hours?" indistinguishable
+ * from "may we make an open-now claim?". */
+function hasStoredSchedule(place: PlaceCardData): boolean {
+  const source = SOURCE_BY_SLUG.get(place.slug);
+  const enrichment = ENRICH[place.slug];
+  return Boolean(
+    (source?.hours && Object.keys(source.hours).length > 0) ||
+      (enrichment?.has_hours && enrichment.weekday_hours?.length),
+  );
+}
+
 const GATES: Gate[] = [
   {
     id: "place_slug_unique",
@@ -115,9 +138,50 @@ const GATES: Gate[] = [
     severity: "high",
     audit: "DQ-003",
     run: () => {
-      const withHours = PLACES.filter((p) => p.hours && Object.keys(p.hours).length > 0).length;
+      const withHours = PLACES.filter(hasStoredSchedule).length;
       const r = pct(withHours, PLACES.length);
-      return { pass: r >= 0.6, observed: `${fmtPct(r)} have materialized hours`, expect: ">= 60% (target 90% of visit-now)" };
+      return { pass: r >= 0.6, observed: `${fmtPct(r)} have a stored source schedule`, expect: ">= 60% (target 90% of visit-now)" };
+    },
+  },
+  {
+    id: "place_hours_freshness",
+    severity: "high",
+    audit: "DQ-001/DQ-003",
+    run: () => {
+      const fresh = PLACES.filter(
+        (p) =>
+          p.hours &&
+          Object.keys(p.hours).length > 0 &&
+          p.hours_verified &&
+          isHoursFresh(p.hours_updated_at),
+      ).length;
+      const r = pct(fresh, PLACES.length);
+      return {
+        pass: r >= 0.6,
+        observed: `${fmtPct(r)} have hours verified within the 7-day policy window`,
+        expect: ">= 60% before strict open-now enforcement (target 90% of visit-now)",
+      };
+    },
+  },
+  {
+    id: "publishable_card_photo_coverage",
+    severity: "medium",
+    audit: "visual data coverage",
+    run: () => {
+      // Count only bytes the shipped card is allowed to render: an owned hero
+      // or a Google photo that survived the exact-attribution policy. The raw
+      // enrichment still contains thousands of legacy photo resource names,
+      // but those are not publishable without their paired source metadata and
+      // must never make this gate look green.
+      const withPhoto = PLACES.filter(
+        (place) => Boolean(place.hero_image || place.google_photo_url),
+      ).length;
+      const r = pct(withPhoto, PLACES.length);
+      return {
+        pass: r >= 0.25,
+        observed: `${fmtPct(r)} have an owned or attributed card photo`,
+        expect: ">= 25% interim (target 70% of visitable places)",
+      };
     },
   },
   {
@@ -128,17 +192,26 @@ const GATES: Gate[] = [
       const allWeek247 = PLACES.filter((p) => isAllWeekAllDay(p.hours));
       const publishedSlugs = new Set(allWeek247.map((p) => p.slug));
       const unreviewed = allWeek247.filter(
-        (p) => !hasReviewedAllWeek24hVisitability(p.slug),
+        (p) =>
+          !Object.hasOwn(REVIEWED_ALL_WEEK_24H_VISITABILITY, p.slug),
       );
       const exemptions = Object.entries(REVIEWED_ALL_WEEK_24H_VISITABILITY);
-      const stale = exemptions.filter(([, entry]) =>
-        !is24hVisitabilityReviewCurrent(entry.review_after),
+      const stalePublished = allWeek247.filter((place) => {
+        const entry =
+          REVIEWED_ALL_WEEK_24H_VISITABILITY[
+            place.slug as keyof typeof REVIEWED_ALL_WEEK_24H_VISITABILITY
+          ];
+        return Boolean(
+          entry && !is24hVisitabilityReviewCurrent(entry.review_after),
+        );
+      });
+      const reviewedWithheld = exemptions.filter(
+        ([slug]) => !publishedSlugs.has(slug),
       );
-      const unmatched = exemptions.filter(([slug]) => !publishedSlugs.has(slug));
       return {
-        pass: unreviewed.length === 0 && stale.length === 0 && unmatched.length === 0,
-        observed: `${unreviewed.length} unreviewed; ${stale.length} stale; ${unmatched.length} missing/changed; ${allWeek247.length} reviewed published`,
-        expect: "0 unreviewed, stale, or unmatched all-week 24/7 schedules",
+        pass: unreviewed.length === 0 && stalePublished.length === 0,
+        observed: `${unreviewed.length} unreviewed published; ${stalePublished.length} stale published; ${reviewedWithheld.length} reviewed schedules safely withheld; ${allWeek247.length} published`,
+        expect: "0 unreviewed or stale all-week 24/7 schedules published",
       };
     },
   },

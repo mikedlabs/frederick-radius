@@ -71,6 +71,19 @@ export type EventPin = {
   hero_image?: string;
 };
 
+/** Operator-confirmed, self-expiring food-truck location. */
+export type FoodTruckMapPin = {
+  slug: string;
+  name: string;
+  cuisine: string;
+  lat: number;
+  lng: number;
+  spot?: string;
+  note?: string;
+  startedAt: string;
+  expiresAt: string;
+};
+
 import type { TimeMode } from "./dockCaption";
 
 /**
@@ -89,6 +102,11 @@ export type BrowseDockInfo = {
   /** How many places in the current intent/sub pool are open now
    *  (computed BEFORE the open filter, so the When pane can offer it). */
   openNowCount: number;
+  /** False when too little of the current place catalog has trustworthy
+   *  hours to support an honest Open now filter. */
+  openNowAvailable?: boolean;
+  /** Plain-language explanation shown on the disabled control. */
+  openNowUnavailableLabel?: string;
   /** ?deals=today — places collapsed to those running a verified special
    *  today (todaysDeals slug set, shipped server-side). */
   dealsOn: boolean;

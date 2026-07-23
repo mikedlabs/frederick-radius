@@ -6,6 +6,7 @@ import {
   Bookmark,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   CloudRain,
@@ -365,7 +366,6 @@ export default function PlanBuilder({
           className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <p className="eyebrow mb-3" style={{ color: "var(--app-ink-3)" }}>Plan settings</p>
           {controls}
           <button
             type="button"
@@ -705,100 +705,123 @@ function PlannerFields({
   hours: PlanInputs["duration_hours"];
   onHoursChange: (value: PlanInputs["duration_hours"]) => void;
 }) {
+  const audienceLabel = AUDIENCES.find((option) => option.value === audience)?.label ?? "A date";
+  const vibeLabel = VIBES.find((option) => option.value === vibe)?.label ?? "Keep it easy";
+
   return (
-    <div className="divide-y rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
-      <PickerRow label="Area" Icon={MapPin} action={
-        <div className="flex min-w-0 items-center gap-1">
+    <div className="space-y-3">
+      <div className="divide-y rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+        <PickerRow label="Area" Icon={MapPin} action={
+          <div className="flex min-w-0 items-center gap-1">
+            <select
+              value={area}
+              onChange={(event) => onAreaChange(event.target.value)}
+              className="min-h-11 min-w-0 flex-1 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ color: "var(--app-ink)" }}
+              aria-label="Planning area"
+            >
+              <option value="county">Countywide</option>
+              {area === "near" && <option value="near">Near me</option>}
+              {MUNICIPALITIES.map((town) => (
+                <option key={town.slug} value={town.slug}>
+                  {town.slug === "frederick" ? "Frederick" : town.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onUseLocation}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+              style={{ background: area === "near" ? "var(--app-brand)" : "var(--app-bg-sunken)", color: area === "near" ? "white" : "var(--app-ink-2)" }}
+              aria-label="Use my current location"
+              aria-pressed={area === "near"}
+            >
+              <LocateFixed className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        } />
+        {geoMsg && <p className="px-3 pb-3 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>}
+
+        <PickerRow label="Start" Icon={CalendarDays} controlId="plan-start" action={
           <select
-            value={area}
-            onChange={(event) => onAreaChange(event.target.value)}
-            className="min-h-11 min-w-0 flex-1 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            id="plan-start"
+            value={startMode}
+            onChange={(event) => onStartModeChange(event.target.value as StartMode)}
+            className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ color: "var(--app-ink)" }}
-            aria-label="Planning area"
+            aria-label="Start time"
           >
-            <option value="county">Anywhere in Frederick County</option>
-            {area === "near" && <option value="near">Near my current location</option>}
-            {MUNICIPALITIES.map((town) => <option key={town.slug} value={town.slug}>{town.name}</option>)}
+            {(["now", "afternoon", "evening", "custom"] as StartMode[]).map((mode) => (
+              <option key={mode} value={mode}>{startModeLabel(mode)}</option>
+            ))}
           </select>
-          <button
-            type="button"
-            onClick={onUseLocation}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-            style={{ background: area === "near" ? "var(--app-brand)" : "var(--app-bg-sunken)", color: area === "near" ? "white" : "var(--app-ink-2)" }}
-            aria-label="Use my current location"
-            aria-pressed={area === "near"}
-          >
-            <LocateFixed className="h-4 w-4" aria-hidden />
-          </button>
+        } />
+        {startMode === "custom" && (
+          <div className="px-3 pb-3">
+            <input
+              type="datetime-local"
+              value={customStart}
+              onChange={(event) => onCustomStartChange(event.target.value)}
+              className="min-h-11 w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[13px]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              aria-label="Custom start date and time in Frederick"
+            />
+          </div>
+        )}
+      </div>
+
+      <details className="group overflow-hidden rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+        <summary className="flex min-h-[54px] cursor-pointer list-none items-center gap-3 px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] [&::-webkit-details-marker]:hidden">
+          <SlidersHorizontal className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Fine-tune the outing</span>
+            <span className="mt-0.5 block truncate text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+              {audienceLabel} · {vibeLabel} · {hours} hours
+            </span>
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </summary>
+        <div className="divide-y border-t" style={{ borderColor: "var(--app-border)" }}>
+          <PickerRow label="Going with" Icon={UsersRound} controlId="plan-audience" action={
+            <select
+              id="plan-audience"
+              value={audience}
+              onChange={(event) => onAudienceChange(event.target.value as PlanInputs["audience"])}
+              className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ color: "var(--app-ink)" }}
+              aria-label="Who is going"
+            >
+              {AUDIENCES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          } />
+
+          <PickerRow label="Focus" Icon={Leaf} controlId="plan-focus" action={
+            <select
+              id="plan-focus"
+              value={vibe}
+              onChange={(event) => onVibeChange(event.target.value as PlanInputs["vibe"])}
+              className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ color: "var(--app-ink)" }}
+              aria-label="What matters most"
+            >
+              {VIBES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          } />
+
+          <PickerRow label="Time available" Icon={Clock} controlId="plan-duration" action={
+            <select
+              id="plan-duration"
+              value={hours}
+              onChange={(event) => onHoursChange(Number(event.target.value) as PlanInputs["duration_hours"])}
+              className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ color: "var(--app-ink)" }}
+              aria-label="Time available"
+            >
+              {DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} hours</option>)}
+            </select>
+          } />
         </div>
-      } />
-      {geoMsg && <p className="px-3 pb-3 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>}
-
-      <PickerRow label="Start" Icon={CalendarDays} controlId="plan-start" action={
-        <select
-          id="plan-start"
-          value={startMode}
-          onChange={(event) => onStartModeChange(event.target.value as StartMode)}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ color: "var(--app-ink)" }}
-          aria-label="Start time"
-        >
-          {(["now", "afternoon", "evening", "custom"] as StartMode[]).map((mode) => (
-            <option key={mode} value={mode}>{startModeLabel(mode)}</option>
-          ))}
-        </select>
-      } />
-      {startMode === "custom" && (
-        <div className="px-3 pb-3">
-          <input
-            type="datetime-local"
-            value={customStart}
-            onChange={(event) => onCustomStartChange(event.target.value)}
-            className="min-h-11 w-full rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-3 text-[13px]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-            aria-label="Custom start date and time in Frederick"
-          />
-        </div>
-      )}
-
-      <PickerRow label="Going with" Icon={UsersRound} controlId="plan-audience" action={
-        <select
-          id="plan-audience"
-          value={audience}
-          onChange={(event) => onAudienceChange(event.target.value as PlanInputs["audience"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ color: "var(--app-ink)" }}
-          aria-label="Who is going"
-        >
-          {AUDIENCES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      } />
-
-      <PickerRow label="Focus" Icon={Leaf} controlId="plan-focus" action={
-        <select
-          id="plan-focus"
-          value={vibe}
-          onChange={(event) => onVibeChange(event.target.value as PlanInputs["vibe"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ color: "var(--app-ink)" }}
-          aria-label="What matters most"
-        >
-          {VIBES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      } />
-
-      <PickerRow label="Time available" Icon={Clock} controlId="plan-duration" action={
-        <select
-          id="plan-duration"
-          value={hours}
-          onChange={(event) => onHoursChange(Number(event.target.value) as PlanInputs["duration_hours"])}
-          className="min-h-11 min-w-0 appearance-none bg-transparent text-right text-[13px] font-semibold outline-none rounded-[6px] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-          style={{ color: "var(--app-ink)" }}
-          aria-label="Time available"
-        >
-          {DURATIONS.map((duration) => <option key={duration} value={duration}>{duration} hours</option>)}
-        </select>
-      } />
+      </details>
     </div>
   );
 }
@@ -816,14 +839,14 @@ function PickerRow({
 }) {
   const content = (
     <>
-      <span className="inline-flex min-w-0 flex-1 items-center gap-2 text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+      <span className="inline-flex min-w-0 shrink-0 items-center gap-2 text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
         <Icon className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
         {label}
       </span>
       {controlId ? (
-        <span className="min-w-0 max-w-[62%] flex-1 text-right">{action}</span>
+        <span className="min-w-0 flex-1 text-right">{action}</span>
       ) : (
-        <div className="min-w-0 max-w-[62%] flex-1 text-right">{action}</div>
+        <div className="min-w-0 flex-1 text-right">{action}</div>
       )}
       <ChevronRight className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--app-ink-3)" }} aria-hidden />
     </>

@@ -21,7 +21,7 @@ import {
 import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
 import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
-import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
+import { getPulsePointIncidentsResult } from "@/lib/integrations/pulsepoint";
 import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -40,7 +40,12 @@ import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
-import PulseBoard, { type PulseTile, type PulseHero, type PulseHeroChip } from "@/components/pulse/PulseBoard";
+import PulseBoard, {
+  type PulseTile,
+  type PulseHero,
+  type PulseHeroChip,
+  type PulseHeroFact,
+} from "@/components/pulse/PulseBoard";
 import { clampPercent } from "@/components/pulse/format";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
@@ -50,12 +55,7 @@ import { aqiObservationLabel, aqiParameterLabel, hasObservationForAlert, isEleva
 import { PRODUCT_NAMES } from "@/lib/product-names";
 
 export const metadata: Metadata = {
-  // Orphan-by-design: this surface has real content but no
-  // internal links from primary nav. Keep it reachable by direct
-  // URL while telling crawlers not to compete it against the
-  // focused surfaces in /sitemap. Reversible if the route is
-  // promoted back into nav.
-  robots: { index: false, follow: true },
+  alternates: { canonical: "/pulse" },
   title: PRODUCT_NAMES.liveConditions.pageTitle,
   description: PRODUCT_NAMES.liveConditions.description,
 };
@@ -71,6 +71,12 @@ function timeAgo(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+function titleCaseWords(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
 /** Give the observation its date as well as its hour. Around midnight, a bare
@@ -268,7 +274,7 @@ export default async function PulsePage() {
   const markDegraded = () => {
     urgentDegraded = true;
   };
-  const [incidentsResult, outageResult, fcpsResult, fixit, safety, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
+  const [incidentsResult, outageResult, fcpsResult, fixit, safetyResult, alertResult, news, press, rivers, airports, forecast, marcBoard, marcAlerts, aqiObs, troutStockings, campDavidTfr] = await Promise.all([
     withTimeoutTracked(getChartIncidentsFrederickResult(), FEED_MS, { data: [], available: false }, () => {
       trafficAvailable = false;
       markDegraded();
@@ -284,10 +290,15 @@ export default async function PulsePage() {
     withTimeoutTracked(getFixItIssues(15), FEED_MS, [], () => {
       fixitAvailable = false;
     }),
-    withTimeoutTracked(getPulsePointIncidents(), FEED_MS, [], () => {
+    withTimeoutTracked(
+      getPulsePointIncidentsResult(),
+      FEED_MS,
+      { data: [], available: false, configured: false },
+      () => {
       safetyAvailable = false;
       markDegraded();
-    }),
+      },
+    ),
     // NWS active alerts for Frederick County, MD. When something's up (severe
     // storm, flood, heat advisory) this rides at the top of the board.
     withTimeoutTracked(getNwsAlertsResult(), FEED_MS, { alerts: [], available: false }, markDegraded),
@@ -327,10 +338,14 @@ export default async function PulsePage() {
   const incidents = incidentsResult.data;
   const outages = outageResult.data;
   const fcps = fcpsResult.data;
+  const safety = safetyResult.data;
   trafficAvailable = trafficAvailable && incidentsResult.available;
   powerAvailable = powerAvailable && outageResult.available;
   schoolsAvailable = schoolsAvailable && fcpsResult.available;
-  if (!trafficAvailable || !powerAvailable || !schoolsAvailable) urgentDegraded = true;
+  safetyAvailable = safetyAvailable && safetyResult.available;
+  if (!trafficAvailable || !powerAvailable || !schoolsAvailable || !safetyAvailable) {
+    urgentDegraded = true;
+  }
 
   // Current weather for the leading dashboard tile. The rich PulseWeatherPanel
   // is the tile's body; here we only need the at-a-glance temp + condition.
@@ -350,6 +365,14 @@ export default async function PulsePage() {
   // that threshold the data is noise (a single transformer trip).
   const outagesActive = outages.total_out >= 25;
   const outageTone = powerOutageTone(outages.total_out, outages.total_served);
+  const outageShare =
+    outages.total_served > 0
+      ? ((outages.total_out / outages.total_served) * 100).toFixed(2)
+      : "0";
+  const affectedOutageAreas = [...outages.munis]
+    .filter((area) => area.customers_out > 0)
+    .sort((a, b) => b.customers_out - a.customers_out);
+  const largestOutageArea = affectedOutageAreas[0] ?? null;
 
   // Only count NWS alerts that haven't already expired. The feed
   // includes alerts with `ends_at` in the past until the cache cycles,
@@ -410,17 +433,31 @@ export default async function PulsePage() {
   let heroLeadKey: string | undefined;
   let heroLeadMeta: string | undefined;
   let heroActionLabel: string | undefined;
+  let heroFacts: PulseHeroFact[] = [];
+  let heroTone: PulseHero["tone"] = heroDegraded
+    ? "warning"
+    : allClear
+      ? "positive"
+      : "warning";
 
   if (heroDegraded) {
     heroLine = "We can’t confirm an all-clear yet.";
     heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Radius will retry automatically.";
   } else if (aqiLeads && aqiWorst) {
+    heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
     heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
     heroSub = aqiGuidance(aqiWorst.category.id);
     heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
     heroActionLabel = "See the air-quality reading";
+    heroFacts = [
+      { label: "Current AQI", value: String(aqiWorst.aqi), detail: aqiWorst.reportingArea },
+      { label: "Category", value: aqiWorst.category.name },
+      { label: "Pollutant", value: aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase()) },
+      { label: "Observed", value: aqiClock(aqiWorst) },
+    ];
   } else if (leadAlert) {
+    heroTone = pulseAlertPriority(leadAlert) <= 4 ? "danger" : "warning";
     heroLeadKey = "alerts";
     heroLine = leadAirSummary?.levelLabel
       ? `MDE Code ${leadAirSummary.levelLabel} air-quality alert for Frederick County.`
@@ -430,24 +467,68 @@ export default async function PulsePage() {
       ? [leadAirSummary.forecastPeriod, alertEndLabel(leadAlert.ends_at)].filter(Boolean).join(" · ")
       : alertEndLabel(leadAlert.ends_at);
     heroActionLabel = "Read the Frederick alert";
+    heroFacts = [
+      { label: "Severity", value: leadAlert.severity },
+      { label: "Urgency", value: leadAlert.urgency },
+      { label: "Scope", value: "Frederick County" },
+      { label: "Timing", value: alertEndLabel(leadAlert.ends_at) || "Active now" },
+    ];
   } else if (aqiActive && aqiWorst) {
+    heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
     heroLine = `${aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase())} is ${aqiWorst.category.name.toLowerCase()}.`;
     heroSub = aqiGuidance(aqiWorst.category.id);
     heroLeadMeta = `AQI ${aqiWorst.aqi} · observed ${aqiClock(aqiWorst)}`;
     heroActionLabel = "See the air-quality reading";
+    heroFacts = [
+      { label: "Current AQI", value: String(aqiWorst.aqi), detail: aqiWorst.reportingArea },
+      { label: "Category", value: aqiWorst.category.name },
+      { label: "Pollutant", value: aqiParameterLabel(aqiWorst.parameter).replace(/^./, (c) => c.toUpperCase()) },
+      { label: "Observed", value: aqiClock(aqiWorst) },
+    ];
   } else if (breakingPolice) {
+    heroTone = "danger";
     heroLeadKey = "police";
     heroLine = breakingPolice.title;
     heroSub = `${breakingPolice.source} published this update. Read the official release for confirmed details and any instructions.`;
     heroLeadMeta = [breakingPolice.sourceShort, timeAgo(breakingPolice.publishedAt)].filter(Boolean).join(" · ");
     heroActionLabel = "Read the official safety update";
+    heroFacts = [
+      { label: "Record", value: "Official release" },
+      { label: "Publisher", value: breakingPolice.sourceShort },
+      { label: "Published", value: timeAgo(breakingPolice.publishedAt) || "Recently" },
+      { label: "Area", value: "Frederick" },
+    ];
   } else if (outagesActive) {
+    heroTone = outageTone;
     heroLeadKey = "power";
-    heroLine = `${outages.total_out.toLocaleString()} customers are without power.`;
-    heroSub = "Check the affected communities and the latest utility-reported totals before making a backup plan.";
+    heroLine = `Potomac Edison reports ${outages.total_out.toLocaleString()} customers without power.`;
+    heroSub = "Check the affected areas to see whether the outage is near you.";
     heroLeadMeta = "Potomac Edison service area";
-    heroActionLabel = "See affected areas";
+    heroActionLabel = "Check affected areas";
+    heroFacts = [
+      {
+        label: "Customers out",
+        value: outages.total_out.toLocaleString(),
+        detail: `${outageShare}% of ${outages.total_served.toLocaleString()} served`,
+      },
+      {
+        label: "Affected areas",
+        value: affectedOutageAreas.length.toLocaleString(),
+        detail: "Municipality-level reports",
+      },
+      {
+        label: "Largest report",
+        value: largestOutageArea ? titleCaseWords(largestOutageArea.area) : "County total",
+        detail: largestOutageArea
+          ? `${largestOutageArea.customers_out.toLocaleString()} customers out`
+          : undefined,
+      },
+      {
+        label: "Utility update",
+        value: outageResult.asOf ? timeAgo(outageResult.asOf) : "Current report",
+      },
+    ];
   } else if (leadTraffic) {
     heroLeadKey = "traffic";
     // Humanized at the boundary: no raw CHART enum or ramp code reaches the
@@ -457,33 +538,63 @@ export default async function PulsePage() {
     const trafficLanes = leadTraffic.lanes_affected ? humanizeChartText(leadTraffic.lanes_affected) : "";
     heroSub = trafficLanes
       ? `${chartTypeSentence(leadTraffic)} ${trafficLanes}. Check the location before choosing your route.`
-      : `${chartTypeSentence(leadTraffic)} Check the location and expected clearing time before choosing your route.`;
+      : `${chartTypeSentence(leadTraffic)} Check the incident location before choosing your route.`;
     heroLeadMeta = humanizeChartText(leadTraffic.location);
     heroActionLabel = "Check the road impact";
+    heroFacts = [
+      {
+        label: "Road",
+        value: leadTraffic.road || humanizeChartText(leadTraffic.location),
+        detail: leadTraffic.direction ? humanizeChartText(leadTraffic.direction) : undefined,
+      },
+      { label: "Type", value: humanizeChartText(leadTraffic.type) },
+      {
+        label: "Lane impact",
+        value: leadTraffic.lanes_affected
+          ? humanizeChartText(leadTraffic.lanes_affected)
+          : "Check the incident",
+      },
+      { label: "Reported", value: timeAgo(leadTraffic.started_at) || "Active now" },
+    ];
   } else if (leadSchool) {
     heroLeadKey = "schools";
     heroLine = leadSchool.status === "closed"
-      ? "Frederick County schools are closed."
+      ? "FCPS posted a school closure update."
       : leadSchool.status === "delayed"
-        ? "Frederick County schools are delayed."
+        ? "FCPS posted a delayed-opening update."
         : leadSchool.status === "early_dismissal"
-          ? "Frederick County schools are dismissing early."
+          ? "FCPS posted an early-dismissal update."
           : "FCPS has a schedule update.";
     heroSub = leadSchool.title;
     heroLeadMeta = timeAgo(leadSchool.published_at);
     heroActionLabel = "Read the FCPS update";
+    heroFacts = [
+      {
+        label: "Status",
+        value:
+          leadSchool.status === "closed"
+            ? "Closure update"
+            : leadSchool.status === "delayed"
+              ? "Delayed opening"
+              : "Early dismissal",
+      },
+      { label: "Published", value: timeAgo(leadSchool.published_at) || "Recently" },
+      { label: "System", value: "Frederick County" },
+      { label: "Source", value: "FCPS" },
+    ];
   } else if (leadSafety) {
     heroLeadKey = "safety";
     heroLine = `${safety.length} active fire & rescue ${safety.length === 1 ? "call" : "calls"}.`;
     heroSub = `Most recent: ${leadSafety.type}${leadSafety.address ? ` near ${leadSafety.address}` : ""}.`;
     heroLeadMeta = timeAgo(leadSafety.received_at);
     heroActionLabel = "See active calls";
+    heroFacts = [
+      { label: "Active calls", value: safety.length.toLocaleString() },
+      { label: "Latest call", value: leadSafety.type },
+      { label: "Location", value: leadSafety.address || "Frederick County" },
+      { label: "Received", value: timeAgo(leadSafety.received_at) || "Recently" },
+    ];
   }
-
-  const pct =
-    outages.total_served > 0
-      ? ((outages.total_out / outages.total_served) * 100).toFixed(2)
-      : "0";
 
   // Rivers — group the live gauges and pick a representative reading for
   // the tile peek (the most-gauged river's first reporting gauge). Honest:
@@ -723,6 +834,7 @@ export default async function PulsePage() {
   const aqiPct = aqiWorst ? clampPercent((aqiWorst.aqi / 300) * 100) : 0;
 
   const powerPct = outagesActive ? clampPercent((outages.total_out / 2000) * 100) : 0;
+  const unaffectedOutageAreaCount = Math.max(0, outages.munis.length - affectedOutageAreas.length);
 
   const riverPeekHeight = riverPeekSite?.gageHeightFt ?? null;
   const riverFloodRef = riverPeekSite?.floodStages?.minor ?? null;
@@ -793,7 +905,21 @@ export default async function PulsePage() {
           kind: "status",
           sourceLabel: "AirNow · EPA",
           peek: "No fresh Frederick reading",
-          body: emptyNote("AirNow did not return a fresh Frederick observation. Radius will check again automatically."),
+          body: (
+            <>
+              {emptyNote("AirNow did not return a fresh Frederick observation. Radius will check again automatically.")}
+              <a
+                href="https://www.airnow.gov/?city=Frederick&state=MD&country=USA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                Check Frederick on AirNow
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            </>
+          ),
         } as PulseTile]),
     {
       key: "power",
@@ -819,26 +945,26 @@ export default async function PulsePage() {
         comma: true,
         unit: outagesActive ? "customers out" : "all served",
       },
-      sourceLabel: "FirstEnergy / Potomac Edison",
+      sourceLabel: "Potomac Edison",
       body: outagesActive ? (
         <>
           <div
             className="mb-1 flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
             style={{
               borderColor: "var(--app-border)",
-              background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
+              background: `color-mix(in srgb, ${outageTone === "danger" ? "var(--app-danger)" : "var(--app-warning)"} 6%, var(--app-bg-elevated))`,
             }}
           >
-            <span className="font-mono text-[28px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-danger)" }}>
+            <span className="font-mono text-[28px] font-semibold leading-none tabular-nums" style={{ color: outageTone === "danger" ? "var(--app-danger)" : "var(--app-warning)" }}>
               {outages.total_out.toLocaleString()}
             </span>
             <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               customers without power
               <br />
-              {pct}% of {outages.total_served.toLocaleString()} served
+              {outageShare}% of {outages.total_served.toLocaleString()} served
             </span>
           </div>
-          {outages.munis.map((m) => (
+          {affectedOutageAreas.map((m) => (
             <Row
               key={m.area}
               tone={m.customers_out > 500 ? "danger" : "warning"}
@@ -846,6 +972,21 @@ export default async function PulsePage() {
               body={`${m.customers_out.toLocaleString()} out of ${m.customers_served.toLocaleString()} (${m.percentage.toFixed(1)}%)`}
             />
           ))}
+          {unaffectedOutageAreaCount > 0 ? (
+            <p className="mt-2 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              No outage was reported in {unaffectedOutageAreaCount} other listed {unaffectedOutageAreaCount === 1 ? "area" : "areas"}.
+            </p>
+          ) : null}
+          <a
+            href="https://outages-mdwv.firstenergycorp.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold"
+            style={{ color: "var(--app-brand-press)" }}
+          >
+            Open the official outage map
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
         </>
       ) : emptyNote(
         powerAvailable
@@ -1358,9 +1499,11 @@ export default async function PulsePage() {
   const hero: PulseHero = {
     allClear,
     degraded: heroDegraded,
+    tone: heroTone,
     line: heroLine,
     sub: heroSub,
     renderedAt: nowMs,
+    facts: heroFacts,
     leadKey: heroLeadKey,
     leadMeta: heroLeadMeta,
     actionLabel: heroActionLabel,

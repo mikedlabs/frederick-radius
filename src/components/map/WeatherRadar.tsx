@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Source, Layer } from "react-map-gl/mapbox";
+import {
+  liveLayerHealth,
+  type LiveLayerHealth,
+} from "@/lib/live-layer-health";
 
 /**
  * WeatherRadar — animated precipitation radar over the county, from the
@@ -30,17 +34,25 @@ const REFRESH_MS = 5 * 60_000;
 const FRAME_MS = 500;
 const FRAME_COUNT = 6;
 const RADAR_OPACITY = 0.6;
+// RainViewer's public tile pyramid ends at z7. Without this source cap,
+// Mapbox requests the map's current z9+ tiles and RainViewer returns a PNG
+// that says "Zoom Level Not Supported" instead of precipitation. Mapbox
+// overzooms the valid z7 tiles automatically at normal browse zooms.
+const RADAR_MAX_ZOOM = 7;
 
 export default function WeatherRadar({
   show,
   beforeId,
   onNewestFrame,
+  onHealth,
 }: {
   show: boolean;
   /** Existing layer id to slot the radar beneath (above basemap only). */
   beforeId?: string;
   /** Reports the newest frame's unix seconds (the "radar as of" stamp). */
   onNewestFrame?: (epochSec: number) => void;
+  /** Reports whether the public frame feed is usable, empty, or unavailable. */
+  onHealth?: (health: LiveLayerHealth) => void;
 }) {
   const [host, setHost] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
@@ -50,6 +62,8 @@ export default function WeatherRadar({
   // a setState, but a ref makes this robust to inline arrow props too.
   const onNewestRef = useRef(onNewestFrame);
   useEffect(() => { onNewestRef.current = onNewestFrame; }, [onNewestFrame]);
+  const onHealthRef = useRef(onHealth);
+  useEffect(() => { onHealthRef.current = onHealth; }, [onHealth]);
 
   // Fetch the frame list while shown; refetch on an interval so a map left
   // open keeps stepping forward with the weather.
@@ -59,7 +73,15 @@ export default function WeatherRadar({
     const load = async () => {
       try {
         const r = await fetch(FRAMES_URL, { cache: "no-store" });
-        if (!r.ok) return;
+        if (!r.ok) {
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "RainViewer",
+              unavailable: true,
+            }),
+          );
+          return;
+        }
         const d = (await r.json()) as {
           host?: unknown;
           radar?: { past?: unknown };
@@ -68,13 +90,36 @@ export default function WeatherRadar({
         const take = past
           .filter((f) => typeof f?.time === "number" && typeof f?.path === "string")
           .slice(-FRAME_COUNT);
-        if (!alive || typeof d.host !== "string" || take.length === 0) return;
+        if (!alive) return;
+        if (typeof d.host !== "string" || take.length === 0) {
+          onHealthRef.current?.(
+            liveLayerHealth({
+              source: "RainViewer",
+              count: 0,
+              timestamp: new Date(),
+            }),
+          );
+          return;
+        }
         setHost(d.host);
         setFrames(take);
         setActive(take.length - 1); // open on the newest frame
         onNewestRef.current?.(take[take.length - 1].time);
+        onHealthRef.current?.(
+          liveLayerHealth({
+            source: "RainViewer",
+            count: take.length,
+            timestamp: new Date(take[take.length - 1].time * 1000),
+            maxAgeMs: 30 * 60_000,
+          }),
+        );
       } catch {
-        /* keep the last frame list; radar is a garnish */
+        onHealthRef.current?.(
+          liveLayerHealth({
+            source: "RainViewer",
+            unavailable: true,
+          }),
+        );
       }
     };
     load();
@@ -102,6 +147,8 @@ export default function WeatherRadar({
           type="raster"
           tiles={[`${host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`]}
           tileSize={256}
+          maxzoom={RADAR_MAX_ZOOM}
+          attribution='<a href="https://www.rainviewer.com/" target="_blank" rel="noopener noreferrer">Weather data by RainViewer</a>'
         >
           <Layer
             id={`radar-frame-${f.time}`}

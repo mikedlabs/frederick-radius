@@ -24,6 +24,12 @@ import { allowedEventImage, ticketFloorText } from "@/lib/integrations/ticketmas
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
+import {
+  eventAdapterDisabled,
+  eventAdapterFailed,
+  eventAdapterOk,
+  type EventAdapterResult,
+} from "@/lib/integrations/event-adapter-result";
 
 const ENDPOINT = "https://api.seatgeek.com/2/events";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -33,7 +39,10 @@ const CENTER = { lat: 39.4143, lng: -77.4105 };
 const RANGE = "25mi";
 
 export function seatgeekConfigured(): boolean {
-  return Boolean((process.env.SEATGEEK_CLIENT_ID ?? "").trim());
+  return (
+    process.env.SEATGEEK_ENABLED === "1" &&
+    Boolean((process.env.SEATGEEK_CLIENT_ID ?? "").trim())
+  );
 }
 
 type SgVenue = {
@@ -143,9 +152,12 @@ export function normalizeSeatGeek(raw: unknown): LiveEvent[] {
  * query (SeatGeek requires client_id as a param) on a server-only module,
  * so it never reaches the client.
  */
-export async function fetchSeatGeek(): Promise<LiveEvent[]> {
+export async function fetchSeatGeekResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
+  if (process.env.SEATGEEK_ENABLED !== "1") return eventAdapterDisabled();
   const clientId = (process.env.SEATGEEK_CLIENT_ID ?? "").trim();
-  if (!clientId) return [];
+  if (!clientId) return eventAdapterDisabled();
   const url =
     `${ENDPOINT}?client_id=${encodeURIComponent(clientId)}` +
     `&lat=${CENTER.lat}&lon=${CENTER.lng}&range=${RANGE}` +
@@ -156,13 +168,18 @@ export async function fetchSeatGeek(): Promise<LiveEvent[]> {
     const res = await fetch(url, { signal: ctrl.signal, next: { revalidate: 3600 } });
     if (!res.ok) {
       console.error(`[seatgeek] HTTP ${res.status}`);
-      return [];
+      return eventAdapterFailed();
     }
-    return normalizeSeatGeek(await res.json());
+    return eventAdapterOk(normalizeSeatGeek(await res.json()));
   } catch (err) {
     console.warn("[seatgeek] fetch failed:", err);
-    return [];
+    return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Legacy data-only facade. Health-aware callers should use the Result form. */
+export async function fetchSeatGeek(): Promise<LiveEvent[]> {
+  return (await fetchSeatGeekResult()).items;
 }

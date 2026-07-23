@@ -179,8 +179,9 @@ const LOCAL_DISCOVERY =
 const NON_LOCAL_MARKERS =
   /\b(?:events?|festival|concert|shows?|weather|forecast|rain|snow|pay|bill|register|permit|license|vote|voting|trash|recycl|pothole|how do i|phone number|hours of|contact|county council|schools?)\b/i;
 
-/** True when a query is an inherently-local place hunt (so it should ask for an
- *  area before answering) rather than an informational or civic question. */
+/** True when a query is an inherently-local place hunt rather than an
+ * informational or civic question. Whole county is a valid deliberate scope;
+ * the chooser is only needed when no usable scope exists. */
 export function queryIsLocalDiscovery(query: string): boolean {
   return LOCAL_DISCOVERY.test(query) && !NON_LOCAL_MARKERS.test(query);
 }
@@ -212,7 +213,7 @@ export function hasResolvedNearbyArea(
   hasDevicePosition: boolean,
 ): boolean {
   if (hasDevicePosition) return true;
-  return Boolean(scopeTownSlug(scope));
+  return scope === "county" || Boolean(scopeTownSlug(scope));
 }
 
 export function nearbyQueryNeedsAreaChoice(
@@ -220,11 +221,16 @@ export function nearbyQueryNeedsAreaChoice(
   selectedScope: Scope | null,
   hasDevicePosition: boolean,
 ): boolean {
-  if (!queryNeedsNearbyContext(query) && !queryIsLocalDiscovery(query)) return false;
+  const explicitlyNearby = queryNeedsNearbyContext(query);
+  if (!explicitlyNearby && !queryIsLocalDiscovery(query)) return false;
   const explicitScope = explicitAreaInQuery(query);
   // Naming the county in this question is a deliberate area choice. A county
   // value left over from an earlier visit is not precise enough for "near me."
   if (explicitScope === "county") return false;
+  if (explicitlyNearby) {
+    const effectiveScope = explicitScope ?? selectedScope;
+    return !hasDevicePosition && !scopeTownSlug(effectiveScope);
+  }
   return !hasResolvedNearbyArea(
     explicitScope ?? selectedScope,
     hasDevicePosition,
@@ -734,7 +740,7 @@ export default function AskFrederick({
   const [showAllSources, setShowAllSources] = useState(false);
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
-  const [currentScope, setCurrentScope] = useState<Scope | null>(null);
+  const [currentScope, setCurrentScope] = useState<Scope | null>("county");
   const [hasCachedPosition, setHasCachedPosition] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const areaChooserRef = useRef<HTMLDivElement | null>(null);
@@ -757,7 +763,7 @@ export default function AskFrederick({
   visibleResultRef.current = res;
 
   useEffect(() => {
-    setCurrentScope(getScope());
+    setCurrentScope(getScope() ?? "county");
     setHasCachedPosition(Boolean(readCachedPosition()));
     const unsubscribe = subscribeScopeChange((scope) => {
       requestIdRef.current += 1;
@@ -768,7 +774,7 @@ export default function AskFrederick({
       setRes(null);
       setRequestFailure(null);
       setSubmittedQuery("");
-      setCurrentScope(scope);
+      setCurrentScope(scope ?? "county");
     });
     return () => {
       unsubscribe();
@@ -842,7 +848,7 @@ export default function AskFrederick({
       ? text
       : contextualizeAskQuery(text, lastQueryRef.current);
     const position = options.position === undefined ? readCachedPosition() : options.position;
-    const selectedScope = options.scope ?? getScope();
+    const selectedScope = options.scope ?? getScope() ?? "county";
     const resolvedScope = requestScope(contextualQuery, selectedScope, Boolean(position));
 
     if (
@@ -1305,7 +1311,7 @@ export default function AskFrederick({
               Radius needs a real area for that question.
             </p>
             <p className="mt-1 text-[11px] leading-relaxed">
-              Use your device location or choose an area below.
+              Use your device location or choose a town above.
             </p>
           </div>
         ) : null}

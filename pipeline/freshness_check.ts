@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MANIFEST = join(ROOT, "data", "sources.yaml");
+const MANIFEST =
+  process.env.SOURCE_MANIFEST ?? join(ROOT, "data", "sources.yaml");
 
 // Maximum age in hours before a source is considered stale, with a
 // grace allowance so a slightly late refresh does not page anyone.
@@ -32,6 +33,7 @@ const MAX_AGE_HOURS: Record<string, number> = {
 type Row = {
   id: string;
   status: string;
+  collection?: "pipeline" | "runtime" | "workflow";
   refresh_cadence: string;
   last_success: string | null;
 };
@@ -39,9 +41,17 @@ type Row = {
 function main(): void {
   const doc = parse(readFileSync(MANIFEST, "utf8")) as { sources: Row[] };
   const active = doc.sources.filter((r) => r.status === "active");
+  const missingOwner = active.filter(
+    (r) => !["pipeline", "runtime", "workflow"].includes(r.collection ?? ""),
+  );
+  const managed = active.filter((r) => r.collection === "pipeline");
   const stale: string[] = [];
 
-  for (const row of active) {
+  for (const row of missingOwner) {
+    stale.push(`${row.id}: active source has no collection owner`);
+  }
+
+  for (const row of managed) {
     // on_demand sources are not scheduled, so freshness does not apply.
     const limit = MAX_AGE_HOURS[row.refresh_cadence];
     if (limit === undefined) continue;
@@ -61,7 +71,10 @@ function main(): void {
     for (const s of stale) console.error(`  ${s}`);
     process.exitCode = 1;
   } else {
-    console.log(`All ${active.length} active sources are within their refresh cadence.`);
+    console.log(
+      `All ${managed.length} pipeline-managed sources are within their refresh cadence. ` +
+      `${active.length - managed.length} runtime/workflow sources are outside this manifest timestamp check and must be verified in their owning monitors.`,
+    );
   }
 }
 

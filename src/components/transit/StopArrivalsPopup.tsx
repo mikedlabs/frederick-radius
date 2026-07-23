@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import TRANSIT from "@/data/transit.json";
 import { routesForStop } from "./routeGeometry";
+import { formatMapTimestamp } from "@/components/map/mapContent";
 
 /**
  * StopArrivalsPopup — the tap detail for a bus stop on the transit map.
@@ -76,6 +77,7 @@ function RouteChip({ route }: { route?: TransitRoute }) {
 export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
   const [preds, setPreds] = useState<StopPrediction[] | null>(null);
   const [nowMs, setNowMs] = useState(0);
+  const [checkedAt, setCheckedAt] = useState<number | null>(null);
 
   // The caller remounts this per stop (key=stop.id), so preds starts null
   // (loading) and this effect only fills it in once the fetch lands.
@@ -83,10 +85,12 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
     let alive = true;
     fetch(`/api/transit/stop-predictions?stop=${encodeURIComponent(stop.id)}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { predictions: [] }))
-      .then((d: { predictions?: StopPrediction[] }) => {
+      .then((d: { predictions?: StopPrediction[]; updatedAt?: number }) => {
         if (!alive) return;
         setPreds(Array.isArray(d.predictions) ? d.predictions : []);
-        setNowMs(Date.now());
+        const checked = typeof d.updatedAt === "number" ? d.updatedAt : Date.now();
+        setNowMs(checked);
+        setCheckedAt(checked);
       })
       .catch(() => {
         if (alive) setPreds([]);
@@ -111,6 +115,7 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
     .filter((a): a is { route: TransitRoute | undefined; mins: number } => a.mins != null)
     .sort((a, b) => a.mins - b.mins)
     .slice(0, 4);
+  const checkedLabel = formatMapTimestamp(checkedAt);
 
   return (
     <div style={{ padding: "2px 2px 4px", minWidth: 188 }}>
@@ -187,6 +192,11 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
             Check the official schedule
           </a>
           .
+        </p>
+      )}
+      {preds !== null && checkedLabel && (
+        <p style={{ marginTop: 7, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3)" }}>
+          Checked {checkedLabel} · Frederick County TransIT
         </p>
       )}
     </div>

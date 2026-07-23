@@ -67,4 +67,16 @@ describe("classifyEvent", () => {
       expect(isPublicEvent({ title }), title).toBe(true);
     }
   });
+
+  it("requires an event page or join path for an online-only listing", () => {
+    expect(isPublicEvent({
+      title: "Yoga for Mobility @ Virtual",
+      attendance_mode: "online",
+    })).toBe(false);
+    expect(isPublicEvent({
+      title: "Yoga for Mobility @ Virtual",
+      attendance_mode: "online",
+      source_url: "https://www.frederickcountymd.gov/Calendar.aspx?EID=15421",
+    })).toBe(true);
+  });
 });

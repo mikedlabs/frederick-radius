@@ -13,6 +13,8 @@ import type { Anomaly } from "@/lib/integrations/feed-snapshot";
 import VENUE_EVENTS from "@/data/venue-events.json";
 import FIELD_NOTES from "@/data/field-notes.json";
 import CLIFFNOTES from "@/data/town-cliffnotes.json";
+import HOURS_REFRESH from "@/data/places-hours-refresh.json";
+import BUSINESS_STATUS from "@/data/business-status.json";
 
 const DAY = 86_400_000;
 
@@ -21,6 +23,35 @@ function ageDays(verified: string | undefined, now: Date): number | null {
   if (!verified) return null;
   const t = Date.parse(verified.length === 7 ? `${verified}-01` : verified);
   return Number.isFinite(t) ? Math.floor((now.getTime() - t) / DAY) : null;
+}
+
+export function snapshotFreshnessAnomaly(
+  source: string,
+  verifiedAt: readonly (string | undefined)[],
+  now: Date,
+  maxAgeDays: number,
+  remediation: string,
+): Anomaly | null {
+  const valid = verifiedAt
+    .map((value) => (value ? Date.parse(value) : Number.NaN))
+    .filter(Number.isFinite);
+  if (valid.length === 0) {
+    return {
+      source,
+      kind: "snapshot_expired",
+      detail: `No verified rows are materialized. ${remediation}`,
+    };
+  }
+
+  const newest = Math.max(...valid);
+  const age = Math.floor((now.getTime() - newest) / DAY);
+  return age > maxAgeDays
+    ? {
+        source,
+        kind: "snapshot_expired",
+        detail: `Newest verified row is ${age} days old (limit ${maxAgeDays}). ${remediation}`,
+      }
+    : null;
 }
 
 export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
@@ -38,7 +69,44 @@ export function curatedFreshnessAnomalies(now: Date = new Date()): Anomaly[] {
     });
   }
 
-  // 2. Hand-verified curated layers: count entries whose last_verified is
+  // 2. The app's trustworthy open/closed state depends on two materialized
+  // Google refreshes. A Vercel cron can populate the database, and the
+  // data-steward can spend on a status sweep, but neither helps users unless
+  // the resulting artifact reaches the canonical loader. Empty or old files
+  // are therefore release-health failures, not an invisible advisory.
+  const hoursEntries = Object.entries(
+    HOURS_REFRESH as Record<string, unknown>,
+  ).filter(([key]) => !key.startsWith("_"));
+  const hoursAnomaly = snapshotFreshnessAnomaly(
+    "places-hours-refresh.json",
+    hoursEntries.map(
+      ([, value]) => (value as { refreshed_at?: string })?.refreshed_at,
+    ),
+    now,
+    8,
+    "Run the hours-refresh cron through a full cycle, then pull and merge the data-steward PR.",
+  );
+  if (hoursAnomaly) out.push(hoursAnomaly);
+
+  const statusData = BUSINESS_STATUS as {
+    generated_at?: string | null;
+    overrides?: Record<string, { refreshed_at?: string }>;
+  };
+  const statusAnomaly = snapshotFreshnessAnomaly(
+    "business-status.json",
+    [
+      statusData.generated_at ?? undefined,
+      ...Object.values(statusData.overrides ?? {}).map(
+        (entry) => entry.refreshed_at,
+      ),
+    ],
+    now,
+    2,
+    "Check the data-steward Google secret and merge its latest status PR.",
+  );
+  if (statusAnomaly) out.push(statusAnomaly);
+
+  // 3. Hand-verified curated layers: count entries whose last_verified is
   //    older than the re-verification window. One line per dataset, only
   //    when the stale share is meaningful (>25%), so a single aging note
   //    doesn't page anyone.
@@ -82,6 +150,6 @@ export function liveSourceAnomalies(sourcesFailed: string[]): Anomaly[] {
   return sourcesFailed.map((source) => ({
     source,
     kind: "live_source_failed" as const,
-    detail: "Live feed returned zero events this run (failed or empty upstream).",
+    detail: "Live feed failed this run. A successful empty response is tracked separately and does not trigger this anomaly.",
   }));
 }

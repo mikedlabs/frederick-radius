@@ -16,10 +16,16 @@ import {
 } from "../pipeline/lib/normalize";
 import type { MdotChartRaw } from "../pipeline/schemas_ts/mdot_chart";
 
-function severity(s: string | undefined): "low" | "medium" | "high" {
-  const l = (s ?? "").toLowerCase();
-  if (l.includes("severe") || l.includes("major") || l.includes("high")) return "high";
-  if (l.includes("moderate") || l.includes("medium")) return "medium";
+function severity(
+  trafficAlert: boolean | undefined,
+  text: string,
+): "low" | "medium" | "high" {
+  if (trafficAlert || /crash|collision|overturned|closed|blocked|all lanes|fatal/i.test(text)) {
+    return "high";
+  }
+  if (/construction|roadwork|work zone|disabled|shoulder|lane/i.test(text)) {
+    return "medium";
+  }
   return "low";
 }
 
@@ -33,30 +39,57 @@ function eventType(s: string | undefined): string {
   return "other";
 }
 
+function extractRoad(text: string): string {
+  const match = text.match(/\b(I-?\d+|US ?\d+|MD ?\d+)\b/i);
+  return match
+    ? match[1]
+        .toUpperCase()
+        .replace(/^I(\d)/, "I-$1")
+        .replace(/^(US|MD)(\d)/, "$1 $2")
+    : "";
+}
+
+function isMaintenanceNoise(text: string): boolean {
+  return /\bbulb out\b|\bcamera\b|\btest event\b|sign (out|malfunction)/i.test(text);
+}
+
+function cleanDescription(text: string): string {
+  return text
+    .replace(/^(action event|incident|event|road ?work)\s*@\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function transform(raw: MdotChartRaw): TransformResult {
   const features = [];
-  for (const r of raw) {
-    const county = String(r.County ?? "").trim();
+  for (const r of raw.data) {
+    const county = String(r.county ?? "").trim();
     if (!/frederick/i.test(county)) continue;
-    const lat = toNumber(r.Lat);
-    const lng = toNumber(r.Lng ?? r.Long);
+    if (r.closed === true) continue;
+    const lat = toNumber(r.lat);
+    const lng = toNumber(r.lon);
     if (lat === null || lng === null) continue;
+    const name = String(r.name ?? r.description ?? "").trim();
+    const action = r.additionalData?.actionTypes?.[0]?.actionType ?? "";
+    const text = `${name} ${action} ${r.incidentType ?? ""}`;
+    if (isMaintenanceNoise(text)) continue;
+    const description = cleanDescription(name || action) || "Active traffic event";
 
     features.push(
       pointFeature(
         { lat, lng },
         {
-          external_id: String(r.Id ?? `${r.Road ?? ""}-${r.Started ?? ""}-${lat}-${lng}`),
-          incident_type: eventType(r.EventType),
-          description: String(r.Description ?? "Active traffic incident").trim(),
+          external_id: String(r.id ?? `${description}-${r.startDateTime ?? ""}-${lat}-${lng}`),
+          incident_type: eventType(`${r.incidentType ?? ""} ${text}`),
+          description,
           county,
-          road: String(r.Road ?? "").trim(),
-          direction: r.Direction ? String(r.Direction).trim() : undefined,
-          location: String(r.Location ?? r.Road ?? "").trim(),
-          severity: severity(r.Severity),
-          lanes_affected: r.LanesAffected ? String(r.LanesAffected) : undefined,
-          started_at: isoDate(r.Started),
-          expected_end: isoDate(r.EstimatedClearance),
+          road: extractRoad(name),
+          direction: r.direction ? String(r.direction).trim() : undefined,
+          location: description,
+          severity: severity(r.trafficAlert, text),
+          lanes_affected: r.lanesStatus?.trim() || undefined,
+          started_at: isoDate(r.startDateTime),
+          expected_end: null,
           source: "mdot_chart",
         },
       ),

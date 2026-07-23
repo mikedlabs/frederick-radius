@@ -68,6 +68,7 @@ describe("nearDupeCandidates — finds the judgement tail the engine skips", () 
       new Set(["summitra", "sumittra-thai-cuisine"]),
     );
     expect(cands[0].score).toBeGreaterThan(0.3);
+    expect(cands[0].distance_m).toBeLessThan(10);
   });
 
   it("does NOT flag genuinely distinct close places", () => {
@@ -87,6 +88,24 @@ describe("nearDupeCandidates — finds the judgement tail the engine skips", () 
       rec({ slug: "a", name: "Summitra", municipality: "frederick", ...C }),
       rec({ slug: "b", name: "Sumittra", municipality: "thurmont", ...near(5) }),
       rec({ slug: "c", name: "Sumittra", municipality: "frederick", lng: -77.6, lat: 39.62 }),
+    ];
+    expect(nearDupeCandidates(recs)).toHaveLength(0);
+  });
+
+  it("does not turn neighboring features in different categories into shared-token duplicates", () => {
+    const recs = [
+      rec({
+        slug: "park-playground",
+        name: "New Market Community Park Playground",
+        category: "playground",
+        ...C,
+      }),
+      rec({
+        slug: "park-pavilion",
+        name: "New Market Community Park Pavilion",
+        category: "park",
+        ...near(20),
+      }),
     ];
     expect(nearDupeCandidates(recs)).toHaveLength(0);
   });

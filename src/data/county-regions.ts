@@ -24,7 +24,7 @@ const REGION_TERMS: Record<CountyRegion, RegExp> = {
   central: /\b(?:central|downtown)\b/i,
 };
 
-const DECISION_BREAK = /\b(?:but|however|curious(?:\s+if)?|what about|show me|recommend|suggest|looking for|where should|where can|take me)\b/i;
+const DECISION_BREAK = /\b(?:but|however|curious(?:\s+if)?|what about|what (?:are|is)|show me|recommend|suggest|looking for|where should|where can|take me)\b/i;
 
 /** The final request clause carries the desired destination when the user first describes places they already know. */
 export function countyDecisionClause(query: string): string {

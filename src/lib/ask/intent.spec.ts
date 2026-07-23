@@ -26,6 +26,14 @@ describe("parseAskIntent", () => {
     });
   });
 
+  it("keeps a numbered date-night restaurant list out of the itinerary builder", () => {
+    expect(parseAskIntent("three date-night restaurants downtown")).toMatchObject({
+      kind: "place",
+      audience: "date",
+      vibe: "food",
+    });
+  });
+
   it("keeps a nearby breakfast question as a place job", () => {
     expect(parseAskIntent("Where can I get a breakfast sandwich near me right now?")).toMatchObject({
       kind: "place",
@@ -39,6 +47,22 @@ describe("parseAskIntent", () => {
       kind: "event",
       timeNeed: "tonight",
       label: "What is on tonight",
+    });
+  });
+
+  it("routes a dated fun request to the calendar even when it omits the word event", () => {
+    expect(parseAskIntent("Anything fun tomorrow night?")).toMatchObject({
+      kind: "event",
+      timeNeed: "tomorrow",
+      label: "Current events",
+    });
+  });
+
+  it("recognizes a weekday activity request without requiring the word event", () => {
+    const now = new Date("2026-07-22T16:00:00.000Z");
+    expect(parseAskIntent("What should we do Friday night?", now)).toMatchObject({
+      kind: "event",
+      requestedDate: "2026-07-24",
     });
   });
 

@@ -27,6 +27,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { AMENITY_FIELDS } from "../src/lib/loaders/placeAmenities";
+import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
 
 const ENRICHMENT_PATH = resolve(process.cwd(), "src/data/places-enrichment.json");
 const OUT = resolve(process.cwd(), "src/data/places-amenities.json");
@@ -69,8 +70,20 @@ async function main() {
     : {};
 
   const cap = Number(process.argv[2]) || Infinity;
+  // The client artifact is the canonical county-gated public set. Legacy
+  // enrichment rows outside it remain untouched instead of spending another
+  // paid Details call on a place the app cannot publish.
+  const publicSlugs = new Set(
+    (CLIENT_PLACES as Array<{ slug: string }>).map((place) => place.slug),
+  );
   const targets = Object.entries(enrichment)
-    .filter(([slug, r]) => r.google_place_id && /^ChIJ/.test(r.google_place_id) && !existing[slug])
+    .filter(
+      ([slug, r]) =>
+        publicSlugs.has(slug) &&
+        r.google_place_id &&
+        /^ChIJ/.test(r.google_place_id) &&
+        !existing[slug],
+    )
     .slice(0, cap);
 
   console.log(`enrich:amenities — ${targets.length} place(s) to fetch (${Object.keys(existing).length} already done)`);

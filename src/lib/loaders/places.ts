@@ -34,6 +34,7 @@ import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" 
 import LOCAL_FAVORITES_RAW from "@/data/local-favorites.json" with { type: "json" };
 import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
 import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
+import BUSINESS_STATUS_RAW from "@/data/business-status.json" with { type: "json" };
 import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
@@ -50,6 +51,15 @@ import {
   approvedPlaceDescription,
   type PlaceDescriptionSourceKind,
 } from "@/lib/loaders/placeDescriptions";
+import {
+  resolveRefreshedBusinessStatus,
+  type BusinessStatusRefreshEntry,
+} from "@/lib/business-status-refresh";
+import {
+  placementRejectionReason,
+  type PlacementRejectionReason,
+} from "@/lib/placement-trust";
+import { getHoursAvailability } from "@/lib/hours-availability";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -113,6 +123,19 @@ const HOURS_REFRESH = Object.fromEntries(
     ([k]) => !k.startsWith("_"),
   ),
 ) as Record<string, HoursRefreshEntry>;
+
+const BUSINESS_STATUS = (
+  BUSINESS_STATUS_RAW as {
+    overrides?: Record<string, BusinessStatusRefreshEntry>;
+  }
+).overrides ?? {};
+
+function refreshedBusinessStatus(slug: string) {
+  return resolveRefreshedBusinessStatus(
+    BUSINESS_STATUS[slug],
+    HOURS_REFRESH[slug],
+  );
+}
 
 /**
  * Whether a place is currently in season. Non-seasonal places (the
@@ -348,7 +371,7 @@ const DEDUP_AS_MAP: Record<string, string> = Object.fromEntries(
 );
 const resolveCanonicalSlug = makeResolver([OV_FOLD, AUTO_FOLD, DEDUP_AS_MAP]);
 
-const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
+const PRE_GATE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   // Drop anything folded away (auto OR human typo fold) and any
   // human-removed junk; then apply human field patches. remove/patch
   // are data corrections so they apply even with dedupe disabled.
@@ -381,34 +404,45 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
     // it can't masquerade as a postal code; leave a genuinely-empty field empty.
     return cur ? { ...p, postal_code: "" } : p;
   })
-  .map((p) => patchRecord(p, OV_PATCH))
-  // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
-  .map(claimUrbana)
-  // County gate (2026-06 redesign audit, ranking-trust blocker). The
-  // dataset carried 79 out-of-county records wearing member-town labels
-  // (a Smithsburg bar tagged thurmont led the guide's "Best match" with
-  // a "498 min walk" caption; Boonsboro coffee shops tagged myersville).
-  // isValidCoord now tests the real county outline plus a 1.5km straddle
-  // buffer, so Mount Airy's cross-line Main Street survives and true
-  // foreigners leave every surface. EXCLUDED, not down-ranked: these are
-  // not Frederick County places, and one confident wrong answer costs
-  // more trust than 79 missing rows.
-  .filter((p) => isValidCoord(p.geom));
+  .map((p) => patchRecord(p, OV_PATCH));
+
+export type PlacePlacementReview = Place & {
+  rejection_reason: PlacementRejectionReason;
+};
+
+/**
+ * Lossless pre-gate rejection queue. These rows never reach public surfaces,
+ * municipality claiming, or paid runtime enrichment, but they remain visible
+ * to the editor with their source address and exact rejection reason.
+ */
+const PLACEMENT_REVIEW_ROWS: PlacePlacementReview[] = PRE_GATE_PLACES.flatMap(
+  (place) => {
+    const rejection_reason = placementRejectionReason(place.geom);
+    return rejection_reason ? [{ ...place, rejection_reason }] : [];
+  },
+);
+
+// County gate (2026-06 redesign audit, ranking-trust blocker). Membership is
+// decided BEFORE the automatic Urbana municipality claim. The dataset carried
+// 79 out-of-county records wearing member-town labels (a Smithsburg bar tagged
+// Thurmont; Boonsboro coffee shops tagged Myersville). The real county outline
+// plus a documented 1.5 km straddle allowance keeps Mount Airy's cross-line
+// Main Street while neighboring-county rows stay in PLACEMENT_REVIEW_ROWS.
+const BASE_PLACES: Place[] = PRE_GATE_PLACES
+  .filter((p) => !placementRejectionReason(p.geom))
+  // Municipality assignment is downstream of county membership by contract.
+  .map(claimUrbana);
 
 // Build-time visibility into excluded places. Server-only so it
 // doesn't run in the browser. Same shape as the events placement
 // warning so build logs read consistently.
 if (typeof window === "undefined") {
-  const preGate = (DEDUPE_ON ? STATIC_DEDUPED : PLACES).filter(
-    (p) =>
-      !OV_REMOVE.has(p.slug) &&
-      (!DEDUPE_ON || (!AUTO_FOLD.has(p.slug) && !OV_FOLD[p.slug])),
-  );
-  const excluded = preGate.filter((p) => !isValidCoord(claimUrbana(p).geom));
-  if (excluded.length > 0) {
-    const sample = excluded.slice(0, 5).map((p) => p.slug).join(", ");
+  if (PLACEMENT_REVIEW_ROWS.length > 0) {
+    const sample = PLACEMENT_REVIEW_ROWS.slice(0, 5)
+      .map((p) => p.slug)
+      .join(", ");
     console.warn(
-      `[placement] places: ${excluded.length} row(s) excluded (outside county outline + 1.5km buffer, or missing coord). Examples: ${sample}`,
+      `[placement] places: ${PLACEMENT_REVIEW_ROWS.length} row(s) excluded and retained for admin review (outside county outline + 1.5km buffer, or missing coord). Examples: ${sample}`,
     );
   }
 }
@@ -760,7 +794,10 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // keep their tier; Google confirming existence does not change who
     // vouches for the content.
     ...(() => {
-      const prov = stampForPlace(p, ENRICHMENT_VERIFIED_AT);
+      const prov = stampForPlace(
+        p,
+        e.enriched_at ?? ENRICHMENT_VERIFIED_AT,
+      );
       const googleConfirmed = Boolean(e.business_status && e.business_status !== "UNKNOWN");
       return prov.confidence === "scraped" && googleConfirmed
         ? { ...prov, confidence: "verified" as const }
@@ -863,10 +900,11 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
     mayPublishVisitabilityHours(p.slug, hours, now);
   const manualStatus = manualPlaceStatusOverride(p.slug);
+  const refreshedStatus = refreshedBusinessStatus(p.slug);
   if (manualStatus) {
     enriched.is_operational = manualStatus.status;
-  } else if (refresh?.business_status === "CLOSED_PERMANENTLY") {
-    enriched.is_operational = "closed_permanently";
+  } else if (refreshedStatus) {
+    enriched.is_operational = refreshedStatus.status;
   }
   return {
     ...enriched,
@@ -954,10 +992,7 @@ export function slimForList(p: PlaceCardData): PlaceCardData {
  * current build. Counting provenance alone kept Open-now visible even when a
  * strict freshness pass had removed every materialized schedule. */
 export function hoursCoverage(places: PlaceCardData[]): number {
-  if (!places.length) return 0;
-  return places.filter(
-    (p) => p.hours_verified && p.hours && Object.keys(p.hours).length > 0,
-  ).length / places.length;
+  return getHoursAvailability(places).coverage;
 }
 
 // Default ON by owner directive (2026-05-16: "ship everything"). At
@@ -973,7 +1008,7 @@ const HOURS_GATE = process.env.HOURS_GATE !== "0";
  * STYLE.md message in place of the affordance.
  */
 export function shouldHideOpenNow(places: PlaceCardData[]): boolean {
-  return HOURS_GATE && hoursCoverage(places) < 0.6;
+  return HOURS_GATE && !getHoursAvailability(places).enabled;
 }
 
 export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Date()): PlaceDetail | null {
@@ -984,6 +1019,10 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
   const nearby_places = publicPlaces()
     .filter((x) => x.slug !== p.slug)
     .map((x) => decoratePlace(x, p.geom, now))
+    // "Nearby" is a recommendation surface, not a raw proximity dump.
+    // Apply the gate after enrichment because the institutional primary type
+    // comes from Google, not the raw DFP row.
+    .filter(isRecommendable)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 6);
 
@@ -1126,6 +1165,13 @@ export function isOperational(p: Place): boolean {
   // temporary storm closure cannot suppress an unrelated same-name place.
   if (manualPlaceStatusOverride(p.slug)) return false;
   if (isKnownClosed(p.name)) return false; // manual override of last resort
+  const refreshedStatus = refreshedBusinessStatus(p.slug)?.status;
+  if (refreshedStatus) {
+    return (
+      refreshedStatus !== "closed_permanently" &&
+      refreshedStatus !== "closed_temporarily"
+    );
+  }
   // Google enrichment is the SOURCE OF TRUTH for closure. DFP-scraped
   // records hardcode is_operational: "operational" at load time so the
   // raw Place field can lie (Serendipity Market, Brass Copper Shop,
@@ -1264,12 +1310,12 @@ export function getHiddenFromDiscovery(): HiddenFromDiscovery[] {
 }
 
 /**
- * Places whose coordinate is missing or outside the Frederick County
- * bbox. These are dropped from every public surface and listed in
- * /admin/data-health so an editor can fix them.
+ * Places whose coordinate is missing, malformed, or outside the Frederick
+ * County catalog area. They are excluded from public surfaces but preserved
+ * here with source, address, declared municipality, and rejection reason.
  */
-export function getNeedsReviewPlaces(): Place[] {
-  return BASE_PLACES.filter((p) => !isValidCoord(p.geom));
+export function getNeedsReviewPlaces(): PlacePlacementReview[] {
+  return PLACEMENT_REVIEW_ROWS;
 }
 
 /** Public places in one municipality (canonical set, not raw). */

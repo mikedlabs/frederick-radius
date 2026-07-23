@@ -13,7 +13,8 @@
  * localStorage only, read/written client-side (AppMap is dynamic ssr:false, so
  * there is no SSR/hydration concern).
  */
-const KEY = "fr:map-layers:v1";
+const KEY = "fr:map-layers:v2";
+const LEGACY_KEY = "fr:map-layers:v1";
 
 export type MapLayerPrefs = {
   cats?: string[];
@@ -34,10 +35,24 @@ export type MapLayerPrefs = {
 export function readMapLayerPrefs(): MapLayerPrefs {
   if (typeof window === "undefined") return {};
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const current = window.localStorage.getItem(KEY);
+    if (current) {
+      const parsed = JSON.parse(current);
+      return parsed && typeof parsed === "object" ? (parsed as MapLayerPrefs) : {};
+    }
+
+    // v1 wrote Transit=true during the old automatic cold open, so it cannot
+    // distinguish a user choice from inherited UI noise. Migrate every other
+    // explicit layer once and let Transit return to the new neutral default.
+    const raw = window.localStorage.getItem(LEGACY_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as MapLayerPrefs) : {};
+    if (!parsed || typeof parsed !== "object") return {};
+    const migrated = { ...(parsed as MapLayerPrefs) };
+    delete migrated.transit;
+    window.localStorage.removeItem(LEGACY_KEY);
+    writeMapLayerPrefs(migrated);
+    return migrated;
   } catch {
     return {};
   }
@@ -46,14 +61,13 @@ export function readMapLayerPrefs(): MapLayerPrefs {
 export function writeMapLayerPrefs(p: MapLayerPrefs): void {
   if (typeof window === "undefined") return;
   try {
-    // Drop empty/false noise so the stored blob stays small. Transit is the
-    // exception: the county map enables it for a first-time visitor, so an
-    // explicit false must survive reload and remain a real user choice.
+    // Drop empty/false noise so the stored blob stays small. Every layer now
+    // defaults off, so only an explicit On choice needs to survive reload.
     const slim: MapLayerPrefs = {};
     if (p.cats && p.cats.length) slim.cats = p.cats;
     if (p.amenities && p.amenities.length) slim.amenities = p.amenities;
     if (p.civic) slim.civic = true;
-    if (typeof p.transit === "boolean") slim.transit = p.transit;
+    if (p.transit) slim.transit = true;
     if (p.trails) slim.trails = true;
     if (p.aerial) slim.aerial = true;
     if (p.cemeteries) slim.cemeteries = true;

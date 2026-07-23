@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { resolveHomeBase } from "./live";
 
 describe("resolveHomeBase", () => {
-  it("resolves a real brewery home base to a place with hours", () => {
+  it("keeps a real brewery home base even while stale hours are withheld", () => {
     const r = resolveHomeBase("Monocacy Brewing Company");
     expect(r).not.toBeNull();
     expect(r?.slug).toBe("monocacy-brewing-frederick");
-    expect(r?.hours).toBeTruthy();
+    expect(r?.hours).toBeUndefined();
+    expect(r?.verified).toBe(false);
   });
 
   it("resolves a shortened/variant venue name via prefix match", () => {

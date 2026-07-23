@@ -10,10 +10,7 @@
  */
 import { stampEventProvenance } from "@/lib/provenance";
 import { getCachedLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
-import {
-  fetchTicketmasterMusic,
-  fetchTicketmasterSports,
-} from "@/lib/integrations/ticketmaster";
+import { fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
@@ -28,6 +25,10 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import {
+  eventAttendanceMode,
+  isLikelyEventActionUrl,
+} from "@/lib/events/attendance";
 
 /**
  * The one clean-slug authority for a live event. Both liveToCardEvent
@@ -79,6 +80,19 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
   // venue and address get decoded; the address also gets its
   // suffix-into-city concatenation repaired.
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
+  const attendance_mode = eventAttendanceMode({
+    ...e,
+    title,
+  });
+  const online_url =
+    e.online_url ??
+    (attendance_mode !== "physical" && isLikelyEventActionUrl(e.url)
+      ? e.url
+      : undefined);
+  const venueName =
+    attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name ?? "");
+  const address =
+    attendance_mode === "online" ? "" : formatAddress(cleanFeedText(e.address ?? ""));
   return {
     // Clean, shareable slug (Phase 2). The legacy liveEventSlug is kept
     // only as a fallback resolver for old shared links.
@@ -91,14 +105,16 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     timezone: "America/New_York",
     is_all_day: e.is_all_day ?? false,
     is_recurring: false,
-    venue_name: cleanFeedText(e.venue_name ?? ""),
-    address: formatAddress(cleanFeedText(e.address ?? "")),
+    venue_name: venueName,
+    address,
     geom: e.geom,
     municipality: e.municipality,
     category: e.category,
     audience: [],
     is_free: e.is_free,
     price_text: e.price_text,
+    attendance_mode,
+    online_url,
     hero_image: e.hero_image,
     organizer: e.organizer,
     status: e.status,
@@ -124,7 +140,10 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     // it with placement:"geocoded" (e.g. Visit Frederick detail-page JSON-LD),
     // which lifts it to "exact_address" and a real distance. Absent placement,
     // behaviour is exactly as before. See lib/events/geo-confidence.
-    geo_confidence: eventGeoConfidence({ placement: e.placement, geom: e.geom }),
+    geo_confidence:
+      attendance_mode === "online"
+        ? "unknown"
+        : eventGeoConfidence({ placement: e.placement, geom: e.geom }),
   };
 }
 
@@ -161,16 +180,18 @@ export async function getLiveCardEventBySlug(
   // rejection). Without the timeout, a cold-window hit awaited the slowest
   // feed up to the 8s per-feed ceiling on a primary surface; the per-source
   // bound keeps the whole parallel resolution under ~6s.
-  const [ical, tmMusic, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
+  const [ical, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
     withTimeout(getCachedLiveEvents(windowDays).then((r) => r.events), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
-    withTimeout(fetchTicketmasterMusic(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
     withTimeout(fetchTicketmasterSports(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
     withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
     withTimeout(fetchVisitFrederick(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
     withTimeout(fetchFrederickKeys(), SLUG_SOURCE_TIMEOUT_MS, [] as LiveEvent[]).catch(() => [] as LiveEvent[]),
     withTimeout(fetchSquarespaceVenueEvents(windowDays), SLUG_SOURCE_TIMEOUT_MS, []).catch(() => []),
   ]);
-  const events = [...ical, ...tmMusic, ...tmSports, ...bit, ...vf, ...keys];
+  // Ticketmaster music already arrives inside getCachedLiveEvents. Keep only
+  // the separate sports query here so a cold event-detail lookup does not
+  // issue the same Discovery request twice.
+  const events = [...ical, ...tmSports, ...bit, ...vf, ...keys];
   // Clean stored slug first (the canonical form a card links to).
   let hit = events.find((e) => liveCleanSlug(e) === slug);
   // Legacy fallback: an old "live-..." shared link still resolves so it

@@ -194,6 +194,9 @@ export type DupeRecord = {
   name: string;
   source?: string;
   municipality?: string;
+  /** The shipped primary category. Shared-token candidates in different
+   * categories are usually neighboring features, not duplicate records. */
+  category?: string;
   lng: number;
   lat: number;
 };
@@ -203,6 +206,7 @@ export type DupeCandidate = {
   b: DupeRecord;
   score: number; // 0..1, higher = more likely the same place
   why: string;
+  distance_m: number;
 };
 
 function metersBetween(
@@ -256,9 +260,10 @@ export function nearDupeCandidates(
           const nb = norm(q.name);
           if (nb.length < 3) continue;
           if (na === nb) continue; // exact → the auto engine handles it
+          const distance_m = metersBetween(r, q);
           if (
             (r.municipality ?? "") !== (q.municipality ?? "") ||
-            metersBetween(r, q) > maxM
+            distance_m > maxM
           ) {
             continue;
           }
@@ -273,6 +278,7 @@ export function nearDupeCandidates(
             .split(" ")
             .slice(0, short.split(" ").length)
             .join(" ");
+          const exactPrefix = short === longHead;
           const lev = Math.min(
             levenshtein(short, long, 4),
             levenshtein(short, longHead, 4),
@@ -281,16 +287,22 @@ export function nearDupeCandidates(
           const tol = short.length <= 6 ? 1 : short.length <= 12 ? 2 : 3;
           let score = 0;
           let why = "";
-          if (lev <= tol) {
+          if (exactPrefix) {
+            score = 0.75;
+            why = "one name extends the other";
+          } else if (lev <= tol) {
             score = 1 - lev / (tol + 2);
             why = `name typo (edit distance ${lev})`;
-          } else if (jac >= 0.6) {
+          } else if (
+            jac >= 0.6 &&
+            (!r.category || !q.category || r.category === q.category)
+          ) {
             score = jac;
             why = `shared name tokens (${jac.toFixed(2)})`;
           }
           if (score > 0) {
             seen.add(key);
-            out.push({ a: r, b: q, score, why });
+            out.push({ a: r, b: q, score, why, distance_m });
           }
         }
       }

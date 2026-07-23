@@ -6,15 +6,16 @@ import { useRouter } from "next/navigation";
 const AUTO_REFRESH_MS = 2 * 60_000;
 
 /**
- * PulseFreshness — a live "updated Ns ago" counter that ticks every second,
- * measured from when the server rendered the page (i.e. when the feeds were
- * fetched). It renders NOTHING on the server / first paint (so there's no
+ * PulseFreshness — a live "checked Ns ago" counter measured from when the
+ * server assembled the page. Individual feeds can be older and show their own
+ * timestamps inside the board. It renders NOTHING on the server / first paint (so there's no
  * hydration mismatch), then fills in and counts up.
  *
  * This is the small, honest signal the dashboard was missing: visible proof
  * the page is a live read, not a static snapshot. The number climbs until the
  * page revalidates (ISR, 120s) and re-renders with a fresh timestamp, so the
- * count IS the data's real age — never faked.
+ * count is the age of this check, not a claim that every provider published
+ * new data at that moment.
  */
 export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   const [sec, setSec] = useState<number | null>(null);
@@ -37,8 +38,12 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
     };
     const id = window.setInterval(refreshIfVisible, AUTO_REFRESH_MS);
     document.addEventListener("visibilitychange", refreshIfVisible);
+    // A cached page can already be older than the refresh window when it
+    // mounts. Check once immediately instead of waiting another two minutes.
+    const initial = window.setTimeout(refreshIfVisible, 0);
     return () => {
       window.clearInterval(id);
+      window.clearTimeout(initial);
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
   }, [renderedAt, router]);
@@ -47,7 +52,7 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
 
   const label =
     sec < 60
-      ? "just now"
+      ? "now"
       : sec < 3600
         ? `${Math.floor(sec / 60)}m ago`
         : `${Math.floor(sec / 3600)}h ago`;
@@ -56,8 +61,8 @@ export default function PulseFreshness({ renderedAt }: { renderedAt: number }) {
   // where the old hardcoded --app-ink-3 (a light-ground gray) made the one
   // line proving the page is live nearly invisible.
   return (
-    <span className="tabular-nums">
-      · updated {label}
+    <span className="shrink-0 whitespace-nowrap text-[10px] font-medium normal-case tracking-normal tabular-nums">
+      Checked {label}
     </span>
   );
 }

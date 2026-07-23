@@ -19,8 +19,12 @@ official service, and do not imply that a source or municipality endorses it.
 - `public/brand/posters/ask-radius.svg` and `.png`: an Ask Radius poster with a
   tested-QR placeholder and readable URL fallback.
 - `public/brand/social/facebook-cover.svg` and `facebook-cover-photo.svg`:
-  coordinated Brick and natural-photography Facebook covers.
+  coordinated Brick and owned summer-photography Facebook covers.
 - `public/brand/social/avatar.svg`: the circle-safe account avatar.
+- `public/brand/social/facebook-page-launch-photo.svg`: the photo-led public
+  beta launch post using the same owned summer Frederick photograph.
+- `public/brand/social/facebook-season-{summer,fall,winter,spring}.svg`: four
+  square, consistently branded photographs for a seasonal carousel.
 - `public/brand/social/facebook-group-launch.svg`: the Frederick food-truck
   campaign image, built from owned photography with the tracked `food-truck`
   beta access code.

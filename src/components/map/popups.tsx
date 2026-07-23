@@ -14,6 +14,7 @@ import { ACCENTS, CATEGORY_BY_SLUG } from "@/data/categories";
 import { specimenLedger, type LedgerCell } from "@/lib/ui/specimenLedger";
 import { ticketStubDate, stubEyebrow } from "@/lib/ui/ticketStub";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
+import { formatMapTimestamp } from "./mapContent";
 
 /** Semantic color for a ledger cell's tone — open reads positive-green,
  *  the closing "hurry" cell reads warning, everything else stays muted
@@ -178,6 +179,7 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
       "report-note": { label: "Local note", color: "#7A7975" },
     };
     const meta = REPORT_LABEL[p.category_slug] ?? { label: "Report", color: ACCENTS.slate };
+    const reportedAt = formatMapTimestamp(p.observed_at);
     return (
       <div style={{ minWidth: 200, maxWidth: 240, padding: 4 }}>
         {p.photo && (
@@ -195,8 +197,8 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
             {p.address}
           </p>
         )}
-        <p style={{ marginTop: 6, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: meta.color }}>
-          Community report
+        <p style={{ marginTop: 6, fontSize: 10, fontWeight: 600, letterSpacing: "0.03em", color: meta.color }}>
+          {reportedAt ? `Reported ${reportedAt} · ` : ""}Community submitted
         </p>
       </div>
     );
@@ -241,6 +243,41 @@ export function OsmPopup({ p }: { p: SelectedOsm }) {
         }}>
           Marked on foot
         </p>
+      </div>
+    );
+  }
+
+  // Mapillary computer-vision detections share the amenity transport shape
+  // with OSM, but they are not OpenStreetMap records. Keep the source visible
+  // and linked as Mapillary's map-feature guidance requires, and do not build
+  // a bogus openstreetmap.org/mly-* URL.
+  if (p.osm_id?.startsWith("mly-")) {
+    return (
+      <div style={{ minWidth: 200, padding: 4 }}>
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-ink-3, #7A7975)", marginBottom: 4,
+        }}>
+          {cat?.name ?? p.category_slug}
+        </p>
+        <strong style={{ fontSize: 15, fontWeight: 600, color: "var(--app-ink, #1A1A1A)", fontFamily: SANS }}>
+          {p.name}
+        </strong>
+        <p style={{
+          marginTop: 4, fontSize: 10, fontWeight: 600,
+          textTransform: "uppercase", letterSpacing: "0.06em",
+          color: "var(--app-warning-press)",
+        }}>
+          Computer-detected · location may need field confirmation
+        </p>
+        <a
+          href="https://www.mapillary.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: "inline-block", marginTop: 7, fontSize: 10, color: "var(--app-ink-3, #7A7975)" }}
+        >
+          Source: Mapillary ↗
+        </a>
       </div>
     );
   }
