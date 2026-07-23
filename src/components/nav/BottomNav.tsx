@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { requestFind } from "@/lib/findBridge";
 import { TABS, tabIndexForPath } from "./tabs";
 import { useHideOnScroll } from "./useHideOnScroll";
 
@@ -14,8 +12,8 @@ import { useHideOnScroll } from "./useHideOnScroll";
  *
  * The destinations remain conventional, but the floating glass capsule,
  * glowing center orb, and animated selection pill have been retired. A brick
- * registration rule now marks the active chapter. Find remains prominent
- * because it is the highest-frequency action, not because it glows.
+ * registration rule now marks the active chapter. Search lives in the top bar,
+ * leaving this strip to hold four stable destinations.
  */
 export default function BottomNav() {
   const pathname = usePathname();
@@ -23,78 +21,13 @@ export default function BottomNav() {
   const hidden = useHideOnScroll(false);
   const realIdx = tabIndexForPath(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
-  const [findOpen, setFindOpen] = useState(false);
-  const findRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pathname completion clears the optimistic destination
     setPendingIdx(null);
   }, [pathname]);
 
-  useEffect(() => {
-    const sync = (event: Event) => {
-      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
-      setFindOpen(Boolean(detail?.open));
-    };
-    window.addEventListener("fr:search-state", sync);
-    return () => window.removeEventListener("fr:search-state", sync);
-  }, []);
-
-  useEffect(() => {
-    findRef.current?.setAttribute("data-find-ready", "true");
-  }, []);
-
   if (pathname.startsWith("/ask")) return null;
-
-  const mapOwnsFind = pathname === "/map";
-  const findEmphasized = !mapOwnsFind || findOpen;
-  const findCell = (
-    <li key="find" className="flex px-0.5">
-      <Link
-        ref={findRef}
-        href={mapOwnsFind ? "/map#map-search-input" : "/search"}
-        aria-label={mapOwnsFind ? "Find on this map" : "Find across Frederick County"}
-        aria-haspopup={mapOwnsFind ? undefined : "dialog"}
-        aria-controls={mapOwnsFind ? "map-search-input" : "radius-find-dialog"}
-        aria-expanded={mapOwnsFind ? undefined : findOpen}
-        onClick={(event) => {
-          event.preventDefault();
-          haptic("light");
-          requestFind(mapOwnsFind ? "map" : "global");
-        }}
-        className="relative flex h-12 w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[var(--app-radius-sm)] transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-spring)] active:scale-[0.92] active:duration-150 active:ease-[var(--app-ease-out)]"
-        style={{
-          background: findOpen
-            ? "var(--app-brand)"
-            : findEmphasized
-              ? "color-mix(in srgb, var(--app-brand) 11%, var(--app-bg-elevated-solid))"
-              : "transparent",
-          color: findOpen
-            ? "var(--app-on-brand)"
-            : findEmphasized
-              ? "var(--app-brand-press)"
-              : "var(--app-ink-3)",
-          border: findEmphasized
-            ? "1px solid color-mix(in srgb, var(--app-brand) 28%, var(--app-border))"
-            : "1px solid transparent",
-        }}
-      >
-        <span
-          aria-hidden
-          className="absolute inset-x-2 top-0 h-[2px]"
-          style={{
-            background: findOpen
-              ? "var(--app-on-brand)"
-              : findEmphasized
-                ? "var(--app-brand)"
-                : "transparent",
-          }}
-        />
-        <Search width={20} height={20} strokeWidth={2.25} aria-hidden />
-        <span className="text-[11px] font-semibold leading-tight tracking-tight">Find</span>
-      </Link>
-    </li>
-  );
 
   return (
     <div
@@ -120,7 +53,7 @@ export default function BottomNav() {
           boxShadow: "var(--app-elev-2)",
         }}
       >
-        <ul className="mx-auto grid max-w-screen-md grid-cols-5 px-1 py-1">
+        <ul className="mx-auto grid max-w-screen-md grid-cols-4 px-1 py-1">
           {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isAtDestination = pathname === href || pathname.startsWith(`${href}/`);
             const isRealActive = realIdx === idx;
@@ -139,7 +72,7 @@ export default function BottomNav() {
               }
             };
 
-            const cell = (
+            return (
               <li key={href} className="flex">
                 <Link
                   href={href}
@@ -174,15 +107,6 @@ export default function BottomNav() {
                   </span>
                 </Link>
               </li>
-            );
-
-            return idx === 1 ? (
-              <Fragment key={href}>
-                {cell}
-                {findCell}
-              </Fragment>
-            ) : (
-              cell
             );
           })}
         </ul>

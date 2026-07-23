@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
-import { FOOD_TRUCKS } from "@/data/food-trucks";
+import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS, truckFeedUrl } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
@@ -33,7 +33,18 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Food trucks in Frederick County",
     description: "A weekly board of confirmed stops and local mobile vendors.",
-    images: ["/brand/social/facebook-group-launch.png"],
+    images: [{
+      url: "/brand/social/og-food-trucks.png",
+      width: 1200,
+      height: 630,
+      alt: "Find the food trucks. Confirmed weekly stops and 20 local vendors in Frederick County.",
+    }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Food trucks in Frederick County",
+    description: "Confirmed weekly stops and a roster of local mobile vendors.",
+    images: ["/brand/social/og-food-trucks.png"],
   },
 };
 
@@ -63,6 +74,13 @@ function directionsUrl(stop: FoodTruckScheduleStop): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address ?? stop.venueName)}`;
 }
 
+function vendorUrl(vendor: FoodTruckScheduleStop["vendors"][number]): string | undefined {
+  if (vendor.url) return vendor.url;
+  if (!vendor.slug) return undefined;
+  const rosterEntry = FOOD_TRUCK_BY_SLUG.get(vendor.slug);
+  return rosterEntry ? truckFeedUrl(rosterEntry) ?? undefined : undefined;
+}
+
 function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
   return (
     <article className="food-truck-stop-card">
@@ -79,7 +97,24 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
           {stop.municipality ? <span>{stop.municipality}</span> : null}
         </div>
         <h3 className="mt-2 font-serif text-[21px] font-semibold leading-[1.08]" style={{ color: "var(--app-ink)" }}>
-          {stop.vendors.map((vendor) => vendor.name).join(" · ")}
+          {stop.vendors.map((vendor, index) => {
+            const href = vendorUrl(vendor);
+            const label = `${vendor.name}${index < stop.vendors.length - 1 ? " ·" : ""}`;
+            return href ? (
+              <a
+                key={`${vendor.name}-${href}`}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${vendor.name} from the published schedule`}
+                className="mr-1 underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
+              >
+                {label}
+              </a>
+            ) : (
+              <span key={vendor.name} className="mr-1">{label}</span>
+            );
+          })}
         </h3>
         <p className="mt-1.5 inline-flex items-start gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: FOOD_ACCENT }} />
@@ -230,13 +265,13 @@ export default async function FoodTrucksPage() {
         <div className="p-4 sm:p-5">
           <p className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: FOOD_ACCENT }}>
             <Radio className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            Coming soon
+            Owner pilot
           </p>
           <h2 id="beacon-preview-title" className="mt-1 font-serif text-[24px] leading-tight" style={{ color: "var(--app-ink)" }}>
-            See live truck pins without guessing.
+            Drop a live pin while you are serving.
           </h2>
           <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            A claimed vendor will be able to drop a temporary map pin that says what is serving. The vendor sets the time when it disappears. The example is a preview, not a real location.
+            Approved truck owners can publish a temporary map pin with their current stop. The owner chooses when it disappears. The example shows the format and is not a real location.
           </p>
           <Link href="/food-trucks/claim" className="tap-44 mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold underline" style={{ color: FOOD_ACCENT }}>
             Set up my truck

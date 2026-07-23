@@ -417,7 +417,7 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.every((source) => source.category === "food-truck")).toBe(true);
     expect(
       result.sources.every((source) =>
-        /own feed|does not have a current service schedule/i.test(source.reason ?? "")
+        /own feed|does not have a current service schedule|resident kitchen/i.test(source.reason ?? "")
       ),
     ).toBe(true);
     expect(result.sources.find((source) => source.name === "The Alley Wagon")).toMatchObject({

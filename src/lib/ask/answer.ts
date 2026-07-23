@@ -547,27 +547,40 @@ function answerFoodTruckRequest(intent: AskIntent, context: QualifiedSearchConte
   const sources = candidates
     .filter((candidate) => candidate.home || candidate.feed)
     .slice(0, 4)
-    .map(({ truck, home, place, distance, feed }): AskSource => ({
-      slug: `food-truck-${truck.slug}`,
-      name: truck.name,
-      category: "food-truck",
-      city: home ? "Frederick County" : undefined,
-      // A brewery relationship is useful context, but it does not prove the
-      // truck is serving there today. The truck's own feed is the actionable
-      // source for a location question.
-      href: feed ?? (home ? `/places/${home.slug}` : "/food-trucks"),
-      eyebrow: home ? `Usually at ${home.name}` : truck.cuisine,
-      reason: home
-        ? feed
-          ? `${truck.cuisine}; usually based at ${home.name}${showDistance && distance != null ? `, ${formatDistance(distance)} away` : ""}. Check its own feed for today's stop`
-          : `${truck.cuisine}; usually based at ${home.name}${showDistance && distance != null ? `, ${formatDistance(distance)} away` : ""}. Radius does not have a current service schedule for this truck`
-        : `Roaming truck; check its own feed for today's stop`,
-      detail: truck.blurb,
-      distance: showDistance && distance != null ? formatDistance(distance) : undefined,
-      status: home && place ? formatHoursLine(place.open_status) : undefined,
-      confidence: home?.verified ? "high" : "medium",
-      photo_url: place?.google_photo_url || place?.hero_image,
-    }));
+    .map(({ truck, home, place, distance, feed }): AskSource => {
+      const isResident = truck.serviceModel === "resident" && Boolean(home);
+      const distanceText = showDistance && distance != null ? `, ${formatDistance(distance)} away` : "";
+      return {
+        slug: `food-truck-${truck.slug}`,
+        name: truck.name,
+        category: "food-truck",
+        city: home ? "Frederick County" : undefined,
+        // A normal brewery relationship does not prove a roaming truck is
+        // serving there today. A roster entry explicitly marked "resident"
+        // does: its verified home is more useful than sending someone to a
+        // social feed, while the full profile still exposes that feed.
+        href: isResident && home
+          ? `/places/${home.slug}`
+          : feed ?? (home ? `/places/${home.slug}` : "/food-trucks"),
+        eyebrow: isResident && home
+          ? `Resident at ${home.name}`
+          : home
+            ? `Usually at ${home.name}`
+            : truck.cuisine,
+        reason: isResident && home
+          ? `${truck.cuisine}; resident kitchen at ${home.name}${distanceText}. Check the venue's current hours before heading out`
+          : home
+            ? feed
+              ? `${truck.cuisine}; usually based at ${home.name}${distanceText}. Check its own feed for today's stop`
+              : `${truck.cuisine}; usually based at ${home.name}${distanceText}. Radius does not have a current service schedule for this truck`
+            : `Roaming truck; check its own feed for today's stop`,
+        detail: truck.blurb,
+        distance: showDistance && distance != null ? formatDistance(distance) : undefined,
+        status: home && place ? formatHoursLine(place.open_status) : undefined,
+        confidence: home?.verified ? "high" : "medium",
+        photo_url: place?.google_photo_url || place?.hero_image,
+      };
+    });
   const groundedHomes = candidates.filter((candidate) => candidate.home).length;
   const selectedTownName = context.municipality
     ? MUNICIPALITY_BY_SLUG[context.municipality]?.name ?? context.municipality

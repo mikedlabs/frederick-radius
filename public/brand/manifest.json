@@ -29,7 +29,7 @@
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-07-23T15:06:52.853Z",
+  "generatedAt": "2026-07-23T16:05:54.717Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -455,6 +455,16 @@
       "width": 1200,
       "height": 630,
       "role": "Default Open Graph share card",
+      "exports": [
+        "svg",
+        "png"
+      ]
+    },
+    {
+      "file": "social/og-food-trucks.svg",
+      "width": 1200,
+      "height": 630,
+      "role": "Food-truck page Open Graph card using owned Frederick night photography",
       "exports": [
         "svg",
         "png"

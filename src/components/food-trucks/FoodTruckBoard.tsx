@@ -36,7 +36,7 @@ type Filter = "all" | "scheduled" | "savory" | "treats";
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "all", label: "All vendors" },
-  { id: "scheduled", label: "On this week" },
+  { id: "scheduled", label: "Roster with dates" },
   { id: "savory", label: "Meals" },
   { id: "treats", label: "Coffee & treats" },
 ];

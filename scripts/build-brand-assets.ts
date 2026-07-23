@@ -527,6 +527,32 @@ function ogDefault(fonts: string): string {
   );
 }
 
+function ogFoodTrucks(fonts: string, photoUrl: string): string {
+  return svgShell(
+    1200,
+    630,
+    `<defs>
+    <linearGradient id="food-truck-photo-shade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="${BRAND.colors.ink}" stop-opacity="1"/>
+      <stop offset="42%" stop-color="${BRAND.colors.ink}" stop-opacity=".92"/>
+      <stop offset="100%" stop-color="${BRAND.colors.ink}" stop-opacity=".64"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="${BRAND.colors.ink}"/>
+  <image href="${photoUrl}" x="710" width="490" height="630" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1200" height="630" fill="url(#food-truck-photo-shade)"/>
+  <rect x="710" width="7" height="630" fill="${BRAND.colors.brick}"/>
+  ${ripple("compact", BRAND.colors.cream, "translate(62 48) scale(.72)")}
+  <text x="156" y="106" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="36" font-weight="400">${BRAND.name}</text>
+  <text x="62" y="198" fill="${BRAND.colors.cream}" fill-opacity=".72" font-family="Public Sans" font-size="17" font-weight="760" letter-spacing="3.2">FREDERICK COUNTY · FOOD TRUCKS</text>
+  <text x="58" y="326" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="78" font-weight="400" letter-spacing="-1.2">Find the food trucks.</text>
+  <line x1="62" x2="648" y1="379" y2="379" stroke="${BRAND.colors.cream}" stroke-opacity=".22" stroke-width="2"/>
+  <text x="62" y="438" fill="${BRAND.colors.cream}" fill-opacity=".88" font-family="Public Sans" font-size="24" font-weight="560">Confirmed weekly stops + 20 local vendors</text>
+  <text x="62" y="557" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="2.7">FREDERICKRADIUS.APP</text>`,
+    fonts,
+  );
+}
+
 function posterYouAreHere(fonts: string, photoUrl: string): string {
   return svgShell(
     1800,
@@ -1100,6 +1126,14 @@ async function main() {
       role: "Default Open Graph share card",
       png: true,
       make: ogDefault,
+    },
+    {
+      file: "social/og-food-trucks.svg",
+      width: 1200,
+      height: 630,
+      role: "Food-truck page Open Graph card using owned Frederick night photography",
+      png: true,
+      make: (fonts) => ogFoodTrucks(fonts, nightPhotoUrl),
     },
     {
       file: "posters/you-are-here.svg",

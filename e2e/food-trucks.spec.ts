@@ -8,8 +8,9 @@ test("food-truck board leads with plans and opens useful vendor details", async 
   await expect(page.getByRole("heading", { level: 1, name: "Find where they pull in." })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "This week’s stops" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Browse the local roster" })).toBeVisible();
-  await expect(page.getByText("Coming soon", { exact: true })).toBeVisible();
-  await expect(page.getByText("The example is a preview, not a real location.")).toBeVisible();
+  await expect(page.getByText("Owner pilot", { exact: true })).toBeVisible();
+  await expect(page.getByText("The example shows the format and is not a real location.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Roster with dates" })).toBeVisible();
   await expect(page.getByAltText("Downtown Frederick after dark")).toHaveCount(0);
 
   const firstDetail = page.getByRole("button", { name: /^See details for / }).first();

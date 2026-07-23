@@ -111,9 +111,12 @@ caption short and let the photography carry the post.
 > and one part I have wanted to get right is finding local food trucks without
 > digging through a dozen different feeds.
 >
-> The food-truck board currently has 20 Frederick County trucks and carts. Each
-> listing points to the vendor's latest location feed. Operators can also claim
-> their listing and post a verified live location when they are out.
+> The food-truck board starts with confirmed stops from published schedules. It
+> also has a roster of 20 Frederick County trucks and carts, with direct links
+> to each vendor's latest public feed.
+>
+> Owners can claim their listing. After I approve it, they can publish a
+> temporary live pin while they are serving.
 >
 > It is still in beta. If your favorite truck is missing or something is wrong,
 > tell me and I will check it.
@@ -127,9 +130,12 @@ the formal Page cover or a generic stock image.
 
 ## Food-truck reply
 
-> The food-truck page is up. It currently lists 20 local trucks and carts, with
-> a direct link to each vendor's own location feed. A truck can also claim its
-> listing and post a verified live location when it is out.
+> The food-truck page is up. It starts with confirmed stops from published
+> schedules and includes 20 local trucks and carts. Each profile links to the
+> vendor's current public feed.
+>
+> Owners can claim a listing. After approval, they can publish a temporary live
+> pin while they are serving.
 >
 > https://frederickradius.app/food-trucks?utm_source=facebook&utm_medium=organic&utm_campaign=food_trucks
 

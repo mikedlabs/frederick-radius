@@ -3,9 +3,9 @@ export type FindTarget = "global" | "map";
 type FindWindow = Window & { __frPendingFind?: FindTarget };
 
 /**
- * Keep a Find request until the surface that owns it is ready. The mobile
- * navigation and a heavy map can hydrate at different times; a plain custom
- * event disappears when it fires before the receiver subscribes.
+ * Keep a search request until the surface that owns it is ready. The header
+ * action and a heavy map can hydrate at different times; a plain custom event
+ * disappears when it fires before the receiver subscribes.
  */
 export function requestFind(target: FindTarget): void {
   const win = window as FindWindow;

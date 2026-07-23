@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Protect the small-screen discovery shell. These checks cover the handoff
- * between the global Find action and the map's own search, plus the disclosure
- * hierarchy used by Pulse and Compass.
+ * between the top-bar search action and the map's own search, plus the
+ * disclosure hierarchy used by Pulse and Compass.
  */
 test.describe("mobile discovery shell", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -11,14 +11,21 @@ test.describe("mobile discovery shell", () => {
   test("Find opens as a focused full-screen task surface", async ({ page }) => {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
 
-    const openFind = page.getByRole("link", { name: "Find across Frederick County" });
+    const openFind = page.getByRole("button", { name: "Search Frederick County" });
     await expect(openFind).toBeVisible();
-    await expect(openFind).toHaveAttribute("href", "/search");
-    await expect(openFind).toHaveAttribute("data-find-ready", "true");
+    await expect(openFind).toHaveAttribute("aria-controls", "radius-find-dialog");
+    await expect(openFind).toHaveAttribute("aria-expanded", "false");
+    const primaryNav = page.getByRole("navigation", { name: "Primary" });
+    await expect(primaryNav.getByRole("link")).toHaveCount(4);
+    await expect(primaryNav.getByText("Find", { exact: true })).toHaveCount(0);
+    const searchBox = await openFind.boundingBox();
+    expect(searchBox?.width ?? 0).toBeGreaterThanOrEqual(40);
+    expect(searchBox?.height ?? 0).toBeGreaterThanOrEqual(40);
     await openFind.click();
 
     const dialog = page.getByRole("dialog", { name: "Frederick County" });
     await expect(dialog).toBeVisible();
+    await expect(openFind).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("searchbox", { name: "Find across Frederick County" })).toBeFocused();
     await expect(page.getByRole("button", { name: "Close Find" })).toBeVisible();
 
@@ -30,11 +37,11 @@ test.describe("mobile discovery shell", () => {
   test("the map opens calm and reveals choices through one contents door", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const mapFind = page.getByRole("link", { name: "Find on this map" });
-    await expect(mapFind).toHaveAttribute("href", "/map#map-search-input");
-    await expect(mapFind).toHaveAttribute("data-find-ready", "true");
+    const mapFind = page.getByRole("button", { name: "Search this map" });
+    await expect(mapFind).toHaveAttribute("aria-controls", "map-search-input");
     await mapFind.click();
     await expect(page.getByRole("searchbox", { name: "Search this map" })).toBeFocused();
+    await expect(page.getByRole("dialog", { name: "Frederick County" })).toHaveCount(0);
 
     const contentsButton = page.getByRole("button", { name: "Map contents" });
     await expect(contentsButton).toBeVisible();
@@ -70,6 +77,16 @@ test.describe("mobile discovery shell", () => {
     await page.keyboard.press("Escape");
     await expect(layersPane).toBeHidden();
     await expect(contentsButton).toBeFocused();
+  });
+
+  test("focused search surfaces do not repeat the global search button", async ({ page }) => {
+    await page.goto("/search", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Search Frederick County" })).toHaveCount(0);
+
+    await page.goto("/compass", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("searchbox", { name: "Search all tools" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Search Frederick County" })).toHaveCount(0);
   });
 
   test("the map keeps real working room on small portrait and landscape screens", async ({ page }) => {

@@ -61,6 +61,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     serviceModel: "resident",
     homeBase: "Monocacy Brewing Company",
     blurb: "The Alley Wagon serves as the kitchen on wheels at Monocacy Brewing.",
+    facebook: "https://facebook.com/profile.php?id=100091760835302",
   },
   {
     slug: "blendabowl",
@@ -152,6 +153,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Peruvian",
     kind: "food",
     blurb: "Mayta's serves Peruvian food in Frederick.",
+    facebook: "https://facebook.com/Buckeystown120/",
   },
   {
     slug: "mls-ragin-cajun",
