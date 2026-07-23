@@ -24,7 +24,15 @@ export const metadata: Metadata = {
 
 const FOOD_ACCENT = "var(--app-brand)";
 
-export default function FoodTruckClaimPage() {
+export default async function FoodTruckClaimPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ truck?: string }>;
+}) {
+  const requestedTruck = (await searchParams).truck;
+  const initialTruckSlug = FOOD_TRUCKS.some((truck) => truck.slug === requestedTruck)
+    ? requestedTruck
+    : undefined;
   const trucks = FOOD_TRUCKS.map((t) => ({ slug: t.slug, name: t.name, kind: t.kind }));
 
   return (
@@ -60,7 +68,16 @@ export default function FoodTruckClaimPage() {
         </Link>
       </div>
 
-      <ClaimForm trucks={trucks} />
+      <ClaimForm trucks={trucks} initialTruckSlug={initialTruckSlug} />
+
+      <div className="rounded-[var(--app-radius-md)] border px-3.5 py-3" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+        <p className="text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Do you only need to correct the listing or add an approved truck photo?{" "}
+          <Link href="/submit/place?category=food-truck" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+            Send a listing update instead.
+          </Link>
+        </p>
+      </div>
 
       <Link
         href="/food-trucks"

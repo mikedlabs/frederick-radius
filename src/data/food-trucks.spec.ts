@@ -40,4 +40,15 @@ describe("food-truck roster", () => {
   it("keeps a current location link on every public roster entry", () => {
     expect(FOOD_TRUCKS.filter((entry) => !truckFeedUrl(entry))).toEqual([]);
   });
+
+  it("publishes only permission-backed vendor photos with a visible credit", () => {
+    const incomplete = FOOD_TRUCKS.filter(
+      (entry) =>
+        entry.media &&
+        (!entry.media.credit.trim() ||
+          !entry.media.alt.trim() ||
+          !["owner-approved", "licensed"].includes(entry.media.permission)),
+    );
+    expect(incomplete).toEqual([]);
+  });
 });

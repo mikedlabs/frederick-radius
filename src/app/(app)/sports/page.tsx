@@ -6,10 +6,12 @@ import { Activity, ArrowRight, ArrowUpRight, ChevronDown, Flag, MapPin, Radio, S
 import KeysScore from "@/components/today/KeysScore";
 import KeysHomeGames, { KeysHomeGamesFallback } from "@/components/sports/KeysHomeGames";
 import CountySportsEvents, { CountySportsEventsFallback } from "@/components/sports/CountySportsEvents";
+import LocalSportsSchedule, { LocalSportsScheduleFallback } from "@/components/sports/LocalSportsSchedule";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { getLocalSportsGames } from "@/lib/integrations/local-sports";
 import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CRAVING_BY_KEY, matchesCraving } from "@/data/cravings";
@@ -56,7 +58,7 @@ const COLLEGE_TEAMS = [
     team: "Cougars",
     level: "NJCAA · Frederick",
     mark: "FCC",
-    href: "https://www.frederick.edu/about/events-calendar.html",
+    href: "https://www.fccathletics.com/composite",
     tone: "green",
   },
 ] as const;
@@ -90,6 +92,7 @@ export default function SportsPage() {
   // ONE assembly, shared by both event sections' Suspense boundaries — the
   // same promise-sharing shape /today uses, so the feed work runs once.
   const eventsPromise = assembleUnifiedEvents(now);
+  const localSportsPromise = getLocalSportsGames(now);
 
   const places = clientPlaces();
   // The Play groups reuse the shipped craving matchers (the same sets the
@@ -106,7 +109,7 @@ export default function SportsPage() {
       <header className="sports-hero">
         <Image
           src="/images/seasons/spring/aerial-view-baseball-field.jpg"
-          alt="An aerial view of Nymeo Field and the surrounding Frederick neighborhood"
+          alt="An aerial view of McCurdy Field and the surrounding Frederick neighborhood"
           fill
           priority
           sizes="(max-width: 768px) 100vw, 960px"
@@ -125,6 +128,37 @@ export default function SportsPage() {
         </div>
         <span className="sports-photo-credit">Original Frederick Radius photography</span>
       </header>
+
+      <section>
+        <SectionHeading
+          title="Upcoming team games"
+          href="/api/calendar/sports.ics"
+          cta="Sports calendar"
+        />
+        <p
+          className="mb-4 mt-2 max-w-[42rem] text-[12.5px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Follow Hood, Mount St. Mary&apos;s, and FCC here. Open a game for its
+          venue, live coverage, result, or verified source.
+        </p>
+        <Suspense fallback={<LocalSportsScheduleFallback />}>
+          <LocalSportsSchedule gamesPromise={localSportsPromise} now={now} />
+        </Suspense>
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Games happening in Frederick"
+          href="/events?intent=sports"
+          cta="All sports events"
+        />
+        <EventSheetBoundary fetchMissing>
+          <Suspense fallback={<CountySportsEventsFallback />}>
+            <CountySportsEvents eventsPromise={eventsPromise} now={now} />
+          </Suspense>
+        </EventSheetBoundary>
+      </section>
 
       {/* ── The Frederick Keys ─────────────────────────────────────────── */}
       <section>
@@ -231,7 +265,8 @@ export default function SportsPage() {
       <section>
         <SectionHeading title="College and high-school sports" />
         <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Open an official calendar for the latest game time, location, result, or weather change.
+          The native schedule above carries college games. These official team
+          pages remain available for late changes, rosters, and full-season records.
         </p>
 
         <div className="sports-campus-grid mt-4">
@@ -293,20 +328,6 @@ export default function SportsPage() {
             </a>
           </details>
         </div>
-      </section>
-
-      {/* ── Sports events beyond the Keys ──────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="More games around the county"
-          href="/events?intent=sports"
-          cta="See all sports events"
-        />
-        <EventSheetBoundary fetchMissing>
-          <Suspense fallback={<CountySportsEventsFallback />}>
-            <CountySportsEvents eventsPromise={eventsPromise} now={now} />
-          </Suspense>
-        </EventSheetBoundary>
       </section>
 
       {/* ── Places to play ─────────────────────────────────────────────── */}

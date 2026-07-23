@@ -3,20 +3,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   ArrowUpRight,
   CalendarDays,
+  ChevronRight,
   Facebook,
   Globe,
   Instagram,
+  MapPin,
   Navigation,
-  Truck,
   Utensils,
 } from "lucide-react";
 import type { Hours } from "@/data/places";
 import type { FoodTruck } from "@/data/food-trucks";
 import { truckFeedUrl } from "@/data/food-trucks";
 import type { TruckBeacon } from "@/lib/food-trucks/beacon";
+import {
+  foodTruckInitials,
+  foodTruckStopDirectionsUrl,
+  foodTruckVisualTone,
+} from "@/lib/food-trucks/presentation";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import TruckHomeStatus from "./TruckHomeStatus";
@@ -36,7 +43,7 @@ type Filter = "all" | "scheduled" | "savory" | "treats";
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "all", label: "All vendors" },
-  { id: "scheduled", label: "Roster with dates" },
+  { id: "scheduled", label: "Scheduled this week" },
   { id: "savory", label: "Meals" },
   { id: "treats", label: "Coffee & treats" },
 ];
@@ -56,27 +63,64 @@ function LinkButton({ href, label, icon: Icon }: { href: string; label: string; 
   );
 }
 
-function VendorVisual({ truck }: { truck: FoodTruckBoardItem }) {
+function VendorVisual({
+  truck,
+  size = "card",
+}: {
+  truck: FoodTruckBoardItem;
+  size?: "card" | "detail";
+}) {
   if (truck.media) {
     return (
-      <div className="food-truck-vendor-visual relative overflow-hidden" data-kind={truck.kind}>
+      <div
+        className="food-truck-vendor-visual relative overflow-hidden"
+        data-kind={truck.kind}
+        data-photo-state="verified"
+        data-size={size}
+      >
         <Image
           src={truck.media.src}
           alt={truck.media.alt}
           fill
-          sizes="(max-width: 640px) 45vw, 260px"
+          sizes={size === "detail" ? "(max-width: 640px) 100vw, 560px" : "(max-width: 640px) 45vw, 260px"}
           className="object-cover"
         />
-        <span className="food-truck-media-credit">{truck.media.credit}</span>
+        {truck.media.sourceUrl ? (
+          <a
+            href={truck.media.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="food-truck-media-credit"
+            aria-label={`Photo credit: ${truck.media.credit}`}
+          >
+            {truck.media.credit}
+          </a>
+        ) : (
+          <span className="food-truck-media-credit">{truck.media.credit}</span>
+        )}
       </div>
     );
   }
 
+  const visualStyle = {
+    "--truck-tone": foodTruckVisualTone(truck.slug),
+  } as CSSProperties;
+
   return (
-    <div className="food-truck-vendor-visual food-truck-vendor-fallback" data-kind={truck.kind} aria-hidden>
-      <span className="food-truck-vendor-mark">{truck.name.slice(0, 1)}</span>
+    <div
+      className="food-truck-vendor-visual food-truck-vendor-fallback"
+      data-kind={truck.kind}
+      data-photo-state="fallback"
+      data-size={size}
+      style={visualStyle}
+      role="img"
+      aria-label={`${truck.name} branded placeholder. An approved vendor photo has not been added yet.`}
+    >
+      <span className="food-truck-fallback-kicker">Frederick County</span>
+      <strong className="food-truck-vendor-mark">{foodTruckInitials(truck.name)}</strong>
+      <span className="food-truck-fallback-rule" aria-hidden />
       <span className="food-truck-vendor-cuisine">{truck.cuisine}</span>
-      <Truck className="food-truck-vendor-icon" strokeWidth={1.7} />
+      <span className="food-truck-fallback-footer">Mobile vendor</span>
     </div>
   );
 }
@@ -96,6 +140,35 @@ function formatStopTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+function formatStopTimeRange(stop: FoodTruckScheduleStop): string {
+  const start = formatStopTime(stop.startsAt);
+  return stop.endsAt ? `${start}–${formatStopTime(stop.endsAt)}` : start;
+}
+
+type VendorAction = {
+  href: string;
+  label: string;
+  icon: typeof Globe;
+};
+
+function vendorActions(truck: FoodTruckBoardItem): VendorAction[] {
+  const feed = truckFeedUrl(truck);
+  const candidates: Array<VendorAction | null> = [
+    feed ? { href: feed, label: "Latest location", icon: Navigation } : null,
+    truck.menuUrl ? { href: truck.menuUrl, label: "Menu", icon: Utensils } : null,
+    truck.bookingUrl ? { href: truck.bookingUrl, label: "Book this truck", icon: CalendarDays } : null,
+    truck.website ? { href: truck.website, label: "Website", icon: Globe } : null,
+    truck.instagram ? { href: truck.instagram, label: "Instagram", icon: Instagram } : null,
+    truck.facebook ? { href: truck.facebook, label: "Facebook", icon: Facebook } : null,
+  ];
+  const seen = new Set<string>();
+  return candidates.filter((candidate): candidate is VendorAction => {
+    if (!candidate || seen.has(candidate.href)) return false;
+    seen.add(candidate.href);
+    return true;
+  });
 }
 
 export default function FoodTruckBoard({
@@ -125,6 +198,7 @@ export default function FoodTruckBoard({
   const selectedStops = selected
     ? stops.filter((stop) => stop.vendors.some((item) => item.slug === selected.slug))
     : [];
+  const selectedActions = selected ? vendorActions(selected) : [];
 
   return (
     <>
@@ -139,7 +213,9 @@ export default function FoodTruckBoard({
             </h2>
           </div>
           <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            {filtered.length} shown
+            {visible.length === filtered.length
+              ? `${filtered.length} vendors`
+              : `${visible.length} of ${filtered.length}`}
           </span>
         </div>
 
@@ -182,13 +258,22 @@ export default function FoodTruckBoard({
                     <h3 className="mt-1 font-serif text-[20px] font-semibold leading-[1.05]" style={{ color: "var(--app-ink)" }}>
                       {truck.name}
                     </h3>
+                    <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+                      {truck.blurb ?? `${truck.name} serves ${truck.cuisine.toLowerCase()} around Frederick County.`}
+                    </p>
                     {truck.beacon ? (
                       <TruckLiveStatus beacon={truck.beacon} accent={accent} />
                     ) : next ? (
-                      <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                        <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        {formatStopDay(next.startsAt)} at {formatStopTime(next.startsAt)}
-                      </p>
+                      <div className="mt-2 space-y-0.5">
+                        <p className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                          <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                          {formatStopDay(next.startsAt)} at {formatStopTime(next.startsAt)}
+                        </p>
+                        <p className="flex items-start gap-1.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                          <MapPin className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                          <span className="line-clamp-1">{next.venueName}</span>
+                        </p>
+                      </div>
                     ) : truck.home ? (
                       <TruckHomeStatus
                         venueName={truck.home.name}
@@ -206,7 +291,7 @@ export default function FoodTruckBoard({
                       aria-label={`See details for ${truck.name}`}
                     >
                       See details
-                      <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                      <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                     </button>
                   </div>
                 </li>
@@ -220,14 +305,14 @@ export default function FoodTruckBoard({
           </div>
         )}
 
-        {filter !== "scheduled" && filtered.length > visible.length ? (
+        {filter !== "scheduled" && filtered.length > 8 ? (
           <button
             type="button"
-            onClick={() => setShowAll(true)}
+            onClick={() => setShowAll((current) => !current)}
             className="tap-44 mx-auto flex items-center justify-center rounded-full border px-4 py-2.5 text-[12px] font-semibold"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
-            Show all {filtered.length} trucks
+            {showAll ? "Show fewer vendors" : `Show all ${filtered.length} vendors`}
           </button>
         ) : null}
       </section>
@@ -240,23 +325,34 @@ export default function FoodTruckBoard({
       >
         {selected ? (
           <div className="space-y-5 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-6">
-            <div className="grid grid-cols-[7.5rem_1fr] gap-4">
-              <VendorVisual truck={selected} />
-              <div className="min-w-0">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>
-                  {selected.serviceModel === "resident"
-                    ? "Resident kitchen"
-                    : selected.kind === "treats"
-                      ? "Treat truck"
-                      : "Mobile kitchen"}
-                </p>
-                <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                  {selected.blurb ?? `${selected.name} serves ${selected.cuisine.toLowerCase()} around Frederick County.`}
-                </p>
-              </div>
+            <div className="-mx-4 -mt-4 overflow-hidden border-b sm:-mx-6" style={{ borderColor: "var(--app-border)" }}>
+              <VendorVisual truck={selected} size="detail" />
             </div>
 
-            {selected.beacon ? <TruckLiveStatus beacon={selected.beacon} accent={accent} /> : null}
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>
+                {selected.serviceModel === "resident"
+                  ? "Resident kitchen"
+                  : selected.kind === "treats"
+                    ? "Treat truck"
+                    : "Mobile kitchen"}
+              </p>
+              <p className="mt-1 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                {selected.blurb ?? `${selected.name} serves ${selected.cuisine.toLowerCase()} around Frederick County.`}
+              </p>
+            </div>
+
+            {selected.beacon ? (
+              <TruckLiveStatus beacon={selected.beacon} accent={accent} />
+            ) : selected.home ? (
+              <TruckHomeStatus
+                venueName={selected.home.name}
+                venueSlug={selected.home.slug}
+                hours={selected.home.hours}
+                verified={selected.home.verified}
+                accent={accent}
+              />
+            ) : null}
 
             {selectedStops.length > 0 ? (
               <section className="rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
@@ -268,9 +364,22 @@ export default function FoodTruckBoard({
                   {selectedStops.map((stop) => (
                     <div key={stop.id} className="border-t pt-3 first:border-0 first:pt-0" style={{ borderColor: "var(--app-border)" }}>
                       <p className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                        {formatStopDay(stop.startsAt)} at {formatStopTime(stop.startsAt)}
+                        {formatStopDay(stop.startsAt)} · {formatStopTimeRange(stop)}
                       </p>
                       <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>{stop.venueName}</p>
+                      {stop.address ? (
+                        <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>{stop.address}</p>
+                      ) : null}
+                      <a
+                        href={foodTruckStopDirectionsUrl(stop)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="tap-44-y mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold underline"
+                        style={{ color: accent }}
+                      >
+                        Directions
+                        <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                      </a>
                     </div>
                   ))}
                 </div>
@@ -289,19 +398,40 @@ export default function FoodTruckBoard({
             ) : null}
 
             <div className="grid grid-cols-2 gap-2">
-              {truckFeedUrl(selected) ? <LinkButton href={truckFeedUrl(selected)!} label="Latest location" icon={Navigation} /> : null}
-              {selected.menuUrl ? <LinkButton href={selected.menuUrl} label="Menu" icon={Utensils} /> : null}
-              {selected.website && selected.website !== truckFeedUrl(selected) ? <LinkButton href={selected.website} label="Website" icon={Globe} /> : null}
-              {selected.instagram && selected.instagram !== truckFeedUrl(selected) ? <LinkButton href={selected.instagram} label="Instagram" icon={Instagram} /> : null}
-              {selected.facebook && selected.facebook !== truckFeedUrl(selected) ? <LinkButton href={selected.facebook} label="Facebook" icon={Facebook} /> : null}
+              {selectedActions.map((action) => (
+                <LinkButton
+                  key={`${action.label}-${action.href}`}
+                  href={action.href}
+                  label={action.label}
+                  icon={action.icon}
+                />
+              ))}
             </div>
 
             <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
               Schedules can change. Use the vendor&rsquo;s latest location link before making a special trip.
             </p>
-            <Link href="/food-trucks/claim" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: accent }}>
-              Own this truck? Add photos and improve this profile.
-            </Link>
+            <div className="rounded-[var(--app-radius-md)] border p-3.5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
+              <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                Own this truck or know a listing detail that changed?
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                <Link
+                  href={`/food-trucks/claim?truck=${encodeURIComponent(selected.slug)}`}
+                  className="tap-44-y inline-flex items-center text-[12px] font-semibold underline"
+                  style={{ color: accent }}
+                >
+                  Claim this truck
+                </Link>
+                <Link
+                  href="/submit/place?category=food-truck"
+                  className="tap-44-y inline-flex items-center text-[12px] font-semibold underline"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  Suggest an update or add a photo
+                </Link>
+              </div>
+            </div>
           </div>
         ) : null}
       </BottomDrawer>

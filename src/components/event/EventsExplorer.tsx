@@ -33,6 +33,10 @@ import {
 import { isEventEnded } from "@/lib/eventWhenLabel";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { hasPhysicalAttendance } from "@/lib/events/attendance";
+import {
+  planHorizonVisual,
+  type EventCardVisual,
+} from "@/components/event/eventVisuals";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -748,12 +752,11 @@ export default function EventsExplorer({
         <div className="space-y-4">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            // ONE lead per horizon — the next thing in this window — as the
-            // MAIN card; the rest of the window stays collapsed behind a
-            // "Show N more" drop-down, so each timeframe reads as a single
-            // answer you expand on demand (stronger hierarchy than a flat
-            // peek of eight). Group 0's lead is the photo-capable feature;
-            // the others lead with their first event as a glance card.
+            // ONE visual anchor at most per horizon. The chronological lead
+            // stays first; when it has no safe image, the earliest visible
+            // event with a verified visual gets the image-led treatment in
+            // its existing position. The remaining events become one compact
+            // scan instead of a wall of equal-weight text cards.
             const EXPANDED_CAP = 40;
             // Paint a scannable PEEK of each window by default, not just the
             // lead. The page assembles hundreds of events but the old
@@ -767,63 +770,71 @@ export default function EventsExplorer({
             // beneath it must stay chronological. Editorial promotion belongs
             // in a separately named Recommended view, never inside this sort.
             const lead = g.events[0];
-            // Feature (photo) treatment for a group's lead ONLY when a real
-            // venue photo exists — one photograph per horizon window down
-            // the browse spine (image audit: the page read as a wall of text
-            // because exactly one card could ever carry a large photo).
-            // Photoless leads keep the glance row, INCLUDING the first
-            // group's: the old `groupIdx === 0 ||` escape hatch put a tall
-            // empty glyph plate at the very top of the page whenever the
-            // first lead had no photo (beta trust audit 2026-07-08). An
-            // oversized plate is ornament, not information — the photo
-            // policy's "photoless leads keep the glance row" rule now holds
-            // everywhere (EventCard also enforces it at the card seam).
-            const leadIsFeature = Boolean(lead.hero_image);
             const rest = g.events.slice(1);
             const groupCount = !dataComplete && !anyFilter
               ? summary.horizonCounts[g.key]
               : g.events.length;
             const totalRest = Math.max(0, groupCount - 1);
             const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
+            const visualPlan = planHorizonVisual(lead, shown);
+            const promotedEvent = visualPlan.promotedIndex >= 0
+              ? shown[visualPlan.promotedIndex]
+              : null;
+            const beforePromoted = visualPlan.promotedIndex >= 0
+              ? shown.slice(0, visualPlan.promotedIndex)
+              : shown;
+            const afterPromoted = visualPlan.promotedIndex >= 0
+              ? shown.slice(visualPlan.promotedIndex + 1)
+              : [];
             const overflow = isOpen && dataComplete ? Math.max(0, totalRest - EXPANDED_CAP) : 0;
             const moreCount = Math.max(0, totalRest - shown.length);
             const canExpand = totalRest > PEEK;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={groupCount} />
-                {/* The ONE lead — the main thing in this window. */}
-                <div className="relative">
-                  {live.has(lead.slug) && (
-                    <span
-                      className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                      style={{ background: "var(--app-positive)" }}
-                    >
-                      <span className="live-dot" /> Live
-                    </span>
-                  )}
-                  <EventCard
+                {/* The chronological lead stays first, whether it has a
+                    visual or uses the calm text-first card. */}
+                {visualPlan.leadVisual ? (
+                  <PromotedEvent
                     event={lead}
-                    variant={leadIsFeature ? "feature" : "glance"}
+                    visual={visualPlan.leadVisual}
                     live={live.has(lead.slug)}
-                    // Only the first group's hero is the LCP candidate; the
-                    // later per-group photo leads lazy-load.
                     priorityImage={groupIdx === 0}
                   />
-                </div>
+                ) : (
+                  <div className="relative">
+                    {live.has(lead.slug) && (
+                      <span
+                        className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                        style={{ background: "var(--app-positive)" }}
+                      >
+                        <span className="live-dot" /> Live
+                      </span>
+                    )}
+                    <EventCard
+                      event={lead}
+                      variant="glance"
+                      live={live.has(lead.slug)}
+                    />
+                  </div>
+                )}
                 {/* Drop-down — the rest of this window, one tap away. The
                     revealed cards animate in (reveal-up); the chevron flips. */}
                 {totalRest > 0 && (
                   <>
                     {shown.length > 0 && (
-                      // grid-cols-1: clamp the peek track (see the sorted
-                      // list above) so no card can widen it past the page.
-                      <ol className="reveal-up grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-                        {shown.map((e) => (
-                          <li key={`${e.slug}-${e.starts_at}`}>
-                            <EventCard event={e} variant="glance" live={live.has(e.slug)} />
-                          </li>
-                        ))}
-                      </ol>
+                      <div className="reveal-up space-y-2.5">
+                        <CompactEventList events={beforePromoted} live={live} />
+                        {promotedEvent && visualPlan.promotedVisual && (
+                          <PromotedEvent
+                            event={promotedEvent}
+                            visual={visualPlan.promotedVisual}
+                            live={live.has(promotedEvent.slug)}
+                            priorityImage={groupIdx === 0}
+                          />
+                        )}
+                        <CompactEventList events={afterPromoted} live={live} />
+                      </div>
                     )}
                     {/* Only when the window holds MORE than the default peek —
                         otherwise the peek already shows everything. */}
@@ -918,5 +929,66 @@ export default function EventsExplorer({
       )}
       </div>
     </EventSheetBoundary>
+  );
+}
+
+function CompactEventList({
+  events,
+  live,
+}: {
+  events: EventWithMeta[];
+  live: ReadonlySet<string>;
+}) {
+  if (events.length === 0) return null;
+  return (
+    <ol
+      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+      style={{
+        borderColor: "var(--app-border)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
+    >
+      {events.map((event) => (
+        <li key={`${event.slug}-${event.starts_at}`}>
+          <EventCard
+            event={event}
+            variant="compact"
+            live={live.has(event.slug)}
+          />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PromotedEvent({
+  event,
+  visual,
+  priorityImage,
+  live,
+}: {
+  event: EventWithMeta;
+  visual: EventCardVisual;
+  priorityImage: boolean;
+  live: boolean;
+}) {
+  return (
+    <div className="relative">
+      {live && (
+        <span
+          className="absolute right-3 top-12 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+          style={{ background: "var(--app-positive)" }}
+        >
+          <span className="live-dot" /> Live
+        </span>
+      )}
+      <EventCard
+        event={event}
+        variant="feature"
+        live={live}
+        priorityImage={priorityImage}
+        visual={visual}
+      />
+    </div>
   );
 }

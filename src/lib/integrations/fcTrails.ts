@@ -1,35 +1,16 @@
 /**
- * Frederick County Parks & Trails — runtime integration.
+ * Frederick County Parks & Trails.
  *
- * The county runs a public ArcGIS layer of every maintained trail
- * (Parks/Parks_Trails_Cartegraph). The app had NO trail data at all —
- * this is the single biggest "missing data" gap. Fetched server-side
- * at request time with a weekly revalidate (the same pattern as
- * overpass/news — Vercel's server reaches ArcGIS even though local CI
- * can't), normalized to a typed Trail. Graceful []: a feed hiccup
- * never throws into a page, and nothing is fabricated.
- *
- * Field names are the exact ArcGIS attributes confirmed live in PR #23.
+ * The detailed list is an owner-reviewed Maryland set. An older integration
+ * accidentally queried Frederick, Colorado, then discarded every result at the
+ * Maryland bounding box. Keeping that dead request made a curated list look
+ * "live" and added a needless network failure to every cold render. The list
+ * now says what it is. The separate line-geometry accessor below still reads
+ * the correct Frederick County, Maryland GIS layer for the native map.
  */
 import { resolveMunicipality } from "@/lib/connect";
 
-// Only the fields we use + heavily simplified geometry: the raw layer
-// with outFields=* and full polylines is ~3.4MB (over Next's 2MB
-// fetch-cache limit → would never cache). We only need a representative
-// point, so maxAllowableOffset crushes the geometry and the payload
-// drops well under the limit, keeping the weekly revalidate cheap.
-const OUT_FIELDS = [
-  "OBJECTID", "Trail_Name", "Park_Name", "Trail_System", "Trail_Desc",
-  "Status", "Surface_Type", "Trail_Length_FT", "ADA_Accessible", "Hiking",
-  "Road_Cycling", "Mtn_Biking", "Equestrian", "Dogs_Allowed", "Paved",
-  "Owned_By", "Trail_SkillLevel",
-].join(",");
-const ENDPOINT =
-  "https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query" +
-  `?where=1%3D1&outFields=${encodeURIComponent(OUT_FIELDS)}` +
-  "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.002&f=geojson";
-// MAP-OVERLAY source. The list ENDPOINT above is the Frederick, COLORADO host
-// (every feature drops on the MD bbox → curated fallback). The MAP needs trail
+// MAP-OVERLAY source. The map needs trail
 // GEOMETRY, and the correct MD host carries it: ParksAndRecreation/Assets layer
 // 12 (Park Trails) = 200 named polyline segments, verified in the MD bbox, ~59KB
 // simplified (well under Next's 2MB fetch-cache limit). Its attributes are
@@ -161,28 +142,6 @@ export function normalizeTrails(raw: unknown): Trail[] {
 }
 
 export async function getFrederickTrails(): Promise<Trail[]> {
-  // The live ENDPOINT above points at gis.frederickco.gov — turns out
-  // that's Frederick, COLORADO. Every feature falls outside the
-  // Frederick County, MD bbox and gets dropped, so the live fetch
-  // returns []. Keeping the fetch in place so a fix-up to the right
-  // MD endpoint flows through unchanged; falling back to the curated
-  // list keeps the page useful in the meantime.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  let live: Trail[] = [];
-  try {
-    const res = await fetch(ENDPOINT, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 604800 },
-    });
-    if (res.ok) live = normalizeTrails(await res.json());
-  } catch {
-    /* feed hiccup / wrong endpoint — fall through to curated */
-  } finally {
-    clearTimeout(timer);
-  }
-  if (live.length > 0) return live;
   const { CURATED_TRAILS } = await import("@/data/curated-trails");
   return CURATED_TRAILS;
 }

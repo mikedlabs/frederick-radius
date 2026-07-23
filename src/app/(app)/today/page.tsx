@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { easternDayKey } from "@/lib/tz";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
+import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
 import SkyHero from "@/components/today/SkyHero";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The temporal anchor (weekday + a live
@@ -47,6 +48,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
 import FoodTruckToday from "@/components/today/FoodTruckToday";
+import BeerTeaser from "@/components/today/BeerTeaser";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
@@ -208,6 +210,7 @@ export default async function HomePage() {
     <>
       <div className="[&:not(:empty)]:mt-4">
         <KeysScore />
+        <LocalSportsScoreboard />
       </div>
       <div id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
@@ -393,7 +396,10 @@ export default async function HomePage() {
 
       {/* A real operator beacon upgrades this card to a live location.
           Otherwise it opens the confirmed weekly food-truck board. */}
-      <FoodTruckToday />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <FoodTruckToday />
+        <BeerTeaser />
+      </div>
 
       {/* The two gears — see the EVENING GEAR note above. Same sections, same
           Suspense boundaries, different order. TodayAsk moved OUT of the gears

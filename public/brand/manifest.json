@@ -29,7 +29,7 @@
       "textRuntime": "Public Sans Variable"
     }
   },
-  "generatedAt": "2026-07-23T16:05:54.717Z",
+  "generatedAt": "2026-07-23T17:15:48.969Z",
   "source": "scripts/build-brand-assets.ts",
   "fonts": [
     {
@@ -596,43 +596,43 @@
     }
   ],
   "platform": {
-    "iconVersion": "20260722c",
+    "iconVersion": "20260723a",
     "themeColor": "#F4EEE2",
     "generatedBy": "scripts/build-push-icons.ts",
     "assets": [
       {
         "file": "public/icons/icon.svg",
-        "url": "/icons/icon.svg?v=20260722c",
+        "url": "/icons/icon.svg?v=20260723a",
         "role": "PWA launcher SVG"
       },
       {
         "file": "public/icons/icon-192.png",
-        "url": "/icons/icon-192.png?v=20260722c",
+        "url": "/icons/icon-192.png?v=20260723a",
         "role": "192 px launcher and push icon"
       },
       {
         "file": "public/icons/icon-512.png",
-        "url": "/icons/icon-512.png?v=20260722c",
+        "url": "/icons/icon-512.png?v=20260723a",
         "role": "512 px launcher"
       },
       {
         "file": "public/icons/icon-maskable.svg",
-        "url": "/icons/icon-maskable.svg?v=20260722c",
+        "url": "/icons/icon-maskable.svg?v=20260723a",
         "role": "Maskable launcher SVG"
       },
       {
         "file": "public/icons/icon-maskable-512.png",
-        "url": "/icons/icon-maskable-512.png?v=20260722c",
+        "url": "/icons/icon-maskable-512.png?v=20260723a",
         "role": "512 px maskable launcher"
       },
       {
         "file": "src/app/apple-icon.png",
-        "url": "/apple-icon.png?v=20260722c",
+        "url": "/apple-icon.png?v=20260723a",
         "role": "180 px Apple touch icon"
       },
       {
         "file": "public/icons/badge-72.png",
-        "url": "/icons/badge-72.png?v=20260722c",
+        "url": "/icons/badge-72.png?v=20260723a",
         "role": "72 px monochrome notification badge"
       },
       {

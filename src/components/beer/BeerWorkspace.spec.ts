@@ -23,6 +23,8 @@ describe("BeerWorkspace", () => {
     expect(html).toContain("Taprooms");
     expect(html).toContain("This week");
     expect(html).toContain("grid-cols-4");
+    expect(html).not.toContain(">01<");
+    expect(html).not.toContain(">02<");
     expect(html).toContain('role="tablist"');
     expect(html).toContain('role="tabpanel"');
   });

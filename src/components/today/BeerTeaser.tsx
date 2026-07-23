@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BREWERIES, ALL_BEERS } from "@/data/beers";
+import { BREWERIES } from "@/data/beers";
 import BeerColorRibbon from "@/components/beer/BeerColorRibbon";
 
 /**
@@ -21,10 +21,10 @@ export default function BeerTeaser() {
       <div className="flex items-center gap-3 p-3.5">
         <div className="min-w-0 flex-1">
           <p className="font-sans text-[16px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            The county in a glass
+            Frederick beer
           </p>
           <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            {`${BREWERIES.length} breweries and ${ALL_BEERS.length} signature beers, laid out by color.`}
+            {`Browse ${BREWERIES.length} local breweries and see live pours from connected taprooms.`}
           </p>
         </div>
         <ArrowRight

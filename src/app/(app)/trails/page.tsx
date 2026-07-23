@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Trails",
   description:
-    "Browse trail records returned by Frederick County GIS, with surface and length where those details are available.",
+    "Browse Frederick County trail details and see official county trail geometry on the map.",
 };
 
 // Trails change rarely; the integration revalidates weekly.
@@ -99,8 +99,8 @@ export default async function TrailsPage() {
           Trails
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Browse the trail records returned by the county GIS. Tap a record
-          to see its mapped location.
+          Compare known trail length, surface, and uses. The map draws the
+          county&apos;s official trail geometry where it is available.
         </p>
       </header>
 
@@ -226,8 +226,8 @@ export default async function TrailsPage() {
             </CollapsibleSection>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data comes from Frederick County GIS open data. Radius refreshes
-            the records weekly.
+            Trail lines come from Frederick County GIS. Radius maintains the
+            descriptive list separately and links each record back to the map.
           </p>
         </>
       )}

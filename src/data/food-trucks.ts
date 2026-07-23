@@ -41,7 +41,11 @@ export type FoodTruck = {
   media?: {
     src: string;
     alt: string;
-    credit?: string;
+    credit: string;
+    /** Never infer this from a public social post or a name-only match. */
+    permission: "owner-approved" | "licensed";
+    /** Optional page where a licensed image and its terms can be checked. */
+    sourceUrl?: string;
   };
   instagram?: string;
   facebook?: string;

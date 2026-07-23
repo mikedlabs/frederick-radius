@@ -3,6 +3,7 @@ import { RADIUS_TOOLS } from "@/data/radius-tools";
 import {
   buildCompassSections,
   commonCompassTasks,
+  featuredCompassGuides,
   splitEssentialItems,
 } from "./CompassHub";
 
@@ -57,5 +58,23 @@ describe("Compass browse model", () => {
       "public-essentials",
     ]);
     expect(tasks.every((item) => RADIUS_TOOLS.some((tool) => tool.id === item.id))).toBe(true);
+  });
+
+  it("surfaces the local guide destinations without opening a category first", () => {
+    const guides = featuredCompassGuides(buildCompassSections(null));
+
+    expect(guides.map((item) => item.id)).toEqual([
+      "food-trucks",
+      "beer-tools",
+      "sports",
+      "live-music",
+      "trails",
+      "rivers",
+    ]);
+    expect(
+      guides.every((item) =>
+        RADIUS_TOOLS.some((tool) => tool.id === item.id),
+      ),
+    ).toBe(true);
   });
 });

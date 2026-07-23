@@ -146,7 +146,7 @@ local API states.
 
 ## Platform outputs
 
-The 32 assets in this directory are the identity, lockup, social, poster, and
+The 43 assets in this directory are the identity, lockup, social, poster, and
 NFC kit. App delivery assets are generated separately by
 `scripts/build-push-icons.ts` and are recorded under `platform` in
 `manifest.json`:
