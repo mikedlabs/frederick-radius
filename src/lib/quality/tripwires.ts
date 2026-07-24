@@ -5,6 +5,8 @@ import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { askFrederick } from "@/lib/ask/answer";
+import { getSql } from "@/lib/db/client";
+import { publicPlaces } from "@/lib/loaders/places";
 import { publishableGooglePhotoNames } from "@/lib/google-photo-policy";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import { getChartIncidentsFrederickResult } from "@/lib/integrations/mdot-chart";
@@ -316,24 +318,87 @@ export type TripwireReport = {
   checks: Array<{ name: string; green: boolean }>;
 };
 
+/**
+ * The semantic half of Ask, checked for a pulse.
+ *
+ * hybridPlaceSearch() fuses Postgres FTS + pgvector and returns [] on ANY
+ * failure so lexical search always survives. That contract is right, but it
+ * also means an EMPTY index is indistinguishable from a healthy one at the
+ * call site: hybridSearchConfigured() only proves a database and a gateway
+ * key exist, never that a single document was ever embedded. The index is
+ * populated by `npm run build:radius-search`, a script run by hand — so the
+ * failure mode is simply "nobody ran it," and the app degrades to
+ * keyword-only search without a word of complaint. (Found July 2026:
+ * radius_search_documents held ZERO rows in production while the feature
+ * had been shipped for months.)
+ *
+ * Red when the index is empty, or has fallen far behind the catalog it is
+ * supposed to cover. Silent when hybrid search is deliberately off
+ * (RADIUS_HYBRID_SEARCH=0) or there is no database here — neither is a fault.
+ */
+export async function semanticIndexTripwire(): Promise<Anomaly[]> {
+  if (process.env.RADIUS_HYBRID_SEARCH === "0") return []; // switched off on purpose
+  const sql = getSql();
+  if (!sql) return []; // no database in this environment — nothing to measure
+  try {
+    const rows = (await sql`
+      select count(*)::int as total, count(embedding)::int as embedded
+      from radius_search_documents
+    `) as unknown as Array<{ total: number; embedded: number }>;
+    const embedded = rows?.[0]?.embedded ?? 0;
+    const expected = publicPlaces().length;
+    if (embedded === 0) {
+      return [
+        {
+          source: "semantic-search",
+          kind: "index_empty",
+          detail:
+            `radius_search_documents holds 0 embedded documents, so every semantic lookup returns nothing and Ask is running on keyword matching alone. ` +
+            `Run \`npm run build:radius-search\` (needs DATABASE_URL + AI Gateway auth) to embed the ${expected} public places.`,
+        },
+      ];
+    }
+    // Well behind the catalog: new places are invisible to meaning-based search.
+    if (expected > 0 && embedded < expected * 0.8) {
+      return [
+        {
+          source: "semantic-search",
+          kind: "index_stale",
+          detail:
+            `radius_search_documents covers ${embedded} of ${expected} public places (${Math.round((embedded / expected) * 100)}%). ` +
+            `Re-run \`npm run build:radius-search\`; it is incremental, so it only embeds what changed.`,
+        },
+      ];
+    }
+    return [];
+  } catch {
+    // Table missing (migration 0025 unapplied) or database unreachable. Both
+    // are real, but the /admin/data-health database gate already speaks to
+    // them; staying quiet here keeps this watchdog from double-reporting.
+    return [];
+  }
+}
+
 /** Run every tripwire (concurrently — they're independent networks). */
 export async function runTripwires(now: Date = new Date()): Promise<TripwireReport> {
-  const [photos, transit, events, ask, conditions] = await Promise.all([
+  const [photos, transit, events, ask, conditions, semantic] = await Promise.all([
     photoTripwire(),
     transitTripwire(),
     eventsTripwire(now),
     askCanaryTripwire(),
     conditionsTripwire(),
+    semanticIndexTripwire(),
   ]);
   const ingest = ingestFreshnessTripwire(now);
   return {
-    anomalies: [...photos, ...transit, ...events, ...ask, ...conditions, ...ingest],
+    anomalies: [...photos, ...transit, ...events, ...ask, ...conditions, ...semantic, ...ingest],
     checks: [
       { name: "photos", green: photos.length === 0 },
       { name: "transit", green: transit.length === 0 },
       { name: "events-today", green: events.length === 0 },
       { name: "ask-canary", green: ask.length === 0 },
       { name: "live-conditions", green: conditions.length === 0 },
+      { name: "semantic-index", green: semantic.length === 0 },
       { name: "ingest-freshness", green: ingest.length === 0 },
     ],
   };
