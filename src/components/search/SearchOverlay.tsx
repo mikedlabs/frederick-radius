@@ -119,9 +119,13 @@ const COLOR_BY_TYPE: Record<SearchResultType, string> = {
 export default function SearchOverlay({
   open,
   onClose,
+  openerRef,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Explicit opener for touch browsers, which do not always move focus to
+   * the button a person taps before mounting the dialog. */
+  openerRef?: React.RefObject<HTMLElement | null>;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -233,7 +237,8 @@ export default function SearchOverlay({
       // Remember what had focus (the TopBar search button) so closing the
       // overlay puts the keyboard user back where they were.
       returnFocusRef.current =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        openerRef?.current ??
+        (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       const t = setTimeout(() => inputRef.current?.focus(), 50);
       return () => {
         clearTimeout(t);
@@ -241,7 +246,7 @@ export default function SearchOverlay({
         returnFocusRef.current = null;
       };
     }
-  }, [open]);
+  }, [open, openerRef]);
 
   // Reset on close
   useEffect(() => {

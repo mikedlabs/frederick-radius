@@ -11,6 +11,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
 import { SCOPE_CHANGE_EVENT } from "@/lib/scope";
+import Skeleton from "@/components/ui/Skeleton";
 
 type WantRow = {
   slug: string;
@@ -49,6 +50,7 @@ export default function DaypartNeeds({
 }) {
   const [selectedCategory, setSelectedCategory] = useState(rows[0]?.category ?? "");
   const [liveShelves, setLiveShelves] = useState<Record<string, LiveShelf>>({});
+  const [resolvedCategories, setResolvedCategories] = useState<Record<string, boolean>>({});
   const [contextRevision, setContextRevision] = useState(0);
 
   const baseActive = rows.find((row) => row.category === selectedCategory) ?? rows[0] ?? null;
@@ -63,6 +65,10 @@ export default function DaypartNeeds({
     [baseActive, liveActive],
   );
   const contextLabel = liveActive?.contextLabel ?? "Across Frederick County";
+  const awaitingLive =
+    Boolean(activeCategory) &&
+    active?.picks.length === 0 &&
+    !resolvedCategories[activeCategory];
 
   // The server renders useful cards immediately, then this shared decision
   // endpoint applies the user's real browsing context. It is the same ranking
@@ -101,6 +107,13 @@ export default function DaypartNeeds({
       .catch(() => {
         // Keep the already-rendered countywide shelf. A live refresh is an
         // enhancement, never a reason to replace useful content with an error.
+      })
+      .finally(() => {
+        if (!current) return;
+        setResolvedCategories((previous) => ({
+          ...previous,
+          [baseActive.category]: true,
+        }));
       });
     return () => {
       current = false;
@@ -113,6 +126,7 @@ export default function DaypartNeeds({
   useEffect(() => {
     const refresh = () => {
       setLiveShelves({});
+      setResolvedCategories({});
       setContextRevision((revision) => revision + 1);
     };
     window.addEventListener(GEOLOCATION_CHANGE_EVENT, refresh);
@@ -206,7 +220,7 @@ export default function DaypartNeeds({
       >
         <div className="flex items-center justify-between gap-3 px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {active.picks.length} confirmed open
+            {awaitingLive ? "Checking nearby" : `${active.picks.length} confirmed open`}
           </p>
           <Link
             href={active.href}
@@ -219,63 +233,79 @@ export default function DaypartNeeds({
           </Link>
         </div>
 
-        {active.picks.length > 0 ? (
+        {awaitingLive ? (
+          <div
+            className="mt-2 flex gap-2.5 overflow-hidden pb-1"
+            aria-busy="true"
+            aria-label={`Loading open ${active.label.toLocaleLowerCase()} places`}
+          >
+            {[0, 1, 2].map((slot) => (
+              <Skeleton.Block
+                key={slot}
+                width="11.25rem"
+                height="7.35rem"
+                round="var(--app-radius-md)"
+                className="shrink-0"
+              />
+            ))}
+          </div>
+        ) : active.picks.length > 0 ? (
           <ul className="mt-2 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {active.picks.map((place) => (
-            <li key={place.slug} className="shrink-0">
-              <Link
-                href={`/places/${place.slug}`}
-                prefetch={false}
-                aria-label={`${place.name}, open now`}
-                className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
-                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
-              >
-                {place.photo ? (
-                  <Image
-                    src={place.photo}
-                    alt=""
-                    fill
-                    unoptimized={place.photo.startsWith("/api/place-photo")}
-                    sizes="168px"
-                    placeholder="blur"
-                    blurDataURL={PAPER_CREAM_BLUR}
-                    className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
-                  />
-                ) : (
-                  <CategoryGraphic category={active.category} seed={place.slug} />
-                )}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                  style={{
-                    background:
-                      "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
-                  }}
-                />
-                <span className="relative z-10 min-w-0 px-2.5 pb-2">
-                  <span
-                    className="block truncate font-sans text-[14.5px] font-semibold leading-tight"
-                    style={{ color: "var(--app-on-brand)" }}
-                  >
-                    {place.name}
-                  </span>
-                  <span
-                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
-                    style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
-                  >
-                    <span
-                      aria-hidden
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: "var(--app-positive)" }}
+              <li key={place.slug} className="shrink-0">
+                <Link
+                  href={`/places/${place.slug}`}
+                  prefetch={false}
+                  aria-label={`${place.name}, open now`}
+                  className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
+                  style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+                >
+                  {place.photo ? (
+                    <Image
+                      src={place.photo}
+                      alt=""
+                      fill
+                      unoptimized={place.photo.startsWith("/api/place-photo")}
+                      sizes="168px"
+                      placeholder="blur"
+                      blurDataURL={PAPER_CREAM_BLUR}
+                      className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025]"
                     />
-                    {place.fact || "Open now"}
-                    {place.distance ? <span>· {place.distance}</span> : null}
-                    {!place.distance && place.where ? <span>· {place.where}</span> : null}
-                    {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
+                  ) : (
+                    <CategoryGraphic category={active.category} seed={place.slug} />
+                  )}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+                    style={{
+                      background:
+                        "linear-gradient(to top, color-mix(in srgb, var(--app-ink) 84%, transparent), color-mix(in srgb, var(--app-ink) 36%, transparent) 46%, transparent)",
+                    }}
+                  />
+                  <span className="relative z-10 min-w-0 px-2.5 pb-2">
+                    <span
+                      className="block truncate font-sans text-[14.5px] font-semibold leading-tight"
+                      style={{ color: "var(--app-on-brand)" }}
+                    >
+                      {place.name}
+                    </span>
+                    <span
+                      className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] tabular-nums"
+                      style={{ color: "color-mix(in srgb, var(--app-on-brand) 86%, transparent)" }}
+                    >
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: "var(--app-positive)" }}
+                      />
+                      {place.fact || "Open now"}
+                      {place.distance ? <span>· {place.distance}</span> : null}
+                      {!place.distance && place.where ? <span>· {place.where}</span> : null}
+                      {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}
+                    </span>
                   </span>
-                </span>
-              </Link>
-            </li>
+                </Link>
+              </li>
             ))}
           </ul>
         ) : (

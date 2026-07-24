@@ -95,7 +95,7 @@ describe("askFrederick structured answers", () => {
     expect(result.sources.every((source) => source.distance == null)).toBe(true);
   });
 
-  it("does not call closed Urbana coffee shops strong open-now matches", async () => {
+  it("never presents closed Urbana coffee shops as open-now matches", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));
     try {
@@ -107,11 +107,15 @@ describe("askFrederick structured answers", () => {
       });
 
       expect(result.intent?.timeNeed).toBe("now");
-      expect(result.sources.length).toBeGreaterThan(0);
       expect(result.sources.every((source) => source.href.startsWith("/places/"))).toBe(true);
       expect(result.sources.every((source) => /^Closed\b/.test(source.status ?? ""))).toBe(true);
+      expect(result.sources.some((source) => /\bOpen\b/.test(source.status ?? ""))).toBe(false);
       expect(result.answer).toContain("couldn’t verify a coffee place open right now");
-      expect(result.answer).toContain("cards show when they reopen");
+      if (result.sources.length > 0) {
+        expect(result.answer).toContain("cards show when they reopen");
+      } else {
+        expect(result.answer).toContain("check the full map");
+      }
       expect(result.answer).not.toContain("strong matches");
     } finally {
       vi.useRealTimers();

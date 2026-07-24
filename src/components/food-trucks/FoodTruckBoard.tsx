@@ -18,6 +18,7 @@ import {
 import type { Hours } from "@/data/places";
 import type { FoodTruck } from "@/data/food-trucks";
 import { truckFeedUrl } from "@/data/food-trucks";
+import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
 import type { TruckBeacon } from "@/lib/food-trucks/beacon";
 import {
   foodTruckInitials,
@@ -102,9 +103,46 @@ function VendorVisual({
     );
   }
 
+  const mark =
+    FOOD_TRUCK_MARKS[truck.slug as keyof typeof FOOD_TRUCK_MARKS];
   const visualStyle = {
     "--truck-tone": foodTruckVisualTone(truck.slug),
   } as CSSProperties;
+
+  if (mark) {
+    return (
+      <div
+        className="food-truck-vendor-visual food-truck-mark-visual"
+        data-kind={truck.kind}
+        data-photo-state="official-mark"
+        data-size={size}
+        style={visualStyle}
+      >
+        <span className="food-truck-mark-kicker">Frederick County vendor</span>
+        <span className="food-truck-mark-plate" data-plate={mark.plate}>
+          <Image
+            src={mark.file}
+            alt={`${truck.name} logo`}
+            fill
+            sizes={size === "detail" ? "280px" : "180px"}
+            className="object-contain"
+          />
+        </span>
+        <span className="food-truck-mark-cuisine">{truck.cuisine}</span>
+        {size === "detail" ? (
+          <a
+            href={mark.sourcePage}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="food-truck-media-credit"
+            aria-label={`${truck.name} official logo source`}
+          >
+            Logo source
+          </a>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div

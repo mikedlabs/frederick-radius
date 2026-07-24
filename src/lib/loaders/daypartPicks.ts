@@ -52,32 +52,30 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
   // refreshes the active shelf through /api/want, which honors the shared town
   // scope or a cached device fix and then prints that context in the UI.
   const ranked = rankPlaces({ now, preferOpen: true, limit: 500 });
-  return needs
-    .map((need) => ({
-      label: need.label,
-      href: need.href,
-      category: need.category,
-      picks: ranked
-        .filter(
-          (p) =>
-            p.category === need.category &&
-            isOpenNow(p.open_status) &&
-            isRecommendable(p),
-        )
-        .slice(0, 4)
-        .map((p) => ({
-          slug: p.slug,
-          name: p.name,
-          rating: p.google_rating ?? null,
-          photo: p.google_photo_url ?? null,
-          photoCredit: p.google_photo_attribution?.authors[0]?.display_name ?? null,
-          where:
-            p.city?.trim() ||
-            MUNICIPALITY_BY_SLUG[p.municipality]?.name ||
-            "Frederick County",
-          distance: null,
-          fact: null,
-        })),
-    }))
-    .filter((row) => row.picks.length > 0);
+  return needs.map((need) => ({
+    label: need.label,
+    href: need.href,
+    category: need.category,
+    picks: ranked
+      .filter(
+        (p) =>
+          p.category === need.category &&
+          isOpenNow(p.open_status) &&
+          isRecommendable(p),
+      )
+      .slice(0, 4)
+      .map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        rating: p.google_rating ?? null,
+        photo: p.google_photo_url ?? null,
+        photoCredit: p.google_photo_attribution?.authors[0]?.display_name ?? null,
+        where:
+          p.city?.trim() ||
+          MUNICIPALITY_BY_SLUG[p.municipality]?.name ||
+          "Frederick County",
+        distance: null,
+        fact: null,
+      })),
+  }));
 }

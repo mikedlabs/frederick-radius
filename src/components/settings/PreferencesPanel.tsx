@@ -108,9 +108,11 @@ export default function PreferencesPanel() {
     };
     refreshInstallAvailability();
     window.addEventListener("fr:beforeinstallprompt-ready", refreshInstallAvailability);
+    window.addEventListener("fr:install-prompt-consumed", refreshInstallAvailability);
     window.addEventListener("appinstalled", refreshInstallAvailability);
     return () => {
       window.removeEventListener("fr:beforeinstallprompt-ready", refreshInstallAvailability);
+      window.removeEventListener("fr:install-prompt-consumed", refreshInstallAvailability);
       window.removeEventListener("appinstalled", refreshInstallAvailability);
     };
   }, []);

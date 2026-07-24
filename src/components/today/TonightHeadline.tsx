@@ -8,6 +8,7 @@ import { isEventLiveNow } from "@/lib/eventWhenLabel";
 import { isKeysEvent } from "@/lib/today/keysEvent";
 import KeysCard from "@/components/today/KeysCard";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { eventCardVisual } from "@/components/event/eventVisuals";
 
 /**
  * TonightHeadline — the ONE headline of /today, rendered only when the day
@@ -38,6 +39,8 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
   const live = isEventLiveNow(event, now);
   const date = eventDateBlock(event);
   const accent = CATEGORY_BY_SLUG[event.category]?.color ?? "#7A7975";
+  const approvedVisual = eventCardVisual(event);
+  const featureImage = approvedVisual?.src ?? event.hero_image;
   const tonight = !event.is_all_day && easternStartHour(event.starts_at) >= 17;
   // The one editor's pick, and it SAYS so (the unlabeled hero was the first
   // "why is this big?" of the old section) — same wording the What's-on
@@ -95,27 +98,32 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
             {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
             {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
           </p>
-          {/* The picture under the headline — the venue photo when the event
-              carries one. A photoless headliner stays typographic; no plate,
-              no placeholder art. */}
-          {event.hero_image && (
-            <div
+          {/* The picture under the headline. Source-aware venue visuals are
+              labeled as the place they depict, so a Carroll Creek photograph
+              never pretends to document this specific event. */}
+          {featureImage && (
+            <figure
               className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[21/9]"
               style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}
             >
               <Image
-                src={event.hero_image}
+                src={featureImage}
                 alt=""
                 fill
-                unoptimized={event.hero_image.startsWith("/api/place-photo")}
+                unoptimized={featureImage.startsWith("/api/place-photo")}
                 priority
                 sizes="(max-width: 640px) 100vw, 720px"
                 placeholder="blur"
                 blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
               />
+              {approvedVisual?.caption && (
+                <figcaption className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+                  {approvedVisual.caption}
+                </figcaption>
+              )}
               <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
-            </div>
+            </figure>
           )}
         </article>
       )}

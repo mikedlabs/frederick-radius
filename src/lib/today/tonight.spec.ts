@@ -52,6 +52,56 @@ describe("pickTonightEvent", () => {
     expect(pickTonightEvent(now, [trivia, aliveAtFive])?.slug).toBe(aliveAtFive.slug);
   });
 
+  it("selects the July 23 Alive at Five listing before the event begins", () => {
+    const now = new Date("2026-07-23T18:00:00.000Z"); // 2 PM Eastern
+    const aliveAtFive = event({
+      slug: "alive-at-five-2026-07-23",
+      title: "Alive @ Five · Stitch Early",
+      starts_at: "2026-07-23T21:00:00.000Z",
+      ends_at: "2026-07-24T00:00:00.000Z",
+      venue_name: "Carroll Creek Amphitheater",
+      ticket_url: "https://downtownfrederick.org/aliveatfive/",
+      price_text: "$5 admission · 21+",
+      hero_image: undefined,
+    });
+    const trivia = event({
+      slug: "later-trivia",
+      title: "Pour House Trivia",
+      starts_at: "2026-07-23T23:00:00.000Z",
+      ends_at: "2026-07-24T01:00:00.000Z",
+      category: "nightlife",
+      hero_image: "/images/trivia.jpg",
+    });
+
+    expect(pickTonightEvent(now, [trivia, aliveAtFive])?.slug).toBe(aliveAtFive.slug);
+  });
+
+  it("does not let a small live listing displace a clearly larger event later today", () => {
+    const now = new Date("2026-07-23T18:55:00.000Z"); // 2:55 PM Eastern
+    const natureWalk = event({
+      slug: "nature-walk",
+      title: "Queer Naturalist Club: Nature Walk",
+      starts_at: "2026-07-23T18:00:00.000Z",
+      ends_at: "2026-07-23T20:00:00.000Z",
+      category: "outdoors",
+      is_free: true,
+      ticket_url: undefined,
+      price_text: undefined,
+    });
+    const aliveAtFive = event({
+      slug: "alive-at-five-2026-07-23",
+      title: "Alive @ Five · Stitch Early",
+      starts_at: "2026-07-23T21:00:00.000Z",
+      ends_at: "2026-07-24T00:00:00.000Z",
+      venue_name: "Carroll Creek Amphitheater",
+      ticket_url: "https://downtownfrederick.org/aliveatfive/",
+      price_text: "$5 admission · 21+",
+      hero_image: undefined,
+    });
+
+    expect(pickTonightEvent(now, [natureWalk, aliveAtFive])?.slug).toBe(aliveAtFive.slug);
+  });
+
   it("recognizes the same occurrence from feeds with different slugs and punctuation", () => {
     const a = event({ slug: "curated-alive", title: "Alive @ Five · La Unica", starts_at: "2026-07-16T21:00:00.000Z" });
     const b = event({ slug: "feed-alive", title: "Alive @ Five - La Unica", starts_at: "2026-07-16T21:00:00.000Z" });

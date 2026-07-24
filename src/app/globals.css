@@ -2670,8 +2670,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ============================================================================
    /map dock — one instrument for the browse map (MapDock.tsx). Namespaced
-   dock-*. The cold map exposes one search and one contents door; every other
-   choice is progressively disclosed in a phone tray or desktop inspector.
+   dock-*. The cold map exposes one search and one options door; every other
+   choice is progressively disclosed in one phone panel or desktop inspector.
    ========================================================================== */
 
 /* Host marker on the map container: with the dock now at the TOP, the map's
@@ -2841,7 +2841,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   }
 }
 
-/* The pinned head: one search plus one explicit contents door. */
+/* The pinned head: one search plus one explicit options door. */
 .dock-head {
   position: relative;
   z-index: 2;
@@ -2861,9 +2861,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-color: color-mix(in srgb, var(--app-brand) 24%, var(--app-border));
 }
 
-/* Deep controls are a map tray, not a dropdown attached to the search.
-   Mobile height is written by MapDock as one quarter of the actual map canvas,
-   so controls cannot quietly consume half the map on a short phone. */
+/* Deep controls live in one explicit map panel, not a dropdown attached to
+   search. The panel owns the only control scroll on this surface; when it is
+   closed, every pan gesture belongs to the map. */
 .dock-pane {
   position: fixed;
   top: auto;
@@ -2904,56 +2904,43 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   scrollbar-width: thin;
 }
 
-/* The first Contents tap opens a shallow instrument ribbon. It is one
-   horizontally scrolling row, so the map remains the dominant surface
-   instead of being replaced by a six-row menu. Deeper panes retain their
-   vertical controls, but remain capped to one quarter of the map above. */
+/* Mobile options are a fixed grid. The old sideways ribbon intercepted the
+   same gesture used to pan the map and hid choices off-screen. This grid is
+   complete at a glance and never scrolls horizontally. Deeper panels use the
+   panel's single vertical scroll container. */
 @media (max-width: 1023.98px) {
-  .dock-pane[data-pane="contents"],
   .dock-pane[data-pane="contents"] .dock-pane-scroll {
-    max-height: 84px;
-  }
-  .dock-pane[data-pane="contents"] .dock-pane-scroll {
-    padding: 10px;
-    overflow: hidden;
+    overflow-y: hidden;
   }
   .dock-pane[data-pane="contents"] .dock-content-list {
-    display: flex;
-    gap: 7px;
-    margin: 0;
-    padding: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 5px 0 0;
     border: 0;
     border-radius: 0;
     background: transparent;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    overscroll-behavior-inline: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  .dock-pane[data-pane="contents"] .dock-content-list::-webkit-scrollbar {
-    display: none;
   }
   .dock-pane[data-pane="contents"] .dock-content-row {
-    width: 118px;
-    flex: 0 0 118px;
-    min-width: 118px;
-    min-height: 56px;
-    grid-template-columns: 28px auto;
-    gap: 7px;
-    padding: 6px 9px;
+    width: auto;
+    min-width: 0;
+    min-height: 66px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 4px 6px;
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-md);
     background: var(--app-bg-elevated);
-    scroll-snap-align: start;
+    text-align: center;
   }
   .dock-pane[data-pane="contents"] .dock-content-row:last-child {
     border-bottom: 1px solid var(--app-border);
   }
   .dock-pane[data-pane="contents"] .dock-content-icon {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: 8px;
   }
   .dock-pane[data-pane="contents"] .dock-content-copy small,
@@ -2961,8 +2948,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     display: none;
   }
   .dock-pane[data-pane="contents"] .dock-content-copy strong {
-    font-size: 12px;
-    white-space: nowrap;
+    font-size: 10.5px;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 359px) {
+  .dock-pane[data-pane="contents"] .dock-content-list {
+    gap: 6px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-row {
+    min-height: 60px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-copy strong {
+    font-size: 10px;
   }
 }
 
@@ -3000,6 +2999,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background: color-mix(in srgb, var(--app-bg-elevated) 96%, transparent);
   backdrop-filter: blur(16px) saturate(1.08);
   -webkit-backdrop-filter: blur(16px) saturate(1.08);
+}
+.dock-pane-head-spacer {
+  width: 44px;
+  flex: 0 0 44px;
 }
 .dock-pane-title {
   font-size: 18px;
@@ -3248,7 +3251,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* Highlights is the map's synthesis tool, not another map layer. Its cards
-   stay inside Map contents until the viewport has evidence worth showing. */
+   stay inside Map options until the viewport has evidence worth showing. */
 .dock-discoveries {
   padding-top: 2px;
 }
@@ -3434,21 +3437,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   opacity: 0.8;
 }
 
-/* The one nested-row pattern (running head) — sub-intents, amenity
-   kinds, aerial seasons. Words on a quiet sunken bar; the active word is
-   inked in the family color over an underline rule. */
+/* Sub-intents, amenity kinds, and aerial seasons wrap inside the panel.
+   Nothing in the map controls creates a second sideways gesture surface. */
 .dock-subrow {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
-  overflow-x: auto;
   margin: 10px 0 2px;
   padding: 0 8px;
   border-radius: var(--app-radius-sm);
   background: var(--app-bg-sunken);
-  scrollbar-width: none;
-}
-.dock-subrow::-webkit-scrollbar {
-  display: none;
 }
 .dock-subrow button {
   flex: 0 0 auto;
@@ -3616,11 +3614,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* A phone in landscape has only ~235px of map height. Top anchoring and the
-   downward panel are already the default now, so landscape only lays the head
-   out as one horizontal strip (search beside the Filters / toggle bar) to
-   spend as little vertical space as possible, and drops the zoom + locate
-   chrome low. */
+/* A phone in landscape has very little map height. The options grid keeps one
+   stable direction and the deeper panel uses the remaining safe height. */
 @media (max-width: 1023.98px) and (max-height: 520px) and (orientation: landscape) {
   .dock {
     top: 4px;
@@ -3652,9 +3647,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .dock-pane-scroll {
     max-height: min(var(--map-pane-cap, 100px), calc(var(--app-browse-map-height) - 118px));
   }
-  .dock-pane[data-pane="contents"],
-  .dock-pane[data-pane="contents"] .dock-pane-scroll {
-    max-height: 84px;
+  .dock-pane[data-pane="contents"] .dock-content-list {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-row {
+    min-height: 54px;
+  }
+  .dock-pane[data-pane="contents"] .dock-content-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .dock-pane[data-pane="contents"] .dock-pane-head {
+    display: none;
   }
   .dock-host .mapboxgl-ctrl-bottom-right,
   .dock-host .mapboxgl-ctrl-bottom-left {
@@ -5670,6 +5675,82 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .food-truck-vendor-card > .food-truck-vendor-visual {
   border-radius: 0;
   border-right: 1px solid var(--app-border);
+}
+
+.food-truck-mark-visual {
+  --truck-tone: var(--app-brand-press);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: .55rem;
+  overflow: hidden;
+  padding: .75rem;
+  background:
+    radial-gradient(circle at 83% 12%, color-mix(in srgb, var(--app-bg) 24%, transparent), transparent 28%),
+    linear-gradient(150deg, color-mix(in srgb, var(--truck-tone) 16%, var(--app-bg-elevated-solid)), var(--app-bg-sunken));
+  isolation: isolate;
+}
+
+.food-truck-mark-visual::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: .22;
+  background:
+    linear-gradient(90deg, transparent 49.6%, var(--app-border) 50%, transparent 50.4%),
+    linear-gradient(0deg, transparent 49.6%, var(--app-border) 50%, transparent 50.4%);
+  background-size: 2.25rem 2.25rem;
+  mask-image: linear-gradient(145deg, black, transparent 72%);
+}
+
+.food-truck-mark-kicker,
+.food-truck-mark-cuisine {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono), monospace;
+  font-size: .48rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+
+.food-truck-mark-plate {
+  position: relative;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 9.5rem);
+  aspect-ratio: 1.18;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-border) 78%, transparent);
+  border-radius: 1rem;
+  background: #fffdf7;
+  box-shadow:
+    0 .55rem 1.2rem color-mix(in srgb, var(--app-ink) 10%, transparent),
+    inset 0 0 0 .3rem color-mix(in srgb, var(--app-bg) 68%, transparent);
+}
+
+.food-truck-mark-plate[data-plate="dark"] {
+  background: #171510;
+  box-shadow:
+    0 .55rem 1.2rem color-mix(in srgb, var(--app-ink) 14%, transparent),
+    inset 0 0 0 .3rem color-mix(in srgb, white 7%, transparent);
+}
+
+.food-truck-mark-cuisine {
+  max-width: calc(100% - 3.5rem);
+  color: var(--app-ink-2);
+}
+
+.food-truck-mark-visual[data-size="detail"] {
+  min-height: 16rem;
+  padding: 1rem;
+}
+
+.food-truck-mark-visual[data-size="detail"] .food-truck-mark-plate {
+  width: min(62vw, 14rem);
+  aspect-ratio: 1.35;
 }
 
 .food-truck-vendor-fallback {
