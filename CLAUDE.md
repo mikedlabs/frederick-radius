@@ -119,6 +119,23 @@ draft must read like a person typing in a thread, not composed copy:
 - **After changing how CACHED data is cleaned/shaped:** bump the
   `unstable_cache` key (e.g. `ingested-series-vN`) — the cache persists
   across deploys. Lesson of PR #509.
+- **The Postgres `places` and `events` tables are NOT the catalog.** Do
+  not read them. `schema.places` is write-only — seeded once by
+  `src/lib/db/seed.ts` and read by nothing at runtime — and it holds
+  1,479 stale rows against the real 1,616, with no overrides applied.
+  `schema.events` is likewise vestigial (44 rows); the live event
+  pipeline is `ingested_events` via `unifiedEvents.ts`. Places come from
+  `src/data/places-client.json` (client surfaces) or
+  `src/lib/loaders/places.ts` (server). Querying the tables looks
+  perfectly reasonable and silently returns a stale, incomplete catalog,
+  which is exactly why this warning exists. Audited July 2026.
+- **The semantic search index must be populated by hand.**
+  `radius_search_documents` is filled by `npm run build:radius-search`
+  (needs `DATABASE_URL` + AI Gateway auth). `hybridPlaceSearch()` fails
+  soft to `[]`, so an EMPTY index is indistinguishable from a healthy one
+  at the call site — it shipped empty and Ask ran keyword-only for months
+  before anyone noticed. The `semantic-index` tripwire now makes that
+  state red on /admin/data-health; re-run the script after adding places.
 
 ## Verification norms
 
