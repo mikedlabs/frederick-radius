@@ -54,8 +54,8 @@ const PUBLIC_AMENITY_GROUPS = AMENITY_GROUPS.filter(
 );
 
 /** The map begins as an observation surface. These controls are revealed only
- *  after a person opens Map contents; none compete with the county on load. */
-type Pane = "contents" | "what" | "when" | "where" | "discover" | "layers";
+ *  after a person opens Map options; none compete with the county on load. */
+type Pane = "contents" | "what" | "when" | "where" | "discover" | "layers" | "localLayers";
 type PlaceReveal = "categories" | "amenities";
 
 /** Where the camera is pointed, per the user's own choice in the Where
@@ -68,14 +68,14 @@ type WhereSel =
 const TOWN_ZOOM = 13.4;
 
 /**
- * MapDock — the calm control surface for /map. Search and Map contents are the
- * only cold controls. A deliberate contents tap reveals the deeper choices in
+ * MapDock — the calm control surface for /map. Search and Map options are the
+ * only cold controls. A deliberate options tap reveals the deeper choices in
  * a compact phone tray or desktop inspector while the map remains visible.
  *
  *   - Places and amenities are stable catalogs, never reordered predictions.
  *   - Events remain absent until a person chooses a time.
  *   - Area moves the camera; it never silently filters results.
- *   - Layers and source-backed connections live behind Map contents.
+ *   - Layers and source-backed connections live behind Map options.
  *
  * State split:
  *   - URL params (?intent/?sub/?open/?t) are written here via
@@ -290,21 +290,23 @@ export default function MapDock(props: MapDockProps) {
   const [pane, setPane] = useState<Pane | null>(null);
   const [placeReveal, setPlaceReveal] = useState<PlaceReveal | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
-  // The Layers tab's Key grid is collapsed by default so the panel stays a
-  // low strip; one small chip reveals it.
+  // The Layers tab's Key grid is collapsed by default; one small control
+  // reveals it without creating another horizontal rail.
   const [keyOpen, setKeyOpen] = useState(false);
   const [whereSel, setWhereSel] = useState<WhereSel>({ kind: "county" });
   // Focus management for the disclosure panel: focus lands inside it when it
-  // opens, and the Map contents trigger is restored when it closes.
+  // opens, and the Map options trigger is restored when it closes.
   const paneRef = useRef<HTMLDivElement>(null);
   const paneScrollRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
+  const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
-  // The map is the product, so its controls are sized against the map canvas
-  // rather than the browser viewport. A phone in landscape and a tall phone
-  // can have the same width but radically different working room.
+  // Size the one explicit options panel against the map canvas. The earlier
+  // quarter-height cap made every deeper panel a cramped nested scroller. A
+  // deliberate panel may use nearly half the canvas; closing it restores an
+  // entirely unobstructed map.
   useEffect(() => {
     const dockElement = dockRef.current;
     const host = dockElement?.closest<HTMLElement>(".dock-host");
@@ -312,8 +314,9 @@ export default function MapDock(props: MapDockProps) {
 
     const sizePane = () => {
       const mapHeight = host.getBoundingClientRect().height;
-      const minimum = mapHeight < 320 ? 100 : 116;
-      const cap = Math.max(minimum, Math.floor(mapHeight * 0.25));
+      const available = Math.max(148, mapHeight - 112);
+      const minimum = mapHeight < 320 ? 148 : 240;
+      const cap = Math.min(available, Math.max(minimum, Math.floor(mapHeight * 0.48)));
       dockElement.style.setProperty("--map-pane-cap", `${cap}px`);
     };
     sizePane();
@@ -369,6 +372,17 @@ export default function MapDock(props: MapDockProps) {
   useEffect(() => {
     onPaneOpenChange(pane !== null);
   }, [pane, onPaneOpenChange]);
+  // A panel should never make the map feel captured. Touching the uncovered
+  // canvas dismisses the panel before the pan continues; there is no scrim or
+  // separate close step between the person and the map.
+  useEffect(() => {
+    const dismissForMapGesture = () => {
+      setPane(null);
+      setPlaceReveal(null);
+    };
+    window.addEventListener("fr:map-gesture", dismissForMapGesture);
+    return () => window.removeEventListener("fr:map-gesture", dismissForMapGesture);
+  }, []);
   useEffect(() => {
     if (pane === null) return;
     if (paneScrollRef.current) paneScrollRef.current.scrollTop = 0;
@@ -616,6 +630,8 @@ export default function MapDock(props: MapDockProps) {
     (props.scrubHour != null ? 1 : 0) +
     (whereSel.kind !== "county" ? 1 : 0) +
     visibleLayerCount;
+  const activeOptionCount =
+    refinementCount + (props.selectedDiscoveryId ? 1 : 0);
 
   const line = countLine({
     places: props.placeCount,
@@ -692,7 +708,7 @@ export default function MapDock(props: MapDockProps) {
       closePane();
       return;
     }
-    if (pane === null) restoreRef.current = document.activeElement as HTMLElement | null;
+    if (pane === null) restoreRef.current = optionsButtonRef.current;
     setPane(next);
   };
   const openContentsPane = (
@@ -726,14 +742,16 @@ export default function MapDock(props: MapDockProps) {
       : null;
 
   const paneTitle =
-    pane === "contents" ? "Map contents"
+    pane === "contents" ? "Map options"
     : pane === "what"
       ? placeReveal === "amenities" ? "Public essentials" : "Places & businesses"
     : pane === "when" ? "Events & time"
     : pane === "where" ? "Area"
     : pane === "discover" ? "Highlights"
     : pane === "layers" ? "Map layers"
+    : pane === "localLayers" ? "Local layers"
     : "";
+  const isLayerPane = pane === "layers" || pane === "localLayers";
 
   const togglePlaceReveal = (next: PlaceReveal) => {
     setPlaceReveal((current) => (current === next ? null : next));
@@ -785,7 +803,7 @@ export default function MapDock(props: MapDockProps) {
         data-pane={pane ?? undefined}
         ref={dockRef}
       >
-        {/* The only persistent map choices: search and Map contents. */}
+        {/* The only persistent map choices: search and Map options. */}
         <div className="dock-head">
           {/* Search, folded in as the top row — the map's ONE search. */}
           <div className="dock-search-wrap" inert={pane !== null}>
@@ -880,17 +898,23 @@ export default function MapDock(props: MapDockProps) {
           </div>
 
           <button
+            ref={optionsButtonRef}
             type="button"
             className="dock-contents tap-44"
-            data-on={refinementCount > 0 || Boolean(props.selectedDiscoveryId) || undefined}
+            data-on={activeOptionCount > 0 || undefined}
             aria-expanded={pane !== null}
             aria-controls="dock-pane"
-            aria-label={contentsSummary === "Contents" ? "Map contents" : `Map contents: ${contentsSummary}`}
+            aria-label={contentsSummary === "Contents" ? "Map options" : `Map options: ${contentsSummary}`}
             title={contentsSummary}
             onClick={() => togglePane("contents")}
           >
             <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.15} aria-hidden />
-            <span>{contentsSummary}</span>
+            <span>Options</span>
+            {activeOptionCount > 0 && (
+              <span className="dock-layer-count" aria-hidden>
+                {Math.min(activeOptionCount, 99)}
+              </span>
+            )}
           </button>
         </div>
 
@@ -911,25 +935,27 @@ export default function MapDock(props: MapDockProps) {
           onKeyDown={onPaneKeyDown}
         >
           <div className="dock-pane-scroll" ref={paneScrollRef}>
-            {pane !== "contents" && (
-              <div className="dock-pane-head">
+            <div className="dock-pane-head">
+              {pane !== "contents" ? (
                 <button
                   type="button"
                   className="dock-back"
                   onClick={() => {
                     setPlaceReveal(null);
-                    setPane("contents");
+                    setPane(pane === "localLayers" ? "layers" : "contents");
                   }}
                 >
                   <ChevronLeft className="h-4 w-4" strokeWidth={2.3} aria-hidden />
                   Back
                 </button>
-                <h2 className="dock-pane-title">{paneTitle}</h2>
-                <button type="button" className="dock-done" onClick={closePane}>
-                  Done
-                </button>
-              </div>
-            )}
+              ) : (
+                <span className="dock-pane-head-spacer" aria-hidden />
+              )}
+              <h2 className="dock-pane-title">{paneTitle}</h2>
+              <button type="button" className="dock-done" onClick={closePane}>
+                Done
+              </button>
+            </div>
 
             {/* The contents index already explains its rows. Keep the count
                 bar out of that clean first sheet unless there is state to
@@ -946,15 +972,15 @@ export default function MapDock(props: MapDockProps) {
                     </span>
                   )}
                 </div>
-                {pane !== "discover" && (pane === "layers" ? visibleLayerCount > 0 : dirty) && (
+                {pane !== "discover" && (isLayerPane ? visibleLayerCount > 0 : dirty) && (
                   <button
                     type="button"
                     className="dock-clear tap-44"
-                    onClick={pane === "layers" ? clearLayers : clearAll}
-                    aria-label={pane === "layers" ? "Hide all map layers" : "Clear all filters"}
+                    onClick={isLayerPane ? clearLayers : clearAll}
+                    aria-label={isLayerPane ? "Hide all map layers" : "Clear all filters"}
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
-                    <span>{pane === "layers" ? "Clear layers" : "Reset"}</span>
+                    <span>{isLayerPane ? "Clear layers" : "Reset"}</span>
                   </button>
                 )}
               </div>
@@ -962,6 +988,37 @@ export default function MapDock(props: MapDockProps) {
 
             {pane === "contents" && (
               <div className="dock-content-list" role="group" aria-label="Choose what the map shows">
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Places and businesses"
+                  onClick={() => openContentsPane("what", "categories")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Places</strong>
+                    <small>{intent?.label ?? `${props.placeCount.toLocaleString("en-US")} mapped places`}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="dock-content-row"
+                  aria-label="Events and time"
+                  data-on={timeActive || undefined}
+                  onClick={() => openContentsPane("when")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-content-copy">
+                    <strong>Events</strong>
+                    <small>{timeActive ? when.text : "Choose a time before events appear"}</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
                 <button
                   type="button"
                   className="dock-content-row"
@@ -979,22 +1036,6 @@ export default function MapDock(props: MapDockProps) {
                         ? `${publicAmenityCount} ${publicAmenityCount === 1 ? "type" : "types"} showing`
                         : "Restrooms, water, seating, power, and more"}
                     </small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="dock-content-row"
-                  aria-label="Events and time"
-                  data-on={timeActive || undefined}
-                  onClick={() => openContentsPane("when")}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <Clock className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Events</strong>
-                    <small>{timeActive ? when.text : "Choose a time before events appear"}</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
                 </button>
@@ -1037,21 +1078,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row"
-                  aria-label="Places and businesses"
-                  onClick={() => openContentsPane("what", "categories")}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Places</strong>
-                    <small>{intent?.label ?? `${props.placeCount.toLocaleString("en-US")} mapped places`}</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="dock-content-row"
                   aria-label="Map layers"
                   data-on={visibleLayerCount > 0 || undefined}
                   onClick={() => openContentsPane("layers")}
@@ -1073,7 +1099,7 @@ export default function MapDock(props: MapDockProps) {
                   <button
                     type="button"
                     className="dock-content-row"
-                    aria-label="Connections in this view"
+                    aria-label="Highlights in this view"
                     data-on={Boolean(props.selectedDiscoveryId) || undefined}
                     onClick={() => openContentsPane("discover")}
                   >
@@ -1081,7 +1107,7 @@ export default function MapDock(props: MapDockProps) {
                       <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
                     </span>
                     <span className="dock-content-copy">
-                      <strong>Connections</strong>
+                      <strong>Highlights</strong>
                       <small>
                         {props.discoveries.length} source-backed {props.discoveries.length === 1 ? "connection" : "connections"}
                       </small>
@@ -1101,7 +1127,7 @@ export default function MapDock(props: MapDockProps) {
                       : <Share2 className="h-[18px] w-[18px]" strokeWidth={2.1} />}
                   </span>
                   <span className="dock-content-copy">
-                    <strong>{shareStatus === "copied" ? "Link copied" : "Share this view"}</strong>
+                    <strong>{shareStatus === "copied" ? "Copied" : "Share"}</strong>
                     <small>Includes the area and choices currently on the map</small>
                   </span>
                   <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
@@ -1561,6 +1587,30 @@ export default function MapDock(props: MapDockProps) {
                   </div>
                 )}
 
+                <button
+                  type="button"
+                  className="dock-reveal"
+                  aria-label="More local layers"
+                  onClick={() => setPane("localLayers")}
+                >
+                  <span className="dock-content-icon" aria-hidden>
+                    <Trees className="h-[18px] w-[18px]" strokeWidth={2.1} />
+                  </span>
+                  <span className="dock-reveal-copy">
+                    <strong>More local layers</strong>
+                    <small>Trails, aerial photos, parks, history, and saved places</small>
+                  </span>
+                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+                </button>
+              </div>
+            )}
+
+            {/* ── LOCAL LAYERS — slower-changing exploration and personal
+                lenses are one deliberate level below the live map controls.
+                This keeps the first layer screen complete without a long
+                mixed-purpose scroll. ── */}
+            {pane === "localLayers" && (
+              <div>
                 <Sect>Explore Frederick</Sect>
                 <div className="dock-chips">
                   {props.trailCount > 0 && (

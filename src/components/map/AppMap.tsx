@@ -2224,6 +2224,9 @@ export default function AppMap({
         if (target.closest(".mapboxgl-canvas-container, .mapboxgl-ctrl")) {
           cameraIntentRef.current = true;
         }
+        if (dockPaneOpen && target.closest(".mapboxgl-canvas-container")) {
+          window.dispatchEvent(new Event("fr:map-gesture"));
+        }
       }}
       onWheelCapture={() => { cameraIntentRef.current = true; }}
     >

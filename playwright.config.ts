@@ -36,6 +36,19 @@ export default defineConfig({
           : {}),
       },
     },
+    // Opt in so normal CI does not suddenly run the whole suite twice.
+    // This project exercises the map with Safari's engine, touch input, and
+    // an iPhone viewport whenever its gesture model changes.
+    ...(process.env.PW_WEBKIT === "1"
+      ? [
+          {
+            name: "webkit-mobile",
+            use: {
+              ...devices["iPhone 13"],
+            },
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: `npm run dev -- -p ${PORT}`,

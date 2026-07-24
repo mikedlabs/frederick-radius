@@ -8,7 +8,7 @@ import {
   isStandalone,
 } from "@/lib/pwa-display";
 
-type BeforeInstallPromptEvent = Event & {
+export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
@@ -110,6 +110,15 @@ function capturedInstallEvent(): BeforeInstallPromptEvent | null {
 function clearCapturedInstallEvent() {
   if (typeof window === "undefined") return;
   delete (window as InstallWindow).__frBeforeInstallPrompt;
+  window.dispatchEvent(new Event("fr:install-prompt-consumed"));
+}
+
+/** Invoke the browser-owned installation dialog from a direct user action. */
+export async function requestBrowserInstall(
+  installEvent: Pick<BeforeInstallPromptEvent, "prompt" | "userChoice">,
+): Promise<"accepted" | "dismissed"> {
+  await installEvent.prompt();
+  return (await installEvent.userChoice).outcome;
 }
 
 /**
@@ -172,8 +181,30 @@ export function useInstallPrompt(): {
     };
     const onManualOpen = () => {
       // A person who deliberately asks from Settings is different from an
-      // automatic reminder. Let that intent override the quiet cooldown.
-      if (!isStandalone() && (iosDevice || capturedInstallEvent())) {
+      // automatic reminder. Chromium can go straight to its browser-owned
+      // dialog from this click; iOS has no programmatic install API, so it
+      // opens the exact Safari steps instead.
+      if (isStandalone()) return;
+      const installEvent = capturedInstallEvent();
+      if (installEvent && !iosDevice) {
+        setPrompting(true);
+        void requestBrowserInstall(installEvent)
+          .then((outcome) => {
+            clearCapturedInstallEvent();
+            setDeferredEvent(null);
+            if (outcome === "accepted") {
+              setInstalled(true);
+              setEligible(false);
+              return;
+            }
+            deferInstallOffer();
+            setDeferred(true);
+            setEligible(false);
+          })
+          .finally(() => setPrompting(false));
+        return;
+      }
+      if (iosDevice) {
         setEligible(true);
         setDeferred(false);
       }
@@ -216,11 +247,10 @@ export function useInstallPrompt(): {
     if (!deferredEvent || prompting) return;
     setPrompting(true);
     try {
-      await deferredEvent.prompt();
-      const result = await deferredEvent.userChoice;
+      const outcome = await requestBrowserInstall(deferredEvent);
       clearCapturedInstallEvent();
       setDeferredEvent(null);
-      if (result.outcome === "accepted") {
+      if (outcome === "accepted") {
         setInstalled(true);
         setEligible(false);
       } else {

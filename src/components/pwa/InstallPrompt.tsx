@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Download, Share, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
@@ -15,7 +14,6 @@ import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
 export default function InstallPrompt() {
   const pathname = usePathname();
   const { show, ios, prompting, promptInstall, dismiss } = useInstallPrompt();
-  const [stepsVisible, setStepsVisible] = useState(false);
 
   if (!show || isInstallPromptSuppressedPath(pathname)) return null;
 
@@ -58,35 +56,25 @@ export default function InstallPrompt() {
           {ios ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Add it from the Share menu for a cleaner way back to your local guide.
+                Safari requires one short system step before Frederick Radius can appear on your Home Screen.
               </p>
 
-              <button
-                type="button"
-                onClick={() => setStepsVisible((visible) => !visible)}
-                aria-expanded={stepsVisible}
-                aria-controls="install-ios-steps"
-                className="tactile-interactive mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
-                style={{ background: "var(--app-brand)" }}
+              <ol
+                id="install-ios-steps"
+                className="mt-3 space-y-2 rounded-[var(--app-radius-md)] border p-3 text-[12px] leading-relaxed"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-subtle)",
+                  color: "var(--app-ink-2)",
+                }}
               >
-                <Share className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                {stepsVisible ? "Hide steps" : "Show me how"}
-              </button>
-              <span className="sr-only" aria-live="polite">
-                {stepsVisible ? "Home screen instructions are shown below." : ""}
-              </span>
-
-              {stepsVisible && (
-                <ol
-                  id="install-ios-steps"
-                  className="mt-3 list-decimal space-y-1.5 border-l-2 pl-7 text-[12px] leading-relaxed"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                >
-                  <li>Open your browser&rsquo;s <strong>Share</strong> menu.</li>
-                  <li>Choose <strong>Add to Home Screen</strong>.</li>
-                  <li>Leave <strong>Open as Web App</strong> on if it appears, then tap <strong>Add</strong>.</li>
-                </ol>
-              )}
+                <li className="flex gap-2">
+                  <Share className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  <span>Tap Safari&rsquo;s <strong>Share</strong> button.</span>
+                </li>
+                <li className="pl-6">Choose <strong>Add to Home Screen</strong>.</li>
+                <li className="pl-6">Keep <strong>Open as Web App</strong> on, then tap <strong>Add</strong>.</li>
+              </ol>
             </>
           ) : (
             <>

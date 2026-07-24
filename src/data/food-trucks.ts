@@ -65,6 +65,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     serviceModel: "resident",
     homeBase: "Monocacy Brewing Company",
     blurb: "The Alley Wagon serves as the kitchen on wheels at Monocacy Brewing.",
+    website: "https://www.toasttab.com/local/order/the-alley-wagon-124-north-market-street",
     facebook: "https://facebook.com/profile.php?id=100091760835302",
   },
   {
@@ -74,6 +75,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     kind: "food",
     blurb: "Blendabowl serves acai and pitaya bowls, smoothies, and vegan or gluten-free options.",
     dietary: ["Vegan options", "Gluten-free options", "Dairy-free options"],
+    website: "https://www.blendabowlfrederickft.com/",
     facebook: "https://facebook.com/profile.php?id=61574773000675",
   },
   {
@@ -82,6 +84,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Barbecue",
     kind: "food",
     blurb: "Blues BBQ serves pit beef, pulled pork, smoked brisket, and baby back ribs.",
+    website: "https://bluesbbqco.com/",
     facebook: "https://facebook.com/thebluesbbqtruck",
   },
   {
@@ -108,6 +111,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     serviceModel: "resident",
     homeBase: "RAK Brewing",
     blurb: "dōp Pizza serves wood-fired Neapolitan pies at RAK Brewing.",
+    website: "https://www.doppizza.co/",
     facebook: "https://facebook.com/doppizza.co",
   },
   {
@@ -124,6 +128,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Sandwiches & fries",
     kind: "food",
     blurb: "The Garage serves sandwiches with fresh-cut fries.",
+    website: "https://www.thegaragemd.com/",
     facebook: "https://facebook.com/thegaragemd",
   },
   {
@@ -132,6 +137,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Coffee",
     kind: "food",
     blurb: "Gravel & Grind serves coffee from a mobile cart and bicycle shop in downtown Frederick.",
+    website: "https://www.gravelandgrind.com/gravel-and-grind-events-2",
     instagram: "https://instagram.com/gravelandgrind",
   },
   {
@@ -157,6 +163,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Peruvian",
     kind: "food",
     blurb: "Mayta's serves Peruvian food in Frederick.",
+    website: "https://www.maytacuisine.com/",
     facebook: "https://facebook.com/Buckeystown120/",
   },
   {
@@ -165,6 +172,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Cajun & Southern",
     kind: "food",
     blurb: "M&L's Ragin Cajun serves Cajun and Southern dishes from its mobile kitchen.",
+    website: "https://www.mlsragincajun.com/",
     instagram: "https://instagram.com/mlsragincajun_llc",
   },
   {
@@ -197,6 +205,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Mexican",
     kind: "food",
     blurb: "This truck serves tacos, burritos, quesadillas, and other Mexican standards.",
+    website: "https://traditional.mx/",
     instagram: "https://instagram.com/traditionalauthenticmexfood",
   },
   {
@@ -205,6 +214,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Farm-to-fork",
     kind: "food",
     blurb: "Whistle Punk Farm brings seasonal farm cooking to events and community stops.",
+    website: "https://whistlepunkfarm.com/home/",
     facebook: "https://facebook.com/WhistlePunkFoodTruck",
   },
   // ── Treats (ice cream, shaved ice, dessert on wheels) ────────────────
@@ -214,6 +224,7 @@ export const FOOD_TRUCKS: FoodTruck[] = [
     cuisine: "Shaved ice",
     kind: "treats",
     blurb: "Kona Ice serves flavor-your-own tropical shaved ice at events across the county.",
+    website: "https://www.kona-ice.com/local-site/kona-ice-of-frederick-county-md/",
     instagram: "https://instagram.com/konaicefrederickmd",
     facebook: "https://facebook.com/KonaIceofFrederickCoMD",
   },

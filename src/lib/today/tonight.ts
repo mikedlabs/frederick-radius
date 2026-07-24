@@ -15,7 +15,7 @@
  * If nothing qualifies, it returns null: honest beats padded.
  */
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { eventLeadTier, pickLeadEvent } from "@/lib/events/lead-rank";
+import { eventLeadTier, eventProminence, pickLeadEvent } from "@/lib/events/lead-rank";
 import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel";
 
 // Event titles that look like internal/admin business — board meetings,
@@ -43,20 +43,32 @@ export function pickTonightEvent(now: Date, pool: EventWithMeta[]): EventWithMet
       !isEventEnded(e, now) &&
       !NON_PUBLIC_EVENT.test(e.title ?? ""),
   );
-  // "Right now" beats "photographs well." The generic lead comparator uses
-  // imagery as a useful tie-breaker, but that allowed an image-backed trivia
-  // listing later tonight to displace a marquee event already underway. When
-  // a real draw is live, it is the most useful lead on a page called Today.
+  const bestOverall = pickLeadEvent(tonight);
+
+  // "Right now" breaks a close contest; it does not make every small live
+  // listing the day's headline. A live club walk previously displaced Alive
+  // @ Five for the whole afternoon because this branch ignored prominence
+  // entirely. Let a live draw lead when it is within one prominence point of
+  // the best event still catchable today. A clearly larger verified draw keeps
+  // the headline until it begins.
   const liveDraws = tonight.filter(
     (e) => isEventLiveNow(e, now) && eventLeadTier(e) === 0,
   );
-  if (liveDraws.length > 0) return pickLeadEvent(liveDraws);
+  if (liveDraws.length > 0) {
+    const bestLive = pickLeadEvent(liveDraws);
+    if (
+      bestLive &&
+      (!bestOverall || eventProminence(bestLive) >= eventProminence(bestOverall) - 1)
+    ) {
+      return bestLive;
+    }
+  }
 
   // Lead-rank, not raw chronology: a photo-led draw, then any real draw, then a
   // routine recurring program (storytime/class) last — so the cron-ingested
   // library calendar can't put a storytime in the hero ahead of tonight's
   // carnival or concert.
-  return pickLeadEvent(tonight);
+  return bestOverall;
 }
 
 /**

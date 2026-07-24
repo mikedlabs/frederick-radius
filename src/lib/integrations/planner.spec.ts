@@ -69,6 +69,10 @@ describe("buildPlan", () => {
       start_at: "2026-07-17T14:00:00.000Z",
       start_near: { lng: -77.3523, lat: 39.3276 },
       municipality: "urbana",
+      // This test isolates the hard municipality boundary. Hours freshness
+      // has its own coverage below and should not make the town fixture empty
+      // as verified schedules age.
+      require_verified_hours: false,
     });
 
     expect(plan.stops.length).toBeGreaterThan(0);

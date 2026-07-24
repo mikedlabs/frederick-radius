@@ -47,8 +47,7 @@ import { isEventToday, isEventEnded, isEventLiveNow } from "@/lib/eventWhenLabel
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { isSameTodayListing, splitTonightFeature, withoutTodayFeature } from "@/lib/today/tonight";
 import PoolsToday from "@/components/today/PoolsToday";
-import FoodTruckToday from "@/components/today/FoodTruckToday";
-import BeerTeaser from "@/components/today/BeerTeaser";
+import TodayLocalGuides from "@/components/today/TodayLocalGuides";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TomorrowPreview from "@/components/today/TomorrowPreview";
 import WeatherSafeGoldenHour from "@/components/today/WeatherSafeGoldenHour";
@@ -175,23 +174,6 @@ export default async function HomePage() {
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
   ]);
   const lean = leanFromForecast(forecastForLean, now);
-
-  // ── EVENING GEAR ────────────────────────────────────────────────────────
-  // After 5 PM Eastern the page shifts what leads: the reader's question is
-  // no longer "what is my day like" but "what is on tonight." Server-side
-  // on the Eastern wall clock (the page ISRs every 300s, so the flip lands
-  // within minutes of 5 PM):
-  //   before 17:00 — current order: Available now (KeysScore + OnNowBand),
-  //                  then the headliner directly under it, golden hour, then
-  //                  the day program.
-  //   from   17:00 — the ON TONIGHT block (headliner + tonight rows) moves
-  //                  directly under the sky hero; Available now (happy hours,
-  //                  deals, markets, parking) follows it; everything else
-  //                  keeps its relative order below.
-  // Emphasis re-composition only — every section renders in both gears, and
-  // each event-dependent region still awaits the ONE shared events promise
-  // inside its own <Suspense>, so the streaming shape is unchanged.
-  const eveningGear = easternStartHour(now.toISOString()) >= 17;
 
   // The one headliner (splitTonightFeature's pick, drawn from the same shared
   // promise). Null fallback: a quiet day must never stream in a hero-shaped
@@ -346,10 +328,12 @@ export default async function HomePage() {
         </Link>
       </SkyHero>
 
-      {/* ASK RADIUS — the compact handoff into the decision workspace, moved
-          directly BELOW the weather (owner, 2026-07-20: "move ask radius to
-          below the weather") so the day's headline is immediately followed by
-          "ask me anything about Frederick." */}
+      {/* The strongest verified draw today belongs immediately under current
+          conditions. It no longer waits behind generic discovery tools or
+          specialty-guide promotions. On a quiet day this renders nothing. */}
+      {headliner}
+
+      {/* ASK RADIUS — a compact handoff into the decision workspace. */}
       <TodayAsk />
 
       {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
@@ -360,6 +344,20 @@ export default async function HomePage() {
       <BrowsePlacesDisclosure>
         <CravingStrip />
       </BrowsePlacesDisclosure>
+
+      {/* The first place answer is visual and context-aware. Attributed
+          business photos render when the media record permits them; the
+          source-aware event headliner still owns the top of the page. */}
+      <DaypartNeeds
+        rows={buildDaypartRows(now, lean)}
+        note={
+          lean === "wet"
+            ? "Storms are close by, so indoor picks lead."
+            : lean === "hot"
+              ? "It is a hot one, so cool-down picks lead."
+              : null
+        }
+      />
 
       {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
           The visible Resident/Visitor toggle asked strangers to classify
@@ -380,52 +378,21 @@ export default async function HomePage() {
         <TomorrowPreview now={now} eventsPromise={eventsPromise} />
       </Suspense>
 
-      {/* The next useful move belongs before the calendar. These rows are
-          local, time-aware, and open-now checked, so they answer the first
-          question after conditions: "What can I do nearby?" */}
-      <DaypartNeeds
-        rows={buildDaypartRows(now, lean)}
-        note={
-          lean === "wet"
-            ? "Storms are close by, so indoor picks lead."
-            : lean === "hot"
-              ? "It is a hot one, so cool-down picks lead."
-              : null
-        }
-      />
+      {/* Live utilities and the rest of the public program follow the day's
+          lead. The order stays stable across dayparts so returning users do
+          not have to relearn the page at 5 PM. */}
+      {availableNow}
+      {whatsOn}
 
-      {/* A real operator beacon upgrades this card to a live location.
-          Otherwise it opens the confirmed weekly food-truck board. */}
-      <div className="grid gap-2 sm:grid-cols-2">
-        <FoodTruckToday />
-        <BeerTeaser />
-      </div>
-
-      {/* The two gears — see the EVENING GEAR note above. Same sections, same
-          Suspense boundaries, different order. TodayAsk moved OUT of the gears
-          to sit directly below the weather (owner call); GoldenHourCard
-          self-hides outside its window. */}
-      {eveningGear ? (
-        <>
-          {headliner}
-          {whatsOn}
-          {availableNow}
-          {lean !== "wet" && (
-            <Suspense fallback={null}>
-              <WeatherSafeGoldenHour now={now} />
-            </Suspense>
-          )}
-        </>
-      ) : (
-        <>
-          {availableNow}
-          {headliner}
-          <Suspense fallback={null}>
-            <WeatherSafeGoldenHour now={now} />
-          </Suspense>
-          {whatsOn}
-        </>
+      {lean !== "wet" && (
+        <Suspense fallback={null}>
+          <WeatherSafeGoldenHour now={now} />
+        </Suspense>
       )}
+
+      {/* Specialty guides are useful secondary doors, presented as one compact
+          shelf with real local marks instead of two competing promo cards. */}
+      <TodayLocalGuides />
 
       {/* ── LOWER PAGE, reordered with an argument (Jul 2026 rework): open-now
           places → your own saved → an idea → the day's pick → sometimes-on

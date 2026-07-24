@@ -15,7 +15,8 @@ describe("beta wall exemptions", () => {
     expect(isBetaExempt("/manifest.webmanifest")).toBe(true);
   });
 
-  it("opens the food-truck operator surfaces (operators are not beta users)", () => {
+  it("opens the shareable food-truck board and operator surfaces", () => {
+    expect(isBetaExempt("/food-trucks")).toBe(true);
     expect(isBetaExempt("/food-trucks/claim")).toBe(true);
     expect(isBetaExempt("/food-trucks/out")).toBe(true);
   });
@@ -30,9 +31,7 @@ describe("beta wall exemptions", () => {
   it("does not open ordinary app routes", () => {
     expect(isBetaExempt("/today")).toBe(false);
     expect(isBetaExempt("/places/privacy-cafe")).toBe(false);
-    // The food-truck browse directory stays gated — only the two operator
-    // pages above are public.
-    expect(isBetaExempt("/food-trucks")).toBe(false);
+    // Opening the exact public board must not blanket-open future nested pages.
     expect(isBetaExempt("/food-trucks/some-truck")).toBe(false);
   });
 });

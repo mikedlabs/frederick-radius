@@ -58,11 +58,12 @@ export function isBetaExempt(pathname: string): boolean {
     pathname.startsWith("/sitemap") ||
     pathname.startsWith("/icons/") ||
     pathname.startsWith("/opengraph") ||
-    // Food-truck operator surfaces: a truck owner claiming their truck and an
-    // approved operator dropping a live beacon are NOT beta users, so these two
-    // pages must be reachable without a code. The /food-trucks browse directory
-    // itself stays gated. (The beacon/claim API routes are already exempt via
-    // /api/ above.)
+    // Food-truck public + operator surfaces. The browse board is deliberately
+    // shareable outside the private beta; owners claiming a listing or dropping
+    // an approved live beacon are not beta users either. Keep this exact-path
+    // list narrow so a future private route under /food-trucks is not opened by
+    // accident. (The supporting API routes are already exempt via /api/ above.)
+    pathname === "/food-trucks" ||
     pathname === "/food-trucks/claim" ||
     pathname === "/food-trucks/out" ||
     // NFC tap endpoint: /j/<code> is the access-GRANTING route. It must reach

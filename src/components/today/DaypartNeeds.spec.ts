@@ -41,4 +41,24 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("Right now, around here");
     expect(html).not.toContain("Second Loaf");
   });
+
+  it("keeps an empty server shelf mounted while the live location-aware answer loads", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaypartNeeds, {
+        rows: [
+          {
+            category: "coffee",
+            label: "Coffee",
+            href: "/category/coffee",
+            picks: [],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("Checking nearby");
+    expect(html).toContain("Loading open coffee places");
+    expect(html).not.toContain("Nothing in this group is confirmed open right now");
+  });
 });

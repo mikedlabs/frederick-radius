@@ -16,6 +16,7 @@ import { haptic } from "@/lib/haptics";
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchOpenerRef = useRef<HTMLElement | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
@@ -91,6 +92,8 @@ export default function TopBar() {
   useEffect(() => {
     const open = () => {
       consumeFindRequest("global");
+      searchOpenerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setSearchOpen(true);
     };
     window.addEventListener("fr:open-search", open);
@@ -103,6 +106,8 @@ export default function TopBar() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
+        searchOpenerRef.current =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setSearchOpen(true);
       }
       // Forward slash as a quick-open (don't trigger when typing into another input)
@@ -119,6 +124,8 @@ export default function TopBar() {
           || role === "combobox";
         if (!editable) {
           e.preventDefault();
+          searchOpenerRef.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
           setSearchOpen(true);
         }
       }
@@ -227,7 +234,10 @@ export default function TopBar() {
               <div aria-hidden className="min-w-0 flex-1 lg:hidden" />
               <button
                 type="button"
-                onClick={() => setSearchOpen(true)}
+                onClick={(event) => {
+                  searchOpenerRef.current = event.currentTarget;
+                  setSearchOpen(true);
+                }}
                 aria-label="Search Frederick County"
                 className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -252,10 +262,13 @@ export default function TopBar() {
               aria-controls={mapOwnsSearch ? "map-search-input" : "radius-find-dialog"}
               aria-expanded={mapOwnsSearch ? undefined : searchOpen}
               title={mapOwnsSearch ? "Search this map" : "Search Frederick County"}
-              onClick={() => {
+              onClick={(event) => {
                 haptic("light");
                 if (mapOwnsSearch) requestFind("map");
-                else setSearchOpen(true);
+                else {
+                  searchOpenerRef.current = event.currentTarget;
+                  setSearchOpen(true);
+                }
               }}
               className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
@@ -320,7 +333,11 @@ export default function TopBar() {
         </div>
       </header>
 
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        openerRef={searchOpenerRef}
+      />
     </>
   );
 }

@@ -1,0 +1,643 @@
+{
+  "generatedAt": "2026-07-23T18:27:26.786Z",
+  "policy": {
+    "marks": "Identity candidates must be checked as current before public use.",
+    "photos": "Website discovery does not grant reuse. Publish only after owner approval or license review.",
+    "social": "Facebook and Instagram are not scraped. Vendors without a website need an owner media-kit upload."
+  },
+  "filters": {
+    "kind": "food-truck",
+    "slug": null
+  },
+  "vendors": [
+    {
+      "kind": "food-truck",
+      "slug": "the-alley-wagon",
+      "name": "The Alley Wagon",
+      "officialPage": "https://www.toasttab.com/local/order/the-alley-wagon-124-north-market-street",
+      "socialPages": [
+        "https://facebook.com/profile.php?id=100091760835302"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 403,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "fetch-failed",
+          "sourcePage": "https://www.toasttab.com/local/order/the-alley-wagon-124-north-market-street",
+          "note": "The official page could not be audited: HTTP 403"
+        },
+        {
+          "role": "photo",
+          "status": "fetch-failed",
+          "sourcePage": "https://www.toasttab.com/local/order/the-alley-wagon-124-north-market-street",
+          "note": "The official page could not be audited: HTTP 403"
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "blendabowl",
+      "name": "Blendabowl",
+      "officialPage": "https://www.blendabowlfrederickft.com/",
+      "socialPages": [
+        "https://facebook.com/profile.php?id=61574773000675"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "no-candidate",
+          "sourcePage": "https://www.blendabowlfrederickft.com/",
+          "note": "No usable identity mark was found on the official page."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/67c7479a3614e34e668c7f58/t/6849d99c53c6e200f3f7e704/1749670300229/food+truck+%283%29.png?format=1500w",
+          "sourcePage": "https://www.blendabowlfrederickft.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/blendabowl/photo.webp",
+          "contentType": "image/webp",
+          "width": 1440,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "blues-bbq",
+      "name": "Blues BBQ",
+      "officialPage": "https://bluesbbqco.com/",
+      "socialPages": [
+        "https://facebook.com/thebluesbbqtruck"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://bluesbbqco.com/wp-content/uploads/2026/01/802afe8f-faa8-4810-a4af-10211f860986-300x138.png",
+          "sourcePage": "https://bluesbbqco.com/",
+          "evidence": "image tag: default-logo",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/blues-bbq/mark.png",
+          "contentType": "image/webp",
+          "width": 300,
+          "height": 138,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://bluesbbqco.com/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "bub-b-que",
+      "name": "Bub-B-Que BBQ & Catering",
+      "officialPage": null,
+      "socialPages": [
+        "https://facebook.com/Bubbque"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "ds-delights",
+      "name": "D's Delights",
+      "officialPage": null,
+      "socialPages": [
+        "https://facebook.com/profile.php?id=100066257723124"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "dop-pizza",
+      "name": "dōp Pizza",
+      "officialPage": "https://www.doppizza.co/",
+      "socialPages": [
+        "https://facebook.com/doppizza.co"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/2cfa2c_9324dbfe90a64d5791d082270cf4b312~mv2.png/v1/fill/w_81,h_50,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/DoP_Pizza_Logo_White%20(1).png",
+          "sourcePage": "https://www.doppizza.co/",
+          "evidence": "image tag: dōp logo",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/dop-pizza/mark.png",
+          "contentType": "image/avif",
+          "width": 81,
+          "height": 50,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/2cfa2c_c3df134441074aa2ac0dce6f2ec712dd~mv2.jpg/v1/fill/w_559,h_513,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/_DSC9273.jpg",
+          "sourcePage": "https://www.doppizza.co/",
+          "evidence": "image tag: Wood Fire Oven",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/dop-pizza/photo.webp",
+          "contentType": "image/avif",
+          "width": 559,
+          "height": 513,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "fryday",
+      "name": "Fryday",
+      "officialPage": null,
+      "socialPages": [
+        "https://facebook.com/profile.php?id=61586562268008"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "the-garage",
+      "name": "The Garage",
+      "officialPage": "https://www.thegaragemd.com/",
+      "socialPages": [
+        "https://facebook.com/thegaragemd"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/c70b46_245ac2bbe4e5476cbfe7b364b4a801d1~mv2.jpg/v1/fill/w_387,h_387,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/The%20Logo.jpg",
+          "sourcePage": "https://www.thegaragemd.com/",
+          "evidence": "image tag: The Logo.jpg",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/the-garage/mark.png",
+          "contentType": "image/avif",
+          "width": 387,
+          "height": 387,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/c70b46_a66c0501012a46ddbcb05b6993d198df~mv2.png",
+          "sourcePage": "https://www.thegaragemd.com/",
+          "evidence": "structured-data image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/the-garage/photo.webp",
+          "contentType": "image/png",
+          "width": 1600,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "gravel-and-grind",
+      "name": "Gravel & Grind Coffee Cart",
+      "officialPage": "https://www.gravelandgrind.com/gravel-and-grind-events-2",
+      "socialPages": [
+        "https://instagram.com/gravelandgrind"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/5e9e3f99a252394abd1b2a2b/1620132170309-KD6JFS3BN9TW7HIH4HFG/Logo+bitmap+4-4-21.png?format=1500w",
+          "sourcePage": "https://www.gravelandgrind.com/gravel-and-grind-events-2",
+          "evidence": "image tag: Gravel &amp;amp; Grind",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/gravel-and-grind/mark.png",
+          "contentType": "image/webp",
+          "width": 403,
+          "height": 127,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/5e9e3f99a252394abd1b2a2b/1675357673139-554G52YTHALZK06SP4EI/ICE+FIRE.jpg",
+          "sourcePage": "https://www.gravelandgrind.com/gravel-and-grind-events-2",
+          "evidence": "image tag: unlabeled",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/gravel-and-grind/photo.webp",
+          "contentType": "image/webp",
+          "width": 585,
+          "height": 343,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "grilled-cheese-please",
+      "name": "Grilled Cheese Please!",
+      "officialPage": "https://grilledcheeseplease.online/schedule",
+      "socialPages": [
+        "https://facebook.com/grilledcheeseplease1"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://img1.wsimg.com/isteam/ip/61aa6f57-d3ec-4870-958f-0beb23163549/favicon/f63114e5-0b71-497f-8e1b-54d674036af0.png/:/rs=w:57,h:57,m",
+          "sourcePage": "https://grilledcheeseplease.online/schedule",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/grilled-cheese-please/mark.png",
+          "contentType": "image/webp",
+          "width": 57,
+          "height": 57,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://img1.wsimg.com/isteam/ip/61aa6f57-d3ec-4870-958f-0beb23163549/Official%20Logo%20GCP-3-4d9561f.png",
+          "sourcePage": "https://grilledcheeseplease.online/schedule",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/grilled-cheese-please/photo.webp",
+          "contentType": "image/webp",
+          "width": 1600,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "in10se-bbq",
+      "name": "In10se BBQ",
+      "officialPage": "https://www.in10sebbq.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/93d138_dc26ead4c8c448359e33776120c22b40~mv2.png/v1/crop/x_204,y_72,w_1041,h_661/fill/w_304,h_196,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/meat%20tooth%20logo.png",
+          "sourcePage": "https://www.in10sebbq.com/",
+          "evidence": "image tag: meat tooth logo.png",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/in10se-bbq/mark.png",
+          "contentType": "image/avif",
+          "width": 304,
+          "height": 196,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/06a785_8c1cdfae1246434dbd4380973a34959a%7Emv2_d_2778_1269_s_2.png/v1/fit/w_2500,h_1330,al_c/06a785_8c1cdfae1246434dbd4380973a34959a%7Emv2_d_2778_1269_s_2.png",
+          "sourcePage": "https://www.in10sebbq.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/in10se-bbq/photo.webp",
+          "contentType": "image/png",
+          "width": 1600,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "maytas-peruvian",
+      "name": "Mayta's Peruvian",
+      "officialPage": "https://www.maytacuisine.com/",
+      "socialPages": [
+        "https://facebook.com/Buckeystown120/"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/768b8a_5b5b2bea76374ad7957714e0391d051c~mv2.jpeg/v1/fill/w_260,h_171,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/Burger%20Restaurant%20Logo-2.jpeg",
+          "sourcePage": "https://www.maytacuisine.com/",
+          "evidence": "image tag: Burger Restaurant Logo-2.jpeg",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/maytas-peruvian/mark.png",
+          "contentType": "image/avif",
+          "width": 260,
+          "height": 171,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://www.maytacuisine.com/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "mls-ragin-cajun",
+      "name": "M&L's Ragin Cajun",
+      "officialPage": "https://www.mlsragincajun.com/",
+      "socialPages": [
+        "https://instagram.com/mlsragincajun_llc"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/6978162d27574f0ff148772f/22a04c53-e675-4b31-9628-18ea7fae8478/Ragin-Cajun-Logo-Final-White.png?format=1500w",
+          "sourcePage": "https://www.mlsragincajun.com/",
+          "evidence": "image tag: M &amp;amp; L&amp;#39;s Ragin Cajun",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/mls-ragin-cajun/mark.png",
+          "contentType": "image/webp",
+          "width": 720,
+          "height": 575,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/6978162d27574f0ff148772f/t/697a1de2ff940004e56b7961/1769610722467/Ragin-Cajun-Logo-Final-White.png?format=1500w",
+          "sourcePage": "https://www.mlsragincajun.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/mls-ragin-cajun/photo.webp",
+          "contentType": "image/webp",
+          "width": 1500,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "pita-king",
+      "name": "Pita King",
+      "officialPage": null,
+      "socialPages": [
+        "https://facebook.com/pitakingfoodtruck"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "sabor-de-cuba",
+      "name": "Sabor de Cuba",
+      "officialPage": "https://sabordecubarestaurant.com/experience",
+      "socialPages": [],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://img1.wsimg.com/isteam/ip/14678077-eaa0-48eb-9761-c9b35f5f47a5/logo%20original%20cuba.jpg/:/rs=h:132,cg:true,m/qt=q:95",
+          "sourcePage": "https://sabordecubarestaurant.com/experience",
+          "evidence": "image tag: logo-like filename/class",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/sabor-de-cuba/mark.png",
+          "contentType": "image/webp",
+          "width": 508,
+          "height": 132,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://sabordecubarestaurant.com/experience",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "three-daughters",
+      "name": "Three Daughters",
+      "officialPage": null,
+      "socialPages": [
+        "https://facebook.com/profile.php?id=100063828651829"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "traditional-authentic-mexican",
+      "name": "Traditional Authentic Mexican Food",
+      "officialPage": "https://traditional.mx/",
+      "socialPages": [
+        "https://instagram.com/traditionalauthenticmexfood"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://traditional.mx/apple-touch-icon.png",
+          "sourcePage": "https://traditional.mx/",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/traditional-authentic-mexican/mark.png",
+          "contentType": "image/png",
+          "width": 180,
+          "height": 180,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://traditional.mx/images/Street_Tacos.webp",
+          "sourcePage": "https://traditional.mx/",
+          "evidence": "image tag: Street tacos with fresh cilantro and onion — Traditional Mexican food truck Frederick MD",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/traditional-authentic-mexican/photo.webp",
+          "contentType": "image/webp",
+          "width": 800,
+          "height": 533,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "whistle-punk-farm",
+      "name": "Whistle Punk Farm",
+      "officialPage": "https://whistlepunkfarm.com/home/",
+      "socialPages": [
+        "https://facebook.com/WhistlePunkFoodTruck"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://s2.wp.com/i/logo/wpcom-gray-white.png?m=1479929237i",
+          "sourcePage": "https://whistlepunkfarm.com/home/",
+          "evidence": "image tag: logo-like filename/class",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/whistle-punk-farm/mark.png",
+          "contentType": "image/png",
+          "width": 500,
+          "height": 500,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://i0.wp.com/whistlepunkfarm.com/wp-content/uploads/2023/10/img_0021.jpeg?fit=944%2C1200&#038;ssl=1",
+          "sourcePage": "https://whistlepunkfarm.com/home/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/whistle-punk-farm/photo.webp",
+          "contentType": "image/webp",
+          "width": 944,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "kona-ice-frederick",
+      "name": "Kona Ice of Frederick County",
+      "officialPage": "https://www.kona-ice.com/local-site/kona-ice-of-frederick-county-md/",
+      "socialPages": [
+        "https://instagram.com/konaicefrederickmd",
+        "https://facebook.com/KonaIceofFrederickCoMD"
+      ],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://www.kona-ice.com/wp-content/uploads/2023/03/cropped-favicon-180x180.png",
+          "sourcePage": "https://www.kona-ice.com/local-site/kona-ice-of-frederick-county-md/",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/kona-ice-frederick/mark.png",
+          "contentType": "image/png",
+          "width": 180,
+          "height": 180,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://www.kona-ice.com/wp-content/uploads/2024/01/Flyer1-2-1.jpg",
+          "sourcePage": "https://www.kona-ice.com/local-site/kona-ice-of-frederick-county-md/",
+          "evidence": "image tag: advertisement",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/kona-ice-frederick/photo.webp",
+          "contentType": "image/jpeg",
+          "width": 612,
+          "height": 792,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "food-truck",
+      "slug": "kotei-kids-shaved-ice",
+      "name": "Kotei Kids Organic Shaved Ice",
+      "officialPage": "https://koteikidsshavedice.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://koteikidsshavedice.com/wp-content/uploads/2022/09/cropped-favicon.png",
+          "sourcePage": "https://koteikidsshavedice.com/",
+          "evidence": "structured-data logo",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/kotei-kids-shaved-ice/mark.png",
+          "contentType": "image/png",
+          "width": 512,
+          "height": 512,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://koteikidsshavedice.com/wp-content/uploads/2022/10/main-new-2-1024x928.png",
+          "sourcePage": "https://koteikidsshavedice.com/",
+          "evidence": "image tag: unlabeled",
+          "localReviewFile": "audit/vendor-media/downloads/food-truck/kotei-kids-shaved-ice/photo.webp",
+          "contentType": "image/png",
+          "width": 1024,
+          "height": 928,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    }
+  ]
+}
