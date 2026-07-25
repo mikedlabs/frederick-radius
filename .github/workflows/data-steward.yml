@@ -10,7 +10,14 @@ name: data-steward
 
 on:
   schedule:
-    - cron: "0 6 * * *" # 06:00 UTC nightly (~1-2 AM Eastern)
+    # 09:00 UTC nightly (~4-5 AM Eastern). The time is load-bearing, not
+    # cosmetic: "Pull rolling hours snapshot" below reads the rows that the
+    # Vercel cron /api/cron/hours-refresh WRITES at 08:00 UTC. This job used
+    # to run at 06:00, two hours BEFORE the writer, so every night it pulled
+    # a table the writer had not touched yet and the hours never reached the
+    # app. Keep this after 08:00, and before the 09:30 data-health cron that
+    # grades the result. If you move the writer in vercel.json, move this too.
+    - cron: "0 9 * * *"
   workflow_dispatch: {}
 
 permissions:
