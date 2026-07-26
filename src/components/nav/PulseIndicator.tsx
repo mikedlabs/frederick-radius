@@ -10,10 +10,10 @@ import { Activity } from "lucide-react";
  * incidents, power outages).
  *
  * Fetches /api/pulse/status on mount + every 5 minutes. The endpoint
- * is cached server-side so polling is cheap. When all clear,
- * renders the icon in muted ink so the affordance is still
- * discoverable but doesn't compete with anything else. When active,
- * a small colored dot rides the top-right corner of the icon button.
+ * is cached server-side so polling is cheap. The header stays lean when a
+ * complete read is all clear; an active alert or unavailable read earns a
+ * labelled control. Activity is not a universal icon-only action, so those
+ * meaningful states keep visible words on touch screens.
  *
  * Lives in TopBar between the More icon and the LocationChip — same
  * grid spot the old "Pulse" tile occupied in the Field Guide drawer.
@@ -76,6 +76,12 @@ export default function PulseIndicator() {
   // first-load failure, or the server flagged a degraded fetch that found
   // nothing. Only a fresh, complete, zero-count read reads as all clear.
   const unknown = !active && (status === null || failed || status?.ok === false);
+  const loading = status === null && !failed;
+
+  // A quiet, complete status is useful on /pulse but not worth permanent
+  // global chrome. Loading also stays invisible to avoid a control appearing
+  // briefly and then shifting the header when the all-clear response lands.
+  if (loading || (!active && !unknown)) return null;
 
   return (
     <Link
@@ -95,35 +101,38 @@ export default function PulseIndicator() {
             ? "County alerts: status unavailable"
             : "County alerts: all clear"
       }
-      className="tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+      className="tap-44-y relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)]"
       style={{
         borderColor: "var(--app-border)",
         color: active ? TONE_COLOR[tone] : "var(--app-ink-3)",
       }}
     >
-      <Activity className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-      {active && (
-        <span
-          aria-hidden
-          className="absolute right-1 top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
-          style={{
-            background: TONE_COLOR[tone],
-            boxShadow:
-              tone === "alert"
-                ? `0 0 0 2px var(--app-bg-elevated), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
-                : `0 0 0 2px var(--app-bg-elevated)`,
-          }}
-        />
-      )}
-      {/* Unavailable: a hollow ring, so "we don't know" never looks the same as
-          the calm all-clear state (audit FR-002). */}
-      {!active && unknown && (
-        <span
-          aria-hidden
-          className="absolute right-1 top-1 inline-flex h-2 w-2 rounded-full"
-          style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
-        />
-      )}
+      <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
+        <Activity className="h-4 w-4" strokeWidth={1.75} />
+        {active && (
+          <span
+            className="absolute -right-1 -top-1 inline-flex h-2 w-2 items-center justify-center rounded-full"
+            style={{
+              background: TONE_COLOR[tone],
+              boxShadow:
+                tone === "alert"
+                  ? `0 0 0 2px var(--app-bg-elevated), 0 0 0 3px color-mix(in srgb, ${TONE_COLOR[tone]} 50%, transparent)`
+                  : `0 0 0 2px var(--app-bg-elevated)`,
+            }}
+          />
+        )}
+        {/* Unavailable: a hollow ring, so "we don't know" never looks the same
+            as the calm all-clear state (audit FR-002). */}
+        {!active && unknown && (
+          <span
+            className="absolute -right-1 -top-1 inline-flex h-2 w-2 rounded-full"
+            style={{ boxShadow: "0 0 0 2px var(--app-bg-elevated), inset 0 0 0 1.5px var(--app-ink-3)" }}
+          />
+        )}
+      </span>
+      <span className="text-[13px] font-semibold leading-none">
+        {active ? `${count} ${count === 1 ? "alert" : "alerts"}` : "Status unavailable"}
+      </span>
     </Link>
   );
 }

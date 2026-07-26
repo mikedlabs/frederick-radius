@@ -14,9 +14,9 @@ export const PRODUCT_NAMES = {
   },
   allTools: {
     uiLabel: "All tools",
-    pageTitle: "Frederick County tools",
-    shareTitle: "Frederick County tools | Frederick Radius",
-    description: "Open every Frederick Radius tool from one searchable index.",
+    pageTitle: "All tools",
+    shareTitle: "All Frederick Radius tools",
+    description: "Search every Frederick Radius tool from one index.",
   },
   liveConditions: {
     uiLabel: "Live conditions",

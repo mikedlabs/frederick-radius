@@ -46,6 +46,8 @@ export type RadiusToolTone =
   | "cool"
   | "positive";
 
+export type RadiusJourney = "today" | "map" | "events" | "saved";
+
 export type RadiusTool = {
   id: string;
   label: string;
@@ -60,11 +62,17 @@ export type RadiusTool = {
   /** Informational or "about the app" surfaces (About, Trust) rather than a
    *  county tool. Surfaces can present these apart from the working toolbox. */
   meta?: boolean;
+  /** Primary journey this destination extends. This keeps the stable bottom
+   *  navigation highlighted on secondary tools instead of making every tool
+   *  feel like a disconnected mini-site. `null` is a deliberately focused
+   *  workspace such as global Search. */
+  parentJourney?: RadiusJourney | null;
 };
 
 export type RadiusToolGroup = {
   id: string;
   label: string;
+  parentJourney: RadiusJourney | null;
   tools: readonly RadiusTool[];
 };
 
@@ -90,6 +98,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "eat-drink",
     label: "Eat & drink",
+    parentJourney: "today",
     tools: [
       {
         id: "open-now",
@@ -162,6 +171,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/live-music",
         icon: "music",
         tone: "cool",
+        parentJourney: "events",
         keywords: ["live music", "bands", "who is playing", "lineup"],
       },
     ],
@@ -169,6 +179,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "get-around",
     label: "Get around",
+    parentJourney: "map",
     tools: [
       {
         id: "county-map",
@@ -221,6 +232,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "outdoors",
     label: "Outdoors",
+    parentJourney: "map",
     tools: [
       {
         id: "parks",
@@ -254,22 +266,23 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "essentials",
     label: "Public essentials",
+    parentJourney: "map",
     tools: [
       {
         id: "public-essentials",
-        label: "Public essentials",
-        description: "Open the map for restrooms, water, trash, Wi-Fi, and more.",
-        href: "/map?amenity=restroom,water,trash,dog,wifi,ev,outlet,bike,seating,play,safety",
+        label: "Nearby essentials",
+        description: "Find the closest mapped restroom, water, trash, dog bags, seating, or power.",
+        href: "/amenities",
         icon: "map-pin",
         tone: "civic",
         featured: true,
-        keywords: ["public essentials", "restroom", "water", "wifi"],
+        keywords: ["nearby essentials", "public essentials", "restroom", "water", "trash", "dog bags", "seating", "power"],
       },
       {
         id: "amenities-guide",
-        label: "Amenities guide",
-        description: "Review every mapped public-amenity category.",
-        href: "/amenities",
+        label: "All essentials on the map",
+        description: "Show every mapped public-amenity layer together.",
+        href: "/map?amenity=restroom,water,trash,dog,wifi,ev,outlet,bike,seating,play,safety",
         icon: "compass",
         tone: "civic",
         keywords: ["restroom", "bathroom", "wifi", "ev charging", "bike rack", "picnic", "water fountain"],
@@ -371,6 +384,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/emergency",
         icon: "activity",
         tone: "brand",
+        parentJourney: "today",
         keywords: ["emergency", "911", "hospital", "emergency room", "ER", "urgent care", "poison control", "frederick health", "ambulance", "crisis"],
       },
       {
@@ -380,6 +394,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/scanner",
         icon: "activity",
         tone: "brand",
+        parentJourney: "today",
         keywords: ["scanner", "police scanner", "fire scanner", "dispatch", "911 calls", "incidents", "crashes", "fires", "wires down", "frederick scanner"],
       },
       {
@@ -389,6 +404,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/emergency-vet",
         icon: "paw",
         tone: "brand",
+        parentJourney: "today",
         keywords: ["emergency vet", "animal hospital", "pet emergency", "pet poison"],
       },
     ],
@@ -396,6 +412,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "events-plans",
     label: "Events & planning",
+    parentJourney: "events",
     tools: [
       {
         id: "events",
@@ -442,6 +459,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         icon: "route",
         tone: "accent",
         featured: true,
+        parentJourney: "today",
         keywords: ["itinerary", "plan my day", "day plan"],
       },
       {
@@ -451,6 +469,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/collections",
         icon: "compass",
         tone: "accent",
+        parentJourney: "map",
         keywords: ["collections", "shortlist", "curated", "lists"],
       },
     ],
@@ -458,6 +477,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "civic",
     label: "Civic & services",
+    parentJourney: "today",
     tools: [
       {
         id: "county-pulse",
@@ -496,6 +516,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "county-data",
     label: "The county, in data",
+    parentJourney: "map",
     tools: [
       {
         id: "numbers",
@@ -529,6 +550,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "explore",
     label: "Explore & history",
+    parentJourney: "map",
     tools: [
       {
         id: "search",
@@ -537,6 +559,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
         href: "/search",
         icon: "search",
         tone: "brand",
+        parentJourney: null,
         keywords: ["search", "find"],
       },
       {
@@ -607,6 +630,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "yours",
     label: "Yours",
+    parentJourney: "saved",
     tools: [
       {
         id: "saved",
@@ -640,6 +664,7 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
   {
     id: "contribute",
     label: "Help improve the guide",
+    parentJourney: null,
     tools: [
       {
         id: "mark-a-spot",
@@ -675,6 +700,31 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
 export const RADIUS_TOOLS: readonly RadiusTool[] = RADIUS_TOOL_GROUPS.flatMap(
   (group) => group.tools,
 );
+
+/** Resolve a registered destination to the stable primary journey it extends.
+ * Query strings and hashes describe a tool state, not a different navigation
+ * home, so the lookup is deliberately pathname-only. */
+const TOOL_PARENT_BY_PATH = new Map<string, RadiusJourney | null>();
+for (const group of RADIUS_TOOL_GROUPS) {
+  for (const tool of group.tools) {
+    const pathname = new URL(tool.href, "https://frederickradius.app").pathname;
+    const parent =
+      tool.parentJourney === undefined
+        ? group.parentJourney
+        : tool.parentJourney;
+    const existing = TOOL_PARENT_BY_PATH.get(pathname);
+    // Several amenity presets share /map. They must agree on one parent; an
+    // accidental conflict would otherwise make navigation depend on data order.
+    if (existing !== undefined && existing !== parent) {
+      throw new Error(`Conflicting Radius journey parents for ${pathname}`);
+    }
+    TOOL_PARENT_BY_PATH.set(pathname, parent);
+  }
+}
+
+export function radiusJourneyForPath(pathname: string): RadiusJourney | null {
+  return TOOL_PARENT_BY_PATH.get(pathname) ?? null;
+}
 
 export const FEATURED_RADIUS_TOOLS: readonly RadiusTool[] = RADIUS_TOOLS.filter(
   (tool) => tool.featured,

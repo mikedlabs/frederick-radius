@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { RADIUS_TOOLS, type RadiusToolTone } from "@/data/radius-tools";
 
-const SHORTCUT_IDS = ["restrooms", "parking", "transit", "county-pulse"] as const;
+const SHORTCUT_IDS = ["public-essentials", "parking", "transit", "county-pulse"] as const;
 const SHORTCUTS = SHORTCUT_IDS.map((id) => RADIUS_TOOLS.find((tool) => tool.id === id)).filter(
   (tool): tool is NonNullable<typeof tool> => Boolean(tool),
 );

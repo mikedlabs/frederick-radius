@@ -23,6 +23,7 @@ import {
   Landmark,
   Map,
   MapPin,
+  MessageCircleQuestion,
   Music,
   Package,
   ParkingCircle,
@@ -149,6 +150,20 @@ const TIME_MACHINE: DirectoryItem = {
   keywords: ["time machine", "aerial", "historic imagery"],
 };
 
+/** Ask is the decision gateway into the toolbox, not another tool inside one
+ * subject group. Keeping it outside the registry avoids listing "Ask Radius"
+ * inside Ask's own tool browser while still giving All tools one clear
+ * starting action for someone who does not know which destination they need. */
+const ASK_RADIUS: DirectoryItem = {
+  id: "ask-radius",
+  href: "/ask",
+  label: "Ask Radius",
+  description: "Get help choosing, planning, or finding the right local answer.",
+  icon: MessageCircleQuestion,
+  color: "var(--app-brand-press)",
+  keywords: ["ask", "help me choose", "plan", "recommendation"],
+};
+
 type CompassSection = {
   id: string;
   label: string;
@@ -156,28 +171,15 @@ type CompassSection = {
 };
 
 const COMMON_TASK_IDS = [
-  "places",
   "nearby",
-  "events",
-  "county-map",
-  "parking",
+  "county-pulse",
   "public-essentials",
 ] as const;
 
 const COMMON_TASK_LABELS: Partial<Record<(typeof COMMON_TASK_IDS)[number], string>> = {
-  places: "Places",
-  "county-map": "Map",
-  "public-essentials": "Essentials",
+  "county-pulse": "Live conditions",
+  "public-essentials": "Nearby essentials",
 };
-
-const GUIDE_IDS = [
-  "food-trucks",
-  "beer-tools",
-  "sports",
-  "live-music",
-  "trails",
-  "rivers",
-] as const;
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   "eat-drink": UtensilsCrossed,
@@ -256,25 +258,10 @@ export function commonCompassTasks(sections: CompassSection[]): DirectoryItem[] 
   const byId = new globalThis.Map(
     sections.flatMap((section) => section.items).map((item) => [item.id, item]),
   );
-  return COMMON_TASK_IDS.flatMap((id) => {
+  return [ASK_RADIUS, ...COMMON_TASK_IDS.flatMap((id) => {
     const item = byId.get(id);
     return item ? [item] : [];
-  });
-}
-
-/** A visible front shelf for the destinations that were otherwise one category
- * tap and one list scan away. It is derived from the registry, so it cannot
- * become a second hand-maintained navigation system. */
-export function featuredCompassGuides(
-  sections: CompassSection[],
-): DirectoryItem[] {
-  const byId = new globalThis.Map(
-    sections.flatMap((section) => section.items).map((item) => [item.id, item]),
-  );
-  return GUIDE_IDS.flatMap((id) => {
-    const item = byId.get(id);
-    return item ? [item] : [];
-  });
+  })];
 }
 
 function subscribeHomeTown(onChange: () => void) {
@@ -288,6 +275,9 @@ export default function CompassHub() {
   const router = useRouter();
   const homeSlug = useSyncExternalStore(subscribeHomeTown, getHomeMuni, noHomeTown);
   const [query, setQuery] = useState("");
+  // Open on the most broadly useful subject instead of a blank directory.
+  // A hash still overrides this, and the topic rail remains the explicit way
+  // to change subjects.
   const [activeSectionId, setActiveSectionId] = useState("");
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -314,10 +304,6 @@ export default function CompassHub() {
 
   const sections = useMemo(() => buildCompassSections(homeSlug), [homeSlug]);
   const commonTasks = useMemo(() => commonCompassTasks(sections), [sections]);
-  const featuredGuides = useMemo(
-    () => featuredCompassGuides(sections),
-    [sections],
-  );
   const activeSection = sections.find((section) => section.id === activeSectionId) ?? null;
   const recentItems = useMemo(() => {
     const byHref = new globalThis.Map(
@@ -393,8 +379,8 @@ export default function CompassHub() {
           background: "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated-solid))",
         }}
       >
-        <h1 className="font-sans text-[24px] font-semibold leading-tight tracking-[-0.025em]">
-          Find a tool
+        <h1 className="sr-only">
+          All tools
         </h1>
         <label className="mt-3 block">
           <span className="sr-only">Search all tools</span>
@@ -410,10 +396,9 @@ export default function CompassHub() {
               inputMode="search"
               enterKeyHint="search"
               value={query}
-              disabled={!hydrated}
               data-compass-ready={hydrated ? "true" : "false"}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="What do you need?"
+              placeholder="Search restrooms, parking, events…"
               className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] py-2.5 pl-10 pr-11 text-[14px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             />
@@ -433,17 +418,13 @@ export default function CompassHub() {
           <p className="relative mt-2 px-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }} role="status">
             {resultCount > 0
               ? `${resultCount} matching ${resultCount === 1 ? "tool" : "tools"}`
-              : "Search Frederick or ask Radius"}
+              : "No Radius tool matches that yet."}
           </p>
         ) : null}
       </header>
 
       {!normalizedQuery && commonTasks.length > 0 ? (
         <CommonTasks items={commonTasks} intentProps={intentProps} />
-      ) : null}
-
-      {!normalizedQuery && featuredGuides.length > 0 ? (
-        <FeaturedGuides items={featuredGuides} intentProps={intentProps} />
       ) : null}
 
       {!normalizedQuery && recentItems.length > 0 ? (
@@ -477,56 +458,6 @@ export default function CompassHub() {
   );
 }
 
-function FeaturedGuides({
-  items,
-  intentProps,
-}: {
-  items: DirectoryItem[];
-  intentProps: (href: string) => Pick<
-    React.ComponentProps<typeof Link>,
-    "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick"
-  >;
-}) {
-  return (
-    <nav aria-labelledby="compass-featured-guides-heading" className="space-y-2">
-      <p
-        id="compass-featured-guides-heading"
-        className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Local guides
-      </p>
-      <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li key={`${item.id}|guide`} className="shrink-0">
-              <Link
-                href={item.href}
-                prefetch={false}
-                {...intentProps(item.href)}
-                className="tactile-interactive flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[11.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                style={{
-                  borderColor: "var(--app-border)",
-                  color: "var(--app-ink)",
-                }}
-              >
-                <Icon
-                  className="h-4 w-4 shrink-0"
-                  strokeWidth={2}
-                  style={{ color: item.color }}
-                  aria-hidden
-                />
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
-}
-
 function CommonTasks({
   items,
   intentProps,
@@ -545,37 +476,53 @@ function CommonTasks({
       </p>
 
       <ul
-        className="grid grid-cols-3 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
+        className="grid grid-cols-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)]"
         style={{ borderColor: "var(--app-border-strong)" }}
       >
         {items.map((item, index) => {
           const Icon = item.icon;
           const label = COMMON_TASK_LABELS[item.id as keyof typeof COMMON_TASK_LABELS] ?? item.label;
-          const lastRowStart = Math.floor((items.length - 1) / 3) * 3;
+          const primary = item.id === ASK_RADIUS.id;
+          const lastRowStart = Math.floor((items.length - 1) / 2) * 2;
           return (
             <li
               key={item.id}
-              className={`${index % 3 !== 2 ? "border-r" : ""}${index < lastRowStart ? " border-b" : ""}`}
+              className={`${index % 2 === 0 ? "border-r" : ""}${index < lastRowStart ? " border-b" : ""}`}
               style={{ borderColor: "var(--app-border)" }}
             >
             <Link
               href={item.href}
               prefetch={false}
               {...intentProps(item.href)}
-              className="tactile-interactive flex min-h-[72px] flex-col items-center justify-center gap-1.5 px-1.5 py-2 text-center outline-none transition hover:bg-black/[0.025] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
-              style={{ color: "var(--app-ink)" }}
+              className="tactile-interactive flex min-h-[60px] items-center gap-2.5 px-3 py-2 text-left outline-none transition hover:bg-black/[0.025] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+              style={{
+                color: primary ? "var(--app-on-brand)" : "var(--app-ink)",
+                background: primary ? "var(--app-brand-press)" : undefined,
+              }}
             >
               <span
                 aria-hidden
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
                 style={{
-                  color: item.color,
-                  background: `color-mix(in srgb, ${item.color} 11%, transparent)`,
+                  color: primary ? "var(--app-on-brand)" : item.color,
+                  background: primary
+                    ? "color-mix(in srgb, var(--app-on-brand) 14%, transparent)"
+                    : `color-mix(in srgb, ${item.color} 11%, transparent)`,
                 }}
               >
                 <Icon className="h-[17px] w-[17px]" strokeWidth={2.1} />
               </span>
-              <span className="text-[10.5px] font-semibold leading-tight">{label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11.5px] font-semibold leading-tight">{label}</span>
+                {primary ? (
+                  <span className="mt-0.5 block text-[10px] leading-tight opacity-80">
+                    Help me choose or plan
+                  </span>
+                ) : null}
+              </span>
+              {primary ? (
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-80" strokeWidth={2.25} aria-hidden />
+              ) : null}
             </Link>
           </li>
           );
@@ -636,7 +583,7 @@ function CompassCategoryPicker({
       <div
         role="group"
         aria-label="Browse by topic"
-        className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-5 sm:px-5 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {sections.map((section) => {
           const Icon = SECTION_ICONS[section.id] ?? Compass;
@@ -833,9 +780,7 @@ function AmenityReveal({
   items: DirectoryItem[];
   intentProps: (href: string) => Pick<React.ComponentProps<typeof Link>, "onMouseEnter" | "onFocus" | "onPointerDown" | "onClick">;
 }) {
-  const [showAllAmenities, setShowAllAmenities] = useState(false);
   const { openAll, amenities, rows } = splitEssentialItems(items);
-  const visibleAmenities = showAllAmenities ? amenities : amenities.slice(0, 6);
 
   return (
     <div className="space-y-3">
@@ -843,56 +788,76 @@ function AmenityReveal({
         className="rounded-[var(--app-radius-md)] border p-3.5"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
       >
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            Open the map to any public amenity.
-          </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          Need it now
+        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              Find the closest mapped essential
+            </p>
+            <p className="mt-0.5 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Restroom, water, trash, dog bags, seating, or power
+            </p>
+          </div>
           {openAll ? (
             <Link
               href={openAll.href}
               prefetch={false}
               {...intentProps(openAll.href)}
-              className="tap-44-y inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-ink)" }}
+              className="tap-44-y inline-flex shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-2 text-[12px] font-semibold"
+              style={{ color: "var(--app-on-brand)", background: "var(--app-brand-press)" }}
             >
-              Open all
+              Find nearest
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
           ) : null}
         </div>
-        <ul id="compass-amenity-list" className="mt-3 flex flex-wrap gap-2">
-          {visibleAmenities.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  prefetch={false}
-                  {...intentProps(item.href)}
-                  className="tactile-interactive flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12.5px] font-semibold outline-none transition hover:bg-[var(--app-bg-elevated)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-                >
-                  <Icon className="h-4 w-4 shrink-0" style={{ color: item.color }} strokeWidth={2} aria-hidden />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        {amenities.length > 6 ? (
-          <button
-            type="button"
-            onClick={() => setShowAllAmenities((value) => !value)}
-            className="tap-44-y mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
-            aria-expanded={showAllAmenities}
-            aria-controls="compass-amenity-list"
-          >
-            {showAllAmenities ? "Show fewer amenities" : `Show ${amenities.length - 6} more amenities`}
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform${showAllAmenities ? " rotate-180" : ""}`} aria-hidden />
-          </button>
-        ) : null}
       </div>
+      {amenities.length > 0 ? (
+        <details
+          className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-3 text-[12.5px] font-semibold">
+            <span style={{ color: "var(--app-ink)" }}>Choose a specific map layer</span>
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {amenities.length}
+              </span>
+              <ChevronDown
+                className="h-4 w-4 transition group-open:rotate-180"
+                strokeWidth={2.25}
+                aria-hidden
+                style={{ color: "var(--app-ink-3)" }}
+              />
+            </span>
+          </summary>
+          <ul
+            id="compass-amenity-list"
+            className="flex flex-wrap gap-2 border-t px-3.5 py-3"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {amenities.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    {...intentProps(item.href)}
+                    className="tactile-interactive flex min-h-11 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-3 text-[12.5px] font-semibold outline-none transition hover:bg-[var(--app-bg-elevated)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" style={{ color: item.color }} strokeWidth={2} aria-hidden />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      ) : null}
       <LedgerList items={rows} intentProps={intentProps} />
     </div>
   );

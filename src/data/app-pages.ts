@@ -37,7 +37,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/transit", title: "Transit & buses", blurb: "See where county TransIT routes run and when.", keywords: ["bus", "transit", "marc", "commuter"] },
   { href: "/shipping", title: "Shipping & post", blurb: "Find listed postal and shipping locations by town.", keywords: ["post office", "usps", "ups", "fedex", "mail", "package", "drop box", "shipping"] },
   { href: "/contacts", title: "County & city services", blurb: "Find phone numbers for county and city services.", keywords: ["contacts", "who do i call", "county services", "city services", "government", "311"] },
-  { href: "/amenities", title: "Public amenities", blurb: "Find mapped restrooms and other public amenities.", keywords: ["restroom", "restrooms", "bathroom", "bathrooms", "toilet", "wifi", "ev charging", "charger", "bike rack", "picnic", "water fountain"] },
+  { href: "/amenities", title: "Nearby essentials", blurb: "Find the closest mapped restroom, water, trash, dog bags, seating, or power.", keywords: ["restroom", "restrooms", "bathroom", "bathrooms", "toilet", "water", "trash", "dog bags", "bench", "seating", "power", "wifi", "ev charging", "charger", "bike rack", "picnic", "water fountain"] },
   { href: "/check-a-date", title: "Check a date", blurb: "Pick a date and review listed events before scheduling yours.", keywords: ["check a date", "date conflict", "schedule conflict"] },
   { href: "/ask", title: PRODUCT_NAMES.ask.pageTitle, blurb: PRODUCT_NAMES.ask.description, keywords: ["ask radius", "help me decide", "recommendation", "what should i do", "plan something"] },
   { href: "/plan", title: PRODUCT_NAMES.outingPlanner.pageTitle, blurb: PRODUCT_NAMES.outingPlanner.description, keywords: ["itinerary", "plan my day", "day plan", "outing planner"] },
@@ -71,5 +71,5 @@ export const APP_PAGES: AppPage[] = [
   { href: "/submit/event", title: "Add an event", blurb: "Submit a local event for review.", keywords: ["add event", "submit event", "post an event"] },
 
   // ── Yours ──
-  { href: "/my-radius", title: "Saved", blurb: "Review what you saved on this device.", keywords: ["saved", "favorites", "bookmarks"] },
+  { href: "/my-radius", title: "Saved", blurb: "Review your saved places, events, routes, and taps.", keywords: ["saved", "favorites", "bookmarks"] },
 ];

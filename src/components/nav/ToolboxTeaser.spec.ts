@@ -8,7 +8,8 @@ describe("ToolboxTeaser", () => {
     const html = renderToStaticMarkup(createElement(ToolboxTeaser));
 
     expect(html.match(/<a /g)).toHaveLength(5);
-    expect(html).toContain("Restrooms");
+    expect(html).toContain("Nearby essentials");
+    expect(html).toContain('href="/amenities"');
     expect(html).toContain("Parking");
     expect(html).toContain("Transit and trains");
     expect(html).toContain("Live conditions");

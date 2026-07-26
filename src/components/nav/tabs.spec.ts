@@ -30,4 +30,14 @@ describe("Ask Radius navigation context", () => {
     expect(tabIndexForPath("/transit")).toBe(1);
     expect(tabIndexForPath("/live-music")).toBe(2);
   });
+
+  it("keeps registered secondary tools inside their parent journey", () => {
+    expect(tabIndexForPath("/beer")).toBe(0);
+    expect(tabIndexForPath("/pulse")).toBe(0);
+    expect(tabIndexForPath("/parks")).toBe(1);
+    expect(tabIndexForPath("/amenities")).toBe(1);
+    expect(tabIndexForPath("/sports")).toBe(2);
+    expect(tabIndexForPath("/settings")).toBe(3);
+    expect(tabIndexForPath("/search")).toBe(-1);
+  });
 });
