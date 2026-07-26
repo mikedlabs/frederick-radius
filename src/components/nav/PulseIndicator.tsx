@@ -101,7 +101,7 @@ export default function PulseIndicator() {
             ? "County alerts: status unavailable"
             : "County alerts: all clear"
       }
-      className="tap-44-y relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+      className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] sm:px-2.5"
       style={{
         borderColor: "var(--app-border)",
         color: active ? TONE_COLOR[tone] : "var(--app-ink-3)",
@@ -130,7 +130,7 @@ export default function PulseIndicator() {
           />
         )}
       </span>
-      <span className="text-[13px] font-semibold leading-none">
+      <span className="hidden text-[13px] font-semibold leading-none sm:inline">
         {active ? `${count} ${count === 1 ? "alert" : "alerts"}` : "Status unavailable"}
       </span>
     </Link>

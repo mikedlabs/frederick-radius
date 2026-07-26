@@ -21,7 +21,11 @@ export function pageOwnsPrimarySearch(pathname: string): boolean {
 }
 
 export function shouldShowGlobalMobileSearch(pathname: string): boolean {
-  return !pageOwnsPrimarySearch(pathname);
+  // Search is permanent app chrome on mobile. Some workspaces also carry a
+  // local, context-specific query field, but that should not make the global
+  // county search disappear or force users to remember which screen owns it.
+  void pathname;
+  return true;
 }
 
 export default function TopBar() {
@@ -60,9 +64,9 @@ export default function TopBar() {
   }, [hidden]);
 
   // These routes own the middle of the header because their primary workspace
-  // already contains a full search or query control. Map, Search, Compass, and
-  // Ask therefore suppress the global mobile trigger; every other route keeps
-  // one compact button into the shared Find overlay.
+  // already contains a full search or query control. That changes the desktop
+  // center treatment, but mobile still keeps one permanent global search
+  // action so the app's primary utility never moves between screens.
   const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
   const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
 
@@ -153,7 +157,7 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-2 lg:max-w-screen-lg lg:pl-24"
+          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24"
           // Horizontal padding is max(1rem base, side-inset): a notched
           // phone in landscape puts the notch on a side edge, which could
           // clip the search field / back button. max() keeps the 1rem base
@@ -289,24 +293,13 @@ export default function TopBar() {
               icons on screen for one destination. My Radius stays one tap
               away via the bottom nav (<lg) and the SideRail (≥lg).) */}
 
-          {/* Settings — visible at all viewports. The original
-              design hid this on mobile and routed mobile users via
-              the /saved page (which has its own Settings link), but
-              that's a non-obvious two-tap path no real user will
-              discover. Settings is the only surface that lets you
-              change persona, home muni, interests, and notifications,
-              so it has to be one tap from anywhere. LocationChip
-              stays mobile-hidden because the search modal carries
-              the same affordance. */}
           {/* Right cluster reads left→right: where you are (LocationChip,
               nearest search), what's happening (PulseIndicator), then the
               catch-all field-guide drawer LAST — the conventional spot for an
-              overflow control. LocationChip is hidden on the narrowest phones
-              where the search bar needs the room (location is still settable
-              inside the search modal); it surfaces from sm: up. */}
-          <div className="hidden sm:block">
-            <LocationChip />
-          </div>
+              overflow control. Search and town scope stay visible on every
+              mobile route; their controls collapse to icon-first treatments
+              only when the phone is too narrow for the current town label. */}
+          <LocationChip />
 
           {/* Live county pulse — lights up on an active NWS/school alert,
               traffic incident, or significant outage; quiet otherwise. */}
@@ -326,14 +319,14 @@ export default function TopBar() {
             aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
             title="Open all tools"
-            className="tap-44-y relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+            className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
             }}
           >
             <LayoutGrid className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="text-[13px] font-semibold leading-none sm:text-[14px]">Tools</span>
+            <span className="hidden text-[13px] font-semibold leading-none min-[430px]:inline sm:text-[14px]">Tools</span>
           </Link>}
         </div>
       </header>

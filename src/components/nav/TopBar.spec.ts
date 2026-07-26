@@ -6,10 +6,10 @@ import {
 
 describe("TopBar search ownership", () => {
   it.each(["/map", "/search", "/compass", "/ask", "/ask/history"])(
-    "does not duplicate the local search on %s",
+    "keeps the global mobile search available alongside local tools on %s",
     (pathname) => {
       expect(pageOwnsPrimarySearch(pathname)).toBe(true);
-      expect(shouldShowGlobalMobileSearch(pathname)).toBe(false);
+      expect(shouldShowGlobalMobileSearch(pathname)).toBe(true);
     },
   );
 
