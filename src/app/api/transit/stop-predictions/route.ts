@@ -7,25 +7,34 @@
  * arrivals server-side (the tap case); omit it for the full set. Realtime, so
  * no-store.
  *
- * TransIT publishes no static bus timetable, so arrivals are realtime only:
- * when no trip is inbound the array is empty and the UI says so honestly rather
- * than inventing a time. Returns [] gracefully when the feed is down.
+ * This endpoint serves realtime predictions. The separate committed GTFS
+ * snapshot contains the official static schedule; callers must not mistake an
+ * unavailable realtime feed for a confirmed lack of inbound service.
  *
  *   GET /api/transit/stop-predictions?stop=162950
  *     -> { predictions: StopPrediction[], updatedAt: number }
  */
 import { NextResponse } from "next/server";
-import { getStopPredictions } from "@/lib/integrations/transitRealtime";
+import { getStopPredictionsResult } from "@/lib/integrations/transitRealtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const stopId = new URL(request.url).searchParams.get("stop");
-  const all = await getStopPredictions();
-  const predictions = stopId ? all.filter((p) => p.stopId === stopId) : all;
+  const result = await getStopPredictionsResult();
+  const predictions = stopId
+    ? result.data.filter((p) => p.stopId === stopId)
+    : result.data;
   return NextResponse.json(
-    { predictions, updatedAt: Date.now() },
+    {
+      predictions,
+      // Preserve the old Radius-received timestamp for existing clients.
+      updatedAt: result.receivedAt,
+      status: result.status,
+      available: result.available,
+      feedTimestamp: result.feedTimestamp,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

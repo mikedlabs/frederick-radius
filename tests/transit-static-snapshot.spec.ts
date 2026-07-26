@@ -18,16 +18,29 @@ type TransitSnapshot = {
 };
 
 const snapshot = TRANSIT as TransitSnapshot;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function utcDay(value: string): number {
+  expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  const parsed = Date.parse(`${value}T00:00:00Z`);
+  expect(Number.isFinite(parsed)).toBe(true);
+  return parsed;
+}
 
 describe("committed Frederick County TransIT static GTFS snapshot", () => {
-  it("contains the July 2026 network, including the new 15 Connector", () => {
+  it("contains a complete county network, including the 15 Connector", () => {
     expect(snapshot.routes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "9349", short: "15", name: "15 Connector" }),
       ]),
     );
-    expect(snapshot.routes).toHaveLength(17);
-    expect(snapshot.stops).toHaveLength(392);
+    // Guard against an accidentally partial parse without freezing normal
+    // upstream additions/removals to one day's exact row counts.
+    expect(snapshot.routes.length).toBeGreaterThanOrEqual(15);
+    expect(snapshot.stops.length).toBeGreaterThanOrEqual(300);
+    expect(new Set(snapshot.routes.map((route) => route.id)).size).toBe(
+      snapshot.routes.length,
+    );
   });
 
   it("records static-source freshness separately from realtime data", () => {
@@ -37,8 +50,27 @@ describe("committed Frederick County TransIT static GTFS snapshot", () => {
     expect(snapshot.staticFeed.agencyUrl).toContain("frederickcountymd.gov");
     expect(snapshot.staticFeed.scheduleUrl).toContain("frederickcountymd.gov");
     expect(snapshot.staticFeed.fetchedOn).toBe(snapshot.generatedAt);
-    expect(snapshot.staticFeed.serviceWindowStart).toBe("2026-07-21");
-    expect(snapshot.staticFeed.serviceWindowEnd).toBe("2026-08-21");
+
+    const fetched = utcDay(snapshot.staticFeed.fetchedOn);
+    const serviceStart = utcDay(snapshot.staticFeed.serviceWindowStart);
+    const serviceEnd = utcDay(snapshot.staticFeed.serviceWindowEnd);
+    const today = new Date();
+    const todayUtc = Date.UTC(
+      today.getUTCFullYear(),
+      today.getUTCMonth(),
+      today.getUTCDate(),
+    );
+
+    // The Passio feed uses a rolling service window. Assert useful freshness
+    // and internal consistency instead of pinning dates that change nightly.
+    expect(fetched).toBeLessThanOrEqual(todayUtc + DAY_MS);
+    expect(todayUtc - fetched).toBeLessThanOrEqual(14 * DAY_MS);
+    expect(serviceStart).toBeLessThanOrEqual(fetched);
+    expect(serviceEnd).toBeGreaterThanOrEqual(fetched);
+    expect(serviceEnd - serviceStart).toBeGreaterThanOrEqual(7 * DAY_MS);
+    expect(serviceEnd - serviceStart).toBeLessThanOrEqual(62 * DAY_MS);
+    expect(todayUtc).toBeGreaterThanOrEqual(serviceStart - 2 * DAY_MS);
+    expect(todayUtc).toBeLessThanOrEqual(serviceEnd + 2 * DAY_MS);
   });
 
   it("retains a unique GTFS stop_id for every map stop", () => {

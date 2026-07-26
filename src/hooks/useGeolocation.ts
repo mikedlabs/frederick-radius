@@ -40,6 +40,21 @@ function announceLocationChange(): void {
 }
 
 /**
+ * Persist a consented fix and notify every same-tab surface that depends on
+ * location ranking. Keeping this write in one exported contract prevents map,
+ * search, and Today from silently maintaining incompatible location state.
+ */
+export function cacheGeolocationPosition(position: GeoPosition): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(position));
+  } catch {
+    // storage may be full or disabled; the requesting hook still has the fix
+  }
+  announceLocationChange();
+}
+
+/**
  * Read the cached geolocation fix WITHOUT prompting or mounting the hook.
  *
  * Returns the user's last-known coordinates if a fresh (< 30 min) fix is
@@ -52,7 +67,7 @@ function announceLocationChange(): void {
 export function readCachedPosition(): { lng: number; lat: number } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const cached = JSON.parse(raw) as GeoPosition;
     if (
@@ -85,21 +100,21 @@ export function useGeolocation() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const raw = window.sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const cached = JSON.parse(raw) as GeoPosition;
       if (Date.now() - cached.timestamp < TTL_MS) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating client-only cached position on mount; sessionStorage is unavailable during SSR
         setState({ status: "granted", position: cached });
       } else {
-        sessionStorage.removeItem(STORAGE_KEY);
+        window.sessionStorage.removeItem(STORAGE_KEY);
       }
     } catch {
       // ignore parse errors
     }
   }, []);
 
-  const request = useCallback(() => {
+  const requestPosition = useCallback((enableHighAccuracy: boolean) => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setState({ status: "unavailable" });
       return;
@@ -125,13 +140,8 @@ export function useGeolocation() {
           label: locationLabel(coords),
           timestamp: Date.now(),
         };
-        try {
-          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(position));
-        } catch {
-          // storage may be full or disabled
-        }
+        cacheGeolocationPosition(position);
         setState({ status: "granted", position });
-        announceLocationChange();
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -140,17 +150,26 @@ export function useGeolocation() {
           setState({ status: "error", message: err.message });
         }
       },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 }
+      {
+        enableHighAccuracy,
+        timeout: 8000,
+        maximumAge: 60_000,
+      }
     );
   }, []);
+  const request = useCallback(() => requestPosition(false), [requestPosition]);
+  const requestHighAccuracy = useCallback(
+    () => requestPosition(true),
+    [requestPosition],
+  );
 
   const clear = useCallback(() => {
     if (typeof window !== "undefined") {
-      try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+      try { window.sessionStorage.removeItem(STORAGE_KEY); } catch {}
     }
     setState({ status: "idle" });
     announceLocationChange();
   }, []);
 
-  return { state, request, clear };
+  return { state, request, requestHighAccuracy, clear };
 }

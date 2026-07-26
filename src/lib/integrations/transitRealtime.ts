@@ -8,7 +8,9 @@
  * src/data/transit.json (built by scripts/build-transit-gtfs.ts).
  *
  * Realtime, so NOT cached — fetched no-store and polled client-side.
- * Graceful []: a feed hiccup never throws into a page.
+ * Existing array-returning helpers remain fail-soft for compatibility. Their
+ * result-returning counterparts preserve provider availability and the GTFS-RT
+ * feed timestamp so API consumers can distinguish no service from no feed.
  *
  * Source confirmed live 2026-06: feed returns ~14 vehicles mid-day,
  * positions near Frederick (39.4x, -77.4x) with bearings, route_ids that
@@ -22,6 +24,25 @@ const VEHICLE_POSITIONS =
 const TRIP_UPDATES =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/tripUpdates";
 const TIMEOUT_MS = 10_000;
+
+export type TransitFeedStatus = "ok" | "degraded" | "unavailable";
+
+export type TransitFeedMeta = {
+  status: Exclude<TransitFeedStatus, "degraded">;
+  available: boolean;
+  /** Provider-generated GTFS-RT feed timestamp, Unix seconds. */
+  feedTimestamp?: number;
+  /** When Radius finished receiving/decoding the response, Unix milliseconds. */
+  receivedAt: number;
+};
+
+export type TransitFeedResult<T> = {
+  data: T;
+  status: TransitFeedStatus;
+  available: boolean;
+  feedTimestamp?: number;
+  receivedAt: number;
+};
 
 /** Where a bus is in its run, GTFS-rt VehiclePosition.current_status. */
 export type VehicleStatus = "INCOMING_AT" | "STOPPED_AT" | "IN_TRANSIT_TO";
@@ -91,25 +112,53 @@ function vehicleStatus(raw: unknown): VehicleStatus | undefined {
   return raw === 0 ? "INCOMING_AT" : raw === 1 ? "STOPPED_AT" : raw === 2 ? "IN_TRANSIT_TO" : undefined;
 }
 
-async function decodeFeed(url: string) {
+type Long = { toNumber: () => number };
+
+function toNumber(value: number | Long | null | undefined): number | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  const converted = value.toNumber?.();
+  return typeof converted === "number" && Number.isFinite(converted)
+    ? converted
+    : undefined;
+}
+
+function feedTimestamp(value: number | Long | null | undefined): number | undefined {
+  const timestamp = toNumber(value);
+  return timestamp != null && timestamp > 0 ? Math.round(timestamp) : undefined;
+}
+
+type DecodedFeed = TransitFeedMeta & {
+  feed?: GtfsRealtimeBindings.transit_realtime.FeedMessage;
+};
+
+async function decodeFeed(url: string): Promise<DecodedFeed> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: ctl.signal, cache: "no-store" });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return { status: "unavailable", available: false, receivedAt: Date.now() };
+    }
     const buf = new Uint8Array(await res.arrayBuffer());
-    return GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(buf);
+    const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(buf);
+    return {
+      feed,
+      status: "ok",
+      available: true,
+      feedTimestamp: feedTimestamp(feed.header.timestamp),
+      receivedAt: Date.now(),
+    };
   } catch {
-    return null;
+    return { status: "unavailable", available: false, receivedAt: Date.now() };
   } finally {
     clearTimeout(t);
   }
 }
 
-/** Live bus positions. Returns [] on any failure. */
-export async function getLiveVehicles(): Promise<LiveVehicle[]> {
-  const feed = await decodeFeed(VEHICLE_POSITIONS);
-  if (!feed) return [];
+function vehiclesFromFeed(
+  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+): LiveVehicle[] {
   const out: LiveVehicle[] = [];
   for (const e of feed.entity) {
     const v = e.vehicle;
@@ -122,7 +171,7 @@ export async function getLiveVehicles(): Promise<LiveVehicle[]> {
       lat: +pos.latitude.toFixed(5),
       lng: +pos.longitude.toFixed(5),
       bearing: pos.bearing != null ? Math.round(pos.bearing) : undefined,
-      timestamp: v.timestamp != null ? Number(v.timestamp) : undefined,
+      timestamp: toNumber(v.timestamp),
       // The stop the bus is at / heading to — the seed for the next-stop
       // join. The Passio feed carries both of these on the vehicle entity.
       stopId: v.stopId != null ? String(v.stopId) : undefined,
@@ -133,15 +182,32 @@ export async function getLiveVehicles(): Promise<LiveVehicle[]> {
   return out;
 }
 
+/** Live bus positions plus honest provider availability/freshness metadata. */
+export async function getLiveVehiclesResult(): Promise<TransitFeedResult<LiveVehicle[]>> {
+  const decoded = await decodeFeed(VEHICLE_POSITIONS);
+  return {
+    data: decoded.feed ? vehiclesFromFeed(decoded.feed) : [],
+    status: decoded.status,
+    available: decoded.available,
+    feedTimestamp: decoded.feedTimestamp,
+    receivedAt: decoded.receivedAt,
+  };
+}
+
+/** Live bus positions. Compatibility helper; use getLiveVehiclesResult in APIs. */
+export async function getLiveVehicles(): Promise<LiveVehicle[]> {
+  return (await getLiveVehiclesResult()).data;
+}
+
 /**
  * Per-trip predicted stop timetables (from TripUpdates). Unlike
  * getStopPredictions (a flat per-stop "next bus here" view), this keeps each
  * trip's full stop list WITH stopSequence + tripId, so a moving vehicle can be
  * joined to its own next stop + ETA. Returns [] on any failure.
  */
-export async function getTripUpdates(): Promise<TripUpdate[]> {
-  const feed = await decodeFeed(TRIP_UPDATES);
-  if (!feed) return [];
+function tripUpdatesFromFeed(
+  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+): TripUpdate[] {
   const out: TripUpdate[] = [];
   for (const e of feed.entity) {
     const tu = e.tripUpdate;
@@ -153,8 +219,8 @@ export async function getTripUpdates(): Promise<TripUpdate[]> {
       stops.push({
         stopId: stu.stopId != null ? String(stu.stopId) : undefined,
         stopSequence: stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
-        arrivalEpoch: arr != null ? Number(arr) : undefined,
-        departureEpoch: dep != null ? Number(dep) : undefined,
+        arrivalEpoch: toNumber(arr),
+        departureEpoch: toNumber(dep),
       });
     }
     out.push({
@@ -167,6 +233,30 @@ export async function getTripUpdates(): Promise<TripUpdate[]> {
   return out;
 }
 
+/** Per-trip predictions plus provider availability/freshness metadata. */
+export async function getTripUpdatesResult(): Promise<TransitFeedResult<TripUpdate[]>> {
+  const decoded = await decodeFeed(TRIP_UPDATES);
+  return {
+    data: decoded.feed ? tripUpdatesFromFeed(decoded.feed) : [],
+    status: decoded.status,
+    available: decoded.available,
+    feedTimestamp: decoded.feedTimestamp,
+    receivedAt: decoded.receivedAt,
+  };
+}
+
+/** Compatibility helper; use getTripUpdatesResult where feed state matters. */
+export async function getTripUpdates(): Promise<TripUpdate[]> {
+  return (await getTripUpdatesResult()).data;
+}
+
+export type LiveVehiclesResult = TransitFeedResult<LiveVehicle[]> & {
+  feeds: {
+    vehiclePositions: TransitFeedMeta;
+    tripUpdates: TransitFeedMeta;
+  };
+};
+
 /**
  * Live buses, each decorated with their resolved NEXT stop (name + coord +
  * ETA). Fetches both realtime feeds in parallel (VehiclePositions for the
@@ -176,22 +266,57 @@ export async function getTripUpdates(): Promise<TripUpdate[]> {
  * no vehicles.
  */
 export async function getLiveVehiclesWithNextStop(): Promise<LiveVehicle[]> {
-  const [vehicles, updates] = await Promise.all([getLiveVehicles(), getTripUpdates()]);
-  if (vehicles.length === 0) return vehicles;
-  // decorate is pure + injectable (tested without the network); vehicles
-  // whose next stop can't be resolved simply pass through without `nextStop`.
-  return decorateVehiclesWithNextStop(vehicles, updates);
+  return (await getLiveVehiclesWithNextStopResult()).data;
+}
+
+/**
+ * Decorated vehicle positions with separate metadata for both upstream feeds.
+ * Vehicle positions remain usable when TripUpdates is down; the result is then
+ * marked degraded and simply omits next-stop predictions.
+ */
+export async function getLiveVehiclesWithNextStopResult(): Promise<LiveVehiclesResult> {
+  const [vehicles, updates] = await Promise.all([
+    getLiveVehiclesResult(),
+    getTripUpdatesResult(),
+  ]);
+  const data =
+    vehicles.data.length === 0
+      ? vehicles.data
+      : decorateVehiclesWithNextStop(vehicles.data, updates.data);
+  const status: TransitFeedStatus = !vehicles.available
+    ? "unavailable"
+    : updates.available
+      ? "ok"
+      : "degraded";
+
+  return {
+    data,
+    status,
+    available: vehicles.available,
+    feedTimestamp: vehicles.feedTimestamp,
+    receivedAt: Math.max(vehicles.receivedAt, updates.receivedAt),
+    feeds: {
+      vehiclePositions: {
+        status: vehicles.available ? "ok" : "unavailable",
+        available: vehicles.available,
+        feedTimestamp: vehicles.feedTimestamp,
+        receivedAt: vehicles.receivedAt,
+      },
+      tripUpdates: {
+        status: updates.available ? "ok" : "unavailable",
+        available: updates.available,
+        feedTimestamp: updates.feedTimestamp,
+        receivedAt: updates.receivedAt,
+      },
+    },
+  };
 }
 
 export type StopPrediction = { stopId: string; routeId?: string; arrivalEpoch?: number };
 
-/**
- * Upcoming arrivals by stop (from TripUpdates). Flattened to per-stop
- * predictions for a "next bus here" lookup. Returns [] on failure.
- */
-export async function getStopPredictions(): Promise<StopPrediction[]> {
-  const feed = await decodeFeed(TRIP_UPDATES);
-  if (!feed) return [];
+function stopPredictionsFromFeed(
+  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+): StopPrediction[] {
   const out: StopPrediction[] = [];
   for (const e of feed.entity) {
     const tu = e.tripUpdate;
@@ -202,9 +327,32 @@ export async function getStopPredictions(): Promise<StopPrediction[]> {
       out.push({
         stopId: String(stu.stopId),
         routeId: tu.trip?.routeId ?? undefined,
-        arrivalEpoch: arr != null ? Number(arr) : undefined,
+        arrivalEpoch: toNumber(arr),
       });
     }
   }
   return out;
+}
+
+/** Upcoming arrivals plus provider availability/freshness metadata. */
+export async function getStopPredictionsResult(): Promise<
+  TransitFeedResult<StopPrediction[]>
+> {
+  const decoded = await decodeFeed(TRIP_UPDATES);
+  return {
+    data: decoded.feed ? stopPredictionsFromFeed(decoded.feed) : [],
+    status: decoded.status,
+    available: decoded.available,
+    feedTimestamp: decoded.feedTimestamp,
+    receivedAt: decoded.receivedAt,
+  };
+}
+
+/**
+ * Upcoming arrivals by stop (from TripUpdates). Flattened to per-stop
+ * predictions for a "next bus here" lookup. Compatibility helper; use
+ * getStopPredictionsResult where feed state matters.
+ */
+export async function getStopPredictions(): Promise<StopPrediction[]> {
+  return (await getStopPredictionsResult()).data;
 }

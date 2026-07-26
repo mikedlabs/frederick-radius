@@ -1,7 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Map, { Source, Layer, AttributionControl, Popup, type MapMouseEvent } from "react-map-gl/mapbox";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Map, {
+  Source,
+  Layer,
+  AttributionControl,
+  Popup,
+  type MapMouseEvent,
+  type MapRef,
+} from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { ACCENTS } from "@/data/categories";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -12,6 +19,12 @@ import LiveMarcTrains from "@/components/map/LiveMarcTrains";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
 import { haptic } from "@/lib/haptics";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
+import {
+  clearPendingTransitRouteFocus,
+  takePendingTransitRouteFocus,
+  TRANSIT_ROUTE_FOCUS_EVENT,
+  type TransitRouteFocusDetail,
+} from "@/lib/transit-focus";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import TRANSIT from "@/data/transit.json";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -50,16 +63,6 @@ const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
   const padLat = (maxLat - minLat) * 0.06 || 0.02;
   return [[minLng - padLng, minLat - padLat], [maxLng + padLng, maxLat + padLat]];
 })();
-
-/** Dark or light, whichever reads on the route color (GTFS text colors are
- *  unreliable — white on the light routes). */
-function readableOn(hex: string): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "#221C15";
-  const n = parseInt(m[1], 16);
-  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-  return lum > 0.6 ? "#221C15" : "#FFFFFF";
-}
 
 /**
  * TransitMap — Carroll-Creek-slate route lines drawn on the same
@@ -105,7 +108,7 @@ export default function TransitMap({
    *  of "what does the network look like" — the question "where do
    *  I catch the bus" now has a visible answer. */
   stops?: TransitStop[];
-  height?: number;
+  height?: number | string;
   /** Initial center [lng, lat]; defaults to the county centroid. */
   center?: [number, number];
   /** Initial zoom; defaults to 9 (county-wide). */
@@ -132,6 +135,7 @@ export default function TransitMap({
    *  /transit shows rail; /pulse sets it false to stay a pure live-bus view. */
   showTrains?: boolean;
 }) {
+  const mapRef = useRef<MapRef>(null);
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
     const cy = center?.[1] ?? (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2;
@@ -154,6 +158,49 @@ export default function TransitMap({
       properties: {},
     };
   }, [route]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !route) return;
+    const pts = SHAPES[route];
+    if (!pts || pts.length < 2) return;
+
+    let west = Infinity;
+    let south = Infinity;
+    let east = -Infinity;
+    let north = -Infinity;
+    for (const [lat, lng] of pts) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      west = Math.min(west, lng);
+      east = Math.max(east, lng);
+      south = Math.min(south, lat);
+      north = Math.max(north, lat);
+    }
+    if (![west, south, east, north].every(Number.isFinite)) return;
+
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    map.fitBounds(
+      [[west, south], [east, north]],
+      { padding: 54, duration: reduced ? 0 : 500 },
+    );
+  }, [route]);
+
+  // The compact route finder below the map uses the same route state instead
+  // of acting like a second, disconnected catalog. Selecting a result focuses
+  // the route here and lets the existing fitBounds effect frame it.
+  useEffect(() => {
+    const applyRoute = (routeId: string | null | undefined) => {
+      if (!routeId || !ROUTES.some((item) => item.id === routeId)) return;
+      clearPendingTransitRouteFocus();
+      setRoute(routeId);
+    };
+    const focusRoute = (event: Event) => {
+      applyRoute((event as CustomEvent<TransitRouteFocusDetail>).detail?.routeId);
+    };
+    window.addEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
+    applyRoute(takePendingTransitRouteFocus());
+    return () => window.removeEventListener(TRANSIT_ROUTE_FOCUS_EVENT, focusRoute);
+  }, []);
 
   // Stop-tap detail (interactiveStops only): the tapped stop, resolved to its
   // arrivals in a Popup. Cleared by a tap on empty map or the Popup close.
@@ -195,49 +242,26 @@ export default function TransitMap({
   return (
     <div className="space-y-2">
       {highlightRoutes && (
-        <div
-          // py-1 (was pb-0.5): overflow-x-auto also clips the vertical axis, so
-          // a selected chip's 2px ring was getting shaved off the top. The
-          // padding gives the ring room top + bottom.
-          className="flex gap-1.5 overflow-x-auto px-0.5 py-1"
-          role="group"
-          aria-label="Highlight a route"
-          style={{ scrollbarWidth: "none" }}
-        >
-          <button
-            type="button"
-            onClick={() => setRoute(null)}
-            aria-pressed={route === null}
-            className="min-h-11 min-w-11 shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-            style={{
-              borderColor: "var(--app-border)",
-              background: route === null ? "var(--app-ink)" : "var(--app-bg-elevated)",
-              color: route === null ? "var(--app-bg)" : "var(--app-ink-2)",
-            }}
-          >
-            All routes
-          </button>
-          {ROUTES.map((r) => {
-            const on = route === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRoute(on ? null : r.id)}
-                aria-pressed={on}
-                aria-label={`Highlight ${r.name}`}
-                className="min-h-11 min-w-11 shrink-0 rounded-full px-2.5 py-1.5 font-mono text-[12px] font-bold tabular-nums transition"
-                style={{
-                  background: r.color,
-                  color: readableOn(r.color),
-                  boxShadow: on ? "0 0 0 2px var(--app-ink)" : "none",
-                  opacity: route && !on ? 0.5 : 1,
-                }}
-              >
-                {r.short}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Choose a route to frame its path.
+          </p>
+          <label className="shrink-0">
+            <span className="sr-only">Bus route</span>
+            <select
+              value={route ?? ""}
+              onChange={(event) => setRoute(event.target.value || null)}
+              className="min-h-11 max-w-[13rem] rounded-full border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            >
+              <option value="">All routes</option>
+              {ROUTES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.short} · {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
       <div
@@ -245,6 +269,7 @@ export default function TransitMap({
         style={{ borderColor: "var(--app-border)", height }}
       >
       <Map
+        ref={mapRef}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={STYLE_URL}
         initialViewState={initial}
@@ -480,7 +505,7 @@ export default function TransitMap({
             className="inline-block h-1.5 w-1.5 rounded-full"
             style={{ background: "var(--app-cool)" }}
           />
-          TransIT Frederick · {shapes.features.length} routes
+          TransIT Frederick · {shapes.features.length} route segments
           {renderStops.length > 0 && ` · ${renderStops.length} stops`}
         </span>
       )}

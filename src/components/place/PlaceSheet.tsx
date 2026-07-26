@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
-import { placeActions, type PlaceAction } from "@/lib/place-actions";
+import { ExternalLink, Phone, Globe, Navigation, Expand, ChevronDown, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import {
+  groupPlaceActions,
+  placeActions,
+  type PlaceAction,
+  type PlaceActionGroups,
+} from "@/lib/place-actions";
 import Link from "next/link";
 import Image from "next/image";
 import { haptic } from "@/lib/haptics";
@@ -32,6 +37,7 @@ import {
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 import LiveGooglePlaceContext, { type LiveGooglePlaceData } from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
+import { normalizeMapReturnTo, withMapReturnTo } from "@/lib/map-return";
 
 /**
  * Bottom-sheet detail view for a place. The presence/drag/focus/exit
@@ -44,21 +50,50 @@ import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
  */
 type Props = {
   place: PlaceCardData | null;
+  mapReturnTo?: string | null;
   onClose: () => void;
 };
 
-export default function PlaceSheet({ place, onClose }: Props) {
+export default function PlaceSheet({ place, mapReturnTo, onClose }: Props) {
   return (
     <BottomSheet present={Boolean(place)} onClose={onClose} ariaLabel={place?.name ?? "Place details"}>
-      {(dismiss) => place && <PlaceSheetContent key={place.slug} place={place} onClose={dismiss} />}
+      {(dismiss) => place && (
+        <PlaceSheetContent
+          key={place.slug}
+          place={place}
+          mapReturnTo={mapReturnTo}
+          onClose={dismiss}
+        />
+      )}
     </BottomSheet>
   );
 }
 
-function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: () => void }) {
+function PlaceSheetContent({
+  place,
+  mapReturnTo,
+  onClose,
+}: {
+  place: PlaceCardData;
+  mapReturnTo?: string | null;
+  onClose: () => void;
+}) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
   const color = cat?.color ?? "var(--app-brand)";
+  // The sheet mounts only after a client interaction, so its lazy initializer
+  // can read the live address bar. That is more precise than a router snapshot:
+  // the map writes camera movement and layers through `history.replaceState`.
+  const [fullPageHref] = useState(() => {
+    const current =
+      typeof window === "undefined" ? null : new URL(window.location.href);
+    const liveMapReturnTo = normalizeMapReturnTo(
+      current?.pathname === "/map"
+        ? `${current.pathname}${current.search}${current.hash}`
+        : mapReturnTo,
+    );
+    return withMapReturnTo(`/places/${place.slug}`, liveMapReturnTo);
+  });
 
   // Real walk/drive time from downtown via Routes API (on-demand, cached server-side)
   const [travel, setTravel] = useState<{ walkMin?: number; driveMin?: number } | null>(null);
@@ -133,10 +168,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     phone: place.phone ?? extra?.phone,
     website: place.website ?? extra?.website,
   };
+  const actionGroups = groupPlaceActions(
+    placeActions(effectivePlace),
+    place.category,
+  );
 
   return (
     <>
-      <SheetHandle onClose={onClose} closeLabel="Close and return to the map" />
+      <SheetHandle onClose={onClose} closeLabel="Close place details" />
 
       {/* Scrollable content. The outer motion.div is flex-col with
        *  max-h-[85dvh] + overflow-hidden, so this inner panel is
@@ -533,17 +572,15 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           </div>
         )}
 
-        {/* In-app actions — reserve / order / park / directions without leaving */}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {placeActions(effectivePlace).map((a) => (
-            <ActionChip key={a.key} action={a} />
-          ))}
-        </div>
+        {/* One reliable lead action, two visible alternatives, and everything
+            else behind a calm disclosure. Provider colors no longer flatten
+            every capability into an equally loud pill. */}
+        <PlaceSheetActions groups={actionGroups} />
 
         {/* Footer — link to full page + share */}
         <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
           <Link
-            href={`/places/${place.slug}`}
+            href={fullPageHref}
             onClick={() => { haptic("light"); onClose(); }}
             className="inline-flex items-center gap-1 font-medium"
             style={{ color: "var(--app-brand-press)" }}
@@ -621,19 +658,99 @@ const ACTION_ICON = {
   menu: BookOpen,
 } as const;
 
-function ActionChip({ action }: { action: PlaceAction }) {
+function PlaceSheetActions({ groups }: { groups: PlaceActionGroups }) {
+  const { primary, secondary, more } = groups;
+  if (!primary) return null;
+
+  return (
+    <section className="mt-5 space-y-2" aria-label="Place actions">
+      <PlaceActionLink action={primary} priority="primary" />
+      {secondary.length > 0 ? (
+        <div className={`grid gap-2 ${secondary.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {secondary.map((action) => (
+            <PlaceActionLink key={action.key} action={action} priority="secondary" />
+          ))}
+        </div>
+      ) : null}
+      {more.length > 0 ? (
+        <details
+          className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <summary
+            className="tap-44-y flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            <span>More actions</span>
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {more.length}
+              </span>
+              <ChevronDown
+                className="h-4 w-4 transition-transform group-open:rotate-180"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+            </span>
+          </summary>
+          <div className="border-t px-3" style={{ borderColor: "var(--app-border)" }}>
+            {more.map((action) => (
+              <PlaceActionLink key={action.key} action={action} priority="row" />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function PlaceActionLink({
+  action,
+  priority,
+}: {
+  action: PlaceAction;
+  priority: "primary" | "secondary" | "row";
+}) {
   const Icon = ACTION_ICON[action.icon];
+  const primary = priority === "primary";
+  const row = priority === "row";
   return (
     <a
       href={action.href}
       onClick={() => haptic("light")}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="tactile-lift tactile-interactive tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"
-      style={{ backgroundColor: action.accent }}
+      target={action.external ? "_blank" : undefined}
+      rel={action.external ? "noopener noreferrer" : undefined}
+      className={
+        row
+          ? "tap-44-y flex min-h-11 items-center gap-2.5 border-b py-2 text-[12.5px] font-semibold last:border-b-0"
+          : `tactile-interactive flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-3 text-[12.5px] font-semibold ${
+              primary ? "tactile-lift" : "border bg-[var(--app-bg-elevated)]"
+            }`
+      }
+      style={
+        row
+          ? { borderColor: "var(--app-border)", color: "var(--app-ink)" }
+          : primary
+            ? {
+                background: "var(--app-brand-press)",
+                color: "var(--app-on-brand)",
+              }
+            : {
+                borderColor: "var(--app-border-strong)",
+                color: "var(--app-ink)",
+              }
+      }
     >
-      <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      {action.label}
+      <Icon
+        className="h-4 w-4 shrink-0"
+        strokeWidth={2.1}
+        style={{ color: primary ? "var(--app-on-brand)" : "var(--app-brand-press)" }}
+        aria-hidden
+      />
+      <span className={row ? "min-w-0 flex-1" : undefined}>{action.label}</span>
+      {row && action.external ? (
+        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-45" strokeWidth={2} aria-hidden />
+      ) : null}
     </a>
   );
 }

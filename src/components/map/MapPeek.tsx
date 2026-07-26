@@ -15,7 +15,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { formatHoursLine, type OpenStatus } from "@/lib/hours";
-import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
+import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
 import PlacePhoto from "@/components/place/PlacePhoto";
@@ -77,8 +77,8 @@ export default function MapPeek({
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const catColor = cat?.color ?? "var(--app-brand)";
-  const saved = useIsSaved("place", place.slug);
-  const toggleSave = useToggleSave("place", place.slug);
+  const saved = useIsFollowed(place.slug);
+  const toggleSave = useToggleFollow(place.slug, "map_peek");
   const [details, setDetails] = useState<MapCardDetails | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const activeDetails = details?.slug === place.slug ? details : null;
@@ -305,7 +305,7 @@ export default function MapPeek({
           onClick={() => {
             haptic("light");
             track("map_peek", { pick: saved ? "unsave" : "save" });
-            toggleSave();
+            void toggleSave();
           }}
         >
           <Bookmark

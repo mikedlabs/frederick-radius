@@ -61,6 +61,7 @@ const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
 );
 
 const POLL_MS = 15_000;
+const PROVIDER_STALE_MS = 40_000;
 // Glide paced to the poll: with a 1.4s glide against a 15s poll, buses
 // sprinted for a moment and then sat frozen for ~13s - burst-and-freeze
 // (owner report, 2026-07-19: the motion could look better). Easing across
@@ -186,7 +187,7 @@ type Tween =
 
 export default function LiveBuses({ show, highlightRouteId }: { show: boolean; highlightRouteId?: string }) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
-  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "empty" | "stale" | "error">("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [ago, setAgo] = useState(0);
@@ -212,16 +213,36 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
       try {
         const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
         if (!r.ok) throw new Error(`Transit feed returned ${r.status}`);
-        const d = (await r.json()) as { vehicles?: LiveVehicle[] };
+        const d = (await r.json()) as {
+          vehicles?: LiveVehicle[];
+          available?: boolean;
+          status?: "ok" | "degraded" | "unavailable";
+          feedTimestamp?: number;
+        };
         if (alive && Array.isArray(d.vehicles)) {
+          if (d.available === false || d.status === "unavailable") {
+            setVehicles([]);
+            setFeedStatus("error");
+            return;
+          }
+          const providerTime =
+            typeof d.feedTimestamp === "number" && d.feedTimestamp > 0
+              ? d.feedTimestamp * 1000
+              : Date.now();
+          const providerAge = Math.max(0, Date.now() - providerTime);
+          const delayed = providerAge > PROVIDER_STALE_MS;
           setVehicles(d.vehicles);
-          setFeedStatus(d.vehicles.length > 0 ? "ready" : "empty");
-          setAgo(0);
+          setFeedStatus(delayed ? "stale" : d.vehicles.length > 0 ? "ready" : "empty");
+          setAgo(Math.floor(providerAge / 1000));
           setNowMs(Date.now());
           setPollSeq((s) => s + 1);
         }
       } catch {
-        if (alive) setFeedStatus((current) => current === "ready" ? current : "error");
+        if (alive) {
+          setFeedStatus((current) =>
+            current === "ready" || current === "stale" ? "stale" : "error",
+          );
+        }
       }
     };
     load();
@@ -330,6 +351,8 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
           ? "Loading live buses"
           : feedStatus === "error"
             ? "Live bus positions unavailable"
+            : feedStatus === "stale"
+              ? "Live bus feed delayed"
             : "No buses reporting right now"}
       </div>
     );
@@ -337,6 +360,12 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
 
   return (
     <>
+      {feedStatus === "stale" && (
+        <div className="map-live-status" role="status" aria-live="polite">
+          <span aria-hidden className="map-live-status-dot" />
+          Bus feed delayed · last update {ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago
+        </div>
+      )}
       <style>{
         "@keyframes fr-bus-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}" +
         "@keyframes fr-bus-pop{0%{transform:scale(1)}35%{transform:scale(1.16)}100%{transform:scale(1)}}" +
@@ -416,8 +445,8 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.vehicleId); }}
-              aria-label={`TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${p.moving ? "moving now" : "at a stop"}`}
-              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
+              aria-label={`TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${feedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
+              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: feedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
               {/* Fresh-data ripple: re-keying on pollSeq remounts it, so the
                   one-shot ring fires on every poll the bus is on screen. */}
@@ -507,8 +536,14 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         if (!v || !p) return null;
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
         const color = route?.color ?? "#285D73";
-        const stateLabel = p.moving ? "Moving now" : "At a stop";
-        const eta = etaLabel(v.nextStop?.etaEpoch, nowMs);
+        const stateLabel =
+          feedStatus === "stale"
+            ? "Last reported position"
+            : p.moving
+              ? "Moving now"
+              : "At a stop";
+        const eta =
+          feedStatus === "stale" ? null : etaLabel(v.nextStop?.etaEpoch, nowMs);
         return (
           <Popup
             longitude={p.lng}
@@ -549,7 +584,9 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
                 </div>
               )}
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
-                Updated {ago}s ago · live from TransIT
+                {feedStatus === "stale"
+                  ? `Feed delayed · last update ${ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago`
+                  : `Updated ${ago}s ago · live from TransIT`}
               </div>
             </div>
           </Popup>

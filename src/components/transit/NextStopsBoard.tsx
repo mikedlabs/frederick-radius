@@ -42,7 +42,7 @@ function etaMins(etaEpoch: number | undefined, nowMs: number): number | null {
 }
 
 export default function NextStopsBoard() {
-  const { vehicles, loaded, stale } = useLiveVehicles();
+  const { vehicles, loaded, available, status, stale } = useLiveVehicles();
   const [nowMs, setNowMs] = useState(0);
 
   // The countdowns tick every second between the shared poller's refreshes.
@@ -71,8 +71,17 @@ export default function NextStopsBoard() {
       });
   }, [vehicles, nowMs]);
 
-  // Nothing to show: stay quiet (the map already represents the live layer).
-  if (!loaded || rows.length === 0) return null;
+  if (!loaded) return null;
+  if (!available && rows.length === 0) {
+    return (
+      <p className="px-1 py-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        Live bus arrivals are unavailable. Use the official schedule before you leave.
+      </p>
+    );
+  }
+  // A healthy, genuinely empty feed does not need a second empty card under
+  // the summary above.
+  if (rows.length === 0) return null;
 
   const shown = rows.slice(0, MAX_ROWS);
   const extra = rows.length - shown.length;
@@ -90,12 +99,12 @@ export default function NextStopsBoard() {
           <span
             aria-hidden
             className={`${stale ? "" : "pulse-dot "}inline-block h-1.5 w-1.5 rounded-full`}
-            style={{ background: stale ? "var(--app-warning)" : "var(--app-cool)" }}
+            style={{ background: stale || status !== "ok" ? "var(--app-warning)" : "var(--app-cool)" }}
           />
-          Next stops
+          {status === "degraded" ? "Bus positions" : "Next stops"}
         </span>
         <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {stale ? "Delayed" : `${rows.length} live`}
+          {stale ? "Delayed" : status === "degraded" ? "Arrivals unavailable" : `${rows.length} live`}
         </span>
       </div>
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
@@ -132,7 +141,7 @@ export default function NextStopsBoard() {
                 )}
               </span>
               <span className="shrink-0 text-right font-mono tabular-nums" style={{ minWidth: 46 }}>
-                {stale ? (
+                {stale || status !== "ok" ? (
                   // Feed is delayed: don't tick a frozen fix down to "due."
                   <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }} aria-label="live ETA unavailable, feed delayed">·</span>
                 ) : mins == null ? (

@@ -165,3 +165,60 @@ export function placeActions(p: Place): PlaceAction[] {
 
   return actions;
 }
+
+export type PlaceActionGroups = {
+  primary: PlaceAction | null;
+  secondary: PlaceAction[];
+  more: PlaceAction[];
+};
+
+/**
+ * Turn a place's capability list into an action hierarchy for compact sheets.
+ *
+ * Directions is the reliable default outcome for a discovery sheet. Parking
+ * destinations promote their actual parking action instead. At most two
+ * neutral secondary actions stay visible; the rest remain available under a
+ * disclosure instead of becoming a row of equally saturated provider pills.
+ */
+export function groupPlaceActions(
+  actions: PlaceAction[],
+  category: string,
+): PlaceActionGroups {
+  if (actions.length === 0) {
+    return { primary: null, secondary: [], more: [] };
+  }
+
+  const primaryKey =
+    category === "parking" && actions.some((action) => action.key === "parking")
+      ? "parking"
+      : actions.some((action) => action.key === "directions")
+        ? "directions"
+        : actions[0].key;
+  const primary = actions.find((action) => action.key === primaryKey) ?? null;
+  const secondaryOrder = [
+    "reserve",
+    "call",
+    "order",
+    "menu",
+    "website",
+    "parking",
+    "instagram",
+    "directions",
+  ];
+  const rank = new Map(secondaryOrder.map((key, index) => [key, index]));
+  const remaining = actions
+    .filter((action) => action !== primary)
+    .map((action, index) => ({ action, index }))
+    .sort((a, b) => {
+      const rankA = rank.get(a.action.key) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = rank.get(b.action.key) ?? Number.MAX_SAFE_INTEGER;
+      return rankA - rankB || a.index - b.index;
+    })
+    .map(({ action }) => action);
+
+  return {
+    primary,
+    secondary: remaining.slice(0, 2),
+    more: remaining.slice(2),
+  };
+}

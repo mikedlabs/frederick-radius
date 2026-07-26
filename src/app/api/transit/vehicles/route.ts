@@ -9,18 +9,28 @@
  * join logic in the bundle. Realtime → no-store. Returns [] gracefully when
  * the feed is down.
  *
- *   GET /api/transit/vehicles → { vehicles: LiveVehicle[], updatedAt: number }
+ * Existing clients can keep reading `vehicles` + `updatedAt`. New clients can
+ * also read `status`, `available`, `feedTimestamp`, and the per-feed `feeds`
+ * metadata to distinguish an empty live feed from an upstream outage.
  */
 import { NextResponse } from "next/server";
-import { getLiveVehiclesWithNextStop } from "@/lib/integrations/transitRealtime";
+import { getLiveVehiclesWithNextStopResult } from "@/lib/integrations/transitRealtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const vehicles = await getLiveVehiclesWithNextStop();
+  const result = await getLiveVehiclesWithNextStopResult();
   return NextResponse.json(
-    { vehicles, updatedAt: Date.now() },
+    {
+      vehicles: result.data,
+      // Preserve the old Radius-received timestamp for existing clients.
+      updatedAt: result.receivedAt,
+      status: result.status,
+      available: result.available,
+      feedTimestamp: result.feedTimestamp,
+      feeds: result.feeds,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
