@@ -265,7 +265,7 @@ export default function TopBar() {
               type="button"
               aria-label="Ask or find across Frederick County"
               aria-haspopup="dialog"
-              aria-controls="radius-find-dialog"
+              aria-controls={searchOpen ? "radius-find-dialog" : undefined}
               aria-expanded={searchOpen}
               title="Ask or find across Frederick County"
               onClick={(event) => {

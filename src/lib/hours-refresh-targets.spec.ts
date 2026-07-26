@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assessHoursRefreshRun,
   hoursRefreshCycleDay,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
@@ -36,5 +37,61 @@ describe("hours refresh target selection", () => {
     ];
     const day = hoursRefreshCycleDay("a-canonical");
     expect(selectHoursRefreshTargets(places, day, 10)).toEqual([places[1]]);
+  });
+
+  it("marks a zero-write paid run as failed instead of returning silent success", () => {
+    expect(
+      assessHoursRefreshRun({
+        targeted: 120,
+        written: 0,
+        withHours: 0,
+        deferred: 0,
+      }),
+    ).toEqual({
+      healthy: false,
+      status: 503,
+      error: "No refresh rows were persisted.",
+    });
+  });
+
+  it("fails when a deterministic bucket exceeds the cap", () => {
+    expect(
+      assessHoursRefreshRun({
+        targeted: 400,
+        written: 390,
+        withHours: 360,
+        deferred: 12,
+      }),
+    ).toMatchObject({
+      healthy: false,
+      status: 503,
+    });
+  });
+
+  it("requires a useful success ratio and at least one hours schedule", () => {
+    expect(
+      assessHoursRefreshRun({
+        targeted: 100,
+        written: 25,
+        withHours: 20,
+        deferred: 0,
+      }).status,
+    ).toBe(502);
+    expect(
+      assessHoursRefreshRun({
+        targeted: 100,
+        written: 95,
+        withHours: 0,
+        deferred: 0,
+      }).status,
+    ).toBe(502);
+    expect(
+      assessHoursRefreshRun({
+        targeted: 100,
+        written: 95,
+        withHours: 80,
+        deferred: 0,
+      }),
+    ).toEqual({ healthy: true, status: 200 });
   });
 });

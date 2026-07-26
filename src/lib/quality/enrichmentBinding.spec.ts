@@ -1,12 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { isSuspectBinding } from "./enrichmentBinding";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
+import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 // The composed base set — curated SEED places + the DFP scrape + discovery.
 // The raw JSON files alone miss the hand-authored seeds (tabu-frederick,
 // el-rancho-frederick, acacia-house-frederick are all seeds — and all three
 // were wrong-business bindings).
 import { PLACES } from "@/data/places";
+import { haversineMeters } from "@/lib/geo";
+import { isGooglePlaceId } from "@/lib/provenance";
 
 type Ov = {
   fold?: Record<string, string>;
@@ -72,5 +75,79 @@ describe("data health: every suspect enrichment binding is quarantined or dead",
     // patch in places-overrides.json; if it's a rename of the same business,
     // teach isSuspectBinding the pattern instead of loosening blindly.
     expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("does not strand an exact nearby match under a folded legacy slug", () => {
+    type EnrichmentRow = {
+      display_name?: string;
+      lat?: number;
+      lng?: number;
+    };
+    type ClientRow = {
+      slug: string;
+      name: string;
+      geom: { lng: number; lat: number };
+    };
+    const enrichment = ENRICHMENT_RAW as Record<string, EnrichmentRow>;
+    const clients = CLIENT_RAW as ClientRow[];
+    const clientSlugs = new Set(clients.map((place) => place.slug));
+    const normalize = (value: string) =>
+      value
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    const clientsByName = new Map<string, ClientRow[]>();
+    for (const place of clients) {
+      const key = normalize(place.name);
+      clientsByName.set(key, [...(clientsByName.get(key) ?? []), place]);
+    }
+
+    const stranded: string[] = [];
+    for (const [legacySlug, row] of Object.entries(enrichment)) {
+      if (
+        clientSlugs.has(legacySlug) ||
+        !row.display_name ||
+        typeof row.lat !== "number" ||
+        typeof row.lng !== "number"
+      ) {
+        continue;
+      }
+      for (const place of clientsByName.get(normalize(row.display_name)) ?? []) {
+        if (
+          enrichment[place.slug] ||
+          haversineMeters(
+            { lng: row.lng, lat: row.lat },
+            place.geom,
+          ) > 500
+        ) {
+          continue;
+        }
+        stranded.push(
+          `${legacySlug} should be reviewed against ${place.slug} (${place.name})`,
+        );
+      }
+    }
+
+    // A stale alias is not harmless file bloat: it withholds the Google ID
+    // from the refresh cron and every canonical recommendation surface.
+    expect(stranded, stranded.join("\n")).toEqual([]);
+  });
+
+  it("publishes only provider-valid Google Place IDs", () => {
+    const invalid = (
+      CLIENT_RAW as Array<{
+        slug: string;
+        google_place_id?: string;
+      }>
+    )
+      .filter(
+        (place) =>
+          place.google_place_id &&
+          !isGooglePlaceId(place.google_place_id),
+      )
+      .map((place) => place.slug);
+
+    expect(invalid, invalid.join("\n")).toEqual([]);
   });
 });

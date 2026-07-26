@@ -333,17 +333,24 @@ export default async function HomePage() {
           specialty-guide promotions. On a quiet day this renders nothing. */}
       {headliner}
 
-      {/* ASK RADIUS — a compact handoff into the decision workspace. */}
-      <TodayAsk />
-
-      {/* BROWSE PLACES BY WHAT YOU WANT — the "I want…" category fast lane
-          (CravingStrip), high under the weather. Now behind an OBVIOUS tappable
-          launcher card (owner: the plain text title "didn't make it clear what
-          it is or that it's clickable"). Markup ships in the HTML (display:none
-          until opened), so it opens instantly with no fetch. */}
-      <BrowsePlacesDisclosure>
-        <CravingStrip />
-      </BrowsePlacesDisclosure>
+      {/* One decision index: ask a specific question or open the category
+          browse. The rows share a surface so they read as two routes through
+          the same job, not two unrelated cards competing below the weather. */}
+      <div
+        role="group"
+        aria-label="Find what you need"
+        className="mt-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <TodayAsk embedded />
+        <BrowsePlacesDisclosure embedded>
+          <CravingStrip />
+        </BrowsePlacesDisclosure>
+      </div>
 
       {/* The first place answer is visual and context-aware. Attributed
           business photos render when the media record permits them; the

@@ -20,6 +20,7 @@ import { isEventToday } from "@/lib/eventWhenLabel";
 import { marketTimingAt, todayUtilityBandLabel } from "@/lib/today/on-now";
 import type { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
+import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
 
@@ -150,24 +151,12 @@ export default async function OnNowBand({
     : (laterSummary.length > 0 ? laterSummary : todaySummary).join(" · ");
 
   return (
-    <section className="mt-5 space-y-3" aria-label={label}>
-      <div className="flex items-baseline justify-between gap-3 px-0.5">
-        {/* Serif-title register, matching its /today peers (PoolsToday,
-            CravingStrip) instead of the lone mono-eyebrow it used to wear. The
-            mono stays, but only on the tally to the right (counts support). */}
-        <h2 className="flex items-center gap-2 font-serif text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {currentCount > 0 && (
-            <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-          )}
-          {label}
-        </h2>
-        {summary && (
-          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-            {summary}
-          </span>
-        )}
-      </div>
-      <div className="fg-rule" aria-hidden />
+    <section className="mt-5" aria-label={label}>
+      <TodaySectionHeading
+        title={label}
+        meta={summary || undefined}
+        live={currentCount > 0}
+      />
       <div className="space-y-4">
         <div key={lead.key}>{lead.node}</div>
         {additional.length > 0 ? (

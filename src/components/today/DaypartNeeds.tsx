@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import SectionHeading from "@/components/ui/SectionHeading";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
+import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { getWantAnswer } from "@/lib/want-cache";
@@ -25,6 +24,7 @@ type WantRow = {
   where: string | null;
   distance: string | null;
   fact: string;
+  confidence?: "confirmed" | "likely";
 };
 
 type WantAnswer = {
@@ -89,27 +89,36 @@ export function daypartBrowseHref(
  * existing shelf instead of turning it into another full-size card. */
 export function DaypartEmptyState({
   href = "/open-now",
+  label = "Open now",
+  contextLabel = "Across Frederick County",
 }: {
   href?: string;
+  label?: string;
+  contextLabel?: string;
 } = {}) {
   return (
-    <div
-      role="status"
-      className="mt-4 flex items-center justify-between gap-3 border-y px-0.5 py-2"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-    >
-      <p className="text-[11.5px] leading-snug">
-        No matching places are confirmed open in this area.
-      </p>
-      <Link
+    <section aria-label="Open places right now" className="mt-6">
+      <TodaySectionHeading
+        title={label}
+        meta={contextLabel}
         href={href}
-        className="tap-44-y inline-flex shrink-0 items-center gap-0.5 text-[11.5px] font-semibold"
-        style={{ color: "var(--app-brand-press)" }}
+        cta="Check nearby"
+      />
+      <div
+        role="status"
+        className="rounded-[var(--app-radius-md)] border px-3 py-2.5"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          boxShadow: "var(--app-hi)",
+          color: "var(--app-ink-2)",
+        }}
       >
-        Opening later
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      </Link>
-    </div>
+        <p className="text-[12px] leading-snug">
+          Live hours aren&rsquo;t available right now.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -172,7 +181,9 @@ export default function DaypartNeeds({
             where: row.where,
             distance: row.distance,
             fact: row.fact,
+            confidence: row.confidence ?? "confirmed",
           }));
+        if (open.length === 0 && baseActive.picks.length > 0) return;
         setLiveShelves((previous) => ({
           ...previous,
           [baseActive.category]: {
@@ -228,22 +239,34 @@ export default function DaypartNeeds({
   // not keep a heading, tab row, count line, and empty card in prime Today
   // space. Collapse it to one honest route to places opening later.
   if (!awaitingLive && active.picks.length === 0) {
-    return <DaypartEmptyState href={active.href} />;
+    return (
+      <DaypartEmptyState
+        href={active.href}
+        label="Open now"
+        contextLabel={contextLabel}
+      />
+    );
   }
 
+  const likely = active.picks.length > 0 &&
+    active.picks.every((place) => place.confidence === "likely");
+  const countywide =
+    contextLabel === "Across Frederick County" ||
+    contextLabel === "Whole county";
+
   return (
-    <section aria-label="Open places right now" className="mt-6">
-      <div className="flex items-end justify-between gap-3">
-        <SectionHeading title="Open now" />
-        <p
-          className="pb-0.5 text-right font-mono text-[10px] font-medium"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {contextLabel}
-        </p>
-      </div>
+    <section
+      aria-label={likely ? "Places likely open right now" : "Open places right now"}
+      className="mt-6"
+    >
+      <TodaySectionHeading
+        title={likely ? "Likely open" : "Open now"}
+        meta={contextLabel}
+        href={active.href}
+        cta="See all"
+      />
       {note ? (
-        <p className="mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <p className="-mt-1 px-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           {note}
         </p>
       ) : null}
@@ -310,19 +333,16 @@ export default function DaypartNeeds({
         aria-labelledby={rows.length > 1 ? `daypart-tab-${active.category}` : undefined}
         className={rows.length > 1 ? "mt-2" : "mt-1"}
       >
-        <div className="flex items-center justify-between gap-3 px-0.5">
+        <div className="px-0.5">
           <p className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {awaitingLive ? "Checking nearby" : `${active.picks.length} confirmed open`}
+            {awaitingLive
+              ? "Checking nearby"
+              : likely
+                ? "Posted hours · check before going"
+                : countywide
+                  ? "Countywide picks"
+                  : "Nearby picks"}
           </p>
-          <Link
-            href={active.href}
-            aria-label={`See all ${active.label.toLocaleLowerCase()} places`}
-            className="tap-44-y inline-flex items-center gap-0.5 text-[11.5px] font-semibold"
-            style={{ color: "var(--app-brand-press)" }}
-          >
-            See all
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </Link>
         </div>
 
         {awaitingLive ? (
@@ -342,13 +362,13 @@ export default function DaypartNeeds({
             ))}
           </div>
         ) : active.picks.length > 0 ? (
-          <ul className="mt-2 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ul className="shelf-rail mt-2 gap-2.5 pb-1">
             {active.picks.map((place) => (
               <li key={place.slug} className="shrink-0">
                 <Link
                   href={`/places/${place.slug}`}
                   prefetch={false}
-                  aria-label={`${place.name}, open now`}
+                  aria-label={`${place.name}, ${place.confidence === "likely" ? "likely open" : "open now"}`}
                   className="group relative flex h-[7.35rem] w-[11.25rem] flex-col justify-end overflow-hidden rounded-[var(--app-radius-md)] transition active:scale-[0.985]"
                   style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
                 >
@@ -388,9 +408,15 @@ export default function DaypartNeeds({
                       <span
                         aria-hidden
                         className="h-1.5 w-1.5 rounded-full"
-                        style={{ background: "var(--app-positive)" }}
+                        style={{
+                          background:
+                            place.confidence === "likely"
+                              ? "var(--app-warning)"
+                              : "var(--app-positive)",
+                        }}
                       />
-                      {place.fact || "Open now"}
+                      {place.fact ||
+                        (place.confidence === "likely" ? "Likely open" : "Open now")}
                       {place.distance ? <span>· {place.distance}</span> : null}
                       {!place.distance && place.where ? <span>· {place.where}</span> : null}
                       {!place.fact && place.rating ? <span>· {place.rating.toFixed(1)}★</span> : null}

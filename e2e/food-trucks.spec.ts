@@ -6,6 +6,9 @@ test("food-truck board leads with plans and opens useful vendor details", async 
   await page.goto("/food-trucks");
 
   await expect(page.getByRole("heading", { level: 1, name: "Find where they pull in." })).toBeVisible();
+  await expect(
+    page.locator('.food-truck-hero-lineup [data-photo-state="official-mark"]'),
+  ).toHaveCount(5);
   await expect(page.getByRole("tab", { name: "Near me" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "This week" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Trucks" })).toBeVisible();
@@ -26,6 +29,9 @@ test("food-truck board leads with plans and opens useful vendor details", async 
 
   await page.getByRole("tab", { name: "Trucks" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "Browse the local roster" })).toBeVisible();
+  await expect(
+    page.locator('#vendors .food-truck-vendor-card [data-photo-state="official-mark"]').first(),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Scheduled this week" })).toBeVisible();
   const firstDetail = page.getByRole("button", { name: /^See details for / }).first();
   await firstDetail.click();

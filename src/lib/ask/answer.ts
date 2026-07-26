@@ -1294,6 +1294,7 @@ function wantContextBlock(
   const line = (r: WantRow) =>
     `- ${r.name}${r.where ? ` (${r.where})` : ""}: ${r.fact}${r.detail ? `; ${r.detail}` : ""}${r.deal ? `; ${r.deal}` : ""}${r.tip ? `; LOCAL NOTE: ${r.tip}` : ""}`;
   const open = [wa.hero, ...wa.also].filter((r): r is WantRow => r != null).slice(0, 5);
+  const likelyOpen = open[0]?.confidence === "likely";
   const later = wa.later.slice(0, 3);
   const notable = open.length === 0 && later.length === 0 ? wa.notable.slice(0, 4) : [];
   const parts: string[] = [];
@@ -1303,7 +1304,9 @@ function wantContextBlock(
         ? `Scheduled open around ${availabilityLabel}:\n${open.map(line).join("\n")}`
         : wa.rankingMode === "best-fit"
         ? `Best fits (current hours shown):\n${open.map(line).join("\n")}`
-        : `Open now:\n${open.map(line).join("\n")}`,
+        : likelyOpen
+          ? `Likely open from posted hours (check before going):\n${open.map(line).join("\n")}`
+          : `Open now:\n${open.map(line).join("\n")}`,
     );
   }
   if (!availabilityLabel && later.length > 0) parts.push(`Opens later today:\n${later.map(line).join("\n")}`);

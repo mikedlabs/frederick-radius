@@ -25,6 +25,18 @@ const wk = (open: string, close: string): OpenWindow => ({
 export const RELIABLE_OPEN_WINDOWS: Record<string, OpenWindow> = {
   "dublin-roasters-frederick": wk("07:00", "18:00"),
   "frederick-coffee-company-frederick": wk("07:00", "20:00"),
+  // Verified against Gravel & Grind's own contact/shop pages on 2026-07-26.
+  // The business notes that holiday hours can vary, and these close 15
+  // minutes before the posted time so a likely-open answer stays conservative.
+  "gravel-and-grind-frederick": {
+    mon: ["08:00", "13:45"],
+    tue: ["08:00", "13:45"],
+    wed: ["08:00", "16:45"],
+    thu: ["08:00", "16:45"],
+    fri: ["08:00", "16:45"],
+    sat: ["08:00", "16:45"],
+    sun: ["08:00", "15:45"],
+  },
   "common-market-frederick": wk("08:00", "21:00"),
   "south-mountain-creamery-middletown": wk("08:00", "20:00"),
   "north-market-pop-shop-frederick": wk("11:00", "21:00"),
@@ -39,6 +51,16 @@ export const RELIABLE_OPEN_WINDOWS: Record<string, OpenWindow> = {
   "hootch-and-banter-frederick": wk("16:00", "23:59"),
   "the-cozy-creamery-thurmont": wk("11:00", "21:00"),
   "delaplaine-arts-center-frederick": wk("10:00", "17:00"),
+  // Surelocked In's official site says "We're Back" and publishes this
+  // schedule. Verified 2026-07-26; appointment-only Monday is omitted.
+  "surelocked-in-escape-games-frederick": {
+    tue: ["16:00", "19:45"],
+    wed: ["16:00", "19:45"],
+    thu: ["16:00", "19:45"],
+    fri: ["16:00", "20:45"],
+    sat: ["11:30", "20:45"],
+    sun: ["13:00", "19:45"],
+  },
   // Downtown staples a Reddit reviewer rightly flagged as missing from
   // "open now" (July 2026). Windows verified against the businesses' own
   // posted hours (cafe-nola.com: 8am-2am, Tue to 2pm; beansnbagels.com:
@@ -76,5 +98,7 @@ export function isLikelyOpenNow(slug: string, now: Date): boolean {
   if (!span) return false;
   const hh = map.hour === "24" ? "00" : map.hour;
   const cur = `${hh.padStart(2, "0")}:${map.minute}`;
-  return cur >= span[0] && cur <= span[1];
+  // A closing time is an exclusive boundary: "closes at 6:00" must not
+  // become a "likely open" claim at 6:00.
+  return cur >= span[0] && cur < span[1];
 }

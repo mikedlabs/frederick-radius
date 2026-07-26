@@ -17,6 +17,7 @@ import {
 import { getDriftStats, getDrift, getDecisions as getDriftDecisions } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
+import { curatedFreshnessAnomalies } from "@/lib/quality/curated-freshness";
 import {
   AdminShell,
   Section,
@@ -106,6 +107,11 @@ async function Board() {
   await getLiveEvents(60).catch(() => null);
   const feedMetrics = consumeFeedMetrics();
   const anomalies = getAnomalies();
+  const curatedAnomalies = curatedFreshnessAnomalies();
+  const operationalAnomalies = [...anomalies, ...curatedAnomalies];
+  const hoursSnapshotAnomaly = curatedAnomalies.find(
+    (anomaly) => anomaly.source === "places-hours-refresh.json",
+  );
   const snapshots = getSnapshots();
   const drift = getDriftStats(getDrift(), await getDriftDecisions());
   // Placement validation — coordinates flagged needs_review because
@@ -208,6 +214,12 @@ async function Board() {
     actions.push({
       label: `${anomalies.length} feed anomal${anomalies.length === 1 ? "y" : "ies"} flagged`,
       fix: "Compare the flagged sources against the Distribution snapshot before trusting the batch.",
+    });
+  }
+  if (hoursSnapshotAnomaly) {
+    actions.push({
+      label: "The committed open-now hours snapshot is empty or stale",
+      fix: hoursSnapshotAnomaly.detail,
     });
   }
   if (flaggedCoords > 0) {
@@ -526,14 +538,14 @@ async function Board() {
       </Section>
 
       <Section
-        title="Anomaly flags (current vs prior fetch)"
-        description="Rolling per-source comparison. Flags fire when the distribution shifts in a way that usually means an upstream regression: row counts crash, the Free share swings wildly, a single venue claims the whole batch, or descriptions go missing."
+        title="Operational anomaly flags"
+        description="Current feed drift and committed snapshot freshness appear together here. A quiet upstream failure or an expired materialized file is named before it can look like a quiet day."
       >
-        {anomalies.length === 0 ? (
+        {operationalAnomalies.length === 0 ? (
           <EmptyState tone="positive">No anomalies on the last fetch.</EmptyState>
         ) : (
           <div className="mt-3 space-y-2">
-            {anomalies.map((a, i) => (
+            {operationalAnomalies.map((a, i) => (
               <Callout
                 key={`${a.source}-${a.kind}-${i}`}
                 tone="warning"

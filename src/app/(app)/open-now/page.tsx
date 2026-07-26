@@ -192,7 +192,7 @@ export default async function OpenNowPage() {
   const likelySections: IndexSection[] = [
     {
       key: "likely",
-      label: "Posted hours not verified",
+      label: "Likely open · check hours",
       rows: likely.slice(0, 12).map((p) => toRow(p, false)),
     },
   ];
@@ -230,7 +230,11 @@ export default async function OpenNowPage() {
           Open now
         </h1>
         <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          {verified.length} places open from verified posted hours
+          {verified.length > 0
+            ? `${verified.length} ${verified.length === 1 ? "place is" : "places are"} confirmed open`
+            : likely.length > 0
+              ? "Posted schedules are available, but live verification is not."
+              : "Live hours are unavailable right now."}
         </p>
       </header>
 
@@ -252,8 +256,8 @@ export default async function OpenNowPage() {
               the map link that follows, so the copy never references a section
               that isn't there. */}
           {likely.length > 0
-            ? "Nothing is confirmed open at this hour. Places with unverified posted hours appear below; check before you go."
-            : "Nothing is confirmed open at this hour right now. Open the map to look for places nearby, or check back a little later."}
+            ? "These places are usually open at this hour based on their posted schedules. Check before you go."
+            : "Open the map to look for places nearby, or check back a little later."}
         </p>
       )}
 

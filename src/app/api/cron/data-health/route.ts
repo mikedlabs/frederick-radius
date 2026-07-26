@@ -36,7 +36,7 @@ import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { curatedFreshnessAnomalies, liveSourceAnomalies } from "@/lib/quality/curated-freshness";
 import { pruneExpiredReports } from "@/lib/loaders/communityReports";
-import { findRlsAnomalies, findStaleIngestSources } from "@/lib/quality/db-health";
+import { evaluateDbHealth } from "@/lib/quality/db-health";
 import { runTripwires } from "@/lib/quality/tripwires";
 import { deliverDataHealthReport } from "@/lib/integrations/github-alerts";
 import { startIngestRun, finishIngestRun } from "@/lib/ingest/run-log";
@@ -91,7 +91,8 @@ export async function GET(request: Request) {
   // ─────────────────────────────────────────────────────
   // Feed-side: hydrate, fetch, snapshot, detect, alert, prune.
   // Each step is isolated so one slow/failing feed can't break
-  // the full health report. The cron body always returns 200.
+  // the full health report. Missing DB infrastructure is the exception:
+  // without it, the DB checks were never evaluated, so the route returns 503.
   // ─────────────────────────────────────────────────────
   await hydrateSnapshots().catch((err) => {
 
@@ -123,15 +124,14 @@ export async function GET(request: Request) {
   });
   // community_reports self-cleans: expired approved + old rejected rows
   // (integrity-01). Pending rows are never touched. Each helper is already
-  // fail-soft (returns 0 / [] on no-DB or error), so the cron stays green.
+  // fail-soft for cleanup; the status-aware DB probes below decide whether the
+  // database was healthy enough to evaluate.
   const prunedReports = await pruneExpiredReports();
-  // DB-health guards (mig-6 + ING-5): an RLS-disabled public table re-opens
-  // the anon hole; a stale ingest source means a dead cron. Both surface as
-  // Anomaly-shaped rows so they ride the same Slack alert + dashboard.
-  const dbAnomalies = [
-    ...(await findRlsAnomalies()),
-    ...(await findStaleIngestSources()),
-  ];
+  // DB-health guards (mig-6 + ING-5): both queries must complete before this
+  // gate can be green. Missing configuration or a failed query becomes an
+  // explicit infrastructure anomaly and a failing HTTP response.
+  const dbHealth = await evaluateDbHealth();
+  const dbAnomalies = dbHealth.anomalies;
   // Curated-freshness assertions (data audit meta-fix): expired committed
   // snapshots, aging hand-verifications, and named live-feed failures become
   // red lines on the same alert channel instead of silent blanks.
@@ -146,7 +146,14 @@ export async function GET(request: Request) {
   // src/lib/quality/tripwires.ts for the July 2026 history behind each.
   const tripwires = await runTripwires().catch((err) => {
     console.error("[cron/data-health] tripwires failed:", err);
-    return { anomalies: [], checks: [] as Array<{ name: string; green: boolean }> };
+    return {
+      anomalies: [{
+        source: "tripwires",
+        kind: "tripwire_failed" as const,
+        detail: `The data-health tripwire runner failed: ${err instanceof Error ? err.message : String(err)}`,
+      }],
+      checks: [{ name: "tripwire-execution", green: false }],
+    };
   });
 
   const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies, ...tripwires.anomalies];
@@ -164,7 +171,10 @@ export async function GET(request: Request) {
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
     { name: "curated-freshness", green: freshnessAnomalies.length === 0 },
-    { name: "db-health", green: dbAnomalies.length === 0 },
+    {
+      name: "db-health",
+      green: dbHealth.status === "available" && dbAnomalies.length === 0,
+    },
     ...tripwires.checks,
   ];
   const red = gates.filter((g) => !g.green);
@@ -222,10 +232,19 @@ export async function GET(request: Request) {
       live_sources_succeeded: live.sources_succeeded.length,
     },
     db_health: {
+      status: dbHealth.status,
+      unavailable_reason: dbHealth.reason,
+      anomalies: dbAnomalies,
       pruned_expired_reports: prunedReports,
       rls_unprotected: dbAnomalies.filter((a) => a.kind === "rls_unprotected").map((a) => a.source),
       ingest_stale: dbAnomalies.filter((a) => a.kind === "ingest_stale").map((a) => a.source),
     },
+    tripwires: {
+      checks: tripwires.checks,
+      anomalies: tripwires.anomalies,
+    },
     note: "This endpoint only recomputes health; commit-time scripts persist artifacts.",
+  }, {
+    status: dbHealth.status === "unavailable" ? 503 : 200,
   });
 }

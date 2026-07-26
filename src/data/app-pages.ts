@@ -50,6 +50,7 @@ export const APP_PAGES: AppPage[] = [
   { href: "/overhead", title: "Overhead flights", blurb: "See aircraft currently transmitting near Frederick on a live map.", keywords: ["planes", "plane", "flight", "flights", "helicopter"] },
   { href: "/rhythm", title: "The county rhythm", blurb: "See how places with posted hours open and close throughout the week.", keywords: ["rhythm"] },
   { href: "/numbers", title: PRODUCT_NAMES.countyNumbers.pageTitle, blurb: PRODUCT_NAMES.countyNumbers.description, keywords: ["numbers", "stats", "statistics", "how many", "almanac", "counted"] },
+  { href: "/signals", title: PRODUCT_NAMES.civicSignals.pageTitle, blurb: PRODUCT_NAMES.civicSignals.description, keywords: ["civic data", "public data", "government data", "county data", "city data", "service requests", "civic signals"] },
 
   // ── Directories & discovery ──
   { href: "/reserve", title: "Book a table", blurb: "Find restaurants with checked reservation links.", keywords: ["reserve", "reservation", "reservations", "book a table", "opentable", "resy"] },

@@ -13,7 +13,13 @@ import { haptic } from "@/lib/haptics";
  * and are display:none until opened, so there is zero fetch and the panel opens
  * instantly. Open state persists per device.
  */
-export default function BrowsePlacesDisclosure({ children }: { children: ReactNode }) {
+export default function BrowsePlacesDisclosure({
+  children,
+  embedded = false,
+}: {
+  children: ReactNode;
+  embedded?: boolean;
+}) {
   const KEY = "fr.today.want";
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -44,13 +50,19 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
   const panelId = "browse-places-panel";
 
   return (
-    <section aria-label="Browse places by category" className="mt-3">
+    <section
+      aria-label="Browse places by category"
+      data-surface-row={embedded ? "browse" : undefined}
+      className={embedded ? "" : "mt-3"}
+    >
       <button
         type="button"
         onClick={toggle}
         aria-expanded={mounted ? open : false}
         aria-controls={panelId}
-        className="tap-pop flex min-h-[52px] w-full items-center gap-3 border-b px-1 py-2 text-left transition hover:bg-[var(--app-bg-elevated)]"
+        className={`tap-pop flex min-h-[52px] w-full items-center gap-3 px-2 py-2 text-left transition hover:bg-[var(--app-bg-elevated)] ${
+          embedded ? "" : "border-b"
+        }`}
         style={{
           borderColor: "var(--app-border)",
           // Full-width row: a gentle push-out, not the chip-scale 1.06.
@@ -74,7 +86,12 @@ export default function BrowsePlacesDisclosure({ children }: { children: ReactNo
           style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
         />
       </button>
-      <div id={panelId} hidden={!open} className="mt-3">
+      <div
+        id={panelId}
+        hidden={!open}
+        className={embedded ? "border-t px-3 pb-3 pt-3" : "mt-3"}
+        style={embedded ? { borderColor: "var(--app-border)" } : undefined}
+      >
         {children}
       </div>
     </section>

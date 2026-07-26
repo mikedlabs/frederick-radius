@@ -15,7 +15,11 @@ import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isPizzaPlace } from "@/data/cravings";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
-import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
+import {
+  isGooglePlaceId,
+  stampPlaceProvenance,
+  type Provenance,
+} from "@/lib/provenance";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { manualPlaceStatusOverride } from "@/lib/place-status-overrides";
@@ -60,6 +64,7 @@ import {
   type PlacementRejectionReason,
 } from "@/lib/placement-trust";
 import { getHoursAvailability } from "@/lib/hours-availability";
+import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -194,6 +199,7 @@ function claimUrbana(p: Place): Place {
 }
 
 type Enrichment = {
+  google_place_id?: string;
   business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
   weekday_hours?: string[];
   has_hours?: boolean;
@@ -644,13 +650,19 @@ function boundaryBlurb(raw: string | undefined, name: string): string {
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = enrichmentFor(p.slug);
   const approvedDescription = approvedPlaceDescription(p.slug, p.name);
+  // A partner UUID was historically stored in this field on part of the DFP
+  // import. It is not a Google Place ID and must not escape the canonical
+  // loader as provider data.
+  const sourcePlace = isGooglePlaceId(p.google_place_id)
+    ? p
+    : { ...p, google_place_id: undefined };
   if (!e)
     return {
-      ...p,
+      ...sourcePlace,
       // Provenance (data brief 4.1): stamped at this chokepoint so every
       // row that reaches a surface carries all seven fields. The un
       // enriched branch verifies against the editorial pass date.
-      ...stampForPlace(p, SEED_PLACE_VERIFIED_AT),
+      ...stampForPlace(sourcePlace, SEED_PLACE_VERIFIED_AT),
       // No Google profile to derive from, but an editorial hand-pick
       // still counts (and that is the whole reason hand-picks exist).
       local_favorite: resolveLocalFavorite(p.slug, undefined, undefined, p.is_verified),
@@ -671,6 +683,19 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
         approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
       description_reviewed: Boolean(approvedDescription),
     };
+  // Some imported DFP rows stored a partner UUID in `google_place_id`, even
+  // though the reviewed enrichment row for the same slug already carries the
+  // real Google Places ID. Promote that reviewed ID at this canonical merge
+  // boundary so hours refresh, provenance links, and every generated client
+  // record use the provider ID we already have. Quarantined enrichments never
+  // reach this branch.
+  const canonicalGooglePlaceId = isGooglePlaceId(e.google_place_id)
+    ? e.google_place_id
+    : sourcePlace.google_place_id;
+  const canonicalPlace =
+    canonicalGooglePlaceId === sourcePlace.google_place_id
+      ? sourcePlace
+      : { ...sourcePlace, google_place_id: canonicalGooglePlaceId };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
     e.business_status === "CLOSED_PERMANENTLY" ? "closed_permanently" :
@@ -731,7 +756,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   // "Monday: 9:00 AM - 5:00 PM" strings into { mon: [{ open, close }] }.
   const hours = p.hours ?? parseGoogleHours(e.weekday_hours);
   return {
-    ...p,
+    ...canonicalPlace,
     geom,
     category,
     short_blurb,
@@ -795,7 +820,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // vouches for the content.
     ...(() => {
       const prov = stampForPlace(
-        p,
+        canonicalPlace,
         e.enriched_at ?? ENRICHMENT_VERIFIED_AT,
       );
       const googleConfirmed = Boolean(e.business_status && e.business_status !== "UNKNOWN");
@@ -1356,7 +1381,9 @@ export function radiusPlaces(): Place[] {
 export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): PlaceCardData[] {
   return publicPlaces()
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
-    .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
+    .map((p) => decoratePlace(p, origin, now))
+    .filter((p) => mayUseLikelyOpenFallback(p.open_status))
+    .map((p) => ({ ...p, open_confidence: "likely" as const }))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
 }
 

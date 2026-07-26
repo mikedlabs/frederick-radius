@@ -2,7 +2,10 @@ import "server-only";
 import type { Anomaly } from "@/lib/integrations/feed-snapshot";
 import { photoUrl } from "@/lib/integrations/google-places";
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
-import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import {
+  assembleUnifiedEvents,
+  type EventSourceHealth,
+} from "@/lib/loaders/unifiedEvents";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { askFrederick } from "@/lib/ask/answer";
 import { getSql } from "@/lib/db/client";
@@ -142,20 +145,64 @@ export async function transitTripwire(): Promise<Anomaly[]> {
   }
 }
 
+const EVENT_SOURCE_FAILURE_THRESHOLD = 2;
+const BROAD_EVENT_SOURCE_FAILURES = new Set(["municipal calendars"]);
+
+/**
+ * A populated event board is not proof that its runtime sources are healthy:
+ * curated seed rows and committed venue snapshots deliberately survive a live
+ * outage. Turn broad source degradation into its own operator signal.
+ *
+ * One named provider may fail transiently, and the raw data-health pull already
+ * reports that provider by name. The unified-board gate goes red when at least
+ * two source paths are unavailable, or when one umbrella failure represents
+ * the whole municipal-calendar fanout.
+ */
+export function eventSourceHealthAnomaly(
+  sourceHealth: EventSourceHealth,
+): Anomaly | null {
+  const unavailable = [...new Set(sourceHealth.unavailable)]
+    .map((source) => source.trim())
+    .filter(Boolean)
+    .sort();
+  if (!sourceHealth.degraded || unavailable.length === 0) return null;
+
+  const broadFailure = unavailable.some((source) =>
+    BROAD_EVENT_SOURCE_FAILURES.has(source),
+  );
+  if (
+    !broadFailure
+    && unavailable.length < EVENT_SOURCE_FAILURE_THRESHOLD
+  ) {
+    return null;
+  }
+
+  return {
+    source: "unified-events",
+    kind: "events_sources_degraded",
+    detail:
+      `${unavailable.length} runtime event source${unavailable.length === 1 ? "" : "s"} unavailable (${unavailable.join(", ")}). ` +
+      "Curated or cached fallback events may still keep the board populated; treat event coverage as partial until the sources recover.",
+  };
+}
+
 /** A county with zero public events on ANY day means the assembly (not one
- *  feed — the whole unified pipeline) broke. */
+ *  feed — the whole unified pipeline) broke. Source coverage is checked
+ *  separately so one surviving fallback card cannot make the gate green. */
 export async function eventsTripwire(now: Date = new Date()): Promise<Anomaly[]> {
   try {
-    const { publicEvents } = await assembleUnifiedEvents(now);
+    const { publicEvents, sourceHealth } = await assembleUnifiedEvents(now);
     const today = publicEvents.filter((e) => isEventToday(e.starts_at, now)).length;
-    if (today > 0) return [];
-    return [
-      {
+    const sourceAnomaly = eventSourceHealthAnomaly(sourceHealth);
+    const anomalies: Anomaly[] = sourceAnomaly ? [sourceAnomaly] : [];
+    if (today === 0) {
+      anomalies.unshift({
         source: "unified-events",
         kind: "events_empty",
         detail: "assembleUnifiedEvents returned ZERO public events for today — the unified pipeline (feeds + classification + time-sanity) is broken upstream of every events surface.",
-      },
-    ];
+      });
+    }
+    return anomalies;
   } catch (err) {
     return [
       {
@@ -395,7 +442,16 @@ export async function runTripwires(now: Date = new Date()): Promise<TripwireRepo
     checks: [
       { name: "photos", green: photos.length === 0 },
       { name: "transit", green: transit.length === 0 },
-      { name: "events-today", green: events.length === 0 },
+      {
+        name: "events-today",
+        green: !events.some((anomaly) => anomaly.kind === "events_empty"),
+      },
+      {
+        name: "event-sources",
+        green: !events.some(
+          (anomaly) => anomaly.kind === "events_sources_degraded",
+        ),
+      },
       { name: "ask-canary", green: ask.length === 0 },
       { name: "live-conditions", green: conditions.length === 0 },
       { name: "semantic-index", green: semantic.length === 0 },

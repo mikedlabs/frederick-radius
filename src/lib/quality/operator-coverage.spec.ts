@@ -86,6 +86,27 @@ describe("operator data coverage", () => {
     });
   });
 
+  it("does not count a fresh business-status-only row as fresh hours", () => {
+    const summary = summarizeHoursRefreshArtifact(
+      {
+        status_only: {
+          business_status: "OPERATIONAL",
+          refreshed_at: "2026-07-26T11:00:00Z",
+        },
+      },
+      new Set(["status_only"]),
+      new Date("2026-07-26T12:00:00Z"),
+    );
+
+    expect(summary).toMatchObject({
+      matchedRows: 1,
+      withSchedule: 0,
+      freshRows: 0,
+      staleRows: 0,
+      coveragePct: 0,
+    });
+  });
+
   it("makes event category, venue, centroid, and duration gaps explicit", () => {
     const summary = summarizeEventQuality([
       {

@@ -519,6 +519,16 @@ export const RADIUS_TOOL_GROUPS: readonly RadiusToolGroup[] = [
     parentJourney: "map",
     tools: [
       {
+        id: "civic-signals",
+        label: PRODUCT_NAMES.civicSignals.uiLabel,
+        description: PRODUCT_NAMES.civicSignals.description,
+        href: "/signals",
+        icon: "sigma",
+        tone: "civic",
+        parentJourney: "today",
+        keywords: ["civic data", "public data", "government data", "county data", "city data", "service requests"],
+      },
+      {
         id: "numbers",
         label: "County numbers",
         description: "See counts calculated from the current Radius datasets.",

@@ -42,6 +42,7 @@ describe("Radius tool registry", () => {
   it("assigns secondary tools to a stable primary journey", () => {
     expect(radiusJourneyForPath("/beer")).toBe("today");
     expect(radiusJourneyForPath("/pulse")).toBe("today");
+    expect(radiusJourneyForPath("/signals")).toBe("today");
     expect(radiusJourneyForPath("/parks")).toBe("map");
     expect(radiusJourneyForPath("/amenities")).toBe("map");
     expect(radiusJourneyForPath("/sports")).toBe("events");

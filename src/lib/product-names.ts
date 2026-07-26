@@ -54,6 +54,13 @@ export const PRODUCT_NAMES = {
     shareTitle: "Frederick County in numbers | Frederick Radius",
     description: "See counts calculated from the published Frederick Radius datasets.",
   },
+  civicSignals: {
+    uiLabel: "Civic signals",
+    pageTitle: "Civic signals for Frederick County",
+    shareTitle: "Civic signals for Frederick County | Frederick Radius",
+    description:
+      "Read source-backed findings calculated from approved Frederick public datasets.",
+  },
   saved: {
     uiLabel: "Saved",
     pageTitle: "Saved",

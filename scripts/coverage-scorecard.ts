@@ -23,6 +23,7 @@ import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import { isGooglePlaceId } from "@/lib/provenance";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import {
   CORE_AMENITY_KINDS,
@@ -168,7 +169,7 @@ const line = (r: Row) =>
   `| ${r.muni} | ${r.places} | ${r.withStoredHours} (${pct(r.withStoredHours, r.places)}) | ${r.withFreshHours} (${pct(r.withFreshHours, r.places)}) | ${r.withRating} (${pct(r.withRating, r.places)}) | ${r.withPhoto} (${pct(r.withPhoto, r.places)}) | ${r.notes} | ${r.favorites} |`;
 
 const googleBackedSlugs = new Set(
-  PLACES.filter((place) => Boolean(place.google_place_id)).map(
+  PLACES.filter((place) => isGooglePlaceId(place.google_place_id)).map(
     (place) => place.slug,
   ),
 );

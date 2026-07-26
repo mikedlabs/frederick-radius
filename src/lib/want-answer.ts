@@ -11,6 +11,8 @@ import { formatDistance, haversineMeters } from "@/lib/geo";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 import { isChainName, ratingSignal } from "@/lib/category-ranking";
+import { isLikelyOpenNow } from "@/data/reliable-open-windows";
+import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
 
 /**
  * The want answer — "I want coffee" resolved to places, ranked for RIGHT
@@ -53,6 +55,14 @@ export type WantRow = {
   tip: string | null;
   /** A standing deal hook ("Happy hour", "$1 oysters"), when present. */
   deal: string | null;
+  /** An official provider action for intents that are decided somewhere other
+   *  than the venue's front door, such as choosing a movie and showtime. */
+  action?: {
+    label: string;
+    href: string;
+  };
+  /** Present when this row is being used as a current-availability answer. */
+  confidence?: "confirmed" | "likely";
 };
 
 export type WantAnswer = {
@@ -160,6 +170,21 @@ function clampPhrase(raw: string, max = 52): string {
   return `${(sp > 20 ? cut.slice(0, sp) : cut).replace(/[,;:·\-\s]+$/, "")}…`;
 }
 
+/**
+ * Name-stripping can expose a sentence fragment ("Brewer's Alley has…" →
+ * "has…"), while a few inherited blurbs contain conversational filler.
+ * A blank detail is more useful than presenting either as Radius-authored
+ * copy.
+ */
+export function usefulFallbackSignature(raw: string | null): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  if (/^[a-z]/.test(value)) return null;
+  if (/^(?:i|we|our|they|you)\b/i.test(value)) return null;
+  if (/\bsometimes\b.*\bsometimes\b/i.test(value)) return null;
+  return clampPhrase(value);
+}
+
 /** The one short field-guide signature for a place: the curated known-for
  *  first, else a cleaned blurb sentence (knownFor), clamped. Null when we
  *  have nothing honest to say. */
@@ -167,23 +192,43 @@ function signatureOf(c: WantCandidate): string | null {
   const curated = c.known_for?.[0]?.trim();
   if (curated) return clampPhrase(curated);
   const kf = knownFor({ name: c.name, short_blurb: c.short_blurb });
-  return kf ? clampPhrase(kf) : null;
+  return usefulFallbackSignature(kf);
 }
 
-function toRow(c: WantCandidate, laneLater: boolean): WantRow {
+/** A price without the thing it buys is noise ("$2.75", "50% OFF"). */
+export function usefulDealHook(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  const contextWords = (value.match(/[A-Za-z][A-Za-z'-]*/g) ?? []).filter(
+    (word) => !/^(?:off|save|from|each|only)$/i.test(word),
+  );
+  return contextWords.length > 0 ? clampPhrase(value, 36) : null;
+}
+
+function toRow(
+  c: WantCandidate,
+  laneLater: boolean,
+  confidence?: WantRow["confidence"],
+): WantRow {
   const line = formatHoursLine(c.open_status);
   return {
     slug: c.slug,
     name: c.name,
     // Inside the "Opens later" group the "Closed · " prefix is redundant —
     // the group heading already says it.
-    fact: laneLater ? line.replace(/^Closed · /, "") : line,
+    fact:
+      confidence === "likely"
+        ? "Likely open · check hours"
+        : laneLater
+          ? line.replace(/^Closed · /, "")
+          : line,
     distance: distanceLabel(c.distance_m),
     photo: c.google_photo_url ?? null,
     where: townLabel(c),
     detail: signatureOf(c),
     tip: c.field_note_tip?.trim() || null,
-    deal: c.deal_hook?.trim() || null,
+    deal: usefulDealHook(c.deal_hook),
+    confidence,
   };
 }
 
@@ -227,6 +272,31 @@ export function partitionWant(candidates: WantCandidate[]): {
 const ALSO_MAX = 4;
 const LATER_PREVIEW = 3;
 const NOTABLE_MAX = 6;
+
+const MOVIE_SHOWTIMES: Record<string, string> = {
+  "warehouse-cinemas-frederick-frederick":
+    "https://frederick.warehousecinemas.com/tickets-showtimes/",
+  "regal-westview-frederick":
+    "https://www.regmovies.com/theatres/regal-westview-1910",
+};
+
+/** Movie theaters are useful based on what is playing, not whether their
+ *  lobby has a conventional storefront-hours record. Keep the choice native,
+ *  then hand the volatile film/time inventory to each cinema's official site. */
+function toMovieRow(candidate: WantCandidate): WantRow {
+  const row = toRow(candidate, false);
+  const href = MOVIE_SHOWTIMES[candidate.slug];
+  return {
+    ...row,
+    fact: "Choose a film and showtime.",
+    action: href
+      ? {
+          label: "Showtimes & tickets",
+          href,
+        }
+      : undefined,
+  };
+}
 
 /**
  * Resolve a want key (craving or meal) to matcher + label + browse URL.
@@ -407,6 +477,32 @@ export function buildWantAnswer(
   const { open, later, other, total } = partitionWant(candidates);
   const rankingMode = opts?.rankingMode ?? "open-now";
 
+  // "Movies" is not an open-now storefront question. Cinema hours do not
+  // answer which films are playing, and most theaters do not publish useful
+  // lobby hours through Places. Present every local cinema as a decision with
+  // a direct official showtimes action instead of an empty-state warning.
+  if (cKey === "movies") {
+    const ranked = rankBestFit(
+      candidates,
+      Boolean(origin && !opts?.approximateOrigin),
+    );
+    return {
+      key: cKey,
+      label: want.label,
+      rankingMode: "best-fit",
+      hero: ranked[0] ? toMovieRow(ranked[0]) : null,
+      also: ranked.slice(1, ALSO_MAX + 1).map(toMovieRow),
+      later: [],
+      laterMore: 0,
+      notable: [],
+      total,
+      browseHref: browseHrefForScope(want.browseHref, opts?.municipality),
+      contextLabel: opts?.contextLabel ?? "Whole county",
+      contextSource: opts?.contextSource ?? "county",
+      fallbackReason: opts?.fallbackReason ?? null,
+    };
+  }
+
   if (rankingMode === "best-fit") {
     const best = rankBestFit(candidates, Boolean(origin && !opts?.approximateOrigin));
     return {
@@ -430,20 +526,41 @@ export function buildWantAnswer(
   // still has places (markets, playgrounds, or anything without posted
   // hours), fall back to the notable set so the panel still flows down with
   // real places instead of a dead "nothing's open" line.
-  const notable = open.length === 0 && later.length === 0
+  const likely =
+    open.length === 0
+      ? other.filter(
+          (candidate) =>
+            mayUseLikelyOpenFallback(candidate.open_status) &&
+            isLikelyOpenNow(candidate.slug, now),
+        )
+      : [];
+  const current = open.length > 0 ? open : likely;
+  const currentConfidence: WantRow["confidence"] =
+    open.length > 0 ? "confirmed" : "likely";
+
+  const notable = current.length === 0 && later.length === 0
     ? other.slice(0, NOTABLE_MAX).map((c) => toRow(c, false))
     : [];
 
-  const heroIdx = opts?.approximateOrigin ? approxHeroIndex(open) : 0;
-  const alsoPool = open.filter((_, i) => i !== heroIdx);
+  const heroIdx = opts?.approximateOrigin ? approxHeroIndex(current) : 0;
+  const alsoPool = current.filter((_, i) => i !== heroIdx);
 
   return {
     key: cKey,
     label: want.label,
     rankingMode,
-    hero: open[heroIdx] ? toRow(open[heroIdx], false) : null,
-    also: alsoPool.slice(0, ALSO_MAX).map((c) => toRow(c, false)),
-    open: cKey === "breweries" ? open.map((candidate) => toRow(candidate, false)) : undefined,
+    hero: current[heroIdx]
+      ? toRow(current[heroIdx], false, currentConfidence)
+      : null,
+    also: alsoPool
+      .slice(0, ALSO_MAX)
+      .map((candidate) => toRow(candidate, false, currentConfidence)),
+    open:
+      cKey === "breweries"
+        ? current.map((candidate) =>
+            toRow(candidate, false, currentConfidence),
+          )
+        : undefined,
     later: later.slice(0, LATER_PREVIEW).map((c) => toRow(c, true)),
     laterMore: Math.max(0, later.length - LATER_PREVIEW),
     notable,

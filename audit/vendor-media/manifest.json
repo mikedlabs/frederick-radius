@@ -1,15 +1,556 @@
 {
-  "generatedAt": "2026-07-23T18:27:26.786Z",
+  "generatedAt": "2026-07-25T23:36:08.628Z",
   "policy": {
     "marks": "Identity candidates must be checked as current before public use.",
     "photos": "Website discovery does not grant reuse. Publish only after owner approval or license review.",
     "social": "Facebook and Instagram are not scraped. Vendors without a website need an owner media-kit upload."
   },
   "filters": {
-    "kind": "food-truck",
+    "kind": null,
     "slug": null
   },
   "vendors": [
+    {
+      "kind": "brewery",
+      "slug": "olde-mother-brewing-frederick",
+      "name": "olde mother brewing frederick",
+      "officialPage": "https://oldemother.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://oldemother.com/wp-content/themes/om-brew/img/om-logo.svg",
+          "sourcePage": "https://oldemother.com/",
+          "evidence": "image tag: logo-like filename/class",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/olde-mother-brewing-frederick/mark.png",
+          "contentType": "image/svg+xml",
+          "width": 360,
+          "height": 360,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://oldemother.com/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "attaboy-beer-frederick",
+      "name": "attaboy beer frederick",
+      "officialPage": "https://www.attaboybeer.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/3ce92d_00e5ffafd4a14216a984d1227d4ca354%7Emv2.jpg/v1/fill/w_180%2Ch_180%2Clg_1%2Cusm_0.66_1.00_0.01/3ce92d_00e5ffafd4a14216a984d1227d4ca354%7Emv2.jpg",
+          "sourcePage": "https://www.attaboybeer.com/",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/attaboy-beer-frederick/mark.png",
+          "contentType": "image/jpeg",
+          "width": 180,
+          "height": 180,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/3ce92d_f539fe8f8c0a46f6bfad738c26aaccb7%7Emv2.jpg/v1/fit/w_2500,h_1330,al_c/3ce92d_f539fe8f8c0a46f6bfad738c26aaccb7%7Emv2.jpg",
+          "sourcePage": "https://www.attaboybeer.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/attaboy-beer-frederick/photo.webp",
+          "contentType": "image/jpeg",
+          "width": 1024,
+          "height": 683,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "steinhardt-brewing-company-frederick",
+      "name": "steinhardt brewing company frederick",
+      "officialPage": "https://www.steinhardtbrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/5f9ef850cc5c2c1189e6fb4a/1a615b3c-f4fa-4363-8b45-a479d4ff1b27/favicon.ico?format=100w",
+          "sourcePage": "https://www.steinhardtbrewing.com/",
+          "evidence": "site icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/steinhardt-brewing-company-frederick/mark.png",
+          "contentType": "image/webp",
+          "width": 100,
+          "height": 100,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/5f9ef850cc5c2c1189e6fb4a/t/63fc101ed7dd727ad20b6834/1677463582274/Steinhardt_Brewing_Logo_png-removebg-preview.png?format=1500w",
+          "sourcePage": "https://www.steinhardtbrewing.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/steinhardt-brewing-company-frederick/photo.webp",
+          "contentType": "image/webp",
+          "width": 547,
+          "height": 456,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "rockwell-brewery-frederick",
+      "name": "rockwell brewery frederick",
+      "officialPage": "https://www.rockwellbrewery.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/583ddb1815d5dbc22734fd0e/a6e8eba0-1eb3-4aba-af07-f2cd7e3be774/favicon.ico",
+          "sourcePage": "https://www.rockwellbrewery.com/",
+          "evidence": "site icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/rockwell-brewery-frederick/mark.png",
+          "contentType": "image/webp",
+          "width": 53,
+          "height": 42,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/583ddb1815d5dbc22734fd0e/t/67a39b7de82b5012d801aea0/1738775427365/Untitled+design+%284%29.png?format=1500w",
+          "sourcePage": "https://www.rockwellbrewery.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/rockwell-brewery-frederick/photo.webp",
+          "contentType": "image/webp",
+          "width": 1500,
+          "height": 750,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "monocacy-brewing-frederick",
+      "name": "monocacy brewing frederick",
+      "officialPage": "https://monocacybrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://monocacybrewing.com/wp-content/uploads/2026/05/cropped-Untitled-design-3-180x180.png",
+          "sourcePage": "https://monocacybrewing.com/",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/monocacy-brewing-frederick/mark.png",
+          "contentType": "image/png",
+          "width": 180,
+          "height": 180,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://monocacybrewing.com/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "brewers-alley-frederick",
+      "name": "brewers alley frederick",
+      "officialPage": "https://brewers-alley.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://brewers-alley.com/wp-content/uploads/2026/04/Logo.png",
+          "sourcePage": "https://brewers-alley.com/",
+          "evidence": "structured-data logo",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/brewers-alley-frederick/mark.png",
+          "contentType": "image/png",
+          "width": 272,
+          "height": 209,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://brewers-alley.com/wp-content/themes/brewers-alley-2026/images/hops.png",
+          "sourcePage": "https://brewers-alley.com/",
+          "evidence": "image tag: Stylized illustration of three hops flowers with leaves \n                    and curved stems, depicted in a light gray color on a pale background.",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/brewers-alley-frederick/photo.webp",
+          "contentType": "image/png",
+          "width": 800,
+          "height": 521,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "sandbox-brewhouse-frederick",
+      "name": "sandbox brewhouse frederick",
+      "officialPage": "https://www.sandboxbrewhouse.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/671f0891696546050f847977/fad0693a-7a3f-4aa5-b23e-6ef7b5090c45/favicon.ico?format=100w",
+          "sourcePage": "https://www.sandboxbrewhouse.com/",
+          "evidence": "site icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/sandbox-brewhouse-frederick/mark.png",
+          "contentType": "image/webp",
+          "width": 100,
+          "height": 100,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/671f0891696546050f847977/t/679a8a4d9ae1111daafddec1/1738181201420/Untitled+design-8.jpg?format=1500w",
+          "sourcePage": "https://www.sandboxbrewhouse.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/sandbox-brewhouse-frederick/photo.webp",
+          "contentType": "image/webp",
+          "width": 1500,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "rak-brewing-co-frederick",
+      "name": "rak brewing co frederick",
+      "officialPage": "https://www.rakbrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://www.rakbrewing.com/wp-content/uploads/2025/02/event-placeholder-new.jpg",
+          "sourcePage": "https://www.rakbrewing.com/",
+          "evidence": "structured-data logo",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/rak-brewing-co-frederick/mark.png",
+          "contentType": "image/jpeg",
+          "width": 360,
+          "height": 280,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://www.rakbrewing.com/wp-content/uploads/2025/02/RAK_Logo_Horizontal_Full.png",
+          "sourcePage": "https://www.rakbrewing.com/",
+          "evidence": "image tag: unlabeled",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/rak-brewing-co-frederick/photo.webp",
+          "contentType": "image/png",
+          "width": 1600,
+          "height": 923,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "smoketown-brewing-brunswick",
+      "name": "smoketown brewing brunswick",
+      "officialPage": "https://www.smoketownbrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/b4fb46_9a9d622db48e4dbeab326efe288793b1%7Emv2.png/v1/fill/w_180%2Ch_180%2Clg_1%2Cusm_0.66_1.00_0.01/b4fb46_9a9d622db48e4dbeab326efe288793b1%7Emv2.png",
+          "sourcePage": "https://www.smoketownbrewing.com/",
+          "evidence": "apple-touch-icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/smoketown-brewing-brunswick/mark.png",
+          "contentType": "image/png",
+          "width": 180,
+          "height": 180,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/900ae0_6557bfbfd6bb487ca6c129297da311d9%7Emv2.png/v1/fit/w_2500,h_1330,al_c/900ae0_6557bfbfd6bb487ca6c129297da311d9%7Emv2.png",
+          "sourcePage": "https://www.smoketownbrewing.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/smoketown-brewing-brunswick/photo.webp",
+          "contentType": "image/png",
+          "width": 1080,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "midnight-run-brewing",
+      "name": "midnight run brewing",
+      "officialPage": "https://www.midnightrunbrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/fcad88_352fa71afa764e6a8eaf0a19d95ef4be~mv2.png/v1/fill/w_636,h_500,al_c,lg_1,q_85,enc_avif,quality_auto/fcad88_352fa71afa764e6a8eaf0a19d95ef4be~mv2.png",
+          "sourcePage": "https://www.midnightrunbrewing.com/",
+          "evidence": "image tag: MIDNIGHT RUN BREWING LOGO",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/midnight-run-brewing/mark.png",
+          "contentType": "image/avif",
+          "width": 636,
+          "height": 500,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/489bf1_d2cd9896413e48d58a9b48c086083c64%7Emv2.png/v1/fit/w_2500,h_1330,al_c/489bf1_d2cd9896413e48d58a9b48c086083c64%7Emv2.png",
+          "sourcePage": "https://www.midnightrunbrewing.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/midnight-run-brewing/photo.webp",
+          "contentType": "image/png",
+          "width": 1500,
+          "height": 900,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "prospect-point-brewing-frederick",
+      "name": "prospect point brewing frederick",
+      "officialPage": "https://www.prospectpointbrewing.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://images.squarespace-cdn.com/content/v1/63bcc94590589d220532bec7/5e881376-1946-495e-8eba-15e10379c35d/favicon.ico?format=100w",
+          "sourcePage": "https://www.prospectpointbrewing.com/",
+          "evidence": "site icon",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/prospect-point-brewing-frederick/mark.png",
+          "contentType": "image/webp",
+          "width": 100,
+          "height": 104,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://static1.squarespace.com/static/63bcc94590589d220532bec7/t/63dd9e6a005c3e261943a6a0/1675468394707/300435027_2971880109776873_939154527479189205_n.jpg?format=1500w",
+          "sourcePage": "https://www.prospectpointbrewing.com/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/prospect-point-brewing-frederick/photo.webp",
+          "contentType": "image/webp",
+          "width": 1440,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "brudr-bier-co-frederick",
+      "name": "brudr bier co frederick",
+      "officialPage": null,
+      "socialPages": [
+        "https://untappd.com/w/bra-dr-bier-co/575990"
+      ],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        },
+        {
+          "role": "photo",
+          "status": "owner-upload-required",
+          "note": "Only a social profile is recorded. Ask the owner for a current media kit or approved upload."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "springfield-manor-thurmont",
+      "name": "springfield manor thurmont",
+      "officialPage": "https://www.visitfrederick.org/eat-drink/wine-beer-spirits/breweries/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://www.visitfrederick.org/includes/public/assets/shared/logo.svg",
+          "sourcePage": "https://www.visitfrederick.org/eat-drink/wine-beer-spirits/breweries/",
+          "evidence": "image tag: Tourism Council of Frederick County, Inc.",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/springfield-manor-thurmont/mark.png",
+          "contentType": "image/svg+xml",
+          "width": 80,
+          "height": 80,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://assets.simpleviewinc.com/sv-frederick-county/image/upload/c_limit,h_1200,q_75,w_1200/v1/cms_resources/clients/frederickcountymd/3fd21cc8_19b1_414f_9a69_0b3c6b92278a_3f9fdab8_26a3_441c_af15_ad98df828857_df143369-6e73-4206-b99c-fc10fd137048.jpg",
+          "sourcePage": "https://www.visitfrederick.org/eat-drink/wine-beer-spirits/breweries/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/springfield-manor-thurmont/photo.webp",
+          "contentType": "image/jpeg",
+          "width": 1200,
+          "height": 600,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "freys-farm-mount-airy",
+      "name": "freys farm mount airy",
+      "officialPage": "https://www.freys.farm/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "no-candidate",
+          "sourcePage": "https://www.freys.farm/",
+          "note": "No usable identity mark was found on the official page."
+        },
+        {
+          "role": "photo",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://static.wixstatic.com/media/dd98e5_0a1855bcada64e49b652b994e790eb24%7Emv2.jpg/v1/fit/w_2500,h_1330,al_c/dd98e5_0a1855bcada64e49b652b994e790eb24%7Emv2.jpg",
+          "sourcePage": "https://www.freys.farm/",
+          "evidence": "og:image",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/freys-farm-mount-airy/photo.webp",
+          "contentType": "image/jpeg",
+          "width": 1600,
+          "height": 1000,
+          "note": "Official-site photo candidate. Written permission or a compatible license is required before publishing."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "liquidity-aleworks-mount-airy",
+      "name": "liquidity aleworks mount airy",
+      "officialPage": "https://www.liquidityaleworks.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": null,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "fetch-failed",
+          "sourcePage": "https://www.liquidityaleworks.com/",
+          "note": "The official page could not be audited: The operation was aborted due to timeout"
+        },
+        {
+          "role": "photo",
+          "status": "fetch-failed",
+          "sourcePage": "https://www.liquidityaleworks.com/",
+          "note": "The official page could not be audited: The operation was aborted due to timeout"
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "milkhouse-brewery-mt-airy",
+      "name": "milkhouse brewery mt airy",
+      "officialPage": "https://www.milkhousebrewery.com/faqs/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "http://www.milkhousebrewery.com/wp-content/uploads/2017/09/Artboard-1500px.png",
+          "sourcePage": "https://www.milkhousebrewery.com/faqs/",
+          "evidence": "image tag: Milkhouse Brewery",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/milkhouse-brewery-mt-airy/mark.png",
+          "contentType": "image/png",
+          "width": 501,
+          "height": 492,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://www.milkhousebrewery.com/faqs/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
+    {
+      "kind": "brewery",
+      "slug": "red-shedman-farm-brewery-and-hop-yard-mount-airy",
+      "name": "red shedman farm brewery and hop yard mount airy",
+      "officialPage": "https://redshedman.com/",
+      "socialPages": [],
+      "checkedAt": "2026-07-25T23:36:08.628Z",
+      "pageStatus": 200,
+      "assets": [
+        {
+          "role": "mark",
+          "status": "downloaded-review-required",
+          "sourceUrl": "https://redshedman.com/wp-content/uploads/2026/01/logo-6.png",
+          "sourcePage": "https://redshedman.com/",
+          "evidence": "image tag: Red Shedman Brewery Logo",
+          "localReviewFile": "audit/vendor-media/downloads/brewery/red-shedman-farm-brewery-and-hop-yard-mount-airy/mark.png",
+          "contentType": "image/webp",
+          "width": 465,
+          "height": 128,
+          "note": "Official-site identity candidate. Confirm it is the current vendor mark before publishing."
+        },
+        {
+          "role": "photo",
+          "status": "no-candidate",
+          "sourcePage": "https://redshedman.com/",
+          "note": "No usable representative photo was found on the official page."
+        }
+      ]
+    },
     {
       "kind": "food-truck",
       "slug": "the-alley-wagon",
@@ -18,7 +559,7 @@
       "socialPages": [
         "https://facebook.com/profile.php?id=100091760835302"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 403,
       "assets": [
         {
@@ -43,7 +584,7 @@
       "socialPages": [
         "https://facebook.com/profile.php?id=61574773000675"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -74,7 +615,7 @@
       "socialPages": [
         "https://facebook.com/thebluesbbqtruck"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -105,7 +646,7 @@
       "socialPages": [
         "https://facebook.com/Bubbque"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": null,
       "assets": [
         {
@@ -128,7 +669,7 @@
       "socialPages": [
         "https://facebook.com/profile.php?id=100066257723124"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": null,
       "assets": [
         {
@@ -151,7 +692,7 @@
       "socialPages": [
         "https://facebook.com/doppizza.co"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -188,7 +729,7 @@
       "socialPages": [
         "https://facebook.com/profile.php?id=61586562268008"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": null,
       "assets": [
         {
@@ -211,7 +752,7 @@
       "socialPages": [
         "https://facebook.com/thegaragemd"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -248,7 +789,7 @@
       "socialPages": [
         "https://instagram.com/gravelandgrind"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -285,7 +826,7 @@
       "socialPages": [
         "https://facebook.com/grilledcheeseplease1"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -320,7 +861,7 @@
       "name": "In10se BBQ",
       "officialPage": "https://www.in10sebbq.com/",
       "socialPages": [],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -357,7 +898,7 @@
       "socialPages": [
         "https://facebook.com/Buckeystown120/"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -388,7 +929,7 @@
       "socialPages": [
         "https://instagram.com/mlsragincajun_llc"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -425,7 +966,7 @@
       "socialPages": [
         "https://facebook.com/pitakingfoodtruck"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": null,
       "assets": [
         {
@@ -446,7 +987,7 @@
       "name": "Sabor de Cuba",
       "officialPage": "https://sabordecubarestaurant.com/experience",
       "socialPages": [],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -477,7 +1018,7 @@
       "socialPages": [
         "https://facebook.com/profile.php?id=100063828651829"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": null,
       "assets": [
         {
@@ -500,7 +1041,7 @@
       "socialPages": [
         "https://instagram.com/traditionalauthenticmexfood"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -537,7 +1078,7 @@
       "socialPages": [
         "https://facebook.com/WhistlePunkFoodTruck"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -575,7 +1116,7 @@
         "https://instagram.com/konaicefrederickmd",
         "https://facebook.com/KonaIceofFrederickCoMD"
       ],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {
@@ -610,7 +1151,7 @@
       "name": "Kotei Kids Organic Shaved Ice",
       "officialPage": "https://koteikidsshavedice.com/",
       "socialPages": [],
-      "checkedAt": "2026-07-23T18:27:26.786Z",
+      "checkedAt": "2026-07-25T23:36:08.628Z",
       "pageStatus": 200,
       "assets": [
         {

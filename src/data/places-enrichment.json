@@ -5496,9 +5496,9 @@
     "review_author": "Megan Socks",
     "enriched_at": "2026-05-20T16:07:26.903Z"
   },
-  "surelocked-in-escape-games": {
+  "surelocked-in-escape-games-frederick": {
     "google_place_id": "ChIJ67fOW1jayYkR2IulFqF3lgU",
-    "business_status": "CLOSED_TEMPORARILY",
+    "business_status": "OPERATIONAL",
     "display_name": "Surelocked In Escape Games",
     "formatted_address": "13 E Patrick St, Frederick, MD 21701, USA",
     "weekday_hours": [],
@@ -11102,7 +11102,7 @@
     "primary_type_display": "Services",
     "enriched_at": "2026-05-20T16:08:33.355Z"
   },
-  "gravel-and-grind": {
+  "gravel-and-grind-frederick": {
     "google_place_id": "ChIJMbBBm1vayYkRS5uqU9yRs6g",
     "business_status": "OPERATIONAL",
     "display_name": "Gravel & Grind",

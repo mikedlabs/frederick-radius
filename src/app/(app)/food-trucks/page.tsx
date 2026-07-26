@@ -16,6 +16,7 @@ import { foodTruckStopDirectionsUrl } from "@/lib/food-trucks/presentation";
 import { settleFoodTruckPageData } from "@/lib/food-trucks/page-data";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import FoodTruckBoard, { type FoodTruckBoardItem } from "@/components/food-trucks/FoodTruckBoard";
+import FoodTruckIdentity from "@/components/food-trucks/FoodTruckIdentity";
 import FoodTruckJourneys from "@/components/food-trucks/FoodTruckJourneys";
 import FoodTruckNearMe from "@/components/food-trucks/FoodTruckNearMe";
 import FeedbackLink from "@/components/feedback/FeedbackLink";
@@ -23,6 +24,17 @@ import PageBloom from "@/components/ui/PageBloom";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 const FOOD_ACCENT = CATEGORY_BY_SLUG["food-truck"]?.color ?? "var(--app-brand)";
+const HERO_TRUCK_SLUGS = [
+  "dop-pizza",
+  "blendabowl",
+  "mls-ragin-cajun",
+  "the-garage",
+  "kona-ice-frederick",
+] as const;
+const HERO_TRUCKS = HERO_TRUCK_SLUGS.flatMap((slug) => {
+  const truck = FOOD_TRUCK_BY_SLUG.get(slug);
+  return truck ? [truck] : [];
+});
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +78,14 @@ function formatTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+function formatDateBadge(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+  }).format(new Date(iso)).replace(",", " ·");
+}
+
 function scheduleTime(stop: FoodTruckScheduleStop): string {
   const start = formatTime(stop.startsAt);
   return stop.endsAt ? `${start}–${formatTime(stop.endsAt)}` : start;
@@ -76,12 +96,32 @@ function vendorHref(vendor: FoodTruckScheduleStop["vendors"][number]): string | 
   return FOOD_TRUCK_BY_SLUG.has(vendor.slug) ? `#truck-${vendor.slug}` : undefined;
 }
 
+function stopVendorIdentity(vendor: FoodTruckScheduleStop["vendors"][number]) {
+  const truck = vendor.slug ? FOOD_TRUCK_BY_SLUG.get(vendor.slug) : undefined;
+  return truck ?? {
+    slug: vendor.slug ?? vendor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name: vendor.name,
+    cuisine: "Guest truck",
+    kind: "food" as const,
+  };
+}
+
 function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
   return (
     <article className="food-truck-stop-card">
-      <div className="food-truck-stop-date">
-        <span>{formatDate(stop.startsAt, "long")}</span>
-        <strong>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(new Date(stop.startsAt))}</strong>
+      <div className="food-truck-stop-visual">
+        {stop.vendors.slice(0, 3).map((vendor) => (
+          <FoodTruckIdentity
+            key={`${stop.id}-${vendor.name}`}
+            truck={stopVendorIdentity(vendor)}
+            size="thumb"
+            decorative
+          />
+        ))}
+        <time className="food-truck-stop-date" dateTime={stop.startsAt}>
+          <span>{formatDateBadge(stop.startsAt)}</span>
+          <strong>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(new Date(stop.startsAt))}</strong>
+        </time>
       </div>
       <div className="min-w-0 flex-1 p-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -195,12 +235,19 @@ export default async function FoodTrucksPage() {
       <header className="food-truck-masthead">
         <div className="food-truck-masthead-copy">
           <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.15em]">
-            Frederick County food-truck board
+            Frederick County food trucks
           </p>
           <h1>Find where they pull in.</h1>
           <p>
-            Start with the next published stop. Open a truck for its menu, latest post, and booking details.
+            Published stops come first. Live locations appear when a truck checks in.
           </p>
+        </div>
+        <div className="food-truck-hero-lineup" aria-label="Local food-truck vendor identities">
+          {HERO_TRUCKS.map((truck, index) => (
+            <div key={truck.slug} className="food-truck-hero-tile">
+              <FoodTruckIdentity truck={truck} size="hero" priority={index < 2} />
+            </div>
+          ))}
         </div>
       </header>
 
@@ -244,9 +291,17 @@ export default async function FoodTrucksPage() {
               </h3>
               <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 {scheduleUnavailable
-                  ? "The local roster is still available. Check a vendor’s latest post before heading out."
-                  : "That does not mean every truck is parked. Browse the roster and check a vendor’s latest post before heading out."}
+                  ? "The local roster is still available."
+                  : "Browse the roster for menus and vendor updates."}
               </p>
+              <a
+                href="#vendors"
+                className="tap-44-y mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold underline underline-offset-4"
+                style={{ color: FOOD_ACCENT }}
+              >
+                Browse local trucks
+                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+              </a>
             </div>
           </div>
         )}
@@ -267,7 +322,7 @@ export default async function FoodTrucksPage() {
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>For truck owners</p>
           <p className="mt-1 font-serif text-[21px] leading-tight" style={{ color: "var(--app-ink)" }}>Make this listing useful before someone arrives.</p>
           <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Add an approved truck photo, menu, public calendar, booking link, and temporary live locations. There is no account dashboard to maintain.
+            Send a truck photo, menu, or public schedule. We&rsquo;ll keep the listing current.
           </p>
         </div>
         <div className="mt-3 grid shrink-0 grid-cols-2 gap-2 sm:mt-0 sm:flex">

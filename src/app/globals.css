@@ -533,6 +533,151 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .shelf-rail { scroll-behavior: auto; }
 }
 
+/* ── Today registration + shelf motion ─────────────────────────────────
+ * The daily briefing should feel assembled, not animated. Section headers
+ * register once as they enter the document: copy settles four pixels and the
+ * printed rule draws from its left edge. Only opacity/transform change, so
+ * streamed sections never reserve or lose space. The live marker stays a
+ * static signal here rather than adding another ambient loop to Today.
+ *
+ * Horizontal rows use the existing shelf grammar. The Today scope strengthens
+ * snap and end breathing on phones without changing desktop grids or trapping
+ * a vertical page gesture. No JavaScript or measured layout is involved. */
+.today-section-heading__copy {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--app-dur-slow) var(--app-ease-out),
+    transform var(--app-dur-slow) var(--app-ease-out);
+}
+
+.today-section-heading__registration-accent,
+.today-section-heading__registration-rule {
+  transform: scaleX(1);
+  transform-origin: left center;
+  transition: transform var(--app-dur-slow) var(--app-ease-out);
+}
+
+.today-section-heading__registration-rule {
+  transition-delay: 40ms;
+}
+
+.today-section-heading__plate {
+  opacity: 1;
+  transition: opacity var(--app-dur-med) var(--app-ease-out) 80ms;
+}
+
+.today-section-heading__cta {
+  transition:
+    color var(--app-dur-fast) var(--app-ease-out),
+    background-color var(--app-dur-fast) var(--app-ease-out),
+    box-shadow var(--app-dur-fast) var(--app-ease-out),
+    transform var(--app-dur-med) var(--app-ease-spring);
+}
+
+.today-section-heading__cta-icon {
+  transition: transform var(--app-dur-med) var(--app-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .today-section-heading__cta:hover {
+    background: color-mix(in srgb, var(--app-brand) 8%, transparent);
+  }
+
+  .today-section-heading__cta:hover .today-section-heading__cta-icon {
+    transform: translateX(2px);
+  }
+}
+
+.today-section-heading__cta:active {
+  transform: translateY(1px) scale(0.98);
+  transition-duration: var(--app-dur-fast);
+  transition-timing-function: var(--app-ease-out);
+}
+
+.today-section-heading__cta:focus-visible {
+  background: color-mix(in srgb, var(--app-brand) 8%, transparent);
+  box-shadow:
+    0 0 0 2px var(--app-bg),
+    0 0 0 4px var(--app-brand);
+}
+
+.today-section-heading__cta:focus-visible .today-section-heading__cta-icon {
+  transform: translateX(2px);
+}
+
+.today-section-heading .live-dot::before {
+  animation: none;
+  opacity: 0;
+}
+
+@starting-style {
+  .today-section-heading__copy {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  .today-section-heading__registration-accent,
+  .today-section-heading__registration-rule {
+    transform: scaleX(0);
+  }
+
+  .today-section-heading__plate {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-main-reading:has([data-today-section-heading]) .shelf-rail {
+    overscroll-behavior-inline: contain;
+    padding-inline-end: 1rem;
+    scroll-padding-inline: 0.25rem 1rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .app-main-reading:has([data-today-section-heading]) .shelf-rail > * {
+    scroll-snap-align: start;
+  }
+
+  .app-main-reading:has([data-today-section-heading])
+    .shelf-rail
+    :is(a, button):focus-visible {
+    outline: 2px solid var(--app-brand);
+    outline-offset: -2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-section-heading__copy,
+  .today-section-heading__registration-accent,
+  .today-section-heading__registration-rule,
+  .today-section-heading__plate,
+  .today-section-heading__cta,
+  .today-section-heading__cta-icon {
+    transition: none;
+  }
+
+  .today-section-heading__cta:active,
+  .today-section-heading__cta:hover .today-section-heading__cta-icon,
+  .today-section-heading__cta:focus-visible,
+  .today-section-heading__cta:focus-visible .today-section-heading__cta-icon {
+    transform: none;
+  }
+
+  @starting-style {
+    .today-section-heading__copy,
+    .today-section-heading__plate {
+      opacity: 1;
+      transform: none;
+    }
+
+    .today-section-heading__registration-accent,
+    .today-section-heading__registration-rule {
+      transform: none;
+    }
+  }
+}
+
 .font-serif {
   font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
@@ -5471,6 +5616,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    never an unrelated food photo assigned to a real business. */
 .food-truck-masthead {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(18rem, 1.14fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: center;
   overflow: hidden;
   padding: clamp(1.25rem, 4vw, 2rem);
   border: 1px solid var(--app-border);
@@ -5513,6 +5662,33 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   line-height: 1.55;
 }
 
+.food-truck-hero-lineup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(6.4rem, 1fr));
+  gap: .5rem;
+  min-height: 14rem;
+}
+
+.food-truck-hero-tile {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: calc(var(--app-radius-lg) - .25rem);
+  background: var(--app-bg-sunken);
+  box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
+}
+
+.food-truck-hero-tile:first-child {
+  grid-row: 1 / span 2;
+}
+
+.food-truck-hero-tile > .food-truck-vendor-visual {
+  height: 100%;
+  min-height: 100%;
+  border-radius: 0;
+}
+
 .food-truck-journeys {
   display: grid;
   gap: 1rem;
@@ -5530,6 +5706,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 .food-truck-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
   min-height: 44px;
   padding-inline: .7rem;
   border-radius: 999px;
@@ -5570,8 +5750,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 .food-truck-stop-card {
-  display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
@@ -5579,32 +5760,55 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi);
 }
 
+.food-truck-stop-visual {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1px;
+  min-height: 8rem;
+  overflow: hidden;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-border);
+}
+
+.food-truck-stop-visual > .food-truck-vendor-visual {
+  height: 100%;
+  min-height: 8rem;
+  border-radius: 0;
+}
+
 .food-truck-stop-date {
+  position: absolute;
+  z-index: 4;
+  bottom: .6rem;
+  left: .6rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: .15rem;
-  padding: 1rem .35rem;
-  border-right: 1px solid var(--app-border);
-  background: color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-sunken));
+  gap: .45rem;
+  padding: .38rem .52rem;
+  border: 1px solid color-mix(in srgb, var(--app-border) 76%, transparent);
+  border-radius: .62rem;
+  color: var(--app-ink);
+  background: color-mix(in srgb, var(--app-bg-elevated-solid) 91%, transparent);
+  box-shadow: var(--app-elev-1);
+  backdrop-filter: blur(12px);
 }
 
 .food-truck-stop-date span {
   font-family: var(--font-mono), monospace;
-  font-size: .55rem;
+  font-size: .52rem;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
   color: var(--app-brand-press);
 }
 
 .food-truck-stop-date strong {
-  margin-top: .4rem;
+  order: -1;
   font-family: var(--font-display), Georgia, serif;
-  font-size: 1.85rem;
+  font-size: 1.35rem;
   font-weight: 400;
   line-height: 1;
   color: var(--app-ink);
@@ -5688,14 +5892,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 .food-truck-vendor-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .75rem;
 }
 
 .food-truck-vendor-card {
-  display: grid;
-  grid-template-columns: minmax(8.6rem, .82fr) minmax(0, 1.18fr);
-  min-height: 14rem;
+  display: flex;
+  min-width: 0;
+  min-height: 20rem;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
@@ -5718,7 +5923,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 .food-truck-vendor-card > .food-truck-vendor-visual {
   border-radius: 0;
-  border-right: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .food-truck-mark-visual {
@@ -5795,6 +6000,35 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .food-truck-mark-visual[data-size="detail"] .food-truck-mark-plate {
   width: min(62vw, 14rem);
   aspect-ratio: 1.35;
+}
+
+.food-truck-mark-visual[data-size="hero"] {
+  min-height: 100%;
+  padding: .65rem;
+}
+
+.food-truck-mark-visual[data-size="hero"] .food-truck-mark-plate {
+  width: min(100%, 7.5rem);
+  aspect-ratio: 1;
+  border-radius: .8rem;
+}
+
+.food-truck-mark-visual[data-size="thumb"] {
+  min-height: 8rem;
+  padding: .55rem;
+}
+
+.food-truck-mark-visual[data-size="thumb"] .food-truck-mark-plate {
+  width: min(100%, 6.5rem);
+  aspect-ratio: 1.1;
+  border-radius: .75rem;
+}
+
+.food-truck-mark-visual[data-size="thumb"] .food-truck-mark-kicker,
+.food-truck-mark-visual[data-size="thumb"] .food-truck-mark-cuisine,
+.food-truck-mark-visual[data-size="hero"] .food-truck-mark-kicker,
+.food-truck-mark-visual[data-size="hero"] .food-truck-mark-cuisine {
+  font-size: .42rem;
 }
 
 .food-truck-vendor-fallback {
@@ -5902,6 +6136,21 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-size: .78rem;
 }
 
+.food-truck-vendor-visual[data-size="hero"],
+.food-truck-vendor-visual[data-size="thumb"] {
+  min-height: 8rem;
+}
+
+.food-truck-vendor-visual[data-size="hero"] .food-truck-vendor-mark,
+.food-truck-vendor-visual[data-size="thumb"] .food-truck-vendor-mark {
+  font-size: clamp(2.4rem, 8vw, 3.5rem);
+}
+
+.food-truck-vendor-card h3 {
+  font-size: 1.08rem;
+  line-height: 1.05;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .food-truck-vendor-card:hover {
     transform: translateY(-2px);
@@ -5910,17 +6159,71 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 @media (max-width: 760px) {
-  .food-truck-stop-grid, .food-truck-vendor-grid { grid-template-columns: 1fr; }
+  .food-truck-masthead {
+    grid-template-columns: 1fr;
+  }
+
+  .food-truck-stop-grid { grid-template-columns: 1fr; }
+  .food-truck-vendor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 480px) {
-  .food-truck-masthead { padding: 1rem 1.1rem 1.1rem; border-radius: var(--app-radius-lg); }
-  .food-truck-masthead-copy h1 { font-size: clamp(2.55rem, 12vw, 3.35rem); }
+  .food-truck-masthead {
+    gap: .75rem;
+    padding: 1rem 1.1rem 1.1rem;
+    border-radius: var(--app-radius-lg);
+  }
+  .food-truck-masthead-copy h1 { font-size: clamp(2.4rem, 11vw, 3rem); }
   .food-truck-masthead-copy h1 + p { margin-top: .75rem; }
-  .food-truck-stop-card { grid-template-columns: 3.55rem minmax(0, 1fr); }
+  .food-truck-hero-lineup {
+    display: flex;
+    min-height: 0;
+    margin-inline: -.2rem;
+    padding: .15rem .2rem .35rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+  }
+  .food-truck-hero-lineup::-webkit-scrollbar { display: none; }
+  .food-truck-hero-tile {
+    width: 6rem;
+    height: 6rem;
+    flex: 0 0 6rem;
+    scroll-snap-align: start;
+  }
+  .food-truck-hero-tile:first-child {
+    width: 6.9rem;
+    flex-basis: 6.9rem;
+  }
+  .food-truck-mark-visual[data-size="hero"] {
+    min-height: 100%;
+    padding: .48rem;
+  }
+  .food-truck-mark-visual[data-size="hero"] .food-truck-mark-plate {
+    width: min(100%, 4.15rem);
+  }
+  .food-truck-mark-visual[data-size="hero"] .food-truck-mark-kicker,
+  .food-truck-mark-visual[data-size="hero"] .food-truck-mark-cuisine {
+    display: none;
+  }
   .food-truck-beacon-preview { grid-template-columns: 1fr; }
   .food-truck-beacon-map { min-height: 10.75rem; border-right: 0; border-bottom: 1px solid var(--app-border); }
-  .food-truck-vendor-card { grid-template-columns: minmax(8rem, .8fr) minmax(0, 1.2fr); min-height: 13.5rem; }
+  .food-truck-vendor-grid { gap: .6rem; }
+  .food-truck-vendor-card { min-height: 17.75rem; }
+  .food-truck-vendor-card > .food-truck-vendor-visual { min-height: 7.25rem; }
+  .food-truck-vendor-card > div:last-child { padding: .75rem; }
+  .food-truck-vendor-card h3 { font-size: .98rem; }
+  .food-truck-vendor-card .food-truck-mark-kicker { display: none; }
+  .food-truck-vendor-card .food-truck-mark-plate { width: min(100%, 6.8rem); }
+  .food-truck-vendor-card .food-truck-fallback-kicker,
+  .food-truck-vendor-card .food-truck-fallback-footer { font-size: .4rem; }
+  .food-truck-mode-switch button { gap: .35rem; padding-inline: .45rem; }
+}
+
+@media (max-width: 350px) {
+  .food-truck-vendor-grid { grid-template-columns: 1fr; }
+  .food-truck-vendor-card { min-height: 18rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -95,6 +95,19 @@ describe("distillOffer", () => {
     ).toBe("Oysters $1.25 each raw and steamed");
   });
 
+  it("keeps service details in the full offer instead of the scan headline", () => {
+    expect(
+      distillOffer(
+        "All-You-Can-Eat hard shell crab specials served Tue-Fri starting at open",
+      ).headline,
+    ).toBe("All-You-Can-Eat hard shell crab specials");
+    expect(
+      distillOffer(
+        "$10 off all bottles of wine throughout the restaurant, plus $2 off beer",
+      ).headline,
+    ).toBe("$10 off all bottles of wine");
+  });
+
   it("leaves a short clean offer untouched", () => {
     expect(distillOffer("$4 pints")).toEqual({ headline: "$4 pints", terms: undefined });
   });

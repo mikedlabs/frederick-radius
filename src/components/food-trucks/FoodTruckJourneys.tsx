@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { CalendarDays, MapPin, Store } from "lucide-react";
 
 export type FoodTruckJourneyMode = "near" | "week" | "trucks";
 
-const MODES: ReadonlyArray<{ id: FoodTruckJourneyMode; label: string; hash: string }> = [
-  { id: "near", label: "Near me", hash: "near-me" },
-  { id: "week", label: "This week", hash: "this-week" },
-  { id: "trucks", label: "Trucks", hash: "vendors" },
+const MODES: ReadonlyArray<{
+  id: FoodTruckJourneyMode;
+  label: string;
+  hash: string;
+  icon: typeof MapPin;
+}> = [
+  { id: "near", label: "Near me", hash: "near-me", icon: MapPin },
+  { id: "week", label: "This week", hash: "this-week", icon: CalendarDays },
+  { id: "trucks", label: "Trucks", hash: "vendors", icon: Store },
 ];
 
 /** Keep existing shared links useful after the page becomes a tabbed journey. */
@@ -93,6 +99,7 @@ export default function FoodTruckJourneys({
       >
         {MODES.map((item, index) => {
           const selected = item.id === mode;
+          const Icon = item.icon;
           return (
             <button
               key={item.id}
@@ -108,6 +115,7 @@ export default function FoodTruckJourneys({
               onClick={() => choose(item.id)}
               onKeyDown={(event) => onTabKeyDown(event, index)}
             >
+              <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
               {item.label}
             </button>
           );

@@ -10,12 +10,13 @@ import { ArrowRight, MessageCircleQuestion } from "lucide-react";
  * GET fallback before JavaScript loads, then uses in-app navigation once the
  * page is interactive.
  */
-export default function TodayAsk() {
+export default function TodayAsk({ embedded = false }: { embedded?: boolean }) {
   return (
     <section
       id="ask-radius"
       aria-labelledby="today-ask-heading"
-      className="mt-3 scroll-mt-24"
+      data-surface-row={embedded ? "ask" : undefined}
+      className={embedded ? "scroll-mt-24" : "mt-3 scroll-mt-24"}
     >
       <h2 id="today-ask-heading" className="sr-only">
         Ask Radius
@@ -24,10 +25,13 @@ export default function TodayAsk() {
       <Form
         action="/ask"
         role="search"
-        className="group flex min-h-[58px] items-center gap-2.5 overflow-hidden border-y border-l-2 px-1.5 transition focus-within:bg-[var(--app-bg-elevated-solid)]"
+        className={`group flex min-h-[58px] items-center gap-2.5 overflow-hidden px-1.5 transition focus-within:bg-[var(--app-bg-elevated-solid)] ${
+          embedded ? "border-b" : "border-y border-l-2"
+        }`}
         style={{
           borderColor: "color-mix(in srgb, var(--app-brand) 52%, var(--app-border))",
           background: "color-mix(in srgb, var(--app-brand) 4%, transparent)",
+          boxShadow: embedded ? "inset 3px 0 0 var(--app-brand)" : undefined,
         }}
       >
         <Link

@@ -1,9 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -18,15 +16,11 @@ import {
 import type { Hours } from "@/data/places";
 import type { FoodTruck } from "@/data/food-trucks";
 import { truckFeedUrl } from "@/data/food-trucks";
-import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
 import type { TruckBeacon } from "@/lib/food-trucks/beacon";
-import {
-  foodTruckInitials,
-  foodTruckStopDirectionsUrl,
-  foodTruckVisualTone,
-} from "@/lib/food-trucks/presentation";
+import { foodTruckStopDirectionsUrl } from "@/lib/food-trucks/presentation";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import FoodTruckIdentity from "./FoodTruckIdentity";
 import TruckHomeStatus from "./TruckHomeStatus";
 import TruckLiveStatus from "./TruckLiveStatus";
 
@@ -61,105 +55,6 @@ function LinkButton({ href, label, icon: Icon }: { href: string; label: string; 
       <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
       {label}
     </a>
-  );
-}
-
-function VendorVisual({
-  truck,
-  size = "card",
-}: {
-  truck: FoodTruckBoardItem;
-  size?: "card" | "detail";
-}) {
-  if (truck.media) {
-    return (
-      <div
-        className="food-truck-vendor-visual relative overflow-hidden"
-        data-kind={truck.kind}
-        data-photo-state="verified"
-        data-size={size}
-      >
-        <Image
-          src={truck.media.src}
-          alt={truck.media.alt}
-          fill
-          sizes={size === "detail" ? "(max-width: 640px) 100vw, 560px" : "(max-width: 640px) 45vw, 260px"}
-          className="object-cover"
-        />
-        {truck.media.sourceUrl ? (
-          <a
-            href={truck.media.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="food-truck-media-credit"
-            aria-label={`Photo credit: ${truck.media.credit}`}
-          >
-            {truck.media.credit}
-          </a>
-        ) : (
-          <span className="food-truck-media-credit">{truck.media.credit}</span>
-        )}
-      </div>
-    );
-  }
-
-  const mark =
-    FOOD_TRUCK_MARKS[truck.slug as keyof typeof FOOD_TRUCK_MARKS];
-  const visualStyle = {
-    "--truck-tone": foodTruckVisualTone(truck.slug),
-  } as CSSProperties;
-
-  if (mark) {
-    return (
-      <div
-        className="food-truck-vendor-visual food-truck-mark-visual"
-        data-kind={truck.kind}
-        data-photo-state="official-mark"
-        data-size={size}
-        style={visualStyle}
-      >
-        <span className="food-truck-mark-kicker">Frederick County vendor</span>
-        <span className="food-truck-mark-plate" data-plate={mark.plate}>
-          <Image
-            src={mark.file}
-            alt={`${truck.name} logo`}
-            fill
-            sizes={size === "detail" ? "280px" : "180px"}
-            className="object-contain"
-          />
-        </span>
-        <span className="food-truck-mark-cuisine">{truck.cuisine}</span>
-        {size === "detail" ? (
-          <a
-            href={mark.sourcePage}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="food-truck-media-credit"
-            aria-label={`${truck.name} official logo source`}
-          >
-            Logo source
-          </a>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="food-truck-vendor-visual food-truck-vendor-fallback"
-      data-kind={truck.kind}
-      data-photo-state="fallback"
-      data-size={size}
-      style={visualStyle}
-      role="img"
-      aria-label={`${truck.name} branded placeholder. An approved vendor photo has not been added yet.`}
-    >
-      <span className="food-truck-fallback-kicker">Frederick County</span>
-      <strong className="food-truck-vendor-mark">{foodTruckInitials(truck.name)}</strong>
-      <span className="food-truck-fallback-rule" aria-hidden />
-      <span className="food-truck-vendor-cuisine">{truck.cuisine}</span>
-      <span className="food-truck-fallback-footer">Mobile vendor</span>
-    </div>
   );
 }
 
@@ -288,7 +183,7 @@ export default function FoodTruckBoard({
               const next = stops.find((stop) => stop.vendors.some((item) => item.slug === truck.slug));
               return (
                 <li key={truck.slug} id={`truck-${truck.slug}`} className="food-truck-vendor-card">
-                  <VendorVisual truck={truck} />
+                  <FoodTruckIdentity truck={truck} decorative />
                   <div className="flex min-w-0 flex-1 flex-col p-3.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: accent }}>
                       {truck.cuisine}
@@ -296,9 +191,6 @@ export default function FoodTruckBoard({
                     <h3 className="mt-1 font-serif text-[20px] font-semibold leading-[1.05]" style={{ color: "var(--app-ink)" }}>
                       {truck.name}
                     </h3>
-                    <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                      {truck.blurb ?? `${truck.name} serves ${truck.cuisine.toLowerCase()} around Frederick County.`}
-                    </p>
                     {truck.beacon ? (
                       <TruckLiveStatus beacon={truck.beacon} accent={accent} />
                     ) : next ? (
@@ -364,7 +256,7 @@ export default function FoodTruckBoard({
         {selected ? (
           <div className="space-y-5 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-6">
             <div className="-mx-4 -mt-4 overflow-hidden border-b sm:-mx-6" style={{ borderColor: "var(--app-border)" }}>
-              <VendorVisual truck={selected} size="detail" />
+              <FoodTruckIdentity truck={selected} size="detail" decorative />
             </div>
 
             <div className="min-w-0">

@@ -40,6 +40,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/pulse`, lastModified: now, changeFrequency: "hourly", priority: 0.75 },
+    { url: `${BASE}/signals`, lastModified: now, changeFrequency: "daily", priority: 0.65 },
     // Mobile-vendor roster (roaming trucks live here, not in the places catalog).
     { url: `${BASE}/food-trucks`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     // Dropped: "/now" (308→/today), "/radius" (308→

@@ -18,7 +18,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronRight, NotebookPen, X } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ChevronRight,
+  NotebookPen,
+  X,
+} from "lucide-react";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { getWantAnswer } from "@/lib/want-cache";
@@ -35,6 +41,11 @@ type WantRow = {
   detail: string | null;
   tip: string | null;
   deal: string | null;
+  action?: {
+    label: string;
+    href: string;
+  };
+  confidence?: "confirmed" | "likely";
 };
 
 type WantAnswer = {
@@ -80,6 +91,7 @@ export default function WantAnswerPanel({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { openSheet } = usePlaceSheet();
   const router = useRouter();
+  const likelyAnswer = answer?.hero?.confidence === "likely";
 
   // Fetch the answer through the shared want cache, which reuses the request
   // the chip already kicked off on pointerdown (and any cached fix rides
@@ -141,7 +153,7 @@ export default function WantAnswerPanel({
   return (
     <section
       className="overflow-hidden rounded-[var(--app-radius-lg)]"
-      aria-label={`${label}, right now`}
+      aria-label={`${label}, ${cKey === "movies" ? "showtimes" : "right now"}`}
       style={{
         border: `1px solid color-mix(in srgb, ${accent} 40%, var(--app-border))`,
         background: "var(--app-bg-elevated-solid)",
@@ -159,7 +171,7 @@ export default function WantAnswerPanel({
         >
           {label}
           <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: `color-mix(in srgb, ${accent} 75%, var(--app-ink))` }}>
-            right now
+            {cKey === "movies" ? "showtimes" : "right now"}
           </span>
         </h3>
         <button
@@ -192,7 +204,15 @@ export default function WantAnswerPanel({
         <SkeletonRows />
       ) : (
         <>
-          {answer.hero ? (
+          {answer.key === "movies" ? (
+            <MovieShowtimeChoices
+              rows={[answer.hero, ...answer.also].filter(
+                (row): row is WantRow => Boolean(row),
+              )}
+              accent={accent}
+              onOpen={openPlace}
+            />
+          ) : answer.hero ? (
             <button
               type="button"
               onClick={() => openPlace(answer.hero!.slug)}
@@ -241,7 +261,14 @@ export default function WantAnswerPanel({
                     )}
                   </span>
                 )}
-                <span className="mt-1 block truncate font-mono text-[11.5px]" style={{ color: "var(--app-positive)" }}>
+                <span
+                  className="mt-1 block truncate font-mono text-[11.5px]"
+                  style={{
+                    color: likelyAnswer
+                      ? "var(--app-warning)"
+                      : "var(--app-positive)",
+                  }}
+                >
                   {answer.hero.fact}
                   {answer.hero.distance ? (
                     <span style={{ color: "var(--app-ink-3)" }}> · {answer.hero.distance}</span>
@@ -296,10 +323,10 @@ export default function WantAnswerPanel({
             </p>
           )}
 
-          {answer.also.length > 0 && (
+          {answer.key !== "movies" && answer.also.length > 0 && (
             <div className="px-4 pb-1">
               <p className="border-t pb-1 pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)", borderColor: "var(--app-border)" }}>
-                Also open now
+                {likelyAnswer ? "Also likely open" : "Also open now"}
               </p>
               <ul>
                 {answer.also.map((r) => (
@@ -340,7 +367,7 @@ export default function WantAnswerPanel({
             </div>
           )}
 
-          {answer.later.length > 0 && (
+          {answer.key !== "movies" && answer.later.length > 0 && (
             <div className="px-4">
               {showLater ? (
                 <ul className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
@@ -387,12 +414,123 @@ export default function WantAnswerPanel({
             className="flex items-center justify-between border-t px-4 py-3 text-[13px] font-semibold"
             style={{ borderColor: "var(--app-border)", color: `color-mix(in srgb, ${accent} 70%, var(--app-ink))` }}
           >
-            {answer.total > 0 ? `All ${answer.total} results · ${answer.contextLabel}` : "Browse the full list"}
+            {answer.key === "movies" && answer.total > 0
+              ? `${answer.total === 2 ? "See both cinemas" : `See all ${answer.total} cinemas`} · ${answer.contextLabel}`
+              : answer.total > 0
+                ? `All ${answer.total} results · ${answer.contextLabel}`
+                : "Browse the full list"}
             <ArrowRight aria-hidden className="h-4 w-4" strokeWidth={2.2} />
           </Link>
         </>
       )}
     </section>
+  );
+}
+
+export function MovieShowtimeChoices({
+  rows,
+  accent,
+  onOpen,
+}: {
+  rows: WantRow[];
+  accent: string;
+  onOpen: (slug: string) => void;
+}) {
+  return (
+    <div className="px-4 pb-1 pt-2">
+      <p
+        className="pb-2 text-[13px] leading-relaxed"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        Choose a cinema, then see today&rsquo;s films and times on its official
+        site.
+      </p>
+      <ul>
+        {rows.map((row) => (
+          <li
+            key={row.slug}
+            className="flex gap-3 border-t py-3"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {row.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- compact answer thumb; source is already proxied/cached upstream
+              <img
+                src={row.photo}
+                alt=""
+                className="h-12 w-12 shrink-0 rounded-[11px] object-cover"
+                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-[11px] font-serif text-[19px] font-semibold"
+                style={{
+                  background: `color-mix(in srgb, ${accent} 16%, var(--app-bg-elevated))`,
+                  color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
+                }}
+              >
+                {row.name.slice(0, 1)}
+              </span>
+            )}
+
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => onOpen(row.slug)}
+                className="tap-44-y -my-1 flex w-full items-start justify-between gap-2 py-1 text-left"
+              >
+                <span className="min-w-0">
+                  <span
+                    className="block truncate font-serif text-[16px] font-semibold leading-tight"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {row.name}
+                  </span>
+                  <span
+                    className="mt-0.5 block text-[11.5px]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {[row.where, row.distance].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  strokeWidth={2.2}
+                  style={{ color: "var(--app-ink-3)" }}
+                  aria-hidden
+                />
+              </button>
+
+              {row.action && (
+                <a
+                  href={row.action.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${row.action.label} for ${row.name} (opens in a new tab)`}
+                  onClick={() =>
+                    track("want_external_action", {
+                      c: "movies",
+                      place: row.slug,
+                    })
+                  }
+                  className="tap-44-y mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
+                  style={{
+                    color: `color-mix(in srgb, ${accent} 76%, var(--app-ink))`,
+                  }}
+                >
+                  {row.action.label}
+                  <ArrowUpRight
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2.2}
+                    aria-hidden
+                  />
+                </a>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

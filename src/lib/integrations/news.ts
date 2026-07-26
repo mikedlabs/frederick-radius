@@ -90,19 +90,37 @@ const URL_ONLY_TITLE = /^\s*(?:https?:\/\/|www\.)/i;
 // A spaceless "title" that is really a bare domain path ("marylandreporter.com/2025/…").
 const BARE_DOMAIN_PATH = /^\S+\.[a-z]{2,}\/\S*$/i;
 const OBITUARY_TITLE = /\bobituar(?:y|ies)\b|\bin memoriam\b|\bdeath notice/i;
-const OBITUARY_SOURCE = /\blegacy\b|obituary\s*search/i;
+const OBITUARY_SOURCE = /\blegacy\b|obituary\s*search|funeral home|funeral homes|mortuary/i;
+const PROPERTY_LISTING_SOURCE =
+  /\brealtor(?:\.com)?\b|\bzillow\b|\bredfin\b|\bhomes\.com\b|\btrulia\b/i;
+const PROPERTY_LISTING_TITLE =
+  /^\s*\d{1,6}\s+[A-Za-z0-9.' -]+\s+(?:st(?:reet)?|rd|road|ave(?:nue)?|blvd|boulevard|dr(?:ive)?|ln|lane|ct|court|cir(?:cle)?|pike|way)\b/i;
+const YEAR_IN_TITLE = /\b(20\d{2})\b/g;
 
 /** True when a headline is real, publishable local news. Drops URL-only
  *  titles and obituary listings. Exported for the boundary test. */
 export function isPublishableHeadline(
   h: Pick<NewsHeadline, "title" | "source">,
+  now: Date = new Date(),
 ): boolean {
   const title = (h.title ?? "").trim();
+  const source = (h.source ?? "").trim();
   if (!title) return false;
   if (URL_ONLY_TITLE.test(title)) return false;
   if (!/\s/.test(title) && BARE_DOMAIN_PATH.test(title)) return false;
   if (OBITUARY_TITLE.test(title)) return false;
-  if (OBITUARY_SOURCE.test((h.source ?? "").trim())) return false;
+  if (OBITUARY_SOURCE.test(source)) return false;
+  if (PROPERTY_LISTING_SOURCE.test(source)) return false;
+  if (PROPERTY_LISTING_TITLE.test(title)) return false;
+
+  // Google News occasionally republishes an old government notice with a
+  // fresh RSS timestamp. An explicit past year in the headline is strong
+  // evidence that it is not a current Pulse item. Keep future-year planning
+  // stories and headlines with no year.
+  const currentYear = now.getUTCFullYear();
+  for (const match of title.matchAll(YEAR_IN_TITLE)) {
+    if (Number(match[1]) < currentYear) return false;
+  }
   return true;
 }
 

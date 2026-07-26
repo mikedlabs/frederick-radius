@@ -41,14 +41,15 @@ export function summarizeHoursRefreshArtifact(
   for (const [slug, row] of rows) {
     if (!expectedGoogleBackedSlugs.has(slug)) continue;
     matchedRows += 1;
-    if (Array.isArray(row.weekday_hours) && row.weekday_hours.length > 0) {
-      withSchedule += 1;
-    }
+    const hasSchedule =
+      Array.isArray(row.weekday_hours) && row.weekday_hours.length > 0;
+    if (hasSchedule) withSchedule += 1;
     const parsed = Date.parse(row.refreshed_at ?? "");
     if (!Number.isFinite(parsed)) {
       invalidTimestamps += 1;
       continue;
     }
+    if (!hasSchedule) continue;
     timestamps.push(new Date(parsed).toISOString());
     if (isHoursFresh(row.refreshed_at, now)) freshRows += 1;
     else staleRows += 1;
