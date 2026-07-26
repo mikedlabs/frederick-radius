@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Armchair,
   ArrowUpRight,
@@ -56,6 +56,7 @@ export default function NearbyEssentials({
   const [activeId, setActiveId] = useState<EssentialNeedId | null>(
     initialNeed ?? null,
   );
+  const [interactive, setInteractive] = useState(false);
   const activeNeed = essentialNeed(activeId);
   const position = state.status === "granted" ? state.position : null;
   const nearest = useMemo(
@@ -66,6 +67,11 @@ export default function NearbyEssentials({
     [activeNeed, points, position],
   );
   const nearby = nearest ? isEssentialNearby(nearest.distanceM) : false;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setInteractive(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const chooseNeed = (id: EssentialNeedId) => {
     setActiveId(id);
@@ -120,6 +126,7 @@ export default function NearbyEssentials({
               <button
                 key={need.id}
                 type="button"
+                disabled={!interactive}
                 onClick={() => chooseNeed(need.id)}
                 aria-pressed={active}
                 className="tactile-interactive flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-1.5 py-2 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"

@@ -10,6 +10,7 @@ import {
   type PanInfo,
 } from "framer-motion";
 import { X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 
@@ -38,6 +39,7 @@ type Props = {
 };
 
 export default function BottomSheet({ present, onClose, ariaLabel, children }: Props) {
+  const pathname = usePathname();
   const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const backdropOpacity = useTransform(y, [0, 300], [0.45, 0]);
@@ -45,19 +47,41 @@ export default function BottomSheet({ present, onClose, ariaLabel, children }: P
   // Remember what was focused before opening so we can restore it on close —
   // a baseline dialog expectation.
   const lastFocused = useRef<HTMLElement | null>(null);
+  const openPath = useRef(pathname);
+  const onCloseRef = useRef(onClose);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Keep Tab within the sheet while it's open.
   useFocusTrap(sheetRef, open && present);
 
   useEffect(() => {
     if (present) {
+      openPath.current = window.location.pathname;
       lastFocused.current = (document.activeElement as HTMLElement | null) ?? null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming presence prop to drive the open animation
       setOpen(true);
       haptic("light");
+    } else {
+      // A parent can clear its selected item directly. Mirror that state so
+      // focus restoration and the body-scroll lock cannot remain active.
+      setOpen(false);
     }
   }, [present]);
+
+  // App layouts persist across client navigations. A sheet that launched a
+  // detail page must not remain mounted over the destination if a navigation
+  // races its exit animation. Search-only map state changes stay on the same
+  // pathname and intentionally keep the sheet open.
+  useEffect(() => {
+    if (!open || pathname === openPath.current) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- closes a route-scoped overlay after its owning route has changed
+    setOpen(false);
+    onCloseRef.current();
+  }, [open, pathname]);
 
   // Move focus into the sheet on open; restore it to the trigger on close.
   useEffect(() => {

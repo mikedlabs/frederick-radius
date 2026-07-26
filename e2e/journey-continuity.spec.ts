@@ -3,6 +3,14 @@ import { expect, test } from "@playwright/test";
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
 test("a route result focuses the same transit map instead of ending in a directory card", async ({ page }) => {
+  const hydrationWarnings: string[] = [];
+  page.on("console", (message) => {
+    const text = message.text();
+    if (text.includes("hydrated but some attributes of the server rendered HTML")) {
+      hydrationWarnings.push(text);
+    }
+  });
+
   await page.goto("/transit", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("heading", { level: 1, name: "Transit" })).toBeVisible();
@@ -15,6 +23,7 @@ test("a route result focuses the same transit map instead of ending in a directo
 
   await expect(page.locator("#live-network-heading")).toBeInViewport();
   await expect(page.getByLabel("Bus route")).toHaveValue("6154");
+  expect(hydrationWarnings).toEqual([]);
 });
 
 test("expanded map search carries the exact map state through a place detail", async ({ page }) => {
@@ -66,6 +75,14 @@ test("expanded map search carries the exact map state through a place detail", a
 });
 
 test("a map place sheet carries its live camera, layers, and query to the full page", async ({ page }) => {
+  const missingCategoryImages: string[] = [];
+  page.on("console", (message) => {
+    const text = message.text();
+    if (text.includes('Image "cat-') && text.includes("could not be loaded")) {
+      missingCategoryImages.push(text);
+    }
+  });
+
   await page.goto("/map?c=-77.4100,39.4150,12.4&show=transit&layers=parks", {
     waitUntil: "domcontentloaded",
   });
@@ -104,6 +121,11 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   );
 
   await fullPage.click();
+  // The app layout persists across this client navigation. Its route-scoped
+  // sheet must be gone before the destination page becomes interactive.
+  await expect(
+    page.getByRole("dialog", { name: "Gravel & Grind" }),
+  ).toHaveCount(0);
   const detailBack = page.getByRole("link", { name: "Back to map" });
   await expect(detailBack).toHaveAttribute("href", mapReturnHref!);
   await detailBack.click();
@@ -117,6 +139,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   await expect(page.getByRole("searchbox", { name: "Search this map" })).toHaveValue(
     "Gravel and Grind",
   );
+  expect(missingCategoryImages).toEqual([]);
 });
 
 test("a place detail has one thumb dock, not a second nav stacked under it", async ({ page }) => {

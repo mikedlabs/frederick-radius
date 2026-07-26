@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import Map, {
   Popup,
   Marker,
@@ -426,6 +426,10 @@ export default function AppMap({
   activeSlugs = null,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  const attachMapRef = useCallback((instance: MapRef | null) => {
+    mapRef.current = instance;
+    if (instance) installCategoryMarkers(instance.getMap());
+  }, []);
   // Rotation may refit an untouched county overview, but it must never yank a
   // camera the user deliberately panned, zoomed, searched, or focused.
   const cameraIntentRef = useRef(false);
@@ -540,6 +544,21 @@ export default function AppMap({
   // one redundant background fetch the first time, served from cache.
   const hydratedRef = useRef(new globalThis.Map<string, PlaceCardData>());
   const openPlaceSheet = (pin: MapPinPlace) => {
+    // React mirrors the selected slug into the map URL, but a fast Details tap
+    // can beat that effect. Commit the selection before the persistent sheet
+    // captures its return path so the full page always comes back to the same
+    // highlighted place rather than a visually similar, unselected map.
+    try {
+      const url = new URL(window.location.href);
+      if (url.pathname === "/map") {
+        url.searchParams.set("place", pin.slug);
+        url.searchParams.delete("event");
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch {
+      // The sheet still opens if address-bar persistence is unavailable.
+    }
+
     const withDist = (x: PlaceCardData): PlaceCardData =>
       userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
     const cached = hydratedRef.current.get(pin.slug);
@@ -2500,7 +2519,7 @@ export default function AppMap({
             now. */}
 
         <Map
-          ref={mapRef}
+          ref={attachMapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
             urlCamera ?? (locationSeed.camera

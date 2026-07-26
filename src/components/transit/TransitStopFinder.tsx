@@ -60,6 +60,7 @@ export default function TransitStopFinder() {
 
   return (
     <details
+      suppressHydrationWarning
       className="group overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{
         borderColor: "var(--app-border)",

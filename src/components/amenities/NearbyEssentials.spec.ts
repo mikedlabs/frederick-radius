@@ -40,6 +40,7 @@ describe("NearbyEssentials", () => {
 
     expect(html).toContain("Tap what you need.");
     expect(html).toContain("Radius asks for location only after you choose.");
+    expect(html).toContain('disabled=""');
     expect(requestHighAccuracy).not.toHaveBeenCalled();
   });
 

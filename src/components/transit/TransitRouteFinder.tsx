@@ -38,6 +38,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
 
   return (
     <details
+      suppressHydrationWarning
       className="group overflow-hidden rounded-[var(--app-radius-md)] border"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
     >

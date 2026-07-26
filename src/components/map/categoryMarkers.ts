@@ -14,6 +14,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { BRAND } from "@/lib/brand";
 
 const DEFAULT_COLOR = BRAND.colors.brick;
+const INSTALLED_MAPS = new WeakSet<GLMap>();
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
@@ -497,6 +498,9 @@ function addOne(map: GLMap, id: string): void {
  * guarantee; the eager pass just avoids a one-frame flash.
  */
 export function installCategoryMarkers(map: GLMap): void {
+  if (INSTALLED_MAPS.has(map)) return;
+  INSTALLED_MAPS.add(map);
+
   const addAll = () => {
     addOne(map, "cat-_default");
     for (const slug of Object.keys(CATEGORY_BY_SLUG)) addOne(map, `cat-${slug}`);
@@ -508,5 +512,5 @@ export function installCategoryMarkers(map: GLMap): void {
   // images added before the style settled. Re-add on every style load
   // (idempotent via hasImage) so category icons survive.
   map.on("style.load", addAll);
-  addAll();
+  if (map.isStyleLoaded()) addAll();
 }
