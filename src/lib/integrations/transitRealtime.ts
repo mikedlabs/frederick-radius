@@ -16,7 +16,10 @@
  * positions near Frederick (39.4x, -77.4x) with bearings, route_ids that
  * match transit.json. Free to ride.
  */
-import GtfsRealtimeBindings from "gtfs-realtime-bindings";
+import {
+  gtfsRealtime,
+  type GtfsFeedMessage,
+} from "@/lib/integrations/gtfsRealtimeBindings";
 import { decorateVehiclesWithNextStop } from "@/lib/integrations/transitNextStop";
 
 const VEHICLE_POSITIONS =
@@ -129,7 +132,7 @@ function feedTimestamp(value: number | Long | null | undefined): number | undefi
 }
 
 type DecodedFeed = TransitFeedMeta & {
-  feed?: GtfsRealtimeBindings.transit_realtime.FeedMessage;
+  feed?: GtfsFeedMessage;
 };
 
 async function decodeFeed(url: string): Promise<DecodedFeed> {
@@ -141,7 +144,7 @@ async function decodeFeed(url: string): Promise<DecodedFeed> {
       return { status: "unavailable", available: false, receivedAt: Date.now() };
     }
     const buf = new Uint8Array(await res.arrayBuffer());
-    const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(buf);
+    const feed = gtfsRealtime.FeedMessage.decode(buf);
     return {
       feed,
       status: "ok",
@@ -157,7 +160,7 @@ async function decodeFeed(url: string): Promise<DecodedFeed> {
 }
 
 function vehiclesFromFeed(
-  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+  feed: GtfsFeedMessage,
 ): LiveVehicle[] {
   const out: LiveVehicle[] = [];
   for (const e of feed.entity) {
@@ -206,7 +209,7 @@ export async function getLiveVehicles(): Promise<LiveVehicle[]> {
  * joined to its own next stop + ETA. Returns [] on any failure.
  */
 function tripUpdatesFromFeed(
-  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+  feed: GtfsFeedMessage,
 ): TripUpdate[] {
   const out: TripUpdate[] = [];
   for (const e of feed.entity) {
@@ -315,7 +318,7 @@ export async function getLiveVehiclesWithNextStopResult(): Promise<LiveVehiclesR
 export type StopPrediction = { stopId: string; routeId?: string; arrivalEpoch?: number };
 
 function stopPredictionsFromFeed(
-  feed: GtfsRealtimeBindings.transit_realtime.FeedMessage,
+  feed: GtfsFeedMessage,
 ): StopPrediction[] {
   const out: StopPrediction[] = [];
   for (const e of feed.entity) {

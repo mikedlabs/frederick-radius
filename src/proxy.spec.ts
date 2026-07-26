@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBetaExempt } from "./middleware";
+import { isBetaExempt } from "./proxy";
 
 describe("beta wall exemptions", () => {
   it.each(["/privacy", "/privacy/", "/terms", "/terms/"])(

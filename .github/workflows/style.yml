@@ -25,17 +25,11 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: ".nvmrc"
           cache: npm
 
       - name: Install dependencies
-        # `npm install` instead of `npm ci` — different local Node
-        # versions (the project is currently maintained on Node 25)
-        # resolve transitive deps (notably esbuild via Vite peerDeps)
-        # slightly differently from Node 20 in CI, which `npm ci` flags
-        # as a lock mismatch. `style:lint` is rule-based and doesn't
-        # need bit-exact deps; tolerate the drift and unblock merge.
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Voice lint
         run: npm run style:lint

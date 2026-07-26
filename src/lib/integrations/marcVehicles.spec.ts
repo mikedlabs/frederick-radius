@@ -1,5 +1,5 @@
-import { transit_realtime } from "gtfs-realtime-bindings";
 import { afterEach, describe, it, expect, vi } from "vitest";
+import { gtfsRealtime } from "./gtfsRealtimeBindings";
 import {
   getMarcVehiclesResult,
   inMarcCorridor,
@@ -84,7 +84,7 @@ describe("slimMarcVehicles", () => {
 describe("MARC vehicle feed metadata", () => {
   it("preserves feed time and excludes a Penn train inside the corridor", async () => {
     const feedTimestamp = 1_785_100_000;
-    const bytes = transit_realtime.FeedMessage.encode({
+    const bytes = gtfsRealtime.FeedMessage.encode({
       header: { gtfsRealtimeVersion: "2.0", timestamp: feedTimestamp },
       entity: [
         {

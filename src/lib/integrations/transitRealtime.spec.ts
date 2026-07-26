@@ -1,15 +1,18 @@
-import GtfsRealtimeBindings from "gtfs-realtime-bindings";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  gtfsRealtime,
+  type GtfsFeedEntity,
+} from "./gtfsRealtimeBindings";
 import {
   getLiveVehiclesResult,
   getLiveVehiclesWithNextStopResult,
   getStopPredictionsResult,
 } from "./transitRealtime";
 
-const { FeedMessage } = GtfsRealtimeBindings.transit_realtime;
+const { FeedMessage } = gtfsRealtime;
 
 function encodedFeed(
-  entity: GtfsRealtimeBindings.transit_realtime.IFeedEntity[],
+  entity: GtfsFeedEntity[],
   timestamp = 1_785_000_000,
 ): Uint8Array {
   return FeedMessage.encode({

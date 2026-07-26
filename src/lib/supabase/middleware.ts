@@ -4,7 +4,7 @@
  * The auth library issues short-lived access tokens (~1h) plus a
  * longer refresh token. Without middleware, expired tokens never
  * refresh and the user gets logged out mid-session. This helper
- * runs on every request inside src/middleware.ts: it reads the
+ * runs on every request inside src/proxy.ts: it reads the
  * incoming cookies, asks Supabase to refresh if needed, and writes
  * the refreshed cookies onto the outgoing response.
  *

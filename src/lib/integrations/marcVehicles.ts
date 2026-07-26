@@ -17,7 +17,7 @@
  * Camden), positions, bearings, and per-fix timestamps. Only route 11704 is
  * retained; a geographic box alone also catches Penn Line trains.
  */
-import { transit_realtime } from "gtfs-realtime-bindings";
+import { gtfsRealtime } from "@/lib/integrations/gtfsRealtimeBindings";
 
 const VEHICLE_POSITIONS_URL =
   "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-vp.pb";
@@ -141,7 +141,7 @@ export async function getMarcVehiclesResult(): Promise<MarcVehicleFeedResult> {
       };
     }
     const buf = new Uint8Array(await res.arrayBuffer());
-    const feed = transit_realtime.FeedMessage.decode(buf);
+    const feed = gtfsRealtime.FeedMessage.decode(buf);
     const raw: RawMarcPosition[] = [];
     for (const e of feed.entity) {
       const v = e.vehicle;

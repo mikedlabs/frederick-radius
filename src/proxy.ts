@@ -4,7 +4,7 @@ import { BETA_COOKIE, betaToken, verifyCodeCookie, verifyMemberCookie } from "@/
 import { MEMBER_COOKIE } from "@/lib/nfc-constants";
 
 /**
- * Edge middleware: three independent gates, applied conditionally
+ * Request proxy: three independent gates, applied conditionally
  * by path.
  *
  *   1. /admin/*   — Basic Auth (P0-5 interim gate). Fails CLOSED:
@@ -183,7 +183,7 @@ async function adminBasicAuth(req: NextRequest): Promise<NextResponse | null> {
   return null; // pass-through
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (isAdminPath(pathname)) {
