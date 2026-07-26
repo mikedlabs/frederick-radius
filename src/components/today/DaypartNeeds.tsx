@@ -10,7 +10,12 @@ import type { DaypartPick, DaypartRow } from "@/lib/loaders/daypartPicks";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { getWantAnswer } from "@/lib/want-cache";
 import { GEOLOCATION_CHANGE_EVENT } from "@/hooks/useGeolocation";
-import { SCOPE_CHANGE_EVENT } from "@/lib/scope";
+import {
+  getScope,
+  scopeToParam,
+  SCOPE_CHANGE_EVENT,
+  type Scope,
+} from "@/lib/scope";
 import Skeleton from "@/components/ui/Skeleton";
 
 type WantRow = {
@@ -34,6 +39,79 @@ type LiveShelf = {
   href: string;
   contextLabel: string;
 };
+
+/**
+ * Keep Today's location-aware shelf and its expanded list on the same ranking
+ * path. Exact device coordinates stay in session storage; the URL carries only
+ * the noun/facet and the coarse browsing scope.
+ */
+export function daypartBrowseHref(
+  category: string,
+  label: string,
+  scope: Scope | null = null,
+): string | null {
+  const normalizedLabel = label.toLowerCase();
+  const target =
+    category === "coffee"
+      ? { craving: "coffee" }
+      : category === "bakery"
+        ? { craving: "breakfast" }
+        : category === "restaurant"
+          ? {
+              craving: normalizedLabel.includes("lunch")
+                ? "lunch"
+                : normalizedLabel.includes("dinner")
+                  ? "dinner"
+                  : normalizedLabel.includes("still")
+                    ? "late"
+                    : "food",
+            }
+          : category === "brewery"
+            ? { craving: "breweries" }
+            : category === "bar"
+              ? { craving: "drinks", facet: "bar" }
+              : category === "ice-cream"
+                ? { craving: "ice-cream" }
+                : category === "museum"
+                  ? { craving: "art", facet: "museum" }
+                  : category === "book-store"
+                    ? { craving: "shops", facet: "book-store" }
+                    : null;
+  if (!target) return null;
+
+  const params = new URLSearchParams({ c: target.craving });
+  if ("facet" in target && target.facet) params.set("facet", target.facet);
+  if (scope) params.set("in", scopeToParam(scope));
+  return `/nearby?${params.toString()}`;
+}
+
+/** The live ranker can honestly return no open places. Keep that answer in the
+ * existing shelf instead of turning it into another full-size card. */
+export function DaypartEmptyState({
+  href = "/open-now",
+}: {
+  href?: string;
+} = {}) {
+  return (
+    <div
+      role="status"
+      className="mt-4 flex items-center justify-between gap-3 border-y px-0.5 py-2"
+      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+    >
+      <p className="text-[11.5px] leading-snug">
+        No matching places are confirmed open in this area.
+      </p>
+      <Link
+        href={href}
+        className="tap-44-y inline-flex shrink-0 items-center gap-0.5 text-[11.5px] font-semibold"
+        style={{ color: "var(--app-brand-press)" }}
+      >
+        Opening later
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      </Link>
+    </div>
+  );
+}
 
 /**
  * The daypart's open-now place needs, shown as one focused shelf at a time.
@@ -99,7 +177,14 @@ export default function DaypartNeeds({
           ...previous,
           [baseActive.category]: {
             picks: open,
-            href: answer.browseHref || baseActive.href,
+            href:
+              daypartBrowseHref(
+                baseActive.category,
+                baseActive.label,
+                getScope(),
+              ) ||
+              answer.browseHref ||
+              baseActive.href,
             contextLabel: answer.contextLabel || "Across Frederick County",
           },
         }));
@@ -138,6 +223,13 @@ export default function DaypartNeeds({
   }, []);
 
   if (!active) return null;
+
+  // Once the location-aware ranker has answered, a zero-result shelf should
+  // not keep a heading, tab row, count line, and empty card in prime Today
+  // space. Collapse it to one honest route to places opening later.
+  if (!awaitingLive && active.picks.length === 0) {
+    return <DaypartEmptyState href={active.href} />;
+  }
 
   return (
     <section aria-label="Open places right now" className="mt-6">
@@ -308,15 +400,7 @@ export default function DaypartNeeds({
               </li>
             ))}
           </ul>
-        ) : (
-          <p
-            className="mt-2 rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-[12.5px]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-          >
-            Nothing in this group is confirmed open right now. Use “See all”
-            for places opening later.
-          </p>
-        )}
+        ) : null}
       </div>
     </section>
   );

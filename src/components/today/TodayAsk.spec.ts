@@ -8,7 +8,6 @@ describe("Today Ask Radius launcher", () => {
     const html = renderToStaticMarkup(createElement(TodayAsk));
 
     expect(html).toContain('action="/ask"');
-    expect(html).toContain('method="get"');
     expect(html).toContain('name="q"');
     expect(html).not.toContain("/api/ask");
   });

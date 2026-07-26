@@ -7,7 +7,10 @@ describe("findQuickAnswers (extracted SearchOverlay logic, single source)", () =
     expect(findQuickAnswers("where to park downtown")[0]?.key).toBe("parking");
     expect(findQuickAnswers("next marc train")[0]?.key).toBe("transit");
     expect(findQuickAnswers("nearest blue mailbox")[0]?.href).toBe("/shipping");
-    expect(findQuickAnswers("where is a water fountain")[0]?.href).toBe("/map?amenity=water");
+    expect(findQuickAnswers("where is a water fountain")[0]?.href).toBe("/amenities?need=water");
+    expect(findQuickAnswers("where is the closest trash can")[0]?.href).toBe("/amenities?need=trash");
+    expect(findQuickAnswers("I need a dog bag")[0]?.href).toBe("/amenities?need=dog-bags");
+    expect(findQuickAnswers("where can I charge my phone")[0]?.href).toBe("/amenities?need=power");
     expect(findQuickAnswers("brunch this weekend")[0]?.href).toBe("/brunch");
     expect(findQuickAnswers("food trucks today")[0]?.href).toBe("/food-trucks");
   });

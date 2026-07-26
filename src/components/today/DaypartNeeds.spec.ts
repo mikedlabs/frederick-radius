@@ -1,7 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import DaypartNeeds from "./DaypartNeeds";
+import DaypartNeeds, {
+  DaypartEmptyState,
+  daypartBrowseHref,
+} from "./DaypartNeeds";
 
 describe("DaypartNeeds", () => {
   it("shows one open-now shelf while keeping the other categories available as tabs", () => {
@@ -60,5 +63,32 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Checking nearby");
     expect(html).toContain("Loading open coffee places");
     expect(html).not.toContain("Nothing in this group is confirmed open right now");
+  });
+
+  it("uses a compact inline state when the live shelf has no confirmed-open places", () => {
+    const html = renderToStaticMarkup(createElement(DaypartEmptyState));
+
+    expect(html).toContain('role="status"');
+    expect(html).toContain("No matching places are confirmed open in this area.");
+    expect(html).toContain("Opening later");
+    expect(html).toContain('href="/open-now"');
+    expect(html).toContain("border-y");
+    expect(html).not.toContain("border-dashed");
+    expect(html).not.toContain("py-5");
+  });
+
+  it("keeps expanded daypart results on the location-aware Nearby journey", () => {
+    expect(daypartBrowseHref("coffee", "Coffee", "nearme")).toBe(
+      "/nearby?c=coffee&in=nearme",
+    );
+    expect(daypartBrowseHref("restaurant", "Dinner", "town:brunswick")).toBe(
+      "/nearby?c=dinner&in=brunswick",
+    );
+    expect(daypartBrowseHref("bar", "Bars open late", "county")).toBe(
+      "/nearby?c=drinks&facet=bar&in=county",
+    );
+    expect(daypartBrowseHref("museum", "Museums & indoors")).toBe(
+      "/nearby?c=art&facet=museum",
+    );
   });
 });

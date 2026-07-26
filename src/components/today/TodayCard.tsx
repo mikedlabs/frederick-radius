@@ -51,6 +51,59 @@ function fmtTime(d: Date | null): string | null {
   }).format(d);
 }
 
+/** A feed miss should not turn Today's most valuable screen space into a large
+ * failed weather card. The surrounding weather plate remains a real link to
+ * Pulse, but the failure itself collapses to one honest, useful row. */
+export function WeatherUnavailable() {
+  return (
+    <section
+      aria-label="Weather unavailable"
+      data-weather-state="unavailable"
+      className="flex min-h-11 items-center justify-between gap-3 pr-5"
+      style={{ color: "currentColor" }}
+    >
+      <span className="text-[12.5px] font-medium">The forecast is briefly unavailable.</span>
+      <span className="shrink-0 text-[11.5px] font-semibold opacity-80">
+        Live conditions
+      </span>
+    </section>
+  );
+}
+
+export function compactWeatherRead({
+  verdict,
+  condition,
+  alertsAvailable,
+  airQualityAvailable,
+  activeAlertCount,
+  airQualityIndex,
+}: {
+  verdict: string;
+  condition: string;
+  alertsAvailable: boolean;
+  airQualityAvailable: boolean;
+  activeAlertCount: number;
+  airQualityIndex: number | null;
+}): { headline: string; safetyNote: string | null } {
+  const safetyFeedsIncomplete = !alertsAvailable || !airQualityAvailable;
+  const hasActionableSafetySignal =
+    activeAlertCount > 0 ||
+    (airQualityIndex !== null && airQualityIndex > 100);
+
+  if (
+    safetyFeedsIncomplete &&
+    !hasActionableSafetySignal &&
+    condition.trim()
+  ) {
+    return {
+      headline: condition.trim(),
+      safetyNote: "Some safety feeds are unavailable.",
+    };
+  }
+
+  return { headline: verdict, safetyNote: null };
+}
+
 export default async function TodayCard() {
   const now = new Date();
 
@@ -70,6 +123,17 @@ export default async function TodayCard() {
   const freshAir = (airObservations ?? []).filter((obs) => isFreshAqiObservation(obs, now));
   const worstAir = pickWorstAqi(freshAir);
   const airQualityAvailable = airObservations !== null && freshAir.length > 0;
+  const hasSafetySignal =
+    alertResult.alerts.length > 0 ||
+    (worstAir !== null && worstAir.aqi > 100);
+
+  // Alerts and measured air quality still deserve the top slot when the
+  // ordinary forecast fails. If every live conditions feed is quiet or
+  // unavailable, collapse to the small handoff above instead of manufacturing
+  // a weather read from defaults.
+  if (!cur && !hasSafetySignal) {
+    return <WeatherUnavailable />;
+  }
 
   // The NEXT sun event, not both — sunrise if it hasn't happened yet,
   // otherwise tonight's sunset, otherwise tomorrow's sunrise. (Replaces
@@ -91,7 +155,7 @@ export default async function TodayCard() {
   // The hero takes the BRIEF (one observation), never the full advice
   // line — the greeting already spends words here, and the counsel lives
   // in NowIntel below (owner report, 2026-07-19: too much text up top).
-  const mood = weatherVerdict({
+  const verdict = weatherVerdict({
     temp: cur?.temperature ?? 70,
     shortForecast: cur?.shortForecast ?? "",
     precipNow: cur?.probabilityOfPrecipitation ?? 0,
@@ -105,6 +169,14 @@ export default async function TodayCard() {
     hourly: forecast?.hourly ?? [],
     now,
   }).brief;
+  const weatherRead = compactWeatherRead({
+    verdict,
+    condition,
+    alertsAvailable: alertResult.available,
+    airQualityAvailable,
+    activeAlertCount: alertResult.alerts.length,
+    airQualityIndex: worstAir?.aqi ?? null,
+  });
 
   // Daytime by real sun times (the glyph's sun/moon depends on it).
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;
@@ -114,10 +186,12 @@ export default async function TodayCard() {
 
   // Secondary stats — high + next sun event. The big temperature carries
   // "now," so it's dropped from this line to avoid saying it twice.
-  const stats = [
-    high != null ? `High ${high}°` : null,
-    sun ? `${sun.label} ${sun.time}` : null,
-  ].filter(Boolean);
+  const stats = cur
+    ? [
+        high != null ? `High ${high}°` : null,
+        sun ? `${sun.label} ${sun.time}` : null,
+      ].filter(Boolean)
+    : [];
 
   return (
     <section aria-label="Today in Frederick" className="stagger-children" style={{ color: "currentColor" }}>
@@ -130,10 +204,15 @@ export default async function TodayCard() {
           weather row (was a 28px headline stacked over a 64px number). */}
       {/* text-wrap balance: the two-line mood ("… chase shade and / AC.")
           otherwise strands its last word at narrow widths. */}
-      {mood && (
+      {weatherRead.headline && (
         <h2 className="font-serif text-[18px] font-semibold leading-snug tracking-tight [text-wrap:balance] sm:text-[20px]">
-          {mood}
+          {weatherRead.headline}
         </h2>
+      )}
+      {weatherRead.safetyNote && (
+        <p className="mt-1 text-[11.5px] font-medium opacity-80">
+          {weatherRead.safetyNote}
+        </p>
       )}
 
       {/* One compact weather row: the animated glyph + the temperature + the

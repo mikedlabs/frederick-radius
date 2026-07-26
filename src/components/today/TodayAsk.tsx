@@ -1,12 +1,14 @@
 import Link from "next/link";
+import Form from "next/form";
 import { ArrowRight, MessageCircleQuestion } from "lucide-react";
 
 /**
  * A compact front-door launcher for the full Ask Radius workspace.
  *
  * Today should help someone start a question without turning the daily
- * briefing into a chat transcript. This native GET form works before client
- * JavaScript loads and hands the dedicated page its `q` search parameter.
+ * briefing into a chat transcript. Next's progressive form keeps its native
+ * GET fallback before JavaScript loads, then uses in-app navigation once the
+ * page is interactive.
  */
 export default function TodayAsk() {
   return (
@@ -19,9 +21,8 @@ export default function TodayAsk() {
         Ask Radius
       </h2>
       {/* One query band, set like the first line of a field-guide index. */}
-      <form
+      <Form
         action="/ask"
-        method="get"
         role="search"
         className="group flex min-h-[58px] items-center gap-2.5 overflow-hidden border-y border-l-2 px-1.5 transition focus-within:bg-[var(--app-bg-elevated-solid)]"
         style={{
@@ -43,7 +44,7 @@ export default function TodayAsk() {
           >
             <MessageCircleQuestion className="h-[19px] w-[19px]" strokeWidth={2.25} />
           </span>
-          <span className="text-[13px] font-bold leading-none">Ask Radius</span>
+          <span className="text-[13px] font-bold leading-none">Ask</span>
         </Link>
 
         <label htmlFor="today-ask-query" className="sr-only">
@@ -68,7 +69,7 @@ export default function TodayAsk() {
         >
           <ArrowRight className="h-[19px] w-[19px]" strokeWidth={2.5} aria-hidden />
         </button>
-      </form>
+      </Form>
     </section>
   );
 }
