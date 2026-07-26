@@ -411,7 +411,7 @@ function facebookGroupLaunch(fonts: string, photoUrl: string): string {
     <tspan x="84" dy="0">Find the</tspan><tspan x="84" dy="92">food trucks.</tspan>
   </text>
   <text x="88" y="1081" fill="${BRAND.colors.ink}" fill-opacity=".78" font-family="Public Sans" font-size="27" font-weight="520">
-    <tspan x="88" dy="0">20 local trucks, with the latest location</tspan><tspan x="88" dy="40">links from the people running them.</tspan>
+    <tspan x="88" dy="0">Local trucks, with the latest location</tspan><tspan x="88" dy="40">links from the people running them.</tspan>
   </text>
   <rect x="86" y="1192" width="336" height="58" rx="29" fill="${BRAND.colors.brick}"/>
   <text x="254" y="1229" text-anchor="middle" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="18" font-weight="760" letter-spacing="2.1">CODE: FOOD-TRUCK</text>
@@ -547,7 +547,7 @@ function ogFoodTrucks(fonts: string, photoUrl: string): string {
   <text x="62" y="198" fill="${BRAND.colors.cream}" fill-opacity=".72" font-family="Public Sans" font-size="17" font-weight="760" letter-spacing="3.2">FREDERICK COUNTY · FOOD TRUCKS</text>
   <text x="58" y="326" fill="${BRAND.colors.cream}" font-family="Libre Caslon Display" font-size="78" font-weight="400" letter-spacing="-1.2">Find the food trucks.</text>
   <line x1="62" x2="648" y1="379" y2="379" stroke="${BRAND.colors.cream}" stroke-opacity=".22" stroke-width="2"/>
-  <text x="62" y="438" fill="${BRAND.colors.cream}" fill-opacity=".88" font-family="Public Sans" font-size="24" font-weight="560">Confirmed weekly stops + 20 local vendors</text>
+  <text x="62" y="438" fill="${BRAND.colors.cream}" fill-opacity=".88" font-family="Public Sans" font-size="24" font-weight="560">Confirmed weekly stops + local vendors</text>
   <text x="62" y="557" fill="${BRAND.colors.cream}" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="2.7">FREDERICKRADIUS.APP</text>`,
     fonts,
   );

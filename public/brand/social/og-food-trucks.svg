@@ -27,6 +27,6 @@
   <text x="62" y="198" fill="#F4EEE2" fill-opacity=".72" font-family="Public Sans" font-size="17" font-weight="760" letter-spacing="3.2">FREDERICK COUNTY · FOOD TRUCKS</text>
   <text x="58" y="326" fill="#F4EEE2" font-family="Libre Caslon Display" font-size="78" font-weight="400" letter-spacing="-1.2">Find the food trucks.</text>
   <line x1="62" x2="648" y1="379" y2="379" stroke="#F4EEE2" stroke-opacity=".22" stroke-width="2"/>
-  <text x="62" y="438" fill="#F4EEE2" fill-opacity=".88" font-family="Public Sans" font-size="24" font-weight="560">Confirmed weekly stops + 20 local vendors</text>
+  <text x="62" y="438" fill="#F4EEE2" fill-opacity=".88" font-family="Public Sans" font-size="24" font-weight="560">Confirmed weekly stops + local vendors</text>
   <text x="62" y="557" fill="#F4EEE2" font-family="Public Sans" font-size="20" font-weight="760" letter-spacing="2.7">FREDERICKRADIUS.APP</text>
 </svg>
