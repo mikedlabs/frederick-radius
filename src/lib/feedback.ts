@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the beta feedback intake. No DB or server-only imports here,
+ * Pure helpers for the visitor feedback intake. No DB or server-only imports here,
  * so the validation + row-shaping logic is unit-testable; the route handler in
  * src/app/api/feedback/route.ts composes these with the (fail-soft) DB write.
  *
@@ -76,7 +76,7 @@ export type FeedbackRow = {
     version: string | null;
     /** Server-stamped deploy SHA (VERCEL_GIT_COMMIT_SHA), the reliable one. */
     commit: string | null;
-    source: "beta-widget";
+    source: "feedback-widget";
   };
   submitter_email: string | null;
 };
@@ -94,7 +94,7 @@ export function buildFeedbackRow(value: ParsedFeedback, commit: string | null): 
       pathname: value.pathname,
       version: value.version,
       commit: commit && commit.trim() ? commit.trim().slice(0, 64) : null,
-      source: "beta-widget",
+      source: "feedback-widget",
     },
     submitter_email: value.email,
   };

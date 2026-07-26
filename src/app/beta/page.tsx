@@ -180,7 +180,7 @@ export default async function BetaPage({
                 <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                   No code yet? Leave your email and one comes right back.
                 </p>
-                <BetaEmailField />
+                <BetaEmailField next={safeNext} />
               </div>
             </section>
           </div>

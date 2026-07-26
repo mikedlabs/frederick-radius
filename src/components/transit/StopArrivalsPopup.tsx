@@ -31,6 +31,8 @@ export type SelectedStop = { id: string; name: string; lng: number; lat: number 
 
 const COUNTY_TRANSIT_URL =
   "https://www.frederickcountymd.gov/207/Transit-Routes-Schedule-Information";
+const POLL_MS = 15_000;
+const PROVIDER_STALE_MS = 90_000;
 
 /** Ink or paper, whichever reads on the route color. Mirrors NextStopsBoard so
  *  a route chip looks identical wherever it appears. */
@@ -74,29 +76,66 @@ function RouteChip({ route }: { route?: TransitRoute }) {
   );
 }
 
-export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
+export default function StopArrivalsPopup({
+  stop,
+  showName = true,
+}: {
+  stop: SelectedStop;
+  showName?: boolean;
+}) {
   const [preds, setPreds] = useState<StopPrediction[] | null>(null);
+  const [feedAvailable, setFeedAvailable] = useState<boolean | null>(null);
+  const [feedFresh, setFeedFresh] = useState<boolean | null>(null);
   const [nowMs, setNowMs] = useState(0);
   const [checkedAt, setCheckedAt] = useState<number | null>(null);
 
   // The caller remounts this per stop (key=stop.id), so preds starts null
-  // (loading) and this effect only fills it in once the fetch lands.
+  // (loading). Keep polling while the detail is open so the countdown is
+  // backed by fresh provider data instead of a one-time snapshot.
   useEffect(() => {
     let alive = true;
-    fetch(`/api/transit/stop-predictions?stop=${encodeURIComponent(stop.id)}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { predictions: [] }))
-      .then((d: { predictions?: StopPrediction[]; updatedAt?: number }) => {
-        if (!alive) return;
-        setPreds(Array.isArray(d.predictions) ? d.predictions : []);
-        const checked = typeof d.updatedAt === "number" ? d.updatedAt : Date.now();
-        setNowMs(checked);
-        setCheckedAt(checked);
-      })
-      .catch(() => {
-        if (alive) setPreds([]);
-      });
+    const load = () => {
+      void fetch(`/api/transit/stop-predictions?stop=${encodeURIComponent(stop.id)}`, { cache: "no-store" })
+        .then((r) => {
+          if (!r.ok) throw new Error(`Transit predictions returned ${r.status}`);
+          return r.json();
+        })
+        .then((d: {
+          predictions?: StopPrediction[];
+          updatedAt?: number;
+          available?: boolean;
+          status?: "ok" | "unavailable";
+          feedTimestamp?: number;
+        }) => {
+          if (!alive) return;
+          setPreds(Array.isArray(d.predictions) ? d.predictions : []);
+          const available = d.available !== false && d.status !== "unavailable";
+          const providerTime =
+            typeof d.feedTimestamp === "number" && d.feedTimestamp > 0
+              ? d.feedTimestamp * 1000
+              : typeof d.updatedAt === "number"
+                ? d.updatedAt
+                : Date.now();
+          setFeedAvailable(available);
+          setFeedFresh(
+            available && Date.now() - providerTime <= PROVIDER_STALE_MS,
+          );
+          setNowMs(Date.now());
+          setCheckedAt(providerTime);
+        })
+        .catch(() => {
+          if (alive) {
+            setPreds([]);
+            setFeedAvailable(false);
+            setFeedFresh(false);
+          }
+        });
+    };
+    load();
+    const poll = setInterval(load, POLL_MS);
     return () => {
       alive = false;
+      clearInterval(poll);
     };
   }, [stop.id]);
 
@@ -119,15 +158,17 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
 
   return (
     <div style={{ padding: "2px 2px 4px", minWidth: 188 }}>
-      <strong
-        className="font-serif"
-        style={{ display: "block", fontSize: 14.5, lineHeight: 1.25, color: "var(--app-ink)" }}
-      >
-        {stop.name}
-      </strong>
+      {showName && (
+        <strong
+          className="font-sans"
+          style={{ display: "block", fontSize: 14.5, lineHeight: 1.25, color: "var(--app-ink)" }}
+        >
+          {stop.name}
+        </strong>
+      )}
 
       {routes.length > 0 && (
-        <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+        <div style={{ marginTop: showName ? 6 : 0, display: "flex", flexWrap: "wrap", gap: 4 }}>
           {routes.map((r) => (
             <RouteChip key={r.id} route={r} />
           ))}
@@ -138,6 +179,32 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
 
       {preds === null ? (
         <p style={{ fontSize: 11.5, color: "var(--app-ink-3)" }}>Checking for inbound buses…</p>
+      ) : feedAvailable === false ? (
+        <p style={{ fontSize: 11.5, lineHeight: 1.4, color: "var(--app-ink-3)" }}>
+          Live arrivals are unavailable.{" "}
+          <a
+            href={COUNTY_TRANSIT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--app-cool)", fontWeight: 600 }}
+          >
+            Check the official schedule
+          </a>
+          .
+        </p>
+      ) : feedFresh === false ? (
+        <p style={{ fontSize: 11.5, lineHeight: 1.4, color: "var(--app-ink-3)" }}>
+          The live arrival feed is delayed.{" "}
+          <a
+            href={COUNTY_TRANSIT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--app-cool)", fontWeight: 600 }}
+          >
+            Check the official schedule
+          </a>
+          .
+        </p>
       ) : arrivals.length > 0 ? (
         <>
           <p
@@ -196,7 +263,7 @@ export default function StopArrivalsPopup({ stop }: { stop: SelectedStop }) {
       )}
       {preds !== null && checkedLabel && (
         <p style={{ marginTop: 7, fontSize: 9.5, lineHeight: 1.35, color: "var(--app-ink-3)" }}>
-          Checked {checkedLabel} · Frederick County TransIT
+          Feed updated {checkedLabel} · Frederick County TransIT
         </p>
       )}
     </div>

@@ -20,6 +20,9 @@
  * announcements remain in the local-updates drawer.
  */
 
+import { createSingleFlight } from "@/lib/single-flight";
+import { unstable_cache } from "next/cache";
+
 export type CivicPressLane = "police" | "advisory" | "civic";
 
 export type CivicPressItem = {
@@ -34,6 +37,14 @@ export type CivicPressItem = {
   /** The press-release graphic the feed enclosed, if any. */
   imageUrl?: string;
   lane: CivicPressLane;
+};
+
+export type CivicPressResult = {
+  items: CivicPressItem[];
+  sourceHealth: {
+    degraded: boolean;
+    unavailable: CivicPressItem["source"][];
+  };
 };
 
 const FEEDS: ReadonlyArray<{
@@ -125,33 +136,115 @@ function parseFeed(
  * by canonical URL and capped. Returns [] if both feeds fail (callers hide
  * the surface — a blank "press" header lowers trust).
  */
-export async function getCivicPressReleases(): Promise<CivicPressItem[]> {
+const FETCH_TIMEOUT_MS = 5_000;
+
+async function loadCivicPressReleases(): Promise<CivicPressResult> {
   const feeds = await Promise.all(
     FEEDS.map(async (f) => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
       try {
         // 15-minute cache: a fresh police release surfaces fast without
         // hammering the .gov server (releases land a few times a day).
         const res = await fetch(f.url, {
+          signal: ctrl.signal,
           next: { revalidate: 900 },
           headers: { "user-agent": "Mozilla/5.0 (FrederickRadius/1.0)" },
         });
-        if (!res.ok) return [];
-        return parseFeed(await res.text(), f.source, f.short);
-      } catch {
-        return [];
+        if (!res.ok) {
+          return {
+            items: [] as CivicPressItem[],
+            source: f.source,
+            available: false,
+            detail: `HTTP ${res.status}`,
+          };
+        }
+        return {
+          items: parseFeed(await res.text(), f.source, f.short),
+          source: f.source,
+          available: true,
+          detail: "",
+        };
+      } catch (error) {
+        const timedOut =
+          error instanceof Error &&
+          (error.name === "AbortError" || error.name === "TimeoutError");
+        return {
+          items: [] as CivicPressItem[],
+          source: f.source,
+          available: false,
+          detail: timedOut
+            ? `timed out after ${FETCH_TIMEOUT_MS}ms`
+            : error instanceof Error
+              ? error.message
+              : String(error),
+        };
+      } finally {
+        clearTimeout(timer);
       }
     }),
   );
 
+  const unavailable = feeds
+    .filter((feed) => !feed.available)
+    .map((feed) => feed.source);
+  if (unavailable.length > 0) {
+    const detail = feeds
+      .filter((feed) => !feed.available)
+      .map((feed) => `${feed.source}: ${feed.detail}`)
+      .join("; ");
+    // One summary per cached refresh. A blocked county newsroom is expected
+    // to fail soft; the structured sourceHealth result remains available to
+    // operators without emitting a TypeError for every page render.
+    console.info(`[civic-press] unavailable this refresh (${detail}; fail-soft)`);
+  }
+
   const seen = new Set<string>();
   const merged: CivicPressItem[] = [];
-  for (const item of feeds.flat()) {
+  for (const item of feeds.flatMap((feed) => feed.items)) {
     if (seen.has(item.url)) continue;
     seen.add(item.url);
     merged.push(item);
   }
   merged.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
-  return merged.slice(0, 40);
+  return {
+    items: merged.slice(0, 40),
+    sourceHealth: {
+      degraded: unavailable.length > 0,
+      unavailable,
+    },
+  };
+}
+
+const loadCivicPressOnce = createSingleFlight<"current", CivicPressResult>();
+const getCivicPressReleasesCached = unstable_cache(
+  () =>
+    loadCivicPressOnce(
+      "current",
+      loadCivicPressReleases,
+    ),
+  [
+    "civic-press-adapter-v1",
+    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  ],
+  { revalidate: 900, tags: ["civic-press"] },
+);
+
+/** Health-aware result. A failed source stays cached for the same refresh
+ * window, so a refused connection is not retried from every RSC render. */
+export function getCivicPressReleasesResult(): Promise<CivicPressResult> {
+  if (process.env.NODE_ENV === "test") {
+    return loadCivicPressOnce(
+      "current",
+      loadCivicPressReleases,
+    );
+  }
+  return getCivicPressReleasesCached();
+}
+
+/** Compatibility facade for existing user-facing surfaces. */
+export async function getCivicPressReleases(): Promise<CivicPressItem[]> {
+  return (await getCivicPressReleasesResult()).items;
 }
 
 /** Just the police-blotter releases, newest first. */

@@ -68,7 +68,7 @@ describe("buildFeedbackRow", () => {
       pathname: "/events",
       version: null,
       commit: "abc123",
-      source: "beta-widget",
+      source: "feedback-widget",
     });
   });
 

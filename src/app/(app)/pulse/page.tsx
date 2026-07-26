@@ -1140,7 +1140,11 @@ export default async function PulsePage() {
               tone={i.status === "closed" ? "muted" : "cool"}
               title={i.summary}
               body={i.category && i.category !== i.summary ? i.category : undefined}
-              meta={[i.address, timeAgo(i.reported_at), i.status]}
+              // FCG FixIt can include a resident's exact street address. Pulse
+              // is a countywide situation board, not a request-level map, so
+              // the public row keeps only time and status. The official source
+              // remains available below for anyone who needs the full record.
+              meta={[timeAgo(i.reported_at), i.status]}
             />
           ))
         : emptyNote(

@@ -106,6 +106,7 @@ import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import NextStopsBoard from "@/components/transit/NextStopsBoard";
 import RoutePearls from "@/components/transit/RoutePearls";
 import TransitRouteFinder from "@/components/transit/TransitRouteFinder";
+import TransitStopFinder from "@/components/transit/TransitStopFinder";
 import PageBloom from "@/components/ui/PageBloom";
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
 
@@ -113,7 +114,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/transit" },
   title: "Transit",
   description:
-    "Frederick County TransIT and MARC: catch the next train or bus, see what is moving now, then the routes and rider services.",
+    "Live Frederick County TransIT arrivals, route maps, and MARC departures.",
 };
 
 // 60s so the live MARC next-train board and the schedule-derived hero
@@ -122,13 +123,11 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 /**
- * /transit — a boards-first transit dashboard.
+ * /transit — a map-led transit dashboard.
  *
- * The page answers "what can I catch right now, and when" before any reference
- * or exit. Order: the next-ride hero (nearest MARC countdown + buses now), the
- * all-stations MARC board, the live bus arrivals board, the live map (buses,
- * rail, and tappable stops), then where-is-my-bus, the plan/ride shelf, the
- * route finder, and the sourcing footer.
+ * The page answers "what can I catch right now, and where" before any reference
+ * or exit. Order: the next-ride summary, the live network map, expandable
+ * system-wide boards, then planning and reference tools.
  *
  * Live data that exists today: TransIT vehicle positions with a resolved next
  * stop + ETA (GTFS-realtime), MARC schedule with a realtime delay overlay, and
@@ -223,6 +222,11 @@ export default async function TransitPage() {
   const grouped = Array.from(byName.entries())
     .map(([name, variations]) => ({ name, variations }))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const staticRoutes = (
+    TRANSIT_RAW as {
+      routes: Array<{ id: string; short: string; name: string }>;
+    }
+  ).routes;
 
   const fareFree = (TRANSIT_RAW as { fareFree?: boolean }).fareFree === true;
   const staticFeed = (
@@ -240,36 +244,105 @@ export default async function TransitPage() {
   const serviceWindowEnd = sourceDate(staticFeed?.serviceWindowEnd);
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-5">
       <PageBloom variant="warm-cool" />
 
-      <header className="space-y-2">
+      <header className="space-y-1.5">
         <p className="eyebrow inline-flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <Bus className="h-3 w-3" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
-          Getting around
+          Frederick County
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Catch the next one.
+          Transit
         </h1>
-        <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          The next MARC train and the buses moving right now, then the routes, the map, and the rider
-          services you look up once.
+        <p className="max-w-[38rem] text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          Use the live map for bus stops and arrivals. MARC departures are here too.
         </p>
       </header>
 
-      {/* Next-ride hero: nearest MARC countdown + buses moving now. */}
+      {/* The next useful bus or train, without requiring a map interaction. */}
       <TransitNow board={board} />
 
-      {/* All four county MARC stations, both directions, with any service
-          alerts. Fetched once above and handed to the board. */}
-      <NextTrainBoard board={board} alerts={alerts} />
+      <TransitStopFinder />
 
-      {/* Live bus arrivals — every bus by soonest next stop, counting down. */}
-      <NextStopsBoard />
+      <section aria-labelledby="live-network-heading" className="space-y-2.5">
+        <div className="flex items-end justify-between gap-3 px-1">
+          <div>
+            <h2
+              id="live-network-heading"
+              className="text-[18px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Live network
+            </h2>
+            <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Tap a stop for arrivals or choose a route to frame its path.
+            </p>
+          </div>
+          <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-cool)" }}>
+            Buses + MARC
+          </span>
+        </div>
+        <TransitMap
+          shapes={shapes}
+          height="clamp(20rem, 44svh, 26rem)"
+          liveBuses
+          highlightRoutes
+          interactiveStops
+        />
+      </section>
 
-      {/* The live map: buses and trains gliding on the network, plus tappable
-          stops (name, routes here, live inbound arrivals). */}
-      <TransitMap shapes={shapes} liveBuses highlightRoutes interactiveStops />
+      <div className="space-y-2">
+        <details
+          className="group rounded-[var(--app-radius-md)] border"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
+            <span>
+              <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                All buses reporting now
+              </span>
+              <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                Next reported stop and arrival time
+              </span>
+            </span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 transition group-open:rotate-180"
+              strokeWidth={2.25}
+              aria-hidden
+              style={{ color: "var(--app-ink-3)" }}
+            />
+          </summary>
+          <div className="px-3 pb-3 pt-1">
+            <NextStopsBoard />
+          </div>
+        </details>
+
+        <details
+          className="group rounded-[var(--app-radius-md)] border"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
+            <span>
+              <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                All MARC stations
+              </span>
+              <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                Frederick County departures in both directions
+              </span>
+            </span>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 transition group-open:rotate-180"
+              strokeWidth={2.25}
+              aria-hidden
+              style={{ color: "var(--app-ink-3)" }}
+            />
+          </summary>
+          <div className="px-3 pb-3 pt-1">
+            <NextTrainBoard board={board} alerts={alerts} />
+          </div>
+        </details>
+      </div>
 
       {/* Where each bus is along its run — a secondary, exploratory view. */}
       <details
@@ -344,17 +417,25 @@ export default async function TransitPage() {
 
       {/* The full route catalog — reference, searchable. */}
       <TransitRouteFinder
-        routes={grouped.map(({ name, variations }) => ({
-          name,
-          destinations: Array.from(
-            new Set(
-              variations
-                .map((v) => v.destination?.trim())
-                .filter((d): d is string => Boolean(d)),
+        routes={staticRoutes.map((route) => {
+          const match = grouped.find(
+            ({ name }) => name.localeCompare(route.name, undefined, { sensitivity: "base" }) === 0,
+          );
+          const variations = match?.variations ?? [];
+          return {
+            id: route.id,
+            short: route.short,
+            name: route.name,
+            destinations: Array.from(
+              new Set(
+                variations
+                  .map((variation) => variation.destination?.trim())
+                  .filter((destination): destination is string => Boolean(destination)),
+              ),
             ),
-          ),
-          variationCount: variations.length,
-        }))}
+            variationCount: Math.max(1, variations.length),
+          };
+        })}
       />
 
       {routesAge && (

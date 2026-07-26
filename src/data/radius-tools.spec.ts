@@ -5,6 +5,7 @@ import {
   FEATURED_RADIUS_TOOLS,
   RADIUS_TOOL_GROUPS,
   RADIUS_TOOLS,
+  radiusJourneyForPath,
 } from "./radius-tools";
 import { APP_PAGES } from "./app-pages";
 import { AMENITY_GROUPS } from "@/components/map/constants";
@@ -36,6 +37,17 @@ describe("Radius tool registry", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
     expect(new Set(toolIds).size).toBe(toolIds.length);
     expect(new Set(destinations).size).toBe(destinations.length);
+  });
+
+  it("assigns secondary tools to a stable primary journey", () => {
+    expect(radiusJourneyForPath("/beer")).toBe("today");
+    expect(radiusJourneyForPath("/pulse")).toBe("today");
+    expect(radiusJourneyForPath("/signals")).toBe("today");
+    expect(radiusJourneyForPath("/parks")).toBe("map");
+    expect(radiusJourneyForPath("/amenities")).toBe("map");
+    expect(radiusJourneyForPath("/sports")).toBe("events");
+    expect(radiusJourneyForPath("/settings")).toBe("saved");
+    expect(radiusJourneyForPath("/search")).toBeNull();
   });
 
   it("only exposes working internal tool routes", () => {

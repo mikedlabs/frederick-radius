@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Calendar, Building2, Tag, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
+import { MapPin, Calendar, Building2, Tag, ArrowLeft, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
 import { primaryAnswerFor } from "@/lib/search/answer";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
@@ -13,6 +13,10 @@ import { CRAVING_BY_KEY } from "@/data/cravings";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SearchInput from "@/components/search/SearchInput";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import {
+  withMapReturnTo,
+  withMapSearchQuery,
+} from "@/lib/map-return";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -131,18 +135,22 @@ function SearchResultRow({
   dominantType,
   divided,
   showBranchAddress,
+  mapReturnTo,
 }: {
   hit: SearchHit;
   dominantType?: string;
   divided: boolean;
   showBranchAddress?: boolean;
+  mapReturnTo?: string;
 }) {
   const d = displayFor(hit, showBranchAddress);
   const Icon = d.Icon;
+  const href =
+    hit.type === "place" ? withMapReturnTo(d.href, mapReturnTo) : d.href;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <Link
-        href={d.href}
+        href={href}
         prefetch={false}
         className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
       >
@@ -191,10 +199,11 @@ function SearchResultRow({
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; returnTo?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, returnTo } = await searchParams;
   const query = (q ?? "").trim();
+  const mapReturnHref = withMapSearchQuery(returnTo, query);
   // `search()` already sorts by score descending — keep that order.
   // Cap at 50 results to keep the page scannable; if more rows match
   // a power user can refine the query.
@@ -266,13 +275,23 @@ export default async function SearchPage({
   return (
     <div className="space-y-5">
       <header className="space-y-2">
+        {mapReturnHref && (
+          <Link
+            href={mapReturnHref}
+            className="tap-44-y inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            Back to the map
+          </Link>
+        )}
         <h1
           className="font-serif text-[24px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           Search Frederick
         </h1>
-        <SearchInput defaultValue={query} />
+        <SearchInput defaultValue={query} returnTo={mapReturnHref ?? undefined} />
       </header>
 
       {/* Generic "ask about this" CTA — suppressed when a direct answer lead is
@@ -458,6 +477,7 @@ export default async function SearchPage({
                 dominantType={dominantType}
                 divided={index > 0}
                 showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
+                mapReturnTo={mapReturnHref ?? undefined}
               />
             ))}
           </ul>
@@ -475,6 +495,7 @@ export default async function SearchPage({
                     dominantType={dominantType}
                     divided={index > 0}
                     showBranchAddress={hit.type === "place" && duplicateBranches.has(branchKey(hit))}
+                    mapReturnTo={mapReturnHref ?? undefined}
                   />
                 ))}
               </ul>

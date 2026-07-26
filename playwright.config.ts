@@ -20,6 +20,12 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // Production sends `upgrade-insecure-requests`, which is correct on the
+    // HTTPS deployment but makes a local HTTP production server upgrade its
+    // own CSS/JS requests to unavailable HTTPS. Browser tests bypass CSP so
+    // mobile layout checks exercise the built styles instead of raw HTML.
+    // Security-header behavior is covered separately at the HTTP boundary.
+    bypassCSP: true,
     trace: "on-first-retry",
   },
   projects: [

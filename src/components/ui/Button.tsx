@@ -1,5 +1,9 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  MouseEventHandler,
+  ReactNode,
+} from "react";
 
 /**
  * Button — the canonical action (Visual System v2).
@@ -8,8 +12,8 @@ import type { CSSProperties, ReactNode } from "react";
  * filled variants get layered elevation + the inner top highlight
  * (which over the brick reads as a soft gloss) + spring press; quiet
  * stays flat. Polymorphic: pass `href` to render a Next link, else a
- * real <button>. Server-component safe — no onClick (interactive
- * callers use a client wrapper); links + form buttons cover the app.
+ * real <button>. It can be imported by a client component for interactive
+ * actions, so those callers no longer need to rebuild the button grammar.
  */
 
 type Variant = "primary" | "secondary" | "quiet";
@@ -69,12 +73,14 @@ type ButtonAsButton = Common & {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   loading?: boolean;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 };
 
 type ButtonAsLink = Common & {
   href: string;
   target?: string;
   rel?: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 };
 
 export function Button(props: ButtonAsButton | ButtonAsLink) {
@@ -98,6 +104,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
         target={props.target}
         rel={props.rel}
         aria-label={props["aria-label"]}
+        onClick={props.onClick}
         className={cls}
         style={mergedStyle}
       >
@@ -115,6 +122,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       disabled={(props.disabled ?? false) || loading}
       aria-busy={loading || undefined}
       aria-label={props["aria-label"]}
+      onClick={props.onClick}
       className={`${cls} disabled:pointer-events-none disabled:opacity-50`}
       style={mergedStyle}
     >

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { RefreshCw, Compass } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Route-level error state for every app page (refinement audit F2: the
@@ -46,23 +46,19 @@ export default function AppError({
         return to Today.
       </p>
       <div className="flex items-center gap-2.5 pt-1">
-        <button
-          type="button"
+        <Button
           onClick={reset}
-          className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-semibold"
-          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
+          iconLeft={<RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
         >
-          <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           Try again
-        </button>
-        <Link
+        </Button>
+        <Button
           href="/today"
-          className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-[13px] font-semibold"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          variant="secondary"
+          iconLeft={<Compass className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
         >
-          <Compass className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           Back to Today
-        </Link>
+        </Button>
       </div>
     </div>
   );

@@ -15,7 +15,7 @@
  * The schedule + calendar logic is pure and unit-tested. Only the
  * protobuf fetch/decode is server-only.
  */
-import { transit_realtime } from "gtfs-realtime-bindings";
+import { gtfsRealtime } from "@/lib/integrations/gtfsRealtimeBindings";
 import SCHEDULE from "@/data/marc-schedule.json";
 import {
   MARC_STATIONS,
@@ -158,7 +158,7 @@ async function getTripPredictions(): Promise<Map<string, number>> {
     const res = await fetch(TRIP_UPDATES_URL, { next: { revalidate: 30 } });
     if (!res.ok) return map;
     const buf = new Uint8Array(await res.arrayBuffer());
-    const feed = transit_realtime.FeedMessage.decode(buf);
+    const feed = gtfsRealtime.FeedMessage.decode(buf);
     for (const e of feed.entity) {
       const tu = e.tripUpdate;
       const trip = tu?.trip?.tripId;
@@ -318,7 +318,7 @@ export async function getMarcAlerts(): Promise<MarcAlert[]> {
   try {
     const res = await fetch(ALERTS_URL, { next: { revalidate: 60 } });
     if (!res.ok) return [];
-    const feed = transit_realtime.FeedMessage.decode(new Uint8Array(await res.arrayBuffer()));
+    const feed = gtfsRealtime.FeedMessage.decode(new Uint8Array(await res.arrayBuffer()));
     const out: MarcAlert[] = [];
     for (const e of feed.entity) {
       const a = e.alert;

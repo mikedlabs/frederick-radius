@@ -1,6 +1,9 @@
 import type { OperationalStatus } from "@/data/places";
 
 export type BusinessStatusRefreshEntry = {
+  /** Provider identity this status was checked against. Legacy rows without
+   *  it are intentionally ignored by the canonical loader. */
+  place_id?: string;
   is_operational: OperationalStatus;
   refreshed_at: string;
 };

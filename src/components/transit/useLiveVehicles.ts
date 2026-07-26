@@ -46,7 +46,15 @@ export type LiveVehiclesSnap = {
   vehicles: LiveVehicle[];
   /** True once the feed has answered at least once this session. */
   loaded: boolean;
-  /** Epoch ms of the last successful poll (0 before the first). */
+  /** Whether the provider answered the most recent request. */
+  available: boolean;
+  /** `degraded` means positions are live but arrival predictions are not. */
+  status: "loading" | "ok" | "degraded" | "unavailable";
+  /** Whether the TripUpdates feed needed for arrival estimates answered. */
+  predictionsAvailable: boolean;
+  /** Provider-generated GTFS-realtime timestamp, Unix seconds. */
+  feedTimestamp?: number;
+  /** Epoch ms of the provider snapshot (Radius receive time only as fallback). */
   fetchedAt: number;
   /** True when the last success is older than STALE_MS — the snapshot has gone
    *  quiet and consumers should stop presenting it as current. */
@@ -58,7 +66,15 @@ const POLL_MS = 15_000;
 // "live" and its countdowns must not keep ticking toward "due".
 const STALE_MS = 40_000;
 
-const EMPTY: LiveVehiclesSnap = { vehicles: [], loaded: false, fetchedAt: 0, stale: false };
+const EMPTY: LiveVehiclesSnap = {
+  vehicles: [],
+  loaded: false,
+  available: false,
+  status: "loading",
+  predictionsAvailable: false,
+  fetchedAt: 0,
+  stale: false,
+};
 let snap: LiveVehiclesSnap = EMPTY;
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -73,11 +89,25 @@ function emit() {
  *  (a failing feed never produces a fresh snapshot on its own). */
 function refreshStaleness() {
   if (!snap.loaded) return;
-  const nextStale = Date.now() - snap.fetchedAt > STALE_MS;
+  const nextStale =
+    (!snap.available && snap.vehicles.length > 0) ||
+    (snap.fetchedAt > 0 && Date.now() - snap.fetchedAt > STALE_MS);
   if (nextStale !== snap.stale) {
     snap = { ...snap, stale: nextStale };
     emit();
   }
+}
+
+function markUnavailable() {
+  snap = {
+    ...snap,
+    loaded: true,
+    available: false,
+    status: "unavailable",
+    predictionsAvailable: false,
+    stale: snap.vehicles.length > 0,
+  };
+  emit();
 }
 
 async function load() {
@@ -85,14 +115,45 @@ async function load() {
   inFlight = true;
   try {
     const r = await fetch("/api/transit/vehicles", { cache: "no-store" });
-    if (!r.ok) return;
-    const d = (await r.json()) as { vehicles?: LiveVehicle[] };
+    if (!r.ok) {
+      markUnavailable();
+      return;
+    }
+    const d = (await r.json()) as {
+      vehicles?: LiveVehicle[];
+      status?: "ok" | "degraded" | "unavailable";
+      available?: boolean;
+      feedTimestamp?: number;
+      feeds?: { tripUpdates?: { available?: boolean } };
+    };
     if (Array.isArray(d.vehicles)) {
-      snap = { vehicles: d.vehicles, loaded: true, fetchedAt: Date.now(), stale: false };
+      const available = d.available !== false && d.status !== "unavailable";
+      if (!available) {
+        markUnavailable();
+        return;
+      }
+      const status = d.status === "degraded" ? "degraded" : "ok";
+      const providerTime =
+        typeof d.feedTimestamp === "number" && d.feedTimestamp > 0
+          ? d.feedTimestamp * 1000
+          : Date.now();
+      const stale = Date.now() - providerTime > STALE_MS;
+      snap = {
+        vehicles: d.vehicles,
+        loaded: true,
+        available: true,
+        status,
+        predictionsAvailable:
+          d.feeds?.tripUpdates?.available ?? status !== "degraded",
+        feedTimestamp:
+          typeof d.feedTimestamp === "number" ? d.feedTimestamp : undefined,
+        fetchedAt: providerTime,
+        stale,
+      };
       emit();
     }
   } catch {
-    /* keep last known */
+    markUnavailable();
   } finally {
     inFlight = false;
     // A failed/short-circuited poll leaves fetchedAt untouched; recheck age so

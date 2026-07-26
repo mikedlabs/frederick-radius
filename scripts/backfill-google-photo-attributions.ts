@@ -19,11 +19,13 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import CLIENT_PLACES from "@/data/places-client.json" with { type: "json" };
+import { BREWERIES } from "@/data/beers";
 import { getPlaceDetails } from "@/lib/integrations/google-places";
 import {
   mergeGooglePhotoMetadata,
   needsGooglePhotoMetadata,
   type PhotoBackfillRow,
+  withCanonicalGooglePlaceId,
 } from "@/lib/google-photo-backfill";
 
 const OUT = new URL(
@@ -36,6 +38,7 @@ type ClientPriority = {
   feature_score?: number;
   local_favorite?: boolean;
   google_rating_count?: number;
+  google_place_id?: string;
 };
 
 function numberArg(name: string, fallback: number): number {
@@ -53,15 +56,30 @@ async function main() {
   const existing = JSON.parse(
     readFileSync(OUT, "utf8"),
   ) as Record<string, PhotoBackfillRow>;
+  const publicPlaces = new Map(
+    (CLIENT_PLACES as ClientPriority[]).map((place) => [
+      place.slug,
+      place,
+    ]),
+  );
+  const brewerySlugs = new Set(BREWERIES.map((brewery) => brewery.slug));
   const publicPriority = new Map(
     (CLIENT_PLACES as ClientPriority[]).map((place) => [
       place.slug,
+      (brewerySlugs.has(place.slug) ? 1_000_000 : 0) +
       (place.local_favorite ? 10_000 : 0) +
         (place.feature_score ?? 0) * 100 +
         Math.log10((place.google_rating_count ?? 0) + 1),
     ]),
   );
   const candidates = Object.entries(existing)
+    .map(([slug, row]) => [
+      slug,
+      withCanonicalGooglePlaceId(
+        row,
+        publicPlaces.get(slug)?.google_place_id,
+      ),
+    ] as const)
     // places-client is the county-gated public artifact. Legacy enrichment
     // rows outside that set remain untouched rather than generating paid calls.
     .filter(([slug, row]) => publicPriority.has(slug) && needsGooglePhotoMetadata(row))
@@ -79,6 +97,12 @@ async function main() {
   console.log(`This batch: ${batch.length}`);
   if (!live) {
     console.log("DRY RUN — no API calls and no files changed.");
+    console.log(
+      `First ${Math.min(25, batch.length)} candidates: ${batch
+        .slice(0, 25)
+        .map(([slug]) => slug)
+        .join(", ") || "none"}`,
+    );
     console.log(
       "Add --live --confirm after reviewing the request ceiling.\n",
     );

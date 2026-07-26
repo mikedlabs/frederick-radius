@@ -11,6 +11,7 @@ import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
 
 type Mark = {
   file: string;
+  plate?: string;
 };
 
 const FOOD_TRUCK_PREVIEW = [
@@ -34,6 +35,12 @@ function MarkStack({ marks, label }: { marks: Mark[]; label: string }) {
           className="-ml-1 grid h-9 w-9 place-items-center overflow-hidden rounded-full border bg-white first:ml-0"
           style={{
             borderColor: "var(--app-bg-elevated)",
+            background:
+              mark.plate === "dark"
+                ? "var(--app-ink)"
+                : mark.plate === "light"
+                  ? "#fffdf8"
+                  : "var(--app-bg-sunken)",
             boxShadow: "0 2px 8px color-mix(in srgb, var(--app-ink) 10%, transparent)",
             zIndex: marks.length - index,
           }}

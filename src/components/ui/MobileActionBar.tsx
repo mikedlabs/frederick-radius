@@ -14,16 +14,24 @@ import type { LucideIcon } from "lucide-react";
  * Placement mirrors the app's other bottom chrome:
  *   - `lg:hidden` — desktop keeps the inline action grids untouched and
  *     the SideRail owns the left edge, so a bottom dock would be wrong.
- *   - Lifted `76px` above the safe-area inset so it clears the floating
- *     BottomNav pill (same clearance FeedbackWidget uses) and the iPhone
- *     home indicator.
+ *   - It REPLACES BottomNav on detail routes instead of stacking above it.
+ *     The bar therefore owns the same bottom edge and safe-area clearance as
+ *     the primary nav.
  *   - A centered rounded card, not an edge-to-edge slab, to match the
  *     floating-pill language of BottomNav / FeedbackWidget.
  *
- * The bar is presentational (no hooks) so it can render inside the server
+ * The bar stays presentational (no hooks) so it can render inside the server
  * page and simply pass client controls (SaveButton, EventCalendarButton)
- * through as children.
+ * through as children. BottomNav responds to the rendered
+ * `data-mobile-action-bar` marker, so future surfaces get the replacement
+ * behavior by adopting this component rather than updating a route allowlist.
  */
+/** The contextual bar deliberately fits inside the shell's existing 84px
+ * mobile-bottom-chrome reserve. On desktop that token resolves to 0px because
+ * both BottomNav and this bar are hidden. */
+export const MOBILE_BOTTOM_CHROME_RESERVE =
+  "var(--app-bottomnav-reserve, 84px)";
+
 export function MobileActionBar({
   children,
   ariaLabel,
@@ -33,12 +41,13 @@ export function MobileActionBar({
 }) {
   return (
     <div
+      data-mobile-action-bar
       className="pointer-events-none fixed inset-x-0 lg:hidden"
       style={{
         zIndex: "var(--z-nav)",
-        // Sit above the BottomNav pill (which itself clears the home
-        // indicator). 76px matches FeedbackWidget's nav clearance.
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
+        // BottomNav is suppressed on these routes, so this dock owns the
+        // ordinary mobile-chrome position instead of forming a second tier.
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
         // On a notched phone in landscape the side insets aren't 0; keep
         // the card off the notch while holding the 0.75rem base in portrait.
         paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",

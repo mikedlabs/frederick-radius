@@ -43,14 +43,13 @@ export default function SectionHeading({
   // text color is the accent pulled 40% toward ink (axe-verified, Jul 2026).
   const ctaColor = `color-mix(in srgb, ${tickColor} 60%, var(--app-ink))`;
   const small = size === "sm";
+  const hasTrailingAction = Boolean(trailing || onCtaClick || href);
   return (
-    <header className="flex items-end justify-between gap-3">
+    <header className="section-heading flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1 min-[360px]:flex-nowrap">
       <h2
-        className={
-          small
-            ? "flex items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
-            : "flex items-center gap-2 font-serif text-[22px] leading-none tracking-tight"
-        }
+        className={`${small
+            ? "flex min-w-0 items-center gap-2 font-sans text-[16px] font-semibold leading-none tracking-tight"
+            : "flex min-w-0 items-center gap-2 font-serif text-[22px] leading-none tracking-tight"}${hasTrailingAction ? " max-[359px]:basis-full" : ""}`}
         style={{ color: "var(--app-ink)" }}
       >
         <span
@@ -68,12 +67,20 @@ export default function SectionHeading({
           </span>
         )}
       </h2>
-      {trailing ??
-        (onCtaClick ? (
+      <span
+        aria-hidden
+        className="mb-[0.18rem] hidden h-px min-w-4 flex-1 min-[360px]:block"
+        style={{
+          background: `linear-gradient(90deg, color-mix(in srgb, ${tickColor} 34%, var(--app-border)), var(--app-border))`,
+        }}
+      />
+      {trailing ? (
+        <span className="max-[359px]:ml-auto">{trailing}</span>
+      ) : onCtaClick ? (
           <button
             type="button"
             onClick={onCtaClick}
-            className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96]"
+            className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight transition active:scale-[0.96] max-[359px]:ml-auto"
             style={{ color: ctaColor }}
           >
             {cta}
@@ -82,14 +89,14 @@ export default function SectionHeading({
           href && (
             <Link
               href={href}
-              className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight"
+              className="tap-44-y -mx-1 inline-flex shrink-0 items-center gap-1 px-1 pb-0.5 text-xs font-semibold tracking-tight max-[359px]:ml-auto"
               style={{ color: ctaColor }}
             >
               {cta}
               <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
           )
-        ))}
+        )}
     </header>
   );
 }

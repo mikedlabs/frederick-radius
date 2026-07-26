@@ -1,5 +1,5 @@
 /**
- * /api/feedback — beta feedback intake.
+ * /api/feedback — visitor feedback intake.
  *
  *   POST { message, email?, pathname?, version? }
  *
@@ -8,8 +8,8 @@
  * place to read it and no new migration is required.
  *
  * Fail-soft like /api/beta/email: a missing or unmigrated DB never turns a
- * tester's note into a hard error — it degrades to a server log and STILL
- * returns ok, because a lost beta note is worse than a logged one. Rate-limited
+ * visitor's note into a hard error — it degrades to a server log and STILL
+ * returns ok, because a lost note is worse than a logged one. Rate-limited
  * per IP; empty-guarded + length-capped in parseFeedback so the open endpoint
  * can't be used to bulk-insert junk.
  */
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         try {
           const where = parsed.value.pathname ? ` · ${parsed.value.pathname}` : "";
           await fanoutToTopic(OWNER_ALERTS_TOPIC, `feedback:${id}`, {
-            title: "Beta feedback",
+            title: "Site feedback",
             body: parsed.value.message.slice(0, 140) + where,
             url: "/admin/beta",
           });

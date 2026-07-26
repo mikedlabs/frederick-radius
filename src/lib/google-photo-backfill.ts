@@ -10,6 +10,35 @@ export type PhotoBackfillRow = Partial<PlaceEnrichment> & {
   photo_metadata_refreshed_at?: string;
 };
 
+function isCanonicalGooglePlaceId(
+  id: string | null | undefined,
+): id is string {
+  return (
+    isGooglePlaceId(id) &&
+    id.length >= 20 &&
+    /^[A-Za-z0-9_-]+$/.test(id)
+  );
+}
+
+/**
+ * Repair an enrichment row's missing/legacy identifier from the canonical
+ * public place record before deciding whether it is eligible for the
+ * attribution backfill. This is a deterministic join, not a guessed ID:
+ * only a validated Google Place ID is accepted and an already-valid
+ * enrichment ID always wins.
+ */
+export function withCanonicalGooglePlaceId(
+  row: PhotoBackfillRow,
+  canonicalGooglePlaceId: string | undefined,
+): PhotoBackfillRow {
+  if (isCanonicalGooglePlaceId(row.google_place_id)) return row;
+  if (!isCanonicalGooglePlaceId(canonicalGooglePlaceId)) return row;
+  return {
+    ...row,
+    google_place_id: canonicalGooglePlaceId,
+  };
+}
+
 /** A row needs a metadata refresh when it has legacy photo resource names but
  * none of those names is paired with a current, individually attributable
  * photo record. Rows without a durable Google Place ID cannot use the cheap

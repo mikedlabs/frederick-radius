@@ -48,7 +48,7 @@ const MOODS: Mood[] = [
   { label: "Outdoors",  nudge: "Parks, trails, water",      href: intentHref("outdoor"), icon: Trees,           color: intentColor("outdoor") },
   { label: "With kids", nudge: "Family-friendly",           href: intentHref("family"),  icon: Baby,            color: intentColor("family")  },
   // Utility moods use muted civic accents (slate + warm ink).
-  { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: ACCENTS.slate },
+  { label: "Essentials", nudge: "Restrooms, water, trash", href: "/amenities", icon: Toilet, color: ACCENTS.slate },
   { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "#4A4844" },
 ];
 

@@ -1,7 +1,7 @@
 /**
  * /api/beta/email — personal-access-code request from the beta wall.
  *
- *   POST { email }
+ *   POST { email, next? }
  *
  * Unauthenticated (it lives OUTSIDE the wall by definition) + fail-soft like
  * /api/commerce/report-link: if the table isn't migrated or the DB is absent
@@ -22,6 +22,7 @@ import {
 import { fanoutToTopic } from "@/lib/push-fanout";
 import { OWNER_ALERTS_TOPIC } from "@/lib/push-topics";
 import { inviteEmail } from "@/lib/beta-invite";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,9 +50,10 @@ export async function POST(req: NextRequest) {
   }
   const body =
     typeof rawBody.value === "object" && rawBody.value !== null && !Array.isArray(rawBody.value)
-      ? (rawBody.value as { email?: unknown })
+      ? (rawBody.value as { email?: unknown; next?: unknown })
       : {};
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 254) : "";
+  const next = safeRedirectPath(body.next, "/today");
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "invalid-email" }, { status: 400, headers: noStore });
   }
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
     // Always try delivery, including on a duplicate request. mintCodeForEmail
     // reuses the existing non-revoked code, which makes a retry useful after a
     // transient Resend/configuration failure without creating a second signup.
-    const invite = await inviteEmail(email);
+    const invite = await inviteEmail(email, next);
     // Owner alert on genuinely NEW signups only (a duplicate signup inserts
     // nothing and stays silent). Push failure never fails the signup.
     const id = inserted[0]?.id;

@@ -4,6 +4,7 @@ import { track } from "@/lib/track";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, MessageCircleQuestion, Phone, Train, Activity, Toilet } from "lucide-react";
 import type {
   QualifiedSearchIndexResult,
@@ -16,6 +17,7 @@ import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departme
 import { findQuickAnswers } from "@/lib/answers/intents";
 import { searchCivicActions, shouldShowDepartmentAnswers } from "@/lib/search/civic";
 import type { IntentIcon } from "@/lib/answers/types";
+import { commandDestination } from "@/lib/command-routing";
 
 /**
  * Quick-answer intents now live in `@/lib/answers/intents` so /today's
@@ -127,6 +129,7 @@ export default function SearchOverlay({
    * the button a person taps before mounting the dialog. */
   openerRef?: React.RefObject<HTMLElement | null>;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchMeta, setSearchMeta] = useState<QualifiedSearchIndexResult["meta"] | null>(null);
@@ -325,6 +328,26 @@ export default function SearchOverlay({
   const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0 || civicAnswers.length > 0;
   const { best, rest } = splitBestMatch(results);
   const rankedResults = best ? [{ r: best, idx: 0 }, ...rest] : [];
+  const submitCommand = () => {
+    const destination = commandDestination({
+      query,
+      quickHref: quickAnswers[0]?.href,
+      bestHref: best?.href,
+      status,
+    });
+    if (!destination) return;
+    const normalized = query.trim();
+    pushRecent(normalized);
+    track("command_submit", {
+      destination: destination.startsWith("/ask")
+        ? "ask"
+        : destination.startsWith("/search")
+          ? "search"
+          : "direct",
+    });
+    onClose();
+    router.push(destination);
+  };
 
   return (
     <div
@@ -362,10 +385,10 @@ export default function SearchOverlay({
         >
           <div className="min-w-0">
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-press)" }}>
-              Find
+              Ask or find
             </p>
             <h2 id="radius-find-title" className="truncate font-serif text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
-              Frederick County
+              What do you need?
             </h2>
           </div>
           <button
@@ -391,8 +414,13 @@ export default function SearchOverlay({
             type="search"
             value={query}
             onChange={(e) => updateQuery(e.target.value)}
-            placeholder="Coffee, parking, live music, permits…"
-            aria-label="Find across Frederick County"
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              submitCommand();
+            }}
+            placeholder="A place, plan, service, or quick need…"
+            aria-label="Ask or find across Frederick County"
             // Results are real links, not ARIA listbox options. Keeping the
             // input a native search field avoids the invalid pattern of a
             // focusable link nested inside role=option while retaining the
@@ -812,7 +840,7 @@ function EmptyHint({
       subtitle: "See the current local calendar.",
       Icon: Calendar,
     },
-    { href: "/amenities", title: "Public essentials", subtitle: "Find restrooms, water, Wi-Fi, and more.", Icon: Toilet },
+    { href: "/amenities", title: "Nearby essentials", subtitle: "Find the closest mapped restroom, water, trash, seating, or dog bags.", Icon: Toilet },
     { href: "/pulse", title: "Live conditions", subtitle: "Check weather, air, roads, transit, and outages.", Icon: Activity },
   ];
 

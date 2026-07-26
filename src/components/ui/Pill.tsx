@@ -147,16 +147,12 @@ export default function Pill({
   ...rest
 }: PillProps) {
   const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]";
-  // Invisible expanded hit area (WCAG 2.5.5 / Apple HIG 44pt): the small
-  // pill renders ~30px tall, which the June-9 deep audit measured on the
-  // /today time chips + town chips. The before: overlay extends the TAP
-  // zone to ~44px without changing the visual or the layout flow.
-  const hit =
-    "relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-['']";
+  // tap-44-y supplies the one shared 44px vertical target. Keeping a second
+  // pseudo-element here made neighboring pills compete for the same tap.
   // tap-pop: chips push OUT under the finger and spring back on release
   // (owner ask, 2026-07-22) — cards press in, chips pop out.
   const base =
-    `tap-44-y tap-pop inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition ${pad} ${hit}`;
+    `tap-44-y tap-pop inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition ${pad}`;
   const inactiveCls = active || bare ? "" : "border border-[var(--app-border-strong)]";
   const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active

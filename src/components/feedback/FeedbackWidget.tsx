@@ -7,25 +7,27 @@ import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
 import { BETA_ID_COOKIE } from "@/lib/beta-constants";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
+import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
+import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
- * FeedbackWidget — the always-available "Send feedback" affordance for beta.
+ * FeedbackWidget — the always-available "Send feedback" affordance for beta
+ * and the public food-truck board.
  *
  * A small floating trigger (bottom-left, lifted clear of the bottom-nav pill and
  * the map's bottom-right controls) opens the canonical bottom Sheet, which
  * already carries the a11y contract: role=dialog + aria-modal, focus trap, ESC,
  * and focus restore to the trigger on close.
  *
- * Gated on the readable `fr_who` beta-identity cookie so it shows ONLY to
- * unlocked beta visitors and vanishes for the public the moment the beta wall
- * comes down (no cookie set → nothing renders). We key off `fr_who`, NOT the
- * credential cookie `fr_beta`: that one is httpOnly and invisible to JS, so a
- * document.cookie check for it can never be true. The check is client-side
- * after mount, so both the server render and the first client render return
- * null (no hydration mismatch), and the trigger appears once we confirm it.
+ * The general app is gated on the readable `fr_who` beta-identity cookie. The
+ * public food-truck board is the one exception so a visitor can correct a stop
+ * without joining the beta first.
  */
 
 type Phase = "idle" | "sending" | "ok" | "error";
+
+export const FEEDBACK_TRIGGER_BOTTOM =
+  `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px)`;
 
 function hasBetaCookie(): boolean {
   if (typeof document === "undefined") return false;
@@ -41,13 +43,21 @@ export default function FeedbackWidget() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorText, setErrorText] = useState("");
 
-  // Only reveal for unlocked beta visitors. Reads document.cookie (an external
-  // system unavailable during SSR) once after mount; both the server and first
-  // client render return null, so there's no hydration mismatch and no cascade.
+  const isPublicFoodTruckBoard = pathname === "/food-trucks";
+
+  // Reads document.cookie after mount; both the server and first client render
+  // return null, so there is no hydration mismatch.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from document.cookie, which only exists client-side
-    setShow(hasBetaCookie());
-  }, []);
+    setShow(hasBetaCookie() || isPublicFoodTruckBoard);
+  }, [isPublicFoodTruckBoard]);
+
+  useEffect(() => {
+    if (!show) return;
+    const openFeedback = () => setOpen(true);
+    window.addEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
+    return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, openFeedback);
+  }, [show]);
 
   function close() {
     setOpen(false);
@@ -107,12 +117,6 @@ export default function FeedbackWidget() {
   const sending = phase === "sending";
   const succeeded = phase === "ok";
 
-  // Reserve the shell's real bottom-nav footprint instead of relying on a
-  // magic 76px offset. At 390px the floating nav is taller once safe-area and
-  // borders are included, which previously let this button overlap it.
-  const overActionBar = /^\/(places|events)\/[^/]+$/.test(pathname || "");
-  const triggerOffset = overActionBar ? 78 : 12;
-
   return (
     <>
       {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
@@ -130,7 +134,10 @@ export default function FeedbackWidget() {
           style={{
             zIndex: "var(--z-fab)",
             left: "max(0.75rem, env(safe-area-inset-left, 0px))",
-            bottom: `calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve, 0px) + ${triggerOffset}px)`,
+            // BottomNav and MobileActionBar are mutually exclusive and share
+            // one shell reserve. One offset therefore clears either bottom
+            // control without double-counting both of them.
+            bottom: FEEDBACK_TRIGGER_BOTTOM,
             background: "var(--app-bg-elevated-solid)",
             borderColor: "var(--app-border)",
             color: "var(--app-ink-2)",
@@ -145,7 +152,7 @@ export default function FeedbackWidget() {
       <Sheet
         open={open}
         onClose={close}
-        title={succeeded ? "Thanks, that's in front of us." : "Send feedback"}
+        title={succeeded ? "Thanks. We have your note." : "Send feedback"}
         subtitle={succeeded ? undefined : "What would you keep or change?"}
         maxHeight="80dvh"
         footer={
@@ -173,8 +180,9 @@ export default function FeedbackWidget() {
       >
         {succeeded ? (
           <p className="pb-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
-            We read every note during the beta. If you left an email, we might
-            write back.
+            {isPublicFoodTruckBoard
+              ? "We use these notes to correct the board. If you left an email, we may write back."
+              : "We read every note during the beta. If you left an email, we may write back."}
           </p>
         ) : (
           <div className="flex flex-col gap-3 pb-1">

@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Map as MapIcon,
   CalendarRange,
+  ChevronDown,
   Search,
   X,
 } from "lucide-react";
@@ -151,6 +152,47 @@ function EbChip({
 
 function Sect({ children }: { children: ReactNode }) {
   return <div className="dock-sect">{children}</div>;
+}
+
+function EventDisplayControls({
+  view,
+  setView,
+  sort,
+  setSort,
+}: {
+  view: ViewKey;
+  setView: (value: ViewKey) => void;
+  sort: EventSortKey;
+  setSort: (value: EventSortKey) => void;
+}) {
+  return (
+    <>
+      <SortDropdown
+        options={SORT_OPTIONS}
+        value={sort}
+        onChange={setSort}
+        align="right"
+        label="Order"
+      />
+      <div className="eb-lensseg" role="group" aria-label="View">
+        {VIEW_ITEMS.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={view === key}
+            aria-label={`${label} view`}
+            className={view === key ? "on" : undefined}
+            onClick={() => {
+              haptic("light");
+              setView(key);
+            }}
+          >
+            <Icon className="h-[15px] w-[15px]" strokeWidth={2} aria-hidden />
+          </button>
+        ))}
+      </div>
+    </>
+  );
 }
 
 const FOCUSABLE =
@@ -489,30 +531,35 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           )}
         </div>
 
-        {/* The sub bar — the mono count line + the "how you look" controls. */}
+        {/* The sub bar keeps the result count visible. Sorting and alternate
+            layouts are secondary decisions, so mobile gets one "Display"
+            disclosure instead of five more controls before the first event.
+            Desktop keeps the same controls inline inside the disclosure. */}
         <div className="eb-subbar">
           <span className="eb-countline" aria-live="polite">
             {line}
           </span>
-          <div className="eb-how">
-            <SortDropdown options={SORT_OPTIONS} value={sort} onChange={setSort} align="right" />
-            <div className="eb-lensseg" role="group" aria-label="View">
-              {VIEW_ITEMS.map(({ key, label, Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={view === key}
-                  aria-label={`${label} view`}
-                  className={view === key ? "on" : undefined}
-                  onClick={() => {
-                    haptic("light");
-                    setView(key);
-                  }}
-                >
-                  <Icon className="h-[15px] w-[15px]" strokeWidth={2} aria-hidden />
-                </button>
-              ))}
+          <details className="eb-display-options">
+            <summary className="tap-44">
+              <span>Display</span>
+              <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </summary>
+            <div className="eb-display-panel">
+              <EventDisplayControls
+                view={view}
+                setView={setView}
+                sort={sort}
+                setSort={setSort}
+              />
             </div>
+          </details>
+          <div className="eb-display-desktop">
+            <EventDisplayControls
+              view={view}
+              setView={setView}
+              sort={sort}
+              setSort={setSort}
+            />
           </div>
         </div>
       </div>

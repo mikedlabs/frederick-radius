@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 import { track } from "@/lib/track";
 import { businessTopic } from "@/lib/push-topics";
+import {
+  clearFollowsSync,
+  hasCompletedFollowsSync,
+  markFollowsSyncComplete,
+} from "@/lib/follows-sync";
 
 /**
  * useFollows — auth-aware follow state for places.
@@ -30,9 +35,10 @@ import { businessTopic } from "@/lib/push-topics";
  *
  * One-shot localStorage -> DB sync: the first time we detect (signed
  * in + non-empty localStorage), POST the cache to /api/follows/sync.
- * Subsequent renders don't re-sync (a flag stored in localStorage
- * prevents repeated imports). Idempotent on the server side via
- * the unique index, so a flag-clearing user can re-sync safely.
+ * Subsequent renders for that account don't re-sync (an account-scoped
+ * flag stored in localStorage prevents repeated imports). Idempotent on
+ * the server side via the unique index, so an existing user can safely
+ * repeat the import once when migrating off the old device-wide flag.
  *
  * Why a hook and not React Query / SWR? The app doesn't ship a
  * client-side data-fetching library; introducing one for this single
@@ -46,28 +52,26 @@ import { businessTopic } from "@/lib/push-topics";
 
 type AuthState = "unknown" | "anonymous" | { user: { id: string; email: string | null } };
 
-const SYNCED_KEY = "fr:radius:synced:v1";
-
-function getSyncedFlag(): boolean {
+function getSyncedFlag(userId: string): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(SYNCED_KEY) === "1";
+    return hasCompletedFollowsSync(window.localStorage, userId);
   } catch {
     return false;
   }
 }
-function setSyncedFlag() {
+function setSyncedFlag(userId: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(SYNCED_KEY, "1");
+    markFollowsSyncComplete(window.localStorage, userId);
   } catch {
     /* ignore */
   }
 }
-function clearSyncedFlag() {
+function clearSyncedFlag(userId: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(SYNCED_KEY);
+    clearFollowsSync(window.localStorage, userId);
   } catch {
     /* ignore */
   }
@@ -140,7 +144,7 @@ function detectAuth(): Promise<AuthState> {
  * don't each fire the fetch.
  */
 let hydratePromise: Promise<void> | null = null;
-function ensureRemoteHydrated(localSlugs: Set<string>): Promise<void> {
+function ensureRemoteHydrated(localSlugs: Set<string>, userId: string): Promise<void> {
   if (hydratePromise) return hydratePromise;
   hydratePromise = fetch("/api/follows", { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : { slugs: [] }))
@@ -148,7 +152,7 @@ function ensureRemoteHydrated(localSlugs: Set<string>): Promise<void> {
       const set = new Set(data.slugs);
       writeRemote(set);
       // First-time sync: push any localStorage follows not yet remote.
-      void maybeSync(localSlugs, set);
+      void maybeSync(localSlugs, set, userId);
     })
     .catch(() => {
       writeRemote(new Set());
@@ -177,7 +181,7 @@ export function useFollowedSlugs(): {
       if (cancelled) return;
       setAuth(a);
       if (a === "anonymous" || a === "unknown") return;
-      void ensureRemoteHydrated(localSlugs);
+      void ensureRemoteHydrated(localSlugs, a.user.id);
     });
     return () => {
       cancelled = true;
@@ -315,11 +319,11 @@ function readIsSavedSync(slug: string): boolean {
  * in the remote set, POST them to /api/follows/sync. Marks a flag so
  * subsequent renders don't re-sync. Idempotent on the server.
  */
-async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>) {
-  if (getSyncedFlag()) return;
+async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>, userId: string) {
+  if (getSyncedFlag(userId)) return;
   const toUpload = [...localSlugs].filter((s) => !remoteSlugs.has(s));
   if (toUpload.length === 0) {
-    setSyncedFlag();
+    setSyncedFlag(userId);
     return;
   }
   try {
@@ -329,7 +333,7 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>) {
       body: JSON.stringify({ slugs: toUpload }),
     });
     if (res.ok) {
-      setSyncedFlag();
+      setSyncedFlag(userId);
       // Fold the just-synced slugs into the shared store so the UI
       // reflects them without waiting for a remount.
       const merged = new Set(remoteStore ?? remoteSlugs);
@@ -344,8 +348,8 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>) {
 /** Exported for the sign-out path to reset session caches so a
  *  different account on the same device starts fresh instead of
  *  showing the previous session's follow set. */
-export function resetFollowsSyncFlag() {
-  clearSyncedFlag();
+export function resetFollowsSyncFlag(userId?: string) {
+  if (userId) clearSyncedFlag(userId);
   authPromise = null;
   hydratePromise = null;
   writeRemote(null);

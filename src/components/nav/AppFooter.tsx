@@ -34,7 +34,7 @@ const LINKS: Array<{ href: string; label: string }> = [
 export default function AppFooter() {
   return (
     <footer
-      className="mt-12 border-t pt-5 pb-2"
+      className="mt-8 border-t pb-2 pt-4 sm:mt-12 sm:pt-5"
       style={{ borderColor: "var(--app-border)" }}
     >
       {/* The full link mesh remains visible on wider screens. On a phone it is

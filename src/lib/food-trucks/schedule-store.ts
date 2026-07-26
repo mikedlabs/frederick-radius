@@ -1,6 +1,5 @@
 import "server-only";
 
-import { get, put } from "@vercel/blob";
 import type { FoodTruckScheduleSnapshot } from "./schedule-types";
 
 export const FOOD_TRUCK_SCHEDULE_BLOB = "food-trucks/schedule-v1.json";
@@ -39,6 +38,7 @@ export function isFoodTruckScheduleSnapshot(value: unknown): value is FoodTruckS
 export async function readStoredFoodTruckSchedule(): Promise<FoodTruckScheduleSnapshot | null> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
+    const { get } = await import("@vercel/blob");
     const result = await get(FOOD_TRUCK_SCHEDULE_BLOB, { access: "public", useCache: false });
     if (!result || result.statusCode !== 200 || !result.stream) return null;
     const value: unknown = await new Response(result.stream).json();
@@ -71,6 +71,7 @@ export async function writeFoodTruckSchedule(
     return { stored: false, preservedPrevious: true, reason: "Sources degraded; the last valid schedule was kept" };
   }
 
+  const { put } = await import("@vercel/blob");
   const blob = await put(FOOD_TRUCK_SCHEDULE_BLOB, JSON.stringify(next), {
     access: "public",
     addRandomSuffix: false,

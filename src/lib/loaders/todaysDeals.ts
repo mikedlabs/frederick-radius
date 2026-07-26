@@ -307,10 +307,24 @@ function bestCut(s: string): string | null {
   let m: RegExpExecArray | null;
   while ((m = re.exec(s))) {
     const prefix = s.slice(0, m.index);
-    if (prefix.length >= 10 && prefix.length <= 48) best = prefix;
-    if (m.index > 48) break;
+    if (prefix.length >= 10 && prefix.length <= 56) best = prefix;
+    if (m.index > 56) break;
   }
   return best;
+}
+
+/**
+ * Source notes often append service language to an otherwise useful offer
+ * ("crab specials served..." or "$10 off wine throughout the restaurant").
+ * That context belongs in the full offer, not in Today's scan-first headline.
+ * Only trim at an explicit phrase boundary and keep the complete source text
+ * in `offer`, so this never invents or silently changes a deal.
+ */
+function compactServiceTail(s: string): string {
+  const cut = s.search(/\s+(?:served|available|offered|throughout|starting|beginning)\b/i);
+  if (cut < 10) return s;
+  const prefix = tidyClause(s.slice(0, cut));
+  return prefix.length >= 10 && prefix.length <= 56 ? prefix : s;
 }
 
 export type DistilledOffer = {
@@ -341,6 +355,7 @@ export function distillOffer(offer: string): DistilledOffer {
   let head = t.split(/;|\.\s+/)[0] ?? "";
   const colon = head.indexOf(":");
   if (colon >= 8) head = head.slice(0, colon);
+  if (head.length > 48) head = compactServiceTail(head);
   if (head.length > 48) head = bestCut(head) ?? head;
   head = tidyClause(head);
   // Stripping gutted it (a day-only offer text) — fall back to the raw clause.

@@ -5,7 +5,7 @@ Counts include published places after overrides, deduplication, municipality
 claiming, status suppression, and seasonal filtering. Regenerate with
 `npm run coverage:intents`.
 
-_Generated 2026-07-23 — 1616 published places, 20 user intents._
+_Generated 2026-07-25 — 1616 published places, 20 user intents._
 
 | Town | Population | All places | Food | Coffee | Drinks | Parks | Grocery | Shops | Zero-result intents | One-result intents |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |

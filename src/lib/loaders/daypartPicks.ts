@@ -1,5 +1,5 @@
 import "server-only";
-import { rankPlaces } from "@/lib/loaders/places";
+import { likelyOpenPlaces, rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { daypartNeeds } from "@/lib/today/daypart-needs";
@@ -27,6 +27,8 @@ export type DaypartPick = {
   distance?: string | null;
   /** Live hours line such as "Open until 9pm". */
   fact?: string | null;
+  /** Whether the hours signal is live-confirmed or a conservative posted-hours fallback. */
+  confidence: "confirmed" | "likely";
 };
 export type DaypartRow = { label: string; href: string; category: string; picks: DaypartPick[] };
 
@@ -52,30 +54,40 @@ export function buildDaypartRows(now: Date, lean: WeatherLean = null): DaypartRo
   // refreshes the active shelf through /api/want, which honors the shared town
   // scope or a cached device fix and then prints that context in the UI.
   const ranked = rankPlaces({ now, preferOpen: true, limit: 500 });
+  const likelySlugs = new Set(
+    likelyOpenPlaces(undefined, now).map((place) => place.slug),
+  );
   return needs.map((need) => ({
     label: need.label,
     href: need.href,
     category: need.category,
-    picks: ranked
-      .filter(
-        (p) =>
-          p.category === need.category &&
-          isOpenNow(p.open_status) &&
-          isRecommendable(p),
-      )
-      .slice(0, 4)
-      .map((p) => ({
-        slug: p.slug,
-        name: p.name,
-        rating: p.google_rating ?? null,
-        photo: p.google_photo_url ?? null,
-        photoCredit: p.google_photo_attribution?.authors[0]?.display_name ?? null,
+    picks: (() => {
+      const eligible = ranked.filter(
+        (place) =>
+          place.category === need.category &&
+          isRecommendable(place),
+      );
+      const confirmed = eligible.filter((place) => isOpenNow(place.open_status));
+      const confidence = confirmed.length > 0 ? "confirmed" : "likely";
+      const picks = confirmed.length > 0
+        ? confirmed
+        : eligible.filter((place) => likelySlugs.has(place.slug));
+
+      return picks.slice(0, 4).map((place) => ({
+        slug: place.slug,
+        name: place.name,
+        rating: place.google_rating ?? null,
+        photo: place.google_photo_url ?? null,
+        photoCredit:
+          place.google_photo_attribution?.authors[0]?.display_name ?? null,
         where:
-          p.city?.trim() ||
-          MUNICIPALITY_BY_SLUG[p.municipality]?.name ||
+          place.city?.trim() ||
+          MUNICIPALITY_BY_SLUG[place.municipality]?.name ||
           "Frederick County",
         distance: null,
-        fact: null,
-      })),
+        fact: confidence === "likely" ? "Likely open" : null,
+        confidence,
+      }));
+    })(),
   }));
 }

@@ -39,6 +39,8 @@ import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { easternWallToUtcISO } from "@/lib/tz";
 import { isInsideFrederickCounty } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { createSingleFlight } from "@/lib/single-flight";
+import { unstable_cache } from "next/cache";
 import {
   eventAdapterFailed,
   eventAdapterOk,
@@ -399,7 +401,7 @@ async function fetchVisitFrederickDetail(url: string): Promise<VfDetail | null> 
  * is HTTP-cached (revalidate 3600) and each detail page a day, so concurrent
  * /today + /events renders share cache entries.
  */
-export async function fetchVisitFrederickResult(): Promise<
+async function fetchVisitFrederickResultUncached(): Promise<
   EventAdapterResult<LiveEvent>
 > {
   const ctrl = new AbortController();
@@ -412,12 +414,26 @@ export async function fetchVisitFrederickResult(): Promise<
       headers: { "User-Agent": USER_AGENT },
     });
     if (!res.ok) {
-      console.error(`[visit-frederick] HTTP ${res.status}`);
+      // A public publisher refusing a server-side reader is an upstream
+      // availability state, not an application exception. The adapter result
+      // below preserves that state for the unified source-health report. This
+      // line runs once per cached refresh rather than once per page request.
+      console.info(
+        `[visit-frederick] unavailable this refresh (HTTP ${res.status}; fail-soft)`,
+      );
       return eventAdapterFailed();
     }
     base = normalizeVisitFrederickRss(await res.text());
   } catch (err) {
-    console.warn("[visit-frederick] fetch failed:", err);
+    const reason =
+      err instanceof Error && err.name === "AbortError"
+        ? `timed out after ${FETCH_TIMEOUT_MS}ms`
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    console.info(
+      `[visit-frederick] unavailable this refresh (${reason}; fail-soft)`,
+    );
     return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
@@ -450,11 +466,50 @@ export async function fetchVisitFrederickResult(): Promise<
     });
     return eventAdapterOk(await Promise.race([enrich, budget]));
   } catch (err) {
-    console.warn("[visit-frederick] enrichment failed, using un-enriched feed:", err);
+    console.info(
+      "[visit-frederick] detail enrichment unavailable this refresh; using the RSS rows:",
+      err instanceof Error ? err.message : String(err),
+    );
     return eventAdapterOk(base);
   } finally {
     clearTimeout(budgetTimer);
   }
+}
+
+// Cache the ADAPTER RESULT, not only the successful HTTP body. Next's fetch
+// cache does not retain a non-2xx response, which meant Visit Frederick's WAF
+// 403 was retried from /today, /events, /map, and each event-detail lookup.
+// Keeping the failed result for the same hour both protects the publisher and
+// turns hundreds of identical logs into one health signal per refresh. The
+// `events` tag still lets an explicit event refresh retry immediately, while
+// single-flight coalesces concurrent cold misses inside one worker.
+const fetchVisitFrederickOnce = createSingleFlight<
+  "current",
+  EventAdapterResult<LiveEvent>
+>();
+const fetchVisitFrederickCached = unstable_cache(
+  () =>
+    fetchVisitFrederickOnce(
+      "current",
+      fetchVisitFrederickResultUncached,
+    ),
+  [
+    "visit-frederick-adapter-v1",
+    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  ],
+  { revalidate: 3600, tags: ["events", "visit-frederick"] },
+);
+
+export function fetchVisitFrederickResult(): Promise<
+  EventAdapterResult<LiveEvent>
+> {
+  if (process.env.NODE_ENV === "test") {
+    return fetchVisitFrederickOnce(
+      "current",
+      fetchVisitFrederickResultUncached,
+    );
+  }
+  return fetchVisitFrederickCached();
 }
 
 /** Legacy data-only facade. Health-aware callers should use the Result form. */

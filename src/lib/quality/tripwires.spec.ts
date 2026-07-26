@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   availabilityAnomalies,
+  eventSourceHealthAnomaly,
   photoMetadataCoverageAnomaly,
 } from "@/lib/quality/tripwires";
 
@@ -60,6 +61,50 @@ describe("photo metadata coverage tripwire", () => {
           ],
         },
       ]),
+    ).toBeNull();
+  });
+});
+
+describe("unified event source-health tripwire", () => {
+  it("keeps one transient provider failure below the board-level threshold", () => {
+    expect(
+      eventSourceHealthAnomaly({
+        degraded: true,
+        unavailable: ["county"],
+      }),
+    ).toBeNull();
+  });
+
+  it("flags multi-source degradation even when fallback events can still render", () => {
+    expect(
+      eventSourceHealthAnomaly({
+        degraded: true,
+        unavailable: ["county", "Visit Frederick"],
+      }),
+    ).toMatchObject({
+      source: "unified-events",
+      kind: "events_sources_degraded",
+    });
+  });
+
+  it("flags one umbrella failure for the full municipal-calendar fanout", () => {
+    const anomaly = eventSourceHealthAnomaly({
+      degraded: true,
+      unavailable: ["municipal calendars"],
+    });
+
+    expect(anomaly?.kind).toBe("events_sources_degraded");
+    expect(anomaly?.detail).toContain(
+      "fallback events may still keep the board populated",
+    );
+  });
+
+  it("does not infer a failure from an honest healthy or empty source list", () => {
+    expect(
+      eventSourceHealthAnomaly({
+        degraded: false,
+        unavailable: [],
+      }),
     ).toBeNull();
   });
 });

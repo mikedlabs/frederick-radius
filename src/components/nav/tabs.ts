@@ -5,6 +5,7 @@ import {
   Bookmark,
   type LucideIcon,
 } from "lucide-react";
+import { radiusJourneyForPath, type RadiusJourney } from "@/data/radius-tools";
 
 /**
  * Shared primary-tab definition for BottomNav (mobile) + SideRail
@@ -80,6 +81,16 @@ export function tabIndexForPath(pathname: string): number {
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
   if (direct !== -1) return direct;
+  const registeredJourney = radiusJourneyForPath(pathname);
+  if (registeredJourney) {
+    const journeyHref: Record<RadiusJourney, string> = {
+      today: "/today",
+      map: "/map",
+      events: "/events",
+      saved: "/my-radius",
+    };
+    return TABS.findIndex((tab) => tab.href === journeyHref[registeredJourney]);
+  }
   const section = SECTION_PREFIXES.find(
     ([p]) => pathname === p || pathname.startsWith(p),
   );

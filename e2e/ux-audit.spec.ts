@@ -52,6 +52,7 @@ const ROUTES = [
   "/live-music",
   "/shipping",
   "/amenities",
+  "/sports",
   "/towns",
   "/markers",
   "/trails",

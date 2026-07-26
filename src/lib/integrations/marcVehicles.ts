@@ -14,21 +14,17 @@
  *
  * Source confirmed live 2026-07-18: feed decodes with tripIds ("Train492"),
  * route_ids matching the MARC GTFS (11704 Brunswick / 11705 Penn / 11706
- * Camden), positions, bearings, and per-fix timestamps.
+ * Camden), positions, bearings, and per-fix timestamps. Only route 11704 is
+ * retained; a geographic box alone also catches Penn Line trains.
  */
-import { transit_realtime } from "gtfs-realtime-bindings";
+import { gtfsRealtime } from "@/lib/integrations/gtfsRealtimeBindings";
 
 const VEHICLE_POSITIONS_URL =
   "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-vp.pb";
 const TIMEOUT_MS = 10_000;
 
-/** MARC line names by GTFS route_id (MDOT MTA routes.txt; 11704 is the
- *  Brunswick Line id already used by marcTrains.ts). */
-const LINE_BY_ROUTE: Record<string, string> = {
-  "11704": "Brunswick Line",
-  "11705": "Penn Line",
-  "11706": "Camden Line",
-};
+/** Brunswick Line route_id from the official MTA static GTFS. */
+export const BRUNSWICK_ROUTE_ID = "11704";
 
 /**
  * Frederick County bbox (constants.FREDERICK_COUNTY_BOUNDS: -77.70..-77.08,
@@ -67,6 +63,16 @@ export type MarcVehicle = {
   updatedAt: number;
 };
 
+export type MarcVehicleFeedResult = {
+  data: MarcVehicle[];
+  status: "ok" | "unavailable";
+  available: boolean;
+  /** Provider-generated GTFS-RT feed timestamp, Unix seconds. */
+  feedTimestamp?: number;
+  /** When Radius finished receiving/decoding the response, Unix milliseconds. */
+  receivedAt: number;
+};
+
 /** One decoded VehiclePosition, before slimming (pure-testable seam). */
 export type RawMarcPosition = {
   tripId?: string | null;
@@ -81,18 +87,19 @@ export type RawMarcPosition = {
 /**
  * Slim decoded positions to the map payload: drop entries without a
  * coordinate, an identity, or a fix time (no timestamp means no honest
- * age-gating client-side), resolve the line name, and keep only fixes
- * inside the expanded county corridor.
+ * age-gating client-side), require the official Brunswick Line route id, and
+ * then keep only fixes inside the expanded county corridor.
  */
 export function slimMarcVehicles(raw: RawMarcPosition[]): MarcVehicle[] {
   const out: MarcVehicle[] = [];
   for (const r of raw) {
     const id = r.tripId ?? r.vehicleId;
     if (!id || r.lat == null || r.lng == null || r.timestamp == null) continue;
+    if (r.routeId !== BRUNSWICK_ROUTE_ID) continue;
     if (!inMarcCorridor(r.lat, r.lng)) continue;
     out.push({
       tripId: id,
-      line: (r.routeId != null && LINE_BY_ROUTE[r.routeId]) || "MARC",
+      line: "Brunswick Line",
       lat: +r.lat.toFixed(5),
       lng: +r.lng.toFixed(5),
       bearing: r.bearing != null ? Math.round(r.bearing) : undefined,
@@ -111,8 +118,13 @@ function toNum(v: number | Long | null | undefined): number | null {
   return typeof n === "number" ? n : null;
 }
 
-/** Live MARC trains in the corridor. Returns [] on any failure. */
-export async function getMarcVehicles(): Promise<MarcVehicle[]> {
+function feedTimestamp(v: number | Long | null | undefined): number | undefined {
+  const timestamp = toNum(v);
+  return timestamp != null && timestamp > 0 ? Math.round(timestamp) : undefined;
+}
+
+/** Live Brunswick Line trains plus provider availability/freshness metadata. */
+export async function getMarcVehiclesResult(): Promise<MarcVehicleFeedResult> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
@@ -120,9 +132,16 @@ export async function getMarcVehicles(): Promise<MarcVehicle[]> {
       signal: ctl.signal,
       cache: "no-store",
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return {
+        data: [],
+        status: "unavailable",
+        available: false,
+        receivedAt: Date.now(),
+      };
+    }
     const buf = new Uint8Array(await res.arrayBuffer());
-    const feed = transit_realtime.FeedMessage.decode(buf);
+    const feed = gtfsRealtime.FeedMessage.decode(buf);
     const raw: RawMarcPosition[] = [];
     for (const e of feed.entity) {
       const v = e.vehicle;
@@ -138,10 +157,26 @@ export async function getMarcVehicles(): Promise<MarcVehicle[]> {
         timestamp: toNum(v.timestamp) ?? undefined,
       });
     }
-    return slimMarcVehicles(raw);
+    return {
+      data: slimMarcVehicles(raw),
+      status: "ok",
+      available: true,
+      feedTimestamp: feedTimestamp(feed.header.timestamp),
+      receivedAt: Date.now(),
+    };
   } catch {
-    return [];
+    return {
+      data: [],
+      status: "unavailable",
+      available: false,
+      receivedAt: Date.now(),
+    };
   } finally {
     clearTimeout(t);
   }
+}
+
+/** Compatibility helper; use getMarcVehiclesResult where feed state matters. */
+export async function getMarcVehicles(): Promise<MarcVehicle[]> {
+  return (await getMarcVehiclesResult()).data;
 }

@@ -26,6 +26,7 @@ import {
 import type { MapDiscovery } from "./mapDiscoveries";
 import { mapContentsSummary } from "./mapContent";
 import type { LiveLayerHealth } from "@/lib/live-layer-health";
+import { normalizeMapReturnTo } from "@/lib/map-return";
 
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
@@ -436,6 +437,23 @@ export default function MapDock(props: MapDockProps) {
     router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
   };
 
+  /** Keep the map's typed query in its shareable URL. This is intentionally a
+   * native history replacement rather than a router navigation on every
+   * keystroke. Returning from a result can now restore the same query without
+   * adding a stack of one-character history entries. */
+  const updateMapSearch = (value: string) => {
+    props.setQ(value);
+    try {
+      const url = new URL(window.location.href);
+      const trimmed = value.trim();
+      if (trimmed) url.searchParams.set("q", trimmed);
+      else url.searchParams.delete("q");
+      window.history.replaceState(window.history.state, "", url.toString());
+    } catch {
+      // URL persistence is an enhancement; search itself still works.
+    }
+  };
+
   /** Clear shareable layer state synchronously before React state changes.
    * AppMap mirrors GIS overlays into the current URL in an effect. Without
    * this first write, that effect can read the old address while Next's
@@ -814,7 +832,7 @@ export default function MapDock(props: MapDockProps) {
                 ref={searchInputRef}
                 type="search"
                 value={props.q}
-                onChange={(e) => props.setQ(e.target.value)}
+                onChange={(e) => updateMapSearch(e.target.value)}
                 // The placeholder is the manual: concrete examples teach the
                 // box's range (categories, outdoors, towns) at the exact
                 // moment the eye is on it. No questions promised here — the
@@ -828,7 +846,7 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-search-clear tap-44"
-                  onClick={() => props.setQ("")}
+                  onClick={() => updateMapSearch("")}
                   aria-label="Clear search"
                 >
                   <X className="h-4 w-4" strokeWidth={2.4} aria-hidden />
@@ -885,7 +903,15 @@ export default function MapDock(props: MapDockProps) {
                       className="dock-search-more"
                       onClick={(event) => {
                         event.stopPropagation();
-                        router.push(`/search?q=${encodeURIComponent(props.q.trim())}`);
+                        const current = new URL(window.location.href);
+                        current.searchParams.set("q", props.q.trim());
+                        const returnTo =
+                          normalizeMapReturnTo(
+                            `${current.pathname}${current.search}${current.hash}`,
+                          ) ?? "/map";
+                        router.push(
+                          `/search?q=${encodeURIComponent(props.q.trim())}&returnTo=${encodeURIComponent(returnTo)}`,
+                        );
                       }}
                     >
                       See all results
@@ -1536,7 +1562,7 @@ export default function MapDock(props: MapDockProps) {
                       </p>
                     ) : props.showTransit && (
                       <p className="dock-layer-status">
-                        <strong>Transit</strong> · {props.transitHealth.count} mapped routes from {props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.
+                        <strong>Transit</strong> · {props.transitHealth.count} mapped route segments from {props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.
                       </p>
                     )}
                     {props.radarHealth.status === "unavailable" ? (

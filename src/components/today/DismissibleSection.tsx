@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 
 /**
  * A framed Today section with the field-guide plate header.
@@ -43,78 +42,24 @@ export default function DismissibleSection({
   return (
     <section
       className={flat
-        ? "relative border-t pt-4"
+        ? "relative pt-1"
         : `relative rounded-[var(--app-radius-lg)] border p-4${eyebrow || plateNo ? " fg-plate" : ""}`}
       style={flat
-        ? { borderColor: "var(--app-border)" }
+        ? undefined
         : {
             borderColor: "var(--app-border)",
             background: "var(--app-bg-elevated)",
             boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
           }}
     >
-      {/* Card-bounded section per the brief: "areas need to be
-          defined more." The hairline + inner-shadow treatment marks
-          each section as a discrete room a visitor can walk into,
-          not another stack on a long page. When a field-guide eyebrow
-          is set, the header reads like a plate caption — tracked label,
-          serif title, a hairline rule, and an optional plate index. */}
-      <header className={eyebrow ? "mb-3" : "mb-3 flex items-baseline justify-between gap-3"}>
-        {eyebrow ? (
-          <>
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="min-w-0">
-                <span className="fg-eyebrow">{eyebrow}</span>
-                <h2
-                  className="mt-1 font-serif text-xl font-semibold tracking-tight"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {title}
-                </h2>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {href && (
-                  <Link
-                    href={href}
-                    aria-label={`${cta}: ${title}`}
-                    className="tap-44-y inline-flex items-center gap-1 text-xs font-medium tracking-tight"
-                    style={{ color: "var(--app-brand-press)" }}
-                  >
-                    {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </Link>
-                )}
-              </div>
-            </div>
-            <div className="mt-2.5 flex items-center gap-2">
-              <div className="fg-rule flex-1" />
-              {plateNo && <span className="fg-plate-no shrink-0">{plateNo}</span>}
-            </div>
-          </>
-        ) : (
-          <>
-            <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {title}
-            </h2>
-            <div className="flex shrink-0 items-center gap-3">
-              {href && (
-                <Link
-                  href={href}
-                  aria-label={`${cta}: ${title}`}
-                  className="tap-44-y inline-flex items-center gap-1 text-xs font-medium tracking-tight"
-                  style={{ color: "var(--app-brand-press)" }}
-                >
-                  {cta} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                </Link>
-              )}
-            </div>
-          </>
-        )}
-      </header>
-      {meta && (
-        <p className="-mt-2 mb-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {meta}
-        </p>
-      )}
+      <TodaySectionHeading
+        title={title}
+        meta={meta}
+        eyebrow={eyebrow}
+        plateNo={plateNo}
+        href={href}
+        cta={cta}
+      />
       {children}
     </section>
   );

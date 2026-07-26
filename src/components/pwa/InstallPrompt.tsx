@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Download, Share, X } from "lucide-react";
+import { Download, ExternalLink, Share, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
+import { Button } from "@/components/ui/Button";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
 
@@ -13,7 +14,7 @@ import { isInstallPromptSuppressedPath } from "@/lib/pwa-display";
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
-  const { show, ios, prompting, promptInstall, dismiss } = useInstallPrompt();
+  const { show, ios, iosSafari, prompting, promptInstall, dismiss } = useInstallPrompt();
 
   if (!show || isInstallPromptSuppressedPath(pathname)) return null;
 
@@ -53,7 +54,7 @@ export default function InstallPrompt() {
             Keep Frederick Radius handy
           </p>
 
-          {ios ? (
+          {ios && iosSafari ? (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 Safari requires one short system step before Frederick Radius can appear on your Home Screen.
@@ -76,21 +77,42 @@ export default function InstallPrompt() {
                 <li className="pl-6">Keep <strong>Open as Web App</strong> on, then tap <strong>Add</strong>.</li>
               </ol>
             </>
+          ) : ios ? (
+            <>
+              <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                This page is open inside another app or browser. Open it in Safari before adding it to your Home Screen.
+              </p>
+
+              <ol
+                className="mt-3 space-y-2 rounded-[var(--app-radius-md)] border p-3 text-[12px] leading-relaxed"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-subtle)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                <li className="flex gap-2">
+                  <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  <span>Use this browser&rsquo;s menu and choose <strong>Open in Safari</strong>.</span>
+                </li>
+                <li className="pl-6">In Safari, tap <strong>Share</strong>.</li>
+                <li className="pl-6">Choose <strong>Add to Home Screen</strong>.</li>
+              </ol>
+            </>
           ) : (
             <>
               <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 Add the guide to your home screen so it opens in its own window and is easy to find again.
               </p>
-              <button
-                type="button"
+              <Button
                 onClick={promptInstall}
-                disabled={prompting}
-                className="tactile-interactive mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-meta-lg font-semibold text-white transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70"
-                style={{ background: "var(--app-brand)" }}
+                loading={prompting}
+                size="md"
+                className="mt-3"
+                iconLeft={<Download className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
               >
-                <Download className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                 {prompting ? "Opening…" : "Add to home screen"}
-              </button>
+              </Button>
             </>
           )}
 

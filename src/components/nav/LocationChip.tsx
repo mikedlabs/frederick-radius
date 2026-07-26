@@ -112,7 +112,7 @@ export default function LocationChip() {
   }
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative min-w-0 shrink-0">
       <button
         type="button"
         onClick={() => {
@@ -121,15 +121,19 @@ export default function LocationChip() {
         }}
         aria-expanded={open}
         aria-controls="location-scope-choices"
-        className="tap-44 inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2 py-1 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+        aria-label={`Change town or location scope. Current scope: ${label}`}
+        title={`Town and location: ${label}`}
+        className="tap-44 inline-flex h-10 min-w-10 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-full border bg-[var(--app-bg-elevated)] px-2 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:h-auto sm:max-w-none sm:justify-start sm:py-1"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon
-          className={state.status === "loading" && scope === "nearme" ? "h-3 w-3 animate-spin" : "h-3 w-3"}
+          className={state.status === "loading" && scope === "nearme" ? "h-4 w-4 shrink-0 animate-spin sm:h-3 sm:w-3" : "h-4 w-4 shrink-0 sm:h-3 sm:w-3"}
           strokeWidth={2}
           aria-hidden
         />
-        {label}
+        <span className="hidden min-w-0 truncate min-[360px]:block sm:max-w-[160px]">
+          {label}
+        </span>
         <ChevronDown className="h-3 w-3 opacity-60" strokeWidth={2} aria-hidden />
       </button>
 
@@ -138,7 +142,7 @@ export default function LocationChip() {
           id="location-scope-choices"
           role="group"
           aria-label="Set what you're browsing"
-          className="absolute right-0 top-full z-[var(--z-dropdown)] mt-1.5 w-[230px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+          className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)_+_var(--app-topbar-h)_+_0.375rem)] z-[var(--z-dropdown)] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1.5 sm:w-[230px]"
           style={{ borderColor: "var(--app-border)" }}
         >
           {/* Near me — sets scope AND requests the fix (the two go together;

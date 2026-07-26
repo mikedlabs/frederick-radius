@@ -19,8 +19,8 @@ import { useLiveVehicles } from "./useLiveVehicles";
  * the station nearest the rider (resolved from a cached geolocation fix, or
  * Frederick by default), with a 4-station switcher and an honest fallback once
  * the last train has gone. The buses card leads with the soonest live bus
- * arrival, backed by how many are moving and, when location is granted, how
- * many are near you.
+ * arrival, backed by how many are reporting and, when location is granted,
+ * how many are near the rider.
  *
  * All timing is read from state (a 1s tick) so there is never a Date.now() in
  * render; the MARC board is passed from the server page (schedule + realtime
@@ -138,7 +138,14 @@ export default function TransitNow({
   board: { stations: MarcStationBoard[]; serviceToday: boolean };
 }) {
   const { state: geoState, request: requestGeo } = useGeolocation();
-  const { vehicles, loaded, fetchedAt, stale } = useLiveVehicles();
+  const {
+    vehicles,
+    loaded,
+    available,
+    status,
+    fetchedAt,
+    stale,
+  } = useLiveVehicles();
   const [nowMs, setNowMs] = useState(0);
   // When the feed goes quiet, present the frozen buses as "last seen," not as a
   // live countdown ticking a stuck fix down to "due."
@@ -172,10 +179,17 @@ export default function TransitNow({
   const countdown = next ? marcCountdownMins(next.epoch, nowMs) : null;
   const nextClock = next ? (next.live && next.predicted ? next.predicted : next.scheduled) : null;
 
-  // Buses: soonest live arrival, plus how many are moving / near you.
+  const nearbyVehicles = useMemo(() => {
+    if (!userPos) return [];
+    return vehicles.filter((vehicle) => haversineMiles(userPos, vehicle) <= NEAR_MILES);
+  }, [vehicles, userPos]);
+
+  // If the rider shared a location and a bus is genuinely nearby, lead with
+  // that subset. Otherwise show the network result without calling it local.
+  const busesToRank = nearbyVehicles.length > 0 ? nearbyVehicles : vehicles;
   const soonestBus = useMemo(() => {
     let best: { route?: TransitRoute; stopName: string; mins: number } | null = null;
-    for (const v of vehicles) {
+    for (const v of busesToRank) {
       const mins = arrivalMins(v.nextStop?.etaEpoch, nowMs);
       if (mins == null || !v.nextStop) continue;
       if (!best || mins < best.mins) {
@@ -183,12 +197,9 @@ export default function TransitNow({
       }
     }
     return best;
-  }, [vehicles, nowMs]);
+  }, [busesToRank, nowMs]);
 
-  const nearCount = useMemo(() => {
-    if (!userPos) return null;
-    return vehicles.filter((v) => haversineMiles(userPos, v) <= NEAR_MILES).length;
-  }, [vehicles, userPos]);
+  const nearCount = userPos ? nearbyVehicles.length : null;
 
   const cardStyle = {
     borderColor: "var(--app-border)",
@@ -211,33 +222,25 @@ export default function TransitNow({
             <TrainFront className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-accent)" }} aria-hidden />
           </div>
 
-          <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Choose a MARC station">
-            {MARC_STATIONS.map((s) => {
-              const on = s.key === selectedKey;
-              const isNearest = s.key === nearestKey && userPos != null;
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => setOverride(s.key)}
-                  aria-pressed={on}
-                  className="min-h-11 rounded-full border px-3 text-[12px] font-semibold"
-                  style={{
-                    borderColor: on ? "var(--app-accent)" : "var(--app-border)",
-                    background: on ? "color-mix(in srgb, var(--app-accent) 16%, var(--app-bg-elevated))" : "var(--app-bg-elevated)",
-                    color: on ? "var(--app-accent-press)" : "var(--app-ink-2)",
-                  }}
-                >
-                  {s.name}
-                  {isNearest && (
-                    <span className="ml-1 text-[10px] font-normal" style={{ color: on ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>
-                      nearest
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <label className="mt-2.5 flex items-center gap-2">
+            <span className="shrink-0 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+              Station
+            </span>
+            <select
+              value={selectedKey}
+              onChange={(event) => setOverride(event.target.value)}
+              aria-label="MARC station"
+              className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 text-[13px] font-semibold"
+              style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
+            >
+              {MARC_STATIONS.map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.name}
+                  {item.key === nearestKey && userPos != null ? " · nearest" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {board.serviceToday && next ? (
             <div className="mt-3">
@@ -274,28 +277,32 @@ export default function TransitNow({
           )}
         </article>
 
-        {/* Buses — soonest live arrival, plus what is moving / near you. */}
+        {/* Buses — soonest reported arrival, plus what is reporting nearby. */}
         <article className="rounded-[var(--app-radius-md)] border p-4" style={cardStyle}>
           <div className="flex items-center justify-between">
             <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              {userPos ? "Buses near you" : "Buses moving now"}
+              {userPos && nearbyVehicles.length > 0 ? "Buses near you" : "Buses reporting now"}
             </span>
             <Bus className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
           </div>
 
           {!loaded ? (
             <p className="mt-3 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              Checking for buses on the road…
+              Checking the live bus feed…
+            </p>
+          ) : !available ? (
+            <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Live bus positions are unavailable.
             </p>
           ) : vehicles.length === 0 ? (
             <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              No buses are on the road right now.
+              No buses are reporting right now.
             </p>
           ) : (
             <div className="mt-3">
               {stale ? (
                 <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                  {vehicles.length} {vehicles.length === 1 ? "bus" : "buses"} last seen on the road
+                  {vehicles.length} {vehicles.length === 1 ? "bus" : "buses"} last reported
                 </p>
               ) : soonestBus ? (
                 <>
@@ -312,22 +319,26 @@ export default function TransitNow({
                 </>
               ) : (
                 <p className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
-                  {vehicles.length} on the road now
+                  {vehicles.length} reporting now
                 </p>
               )}
             </div>
           )}
 
           <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {loaded && vehicles.length > 0 && (
+            {loaded && available && vehicles.length > 0 && (
               staleAgo ? (
                 <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>Live feed delayed, last update {staleAgo}</span>
+              ) : status === "degraded" ? (
+                <span style={{ color: "var(--app-warning)", fontWeight: 600 }}>
+                  Positions are live. Arrival estimates are unavailable.
+                </span>
               ) : (
-                <span className="font-mono tabular-nums">{vehicles.length} moving now</span>
+                <span className="font-mono tabular-nums">{vehicles.length} reporting now</span>
               )
             )}
             {FARE_FREE && <span style={{ color: "var(--app-cool)", fontWeight: 600 }}>free to ride</span>}
-            {nearCount != null && vehicles.length > 0 && (
+            {available && nearCount != null && vehicles.length > 0 && (
               <span className="font-mono tabular-nums">{nearCount} within about a mile</span>
             )}
             {!userPos && geoState.status !== "loading" && (

@@ -29,7 +29,7 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
       className={
         fullBleed
           ? "px-4 sm:px-5 lg:pl-24"
-          : "app-main-reading mx-auto max-w-screen-md pt-6 lg:max-w-screen-lg"
+          : "app-main-reading mx-auto max-w-screen-md pt-4 sm:pt-6 lg:max-w-screen-lg"
       }
       style={{
         // The full-bleed map already reserves the TopBar and mobile nav in its

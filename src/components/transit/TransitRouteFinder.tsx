@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Bus, ChevronDown, Search, X } from "lucide-react";
+import { requestTransitRouteFocus } from "@/lib/transit-focus";
 
 /**
  * TransitRouteFinder — the "All routes" list with a search box.
@@ -13,7 +14,13 @@ import { Bus, ChevronDown, Search, X } from "lucide-react";
  * routes the server already grouped.
  */
 
-export type RouteRow = { name: string; destinations: string[]; variationCount: number };
+export type RouteRow = {
+  id: string;
+  short: string;
+  name: string;
+  destinations: string[];
+  variationCount: number;
+};
 
 export default function TransitRouteFinder({ routes }: { routes: readonly RouteRow[] }) {
   const [query, setQuery] = useState("");
@@ -30,17 +37,30 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
   const hiddenCount = shown.length - visible.length;
 
   return (
-    <section className="space-y-3">
-      <header className="flex items-baseline gap-2">
-        <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          All routes
-        </h2>
-        <span className="ml-auto text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {q ? `${shown.length} of ${routes.length}` : `${routes.length} ${routes.length === 1 ? "route" : "routes"}`}
+    <details
+      suppressHydrationWarning
+      className="group overflow-hidden rounded-[var(--app-radius-md)] border"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+    >
+      <summary className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+        <span>
+          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Find a bus route
+          </span>
+          <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            Search {routes.length} routes, then frame one on the live map
+          </span>
         </span>
-      </header>
+        <ChevronDown
+          className="h-4 w-4 shrink-0 transition group-open:rotate-180"
+          strokeWidth={2.25}
+          aria-hidden
+          style={{ color: "var(--app-ink-3)" }}
+        />
+      </summary>
 
-      <div className="relative">
+      <section className="space-y-3 border-t p-3" style={{ borderColor: "var(--app-border)" }}>
+        <div className="relative">
         <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
         <input
           type="search"
@@ -48,7 +68,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search routes by number or where they go"
-          placeholder="Search routes: a number, or where it goes…"
+          placeholder="Route number or destination"
           className="w-full rounded-[var(--app-radius-md)] border py-2.5 pl-10 pr-10 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
           style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated-solid)", color: "var(--app-ink)", boxShadow: "var(--app-hi)" }}
         />
@@ -57,7 +77,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
             <X className="h-4 w-4" strokeWidth={2.2} aria-hidden />
           </button>
         )}
-      </div>
+        </div>
 
       {shown.length === 0 ? (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
@@ -67,8 +87,17 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visible.map((r) => (
             <li key={r.name}>
-              <article
-                className="relative h-full overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
+              <button
+                type="button"
+                data-transit-route-id={r.id}
+                onClick={() => {
+                  requestTransitRouteFocus(r.id);
+                  document.getElementById("live-network-heading")?.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                    block: "start",
+                  });
+                }}
+                className="tactile-interactive relative h-full w-full overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left"
                 style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
               >
                 <div aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: "var(--app-cool)" }} />
@@ -77,7 +106,9 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
                     <Bus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>{r.name}</p>
+                    <p className="text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                      {r.short} · {r.name}
+                    </p>
                     {r.destinations.length > 0 && (
                       <p className="text-[12px] leading-snug text-pretty" style={{ color: "var(--app-ink-2)" }}>
                         {r.destinations.join(" · ")}
@@ -88,7 +119,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
                     </p>
                   </div>
                 </div>
-              </article>
+              </button>
             </li>
           ))}
         </ul>
@@ -116,6 +147,7 @@ export default function TransitRouteFinder({ routes }: { routes: readonly RouteR
           <ChevronDown className="h-3.5 w-3.5 rotate-180" strokeWidth={2.25} aria-hidden />
         </button>
       )}
-    </section>
+      </section>
+    </details>
   );
 }

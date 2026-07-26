@@ -275,16 +275,22 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             </p>
           )}
 
-          {/* Actions adapt to how the event can actually be attended. */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          {/* One attendance action leads. Directions becomes a neutral
+              secondary when tickets or RSVP are available, and calendar/share
+              stay visibly labelled instead of joining the row as mystery
+              circles. */}
+          <div className="mt-4 space-y-2">
             {ticketHref && !isCancelled && (
               <a
                 href={ticketHref}
                 onClick={() => haptic("light")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tactile-lift tactile-interactive tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"
-                style={{ backgroundColor: "var(--app-brand-press)" }}
+                className="tactile-lift tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold"
+                style={{
+                  backgroundColor: "var(--app-brand-press)",
+                  color: "var(--app-on-brand)",
+                }}
               >
                 {event.ticket_url ? (
                   <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -300,14 +306,38 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 onClick={() => haptic("light")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tactile-lift tactile-interactive tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"
-                style={{ backgroundColor: "var(--app-cool)" }}
+                className={`tactile-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
+                  ticketHref && !isCancelled
+                    ? "border bg-[var(--app-bg-elevated)]"
+                    : "tactile-lift"
+                }`}
+                style={
+                  ticketHref && !isCancelled
+                    ? {
+                        borderColor: "var(--app-border-strong)",
+                        color: "var(--app-ink)",
+                      }
+                    : {
+                        backgroundColor: "var(--app-brand-press)",
+                        color: "var(--app-on-brand)",
+                      }
+                }
               >
-                <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                <Navigation
+                  className="h-4 w-4"
+                  strokeWidth={2.25}
+                  style={{
+                    color:
+                      ticketHref && !isCancelled
+                        ? "var(--app-brand-press)"
+                        : "var(--app-on-brand)",
+                  }}
+                  aria-hidden
+                />
                 Directions
               </a>
             )}
-            <EventActions event={event} className="ml-auto" />
+            <EventActions event={event} labeled className="pt-1" />
           </div>
 
           {/* Make a night of it — the workflow tap (app-like pass): the show

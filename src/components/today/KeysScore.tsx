@@ -149,6 +149,68 @@ function ScoreRow({
   );
 }
 
+/**
+ * Pregame is a schedule fact, not an empty scoreboard. Keep the matchup and
+ * first-pitch time on one compact row, with the venue side stated before a fan
+ * taps through.
+ */
+export function KeysPregameMatchup({ score }: { score: Score }) {
+  const pitch = firstPitch(score.startsAt);
+  const sideLabel = score.keysHome ? "Home · Nymeo Field" : "Away";
+
+  return (
+    <div
+      data-testid="keys-pregame-matchup"
+      className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[calc(var(--app-radius-lg)-6px)] border px-3 py-2.5"
+      style={{
+        borderColor: "rgba(223,70,1,0.2)",
+        background: "rgba(255,252,245,0.72)",
+      }}
+    >
+      <div className="min-w-0">
+        <p
+          className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em]"
+          style={{ color: KEYS_ORANGE_DEEP }}
+        >
+          {sideLabel}
+        </p>
+        <p className="mt-0.5 truncate text-[13.5px] font-semibold leading-snug" style={{ color: INK }}>
+          <span>{score.keys.name}</span>
+          <span className="px-1.5 font-normal" style={{ color: "rgba(26,21,14,0.56)" }}>
+            {score.keysHome ? "vs." : "at"}
+          </span>
+          <span>{score.opponent.name}</span>
+        </p>
+      </div>
+
+      <div
+        className="shrink-0 border-l pl-3 text-right"
+        style={{ borderColor: "rgba(26,21,14,0.14)" }}
+      >
+        <span
+          className="block font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+          style={{ color: "rgba(26,21,14,0.58)" }}
+        >
+          First pitch
+        </span>
+        <time
+          dateTime={score.startsAt}
+          className="mt-0.5 block font-mono text-[15px] font-bold tabular-nums"
+          style={{ color: INK }}
+        >
+          {pitch || "Time TBA"}
+        </time>
+        <LiveCountdown
+          targetIso={score.startsAt}
+          prefix="in"
+          className="block font-mono text-[9px] font-semibold tabular-nums"
+          style={{ color: KEYS_ORANGE_DEEP }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function KeysScore() {
   const [score, setScore] = useState<Score | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,7 +253,7 @@ export default function KeysScore() {
   const action = keysScoreAction(score);
 
   return (
-    <div>
+    <div data-today-sports-card>
       <div
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 transition active:scale-[0.99]"
         style={{
@@ -218,20 +280,24 @@ export default function KeysScore() {
           >
             <BaseballGlyph size={13} />
             <span className="truncate">
-              Frederick Keys {matchupWord} {score.opponent.name}
+              {score.state === "pre"
+                ? "Frederick Keys"
+                : `Frederick Keys ${matchupWord} ${score.opponent.name}`}
             </span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
-            <span
-              className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-              style={{
-                borderColor: score.keysHome ? KEYS_ORANGE_DEEP : "rgba(26,21,14,0.3)",
-                color: score.keysHome ? KEYS_ORANGE_DEEP : INK,
-                background: score.keysHome ? "rgba(223,70,1,0.08)" : "rgba(26,21,14,0.06)",
-              }}
-            >
-              {score.keysHome ? "Home · Nymeo" : "Away"}
-            </span>
+            {score.state !== "pre" && (
+              <span
+                className="inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{
+                  borderColor: score.keysHome ? KEYS_ORANGE_DEEP : "rgba(26,21,14,0.3)",
+                  color: score.keysHome ? KEYS_ORANGE_DEEP : INK,
+                  background: score.keysHome ? "rgba(223,70,1,0.08)" : "rgba(26,21,14,0.06)",
+                }}
+              >
+                {score.keysHome ? "Home · Nymeo" : "Away"}
+              </span>
+            )}
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
               style={
@@ -251,35 +317,33 @@ export default function KeysScore() {
           </span>
         </div>
 
-        <div className="relative space-y-1">
-          <ScoreRow
-            name={score.keys.name}
-            runs={score.keys.runs}
-            won={keysWon}
-            final={score.state === "final"}
-            isKeys
-            side={score.keysHome ? "Home" : "Away"}
-          />
-          <ScoreRow
-            name={score.opponent.name}
-            runs={score.opponent.runs}
-            won={oppWon}
-            final={score.state === "final"}
-            side={score.keysHome ? "Away" : "Home"}
-          />
-        </div>
+        {score.state === "pre" ? (
+          <KeysPregameMatchup score={score} />
+        ) : (
+          <>
+            <div className="relative space-y-1">
+              <ScoreRow
+                name={score.keys.name}
+                runs={score.keys.runs}
+                won={keysWon}
+                final={score.state === "final"}
+                isKeys
+                side={score.keysHome ? "Home" : "Away"}
+              />
+              <ScoreRow
+                name={score.opponent.name}
+                runs={score.opponent.runs}
+                won={oppWon}
+                final={score.state === "final"}
+                side={score.keysHome ? "Away" : "Home"}
+              />
+            </div>
 
-        <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
-          {detailLine(score)}
-          {score.state === "pre" && (
-            <LiveCountdown
-              targetIso={score.startsAt}
-              prefix=" · in"
-              className="font-semibold"
-              style={{ color: KEYS_ORANGE_DEEP }}
-            />
-          )}
-        </p>
+            <p className="relative mt-2 text-[11.5px]" style={{ color: "rgba(26,21,14,0.72)" }}>
+              {detailLine(score)}
+            </p>
+          </>
+        )}
 
         {/* Only a home pre-game can sell Frederick tickets. Away and completed
             games keep a clear route to the official Keys schedule instead. */}

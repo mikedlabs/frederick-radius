@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Compass, ChevronLeft } from "lucide-react";
+import { Search, LayoutGrid, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import RippleMark from "@/components/brand/RippleMark";
 import LocationChip from "./LocationChip";
@@ -10,9 +10,23 @@ import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
 import { useHideOnScroll } from "./useHideOnScroll";
 import { tabIndexForPath } from "./tabs";
-import { consumeFindRequest, requestFind } from "@/lib/findBridge";
+import { consumeFindRequest } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
 
+export function pageOwnsPrimarySearch(pathname: string): boolean {
+  return pathname === "/map"
+    || pathname === "/search"
+    || pathname === "/compass"
+    || pathname.startsWith("/ask");
+}
+
+export function shouldShowGlobalMobileSearch(pathname: string): boolean {
+  // Search is permanent app chrome on mobile. Some workspaces also carry a
+  // local, context-specific query field, but that should not make the global
+  // county search disappear or force users to remember which screen owns it.
+  void pathname;
+  return true;
+}
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -50,15 +64,11 @@ export default function TopBar() {
   }, [hidden]);
 
   // These routes own the middle of the header because their primary workspace
-  // already contains a full search or query control. Mobile search still gets
-  // one compact header button where it is useful; /search and /ask suppress
-  // that duplicate, while /map hands the same button to its local search.
-  const pageOwnsSearch = pathname === "/map"
-    || pathname === "/search"
-    || pathname === "/compass"
-    || pathname.startsWith("/ask");
-  const mapOwnsSearch = pathname === "/map";
-  const showMobileSearch = !pageOwnsSearch || mapOwnsSearch;
+  // already contains a full search or query control. That changes the desktop
+  // center treatment, but mobile still keeps one permanent global search
+  // action so the app's primary utility never moves between screens.
+  const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
+  const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -147,7 +157,7 @@ export default function TopBar() {
         }}
       >
         <div
-          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-2 lg:max-w-screen-lg lg:pl-24"
+          className="mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg lg:pl-24"
           // Horizontal padding is max(1rem base, side-inset): a notched
           // phone in landscape puts the notch on a side edge, which could
           // clip the search field / back button. max() keeps the 1rem base
@@ -187,7 +197,7 @@ export default function TopBar() {
                   controls retain a full touch target. The mark still carries
                   the brand there; the complete lockup returns at sm. */}
               <span
-                className={`${pathname === "/map" ? "hidden sm:block" : "hidden min-[375px]:block"} whitespace-nowrap leading-none`}
+                className={`${pathname === "/map" ? "hidden sm:block" : "hidden min-[430px]:block"} whitespace-nowrap leading-none`}
                 style={{ color: "var(--app-ink)" }}
               >
                 Frederick Radius
@@ -238,12 +248,12 @@ export default function TopBar() {
                   searchOpenerRef.current = event.currentTarget;
                   setSearchOpen(true);
                 }}
-                aria-label="Search Frederick County"
+                aria-label="Ask or find across Frederick County"
                 className="tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] lg:flex"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
                 <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-                <span className="truncate text-left">Find places, events, towns, tools</span>
+                <span className="truncate text-left">What do you need?</span>
                 <kbd
                   className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -257,18 +267,15 @@ export default function TopBar() {
           {showMobileSearch && (
             <button
               type="button"
-              aria-label={mapOwnsSearch ? "Search this map" : "Search Frederick County"}
-              aria-haspopup={mapOwnsSearch ? undefined : "dialog"}
-              aria-controls={mapOwnsSearch ? "map-search-input" : "radius-find-dialog"}
-              aria-expanded={mapOwnsSearch ? undefined : searchOpen}
-              title={mapOwnsSearch ? "Search this map" : "Search Frederick County"}
+              aria-label="Ask or find across Frederick County"
+              aria-haspopup="dialog"
+              aria-controls={searchOpen ? "radius-find-dialog" : undefined}
+              aria-expanded={searchOpen}
+              title="Ask or find across Frederick County"
               onClick={(event) => {
                 haptic("light");
-                if (mapOwnsSearch) requestFind("map");
-                else {
-                  searchOpenerRef.current = event.currentTarget;
-                  setSearchOpen(true);
-                }
+                searchOpenerRef.current = event.currentTarget;
+                setSearchOpen(true);
               }}
               className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
@@ -286,32 +293,23 @@ export default function TopBar() {
               icons on screen for one destination. My Radius stays one tap
               away via the bottom nav (<lg) and the SideRail (≥lg).) */}
 
-          {/* Settings — visible at all viewports. The original
-              design hid this on mobile and routed mobile users via
-              the /saved page (which has its own Settings link), but
-              that's a non-obvious two-tap path no real user will
-              discover. Settings is the only surface that lets you
-              change persona, home muni, interests, and notifications,
-              so it has to be one tap from anywhere. LocationChip
-              stays mobile-hidden because the search modal carries
-              the same affordance. */}
           {/* Right cluster reads left→right: where you are (LocationChip,
               nearest search), what's happening (PulseIndicator), then the
               catch-all field-guide drawer LAST — the conventional spot for an
-              overflow control. LocationChip is hidden on the narrowest phones
-              where the search bar needs the room (location is still settable
-              inside the search modal); it surfaces from sm: up. */}
-          <div className="hidden sm:block">
-            <LocationChip />
-          </div>
+              overflow control. Search and town scope stay visible on every
+              mobile route; their controls collapse to icon-first treatments
+              only when the phone is too narrow for the current town label. */}
+          <LocationChip />
 
           {/* Live county pulse — lights up on an active NWS/school alert,
               traffic incident, or significant outage; quiet otherwise. */}
           <PulseIndicator />
 
-          {/* Compass is the field-guide index. It is a full destination rather
+          {/* All tools is the field-guide index. It is a full destination rather
               than a tall modal, so it can be linked, shared, scrolled, and
-              returned from with normal browser history. */}
+              returned from with normal browser history. The visible label is
+              deliberate on phones: a grid of tools is not a universal
+              icon-only action like Search or Close. */}
           {pathname !== "/compass" && <Link
             href="/compass"
             prefetch={false}
@@ -321,14 +319,14 @@ export default function TopBar() {
             aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
             title="Open all tools"
-            className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+            className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",
             }}
           >
-            <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-medium leading-none sm:inline">All tools</span>
+            <LayoutGrid className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
+            <span className="hidden text-[13px] font-semibold leading-none min-[430px]:inline sm:text-[14px]">Tools</span>
           </Link>}
         </div>
       </header>

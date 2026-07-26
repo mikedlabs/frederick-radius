@@ -19,7 +19,7 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { publicPlaces } from "@/lib/loaders/places";
+import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 import { getDb } from "@/lib/db/client";
 import { placeHoursRefresh } from "@/lib/db/schema";
 import {
@@ -27,15 +27,17 @@ import {
   googlePlacesConfigured,
 } from "@/lib/integrations/google-places";
 import {
+  assessHoursRefreshRun,
   HOURS_REFRESH_CYCLE_DAYS,
   selectHoursRefreshTargets,
 } from "@/lib/hours-refresh-targets";
+import { isGooglePlaceId } from "@/lib/provenance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Canonical public targets are deduplicated by Google ID before bucketing.
+// Canonical public targets are verified unique by Google ID before bucketing.
 // Keep headroom so a deterministic slice can never strand the tail forever.
 const BATCH_CAP = 400;
 const CONCURRENCY = 5;
@@ -64,14 +66,103 @@ export async function GET(request: Request) {
     );
   }
 
+  // Verify the server-only table before making a single paid Google request.
+  // Migration 0024 is manual by design; without this probe every Place Details
+  // call could succeed, every insert could fail, and the old handler would
+  // still return HTTP 200.
+  try {
+    await db
+      .select({
+        slug: placeHoursRefresh.slug,
+        placeId: placeHoursRefresh.placeId,
+        weekdayHours: placeHoursRefresh.weekdayHours,
+        businessStatus: placeHoursRefresh.businessStatus,
+        refreshedAt: placeHoursRefresh.refreshedAt,
+      })
+      .from(placeHoursRefresh)
+      .limit(1);
+  } catch {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        error:
+          "Hours storage is unavailable. Apply drizzle/0024_place_hours_refresh.sql in Supabase and verify the server database role before enabling this paid cron.",
+      },
+      { status: 503 },
+    );
+  }
+
   // Today's slice of the cycle. Source tier is deliberately irrelevant: if a
   // public record has a Google place ID, the same truth/freshness policy
   // applies to it. The cap still provides a hard upper bound on paid calls.
   const today = Math.floor(Date.now() / 86400000) % HOURS_REFRESH_CYCLE_DAYS;
-  const targets = selectHoursRefreshTargets(publicPlaces(), today, BATCH_CAP);
+  const places = publicPlaces().map((place) => decoratePlace(place));
+  const placesWithGoogleId = places.filter((place) =>
+    Boolean(place.google_place_id),
+  );
+  const validGooglePlaces = places.filter((place) =>
+    isGooglePlaceId(place.google_place_id),
+  );
+  const invalidGoogleIds =
+    placesWithGoogleId.length - validGooglePlaces.length;
+  let eligibleTargets: typeof validGooglePlaces;
+  try {
+    eligibleTargets = selectHoursRefreshTargets(
+      validGooglePlaces,
+      today,
+      Number.MAX_SAFE_INTEGER,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay: today,
+        catalog: places.length,
+        validGoogleIds: validGooglePlaces.length,
+        invalidGoogleIds,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Hours-refresh target identity validation failed.",
+      },
+      { status: 503 },
+    );
+  }
+  const targets = eligibleTargets.slice(0, BATCH_CAP);
+  const deferred = eligibleTargets.length - targets.length;
+
+  // A deterministic bucket that exceeds the cap would strand the same tail on
+  // every seven-day cycle. Stop before spending and make the capacity problem
+  // explicit instead of pretending the partial batch is a rolling refresh.
+  if (targets.length === 0 || deferred > 0) {
+    const health = assessHoursRefreshRun({
+      targeted: targets.length,
+      written: 0,
+      withHours: 0,
+      deferred,
+    });
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay: today,
+        catalog: places.length,
+        validGoogleIds: validGooglePlaces.length,
+        invalidGoogleIds,
+        eligible: eligibleTargets.length,
+        targeted: targets.length,
+        deferred,
+        error: health.error,
+      },
+      { status: health.status },
+    );
+  }
 
   const refreshedAt = new Date();
   let written = 0;
+  let withHours = 0;
   const failures: string[] = [];
 
   // A five-wide pool keeps a 300-second function from timing out on the full
@@ -83,7 +174,7 @@ export async function GET(request: Request) {
       batch.map(async (p) => {
         try {
           const details = await getPlaceDetails(p.google_place_id as string, "hours");
-          if (!details) return false;
+          if (!details) return { ok: false, withHours: false };
           await db
             .insert(placeHoursRefresh)
             .values({
@@ -96,30 +187,55 @@ export async function GET(request: Request) {
             .onConflictDoUpdate({
               target: placeHoursRefresh.slug,
               set: {
+                placeId: p.google_place_id as string,
                 weekdayHours: details.weekday_hours ?? null,
                 businessStatus: details.business_status ?? null,
                 refreshedAt,
               },
             });
-          return true;
+          return {
+            ok: true,
+            withHours: Boolean(details.weekday_hours?.length),
+          };
         } catch {
-          return false;
+          return { ok: false, withHours: false };
         }
       }),
     );
-    outcomes.forEach((ok, index) => {
-      if (ok) written++;
+    outcomes.forEach((outcome, index) => {
+      if (outcome.ok) {
+        written++;
+        if (outcome.withHours) withHours++;
+      }
       else failures.push(batch[index].slug);
     });
   }
 
-  return NextResponse.json({
-    enabled: true,
-    cycleDay: today,
+  const health = assessHoursRefreshRun({
     targeted: targets.length,
     written,
-    failed: failures.length,
-    failures: failures.slice(0, 10),
-    note: "Run npm run refresh:hours to pull the table into places-hours-refresh.json.",
+    withHours,
+    deferred,
   });
+  return NextResponse.json(
+    {
+      enabled: true,
+      healthy: health.healthy,
+      cycleDay: today,
+      catalog: places.length,
+      validGoogleIds: validGooglePlaces.length,
+      invalidGoogleIds,
+      eligible: eligibleTargets.length,
+      targeted: targets.length,
+      written,
+      withHours,
+      failed: failures.length,
+      failures: failures.slice(0, 10),
+      ...(health.error ? { error: health.error } : {}),
+      note: health.healthy
+        ? "Run npm run refresh:hours to pull the table into places-hours-refresh.json."
+        : "Check the Google Places key and the database write role before the next paid run.",
+    },
+    { status: health.status },
+  );
 }

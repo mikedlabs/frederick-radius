@@ -1,5 +1,6 @@
 /**
- * Nightly business-status check. For curated places with a google_place_id
+ * Nightly business-status check. For canonical public places with a
+ * google_place_id
  * it compares Google's businessStatus to our is_operational and reports
  * mismatches (newly closed places to add to the denylist or the
  * business-status override). It reports, it does not persist: serverless
@@ -13,7 +14,10 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { PLACES } from "@/data/places";
+import {
+  canonicalBusinessStatusRefreshCandidates,
+  decoratePlace,
+} from "@/lib/loaders/places";
 import { isValidCoord } from "@/lib/geo";
 import {
   getPlaceDetails,
@@ -21,6 +25,8 @@ import {
   googleStatusToOperational,
 } from "@/lib/integrations/google-places";
 import { selectRotatingStatusTargets } from "@/lib/business-status-refresh";
+import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
+import { isGooglePlaceId } from "@/lib/provenance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,9 +48,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ enabled: true, error: "GOOGLE_PLACES_API_KEY not set" }, { status: 500 });
   }
 
-  const allTargets = PLACES.filter(
-    (p) => p.google_place_id && isValidCoord(p.geom),
-  );
+  const allTargets = canonicalBusinessStatusRefreshCandidates()
+    .map((place) => decoratePlace(place))
+    .filter(
+      (place) =>
+        isValidCoord(place.geom) &&
+        isGooglePlaceId(place.google_place_id),
+    )
+    .sort((a, b) => a.slug.localeCompare(b.slug));
+  const identityCollisions = findGooglePlaceIdCollisions(allTargets);
+  if (identityCollisions.length > 0) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        catalog: allTargets.length,
+        error:
+          `Refusing paid business-status calls for duplicate provider identities:\n${identityCollisions
+            .map(
+              ({ googlePlaceId, slugs }) =>
+                `${googlePlaceId}: ${slugs.join(", ")}`,
+            )
+            .join("\n")}`,
+      },
+      { status: 503 },
+    );
+  }
   const cycleDay = Math.floor(Date.now() / 86_400_000);
   const targets = selectRotatingStatusTargets(allTargets, BATCH, cycleDay);
   const mismatches: Array<{ slug: string; name: string; current: string; google: string }> = [];

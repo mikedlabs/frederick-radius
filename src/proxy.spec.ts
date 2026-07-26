@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBetaExempt } from "./middleware";
+import { isBetaExempt } from "./proxy";
 
 describe("beta wall exemptions", () => {
   it.each(["/privacy", "/privacy/", "/terms", "/terms/"])(
@@ -19,6 +19,22 @@ describe("beta wall exemptions", () => {
     expect(isBetaExempt("/food-trucks")).toBe(true);
     expect(isBetaExempt("/food-trucks/claim")).toBe(true);
     expect(isBetaExempt("/food-trucks/out")).toBe(true);
+    expect(
+      isBetaExempt(
+        "/submit/place",
+        new URLSearchParams({ category: "food-truck" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not open the general place-submission form", () => {
+    expect(isBetaExempt("/submit/place")).toBe(false);
+    expect(
+      isBetaExempt(
+        "/submit/place",
+        new URLSearchParams({ category: "coffee" }),
+      ),
+    ).toBe(false);
   });
 
   it("opens the NFC tap endpoint so a card can grant its own access", () => {

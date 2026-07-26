@@ -1,32 +1,37 @@
 import Link from "next/link";
+import Form from "next/form";
 import { ArrowRight, MessageCircleQuestion } from "lucide-react";
 
 /**
  * A compact front-door launcher for the full Ask Radius workspace.
  *
  * Today should help someone start a question without turning the daily
- * briefing into a chat transcript. This native GET form works before client
- * JavaScript loads and hands the dedicated page its `q` search parameter.
+ * briefing into a chat transcript. Next's progressive form keeps its native
+ * GET fallback before JavaScript loads, then uses in-app navigation once the
+ * page is interactive.
  */
-export default function TodayAsk() {
+export default function TodayAsk({ embedded = false }: { embedded?: boolean }) {
   return (
     <section
       id="ask-radius"
       aria-labelledby="today-ask-heading"
-      className="mt-3 scroll-mt-24"
+      data-surface-row={embedded ? "ask" : undefined}
+      className={embedded ? "scroll-mt-24" : "mt-3 scroll-mt-24"}
     >
       <h2 id="today-ask-heading" className="sr-only">
         Ask Radius
       </h2>
       {/* One query band, set like the first line of a field-guide index. */}
-      <form
+      <Form
         action="/ask"
-        method="get"
         role="search"
-        className="group flex min-h-[58px] items-center gap-2.5 overflow-hidden border-y border-l-2 px-1.5 transition focus-within:bg-[var(--app-bg-elevated-solid)]"
+        className={`group flex min-h-[58px] items-center gap-2.5 overflow-hidden px-1.5 transition focus-within:bg-[var(--app-bg-elevated-solid)] ${
+          embedded ? "border-b" : "border-y border-l-2"
+        }`}
         style={{
           borderColor: "color-mix(in srgb, var(--app-brand) 52%, var(--app-border))",
           background: "color-mix(in srgb, var(--app-brand) 4%, transparent)",
+          boxShadow: embedded ? "inset 3px 0 0 var(--app-brand)" : undefined,
         }}
       >
         <Link
@@ -43,7 +48,7 @@ export default function TodayAsk() {
           >
             <MessageCircleQuestion className="h-[19px] w-[19px]" strokeWidth={2.25} />
           </span>
-          <span className="text-[13px] font-bold leading-none">Ask Radius</span>
+          <span className="text-[13px] font-bold leading-none">Ask</span>
         </Link>
 
         <label htmlFor="today-ask-query" className="sr-only">
@@ -68,7 +73,7 @@ export default function TodayAsk() {
         >
           <ArrowRight className="h-[19px] w-[19px]" strokeWidth={2.5} aria-hidden />
         </button>
-      </form>
+      </Form>
     </section>
   );
 }

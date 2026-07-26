@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import Map, {
   Popup,
   Marker,
@@ -28,7 +28,7 @@ import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { useFollowedSlugs } from "@/hooks/useFollows";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
 import { setScope, SCOPE_PARAM } from "@/lib/scope";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
@@ -43,7 +43,11 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { WALK_LABEL_MAX_METERS, shouldFetchWalkTime, walkTimeQuery } from "@/lib/walkTime";
-import { readCachedPosition } from "@/hooks/useGeolocation";
+import {
+  GEOLOCATION_CHANGE_EVENT,
+  readCachedPosition,
+  useGeolocation,
+} from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
 // map's curated-vs-OSM de-dupe now uses the exact same contract as
@@ -67,6 +71,9 @@ import { nearestMapUtilities, type NearbyUtilityPoint } from "./mapNearby";
 import { installCategoryMarkers, bucketOf } from "./categoryMarkers";
 import { exposeMarkerChild } from "./markerA11y";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import StopArrivalsPopup, {
+  type SelectedStop,
+} from "@/components/transit/StopArrivalsPopup";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -236,6 +243,7 @@ import { easternDayKey } from "@/lib/tz";
 import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { activeFoodTruckPins } from "./foodTruckPins";
 import { groupMapEvents, type MapEventGroup } from "./mapContent";
+import { resolveMapLocationSeed } from "./mapLocationSeed";
 
 /** An instant whose Frederick wall-clock hour equals `scrubHour` — we shift
  *  from "now" by the delta so getOpenStatus (which reads Frederick time)
@@ -418,23 +426,21 @@ export default function AppMap({
   activeSlugs = null,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  const attachMapRef = useCallback((instance: MapRef | null) => {
+    mapRef.current = instance;
+    if (instance) installCategoryMarkers(instance.getMap());
+  }, []);
   // Rotation may refit an untouched county overview, but it must never yank a
   // camera the user deliberately panned, zoomed, searched, or focused.
   const cameraIntentRef = useRef(false);
-  // Effective camera home: when we arrived via a category and already
-  // hold the user's cached fix, open on them so the map (and its
-  // closest-first list) reads "from where you're standing." Read once
-  // at mount — never prompts; falls back to the city center. We seed
-  // initialViewState directly rather than flyTo so there's no jarring
-  // glide from Downtown to the user on load.
-  const cachedPosition = useMemo<LngLat | null>(() => {
-    if (!recenterToKnownLocation) return null;
-    const cached = readCachedPosition();
-    return cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot read of the cached fix at mount
-  }, []);
-  const effectiveCenter: [number, number] = cachedPosition
-    ? [cachedPosition.lng, cachedPosition.lat]
+  // A fresh cached fix always powers ranking and distance labels, but it only
+  // moves the initial camera when the route explicitly opts in. Keeping those
+  // decisions separate makes county browse local without changing its frame.
+  const [locationSeed] = useState(() =>
+    resolveMapLocationSeed(readCachedPosition(), recenterToKnownLocation),
+  );
+  const effectiveCenter: [number, number] = locationSeed.camera
+    ? [locationSeed.camera.lng, locationSeed.camera.lat]
     : initialCenter;
   const searchFallbackOriginRef = useRef<LngLat>({
     lng: effectiveCenter[0],
@@ -466,6 +472,27 @@ export default function AppMap({
     if (![lng, lat, z].every((n) => Number.isFinite(n))) return null;
     return { longitude: lng, latitude: lat, zoom: z };
   }, []);
+  // `reuseMaps` keeps the GL instance warm across route changes. That is a
+  // major speed win, but Mapbox can then retain the camera from the previous
+  // mount and ignore the new component's `initialViewState`. Re-apply an
+  // explicit share/return camera after the ref attaches so opening a saved
+  // map URL, or returning from full search, restores the view it promises.
+  useEffect(() => {
+    if (!urlCamera) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const center = map.getCenter();
+    const alreadyRestored =
+      Math.abs(center.lng - urlCamera.longitude) < 0.00005 &&
+      Math.abs(center.lat - urlCamera.latitude) < 0.00005 &&
+      Math.abs(map.getZoom() - urlCamera.zoom) < 0.005;
+    if (alreadyRestored) return;
+    cameraIntentRef.current = true;
+    map.jumpTo({
+      center: [urlCamera.longitude, urlCamera.latitude],
+      zoom: urlCamera.zoom,
+    });
+  }, [urlCamera]);
   useEffect(() => {
     const updateViewportMode = () => {
       const next = window.innerHeight < 520 && window.innerWidth > window.innerHeight;
@@ -517,6 +544,21 @@ export default function AppMap({
   // one redundant background fetch the first time, served from cache.
   const hydratedRef = useRef(new globalThis.Map<string, PlaceCardData>());
   const openPlaceSheet = (pin: MapPinPlace) => {
+    // React mirrors the selected slug into the map URL, but a fast Details tap
+    // can beat that effect. Commit the selection before the persistent sheet
+    // captures its return path so the full page always comes back to the same
+    // highlighted place rather than a visually similar, unselected map.
+    try {
+      const url = new URL(window.location.href);
+      if (url.pathname === "/map") {
+        url.searchParams.set("place", pin.slug);
+        url.searchParams.delete("event");
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
+    } catch {
+      // The sheet still opens if address-bar persistence is unavailable.
+    }
+
     const withDist = (x: PlaceCardData): PlaceCardData =>
       userLoc ? { ...x, distance_m: haversineMeters(userLoc, x.geom) } : x;
     const cached = hydratedRef.current.get(pin.slug);
@@ -665,7 +707,25 @@ export default function AppMap({
   // the map surface. Marking lives at /report, linked from the map's report
   // entry point, and submitted reports still render via the community
   // reports layer.)
-  const [q, setQ] = useState("");
+  // Search is part of the shareable map state. When a visitor follows a place
+  // result and uses Back to map, restore the query along with the camera and
+  // layers instead of returning them to a visually identical but blank map.
+  // AppMap is mounted with `ssr: false`, so the first client render can safely
+  // seed this from the exact URL carried through `returnTo`.
+  const routeSearchParams = useSearchParams();
+  const routeQuery = (routeSearchParams.get("q") ?? "").slice(0, 160);
+  const [q, setQ] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return (new URLSearchParams(window.location.search).get("q") ?? "").slice(0, 160);
+  });
+  // Next keeps recently visited route segments in its client cache. Returning
+  // from a full place page can therefore revive this map with its prior local
+  // state even though the exact return URL includes a query. Treat the router
+  // URL as authoritative whenever that route snapshot changes so the visible
+  // search field and the shareable map state cannot drift apart.
+  useEffect(() => {
+    setQ((current) => (current === routeQuery ? current : routeQuery));
+  }, [routeQuery]);
   const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
   const searchRequestRef = useRef(0);
   // A global Find result can hand the map both a camera point and a place slug.
@@ -716,7 +776,7 @@ export default function AppMap({
       // URL persistence is an enhancement; the local toggle still works.
     }
   };
-  const [userLoc, setUserLoc] = useState<LngLat | null>(cachedPosition);
+  const [userLoc, setUserLoc] = useState<LngLat | null>(locationSeed.ranking);
   // Ranking fallback when there's no device fix: the saved home town's
   // centroid. Privacy-free (client-local preference, no prompt), and it makes
   // "closest to you first" true for home-town users who never shared location.
@@ -726,6 +786,86 @@ export default function AppMap({
     return slug ? MUNICIPALITIES.find((m) => m.slug === slug)?.centroid ?? null : null;
   }, []);
   const [locating, setLocating] = useState(false);
+  const {
+    state: sharedGeolocationState,
+    requestHighAccuracy: requestSharedGeolocation,
+  } = useGeolocation();
+  const locateRequestedRef = useRef(false);
+
+  // Location can be granted from Ask, Today, or the map itself. The shared
+  // same-tab event keeps map ranking current without moving the camera.
+  useEffect(() => {
+    const syncRankingLocation = () => {
+      const cached = readCachedPosition();
+      setUserLoc(
+        cached && isInFrederickCounty(cached.lng, cached.lat) ? cached : null,
+      );
+    };
+    window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
+    return () =>
+      window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncRankingLocation);
+  }, []);
+
+  // Only an explicit tap on Locate may move the camera. Hook hydration can
+  // update ranking silently, but it never enters this branch.
+  useEffect(() => {
+    if (!locateRequestedRef.current) return;
+    if (
+      sharedGeolocationState.status === "idle" ||
+      sharedGeolocationState.status === "loading"
+    ) {
+      return;
+    }
+
+    locateRequestedRef.current = false;
+    setLocating(false);
+
+    if (sharedGeolocationState.status === "granted") {
+      const loc = {
+        lng: sharedGeolocationState.position.lng,
+        lat: sharedGeolocationState.position.lat,
+      };
+      cameraIntentRef.current = true;
+      haptic("light");
+      track("map_locate", {
+        in_county: isInFrederickCounty(loc.lng, loc.lat),
+      });
+
+      if (!isInFrederickCounty(loc.lng, loc.lat)) {
+        setUserLoc(null);
+        setGeoMsg(
+          "You are outside Frederick County. Showing downtown Frederick.",
+        );
+        mapRef.current?.getMap().flyTo({
+          center: FREDERICK,
+          zoom: 12,
+          duration: prefersReducedMotion() ? 0 : 1100,
+          curve: 1.25,
+          easing: CAM_EASE,
+          essential: true,
+        });
+        return;
+      }
+
+      setGeoMsg(null);
+      setUserLoc(loc);
+      mapRef.current?.getMap().flyTo({
+        center: [loc.lng, loc.lat],
+        zoom: 14,
+        duration: prefersReducedMotion() ? 0 : 1100,
+        curve: 1.25,
+        easing: CAM_EASE,
+        essential: true,
+      });
+      return;
+    }
+
+    setGeoMsg(
+      sharedGeolocationState.status === "denied"
+        ? "Location is off. Enable it in your browser to use Near me."
+        : "Couldn't get your location. Try again.",
+    );
+  }, [sharedGeolocationState]);
   const [showCivic, setShowCivic] = useState(() => layerPrefs.civic ?? false);
   const [showTrails, setShowTrails] = useState(() => layerPrefs.trails ?? trailsLayerDefault);
   const [showTransit, setShowTransit] = useState(
@@ -871,6 +1011,10 @@ export default function AppMap({
   // MARC station popup (Transit layer, phase 3). Holds the station name;
   // departures are looked up from the marcStations prop at render.
   const [marcPeek, setMarcPeek] = useState<string | null>(null);
+  // Bus-stop selection uses the same arrival detail as the dedicated transit
+  // map. Keeping it in a bottom drawer makes the result reachable with one
+  // thumb and leaves the map visible behind it.
+  const [selectedTransitStop, setSelectedTransitStop] = useState<SelectedStop | null>(null);
   // Current viewport bounds (set on every settled move) — makes the dock's
   // count line honest to what the EYES see, not the whole county
   // (viewport-honest count, 2026-07-17 map audit). Null until first settle
@@ -1513,6 +1657,7 @@ export default function AppMap({
     setSelectedEvent(null);
     setEventGroup(null);
     setCivicTown(null); // any tap dismisses a prior town sheet
+    setSelectedTransitStop(null);
     // A direct map selection takes over from a synthesized finding. The map
     // should never make the user wonder which of two different cards is live.
     if (selectedDiscovery) setSelectedDiscovery(null);
@@ -1540,6 +1685,30 @@ export default function AppMap({
     if (layer === "marc-station-pins") {
       setMarcPeek(String(feature.properties?.name ?? ""));
       haptic("light");
+      return;
+    }
+    if (layer === "transit-stop-hit") {
+      const props = (feature.properties ?? {}) as { id?: string; name?: string };
+      if (feature.geometry.type === "Point" && props.id != null) {
+        // A stop is the one active map result. Clear every competing peek so
+        // closing its drawer cannot reveal a stale card from an earlier tap.
+        setSelected(null);
+        setSelectedSlug(null);
+        setPeekPlace(null);
+        setParkingPeek(null);
+        setFoodTruckPeek(null);
+        setMarcPeek(null);
+        setSelectedAerial(null);
+        setSelectedCemetery(null);
+        const [lng, lat] = feature.geometry.coordinates as [number, number];
+        setSelectedTransitStop({
+          id: String(props.id),
+          name: String(props.name ?? "Bus stop"),
+          lng,
+          lat,
+        });
+        haptic("light");
+      }
       return;
     }
     const map = mapRef.current?.getMap();
@@ -1791,6 +1960,15 @@ export default function AppMap({
 
   const pickSearch = (r: SearchResult) => {
     haptic("light");
+    // Selecting a result dismisses the search tray, but the query remains part
+    // of the exact map state carried into a PlaceSheet/full detail. Reassert it
+    // synchronously because unrelated URL effects can still be settling while
+    // the user chooses a result.
+    if (q.trim()) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("q", q.trim());
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
     // A focused result belongs on the map. If search was opened while the
     // synchronized list was visible, return to the canvas before moving the
     // camera or opening a peek.
@@ -2018,57 +2196,10 @@ export default function AppMap({
   }), [cemeteries]);
 
   const goNearMe = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    locateRequestedRef.current = true;
     setLocating(true);
     setGeoMsg(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
-        cameraIntentRef.current = true;
-        haptic("light");
-        track("map_locate", { in_county: isInFrederickCounty(loc.lng, loc.lat) });
-        // County lock (6.2): a user physically outside Frederick County
-        // gets the county itself, centered on downtown, not a flight to
-        // an out-of-area "you are here" the leash would then fight. We
-        // also skip the user-location pin and radius in that case, since
-        // there is nothing in range to anchor.
-        if (!isInFrederickCounty(loc.lng, loc.lat)) {
-          setUserLoc(null);
-          setGeoMsg("You are outside Frederick County. Showing downtown Frederick.");
-          mapRef.current?.getMap().flyTo({
-            center: FREDERICK,
-            zoom: 12,
-            duration: prefersReducedMotion() ? 0 : 1100,
-            curve: 1.25,
-            easing: CAM_EASE,
-            essential: true,
-          });
-          return;
-        }
-        setGeoMsg(null);
-        setUserLoc(loc);
-        // A deliberate in-county recenter, eased with the same curve as
-        // every other move so it still feels calm, not a snap.
-        mapRef.current?.getMap().flyTo({
-          center: [loc.lng, loc.lat],
-          zoom: 14,
-          duration: prefersReducedMotion() ? 0 : 1100,
-          curve: 1.25,
-          easing: CAM_EASE,
-          essential: true,
-        });
-      },
-      (err) => {
-        setLocating(false);
-        setGeoMsg(
-          err && err.code === 1
-            ? "Location is off. Enable it in your browser to use Near me."
-            : "Couldn't get your location. Try again.",
-        );
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
+    requestSharedGeolocation();
   };
 
   // Reframe the whole county. Shared by the dock's Where control and the
@@ -2388,13 +2519,13 @@ export default function AppMap({
             now. */}
 
         <Map
-          ref={mapRef}
+          ref={attachMapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={
-            urlCamera ?? (cachedPosition
+            urlCamera ?? (locationSeed.camera
               ? {
-                  longitude: cachedPosition.lng,
-                  latitude: cachedPosition.lat,
+                  longitude: locationSeed.camera.lng,
+                  latitude: locationSeed.camera.lat,
                   zoom: initialZoom,
                 }
               : initialBounds
@@ -2441,7 +2572,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-icons", "curated-active-icons", "curated-hit", "aerial-icons", "cemetery-icons", "marc-station-pins", "muni-label"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-icons", "curated-active-icons", "curated-hit", "aerial-icons", "cemetery-icons", "transit-stop-hit", "marc-station-pins", "muni-label"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -2716,6 +2847,23 @@ export default function AppMap({
                 "circle-opacity": 0.85,
                 "circle-stroke-width": 1,
                 "circle-stroke-color": "#F4EEE2",
+              }}
+            />
+            <Layer
+              id="transit-stop-hit"
+              type="circle"
+              minzoom={12.5}
+              paint={{
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  12.5, 9,
+                  13, 12,
+                  16, 18,
+                ],
+                "circle-color": "#285D73",
+                "circle-opacity": 0,
               }}
             />
             <Layer
@@ -4096,6 +4244,33 @@ export default function AppMap({
         {foodTruckPeek && !peekPlace && !parkingPeek && !listView && (
           <MapFoodTruckPeek pin={foodTruckPeek} onClose={() => setFoodTruckPeek(null)} />
         )}
+
+        <BottomDrawer
+          title={selectedTransitStop?.name ?? "Bus stop"}
+          subtitle="Live Frederick County TransIT arrivals"
+          open={selectedTransitStop !== null && !listView}
+          onOpenChange={(open) => {
+            if (!open) setSelectedTransitStop(null);
+          }}
+        >
+          {selectedTransitStop && (
+            <div className="pb-4">
+              <StopArrivalsPopup
+                key={selectedTransitStop.id}
+                stop={selectedTransitStop}
+                showName={false}
+              />
+              <Link
+                href="/transit"
+                className="tap-44 mt-3 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+              >
+                Open Transit
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              </Link>
+            </div>
+          )}
+        </BottomDrawer>
 
         {/* MARC station popup — the next scheduled trains, as clock times
             from the committed GTFS schedule (weekday commuter service;

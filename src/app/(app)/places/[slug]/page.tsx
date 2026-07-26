@@ -46,6 +46,7 @@ import SourceBadge from "@/components/place/SourceBadge";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import LiveGooglePlaceContext from "@/components/place/GooglePlaceContext";
 import PlaceDescriptionCredit from "@/components/place/PlaceDescriptionCredit";
+import MapReturnLink from "@/components/place/MapReturnLink";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -209,9 +210,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   };
 
   return (
-    // pb under lg leaves room so the last content clears the sticky
-    // MobileActionBar (which floats ~76px above the nav pill).
-    <div className="space-y-5 reveal-up pb-28 sm:space-y-6 lg:pb-0">
+    // AppMain owns the one shared mobile-chrome reserve. Adding another page
+    // pad here created a large empty tail beneath every place.
+    <div className="space-y-5 reveal-up sm:space-y-6">
       {/* Records this slug into the device-local recent-places list
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
@@ -250,6 +251,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           googleMapsUri={place.google_maps_uri}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
+          <Suspense fallback={null}>
+            <MapReturnLink />
+          </Suspense>
           {/* Title row carries the place name + address only. Save
               lives in exactly one place — the prominent "Add to My
               Radius" CTA below — so the visitor sees a single save

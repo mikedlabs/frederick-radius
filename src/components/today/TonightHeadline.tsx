@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // Data-free formatter (never the loader) so this stays a light leaf.
 import { eventDateBlock } from "@/lib/events/format";
@@ -40,7 +41,7 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
   const date = eventDateBlock(event);
   const accent = CATEGORY_BY_SLUG[event.category]?.color ?? "#7A7975";
   const approvedVisual = eventCardVisual(event);
-  const featureImage = approvedVisual?.src ?? event.hero_image;
+  const featureImage = approvedVisual?.src;
   const tonight = !event.is_all_day && easternStartHour(event.starts_at) >= 17;
   // The one editor's pick, and it SAYS so (the unlabeled hero was the first
   // "why is this big?" of the old section) — same wording the What's-on
@@ -56,6 +57,8 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
   const where = [venue, town && town.toLowerCase() !== venue?.toLowerCase() ? town : null]
     .filter(Boolean)
     .join(" · ");
+  const titleId = `today-headliner-${event.slug}-title`;
+  const detailId = `today-headliner-${event.slug}-detail`;
 
   return (
     <section aria-label="The headliner" className="mt-6">
@@ -71,60 +74,79 @@ export default function TonightHeadline({ event, now }: { event: EventWithMeta; 
       {isKeysEvent(event) ? (
         <KeysCard event={event} variant="feature" />
       ) : (
-        <article className="group relative">
-          {/* The headline — the event title itself in the display serif, page-
-              title scale. The absolute-inset span makes the whole block (title,
-              meta, photo) one tap target, the standard card pattern. */}
-          <h2
-            className="px-0.5 font-serif text-[27px] font-semibold leading-[1.06] tracking-tight [text-wrap:balance] sm:text-[32px]"
-            style={{ color: "var(--app-ink)" }}
+        <article className="min-w-0">
+          <Link
+            href={`/events/${event.slug}`}
+            prefetch={false}
+            aria-labelledby={titleId}
+            aria-describedby={detailId}
+            className={`group block min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--app-bg)] ${
+              featureImage ? "" : "border-y py-4"
+            }`}
+            style={featureImage ? undefined : { borderColor: "var(--app-border)" }}
           >
-            <Link
-              href={`/events/${event.slug}`}
-              prefetch={false}
-              className="outline-none focus-visible:underline"
+            {/* This is Today’s one opt-in editorial face. It stays fluid and
+                untruncated so a real event name still reads cleanly at 320px. */}
+            <h2
+              id={titleId}
+              className="min-w-0 break-words px-0.5 font-editorial text-[clamp(1.875rem,9vw,2.75rem)] leading-[0.98] tracking-[-0.025em] [text-wrap:balance]"
+              style={{ color: "var(--app-ink)" }}
             >
-              <span className="absolute inset-0" aria-hidden />
               {event.title}
-            </Link>
-          </h2>
-          <p className="mt-1.5 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            <span
-              className="font-mono font-semibold tabular-nums"
-              style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+            </h2>
+            <p
+              id={detailId}
+              className="mt-2 px-0.5 text-[13px] leading-snug"
+              style={{ color: "var(--app-ink-2)" }}
             >
-              {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
-            </span>
-            {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
-            {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
-          </p>
-          {/* The picture under the headline. Source-aware venue visuals are
-              labeled as the place they depict, so a Carroll Creek photograph
-              never pretends to document this specific event. */}
-          {featureImage && (
-            <figure
-              className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[21/9]"
-              style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}
-            >
-              <Image
-                src={featureImage}
-                alt=""
-                fill
-                unoptimized={featureImage.startsWith("/api/place-photo")}
-                priority
-                sizes="(max-width: 640px) 100vw, 720px"
-                placeholder="blur"
-                blurDataURL={PAPER_CREAM_BLUR}
-                className="object-cover"
-              />
-              {approvedVisual?.caption && (
-                <figcaption className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
-                  {approvedVisual.caption}
-                </figcaption>
-              )}
-              <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
-            </figure>
-          )}
+              <span
+                className="font-mono font-semibold tabular-nums"
+                style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-2)" }}
+              >
+                {live ? "On now" : date.time || `${date.weekday} ${date.month} ${date.day}`}
+              </span>
+              {where && <span style={{ color: "var(--app-ink-3)" }}> · {where}</span>}
+              {event.is_free && <span style={{ color: "var(--app-cool)" }}> · Free</span>}
+            </p>
+            {/* Source-aware venue visuals are labeled as the place they depict,
+                so a Carroll Creek photograph never pretends to document this
+                specific event. */}
+            {featureImage ? (
+              <figure
+                className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[21/9]"
+                style={{ boxShadow: "var(--app-elev-1), var(--app-edge)" }}
+              >
+                <Image
+                  src={featureImage}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(max-width: 640px) 100vw, 720px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.015]"
+                />
+                {approvedVisual.caption && (
+                  <figcaption className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+                    {approvedVisual.caption}
+                  </figcaption>
+                )}
+                <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: 0.9 }} />
+              </figure>
+            ) : (
+              <span
+                className="mt-3 inline-flex items-center gap-1.5 px-0.5 text-[12px] font-semibold"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                View event
+                <ArrowRight
+                  aria-hidden
+                  className="h-3.5 w-3.5 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5"
+                  strokeWidth={2.1}
+                />
+              </span>
+            )}
+          </Link>
         </article>
       )}
     </section>

@@ -16,7 +16,6 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PLACES } from "@/data/places";
 import { isValidCoord } from "@/lib/geo";
 import {
   getPlaceDetails,
@@ -28,6 +27,11 @@ import {
   selectRotatingStatusTargets,
   type BusinessStatusRefreshEntry,
 } from "@/lib/business-status-refresh";
+import {
+  canonicalBusinessStatusRefreshCandidates,
+  decoratePlace,
+} from "@/lib/loaders/places";
+import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 
 const OUT = resolve("src/data/business-status.json");
 
@@ -47,13 +51,22 @@ async function main() {
   }
 
   const limit = requestLimit();
-  const allTargets = PLACES
+  const allTargets = canonicalBusinessStatusRefreshCandidates()
+    .map((place) => decoratePlace(place))
     .filter(
       (place) =>
         isValidCoord(place.geom) &&
         isGooglePlaceId(place.google_place_id),
     )
     .sort((a, b) => a.slug.localeCompare(b.slug));
+  const identityCollisions = findGooglePlaceIdCollisions(allTargets);
+  if (identityCollisions.length > 0) {
+    throw new Error(
+      `Refusing paid business-status calls for duplicate provider identities:\n${identityCollisions
+        .map(({ googlePlaceId, slugs }) => `${googlePlaceId}: ${slugs.join(", ")}`)
+        .join("\n")}`,
+    );
+  }
   const cycleDay = Math.floor(Date.now() / 86_400_000);
   const targets = selectRotatingStatusTargets(
     allTargets,
@@ -84,6 +97,7 @@ async function main() {
     // UNKNOWN is not evidence that a prior closed/open verdict changed.
     if (status === "needs_verification") continue;
     overrides[p.slug] = {
+      place_id: p.google_place_id as string,
       is_operational: status,
       refreshed_at: new Date().toISOString(),
     };
@@ -99,7 +113,7 @@ async function main() {
 
   const out = {
     _doc:
-      "Latest Google business-status checks. The canonical place loader applies these rows after manual safety overrides and reconciles them with the rolling hours refresh by refreshed_at.",
+      "Latest Google business-status checks, bound to the public catalog identity by place_id. The canonical place loader applies matching rows after manual safety overrides and reconciles them with the rolling hours refresh by refreshed_at.",
     generated_at: new Date().toISOString(),
     api_calls: calls,
     last_batch_updated: updated,

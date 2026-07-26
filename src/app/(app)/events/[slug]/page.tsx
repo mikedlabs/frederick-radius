@@ -345,9 +345,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const remainingUpcoming = moreUpcoming.items.slice(3);
 
   return (
-    // pb under lg leaves room so the last content clears the sticky
-    // MobileActionBar (which floats ~76px above the nav pill).
-    <div className="space-y-5 pb-28 sm:space-y-6 lg:pb-0">
+    // AppMain owns the one shared mobile-chrome reserve. Adding another page
+    // pad here created a large empty tail beneath every event.
+    <div className="space-y-5 sm:space-y-6">
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">

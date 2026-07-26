@@ -3,7 +3,6 @@ import { RADIUS_TOOLS } from "@/data/radius-tools";
 import {
   buildCompassSections,
   commonCompassTasks,
-  featuredCompassGuides,
   splitEssentialItems,
 } from "./CompassHub";
 
@@ -46,35 +45,37 @@ describe("Compass browse model", () => {
     expect(settingsLinks[0].label).toBe("Choose your home town");
   });
 
-  it("derives quick access from registered tools", () => {
+  it("leads quick access with the decision gateway and practical utilities", () => {
     const tasks = commonCompassTasks(buildCompassSections(null));
 
     expect(tasks.map((item) => item.id)).toEqual([
-      "places",
+      "ask-radius",
       "nearby",
-      "events",
-      "county-map",
-      "parking",
+      "county-pulse",
       "public-essentials",
     ]);
-    expect(tasks.every((item) => RADIUS_TOOLS.some((tool) => tool.id === item.id))).toBe(true);
+    expect(tasks.map((item) => item.id)).not.toContain("events");
+    expect(tasks.map((item) => item.id)).not.toContain("county-map");
+    expect(
+      tasks
+        .filter((item) => item.id !== "ask-radius")
+        .every((item) => RADIUS_TOOLS.some((tool) => tool.id === item.id)),
+    ).toBe(true);
   });
 
-  it("surfaces the local guide destinations without opening a category first", () => {
-    const guides = featuredCompassGuides(buildCompassSections(null));
+  it("keeps Events, Map, and local guides available in their browse topics", () => {
+    const sections = buildCompassSections(null);
+    const represented = new Set(sections.flatMap((section) => section.items.map((item) => item.id)));
 
-    expect(guides.map((item) => item.id)).toEqual([
+    expect([...represented]).toEqual(expect.arrayContaining([
+      "events",
+      "county-map",
       "food-trucks",
       "beer-tools",
       "sports",
       "live-music",
       "trails",
       "rivers",
-    ]);
-    expect(
-      guides.every((item) =>
-        RADIUS_TOOLS.some((tool) => tool.id === item.id),
-      ),
-    ).toBe(true);
+    ]));
   });
 });

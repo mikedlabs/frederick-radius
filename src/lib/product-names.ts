@@ -14,9 +14,9 @@ export const PRODUCT_NAMES = {
   },
   allTools: {
     uiLabel: "All tools",
-    pageTitle: "Frederick County tools",
-    shareTitle: "Frederick County tools | Frederick Radius",
-    description: "Open every Frederick Radius tool from one searchable index.",
+    pageTitle: "All tools",
+    shareTitle: "All Frederick Radius tools",
+    description: "Search every Frederick Radius tool from one index.",
   },
   liveConditions: {
     uiLabel: "Live conditions",
@@ -53,6 +53,13 @@ export const PRODUCT_NAMES = {
     pageTitle: "Frederick County in numbers",
     shareTitle: "Frederick County in numbers | Frederick Radius",
     description: "See counts calculated from the published Frederick Radius datasets.",
+  },
+  civicSignals: {
+    uiLabel: "Civic signals",
+    pageTitle: "Civic signals for Frederick County",
+    shareTitle: "Civic signals for Frederick County | Frederick Radius",
+    description:
+      "Read source-backed findings calculated from approved Frederick public datasets.",
   },
   saved: {
     uiLabel: "Saved",

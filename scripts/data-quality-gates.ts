@@ -144,6 +144,22 @@ const GATES: Gate[] = [
     },
   },
   {
+    id: "place_hours_refresh_reach",
+    severity: "high",
+    audit: "DQ-001/DQ-003 pipeline capacity",
+    run: () => {
+      const refreshable = PLACES.filter((place) =>
+        isGooglePlaceId(place.google_place_id),
+      ).length;
+      const r = pct(refreshable, PLACES.length);
+      return {
+        pass: r >= 0.6,
+        observed: `${fmtPct(r)} (${refreshable} of ${PLACES.length}) can enter the seven-day Google refresh cycle`,
+        expect: ">= 60% so the refresh pipeline can satisfy the strict hours gate",
+      };
+    },
+  },
+  {
     id: "place_hours_freshness",
     severity: "high",
     audit: "DQ-001/DQ-003",
@@ -283,19 +299,13 @@ const GATES: Gate[] = [
     severity: "high",
     audit: "DQ-020",
     run: () => {
-      let uuids = 0;
-      let checked = 0;
-      for (const p of PLACES) {
-        const gid = ENRICH[p.slug]?.google_place_id;
-        if (!gid) continue;
-        checked++;
-        if (!isGooglePlaceId(gid)) uuids++;
-      }
+      const ids = PLACES.map((place) => place.google_place_id).filter(Boolean);
+      const invalid = ids.filter((id) => !isGooglePlaceId(id));
       // Not a P0 fail: the render-time fix (isGooglePlaceId in provenance)
-      // already suppresses links for these; this tracks the raw-data debt.
+      // and the paid hours cron both suppress these; this tracks source debt.
       return {
-        pass: uuids === 0,
-        observed: `${uuids} of ${checked} google_place_id values are UUID-shaped`,
+        pass: invalid.length === 0,
+        observed: `${invalid.length} of ${ids.length} public google_place_id values are invalid`,
         expect: "0 (links already suppressed; clean the source data)",
       };
     },

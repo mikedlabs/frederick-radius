@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildWantAnswer, partitionWant, rankBestFit, type WantCandidate } from "./want-answer";
+import {
+  buildWantAnswer,
+  partitionWant,
+  rankBestFit,
+  usefulDealHook,
+  usefulFallbackSignature,
+  type WantCandidate,
+} from "./want-answer";
 
 function cand(over: Partial<WantCandidate> & { slug: string }): WantCandidate {
   return {
@@ -84,6 +91,47 @@ describe("partitionWant", () => {
   });
 });
 
+describe("usefulDealHook", () => {
+  it("drops contextless price fragments", () => {
+    expect(usefulDealHook("$2.75")).toBeNull();
+    expect(usefulDealHook("50% OFF")).toBeNull();
+    expect(usefulDealHook("$2 OFF")).toBeNull();
+  });
+
+  it("keeps an offer when it names what the price applies to", () => {
+    expect(usefulDealHook("$5 cocktails")).toBe("$5 cocktails");
+    expect(usefulDealHook("Half-price wine bottles")).toBe(
+      "Half-price wine bottles",
+    );
+  });
+});
+
+describe("usefulFallbackSignature", () => {
+  it("drops fragments created when a repeated place name is removed", () => {
+    expect(
+      usefulFallbackSignature(
+        "has operated downtown since 1996, serving house beer.",
+      ),
+    ).toBeNull();
+  });
+
+  it("drops conversational filler instead of presenting it as Radius copy", () => {
+    expect(
+      usefulFallbackSignature(
+        "They have bands sometimes and are sometimes open.",
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps a clean, specific description", () => {
+    expect(
+      usefulFallbackSignature(
+        "This South Market restaurant serves Spanish tapas and paella.",
+      ),
+    ).toBe("This South Market restaurant serves Spanish tapas…");
+  });
+});
+
 describe("buildWantAnswer context", () => {
   it("carries an explicit town scope into both the answer and browse door", () => {
     const answer = buildWantAnswer("coffee", null, null, new Date("2026-07-15T16:00:00Z"), {
@@ -127,6 +175,27 @@ describe("buildWantAnswer context", () => {
     expect(ranked[0]?.slug).toBe("nearby");
   });
 
+  it("leads with Gravel & Grind for coffee beside its downtown storefront", () => {
+    const answer = buildWantAnswer(
+      "coffee",
+      null,
+      { lng: -77.4096, lat: 39.42165 },
+      new Date("2026-07-26T16:00:00.000Z"),
+      {
+        contextLabel: "Near you",
+        contextSource: "device",
+      },
+    );
+
+    expect(answer?.hero).toMatchObject({
+      slug: "gravel-and-grind-frederick",
+      name: "Gravel & Grind",
+      confidence: "likely",
+    });
+    expect(answer?.hero?.distance).toBe("1 min walk");
+    expect(answer?.also.some((row) => /starbucks/i.test(row.name))).toBe(false);
+  });
+
   it("does not let an approximate centroid crown the fluke nearest place", () => {
     const ranked = rankBestFit([
       cand({ slug: "centroid-chain", name: "Starbucks", distance_m: 80, feature_score: 5 }),
@@ -146,9 +215,62 @@ describe("buildWantAnswer context", () => {
     expect(answer?.open).toBeDefined();
     expect(answer?.total).toBeGreaterThan(10);
     expect(
-      answer?.open?.every((row) => /^(?:Open|Closing soon)\b/.test(row.fact)),
+      answer?.open?.every((row) =>
+        row.confidence === "likely"
+          ? row.fact === "Likely open · check hours"
+          : /^(?:Open|Closing soon)\b/.test(row.fact),
+      ),
     ).toBe(true);
     expect(new Set(answer?.open?.map((row) => row.slug)).size).toBe(answer?.open?.length);
+  });
+
+  it("uses a conservative, labeled fallback when confirmed hours have expired", () => {
+    const answer = buildWantAnswer(
+      "coffee",
+      null,
+      null,
+      new Date("2030-07-28T17:00:00.000Z"),
+    );
+
+    expect(answer?.hero).not.toBeNull();
+    expect(answer?.hero?.confidence).toBe("likely");
+    expect(answer?.hero?.fact).toBe("Likely open · check hours");
+    expect(answer?.also.every((row) => row.confidence === "likely")).toBe(true);
+  });
+
+  it("answers movies with both local cinemas and their official showtime actions", () => {
+    const answer = buildWantAnswer(
+      "movies",
+      null,
+      null,
+      new Date("2026-07-26T23:00:00.000Z"),
+    );
+    const choices = [answer?.hero, ...(answer?.also ?? [])].filter(Boolean);
+
+    expect(answer).toMatchObject({
+      rankingMode: "best-fit",
+      total: 2,
+      later: [],
+      notable: [],
+    });
+    expect(choices).toHaveLength(2);
+    expect(choices.map((row) => row?.name).sort()).toEqual([
+      "Regal Westview",
+      "Warehouse Cinemas Frederick",
+    ]);
+    expect(choices.every((row) => row?.fact === "Choose a film and showtime.")).toBe(true);
+    expect(choices.map((row) => row?.action)).toEqual(
+      expect.arrayContaining([
+        {
+          label: "Showtimes & tickets",
+          href: "https://frederick.warehousecinemas.com/tickets-showtimes/",
+        },
+        {
+          label: "Showtimes & tickets",
+          href: "https://www.regmovies.com/theatres/regal-westview-1910",
+        },
+      ]),
+    );
   });
 });
 

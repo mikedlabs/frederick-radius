@@ -13,7 +13,7 @@
  * down, so the daily GitHub Action shows red (and can alert) on real
  * breakage while staying quiet on flaky non-critical hosts.
  *
- * Usage: tsx scripts/feed-health.ts
+ * Usage: npm run feed:health
  */
 import { VERIFIED_TOWN_WEBSITES } from "@/data/town-websites";
 
@@ -55,14 +55,50 @@ const TOWN_ENDPOINTS: Endpoint[] = VERIFIED_TOWN_WEBSITES.filter(
 // critical and fail the run.
 const FEED_ENDPOINTS: Endpoint[] = [
   {
-    group: "GTFS",
+    group: "TransIT static GTFS",
     url: "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip",
     critical: true,
     method: "HEAD",
   },
   {
-    group: "GTFS",
+    group: "TransIT vehicle positions",
     url: "https://passio3.com/frederick/passioTransit/gtfs/realtime/vehiclePositions",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "TransIT trip updates",
+    url: "https://passio3.com/frederick/passioTransit/gtfs/realtime/tripUpdates",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "TransIT service alerts",
+    url: "https://passio3.com/frederick/passioTransit/gtfs/realtime/serviceAlerts",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "MARC static GTFS",
+    url: "https://feeds.mta.maryland.gov/gtfs/marc",
+    critical: true,
+    method: "HEAD",
+  },
+  {
+    group: "MARC vehicle positions",
+    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-vp.pb",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "MARC trip updates",
+    url: "https://mdotmta-gtfs-rt.s3.amazonaws.com/MARC+RT/marc-tu.pb",
+    critical: true,
+    method: "GET",
+  },
+  {
+    group: "MTA service alerts",
+    url: "https://feeds.mta.maryland.gov/alerts.pb",
     critical: true,
     method: "GET",
   },

@@ -4,8 +4,23 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { submitEventAction, type SubmitEventInput } from "./actions";
+import BotTrapFields from "./BotTrapFields";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
+
+const EVENT_FIELD_MAX_LENGTHS: Record<string, number> = {
+  title: 160,
+  organizer: 160,
+  starts_at: 32,
+  ends_at: 32,
+  venue_name: 160,
+  address: 240,
+  description: 4_000,
+  price_text: 80,
+  ticket_url: 2_048,
+  submitter_name: 120,
+  submitter_email: 254,
+};
 
 export default function SubmitEventForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -41,6 +56,7 @@ export default function SubmitEventForm() {
       organizer: String(data.get("organizer") ?? ""),
       submitter_email: String(data.get("submitter_email") ?? ""),
       submitter_name: String(data.get("submitter_name") ?? ""),
+      contact_fax: String(data.get("contact_fax") ?? ""),
     };
     if (!input.title || !input.starts_at || !input.submitter_email) {
       setError("Title, start time, and your email are required.");
@@ -52,11 +68,15 @@ export default function SubmitEventForm() {
     }
     startTransition(async () => {
       try {
-        await submitEventAction(input);
+        const result = await submitEventAction(input);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
         setSubmitted(true);
         setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "We couldn’t submit this event. Try again in a minute.");
+      } catch {
+        setError("We couldn’t submit this event. Try again in a minute.");
       }
     });
   };
@@ -77,6 +97,7 @@ export default function SubmitEventForm() {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+      <BotTrapFields />
       <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
       <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -126,6 +147,7 @@ function Field({ name, label, required, type = "text", placeholder }: { name: st
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}
+        maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
@@ -139,6 +161,7 @@ function Textarea({ name, label, rows = 3 }: { name: string; label: string; rows
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <textarea
         name={name} rows={rows}
+        maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />

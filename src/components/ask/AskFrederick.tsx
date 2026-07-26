@@ -34,6 +34,7 @@ import { haptic } from "@/lib/haptics";
 import { getInterests } from "@/lib/personalize";
 import {
   getScope,
+  parseScope,
   scopeLabel,
   scopeTownSlug,
   setScope,
@@ -44,6 +45,14 @@ import type { TodayPrompt } from "@/lib/today-prompts";
 import { track } from "@/lib/track";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import SaveButton from "@/components/saved/SaveButton";
+import {
+  createAskReturnId,
+  historyStateWithAskReturn,
+  readAskReturnId,
+  readAskReturnSnapshot,
+  writeAskReturnSnapshot,
+  type AskReturnSnapshot,
+} from "@/lib/ask/return-state";
 
 const ASK_CACHE_LIMIT = 24;
 const ASK_CACHE_TTL_MS = 45_000;
@@ -318,13 +327,22 @@ export function canDisplayAskSourcePhoto(
   return !isGooglePhoto || /^\/places\//.test(source.href);
 }
 
-function AskSourceCard({ source, index }: { source: AskSource; index: number }) {
+function AskSourceCard({
+  source,
+  index,
+  onInternalOpen,
+}: {
+  source: AskSource;
+  index: number;
+  onInternalOpen?: (index: number) => void;
+}) {
   const external = source.href.startsWith("http");
   const saveTarget = sourceSaveTarget(source);
   const phone = source.phone?.replace(/[^+\d]/g, "");
   const displayPhoto = canDisplayAskSourcePhoto(source);
   return (
     <article
+      data-ask-source-index={index}
       className="overflow-hidden border-y"
       style={{
         borderColor: "var(--app-border)",
@@ -369,6 +387,9 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
                 href={source.href}
                 target={external ? "_blank" : undefined}
                 rel={external ? "noopener noreferrer" : undefined}
+                onClick={() => {
+                  if (!external) onInternalOpen?.(index);
+                }}
                 className="mt-1 block font-sans text-[17px] font-semibold leading-tight tracking-tight hover:underline"
                 style={{ color: "var(--app-ink)" }}
               >
@@ -439,7 +460,10 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
           href={source.href}
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
-          onClick={() => haptic("light")}
+          onClick={() => {
+            haptic("light");
+            if (!external) onInternalOpen?.(index);
+          }}
           className="tap-44 inline-flex flex-1 items-center justify-center gap-1.5 px-3 text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70"
           style={{ color: "var(--app-brand-press)" }}
         >
@@ -467,7 +491,13 @@ function AskSourceCard({ source, index }: { source: AskSource; index: number }) 
   );
 }
 
-function AskPlanCard({ plan }: { plan: AskPlanPreview }) {
+function AskPlanCard({
+  plan,
+  onInternalOpen,
+}: {
+  plan: AskPlanPreview;
+  onInternalOpen?: () => void;
+}) {
   return (
     <section
       aria-labelledby="ask-plan-title"
@@ -535,6 +565,9 @@ function AskPlanCard({ plan }: { plan: AskPlanPreview }) {
               <div className="flex items-start justify-between gap-3">
                 <Link
                   href={stop.href}
+                  onClick={() => {
+                    if (!stop.href.startsWith("http")) onInternalOpen?.();
+                  }}
                   className="font-sans text-[16px] font-semibold leading-tight hover:underline"
                   style={{ color: "var(--app-ink)" }}
                 >
@@ -567,6 +600,9 @@ function AskPlanCard({ plan }: { plan: AskPlanPreview }) {
 
       <Link
         href={plan.href}
+        onClick={() => {
+          if (!plan.href.startsWith("http")) onInternalOpen?.();
+        }}
         className="group flex min-h-12 items-center justify-between border-t px-4 text-[12px] font-semibold"
         style={{ borderColor: "var(--app-border)", color: "var(--app-brand-press)" }}
       >
@@ -751,6 +787,11 @@ export default function AskFrederick({
   const visibleResultRef = useRef<AskResult | null>(null);
   const pendingNearbyQueryRef = useRef<string | null>(null);
   const urlQueryRef = useRef<string | null>(null);
+  const skipNextAnswerScrollRef = useRef(false);
+  const restorePositionRef = useRef<{
+    scrollY: number;
+    clickedSourceIndex: number | null;
+  } | null>(null);
   const askRef = useRef<(query: string, options?: AskOptions) => Promise<void>>(
     async () => {},
   );
@@ -796,6 +837,33 @@ export default function AskFrederick({
 
   useEffect(() => {
     if (!res || loading) return;
+    if (skipNextAnswerScrollRef.current) {
+      skipNextAnswerScrollRef.current = false;
+      const restoration = restorePositionRef.current;
+      restorePositionRef.current = null;
+      if (!restoration) return;
+
+      let innerFrame: number | null = null;
+      const outerFrame = window.requestAnimationFrame(() => {
+        // Wait one more paint for an expanded source list to reach its final
+        // height before restoring the exact reading position.
+        innerFrame = window.requestAnimationFrame(() => {
+          window.scrollTo({ top: restoration.scrollY, behavior: "auto" });
+          if (restoration.clickedSourceIndex === null) return;
+          const card = document.querySelector<HTMLElement>(
+            `[data-ask-source-index="${restoration.clickedSourceIndex}"]`,
+          );
+          card?.querySelector<HTMLElement>("a[href]")?.focus({
+            preventScroll: true,
+          });
+        });
+      });
+      return () => {
+        window.cancelAnimationFrame(outerFrame);
+        if (innerFrame !== null) window.cancelAnimationFrame(innerFrame);
+      };
+    }
+
     const frame = window.requestAnimationFrame(() => {
       answerHeadingRef.current?.focus({ preventScroll: true });
       answerHeadingRef.current?.scrollIntoView({
@@ -838,6 +906,46 @@ export default function AskFrederick({
     // from its bounded cache instead of leaving a question-only workspace.
     if (!text || (urlQueryRef.current === text && visibleResultRef.current)) return;
     urlQueryRef.current = text;
+
+    // A source detail page is part of the same Ask journey. Rehydrate the
+    // answer saved on the matching browser-history entry instead of paying
+    // for the same request again and throwing the reader back to the top.
+    let restored: AskReturnSnapshot<AskResult> | null = null;
+    try {
+      restored = readAskReturnSnapshot<AskResult>(
+        window.sessionStorage,
+        window.history.state,
+        text,
+      );
+    } catch {
+      // Some privacy modes block access to sessionStorage entirely. The
+      // normal bounded request cache remains the fallback in that case.
+    }
+    if (restored) {
+      requestIdRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      skipNextAnswerScrollRef.current = true;
+      restorePositionRef.current = {
+        scrollY: restored.scrollY,
+        clickedSourceIndex: restored.clickedSourceIndex,
+      };
+      lastQueryRef.current = restored.permalinkQuery || text;
+      visibleResultRef.current = restored.result;
+      setLoading(false);
+      setQ(restored.draft);
+      setSubmittedQuery(restored.submittedQuery);
+      setPermalinkQuery(restored.permalinkQuery);
+      setRequestFailure(restored.requestFailure);
+      setShowAllSources(restored.showAllSources);
+      setShowAreaChooser(false);
+      setNearbyGateQuery(null);
+      setCurrentScope(parseScope(restored.scope) ?? "county");
+      setShareStatus("idle");
+      setRes(restored.result);
+      return;
+    }
+
     void askRef.current(text, { selfContained: true });
   }, [initialQuery]);
 
@@ -1054,6 +1162,49 @@ export default function AskFrederick({
   function runIntent(query: string): void {
     setQ(query);
     void ask(query);
+  }
+
+  function rememberAskReturn(index: number | null): void {
+    if (!res || typeof window === "undefined") return;
+    const browserQuery =
+      new URLSearchParams(window.location.search).get("q")?.trim() ?? "";
+    const query = (browserQuery || permalinkQuery || submittedQuery)
+      .trim()
+      .slice(0, MAX_QUERY_LENGTH);
+    if (!query) return;
+
+    const id = readAskReturnId(window.history.state) ?? createAskReturnId();
+    let saved = false;
+    try {
+      saved = writeAskReturnSnapshot(window.sessionStorage, {
+        version: 1,
+        id,
+        savedAt: Date.now(),
+        query,
+        draft: q,
+        submittedQuery,
+        permalinkQuery: permalinkQuery || query,
+        result: res,
+        requestFailure,
+        showAllSources,
+        scope: currentScope,
+        scrollY: window.scrollY,
+        clickedSourceIndex: index,
+      });
+    } catch {
+      return;
+    }
+    if (!saved) return;
+
+    try {
+      window.history.replaceState(
+        historyStateWithAskReturn(window.history.state, id),
+        "",
+        window.location.href,
+      );
+    } catch {
+      // The detail link still works; only enhanced return-state is omitted.
+    }
   }
 
   async function shareQuestion(): Promise<void> {
@@ -1511,7 +1662,12 @@ export default function AskFrederick({
               ) : null}
             </section>
 
-            {res.plan ? <AskPlanCard plan={res.plan} /> : null}
+            {res.plan ? (
+              <AskPlanCard
+                plan={res.plan}
+                onInternalOpen={() => rememberAskReturn(null)}
+              />
+            ) : null}
 
             {resultActions.length > 0 ? (
               <nav aria-label="Next steps" className="mt-4">
@@ -1526,6 +1682,11 @@ export default function AskFrederick({
                         href={action.href}
                         target={action.href.startsWith("http") ? "_blank" : undefined}
                         rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                        onClick={() => {
+                          if (!action.href?.startsWith("http")) {
+                            rememberAskReturn(null);
+                          }
+                        }}
                         className="tap-44 inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-sm)] border px-3.5 text-[11.5px] font-semibold transition active:opacity-75"
                         style={
                           index === 0
@@ -1604,6 +1765,7 @@ export default function AskFrederick({
                       key={`${source.category}-${source.slug}-${source.href}`}
                       source={source}
                       index={index}
+                      onInternalOpen={rememberAskReturn}
                     />
                   ))}
                 </div>

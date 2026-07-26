@@ -4,22 +4,30 @@
  * Wraps getMarcVehicles() (src/lib/integrations/marcVehicles.ts) so the
  * client can poll a small JSON payload without the protobuf decoder in the
  * bundle — the same split as /api/transit/vehicles for TransIT buses. The
- * server filters to the Brunswick Line corridor (county bbox + ~40 km) and
- * slims each train to what the marker needs. Realtime → no-store. Returns
- * [] gracefully when the feed is down.
+ * server first requires the Brunswick Line route id, then applies the corridor
+ * sanity check (county bbox + ~40 km), and slims each train to what the marker
+ * needs. Realtime → no-store.
  *
- *   GET /api/transit/marc-vehicles → { vehicles: MarcVehicle[], updatedAt: number }
+ * Existing clients can keep reading `vehicles` + `updatedAt`; new clients can
+ * distinguish no Brunswick trains from an unavailable provider feed.
  */
 import { NextResponse } from "next/server";
-import { getMarcVehicles } from "@/lib/integrations/marcVehicles";
+import { getMarcVehiclesResult } from "@/lib/integrations/marcVehicles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const vehicles = await getMarcVehicles();
+  const result = await getMarcVehiclesResult();
   return NextResponse.json(
-    { vehicles, updatedAt: Date.now() },
+    {
+      vehicles: result.data,
+      // Preserve the old Radius-received timestamp for existing clients.
+      updatedAt: result.receivedAt,
+      status: result.status,
+      available: result.available,
+      feedTimestamp: result.feedTimestamp,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

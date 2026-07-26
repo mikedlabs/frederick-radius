@@ -287,10 +287,12 @@ export type Anomaly = {
     | "empty_desc_spike"
     | "empty_batch"
     // DB-health kinds (src/lib/quality/db-health.ts): an RLS-disabled public
-    // table, or an ingest source that has gone stale. They share this shape so
-    // they ride the existing sendAnomalyAlert / dashboard rendering.
+    // table, an ingest source that has gone stale, or health infrastructure
+    // that was unavailable. They share this shape so they ride the existing
+    // sendAnomalyAlert / dashboard rendering.
     | "rls_unprotected"
     | "ingest_stale"
+    | "infrastructure_unavailable"
     // Curated-freshness kinds (src/lib/quality/curated-freshness.ts): the
     // data audit's core lesson was that committed snapshots and hand
     // verifications rot SILENTLY — venue-events expired 25/25 with no signal.
@@ -307,6 +309,8 @@ export type Anomaly = {
     | "photo_rot"
     | "transit_empty"
     | "events_empty"
+    | "events_sources_degraded"
+    | "tripwire_failed"
     | "ask_degraded"
     // The semantic half of Ask, which fails soft to [] by contract and so
     // cannot distinguish an EMPTY index from a healthy one at the call site.

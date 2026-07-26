@@ -2,13 +2,18 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
+import type {
+  BreweryPhotoAsset,
+  BreweryPhotoMap,
+} from "@/lib/beer/brewery-media";
 
-export type BreweryPhotoMap = Readonly<Record<string, string | null>>;
+export type { BreweryPhotoMap };
 
 type BreweryPhotoProps = {
   brewerySlug: string;
   breweryName: string;
-  src?: string | null;
+  photo?: BreweryPhotoAsset | null;
   alt?: string;
   decorative?: boolean;
   compactFallback?: boolean;
@@ -25,7 +30,7 @@ type BreweryPhotoProps = {
  */
 export function BreweryPhoto({
   breweryName,
-  src,
+  photo,
   alt,
   decorative = false,
   compactFallback = false,
@@ -35,6 +40,7 @@ export function BreweryPhoto({
   imageClassName = "object-cover",
 }: BreweryPhotoProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const src = photo?.src;
   const showPhoto = Boolean(src && failedSrc !== src);
   const initials = breweryName
     .replace(/[^a-zA-Z0-9\s]/g, " ")
@@ -94,6 +100,18 @@ export function BreweryPhoto({
           ) : null}
         </span>
       )}
+      {showPhoto && photo?.attribution ? (
+        <span
+          className="absolute bottom-2 right-2 z-10 max-w-[82%] rounded bg-black/72 px-2 py-1 text-right text-[9px] leading-none text-white shadow-sm backdrop-blur-sm"
+          aria-label="Google photo attribution"
+        >
+          <GooglePhotoAttributionLine
+            attribution={photo.attribution}
+            compact
+            showAvatar={false}
+          />
+        </span>
+      ) : null}
     </span>
   );
 }
