@@ -30,8 +30,8 @@ describe("operator data coverage", () => {
           refreshed_at: "2026-07-25T12:00:00Z",
         },
         orphan: {
-          weekday_hours: [],
-          refreshed_at: "not-a-date",
+          weekday_hours: ["Monday: 24 hours"],
+          refreshed_at: "2026-07-26T11:00:00Z",
         },
       },
       expected,
@@ -43,8 +43,46 @@ describe("operator data coverage", () => {
       unmatchedRows: 1,
       withSchedule: 1,
       freshRows: 1,
-      invalidTimestamps: 1,
+      staleRows: 0,
+      invalidTimestamps: 0,
       coveragePct: 50,
+      oldestRefresh: "2026-07-25T12:00:00.000Z",
+      newestRefresh: "2026-07-25T12:00:00.000Z",
+    });
+  });
+
+  it("does not let unmatched hours rows inflate or distort coverage", () => {
+    const summary = summarizeHoursRefreshArtifact(
+      {
+        expected_stale: {
+          weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+          refreshed_at: "2026-06-01T12:00:00Z",
+        },
+        expected_invalid: {
+          weekday_hours: [],
+          refreshed_at: "not-a-date",
+        },
+        orphan_fresh: {
+          weekday_hours: ["Monday: 24 hours"],
+          refreshed_at: "2026-07-26T11:00:00Z",
+        },
+      },
+      new Set(["expected_stale", "expected_invalid", "missing"]),
+      new Date("2026-07-26T12:00:00Z"),
+    );
+
+    expect(summary).toMatchObject({
+      expectedGoogleBackedPlaces: 3,
+      rows: 3,
+      matchedRows: 2,
+      unmatchedRows: 1,
+      withSchedule: 1,
+      freshRows: 0,
+      staleRows: 1,
+      invalidTimestamps: 1,
+      coveragePct: 0,
+      oldestRefresh: "2026-06-01T12:00:00.000Z",
+      newestRefresh: "2026-06-01T12:00:00.000Z",
     });
   });
 

@@ -39,7 +39,8 @@ export function summarizeHoursRefreshArtifact(
   let invalidTimestamps = 0;
 
   for (const [slug, row] of rows) {
-    if (expectedGoogleBackedSlugs.has(slug)) matchedRows += 1;
+    if (!expectedGoogleBackedSlugs.has(slug)) continue;
+    matchedRows += 1;
     if (Array.isArray(row.weekday_hours) && row.weekday_hours.length > 0) {
       withSchedule += 1;
     }
