@@ -39,7 +39,7 @@ export default function BeerMasthead({ photos }: { photos: BreweryPhotoMap }) {
             <BreweryPhoto
               brewerySlug={brewery.slug}
               breweryName={brewery.name}
-              src={photos[brewery.slug]}
+              photo={photos[brewery.slug]}
               decorative
               compactFallback={index > 0}
               priority={index === 0}

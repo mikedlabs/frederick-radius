@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "audit:pages": "tsx --tsconfig tsconfig.json scripts/page-quality-audit.ts",
+    "feed:health": "tsx --tsconfig tsconfig.json scripts/feed-health.ts",
     "audit:vendor-media": "tsx --tsconfig tsconfig.json scripts/audit-vendor-media.ts",
     "lint:zindex": "node scripts/check-zindex.mjs",
     "lint:colors": "node scripts/check-colors.mjs",

@@ -8,11 +8,11 @@ import BeerTasteFlight from "@/components/beer/BeerTasteFlight";
 import BreweryStrip from "@/components/beer/BreweryStrip";
 import BeerTaproomEvents, { BeerTaproomEventsFallback } from "@/components/beer/BeerTaproomEvents";
 import OnTapNow from "@/components/beer/OnTapNow";
-import type { BreweryPhotoMap } from "@/components/beer/BreweryPhoto";
 import MyTaps from "@/components/beer/MyTaps";
 import TaproomMap from "@/components/beer/TaproomMap";
 import BeerWorkspace from "@/components/beer/BeerWorkspace";
 import { BEER_SNAPSHOT_MONTH, BREWERIES } from "@/data/beers";
+import { breweryPhotoMap } from "@/lib/beer/brewery-media";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { slimForList, type PlaceCardData } from "@/lib/loaders/places";
 import { PRODUCT_NAMES } from "@/lib/product-names";
@@ -34,13 +34,12 @@ export default function BeerPage() {
   )
     .filter((place): place is PlaceCardData => Boolean(place))
     .map(slimForList);
-  const breweryPhotos = Object.fromEntries(
-    BREWERIES.map((brewery) => [
-      brewery.slug,
-      breweryCards.find((place) => place.slug === brewery.slug)?.google_photo_url ??
-        null,
-    ]),
-  ) as BreweryPhotoMap;
+  // Beer photography has its own provenance-aware resolver. The slim client
+  // records intentionally omit the per-image attribution metadata required to
+  // publish Google photos, so reading google_photo_url from those records made
+  // every brewery fall back. This map uses only exact-attribution assets and
+  // never the legacy first-party Google mirrors.
+  const breweryPhotos = breweryPhotoMap();
 
   return (
     <div className="space-y-8 pb-4 sm:space-y-10">

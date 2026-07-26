@@ -6,6 +6,7 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
 import { BreweryPhoto } from "@/components/beer/BreweryPhoto";
 import { FAMILY_BY_KEY, beerKey, type BeerWithBrewery } from "@/data/beers";
 import { useIsSaved, useToggleSave } from "@/hooks/useSaved";
+import type { BreweryPhotoAsset } from "@/lib/beer/brewery-media";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -19,7 +20,7 @@ export default function BeerSheet({
   onClose,
 }: {
   beer: BeerWithBrewery | null;
-  photo?: string | null;
+  photo?: BreweryPhotoAsset | null;
   onClose: () => void;
 }) {
   return (
@@ -34,7 +35,13 @@ export default function BeerSheet({
   );
 }
 
-function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string | null }) {
+function BeerSheetBody({
+  beer,
+  photo,
+}: {
+  beer: BeerWithBrewery;
+  photo?: BreweryPhotoAsset | null;
+}) {
   const fam = FAMILY_BY_KEY[beer.family];
   const key = beerKey(beer);
   const saved = useIsSaved("beer", key);
@@ -79,7 +86,7 @@ function BeerSheetBody({ beer, photo }: { beer: BeerWithBrewery; photo?: string 
         <BreweryPhoto
           brewerySlug={beer.brewerySlug}
           breweryName={beer.breweryName}
-          src={photo}
+          photo={photo}
           decorative
           sizes="56px"
           className="h-14 w-14 shrink-0 rounded-[10px]"

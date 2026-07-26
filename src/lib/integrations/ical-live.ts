@@ -21,6 +21,7 @@ import { normalizeTitle, cleanDescription, clampDescription } from "@/lib/events
 import { fetchTicketmasterMusicResult } from "@/lib/integrations/ticketmaster";
 import { eventAdapterIsDegraded } from "@/lib/integrations/event-adapter-result";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
+import { createSingleFlight } from "@/lib/single-flight";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -833,6 +834,23 @@ function parseICalEvents(text: string): ParsedVEvent[] {
 
 type FeedFetchResult = { events: LiveEvent[]; ok: boolean };
 
+function reportFeedUnavailable(
+  feed: FeedSpec,
+  detail: string,
+): void {
+  const message = `[ical-live] ${feed.source}: unavailable this refresh (${detail}; fail-soft)`;
+  // The County CivicPlus host regularly refuses or times out on server-side
+  // connections. That is an upstream availability state, not an application
+  // exception. `sources_failed` remains the authoritative health signal and
+  // the data-health cron turns it into an owner alert; keep the runtime line
+  // informational so expected unavailability does not bury real errors.
+  if (feed.source === "county") {
+    console.info(message);
+    return;
+  }
+  console.warn(message);
+}
+
 async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   // Reset per-source counts at the start of every pull so the admin
   // dashboard reflects the current fetch, not lifetime aggregates.
@@ -953,8 +971,12 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFe
 async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
+  // CivicPlus' county host has produced 10-second connect timeouts in
+  // production. Stop before the platform socket timeout so the caught,
+  // health-aware fallback wins and no RSC request inherits a runtime error.
+  const timeoutMs = feed.source === "county" ? 5_000 : FEED_FETCH_TIMEOUT_MS;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(feed.url, {
       signal: ctrl.signal,
@@ -962,11 +984,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFet
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-      if (res.status === 410 || res.status === 404) {
-        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
-      } else {
-        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
-      }
+      reportFeedUnavailable(feed, `HTTP ${res.status}`);
       return { events: [], ok: false };
     }
     const xml = await res.text();
@@ -1053,16 +1071,42 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<FeedFet
     return { events, ok: true };
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
-    // Expected fail-soft (see note in fetchIcalFeed): warn, don't error.
-    console.warn(
-      `[ical-live] ${feed.source} RSS ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
-      err instanceof Error ? err.message : err,
+    reportFeedUnavailable(
+      feed,
+      aborted
+        ? `RSS timed out after ${timeoutMs}ms`
+        : `RSS ${err instanceof Error ? err.message : String(err)}`,
     );
     return { events: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
+
+// Cache the COUNTY ADAPTER RESULT, including a timeout/failure. Next's fetch
+// cache retains successful bodies but not connection failures, so the same
+// unavailable CivicPlus host was retried independently from the unified
+// assembly and event-detail windows. The explicit result cache keeps one
+// named `sources_failed` signal per window/refresh and prevents a thundering
+// herd of identical 10-second connections. An `events` tag invalidation still
+// causes an immediate retry; single-flight coalesces concurrent cold misses in
+// one worker.
+const fetchCountyRssOnce = createSingleFlight<number, FeedFetchResult>();
+const fetchCountyRssCached = unstable_cache(
+  (windowDays: number) => {
+    const county = FEEDS.find((candidate) => candidate.source === "county");
+    if (!county) return Promise.resolve({ events: [], ok: false });
+    return fetchCountyRssOnce(
+      windowDays,
+      () => fetchRssFeed(county, windowDays),
+    );
+  },
+  [
+    "county-events-adapter-v1",
+    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  ],
+  { revalidate: 3600, tags: ["events", "county-events"] },
+);
 
 /** One event in a WordPress "The Events Calendar" REST v1 payload. Only the
  *  fields we read are typed; the payload carries far more. */
@@ -1480,6 +1524,18 @@ async function fetchVibemapFeed(feed: FeedSpec, windowDays: number): Promise<Fee
 }
 
 async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
+  if (feed.source === "county") {
+    // Vitest calls the raw integration outside Next's request/cache context.
+    // Keep that diagnostic path real rather than throwing Next's
+    // "incrementalCache missing" invariant before the mocked fetch runs.
+    if (process.env.NODE_ENV === "test") {
+      return fetchCountyRssOnce(
+        windowDays,
+        () => fetchRssFeed(feed, windowDays),
+      );
+    }
+    return fetchCountyRssCached(windowDays);
+  }
   if (feed.format === "tribe") return fetchTribeFeed(feed, windowDays);
   if (feed.format === "moderncampus" || feed.format === "presence") return fetchJsonArrayFeed(feed, windowDays);
   if (feed.format === "rss") return fetchRssFeed(feed, windowDays);

@@ -19,6 +19,10 @@ export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
 
-  const result = await archiveScannerIncidents().catch(() => ({ seen: 0, inserted: 0 }));
+  const result = await archiveScannerIncidents().catch(() => ({
+    seen: 0,
+    inserted: 0,
+    complete: false,
+  }));
   return NextResponse.json({ ran_at: new Date().toISOString(), ...result });
 }

@@ -13,12 +13,40 @@ import { scanner_incidents } from "@/lib/db/schema";
 import { getScannerIncidents } from "@/lib/integrations/scannerIncidents";
 import { fetchPageRecords } from "@/lib/scanner/scannerPatterns";
 
+const ARCHIVE_BATCH_SIZE = 100;
+
+type ScannerArchiveRow = {
+  dedupe_key: string;
+  kind: string;
+  location: string;
+  road_impact: boolean;
+  occurred_at: Date;
+};
+
+export function dedupeArchiveRows<T extends { dedupe_key: string }>(rows: T[]): T[] {
+  const byKey = new Map<string, T>();
+  for (const row of rows) {
+    if (!byKey.has(row.dedupe_key)) byKey.set(row.dedupe_key, row);
+  }
+  return [...byKey.values()];
+}
+
+export function chunkArchiveRows<T>(rows: T[], size = ARCHIVE_BATCH_SIZE): T[][] {
+  const safeSize = Number.isFinite(size) && size > 0 ? Math.floor(size) : ARCHIVE_BATCH_SIZE;
+  const chunks: T[][] = [];
+  for (let index = 0; index < rows.length; index += safeSize) {
+    chunks.push(rows.slice(index, index + safeSize));
+  }
+  return chunks;
+}
+
 export async function archiveScannerIncidents(): Promise<{
   seen: number;
   inserted: number;
+  complete: boolean;
 }> {
   const db = getDb();
-  if (!db) return { seen: 0, inserted: 0 };
+  if (!db) return { seen: 0, inserted: 0, complete: true };
 
   // Bank the FULL public-page window (~3 weeks), not just the last hour. Every
   // run re-reads the whole page; the unique dedupe_key drops everything already
@@ -31,7 +59,7 @@ export async function archiveScannerIncidents(): Promise<{
     getScannerIncidents().catch(() => []),
   ]);
 
-  const rows = [
+  const rows = dedupeArchiveRows<ScannerArchiveRow>([
     ...page
       .filter((r) => r.atMs !== null)
       .map((r) => ({
@@ -48,18 +76,24 @@ export async function archiveScannerIncidents(): Promise<{
       road_impact: inc.roadImpact,
       occurred_at: new Date(inc.at),
     })),
-  ];
-  if (rows.length === 0) return { seen: 0, inserted: 0 };
+  ]);
+  if (rows.length === 0) return { seen: 0, inserted: 0, complete: true };
 
-  try {
-    const inserted = await db
-      .insert(scanner_incidents)
-      .values(rows)
-      .onConflictDoNothing({ target: scanner_incidents.dedupe_key })
-      .returning({ id: scanner_incidents.id });
-    return { seen: rows.length, inserted: inserted.length };
-  } catch {
-    // Table not migrated yet / transient error — clean no-op.
-    return { seen: rows.length, inserted: 0 };
+  let insertedCount = 0;
+  for (const batch of chunkArchiveRows(rows)) {
+    try {
+      const inserted = await db
+        .insert(scanner_incidents)
+        .values(batch)
+        .onConflictDoNothing({ target: scanner_incidents.dedupe_key })
+        .returning({ id: scanner_incidents.id });
+      insertedCount += inserted.length;
+    } catch {
+      // Table not migrated yet / transient error. Stop after the first failed
+      // batch so a degraded database cannot consume the whole cron window.
+      return { seen: rows.length, inserted: insertedCount, complete: false };
+    }
   }
+
+  return { seen: rows.length, inserted: insertedCount, complete: true };
 }

@@ -17,11 +17,13 @@
  * collapses the poll traffic from every open /today.
  */
 import { easternDayKey } from "@/lib/tz";
+import { createSingleFlight } from "@/lib/single-flight";
+import { unstable_cache } from "next/cache";
 
 const STATSAPI = "https://statsapi.mlb.com/api/v1/schedule";
 const KEYS_TEAM_ID = 493;
 const KEYS_SPORT_ID = 13;
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 4_000;
 const SCHEDULE_URL = "https://www.milb.com/frederick/schedule";
 
 export type KeysScoreState = "live" | "final" | "pre" | "postponed" | "cancelled";
@@ -123,9 +125,7 @@ export function normalizeKeysScore(raw: unknown, opts: { teamId?: number } = {})
   return candidates.sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))[0];
 }
 
-/** Today's (Eastern) Keys game score, or null. Keyless, fail-soft, cached 30s. */
-export async function getKeysScoreToday(now: Date = new Date()): Promise<KeysScore | null> {
-  const day = easternDayKey(now); // YYYY-MM-DD in America/New_York
+async function loadKeysScoreForDay(day: string): Promise<KeysScore | null> {
   const url =
     `${STATSAPI}?sportId=${KEYS_SPORT_ID}&teamId=${KEYS_TEAM_ID}` +
     `&startDate=${day}&endDate=${day}&hydrate=team,linescore`;
@@ -134,14 +134,53 @@ export async function getKeysScoreToday(now: Date = new Date()): Promise<KeysSco
   try {
     const res = await fetch(url, { signal: ctrl.signal, next: { revalidate: 30 } });
     if (!res.ok) {
-      console.error(`[keys-score] HTTP ${res.status}`);
+      console.info(
+        `[keys-score] unavailable this refresh (HTTP ${res.status}; fail-soft)`,
+      );
       return null;
     }
     return normalizeKeysScore(await res.json());
   } catch (err) {
-    console.warn("[keys-score] fetch failed:", err);
+    const timedOut =
+      err instanceof Error &&
+      (err.name === "AbortError" || err.name === "TimeoutError");
+    console.info(
+      `[keys-score] unavailable this refresh (${timedOut ? `timed out after ${FETCH_TIMEOUT_MS}ms` : err instanceof Error ? err.message : String(err)}; fail-soft)`,
+    );
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+// The beta page is dynamic and the Today score endpoint is polled. A failed
+// statsapi response is not retained by Next's fetch cache, so without caching
+// the normalized result every consumer retried the same connection reset.
+// Cache null as a real fail-soft result for the 30-second score window.
+const loadKeysScoreOnce = createSingleFlight<string, KeysScore | null>();
+const getKeysScoreCached = unstable_cache(
+  (day: string) =>
+    loadKeysScoreOnce(
+      day,
+      () => loadKeysScoreForDay(day),
+    ),
+  [
+    "frederick-keys-score-v1",
+    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  ],
+  { revalidate: 30, tags: ["frederick-keys-score"] },
+);
+
+/** Today's (Eastern) Keys game score, or null. Keyless and fail-soft. */
+export function getKeysScoreToday(
+  now: Date = new Date(),
+): Promise<KeysScore | null> {
+  const day = easternDayKey(now);
+  if (process.env.NODE_ENV === "test") {
+    return loadKeysScoreOnce(
+      day,
+      () => loadKeysScoreForDay(day),
+    );
+  }
+  return getKeysScoreCached(day);
 }

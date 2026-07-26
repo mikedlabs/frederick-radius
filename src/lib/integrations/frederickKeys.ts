@@ -25,6 +25,8 @@
  */
 import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { cleanFeedText } from "@/lib/format/text";
+import { createSingleFlight } from "@/lib/single-flight";
+import { unstable_cache } from "next/cache";
 import {
   eventAdapterFailed,
   eventAdapterOk,
@@ -34,7 +36,7 @@ import {
 const STATSAPI = "https://statsapi.mlb.com/api/v1/schedule";
 const KEYS_TEAM_ID = 493;
 const KEYS_SPORT_ID = 13;
-const FETCH_TIMEOUT_MS = 15_000;
+const FETCH_TIMEOUT_MS = 6_000;
 const SOURCE_LABEL = "Frederick Keys";
 // Nymeo Field at Harry Grove Stadium, 21 Stadium Dr, Frederick, MD 21703.
 // statsapi venue records carry no coordinate, so the stadium is hardcoded; it
@@ -120,11 +122,11 @@ export function normalizeStatsApiSchedule(
  * Fetch the Frederick Keys schedule (next ~120 days) from statsapi. Keyless,
  * fail-soft to [] on any network/parse error, HTTP-cached (revalidate 3600).
  */
-export async function fetchFrederickKeysResult(
-  now: Date = new Date(),
+async function fetchFrederickKeysResultForDay(
+  start: string,
 ): Promise<EventAdapterResult<LiveEvent>> {
-  const start = now.toISOString().slice(0, 10);
-  const endMs = now.getTime() + 120 * 24 * 60 * 60 * 1000;
+  const startDate = new Date(`${start}T12:00:00.000Z`);
+  const endMs = startDate.getTime() + 120 * 24 * 60 * 60 * 1000;
   const end = new Date(endMs).toISOString().slice(0, 10);
   const url =
     `${STATSAPI}?sportId=${KEYS_SPORT_ID}&teamId=${KEYS_TEAM_ID}` +
@@ -134,16 +136,56 @@ export async function fetchFrederickKeysResult(
   try {
     const res = await fetch(url, { signal: ctrl.signal, next: { revalidate: 3600 } });
     if (!res.ok) {
-      console.error(`[frederick-keys] HTTP ${res.status}`);
+      console.info(
+        `[frederick-keys] unavailable this refresh (HTTP ${res.status}; fail-soft)`,
+      );
       return eventAdapterFailed();
     }
     return eventAdapterOk(normalizeStatsApiSchedule(await res.json()));
   } catch (err) {
-    console.warn("[frederick-keys] fetch failed:", err);
+    const timedOut =
+      err instanceof Error &&
+      (err.name === "AbortError" || err.name === "TimeoutError");
+    console.info(
+      `[frederick-keys] unavailable this refresh (${timedOut ? `timed out after ${FETCH_TIMEOUT_MS}ms` : err instanceof Error ? err.message : String(err)}; fail-soft)`,
+    );
     return eventAdapterFailed();
   } finally {
     clearTimeout(timer);
   }
+}
+
+// statsapi connection resets are an upstream availability state. Cache the
+// adapter result itself so a failed schedule refresh is shared by /events,
+// /map, and event-detail resolution instead of retried independently.
+const fetchFrederickKeysOnce = createSingleFlight<
+  string,
+  EventAdapterResult<LiveEvent>
+>();
+const fetchFrederickKeysCached = unstable_cache(
+  (day: string) =>
+    fetchFrederickKeysOnce(
+      day,
+      () => fetchFrederickKeysResultForDay(day),
+    ),
+  [
+    "frederick-keys-schedule-v1",
+    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
+  ],
+  { revalidate: 3600, tags: ["events", "frederick-keys"] },
+);
+
+export function fetchFrederickKeysResult(
+  now: Date = new Date(),
+): Promise<EventAdapterResult<LiveEvent>> {
+  const day = now.toISOString().slice(0, 10);
+  if (process.env.NODE_ENV === "test") {
+    return fetchFrederickKeysOnce(
+      day,
+      () => fetchFrederickKeysResultForDay(day),
+    );
+  }
+  return fetchFrederickKeysCached(day);
 }
 
 /** Legacy data-only facade. Health-aware callers should use the Result form. */

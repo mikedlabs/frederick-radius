@@ -25,7 +25,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -33,4 +33,4 @@ jobs:
 
       # No `|| true` here — a critical feed being down MUST fail the job.
       - name: Check feed health
-        run: tsx scripts/feed-health.ts
+        run: npm run feed:health

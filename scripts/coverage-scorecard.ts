@@ -16,12 +16,26 @@ import { resolve } from "node:path";
 import places from "@/data/places-client.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
 import enrichment from "@/data/places-enrichment.json" with { type: "json" };
+import hoursRefresh from "@/data/places-hours-refresh.json" with { type: "json" };
+import amenities from "@/data/amenities.json" with { type: "json" };
 import { PLACES as SOURCE_PLACES } from "@/data/places";
+import { EVENTS } from "@/data/events";
+import { MUNICIPALITIES } from "@/data/municipalities";
+import { breweryMediaCoverage } from "@/lib/beer/brewery-media";
 import { isHoursFresh } from "@/lib/hours-freshness";
+import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import {
+  CORE_AMENITY_KINDS,
+  summarizeAmenityCoverage,
+  summarizeEventQuality,
+  summarizeHoursRefreshArtifact,
+} from "@/lib/quality/operator-coverage";
+import { partitionEvents } from "@/lib/validation/placement";
 
 type Place = {
   slug: string;
   municipality?: string;
+  google_place_id?: string;
   google_rating?: number;
   hours?: Record<string, unknown> | null;
   hours_verified?: boolean;
@@ -153,6 +167,56 @@ const pct = (n: number, d: number) => (d === 0 ? "—" : `${Math.round((n / d) *
 const line = (r: Row) =>
   `| ${r.muni} | ${r.places} | ${r.withStoredHours} (${pct(r.withStoredHours, r.places)}) | ${r.withFreshHours} (${pct(r.withFreshHours, r.places)}) | ${r.withRating} (${pct(r.withRating, r.places)}) | ${r.withPhoto} (${pct(r.withPhoto, r.places)}) | ${r.notes} | ${r.favorites} |`;
 
+const googleBackedSlugs = new Set(
+  PLACES.filter((place) => Boolean(place.google_place_id)).map(
+    (place) => place.slug,
+  ),
+);
+const hoursArtifact = summarizeHoursRefreshArtifact(
+  hoursRefresh as Record<string, unknown>,
+  googleBackedSlugs,
+);
+const eventPlacement = partitionEvents(
+  EVENTS,
+  (slug) => SOURCE_BY_SLUG.get(slug)?.geom,
+);
+const eventQuality = summarizeEventQuality([
+  ...eventPlacement.public,
+  ...eventPlacement.needsReview,
+]);
+const amenityCoverage = summarizeAmenityCoverage(
+  amenities as Amenity[],
+  MUNICIPALITIES.map((municipality) => municipality.slug),
+);
+const breweryMedia = breweryMediaCoverage();
+
+const amenityLabels: Record<AmenityKind, string> = {
+  restroom: "Restroom",
+  ev_charging: "EV",
+  wifi: "Wi-Fi",
+  bike_parking: "Bike parking",
+  picnic: "Picnic",
+  playground: "Playground",
+  pool: "Pool",
+  river_gauge: "River gauge",
+  trash: "Trash",
+  recycling: "Recycling",
+  water: "Water",
+  bench: "Bench",
+  dog_waste: "Dog bags",
+  dog_water: "Dog water",
+  outlet: "Power",
+  bike_repair: "Bike repair",
+  other: "Other",
+};
+const amenityTownRows = MUNICIPALITIES.map((municipality) => {
+  const values = amenityCoverage.byTownKind[municipality.slug] ?? {};
+  return `| ${municipality.name} | ${CORE_AMENITY_KINDS.map((kind) => values[kind] ?? 0).join(" | ")} |`;
+});
+const eventCategories = Object.entries(eventQuality.categoryCounts)
+  .map(([category, count]) => `${category}: ${count}`)
+  .join(", ");
+
 const md = [
   "# Coverage scorecard",
   "",
@@ -169,6 +233,93 @@ const md = [
   "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ...rows.map(line),
   `| **${total.muni}** | **${total.places}** | ${total.withStoredHours} (${pct(total.withStoredHours, total.places)}) | ${total.withFreshHours} (${pct(total.withFreshHours, total.places)}) | ${total.withRating} (${pct(total.withRating, total.places)}) | ${total.withPhoto} (${pct(total.withPhoto, total.places)}) | **${total.notes}** | **${total.favorites}** |`,
+  "",
+  "## Hours refresh artifact",
+  "",
+  "This is the committed rolling snapshot that strict `Open now` claims read.",
+  "Stored source schedules above are inventory only; they do not make this",
+  "artifact current.",
+  "",
+  "| Check | Count |",
+  "| --- | ---: |",
+  `| Public Google-backed places expected in the seven-day cycle | ${hoursArtifact.expectedGoogleBackedPlaces} |`,
+  `| Snapshot rows | ${hoursArtifact.rows} |`,
+  `| Rows matched to the public set | ${hoursArtifact.matchedRows} |`,
+  `| Rows carrying a schedule | ${hoursArtifact.withSchedule} |`,
+  `| Rows fresh within policy | ${hoursArtifact.freshRows} (${hoursArtifact.coveragePct}%) |`,
+  `| Stale rows | ${hoursArtifact.staleRows} |`,
+  `| Invalid verification timestamps | ${hoursArtifact.invalidTimestamps} |`,
+  `| Unmatched rows | ${hoursArtifact.unmatchedRows} |`,
+  "",
+  hoursArtifact.rows === 0
+    ? "**Blocked:** the committed artifact contains metadata only. Do not weaken the freshness gate or invent schedules."
+    : `Oldest refresh: ${hoursArtifact.oldestRefresh ?? "none"}. Newest refresh: ${hoursArtifact.newestRefresh ?? "none"}.`,
+  "",
+  "Live recovery path:",
+  "",
+  "1. Apply `drizzle/0024_place_hours_refresh.sql` in Supabase.",
+  "2. In Vercel Production, set `HOURS_REFRESH_CRON=1`, `GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET`.",
+  "3. Confirm `/api/cron/hours-refresh` reports `enabled: true` and writes rows.",
+  "4. In GitHub Actions, set `DATABASE_URL`; the 09:00 UTC data-steward job runs after the 08:00 UTC Vercel writer.",
+  "5. Review and merge the bot PR containing `places-hours-refresh.json` and the rebuilt client snapshot.",
+  "",
+  "## Committed event quality",
+  "",
+  "This table covers the curated event rows committed with the app. Runtime",
+  "feed health remains a separate hosted check because live events are assembled",
+  "after deployment.",
+  "",
+  "| Gap | Count | Why it matters |",
+  "| --- | ---: | --- |",
+  `| Missing category | ${eventQuality.missingCategory} | The event cannot enter a useful browse lane. |`,
+  `| Placeholder category | ${eventQuality.placeholderCategory} | Generic labels hide the event's real purpose. |`,
+  `| Missing venue name | ${eventQuality.missingVenueName} | A user cannot tell where to go. |`,
+  `| No native venue join | ${eventQuality.unresolvedVenueJoin} | Radius cannot inherit venue details; review whether a standalone event location is intentional. |`,
+  `| Area-centroid location | ${eventQuality.areaCentroid} | The event may be listed, but must not claim precise distance. |`,
+  `| Unknown location | ${eventQuality.unknownLocation} | The event should not appear on a precise map. |`,
+  `| Invalid time | ${eventQuality.invalidTime} | The event cannot be ordered safely. |`,
+  `| Zero duration | ${eventQuality.zeroDuration} | Often signals a lost end time. |`,
+  `| End before start | ${eventQuality.negativeDuration} | The schedule is internally contradictory. |`,
+  "",
+  `Category distribution (${eventQuality.total} rows): ${eventCategories || "none"}.`,
+  "",
+  "## Core amenity coverage by town",
+  "",
+  `The committed OpenStreetMap baseline has ${amenityCoverage.staticPoints} points.`,
+  "Approved `field_amenities` rows are merged from Postgres at runtime and are",
+  "not copied into this repository report, so the field count here is",
+  `${amenityCoverage.fieldPoints}. Audit live field rows in the owner desk before`,
+  "calling a town complete. A zero means “not mapped in the committed baseline,”",
+  "not proof that the amenity does not exist.",
+  "",
+  `| Town | ${CORE_AMENITY_KINDS.map((kind) => amenityLabels[kind]).join(" | ")} |`,
+  `| --- | ${CORE_AMENITY_KINDS.map(() => "---:").join(" | ")} |`,
+  ...amenityTownRows,
+  "",
+  `There are ${amenityCoverage.emptyCoreCells.length} empty town/kind cells in the committed baseline.`,
+  "",
+  "## Brewery media trust",
+  "",
+  `The beer guide tracks ${breweryMedia.breweries} breweries. Legacy first-party`,
+  `Google mirrors exist for ${breweryMedia.legacyMirrorPresent}, but those bytes`,
+  "do not carry the exact individual source metadata required by the current",
+  "publishing policy and are never rendered directly.",
+  "",
+  "| Check | Count |",
+  "| --- | ---: |",
+  `| Exact-attribution photos publishable now | ${breweryMedia.publishable} |`,
+  `| Legacy candidates waiting for attribution | ${breweryMedia.waitingForAttribution} |`,
+  `| Breweries without a legacy candidate | ${breweryMedia.noPhotoCandidate} |`,
+  "",
+  "Preferred operator path: in GitHub Actions, run **Google photo attribution",
+  "backfill** with a reviewed limit. The first 16 eligible candidates are the",
+  "brewery rows. This requires `GOOGLE_PLACES_API_KEY`; the workflow rebuilds",
+  "the public data, runs the photo-policy tests, and opens a review PR.",
+  "",
+  "The equivalent local command is",
+  "`npm run backfill:photo-attributions -- --limit 16 --live --confirm`.",
+  "Review the paid request ceiling before running it. The beer page will pick",
+  "up each exact-attribution photo after the generated data PR is merged.",
   "",
 ].join("\n");
 

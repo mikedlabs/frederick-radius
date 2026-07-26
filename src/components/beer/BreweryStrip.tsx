@@ -118,7 +118,7 @@ export default function BreweryStrip({ photos }: { photos: BreweryPhotoMap }) {
                 <BreweryPhoto
                   brewerySlug={c.slug}
                   breweryName={c.name}
-                  src={c.photo}
+                  photo={c.photo}
                   decorative
                   sizes="(max-width: 640px) 82vw, 340px"
                   className="h-[156px] w-full border-b border-[var(--app-border)] sm:h-[184px]"

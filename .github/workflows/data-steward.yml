@@ -2,11 +2,11 @@ name: data-steward
 
 # Nightly data steward. Probes the critical feeds (informational), then
 # runs the committed-artifact refresh scripts that keep the app's local
-# data fresh: business status, rolling hours, transit GTFS, and park amenities. Each
-# Hours and business-status failures are release-significant and fail loudly.
-# Lower-risk transit and park rebuilds remain fail-soft. If anything changed on
-# disk, the workflow opens a PR (PR-gated, never a direct push to a content
-# branch) so a human reviews the data diff.
+# data fresh: business status, rolling hours, transit GTFS, and park amenities.
+# Hours, business-status, and transit failures are release-significant and fail
+# loudly. Transit runs independently so a missing paid-place secret cannot stop
+# its public-feed refresh. If anything changed on disk, the workflow opens a PR
+# (PR-gated, never a direct push) so a human reviews the data diff.
 
 on:
   schedule:
@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -47,27 +47,33 @@ jobs:
       # Informational only — the dedicated feed-health.yml job is what
       # turns a feed outage red. Here we just log it alongside the refresh.
       - name: Feed health (informational)
-        run: tsx scripts/feed-health.ts || true
+        run: npm run feed:health || true
 
       # Core place freshness cannot silently no-op. A missing secret, database
-      # failure, or failed paid refresh turns the workflow red.
+      # failure, or failed paid refresh turns the workflow red. Let this step
+      # finish independently so it cannot hide a separate hours-snapshot
+      # prerequisite; the final enforcement step still fails the job.
       - name: Refresh business status
+        id: business-status
+        continue-on-error: true
         env:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
         run: npm run refresh:business-status
 
       # Materialize the server cron's place_hours_refresh table into the
-      # committed snapshot. The PR remains the human approval/deploy boundary.
+      # committed snapshot. It runs even when business status fails so a
+      # missing Google Actions secret does not mask a missing database secret,
+      # empty server table, or otherwise healthy hours refresh.
       - name: Pull rolling hours snapshot
+        id: hours-snapshot
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run refresh:hours
 
-      # These secondary sources remain fail-soft so a temporary government
-      # endpoint outage does not hide a successful place-data refresh.
-      - name: Rebuild transit GTFS
-        run: npm run build:transit || true
-
+      # Park data remains fail-soft so a temporary government endpoint outage
+      # does not hide a successful place-data refresh. Transit has its own job
+      # below so missing paid-place secrets cannot prevent its refresh.
       - name: Rebuild park amenities
         run: npm run build:park-amenities || true
 
@@ -96,10 +102,62 @@ jobs:
           body: |
             Automated nightly refresh from the data-steward workflow.
 
-            Ran: refresh:business-status, refresh:hours, build:transit, build:park-amenities,
-            build:client-places, and the data-quality scorecard. Critical gates
-            block this PR; existing high-severity coverage debt remains visible
-            without blocking an incremental refresh. Review the diff before merging.
+            Ran: refresh:business-status, refresh:hours, build:park-amenities,
+            build:client-places, and the data-quality scorecard. Transit refresh
+            runs in its own independent job. Critical gates block this PR;
+            existing high-severity coverage debt remains visible without
+            blocking an incremental refresh. Review the diff before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true
+
+      # `continue-on-error` above is diagnostic sequencing, not a relaxed
+      # release policy. Fail after the independent work and PR handoff so the
+      # Actions summary names every missing prerequisite in one run.
+      - name: Enforce core place refresh results
+        if: ${{ always() && (steps.business-status.outcome != 'success' || steps.hours-snapshot.outcome != 'success') }}
+        run: |
+          echo "Business status refresh: ${{ steps.business-status.outcome }}"
+          echo "Hours snapshot pull: ${{ steps.hours-snapshot.outcome }}"
+          echo "Both core place refreshes must succeed. Check the named step logs and GitHub Actions secrets."
+          exit 1
+
+  # Transit uses public feeds and must refresh independently of paid Google
+  # data or database secrets. A failure in the place-data job can no longer
+  # stop the rolling GTFS snapshot from reaching a reviewable PR.
+  transit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild transit GTFS
+        run: npm run build:transit
+
+      - name: Validate transit snapshot
+        run: npm test -- tests/transit-static-snapshot.spec.ts
+
+      - name: Open transit PR on changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/transit-steward
+          base: ${{ github.ref_name }}
+          commit-message: "data: refresh Frederick TransIT GTFS"
+          title: "data: refresh Frederick TransIT GTFS"
+          body: |
+            Automated refresh from Frederick County TransIT's public Passio
+            static GTFS feed. The committed snapshot freshness and network
+            consistency tests passed. Review the diff before merging.
           labels: |
             data-pipeline
             automated

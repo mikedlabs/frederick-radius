@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mergeGooglePhotoMetadata,
   needsGooglePhotoMetadata,
+  withCanonicalGooglePlaceId,
 } from "@/lib/google-photo-backfill";
 
 const PHOTO = "places/ChIJexample/photos/one";
@@ -20,6 +21,35 @@ describe("Google photo metadata backfill", () => {
         photo_names: [PHOTO],
       }),
     ).toBe(false);
+  });
+
+  it("uses a validated canonical place ID when the enrichment row lacks one", () => {
+    const repaired = withCanonicalGooglePlaceId(
+      { photo_names: [PHOTO] },
+      "ChIJcanonicalPhotoPlace12345",
+    );
+    expect(repaired.google_place_id).toBe(
+      "ChIJcanonicalPhotoPlace12345",
+    );
+    expect(needsGooglePhotoMetadata(repaired)).toBe(true);
+
+    const existing = withCanonicalGooglePlaceId(
+      {
+        google_place_id: "ChIJexistingPhotoPlace123456",
+        photo_names: [PHOTO],
+      },
+      "ChIJcanonicalPhotoPlace12345",
+    );
+    expect(existing.google_place_id).toBe(
+      "ChIJexistingPhotoPlace123456",
+    );
+
+    expect(
+      withCanonicalGooglePlaceId(
+        { photo_names: [PHOTO] },
+        "not-a-google-id",
+      ).google_place_id,
+    ).toBeUndefined();
   });
 
   it("preserves unrelated enrichment while merging photo-scoped fields", () => {
