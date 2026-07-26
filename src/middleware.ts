@@ -46,7 +46,10 @@ function isAdminPath(pathname: string): boolean {
  *  redirect a fetch to an HTML page), and anything that is a real file (sw.js,
  *  manifest, icons, og images). Exported so the wall's public surface is
  *  covered by a focused unit test. */
-export function isBetaExempt(pathname: string): boolean {
+export function isBetaExempt(
+  pathname: string,
+  searchParams?: Pick<URLSearchParams, "get">,
+): boolean {
   return (
     pathname === "/beta" ||
     pathname.startsWith("/beta/") ||
@@ -66,6 +69,9 @@ export function isBetaExempt(pathname: string): boolean {
     pathname === "/food-trucks" ||
     pathname === "/food-trucks/claim" ||
     pathname === "/food-trucks/out" ||
+    // Keep the shared place-submission form private except for the prefilled
+    // food-truck owner journey linked from the public board.
+    (pathname === "/submit/place" && searchParams?.get("category") === "food-truck") ||
     // NFC tap endpoint: /j/<code> is the access-GRANTING route. It must reach
     // its handler while the wall is up so it can validate the card and set the
     // unlock cookie itself; the wall would otherwise 307 the tap to /beta.
@@ -110,7 +116,7 @@ async function betaGate(req: NextRequest): Promise<NextResponse | null> {
   const pw = process.env.BETA_PASSWORD;
   if (!pw) return null; // gate disabled: site is public
   const { pathname } = req.nextUrl;
-  if (isBetaExempt(pathname)) return null;
+  if (isBetaExempt(pathname, req.nextUrl.searchParams)) return null;
   // Unfurl bots see the real page so shared links carry real previews.
   if (req.method === "GET" && PREVIEW_BOT_UA.test(req.headers.get("user-agent") ?? "")) {
     return null;

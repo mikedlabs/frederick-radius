@@ -4,8 +4,21 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
 import { submitPlaceAction, type SubmitPlaceInput } from "./actions";
+import BotTrapFields from "./BotTrapFields";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
+
+const PLACE_FIELD_MAX_LENGTHS: Record<string, number> = {
+  name: 120,
+  address: 240,
+  website: 2_048,
+  phone: 40,
+  description: 1_500,
+  social_url: 2_048,
+  photo_url: 2_048,
+  submitter_email: 254,
+  submitter_name: 120,
+};
 
 export default function SubmitPlaceForm({ variant = "place" }: { variant?: "place" | "food-truck" }) {
   const isFoodTruck = variant === "food-truck";
@@ -31,6 +44,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
       submitter_email: String(data.get("submitter_email") ?? ""),
       submitter_name: String(data.get("submitter_name") ?? ""),
       is_owner: data.get("is_owner") === "on",
+      contact_fax: String(data.get("contact_fax") ?? ""),
     };
     if (!input.name || !input.category || !input.municipality || !input.submitter_email) {
       setError("Name, category, town, and your email are required.");
@@ -46,11 +60,15 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
     }
     startTransition(async () => {
       try {
-        await submitPlaceAction(input);
+        const result = await submitPlaceAction(input);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
         setSubmitted(true);
         setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "We couldn’t submit this place. Try again in a minute.");
+      } catch {
+        setError("We couldn’t submit this place. Try again in a minute.");
       }
     });
   };
@@ -82,6 +100,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
 
   return (
     <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+      <BotTrapFields />
       <FieldText name="name" label={isFoodTruck ? "Truck name" : "Place name"} required placeholder={isFoodTruck ? "Your food truck’s name" : "e.g. Brewer's Alley"} />
       {isFoodTruck ? (
         <input type="hidden" name="category" value="food-truck" />
@@ -169,6 +188,7 @@ function FieldText({ name, label, required, type = "text", placeholder }: { name
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}
+        maxLength={PLACE_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
@@ -182,6 +202,7 @@ function FieldTextarea({ name, label, rows = 3 }: { name: string; label: string;
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <textarea
         name={name} rows={rows}
+        maxLength={PLACE_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />

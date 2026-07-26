@@ -4,10 +4,21 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { submitBusinessClaimAction } from "@/components/submit/actions";
+import BotTrapFields from "@/components/submit/BotTrapFields";
+import type { PublicSubmissionProof } from "@/components/submit/submission-validation";
 import {
   validateBusinessClaim,
   type SubmitBusinessClaimInput,
 } from "@/lib/submissions";
+
+const CLAIM_FIELD_MAX_LENGTHS: Record<string, number> = {
+  business_name: 160,
+  owner_name: 120,
+  owner_role: 120,
+  owner_email: 254,
+  owner_phone: 40,
+  note: 2_000,
+};
 
 /**
  * ClaimForm: the business-owner claim intake. Mirrors the SubmitPlace
@@ -23,7 +34,7 @@ export default function ClaimForm({ placeSlug = "" }: { placeSlug?: string }) {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const input: SubmitBusinessClaimInput = {
+    const input: SubmitBusinessClaimInput & PublicSubmissionProof = {
       business_name: String(data.get("business_name") ?? ""),
       place_slug: placeSlug,
       owner_name: String(data.get("owner_name") ?? ""),
@@ -31,6 +42,7 @@ export default function ClaimForm({ placeSlug = "" }: { placeSlug?: string }) {
       owner_email: String(data.get("owner_email") ?? ""),
       owner_phone: String(data.get("owner_phone") ?? ""),
       note: String(data.get("note") ?? ""),
+      contact_fax: String(data.get("contact_fax") ?? ""),
     };
     const validationError = validateBusinessClaim(input);
     if (validationError) {
@@ -39,11 +51,15 @@ export default function ClaimForm({ placeSlug = "" }: { placeSlug?: string }) {
     }
     startTransition(async () => {
       try {
-        await submitBusinessClaimAction(input);
+        const result = await submitBusinessClaimAction(input);
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
         setSubmitted(true);
         setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "We couldn’t send this claim. Try again in a minute.");
+      } catch {
+        setError("We couldn’t send this claim. Try again in a minute.");
       }
     });
   };
@@ -83,6 +99,7 @@ export default function ClaimForm({ placeSlug = "" }: { placeSlug?: string }) {
 
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <BotTrapFields />
       {placeSlug ? (
         <p
           className="rounded-[var(--app-radius-md)] px-3 py-2 text-[13px]"
@@ -182,6 +199,7 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
+        maxLength={CLAIM_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
@@ -198,6 +216,7 @@ function Area({ name, label }: { name: string; label: string }) {
       <textarea
         name={name}
         rows={3}
+        maxLength={CLAIM_FIELD_MAX_LENGTHS[name]}
         className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
