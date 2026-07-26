@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { beta_codes } from "@/lib/db/schema";
+import { buildBetaInviteLink } from "@/lib/beta-invite-link";
 
 /**
  * Beta invites: one personal access code per signup email, delivered by
@@ -55,17 +56,19 @@ export async function mintCodeForEmail(email: string): Promise<string | null> {
 // from:"" and Resend 422'd the lot. `||` falls back to the verified-domain
 // default on an empty (or unset) value, which is what we always want here.
 const FROM = process.env.RESEND_FROM || "Frederick Radius <hello@frederickradius.app>";
-const BASE = "https://frederickradius.app";
-
 /**
  * Send the invite email. Returns false (without throwing) when the key is
  * missing or Resend rejects — a lost email must never lose the signup.
  */
-export async function sendBetaCodeEmail(email: string, code: string): Promise<boolean> {
+export async function sendBetaCodeEmail(
+  email: string,
+  code: string,
+  next: string = "/today",
+): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
 
-  const link = `${BASE}/beta?code=${encodeURIComponent(code)}`;
+  const link = buildBetaInviteLink(code, next);
   const text = [
     "You asked to try Frederick Radius. Here is your personal access code:",
     "",
@@ -114,11 +117,12 @@ export async function sendBetaCodeEmail(email: string, code: string): Promise<bo
 /** Mint (or reuse) the code for an email and try to send it. */
 export async function inviteEmail(
   email: string,
+  next: string = "/today",
 ): Promise<{ code: string | null; sent: boolean }> {
   try {
     const code = await mintCodeForEmail(email);
     if (!code) return { code: null, sent: false };
-    const sent = await sendBetaCodeEmail(email, code);
+    const sent = await sendBetaCodeEmail(email, code, next);
     return { code, sent };
   } catch (err) {
     console.error("[beta-invite] invite failed:", err instanceof Error ? err.message : err);

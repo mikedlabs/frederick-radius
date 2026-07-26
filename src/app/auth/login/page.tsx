@@ -66,14 +66,15 @@ export default async function LoginPage({
           className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Sign in to sync your saves
+          Sign in to sync saved places
         </h1>
         <p
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Your followed places stay in sync across your devices. We&apos;ll
-          email you a magic link. You do not need to remember a password.
+          Your saved places stay in sync across your devices. Events and other
+          personal details remain on the device where you added them. We&apos;ll
+          email you a magic link, so there is no password to remember.
         </p>
       </header>
 

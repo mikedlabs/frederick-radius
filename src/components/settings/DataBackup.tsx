@@ -10,8 +10,8 @@ import { haptic } from "@/lib/haptics";
  * A signed-out user's saves, passport stamps, notes, and home town live
  * only in this browser's storage, and browsers may clear that without
  * asking (iOS Safari does after about seven idle days). Signing in
- * syncs saves, but plenty of people never will — this card gives them
- * a file instead: download everything, restore it on any device.
+ * syncs saved places only. This card protects the remaining local data
+ * with a file the user can download and restore on any device.
  *
  * The file is plain JSON of the app's own localStorage keys (fr:*),
  * nothing more — readable, inspectable, no account required.
@@ -102,9 +102,9 @@ export default function DataBackup() {
         Your data
       </p>
       <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        Saves, stamps, notes, and preferences live on this device unless you
-        sign in. Browsers can clear that storage without asking, so keep a
-        backup file if this device is your only copy.
+        Most personal data stays on this device. Signing in syncs saved places,
+        but events and everything else still need a backup file. Browsers can
+        clear local storage without asking.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button

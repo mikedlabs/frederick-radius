@@ -23,11 +23,11 @@ vi.mock("@/lib/push-fanout", () => ({ fanoutToTopic: mocks.fanoutToTopic }));
 
 import { POST } from "@/app/api/beta/email/route";
 
-function request(email = "tester@example.com") {
+function request(email = "tester@example.com", next: unknown = "/today") {
   return new NextRequest("https://frederickradius.app/api/beta/email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, next }),
   });
 }
 
@@ -58,7 +58,7 @@ describe("POST /api/beta/email", () => {
       sent: false,
       stored: true,
     });
-    expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com");
+    expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com", "/today");
   });
 
   it("retries delivery for a duplicate signup and reports success only after send", async () => {
@@ -72,7 +72,28 @@ describe("POST /api/beta/email", () => {
       sent: true,
       stored: true,
     });
-    expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com");
+    expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com", "/today");
     expect(mocks.fanoutToTopic).not.toHaveBeenCalled();
+  });
+
+  it("preserves a shared destination in the emailed access link", async () => {
+    mocks.getDb.mockReturnValue(dbReturning([]));
+    mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: true });
+
+    await POST(request("tester@example.com", "/events/alive-at-five?from=share"));
+
+    expect(mocks.inviteEmail).toHaveBeenCalledWith(
+      "tester@example.com",
+      "/events/alive-at-five?from=share",
+    );
+  });
+
+  it("rejects an external return destination", async () => {
+    mocks.getDb.mockReturnValue(dbReturning([]));
+    mocks.inviteEmail.mockResolvedValue({ code: "frederick-abcd", sent: true });
+
+    await POST(request("tester@example.com", "https://evil.example/phish"));
+
+    expect(mocks.inviteEmail).toHaveBeenCalledWith("tester@example.com", "/today");
   });
 });

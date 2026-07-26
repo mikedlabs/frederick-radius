@@ -5,6 +5,7 @@ import {
   canOfferInstallAutomatically,
   isInstallCooldownActive,
   isIos,
+  isIosSafari,
   isStandalone,
 } from "@/lib/pwa-display";
 
@@ -130,6 +131,7 @@ export async function requestBrowserInstall(
 export function useInstallPrompt(): {
   show: boolean;
   ios: boolean;
+  iosSafari: boolean;
   prompting: boolean;
   promptInstall: () => Promise<void>;
   dismiss: () => void;
@@ -139,12 +141,15 @@ export function useInstallPrompt(): {
   const [deferred, setDeferred] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
+  const [iosSafari, setIosSafari] = useState(false);
   const [prompting, setPrompting] = useState(false);
 
   useEffect(() => {
     const iosDevice = isIos();
+    const iosSafariBrowser = iosDevice && isIosSafari();
     const baseEligible = !isStandalone() && !cooldownActive();
     setIos(iosDevice);
+    setIosSafari(iosSafariBrowser);
     setDeferred(!baseEligible);
 
     const assignDeferredEvent = (event: Event) => {
@@ -262,5 +267,5 @@ export function useInstallPrompt(): {
   };
 
   const show = eligible && !deferred && !installed && (Boolean(deferredEvent) || ios);
-  return { show, ios, prompting, promptInstall, dismiss };
+  return { show, ios, iosSafari, prompting, promptInstall, dismiss };
 }

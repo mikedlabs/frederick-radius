@@ -8,7 +8,7 @@ import {
 } from "@/lib/beta-email-response";
 
 /** The primary beta-access path: email in, personal code out. */
-export default function BetaEmailField() {
+export default function BetaEmailField({ next }: { next: string }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
 
@@ -20,7 +20,7 @@ export default function BetaEmailField() {
       const res = await fetch("/api/beta/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next }),
       });
       const data = (await res.json().catch(() => ({}))) as BetaEmailResponse;
       setState(betaInviteWasSent(res.ok, data) ? "done" : "error");

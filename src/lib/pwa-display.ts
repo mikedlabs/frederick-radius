@@ -30,6 +30,22 @@ export function isIos(): boolean {
   return isIosDevice(window.navigator.userAgent, window.navigator.maxTouchPoints);
 }
 
+/**
+ * Safari is the reliable iOS path to Add to Home Screen. Facebook, Instagram,
+ * Chrome, and other embedded browsers may expose different controls.
+ */
+export function isIosSafariUserAgent(userAgent: string): boolean {
+  const isSafari = /Version\/[\d.]+.*Safari\//.test(userAgent);
+  const isAnotherBrowser =
+    /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA|FBAN|FBAV|Instagram/i.test(userAgent);
+  return isSafari && !isAnotherBrowser;
+}
+
+export function isIosSafari(): boolean {
+  if (typeof window === "undefined") return false;
+  return isIosSafariUserAgent(window.navigator.userAgent);
+}
+
 /** Automatic acquisition prompts wait for both a return session and real use. */
 export function canOfferInstallAutomatically(sessions: number, interactions: number): boolean {
   return sessions >= 2 && interactions >= 2;

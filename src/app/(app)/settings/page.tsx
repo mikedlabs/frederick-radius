@@ -118,13 +118,13 @@ export default async function SettingsPage() {
                 className="block text-[13px] font-semibold leading-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                Sign in to sync across devices
+                Sign in to sync saved places
               </span>
               <span
                 className="block text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Sign in with a magic link to keep your saves on every device.
+                Use a magic link to keep saved places on every device.
               </span>
             </span>
             <span

@@ -4,6 +4,7 @@ import {
   isInstallCooldownActive,
   isInstallPromptSuppressedPath,
   isIosDevice,
+  isIosSafariUserAgent,
 } from "./pwa-display";
 
 describe("iOS platform detection", () => {
@@ -20,6 +21,23 @@ describe("iOS platform detection", () => {
   it("does not classify ordinary desktop and Android browsers as iOS", () => {
     expect(isIosDevice("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)", 0)).toBe(false);
     expect(isIosDevice("Mozilla/5.0 (Linux; Android 15; Pixel 9)")).toBe(false);
+  });
+});
+
+describe("iOS Safari detection", () => {
+  const safari =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1";
+
+  it("recognizes Safari", () => {
+    expect(isIosSafariUserAgent(safari)).toBe(true);
+  });
+
+  it.each([
+    `${safari} [FBAN/FBIOS;FBAV/500.0]`,
+    `${safari} Instagram 340.0.0`,
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/126.0.0 Mobile/15E148 Safari/604.1",
+  ])("does not give Safari-only directions to %s", (userAgent) => {
+    expect(isIosSafariUserAgent(userAgent)).toBe(false);
   });
 });
 
