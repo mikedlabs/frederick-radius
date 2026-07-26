@@ -338,7 +338,7 @@ export default function FoodTruckBoard({
           </ul>
         ) : (
           <div className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center" style={{ borderColor: "var(--app-border)" }}>
-            <p className="font-serif text-[20px]" style={{ color: "var(--app-ink)" }}>No confirmed stops are on the board yet.</p>
+            <p className="font-serif text-[20px]" style={{ color: "var(--app-ink)" }}>No published stops are on the board yet.</p>
             <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>Try another filter or check each vendor&rsquo;s latest post.</p>
           </div>
         )}
@@ -396,7 +396,7 @@ export default function FoodTruckBoard({
               <section className="rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}>
                 <h4 className="inline-flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
                   <CalendarDays className="h-4 w-4" aria-hidden />
-                  Confirmed this week
+                  Published this week
                 </h4>
                 <div className="mt-3 space-y-3">
                   {selectedStops.map((stop) => (

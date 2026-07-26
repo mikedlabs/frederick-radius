@@ -18,15 +18,19 @@ type EventActionsEvent = {
   is_all_day?: boolean;
 };
 
-const ICON = "tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95";
+const ICON = "grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95";
+const LABELED =
+  "tap-44-y inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]";
 
 export default function EventActions({
   event,
   actions = ["calendar", "share"],
+  labeled = false,
   className = "",
 }: {
   event: EventActionsEvent;
   actions?: Array<"calendar" | "share">;
+  labeled?: boolean;
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -110,17 +114,21 @@ export default function EventActions({
   }
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={`flex items-center ${labeled ? "gap-2" : "gap-1"} ${className}`}>
       {actions.includes("calendar") && (
         <button
           type="button"
           onClick={addToCalendar}
           aria-label={`Add ${event.title} to calendar`}
           title="Add to calendar"
-          className={ICON}
-          style={{ color: "var(--app-ink-3)" }}
+          className={labeled ? LABELED : ICON}
+          style={{
+            color: labeled ? "var(--app-ink-2)" : "var(--app-ink-3)",
+            borderColor: labeled ? "var(--app-border)" : undefined,
+          }}
         >
           <CalendarPlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          {labeled ? <span>Add to calendar</span> : null}
         </button>
       )}
       {actions.includes("share") && (
@@ -129,14 +137,22 @@ export default function EventActions({
           onClick={share}
           aria-label={copied ? "Link copied" : `Share ${event.title}`}
           title={copied ? "Link copied" : "Share"}
-          className={ICON}
-          style={{ color: copied ? "var(--app-positive)" : "var(--app-ink-3)" }}
+          className={labeled ? LABELED : ICON}
+          style={{
+            color: copied
+              ? "var(--app-positive)"
+              : labeled
+                ? "var(--app-ink-2)"
+                : "var(--app-ink-3)",
+            borderColor: labeled ? "var(--app-border)" : undefined,
+          }}
         >
           {copied ? (
             <Check className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           ) : (
             <Share2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           )}
+          {labeled ? <span>{copied ? "Link copied" : "Share"}</span> : null}
         </button>
       )}
     </div>

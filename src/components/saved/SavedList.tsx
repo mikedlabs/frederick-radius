@@ -25,7 +25,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getHomeMuni } from "@/lib/personalize";
 import Link from "next/link";
-import { MapPin, Calendar, Search, Settings, ArrowRight, Layers, Map as MapIcon, Compass } from "lucide-react";
+import { MapPin, Search, Settings, ArrowRight, Layers } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import FilterChip from "@/components/ui/FilterChip";
@@ -151,7 +151,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // the card here); saved_at keeps the local ref's stamp when we have it,
   // else epoch (sorts oldest under "Recent": honest, we don't know when).
   // While hydrating, and for anonymous users, local refs pass through
-  // untouched. Events and radii stay device-local by contract.
+  // untouched. Events, radii, and beer saves stay device-local by contract.
   const { slugs: followedSlugs, loading: followsLoading, authed: followsAuthed } = useFollowedSlugs();
   const placeRefsAll = useMemo<SavedRef[]>(() => {
     const local = items.filter((i) => i.type === "place");
@@ -584,7 +584,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   const placesPending = slugsToFetch.length > 0 && resolvedKey !== slugsKey;
   if (placesPending) {
     return (
-      <div aria-busy="true" className="min-h-[34rem] space-y-4">
+      <div aria-busy="true" className="space-y-4">
         <Masthead stand="Loading saved places" />
         <div className="space-y-3">
           <Skeleton.Block height={46} round="var(--app-radius-sm)" />
@@ -602,7 +602,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
   // (placesBySlug is resolved by here, so both lists are final — no flash.)
   if (items.length === 0 && placeRefsAll.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) {
     return (
-      <div className="min-h-[34rem] space-y-4">
+      <div className="space-y-4">
         <Masthead stand="Places and events you want to keep" />
         <EmptyState />
       </div>
@@ -1065,7 +1065,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           store type in the shared saved system; self-hides when empty. */}
       <MyTaps />
 
-      {/* Quiet utility colophon: sharing and cross-device sync only. */}
+      {/* Quiet utility colophon: sharing and place sync only. */}
       <footer className="sv-colophon" aria-label="About this page">
         <div className="inner">
           {shareUrl && (
@@ -1081,7 +1081,7 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           )}
           {!userEmail && (
             <Link className="sv-colophon-row" href="/auth/login?next=/my-radius">
-              <span className="k">Keep this list on your other devices</span>
+              <span className="k">Keep saved places on your other devices</span>
               <span className="v link">Magic link <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
             </Link>
           )}
@@ -1091,9 +1091,14 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
           </Link>
         </div>
         <p className="sv-colophon-fin">
-          {userEmail ? `Synced as ${userEmail}` : "Saved on this device"}
+          {userEmail ? `Saved places synced as ${userEmail}` : "Saved on this device"}
           {places.length > 0 && ` · ${places.length} place${places.length === 1 ? "" : "s"}`}
-          {events.length > 0 && ` · ${events.length} event${events.length === 1 ? "" : "s"}`}
+          {events.length > 0 && (
+            userEmail
+              ? ` · ${events.length} device-only event${events.length === 1 ? "" : "s"}`
+              : ` · ${events.length} event${events.length === 1 ? "" : "s"}`
+          )}
+          {userEmail && " · routes and taps stay on this device"}
         </p>
       </footer>
     </div>
@@ -1101,38 +1106,27 @@ export default function SavedList({ userEmail }: { userEmail?: string | null }) 
 }
 
 
-/** Honest and never a dead end: one plain sentence plus real ways to find
- * something worth saving. No fake shelf or pre-filled content. */
-function EmptyState() {
-  const DOORS: { href: string; label: string; Icon: typeof Search }[] = [
-    { href: "/search", label: "Search", Icon: Search },
-    { href: "/map", label: "Map", Icon: MapIcon },
-    { href: "/events", label: "Events", Icon: Calendar },
-    { href: "/ask", label: "Ask", Icon: Compass },
-  ];
-
+/** Honest and never a dead end: one sentence and one primary next step. The
+ * app shell already exposes Map, Events, and Ask, so repeating those doors here
+ * makes an empty collection feel like another tools directory. */
+export function EmptyState() {
   return (
-    <div className="space-y-4">
+    <div className="max-w-sm space-y-4 py-2">
       <p
-        className="max-w-sm px-0.5 font-serif text-[18px] font-semibold leading-snug"
+        className="px-0.5 font-serif text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
         Save a place or event to keep it here for later.
       </p>
-
-      <div className="space-y-2">
-        <p className="px-0.5 text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-          Start here
-        </p>
-        <nav className="sv-doors" aria-label="Find something to save">
-          {DOORS.map(({ href, label, Icon }) => (
-            <Link key={href} href={href} className="tactile-interactive">
-              <Icon strokeWidth={2} aria-hidden />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
+      <Link
+        href="/search"
+        className="tap-44 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
+        style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
+      >
+        <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
+        Find something to save
+        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      </Link>
     </div>
   );
 }

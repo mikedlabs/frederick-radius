@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowRight,
   ArrowUpRight,
   CalendarDays,
   Clock3,
   ExternalLink,
   MapPin,
-  Radio,
-  ShieldCheck,
-  Truck,
 } from "lucide-react";
 import { FOOD_TRUCK_BY_SLUG, FOOD_TRUCKS } from "@/data/food-trucks";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -17,8 +13,12 @@ import { resolveHomeBase } from "@/lib/food-trucks/live";
 import { getFreshestBeaconByTruck } from "@/lib/loaders/truckBeacons";
 import { getFoodTruckSchedule } from "@/lib/food-trucks/schedule-loader";
 import { foodTruckStopDirectionsUrl } from "@/lib/food-trucks/presentation";
+import { settleFoodTruckPageData } from "@/lib/food-trucks/page-data";
 import type { FoodTruckScheduleStop } from "@/lib/food-trucks/schedule-types";
 import FoodTruckBoard, { type FoodTruckBoardItem } from "@/components/food-trucks/FoodTruckBoard";
+import FoodTruckJourneys from "@/components/food-trucks/FoodTruckJourneys";
+import FoodTruckNearMe from "@/components/food-trucks/FoodTruckNearMe";
+import FeedbackLink from "@/components/feedback/FeedbackLink";
 import PageBloom from "@/components/ui/PageBloom";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
@@ -29,22 +29,22 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Food trucks in Frederick County",
   description:
-    "See confirmed food-truck stops this week and browse Frederick County vendors.",
+    "See published food-truck stops this week and browse Frederick County vendors.",
   alternates: { canonical: "/food-trucks" },
   openGraph: {
     title: "Food trucks in Frederick County",
-    description: "A weekly board of confirmed stops and local mobile vendors.",
+    description: "A weekly board of published stops and local mobile vendors.",
     images: [{
       url: "/brand/social/og-food-trucks.png",
       width: 1200,
       height: 630,
-      alt: "Find the food trucks. Confirmed weekly stops and 20 local vendors in Frederick County.",
+      alt: "Find the food trucks. Published weekly stops and local vendors in Frederick County.",
     }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Food trucks in Frederick County",
-    description: "Confirmed weekly stops and a roster of local mobile vendors.",
+    description: "Published weekly stops and a roster of local mobile vendors.",
     images: ["/brand/social/og-food-trucks.png"],
   },
 };
@@ -144,14 +144,18 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
 }
 
 export default async function FoodTrucksPage() {
-  const [beaconByTruck, schedule] = await Promise.all([
-    getFreshestBeaconByTruck(),
-    getFoodTruckSchedule(),
-  ]);
-  const liveCount = beaconByTruck.size;
+  // The public route must never inherit a database, Blob, or official-calendar
+  // hang. On timeout, the static Frederick County roster still renders and the
+  // week panel says that no published stops are available.
+  const { beaconByTruck, schedule } = await settleFoodTruckPageData({
+    beacons: getFreshestBeaconByTruck(),
+    schedule: getFoodTruckSchedule(),
+  });
   const scheduledSlugs = new Set(
     schedule.stops.flatMap((stop) => stop.vendors.map((vendor) => vendor.slug).filter(Boolean) as string[]),
   );
+  const scheduleUnavailable =
+    schedule.stops.length === 0 && schedule.sources.some((source) => !source.ok);
   const boardItems: FoodTruckBoardItem[] = FOOD_TRUCKS.map((truck) => ({
     ...truck,
     home: resolveHomeBase(truck.homeBase) ?? undefined,
@@ -162,13 +166,21 @@ export default async function FoodTrucksPage() {
     const scheduleDifference = Number(scheduledSlugs.has(b.slug)) - Number(scheduledSlugs.has(a.slug));
     return scheduleDifference || a.name.localeCompare(b.name);
   });
-  const healthySources = schedule.sources.filter((source) => source.ok).length;
-
+  const nearbyTrucks = boardItems.flatMap((truck) =>
+    truck.beacon
+      ? [{
+          slug: truck.slug,
+          name: truck.name,
+          cuisine: truck.cuisine,
+          beacon: truck.beacon,
+        }]
+      : [],
+  );
   const collectionJsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: "Food trucks in Frederick County",
-    description: "Confirmed food-truck stops and Frederick County vendors.",
+    description: "Published food-truck stops and Frederick County vendors.",
     mainEntity: itemListJsonLd(
       "Food trucks in Frederick County",
       FOOD_TRUCKS.map((truck) => ({ name: truck.name, path: `/food-trucks#truck-${truck.slug}` })),
@@ -176,7 +188,7 @@ export default async function FoodTrucksPage() {
   };
 
   return (
-    <div className="relative space-y-8">
+    <div className="relative space-y-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }} />
       <PageBloom variant="single" />
 
@@ -187,48 +199,34 @@ export default async function FoodTrucksPage() {
           </p>
           <h1>Find where they pull in.</h1>
           <p>
-            Start with confirmed stops for the week. Each vendor profile leads to its latest location post and any published dates.
+            Start with the next published stop. Open a truck for its menu, latest post, and booking details.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <a href="#this-week" className="tap-44 inline-flex items-center gap-2 rounded-full bg-[var(--app-ink)] px-4 py-2.5 text-[12px] font-semibold text-[var(--app-bg)]">
-              This week
-              <CalendarDays className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </a>
-            <a href="#vendors" className="tap-44 inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[12px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}>
-              Meet the trucks
-              <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </a>
-          </div>
-        </div>
-        <div className="food-truck-route-board" aria-label={`${schedule.stops.length} confirmed stops this week and ${liveCount} live trucks`}>
-          <div>
-            <span>Confirmed</span>
-            <strong>{schedule.stops.length}</strong>
-            <small>next 8 days</small>
-          </div>
-          <div>
-            <span>Live pins</span>
-            <strong>{liveCount}</strong>
-            <small>{liveCount > 0 ? "operator verified" : "none active"}</small>
-          </div>
-          <Truck className="food-truck-route-icon" strokeWidth={1.5} aria-hidden />
         </div>
       </header>
 
-      <section id="this-week" className="scroll-mt-24 space-y-4">
+      <FoodTruckJourneys
+        defaultMode={nearbyTrucks.length > 0 ? "near" : "week"}
+        nearby={<FoodTruckNearMe trucks={nearbyTrucks} accent={FOOD_ACCENT} />}
+        week={
+          <section id="this-week" className="scroll-mt-24 space-y-4">
         <div className="flex items-end justify-between gap-4 border-b pb-3" style={{ borderColor: "var(--app-border)" }}>
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>
-              Confirmed by vendors and hosts
+              Published by hosts and official calendars
             </p>
             <h2 className="mt-1 font-serif text-[29px] leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
               This week&rsquo;s stops
             </h2>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
-            <ShieldCheck className="h-4 w-4" strokeWidth={2} aria-hidden />
-            {healthySources}/{schedule.sources.length} feeds checked
-          </span>
+          <time
+            dateTime={schedule.generatedAt}
+            className="text-right text-[10.5px] font-semibold"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Checked {formatDate(schedule.generatedAt)}
+            <br />
+            {formatTime(schedule.generatedAt)}
+          </time>
         </div>
 
         {schedule.stops.length > 0 ? (
@@ -239,41 +237,30 @@ export default async function FoodTrucksPage() {
           <div className="food-truck-empty-board">
             <CalendarDays className="h-6 w-6" strokeWidth={1.8} aria-hidden style={{ color: FOOD_ACCENT }} />
             <div>
-              <h3 className="font-serif text-[20px]" style={{ color: "var(--app-ink)" }}>No confirmed stops are on the board yet.</h3>
+              <h3 className="font-serif text-[20px]" style={{ color: "var(--app-ink)" }}>
+                {scheduleUnavailable
+                  ? "The weekly board is temporarily unavailable."
+                  : "No published stops are on the board yet."}
+              </h3>
               <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                That does not mean every truck is parked. Browse the roster and check a vendor&rsquo;s latest post before heading out.
+                {scheduleUnavailable
+                  ? "The local roster is still available. Check a vendor’s latest post before heading out."
+                  : "That does not mean every truck is parked. Browse the roster and check a vendor’s latest post before heading out."}
               </p>
             </div>
           </div>
         )}
-      </section>
 
-      <section className="food-truck-beacon-preview" aria-labelledby="beacon-preview-title">
-        <div className="food-truck-beacon-map" aria-hidden>
-          <span className="food-truck-beacon-road food-truck-beacon-road-a" />
-          <span className="food-truck-beacon-road food-truck-beacon-road-b" />
-          <span className="food-truck-beacon-pulse"><Truck className="h-4 w-4" strokeWidth={2} /></span>
-          <span className="food-truck-beacon-label"><strong>Example live pin</strong> · here until 8 p.m.</span>
-        </div>
-        <div className="p-4 sm:p-5">
-          <p className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: FOOD_ACCENT }}>
-            <Radio className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            Owner pilot
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            Every stop includes the public source we checked.
           </p>
-          <h2 id="beacon-preview-title" className="mt-1 font-serif text-[24px] leading-tight" style={{ color: "var(--app-ink)" }}>
-            Drop a live pin while you are serving.
-          </h2>
-          <p className="mt-2 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Approved truck owners can publish a temporary map pin with their current stop. The owner chooses when it disappears. The example shows the format and is not a real location.
-          </p>
-          <Link href="/food-trucks/claim" className="tap-44 mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold underline" style={{ color: FOOD_ACCENT }}>
-            Set up my truck
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          </Link>
+          <FeedbackLink />
         </div>
-      </section>
-
-      <FoodTruckBoard trucks={boardItems} stops={schedule.stops} accent={FOOD_ACCENT} />
+          </section>
+        }
+        trucks={<FoodTruckBoard trucks={boardItems} stops={schedule.stops} accent={FOOD_ACCENT} />}
+      />
 
       <aside className="food-truck-owner-door rounded-[var(--app-radius-lg)] border p-4 sm:flex sm:items-center sm:justify-between sm:gap-5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
         <div>

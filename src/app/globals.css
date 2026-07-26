@@ -682,6 +682,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     --sky-bottom 3s var(--app-ease-out, ease);
 }
 
+/* A weather-provider miss is a small utility handoff, not a hero. Keep the
+   time-of-day material treatment, but reclaim the vertical space for things a
+   visitor can act on. */
+.sky-hero:has([data-weather-state="unavailable"]) {
+  padding-block: .55rem;
+}
+
 /* Celestial body — a soft sun (day) or moon (night) glow that arcs
    across the hero by the hour (position via --cel-x / --cel-y, set by
    SkyHero). It's blurred ambient light, never a clip-art disc, so it
@@ -2632,17 +2639,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 13px 2px 0; text-align: center; font-family: var(--font-mono, monospace);
   font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--app-ink-3);
 }
-
-/* Honest Saved empty state — one plain sentence, then real doorways. */
-.sv-doors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.sv-doors a {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 5px; min-height: 60px; background: var(--app-bg-elevated);
-  border: 1px solid var(--app-border); border-radius: var(--app-radius-md);
-  text-decoration: none;
-}
-.sv-doors a svg { width: 16px; height: 16px; color: var(--app-cool); }
-.sv-doors a span { font-size: 11px; font-weight: 600; color: var(--app-ink); }
 
 /* ============================================================================
    /beta launch cover — the "living almanac" landing (beta/page.tsx). Namespaced
@@ -4789,6 +4785,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    visually distinct from the caption so a viewing choice never reads as a
    filter. */
 .eb-subbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -4807,25 +4804,74 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   white-space: nowrap;
 }
 
-@media (max-width: 480px) {
-  .eb-subbar {
-    flex-wrap: wrap;
-  }
-  .eb-countline {
-    flex-basis: 100%;
-    overflow: visible;
-    text-overflow: clip;
-  }
-  .eb-how {
-    width: 100%;
-    justify-content: space-between;
-  }
+.eb-display-options {
+  display: none;
+  flex: 0 0 auto;
 }
-.eb-how {
+.eb-display-options > summary {
+  display: none;
+  list-style: none;
+}
+.eb-display-options > summary::-webkit-details-marker {
+  display: none;
+}
+.eb-display-panel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.eb-display-desktop {
   display: flex;
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+  .eb-subbar {
+    min-height: 52px;
+  }
+  .eb-display-options > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 88px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    color: var(--app-ink-2);
+    background: var(--app-bg-elevated);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .eb-display-options {
+    display: block;
+  }
+  .eb-display-desktop {
+    display: none;
+  }
+  .eb-display-options > summary svg {
+    color: var(--app-ink-3);
+    transition: transform var(--app-dur-fast) var(--app-ease-out);
+  }
+  .eb-display-options[open] > summary svg {
+    transform: rotate(180deg);
+  }
+  .eb-display-options:not([open]) > .eb-display-panel {
+    display: none;
+  }
+  .eb-display-panel {
+    position: absolute;
+    z-index: var(--z-dropdown);
+    top: calc(100% - 2px);
+    right: 8px;
+    padding: 8px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-bg-elevated);
+    box-shadow: var(--app-shadow-2);
+  }
 }
 .eb-lensseg {
   display: flex;
@@ -5425,11 +5471,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    never an unrelated food photo assigned to a real business. */
 .food-truck-masthead {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(15rem, .55fr);
-  gap: 1rem;
   overflow: hidden;
-  padding: clamp(1.25rem, 4vw, 2.25rem);
+  padding: clamp(1.25rem, 4vw, 2rem);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-xl);
   color: var(--app-ink);
@@ -5470,53 +5513,54 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   line-height: 1.55;
 }
 
-.food-truck-route-board {
-  position: relative;
+.food-truck-journeys {
   display: grid;
-  align-content: center;
-  min-height: 14.5rem;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--app-ink) 18%, transparent);
+  gap: 1rem;
+}
+
+.food-truck-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-bg-sunken);
+  box-shadow: var(--app-edge), var(--app-hi);
+}
+
+.food-truck-mode-switch button {
+  min-height: 44px;
+  padding-inline: .7rem;
+  border-radius: 999px;
+  color: var(--app-ink-2);
+  font-size: .75rem;
+  font-weight: 600;
+  transition:
+    color var(--app-dur-fast) var(--app-ease-out),
+    background-color var(--app-dur-fast) var(--app-ease-out),
+    box-shadow var(--app-dur-fast) var(--app-ease-out);
+}
+
+.food-truck-mode-switch button[aria-selected="true"] {
+  color: var(--app-ink);
+  background: var(--app-bg-elevated);
+  box-shadow: var(--app-shadow-1);
+}
+
+.food-truck-journey-panel {
+  min-width: 0;
+}
+
+.food-truck-near-empty {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .8rem;
+  align-items: start;
+  padding: 1rem;
+  border: 1px dashed var(--app-border-strong);
   border-radius: var(--app-radius-lg);
-  color: var(--app-bg);
-  background: var(--app-ink);
-  box-shadow: inset 0 1px color-mix(in srgb, var(--app-bg) 12%, transparent);
-}
-
-.food-truck-route-board > div {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: .25rem 1rem;
-  padding: 1rem 1.1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--app-bg) 15%, transparent);
-}
-
-.food-truck-route-board span {
-  font-family: var(--font-mono), monospace;
-  font-size: .62rem;
-  font-weight: 700;
-  letter-spacing: .11em;
-  text-transform: uppercase;
-  opacity: .7;
-}
-
-.food-truck-route-board strong {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-  font-family: var(--font-display), Georgia, serif;
-  font-size: 2.15rem;
-  font-weight: 400;
-  line-height: 1;
-}
-
-.food-truck-route-board small { font-size: .66rem; opacity: .6; }
-
-.food-truck-route-icon {
-  width: 3.4rem;
-  height: 3.4rem;
-  margin: .8rem 1rem 0 auto;
-  color: var(--app-brand);
+  background: var(--app-bg-sunken);
 }
 
 .food-truck-stop-grid {
@@ -5866,23 +5910,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 @media (max-width: 760px) {
-  .food-truck-masthead { grid-template-columns: 1fr; }
-  .food-truck-route-board {
-    grid-template-columns: 1fr 1fr auto;
-    min-height: auto;
-  }
-  .food-truck-route-board > div { border-right: 1px solid color-mix(in srgb, var(--app-bg) 15%, transparent); border-bottom: 0; }
-  .food-truck-route-icon { align-self: center; margin: 0 .85rem; width: 2rem; height: 2rem; }
   .food-truck-stop-grid, .food-truck-vendor-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
-  .food-truck-masthead { padding: 1.15rem; border-radius: var(--app-radius-lg); }
-  .food-truck-masthead-copy h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
-  .food-truck-route-board > div { padding: .75rem; }
-  .food-truck-route-board strong { font-size: 1.7rem; }
-  .food-truck-route-icon { display: none; }
-  .food-truck-route-board { grid-template-columns: 1fr 1fr; }
+  .food-truck-masthead { padding: 1rem 1.1rem 1.1rem; border-radius: var(--app-radius-lg); }
+  .food-truck-masthead-copy h1 { font-size: clamp(2.55rem, 12vw, 3.35rem); }
+  .food-truck-masthead-copy h1 + p { margin-top: .75rem; }
   .food-truck-stop-card { grid-template-columns: 3.55rem minmax(0, 1fr); }
   .food-truck-beacon-preview { grid-template-columns: 1fr; }
   .food-truck-beacon-map { min-height: 10.75rem; border-right: 0; border-bottom: 1px solid var(--app-border); }
@@ -5890,7 +5924,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .food-truck-vendor-card { transition: none; }
+  .food-truck-vendor-card,
+  .food-truck-mode-switch button { transition: none; }
 }
 
 /* Operator-confirmed food-truck map beacon. The 44px target is stable while
