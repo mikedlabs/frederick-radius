@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   analyzeSeeClickFixSnapshot,
@@ -40,14 +38,19 @@ function collection(features: unknown[]): Record<string, unknown> {
 }
 
 describe("analyzeSeeClickFixSnapshot", () => {
-  it("reads the current normalized file as one dated, countywide snapshot", async () => {
-    const raw = JSON.parse(
-      await readFile(
-        join(process.cwd(), "data", "clean", "seeclickfix.geojson"),
-        "utf8",
-      ),
-    ) as unknown;
-    const result = analyzeSeeClickFixSnapshot(raw, { now: NOW });
+  it("summarizes one dated, countywide snapshot", () => {
+    const features = Array.from({ length: 20 }, (_, index) =>
+      feature(index + 1, {
+        category: index < 12 ? "Roadway General Request" : "Water Issue",
+        reported_at:
+          index === 19
+            ? "2026-07-22T19:37:10.000Z"
+            : index < 10
+              ? `2026-07-21T12:${String(index).padStart(2, "0")}:00.000Z`
+              : `2026-07-22T12:${String(index).padStart(2, "0")}:00.000Z`,
+      }),
+    );
+    const result = analyzeSeeClickFixSnapshot(collection(features), { now: NOW });
 
     expect(result.quality).toMatchObject({
       grain: "one public service report",
