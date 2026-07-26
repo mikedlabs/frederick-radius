@@ -162,10 +162,18 @@ function GroupHeading({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 items-end justify-between gap-3">
+      <div className="flex min-w-0 items-end gap-3">
         <h2 id={id} className="min-w-0 break-words font-sans text-[20px] font-semibold leading-tight tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
+        <span
+          aria-hidden
+          className="mb-1 h-px min-w-4 flex-1"
+          style={{
+            background:
+              "linear-gradient(90deg, color-mix(in srgb, var(--app-cool) 38%, var(--app-border)), var(--app-border))",
+          }}
+        />
         {note && <span className="max-w-[45%] shrink pb-0.5 text-right text-[11px] leading-tight [overflow-wrap:anywhere]" style={{ color: "var(--app-ink-3)" }}>{note}</span>}
       </div>
     </div>

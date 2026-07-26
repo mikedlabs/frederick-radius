@@ -77,7 +77,7 @@ describe("DaypartNeeds", () => {
     const html = renderToStaticMarkup(createElement(DaypartEmptyState));
 
     expect(html).toContain('role="status"');
-    expect(html).toContain("Open now");
+    expect(html).toContain("Places open now");
     expect(html).toContain("Across Frederick County");
     expect(html).toContain("Live hours aren’t available right now.");
     expect(html).toContain("Check nearby");

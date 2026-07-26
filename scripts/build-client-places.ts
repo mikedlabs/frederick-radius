@@ -20,6 +20,7 @@
 import { writeFileSync } from "node:fs";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
+import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 
 const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
 
@@ -101,6 +102,19 @@ const slim = publicPlaces().map((p) => {
     want_match_subcategories: p.subcategories,
   };
 });
+
+const identityCollisions = findGooglePlaceIdCollisions(slim);
+if (identityCollisions.length > 0) {
+  const detail = identityCollisions
+    .map(
+      ({ googlePlaceId, slugs }) =>
+        `${googlePlaceId}: ${slugs.join(", ")}`,
+    )
+    .join("\n");
+  throw new Error(
+    `Refusing to publish a client catalog with duplicate Google Place IDs:\n${detail}`,
+  );
+}
 
 writeFileSync(OUT, JSON.stringify(slim));
 const bytes = Buffer.byteLength(JSON.stringify(slim));

@@ -19,7 +19,7 @@
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
-import { publicPlaces } from "@/lib/loaders/places";
+import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 import { getDb } from "@/lib/db/client";
 import { placeHoursRefresh } from "@/lib/db/schema";
 import {
@@ -37,7 +37,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Canonical public targets are deduplicated by Google ID before bucketing.
+// Canonical public targets are verified unique by Google ID before bucketing.
 // Keep headroom so a deterministic slice can never strand the tail forever.
 const BATCH_CAP = 400;
 const CONCURRENCY = 5;
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
   // public record has a Google place ID, the same truth/freshness policy
   // applies to it. The cap still provides a hard upper bound on paid calls.
   const today = Math.floor(Date.now() / 86400000) % HOURS_REFRESH_CYCLE_DAYS;
-  const places = publicPlaces();
+  const places = publicPlaces().map((place) => decoratePlace(place));
   const placesWithGoogleId = places.filter((place) =>
     Boolean(place.google_place_id),
   );
@@ -106,11 +106,30 @@ export async function GET(request: Request) {
   );
   const invalidGoogleIds =
     placesWithGoogleId.length - validGooglePlaces.length;
-  const eligibleTargets = selectHoursRefreshTargets(
-    validGooglePlaces,
-    today,
-    Number.MAX_SAFE_INTEGER,
-  );
+  let eligibleTargets: typeof validGooglePlaces;
+  try {
+    eligibleTargets = selectHoursRefreshTargets(
+      validGooglePlaces,
+      today,
+      Number.MAX_SAFE_INTEGER,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        healthy: false,
+        cycleDay: today,
+        catalog: places.length,
+        validGoogleIds: validGooglePlaces.length,
+        invalidGoogleIds,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Hours-refresh target identity validation failed.",
+      },
+      { status: 503 },
+    );
+  }
   const targets = eligibleTargets.slice(0, BATCH_CAP);
   const deferred = eligibleTargets.length - targets.length;
 
@@ -168,6 +187,7 @@ export async function GET(request: Request) {
             .onConflictDoUpdate({
               target: placeHoursRefresh.slug,
               set: {
+                placeId: p.google_place_id as string,
                 weekdayHours: details.weekday_hours ?? null,
                 businessStatus: details.business_status ?? null,
                 refreshedAt,

@@ -64,6 +64,7 @@ import CravingStrip from "@/components/now/CravingStrip";
 import BrowsePlacesDisclosure from "@/components/today/BrowsePlacesDisclosure";
 import ToolboxTeaser from "@/components/nav/ToolboxTeaser";
 import { buildDaypartRows } from "@/lib/loaders/daypartPicks";
+import PageChapter from "@/components/ui/PageChapter";
 
 /**
  * Now — the daily briefing.
@@ -190,7 +191,8 @@ export default async function HomePage() {
   // work across this band and the event program.
   const availableNow = (
     <>
-      <div className="[&:not(:empty)]:mt-4">
+      <div className="today-sports-stack">
+        <h2 className="today-sports-stack__heading">Local sports</h2>
         <KeysScore />
         <LocalSportsScoreboard />
       </div>
@@ -352,44 +354,58 @@ export default async function HomePage() {
         </BrowsePlacesDisclosure>
       </div>
 
-      {/* The first place answer is visual and context-aware. Attributed
-          business photos render when the media record permits them; the
-          source-aware event headliner still owns the top of the page. */}
-      <DaypartNeeds
-        rows={buildDaypartRows(now, lean)}
-        note={
-          lean === "wet"
-            ? "Storms are close by, so indoor picks lead."
-            : lean === "hot"
-              ? "It is a hot one, so cool-down picks lead."
-              : null
-        }
-      />
+      {/* The immediate decision layer reads as one quiet chapter rather than a
+          stack of unrelated modules. The band adds hierarchy without another
+          visible label: Open now, live scores, and available offers retain
+          their own headings inside one shared "right now" surface. */}
+      <PageChapter
+        label="Right now"
+        index="01"
+        tone="brand"
+        className="mt-5"
+      >
+        {/* The first place answer is visual and context-aware. Attributed
+            business photos render when the media record permits them; the
+            source-aware event headliner still owns the top of the page. */}
+        <DaypartNeeds
+          rows={buildDaypartRows(now, lean)}
+          note={
+            lean === "wet"
+              ? "Storms are close by, so indoor picks lead."
+              : lean === "hot"
+                ? "It is a hot one, so cool-down picks lead."
+                : null
+          }
+        />
 
-      {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
-          The visible Resident/Visitor toggle asked strangers to classify
-          themselves before seeing any value, and most people never touch a
-          toggle. /today now serves ONE unified view for everyone. The mode
-          machinery stays alive but SILENT: useMode still leans the MAP's
-          default layer set by geolocation (in-county → resident set), with no
-          user-facing chooser. (Section ids stay on their divs so deep-link
-          anchors like /today#whats-on still work.) */}
+        {/* ── LENS PICKER removed (2026-07-01, owner call) ─────────────────
+            The visible Resident/Visitor toggle asked strangers to classify
+            themselves before seeing any value, and most people never touch a
+            toggle. /today now serves ONE unified view for everyone. */}
 
-      {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
-          the day; once it's past ~9 PM (the "late" daypart, strictly on the
-          Eastern clock) it leads the editorial spine with tomorrow's top draw +
-          weather look, so a spent day isn't a dead end. It keeps this slot in
-          BOTH gears: through the true evening (5-9 PM) it renders nothing, and
-          late at night tomorrow's answer belongs above tonight's leftovers. */}
-      <Suspense fallback={null}>
-        <TomorrowPreview now={now} eventsPromise={eventsPromise} />
-      </Suspense>
+        {/* ── TOMORROW — a forward answer for the night owl. Self-hides during
+            the day; once it's past ~9 PM it leads with tomorrow's top draw and
+            weather look, so a spent day is not a dead end. */}
+        <Suspense fallback={null}>
+          <TomorrowPreview now={now} eventsPromise={eventsPromise} />
+        </Suspense>
 
-      {/* Live utilities and the rest of the public program follow the day's
-          lead. The order stays stable across dayparts so returning users do
-          not have to relearn the page at 5 PM. */}
-      {availableNow}
-      {whatsOn}
+        {/* Live utilities follow the day's lead. The order stays stable across
+            dayparts so returning users do not have to relearn the page. */}
+        {availableNow}
+      </PageChapter>
+
+      {/* The calendar gets its own cooler chapter band. This makes the switch
+          from "what can I use now?" to "what is scheduled?" legible at a
+          glance, especially on a narrow phone. */}
+      <PageChapter
+        label="On the calendar"
+        index="02"
+        tone="civic"
+        className="mt-5"
+      >
+        {whatsOn}
+      </PageChapter>
 
       {lean !== "wet" && (
         <Suspense fallback={null}>
@@ -397,22 +413,25 @@ export default async function HomePage() {
         </Suspense>
       )}
 
-      {/* Specialty guides are useful secondary doors, presented as one compact
-          shelf with real local marks instead of two competing promo cards. */}
-      <TodayLocalGuides />
+      {/* Specialty guides and personal shortcuts share a local-discovery
+          chapter. The forest register is deliberately restrained: it separates
+          the zone from live information without turning the page multicolor. */}
+      <PageChapter
+        label="Around town"
+        index="03"
+        tone="forest"
+        className="mt-6"
+      >
+        {/* Specialty guides are useful secondary doors, presented as one compact
+            shelf with real local marks instead of competing promo cards. */}
+        <TodayLocalGuides />
 
-      {/* ── LOWER PAGE, reordered with an argument (Jul 2026 rework): open-now
-          places → your own saved → an idea → the day's pick → sometimes-on
-          context → good-to-have utilities → weather depth. Each section reads at
-          one of two type registers (SectionHeading lg/sm), so hierarchy comes
-          from typography, not five competing header styles. ─────────────────── */}
-
-      {/* FROM YOUR SAVED + the save-derived shortcut, kept together (both read
-          the user's own saves): the returning user's open-now saved places, then
-          the one quiet "you keep a lot of ___" nudge. Each self-hides
-          independently, so an honest empty state never shows a box. */}
-      <FromYourSaved />
-      <TasteNudge />
+        {/* FROM YOUR SAVED + the save-derived shortcut stay together. Each
+            self-hides independently, so an honest empty state never shows an
+            empty box. */}
+        <FromYourSaved />
+        <TasteNudge />
+      </PageChapter>
 
       {/* Discovery is useful, but it is not part of the immediate briefing.
           Keep it one deliberate reveal instead of two more full-page zones. */}
@@ -421,7 +440,7 @@ export default async function HomePage() {
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         headingLevel={2}
-        className="mt-6 border-t pt-2"
+        className="today-disclosure mt-6 border-t pt-2"
       >
         <div className="space-y-5">
           <Suspense
@@ -466,7 +485,7 @@ export default async function HomePage() {
         storageKey="fr.today.essentials"
         defaultOpen={false}
         headingLevel={2}
-        className="mt-6 border-t pt-2"
+        className="today-disclosure mt-6 border-t pt-2"
       >
         <div className="mt-2 space-y-3">
           <EmergencyPrompt />

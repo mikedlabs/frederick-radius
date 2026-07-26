@@ -30,13 +30,49 @@ describe("hours refresh target selection", () => {
     expect(second).toEqual(first);
   });
 
-  it("pays for a duplicated Google identity only once", () => {
+  it("fails before spending when two slugs share a Google identity", () => {
     const places = [
       { slug: "z-alias", google_place_id: "same-google-id" },
       { slug: "a-canonical", google_place_id: "same-google-id" },
     ];
     const day = hoursRefreshCycleDay("a-canonical");
-    expect(selectHoursRefreshTargets(places, day, 10)).toEqual([places[1]]);
+    expect(() => selectHoursRefreshTargets(places, day, 10)).toThrow(
+      "Duplicate Google Place ID same-google-id belongs to both a-canonical and z-alias.",
+    );
+    expect(() =>
+      selectHoursRefreshTargets([...places].reverse(), day, 10),
+    ).toThrow(
+      "Duplicate Google Place ID same-google-id belongs to both a-canonical and z-alias.",
+    );
+  });
+
+  it("continues to ignore records without a provider identity", () => {
+    const slug = "canonical";
+    const day = hoursRefreshCycleDay(slug);
+    const places = [
+      { slug, google_place_id: "google-1" },
+      { slug: "missing", google_place_id: null },
+      { slug: "also-missing" },
+    ];
+
+    expect(selectHoursRefreshTargets(places, day, 10)).toEqual([places[0]]);
+  });
+
+  it("rejects one slug mapped to two provider identities", () => {
+    const places = [
+      { slug: "same-slug", google_place_id: "google-1" },
+      { slug: "same-slug", google_place_id: "google-2" },
+    ];
+
+    expect(() =>
+      selectHoursRefreshTargets(
+        places,
+        hoursRefreshCycleDay("same-slug"),
+        10,
+      ),
+    ).toThrow(
+      "Duplicate hours-refresh slug same-slug maps to both google-1 and google-2.",
+    );
   });
 
   it("marks a zero-write paid run as failed instead of returning silent success", () => {

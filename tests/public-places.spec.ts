@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  canonicalBusinessStatusRefreshCandidates,
   publicPlaces,
   radiusPlaces,
   publicPlaceBySlug,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { MANUAL_PLACE_STATUS_OVERRIDES } from "@/lib/place-status-overrides";
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 
 /**
@@ -62,6 +64,56 @@ describe("publicPlaces (canonical public set)", () => {
 
   it("radiusPlaces() is an exact back-compat alias of publicPlaces()", () => {
     expect(slugsOf(radiusPlaces())).toEqual(slugsOf(publicPlaces()));
+  });
+});
+
+describe("canonicalBusinessStatusRefreshCandidates", () => {
+  const providerClosedSlug = "mon-bon-croissant";
+
+  it("keeps a provider-hidden closure eligible for reopening checks", () => {
+    const place = PLACES.find((row) => row.slug === providerClosedSlug);
+    expect(place).toBeDefined();
+    expect(isOperational(place!)).toBe(false);
+    expect(publicPlaces().some((row) => row.slug === providerClosedSlug)).toBe(
+      false,
+    );
+    expect(
+      canonicalBusinessStatusRefreshCandidates().some(
+        (row) => row.slug === providerClosedSlug,
+      ),
+    ).toBe(true);
+  });
+
+  it("excludes manual safety closures and the known-closed denylist", () => {
+    const previous = MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+    MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = {
+      status: "closed_temporarily",
+      effective_at: "2026-07-26",
+      review_after: "2026-08-02",
+      source: "https://example.com/official-closure",
+      note: "Test-only safety closure.",
+    };
+    try {
+      expect(
+        canonicalBusinessStatusRefreshCandidates().some(
+          (row) => row.slug === providerClosedSlug,
+        ),
+      ).toBe(false);
+    } finally {
+      if (previous) {
+        MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug] = previous;
+      } else {
+        delete MANUAL_PLACE_STATUS_OVERRIDES[providerClosedSlug];
+      }
+    }
+
+    const candidateSlugs = new Set(
+      canonicalBusinessStatusRefreshCandidates().map((row) => row.slug),
+    );
+    expect(candidateSlugs.has("the-cozy-creamery-thurmont")).toBe(false);
+    for (const place of PLACES.filter((row) => isKnownClosed(row.name))) {
+      expect(candidateSlugs.has(place.slug)).toBe(false);
+    }
   });
 });
 

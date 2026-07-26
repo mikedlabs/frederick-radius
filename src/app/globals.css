@@ -533,6 +533,151 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .shelf-rail { scroll-behavior: auto; }
 }
 
+/* ── Field-guide chapters ───────────────────────────────────────────────
+ * Long, linear pages use a restrained register and paper tint to mark a real
+ * change of subject. Dashboards, maps, and tab workspaces intentionally do not
+ * use this treatment: it is document structure, not a universal card style. */
+.content-chapter {
+  --content-chapter-accent: var(--app-brand);
+  --today-section-accent: var(--content-chapter-accent);
+  --today-section-ink: var(--app-brand-press);
+  position: relative;
+  margin-inline: -0.5rem;
+  padding: 0.875rem 0.5rem 1.125rem;
+  border-block: 1px solid
+    color-mix(
+      in srgb,
+      var(--content-chapter-accent) 20%,
+      var(--app-border)
+    );
+  background:
+    radial-gradient(
+      80% 110% at 0% 0%,
+      color-mix(
+        in srgb,
+        var(--content-chapter-accent) 7%,
+        var(--app-bg-elevated)
+      ),
+      transparent 68%
+    ),
+    color-mix(
+      in srgb,
+      var(--content-chapter-accent) 2%,
+      var(--app-bg)
+    );
+}
+
+.content-chapter__register {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.875rem;
+  padding-inline: 0.125rem;
+}
+
+.content-chapter__folio,
+.content-chapter__label {
+  color: var(--today-section-ink);
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.content-chapter__folio {
+  min-width: 1.35rem;
+  font-size: 0.5625rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+}
+
+.content-chapter__label {
+  flex: none;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+}
+
+.content-chapter__rule {
+  height: 1px;
+  min-width: 1.5rem;
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--content-chapter-accent) 52%, var(--app-border)),
+    var(--app-border)
+  );
+}
+
+.content-chapter--civic {
+  --content-chapter-accent: var(--app-civic);
+  --today-section-ink:
+    color-mix(in srgb, var(--app-civic) 72%, var(--app-ink));
+}
+
+.content-chapter--forest {
+  --content-chapter-accent: var(--app-brand-2);
+  --today-section-ink:
+    color-mix(in srgb, var(--app-brand-2) 72%, var(--app-ink));
+}
+
+.content-chapter--amber {
+  --content-chapter-accent: var(--app-amber-text);
+  --today-section-ink:
+    color-mix(in srgb, var(--app-amber-text) 76%, var(--app-ink));
+}
+
+.content-chapter--neutral {
+  --content-chapter-accent: var(--app-ink-3);
+  --today-section-ink: var(--app-ink-2);
+}
+
+/* Leaf Today sections own their vertical rhythm in the ordinary page flow.
+   Inside a chapter, remove only the first inherited top margin so the band
+   starts crisply. Later modules keep their spacing and remain scannable. */
+.content-chapter__body > section:first-child,
+.content-chapter__body > div:first-child > section:first-child {
+  margin-top: 0;
+}
+
+.today-sports-stack {
+  margin-top: 1rem;
+}
+
+.today-sports-stack:not(:has([data-today-sports-card])) {
+  display: none;
+}
+
+.today-sports-stack__heading {
+  margin-bottom: 0.5rem;
+  padding-inline: 0.125rem;
+  color: var(--today-section-ink, var(--app-ink-2));
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.today-disclosure {
+  border-color: var(--app-border);
+}
+
+@media (min-width: 640px) {
+  .content-chapter {
+    margin-inline: -0.75rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--app-radius-lg);
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--content-chapter-accent) 20%,
+        var(--app-border)
+      );
+  }
+}
+
 /* ── Today registration + shelf motion ─────────────────────────────────
  * The daily briefing should feel assembled, not animated. Section headers
  * register once as they enter the document: copy settles four pixels and the

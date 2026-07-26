@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import PageChapter from "@/components/ui/PageChapter";
 import {
   PARKING_GARAGES,
   PARKING_RATE_SCHEDULE,
@@ -236,7 +237,13 @@ export default async function ParkingPage() {
       {/* Garage rate schedule — verified against the City's published
           schedule (2026-06). Uniform across all five garages, so it
           shows once here as the at-a-glance answer to "what'll it cost?" */}
-      <section
+      <PageChapter
+        label="Parking basics"
+        index="01"
+        tone="brand"
+        bodyClassName="space-y-7"
+      >
+        <section
         aria-labelledby="parking-rate-heading"
         className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
         style={{ borderColor: "var(--app-border)" }}
@@ -294,14 +301,14 @@ export default async function ParkingPage() {
         <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           Pay with ParkMobile, cash, or a credit card.
         </p>
-      </section>
+        </section>
 
       {/* Common requests — intent-led entry tiles, same pattern as
           /contacts. Routes the user straight to the right garage
           for what they're doing OR to the City's parking page for
           tickets/permits/tows. Sits ABOVE the comprehensive garage
           list so people who know what they want skip the directory. */}
-      <section
+        <section
         aria-labelledby="parking-intent-heading"
         className="space-y-2.5"
       >
@@ -366,12 +373,12 @@ export default async function ParkingPage() {
             );
           })}
         </ul>
-      </section>
+        </section>
 
       {/* Parking alerts CTA. The predictive "this garage usually fills before a
           big event, try another" nudge works today with no live feed, so this
           always shows; live full-alerts layer on once a feed is wired. */}
-      <Link
+        <Link
         href="/settings/notifications"
         className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
         style={{
@@ -403,15 +410,17 @@ export default async function ParkingPage() {
           strokeWidth={2}
           style={{ color: "var(--app-ink-3)" }}
         />
-      </Link>
+        </Link>
+      </PageChapter>
 
-      <section className="space-y-3">
-        <h2
-          className="font-serif text-[22px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          The five garages
-        </h2>
+      <PageChapter label="Choose a garage" index="02" tone="civic">
+        <section className="space-y-3">
+          <h2
+            className="font-serif text-[22px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            The five garages
+          </h2>
         <ul className="space-y-2.5">
           {PARKING_GARAGES.map((g) => (
             <li key={g.slug}>
@@ -517,7 +526,8 @@ export default async function ParkingPage() {
             </li>
           ))}
         </ul>
-      </section>
+        </section>
+      </PageChapter>
 
       {/* Street parking — the second-most-asked question after "where
           do I park downtown". Covers metered zones, snow emergencies,
@@ -525,7 +535,13 @@ export default async function ParkingPage() {
           shapefile data we link out for specifics, but the rules
           themselves are documented here so a visitor knows what to
           look for. */}
-      <CollapsibleSection
+      <PageChapter
+        label="Rules and references"
+        index="03"
+        tone="forest"
+        bodyClassName="space-y-7"
+      >
+        <CollapsibleSection
         title="Street parking rules"
         headingLevel={2}
         storageKey="fr.parking.street-rules"
@@ -755,11 +771,11 @@ export default async function ParkingPage() {
             route or street-cleaning violation.
           </span>
         </p>
-      </CollapsibleSection>
+        </CollapsibleSection>
 
       {/* Accessible parking + the City parking office — the buried-civic
           answers (verified against the City, 2026-06). */}
-      <CollapsibleSection
+        <CollapsibleSection
         title="Accessible parking & city office"
         headingLevel={2}
         storageKey="fr.parking.accessible"
@@ -794,11 +810,11 @@ export default async function ParkingPage() {
           </a>
         </div>
         </div>
-      </CollapsibleSection>
+        </CollapsibleSection>
 
       {/* Printable City maps relevant to parking (downtown parking, snow
           routes, street sweeping, mobility district). */}
-      <CollapsibleSection
+        <CollapsibleSection
         title="Printable city maps"
         headingLevel={2}
         storageKey="fr.parking.maps"
@@ -818,7 +834,8 @@ export default async function ParkingPage() {
             </li>
           ))}
         </ul>
-      </CollapsibleSection>
+        </CollapsibleSection>
+      </PageChapter>
 
       <footer
         className="space-y-2 border-t pt-4 text-[12px]"

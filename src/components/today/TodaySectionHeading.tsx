@@ -42,7 +42,10 @@ export default function TodaySectionHeading({
               <span
                 aria-hidden
                 className="live-dot h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: "var(--app-brand)" }}
+                style={{
+                  background:
+                    "var(--today-section-accent, var(--app-brand))",
+                }}
               />
             )}
             {title}
@@ -61,7 +64,10 @@ export default function TodaySectionHeading({
             href={href}
             aria-label={`${cta}: ${title}`}
             className="today-section-heading__cta tap-44-y -my-2 inline-flex shrink-0 items-center gap-1 rounded-[var(--app-radius-sm)] px-1.5 text-[12px] font-semibold tracking-tight outline-none"
-            style={{ color: "var(--app-brand-press)" }}
+            style={{
+              color:
+                "var(--today-section-ink, var(--app-brand-press))",
+            }}
           >
             {cta}
             <ArrowRight
@@ -78,7 +84,10 @@ export default function TodaySectionHeading({
       >
         <span
           className="today-section-heading__registration-accent h-[3px] w-8 shrink-0 rounded-full"
-          style={{ background: "var(--app-brand)" }}
+          style={{
+            background:
+              "var(--today-section-accent, var(--app-brand))",
+          }}
         />
         <span
           className="today-section-heading__registration-rule h-px flex-1"

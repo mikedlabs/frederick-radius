@@ -9,6 +9,7 @@ import CountySportsEvents, { CountySportsEventsFallback } from "@/components/spo
 import LocalSportsSchedule, { LocalSportsScheduleFallback } from "@/components/sports/LocalSportsSchedule";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import SectionHeading from "@/components/ui/SectionHeading";
+import PageChapter from "@/components/ui/PageChapter";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getLocalSportsGames } from "@/lib/integrations/local-sports";
@@ -129,39 +130,52 @@ export default function SportsPage() {
         <span className="sports-photo-credit">Original Frederick Radius photography</span>
       </header>
 
-      <section>
-        <SectionHeading
-          title="Upcoming team games"
-          href="/api/calendar/sports.ics"
-          cta="Sports calendar"
-        />
-        <p
-          className="mb-4 mt-2 max-w-[42rem] text-[12.5px] leading-relaxed"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          Follow Hood, Mount St. Mary&apos;s, and FCC here. Open a game for its
-          venue, live coverage, result, or verified source.
-        </p>
-        <Suspense fallback={<LocalSportsScheduleFallback />}>
-          <LocalSportsSchedule gamesPromise={localSportsPromise} now={now} />
-        </Suspense>
-      </section>
-
-      <section>
-        <SectionHeading
-          title="Games happening in Frederick"
-          href="/events?intent=sports"
-          cta="All sports events"
-        />
-        <EventSheetBoundary fetchMissing>
-          <Suspense fallback={<CountySportsEventsFallback />}>
-            <CountySportsEvents eventsPromise={eventsPromise} now={now} />
+      <PageChapter
+        label="On the schedule"
+        index="01"
+        tone="civic"
+        bodyClassName="space-y-10 sm:space-y-12"
+      >
+        <section>
+          <SectionHeading
+            title="Upcoming team games"
+            href="/api/calendar/sports.ics"
+            cta="Sports calendar"
+          />
+          <p
+            className="mb-4 mt-2 max-w-[42rem] text-[12.5px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Follow Hood, Mount St. Mary&apos;s, and FCC here. Open a game for its
+            venue, live coverage, result, or verified source.
+          </p>
+          <Suspense fallback={<LocalSportsScheduleFallback />}>
+            <LocalSportsSchedule gamesPromise={localSportsPromise} now={now} />
           </Suspense>
-        </EventSheetBoundary>
-      </section>
+        </section>
+
+        <section>
+          <SectionHeading
+            title="Games happening in Frederick"
+            href="/events?intent=sports"
+            cta="All sports events"
+          />
+          <EventSheetBoundary fetchMissing>
+            <Suspense fallback={<CountySportsEventsFallback />}>
+              <CountySportsEvents eventsPromise={eventsPromise} now={now} />
+            </Suspense>
+          </EventSheetBoundary>
+        </section>
+      </PageChapter>
 
       {/* ── The Frederick Keys ─────────────────────────────────────────── */}
-      <section>
+      <PageChapter
+        label="Local teams"
+        index="02"
+        tone="brand"
+        bodyClassName="space-y-10 sm:space-y-12"
+      >
+        <section>
         <SectionHeading title="The Frederick Keys" />
         {/* Live score on game days (home or away) — the client island
             self-hides on an idle day and polls only while a game is live. */}
@@ -179,10 +193,10 @@ export default function SportsPage() {
             <KeysHomeGames eventsPromise={eventsPromise} now={now} />
           </Suspense>
         </EventSheetBoundary>
-      </section>
+        </section>
 
       {/* ── Frederick Flying Cows ────────────────────────────────────── */}
-      <section>
+        <section>
         <SectionHeading title="Frederick Flying Cows" />
         <div
           className="mt-4 overflow-hidden rounded-[var(--app-radius-lg)] border"
@@ -259,10 +273,10 @@ export default function SportsPage() {
             </dl>
           </div>
         </div>
-      </section>
+        </section>
 
       {/* ── College and high-school sports ─────────────────────────── */}
-      <section>
+        <section>
         <SectionHeading title="College and high-school sports" />
         <p className="mt-2 max-w-[42rem] text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           The native schedule above carries college games. These official team
@@ -328,14 +342,16 @@ export default function SportsPage() {
             </a>
           </details>
         </div>
-      </section>
+        </section>
+      </PageChapter>
 
       {/* ── Places to play ─────────────────────────────────────────────── */}
-      <section className="space-y-6">
-        <SectionHeading title="Places to play" />
-        <p className="-mt-4 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Open a sport to see the full local list.
-        </p>
+      <PageChapter label="Get on the field" index="03" tone="forest">
+        <section className="space-y-6">
+          <SectionHeading title="Places to play" />
+          <p className="-mt-4 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Open a sport to see the full local list.
+          </p>
 
         {golf.length > 0 && (
           <details className="sports-play-group overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]">
@@ -407,7 +423,8 @@ export default function SportsPage() {
             </div>
           </details>
         )}
-      </section>
+        </section>
+      </PageChapter>
     </div>
   );
 }

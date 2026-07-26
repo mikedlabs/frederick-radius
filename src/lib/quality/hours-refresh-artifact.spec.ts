@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildHoursRefreshArtifact } from "../../../scripts/pull-hours-refresh.mjs";
+import {
+  hoursRefreshForAcceptedIdentity,
+  resolveRefreshedBusinessStatusForAcceptedIdentity,
+} from "@/lib/loaders/places";
 
 const NOW = new Date("2026-07-26T13:00:00.000Z");
 const recent = "2026-07-26T12:00:00.000Z";
@@ -10,6 +14,7 @@ function row(
 ) {
   return {
     slug,
+    place_id: `ChIJ-${slug}`,
     weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
     business_status: "OPERATIONAL",
     refreshed_at: recent,
@@ -18,6 +23,87 @@ function row(
 }
 
 describe("hours refresh artifact safety", () => {
+  it("applies a refresh row only to its currently accepted provider identity", () => {
+    const refresh = {
+      place_id: "ChIJCurrentPlace123",
+      weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+      business_status: "CLOSED_PERMANENTLY",
+      refreshed_at: recent,
+    };
+
+    expect(
+      hoursRefreshForAcceptedIdentity(refresh, "ChIJCurrentPlace123"),
+    ).toBe(refresh);
+    expect(
+      hoursRefreshForAcceptedIdentity(refresh, "ChIJDifferentPlace456"),
+    ).toBeUndefined();
+    expect(
+      hoursRefreshForAcceptedIdentity(refresh, undefined),
+    ).toBeUndefined();
+    expect(
+      hoursRefreshForAcceptedIdentity(
+        refresh,
+        "5ba71092-6783-4abd-abc9-3af18d0a401f",
+      ),
+    ).toBeUndefined();
+    expect(
+      hoursRefreshForAcceptedIdentity(
+        { place_id: undefined, refreshed_at: recent },
+        "ChIJCurrentPlace123",
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveRefreshedBusinessStatusForAcceptedIdentity(
+        undefined,
+        refresh,
+        "ChIJDifferentPlace456",
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveRefreshedBusinessStatusForAcceptedIdentity(
+        undefined,
+        refresh,
+        "ChIJCurrentPlace123",
+      ),
+    ).toMatchObject({
+      status: "closed_permanently",
+      source: "hours_refresh",
+    });
+
+    const business = {
+      place_id: "ChIJCurrentPlace123",
+      is_operational: "closed_temporarily" as const,
+      refreshed_at: recent,
+    };
+    expect(
+      resolveRefreshedBusinessStatusForAcceptedIdentity(
+        business,
+        undefined,
+        "ChIJCurrentPlace123",
+      ),
+    ).toMatchObject({
+      status: "closed_temporarily",
+      source: "business_status",
+    });
+    expect(
+      resolveRefreshedBusinessStatusForAcceptedIdentity(
+        business,
+        undefined,
+        "ChIJDifferentPlace456",
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveRefreshedBusinessStatusForAcceptedIdentity(
+        {
+          is_operational: "closed_permanently",
+          refreshed_at: recent,
+        },
+        undefined,
+        "ChIJCurrentPlace123",
+      ),
+    ).toBeUndefined();
+  });
+
   it("rejects an empty database snapshot", () => {
     expect(() =>
       buildHoursRefreshArtifact([], {
@@ -74,13 +160,15 @@ describe("hours refresh artifact safety", () => {
       ],
       {
         now: NOW,
-        knownSlugs: ["cafe"],
+        knownPlaces: [
+          { slug: "cafe", google_place_id: "ChIJ-cafe" },
+        ],
       },
     );
 
     expect(result.artifact).toMatchObject({
       _meta: {
-        schema_version: 1,
+        schema_version: 2,
         generated_at: NOW.toISOString(),
         rows: 1,
         with_schedule: 1,
@@ -89,12 +177,110 @@ describe("hours refresh artifact safety", () => {
         unmatched_rows: 1,
       },
       cafe: {
+        place_id: "ChIJ-cafe",
         weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
         business_status: "OPERATIONAL",
         refreshed_at: recent,
       },
     });
     expect(result.artifact).not.toHaveProperty("old-slug");
+  });
+
+  it("rejects a database identity that no longer matches the public catalog", () => {
+    expect(() =>
+      buildHoursRefreshArtifact(
+        [row("cafe", { place_id: "ChIJ-old-cafe" })],
+        {
+          now: NOW,
+          knownPlaces: [
+            { slug: "cafe", google_place_id: "ChIJ-current-cafe" },
+          ],
+        },
+      ),
+    ).toThrow(
+      "Hours snapshot row cafe has place_id ChIJ-old-cafe, but the public catalog maps it to ChIJ-current-cafe.",
+    );
+  });
+
+  it("requires place_id when validating against the current public catalog", () => {
+    expect(() =>
+      buildHoursRefreshArtifact(
+        [row("cafe", { place_id: undefined })],
+        {
+          now: NOW,
+          knownPlaces: [
+            { slug: "cafe", google_place_id: "ChIJ-current-cafe" },
+          ],
+        },
+      ),
+    ).toThrow("Hours snapshot row cafe is missing place_id.");
+  });
+
+  it("keeps the legacy knownSlugs test harness compatible", () => {
+    const result = buildHoursRefreshArtifact(
+      [row("cafe", { place_id: undefined })],
+      {
+        now: NOW,
+        knownSlugs: ["cafe"],
+      },
+    );
+
+    expect(result.artifact).toMatchObject({
+      cafe: {
+        weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
+        business_status: "OPERATIONAL",
+        refreshed_at: recent,
+      },
+    });
+    expect(result.artifact._meta).toMatchObject({ schema_version: 1 });
+  });
+
+  it("rejects ambiguous catalog identities and duplicate database slugs", () => {
+    expect(() =>
+      buildHoursRefreshArtifact([row("cafe")], {
+        now: NOW,
+        knownPlaces: [
+          { slug: "cafe", google_place_id: "ChIJ-shared" },
+          { slug: "bakery", google_place_id: "ChIJ-shared" },
+        ],
+      }),
+    ).toThrow(
+      "The public catalog maps Google Place ID ChIJ-shared to both cafe and bakery.",
+    );
+
+    expect(() =>
+      buildHoursRefreshArtifact(
+        [row("cafe"), row("cafe")],
+        {
+          now: NOW,
+          knownPlaces: [
+            { slug: "cafe", google_place_id: "ChIJ-cafe" },
+          ],
+        },
+      ),
+    ).toThrow("Hours snapshot contains duplicate row cafe.");
+  });
+
+  it("rejects invalid provider IDs and unsupported business statuses", () => {
+    expect(() =>
+      buildHoursRefreshArtifact(
+        [
+          row("cafe", {
+            place_id: "5ba71092-6783-4abd-abc9-3af18d0a401f",
+          }),
+        ],
+        { now: NOW, knownSlugs: ["cafe"] },
+      ),
+    ).toThrow("Hours snapshot row cafe has invalid place_id");
+
+    expect(() =>
+      buildHoursRefreshArtifact(
+        [row("cafe", { business_status: "MAYBE_OPEN" })],
+        { now: NOW, knownSlugs: ["cafe"] },
+      ),
+    ).toThrow(
+      "Hours snapshot row cafe has unsupported business_status MAYBE_OPEN.",
+    );
   });
 
   it("rejects malformed schedules and future verification timestamps", () => {

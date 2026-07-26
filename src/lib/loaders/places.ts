@@ -58,6 +58,7 @@ import {
 import {
   resolveRefreshedBusinessStatus,
   type BusinessStatusRefreshEntry,
+  type HoursStatusRefreshEntry,
 } from "@/lib/business-status-refresh";
 import {
   placementRejectionReason,
@@ -65,6 +66,7 @@ import {
 } from "@/lib/placement-trust";
 import { getHoursAvailability } from "@/lib/hours-availability";
 import { mayUseLikelyOpenFallback } from "@/lib/likely-open";
+import { chooseCanonicalGooglePlaceId } from "@/lib/quality/enrichmentBinding";
 
 // Official Maryland farmers-market schedule snapshot (built by
 // `npm run build:farmers-markets`). Ships as [] until run, so the join below is
@@ -114,11 +116,13 @@ const SEASONAL = Object.fromEntries(
 /**
  * Rolling hours refresh (data brief 4.3): the committed materialization
  * of the place_hours_refresh table (npm run refresh:hours). An entry
- * here overrides the static enrichment hours and business status for
- * its slug, and its refreshed_at is the verification date the
- * freshness policy reads. The _doc key is metadata.
+ * here overrides static enrichment hours and business status only when
+ * its place_id still matches the accepted provider identity for its slug.
+ * refreshed_at is the verification date the freshness policy reads. The
+ * _doc key is metadata.
  */
 type HoursRefreshEntry = {
+  place_id: string;
   weekday_hours?: string[];
   business_status?: string;
   refreshed_at: string;
@@ -135,10 +139,48 @@ const BUSINESS_STATUS = (
   }
 ).overrides ?? {};
 
-function refreshedBusinessStatus(slug: string) {
+export function hoursRefreshForAcceptedIdentity<
+  T extends { place_id?: string },
+>(
+  refresh: T | undefined,
+  acceptedGooglePlaceId: string | undefined,
+): T | undefined {
+  return refresh &&
+    isGooglePlaceId(acceptedGooglePlaceId) &&
+    refresh.place_id === acceptedGooglePlaceId
+    ? refresh
+    : undefined;
+}
+
+function acceptedHoursRefresh(
+  slug: string,
+  acceptedGooglePlaceId: string | undefined,
+): HoursRefreshEntry | undefined {
+  return hoursRefreshForAcceptedIdentity(
+    HOURS_REFRESH[slug],
+    acceptedGooglePlaceId,
+  );
+}
+
+export function resolveRefreshedBusinessStatusForAcceptedIdentity(
+  business: BusinessStatusRefreshEntry | undefined,
+  hours: HoursStatusRefreshEntry & { place_id?: string } | undefined,
+  acceptedGooglePlaceId: string | undefined,
+) {
   return resolveRefreshedBusinessStatus(
+    hoursRefreshForAcceptedIdentity(business, acceptedGooglePlaceId),
+    hoursRefreshForAcceptedIdentity(hours, acceptedGooglePlaceId),
+  );
+}
+
+function refreshedBusinessStatus(
+  slug: string,
+  acceptedGooglePlaceId: string | undefined,
+) {
+  return resolveRefreshedBusinessStatusForAcceptedIdentity(
     BUSINESS_STATUS[slug],
     HOURS_REFRESH[slug],
+    acceptedGooglePlaceId,
   );
 }
 
@@ -200,6 +242,7 @@ function claimUrbana(p: Place): Place {
 
 type Enrichment = {
   google_place_id?: string;
+  display_name?: string;
   business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
   weekday_hours?: string[];
   has_hours?: boolean;
@@ -468,6 +511,84 @@ const BASE_BY_SLUG: Record<string, Place> = (() => {
   return idx;
 })();
 
+function addGoogleIdentityOwner(
+  owners: Map<string, string[]>,
+  googlePlaceId: string | undefined,
+  slug: string,
+): void {
+  if (!isGooglePlaceId(googlePlaceId)) return;
+  owners.set(googlePlaceId, [...(owners.get(googlePlaceId) ?? []), slug]);
+}
+
+// Identity promotion needs a catalog-wide view. A provider ID attached to
+// multiple enrichment rows, or already owned by another canonical place, is
+// ambiguous and stays unpublished until the data is reconciled.
+const CANONICAL_GOOGLE_ID_OWNERS = new Map<string, string[]>();
+const ENRICHMENT_GOOGLE_ID_OWNERS = new Map<string, string[]>();
+for (const place of BASE_PLACES) {
+  addGoogleIdentityOwner(
+    CANONICAL_GOOGLE_ID_OWNERS,
+    place.google_place_id,
+    place.slug,
+  );
+  addGoogleIdentityOwner(
+    ENRICHMENT_GOOGLE_ID_OWNERS,
+    enrichmentFor(place.slug)?.google_place_id,
+    place.slug,
+  );
+}
+
+type AcceptedEnrichmentIdentity = {
+  googlePlaceId?: string;
+  enrichment?: Enrichment;
+};
+
+/**
+ * Resolve the one provider identity allowed to affect a canonical place.
+ * Every downstream provider field, including rolling hours/status rows, must
+ * use this same decision instead of re-reading enrichment by slug.
+ */
+function acceptedEnrichmentIdentity(
+  place: Place,
+): AcceptedEnrichmentIdentity {
+  const candidate = enrichmentFor(place.slug);
+  const candidateGooglePlaceId = candidate?.google_place_id;
+  const enrichmentOwners = isGooglePlaceId(candidateGooglePlaceId)
+    ? (ENRICHMENT_GOOGLE_ID_OWNERS.get(candidateGooglePlaceId) ?? [])
+    : [];
+  const canonicalOwners = isGooglePlaceId(candidateGooglePlaceId)
+    ? (CANONICAL_GOOGLE_ID_OWNERS.get(candidateGooglePlaceId) ?? [])
+    : [];
+  const googlePlaceId = chooseCanonicalGooglePlaceId({
+    existingId: place.google_place_id,
+    enrichmentId: candidateGooglePlaceId,
+    curatedName: place.name,
+    enrichmentDisplayName: candidate?.display_name,
+    enrichmentOwnerCount: enrichmentOwners.length,
+    claimedByAnotherCanonicalPlace: canonicalOwners.some(
+      (slug) => slug !== place.slug,
+    ),
+  });
+  const canonicalHasGooglePlaceId = isGooglePlaceId(place.google_place_id);
+  // Older enrichment snapshots did not repeat the provider ID. They may still
+  // attach when the curated record already supplies that identity. Once an
+  // enrichment row declares an ID, a valid curated ID requires an exact match;
+  // a missing/partner-UUID curated ID requires the guarded promotion above.
+  const accepted =
+    Boolean(candidate) &&
+    (candidateGooglePlaceId == null
+      ? canonicalHasGooglePlaceId
+      : isGooglePlaceId(candidateGooglePlaceId) &&
+        (canonicalHasGooglePlaceId
+          ? candidateGooglePlaceId === place.google_place_id
+          : candidateGooglePlaceId === googlePlaceId));
+
+  return {
+    googlePlaceId,
+    enrichment: accepted ? candidate : undefined,
+  };
+}
+
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = Omit<Provenance, "source"> & {
   /** Proxied photo URL (server route, key-safe) — first photo, for heroes */
@@ -648,14 +769,18 @@ function boundaryBlurb(raw: string | undefined, name: string): string {
 }
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
-  const e = enrichmentFor(p.slug);
+  const acceptedIdentity = acceptedEnrichmentIdentity(p);
+  const e = acceptedIdentity.enrichment;
   const approvedDescription = approvedPlaceDescription(p.slug, p.name);
   // A partner UUID was historically stored in this field on part of the DFP
   // import. It is not a Google Place ID and must not escape the canonical
   // loader as provider data.
-  const sourcePlace = isGooglePlaceId(p.google_place_id)
+  const sourcePlace = acceptedIdentity.googlePlaceId === p.google_place_id
     ? p
-    : { ...p, google_place_id: undefined };
+    : { ...p, google_place_id: acceptedIdentity.googlePlaceId };
+  // Provider fields are one identity bundle. If the provider identity cannot
+  // be accepted, none of its status, hours, coordinates, contact data,
+  // category, ratings, reviews, or photos may leak onto the canonical place.
   if (!e)
     return {
       ...sourcePlace,
@@ -683,19 +808,11 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
         approvedDescription?.reviewed_at ?? approvedDescription?.source.fetched_at,
       description_reviewed: Boolean(approvedDescription),
     };
-  // Some imported DFP rows stored a partner UUID in `google_place_id`, even
-  // though the reviewed enrichment row for the same slug already carries the
-  // real Google Places ID. Promote that reviewed ID at this canonical merge
-  // boundary so hours refresh, provenance links, and every generated client
-  // record use the provider ID we already have. Quarantined enrichments never
-  // reach this branch.
-  const canonicalGooglePlaceId = isGooglePlaceId(e.google_place_id)
-    ? e.google_place_id
-    : sourcePlace.google_place_id;
-  const canonicalPlace =
-    canonicalGooglePlaceId === sourcePlace.google_place_id
-      ? sourcePlace
-      : { ...sourcePlace, google_place_id: canonicalGooglePlaceId };
+  // Preserve a valid canonical identity. An enrichment ID may fill a missing
+  // or partner-UUID slot only when its name match is specific, the ID appears
+  // on exactly one live enrichment row, and no other canonical place owns it.
+  // Quarantined enrichments never reach this branch.
+  const canonicalPlace = sourcePlace;
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
     e.business_status === "CLOSED_PERMANENTLY" ? "closed_permanently" :
@@ -893,7 +1010,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // Hours provenance, Phase 1 precedence: Google enrichment, then a
   // curated manual schedule. OSM hours apply to the map's OSM layer,
   // not the static place records, so they are not stamped here.
-  const e = enrichmentFor(p.slug);
+  const e = acceptedEnrichmentIdentity(p).enrichment;
   const hours_source: Place["hours_source"] = e?.has_hours
     ? "google_places"
     : enriched.hours && enriched.hours_verified
@@ -913,7 +1030,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   // the next refresh that adds this slug re-introduces the very typo the patch
   // fixed. enriched.hours already carries the patched schedule (applyEnrichment
   // takes p.hours first), so we just suppress the refresh override here.
-  const refresh = HOURS_REFRESH[p.slug];
+  const refresh = acceptedHoursRefresh(p.slug, enriched.google_place_id);
   const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
   const refreshedHours = !hasHoursPatch && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
@@ -925,7 +1042,10 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) &&
     mayPublishVisitabilityHours(p.slug, hours, now);
   const manualStatus = manualPlaceStatusOverride(p.slug);
-  const refreshedStatus = refreshedBusinessStatus(p.slug);
+  const refreshedStatus = refreshedBusinessStatus(
+    p.slug,
+    enriched.google_place_id,
+  );
   if (manualStatus) {
     enriched.is_operational = manualStatus.status;
   } else if (refreshedStatus) {
@@ -1190,7 +1310,11 @@ export function isOperational(p: Place): boolean {
   // temporary storm closure cannot suppress an unrelated same-name place.
   if (manualPlaceStatusOverride(p.slug)) return false;
   if (isKnownClosed(p.name)) return false; // manual override of last resort
-  const refreshedStatus = refreshedBusinessStatus(p.slug)?.status;
+  const acceptedIdentity = acceptedEnrichmentIdentity(p);
+  const refreshedStatus = refreshedBusinessStatus(
+    p.slug,
+    acceptedIdentity.googlePlaceId,
+  )?.status;
   if (refreshedStatus) {
     return (
       refreshedStatus !== "closed_permanently" &&
@@ -1202,7 +1326,7 @@ export function isOperational(p: Place): boolean {
   // raw Place field can lie (Serendipity Market, Brass Copper Shop,
   // …). Read the live enrichment business_status first; only fall
   // back to the Place field when there is no enrichment.
-  const e = enrichmentFor(p.slug);
+  const e = acceptedIdentity.enrichment;
   if (e?.business_status === "CLOSED_PERMANENTLY") return false;
   if (e?.business_status === "CLOSED_TEMPORARILY") return false;
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
@@ -1270,6 +1394,35 @@ export function isSubstantive(p: Place): boolean {
       (e.photo_names && e.photo_names.length > 0) ||
       (e.editorial_summary && e.editorial_summary.trim().length > 0),
   );
+}
+
+/**
+ * Canonical targets for paid business-status rechecks.
+ *
+ * This intentionally differs from publicPlaces(): a place hidden only because
+ * an accepted provider profile says it is closed remains eligible so a later
+ * reopening can be discovered. Human safety decisions still win, and every
+ * other public-catalog quality boundary remains in force.
+ */
+export function canonicalBusinessStatusRefreshCandidates(
+  now: Date = new Date(),
+): Place[] {
+  return BASE_PLACES
+    .filter((place) => !SUPPRESSED_JUNK_SLUGS.has(place.slug))
+    .filter((place) => !manualPlaceStatusOverride(place.slug))
+    .filter((place) => !isKnownClosed(place.name))
+    .filter(
+      (place) =>
+        !(
+          (place.source === "manual" || place.source === "seed") &&
+          (place.is_operational === "closed_temporarily" ||
+            place.is_operational === "closed_permanently")
+        ),
+    )
+    .filter(isDiscoverable)
+    .filter(isSubstantive)
+    .filter((place) => isValidCoord(place.geom))
+    .filter((place) => isInSeason(place, now));
 }
 
 /**

@@ -89,7 +89,7 @@ export function daypartBrowseHref(
  * existing shelf instead of turning it into another full-size card. */
 export function DaypartEmptyState({
   href = "/open-now",
-  label = "Open now",
+  label = "Places open now",
   contextLabel = "Across Frederick County",
 }: {
   href?: string;
@@ -242,7 +242,7 @@ export default function DaypartNeeds({
     return (
       <DaypartEmptyState
         href={active.href}
-        label="Open now"
+        label="Places open now"
         contextLabel={contextLabel}
       />
     );
@@ -260,7 +260,7 @@ export default function DaypartNeeds({
       className="mt-6"
     >
       <TodaySectionHeading
-        title={likely ? "Likely open" : "Open now"}
+        title={likely ? "Places likely open" : "Places open now"}
         meta={contextLabel}
         href={active.href}
         cta="See all"

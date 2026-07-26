@@ -625,11 +625,19 @@ function ActiveToolSection({
 }) {
   return (
     <section id="compass-active-section" aria-labelledby="compass-active-heading" className="scroll-mt-24 space-y-2.5">
-      <div className="flex items-baseline justify-between gap-3 border-b pb-2" style={{ borderColor: "var(--app-border-strong)" }}>
+      <div className="flex min-w-0 items-baseline gap-3 border-b pb-2" style={{ borderColor: "var(--app-border-strong)" }}>
         <h2 id="compass-active-heading" className="font-sans text-[21px] font-semibold leading-none tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
           {section.label}
         </h2>
-        <span className="text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <span
+          aria-hidden
+          className="h-px min-w-4 flex-1"
+          style={{
+            background:
+              "linear-gradient(90deg, color-mix(in srgb, var(--app-brand) 34%, var(--app-border)), var(--app-border))",
+          }}
+        />
+        <span className="shrink-0 text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           {section.items.length} {section.items.length === 1 ? "tool" : "tools"}
         </span>
       </div>

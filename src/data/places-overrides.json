@@ -87,6 +87,9 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "frederick-station": {
+      "category": "transit"
+    },
     "wye-oak-tavern-frederick": {
       "commerce_links": [
         {

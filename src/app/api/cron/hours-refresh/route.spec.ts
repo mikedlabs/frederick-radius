@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hoursRefreshCycleDay } from "@/lib/hours-refresh-targets";
 
 const mocks = vi.hoisted(() => ({
+  decoratePlace: vi.fn(),
   publicPlaces: vi.fn(),
   getDb: vi.fn(),
   getPlaceDetails: vi.fn(),
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/loaders/places", () => ({
+  decoratePlace: mocks.decoratePlace,
   publicPlaces: mocks.publicPlaces,
 }));
 vi.mock("@/lib/db/client", () => ({
@@ -54,10 +56,11 @@ function db({
   const onConflictDoUpdate = writeError
     ? vi.fn().mockRejectedValue(writeError)
     : vi.fn().mockResolvedValue(undefined);
+  const values = vi.fn(() => ({ onConflictDoUpdate }));
   const insert = vi.fn(() => ({
-    values: vi.fn(() => ({ onConflictDoUpdate })),
+    values,
   }));
-  return { select, insert };
+  return { select, insert, values, onConflictDoUpdate };
 }
 
 describe("GET /api/cron/hours-refresh", () => {
@@ -68,6 +71,7 @@ describe("GET /api/cron/hours-refresh", () => {
     process.env.CRON_SECRET = "test-cron-secret";
     process.env.HOURS_REFRESH_CRON = "1";
     mocks.googlePlacesConfigured.mockReturnValue(true);
+    mocks.decoratePlace.mockImplementation((place) => place);
     mocks.publicPlaces.mockReturnValue([
       {
         slug: slugForCycle(),
@@ -111,8 +115,43 @@ describe("GET /api/cron/hours-refresh", () => {
     expect(body.error).toBe("No refresh rows were persisted.");
   });
 
-  it("reports a healthy run only after a schedule is persisted", async () => {
+  it("fails before a paid call when the public catalog shares a provider identity", async () => {
     mocks.getDb.mockReturnValue(db());
+    mocks.publicPlaces.mockReturnValue([
+      {
+        slug: "duplicate-a",
+        google_place_id: "ChIJ-duplicate",
+      },
+      {
+        slug: "duplicate-b",
+        google_place_id: "ChIJ-duplicate",
+      },
+    ]);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.healthy).toBe(false);
+    expect(body.error).toContain(
+      "Duplicate Google Place ID ChIJ-duplicate",
+    );
+    expect(mocks.getPlaceDetails).not.toHaveBeenCalled();
+  });
+
+  it("reports a healthy run only after a schedule is persisted", async () => {
+    const storage = db();
+    mocks.getDb.mockReturnValue(storage);
+    mocks.publicPlaces.mockReturnValue([
+      {
+        slug: slugForCycle(),
+        google_place_id: "5ba71092-6783-4abd-abc9-3af18d0a401f",
+      },
+    ]);
+    mocks.decoratePlace.mockImplementation((place) => ({
+      ...place,
+      google_place_id: "ChIJ-hours-route-test",
+    }));
     mocks.getPlaceDetails.mockResolvedValue({
       weekday_hours: ["Monday: 9:00 AM – 5:00 PM"],
       business_status: "OPERATIONAL",
@@ -129,5 +168,23 @@ describe("GET /api/cron/hours-refresh", () => {
       withHours: 1,
       failed: 0,
     });
+    expect(mocks.decoratePlace).toHaveBeenCalledTimes(1);
+    expect(mocks.getPlaceDetails).toHaveBeenCalledWith(
+      "ChIJ-hours-route-test",
+      "hours",
+    );
+    expect(storage.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slug: slugForCycle(),
+        placeId: "ChIJ-hours-route-test",
+      }),
+    );
+    expect(storage.onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        set: expect.objectContaining({
+          placeId: "ChIJ-hours-route-test",
+        }),
+      }),
+    );
   });
 });

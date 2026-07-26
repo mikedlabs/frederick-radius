@@ -1,5 +1,5 @@
 {
-  "_doc": "Latest Google business-status checks committed by the data-steward workflow. The canonical place loader reads these rows, with manual safety overrides winning and a newer hours refresh allowed to supersede an older status check.",
+  "_doc": "Latest Google business-status checks committed by the data-steward workflow, bound to the public catalog identity by place_id. The canonical loader ignores legacy or mismatched rows; manual safety overrides still win and a newer matching hours refresh may supersede an older status check.",
   "generated_at": null,
   "api_calls": 0,
   "count": 0,

@@ -1,3 +1,3 @@
 {
-  "_doc": "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug. Each entry overrides the static enrichment hours and business status for that place, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand."
+  "_doc": "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand."
 }

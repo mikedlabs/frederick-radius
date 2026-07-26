@@ -21,14 +21,27 @@ export function selectHoursRefreshTargets<
   }
   if (!Number.isInteger(cap) || cap < 1) throw new RangeError("cap must be positive");
 
-  // One paid lookup per Google identity. Sort first so duplicates always pick
-  // the same canonical slug regardless of source-array order, then bucket the
-  // deduplicated set so a place is refreshed exactly once per cycle.
+  // One paid lookup per Google identity. A duplicate is a catalog integrity
+  // failure, not an alias-selection problem: choosing one slug would let the
+  // resulting hours row silently attach to whichever record sorted first.
   const byGoogleId = new Map<string, T>();
+  const bySlug = new Map<string, T>();
   for (const place of [...places].sort((a, b) => a.slug.localeCompare(b.slug))) {
-    if (place.google_place_id && !byGoogleId.has(place.google_place_id)) {
-      byGoogleId.set(place.google_place_id, place);
+    if (!place.google_place_id) continue;
+    const existingSlug = bySlug.get(place.slug);
+    if (existingSlug) {
+      throw new Error(
+        `Duplicate hours-refresh slug ${place.slug} maps to both ${existingSlug.google_place_id} and ${place.google_place_id}.`,
+      );
     }
+    const existing = byGoogleId.get(place.google_place_id);
+    if (existing) {
+      throw new Error(
+        `Duplicate Google Place ID ${place.google_place_id} belongs to both ${existing.slug} and ${place.slug}.`,
+      );
+    }
+    bySlug.set(place.slug, place);
+    byGoogleId.set(place.google_place_id, place);
   }
 
   return [...byGoogleId.values()]

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isSuspectBinding } from "./enrichmentBinding";
+import {
+  chooseCanonicalGooglePlaceId,
+  findGooglePlaceIdCollisions,
+  isSafeEnrichmentIdentityMatch,
+  isSuspectBinding,
+} from "./enrichmentBinding";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
@@ -10,6 +15,11 @@ import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import { PLACES } from "@/data/places";
 import { haversineMeters } from "@/lib/geo";
 import { isGooglePlaceId } from "@/lib/provenance";
+import {
+  decoratePlace,
+  isOperational,
+  publicPlaceBySlug,
+} from "@/lib/loaders/places";
 
 type Ov = {
   fold?: Record<string, string>;
@@ -32,6 +42,199 @@ describe("isSuspectBinding", () => {
   it("never flags address-style display names", () => {
     expect(isSuspectBinding("Cunningham Falls State Park", "14039 Catoctin Hollow Rd")).toBe(false);
   });
+});
+
+describe("Google identity promotion", () => {
+  it("never replaces a valid canonical provider identity", () => {
+    expect(
+      chooseCanonicalGooglePlaceId({
+        existingId: "ChIJCanonicalHospital123",
+        enrichmentId: "ChIJEmergencyDepartment456",
+        curatedName: "Frederick Health Hospital",
+        enrichmentDisplayName:
+          "Frederick Health Hospital Emergency Department",
+        enrichmentOwnerCount: 1,
+        claimedByAnotherCanonicalPlace: false,
+      }),
+    ).toBe("ChIJCanonicalHospital123");
+  });
+
+  it("promotes only a unique, unclaimed, specific same-place match", () => {
+    expect(
+      chooseCanonicalGooglePlaceId({
+        existingId: "5ba71092-6783-4abd-abc9-3af18d0a401f",
+        enrichmentId: "ChIJGravelAndGrind123",
+        curatedName: "Gravel & Grind",
+        enrichmentDisplayName: "Gravel and Grind",
+        enrichmentOwnerCount: 1,
+        claimedByAnotherCanonicalPlace: false,
+      }),
+    ).toBe("ChIJGravelAndGrind123");
+  });
+
+  it("rejects generic-name overlap, duplicate ownership, and collisions", () => {
+    expect(
+      isSafeEnrichmentIdentityMatch(
+        "Outreach Healthcare Frederick",
+        "Frederick Health Toll House",
+      ),
+    ).toBe(false);
+    expect(
+      isSafeEnrichmentIdentityMatch(
+        "Frederick County Public School",
+        "Parkway Elementary School",
+      ),
+    ).toBe(false);
+    expect(
+      isSafeEnrichmentIdentityMatch("He Vox Lounge", "7th Sister"),
+    ).toBe(false);
+
+    const base = {
+      existingId: undefined,
+      enrichmentId: "ChIJSharedProvider123",
+      curatedName: "A Specific Place",
+      enrichmentDisplayName: "A Specific Place",
+    };
+    expect(
+      chooseCanonicalGooglePlaceId({
+        ...base,
+        enrichmentOwnerCount: 2,
+        claimedByAnotherCanonicalPlace: false,
+      }),
+    ).toBeUndefined();
+    expect(
+      chooseCanonicalGooglePlaceId({
+        ...base,
+        enrichmentOwnerCount: 1,
+        claimedByAnotherCanonicalPlace: true,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("finds every provider identity shared by generated records", () => {
+    expect(
+      findGooglePlaceIdCollisions([
+        { slug: "one", google_place_id: "ChIJSharedProvider123" },
+        { slug: "two", google_place_id: "ChIJSharedProvider123" },
+        { slug: "three", google_place_id: "ChIJUniqueProvider456" },
+      ]),
+    ).toEqual([
+      {
+        googlePlaceId: "ChIJSharedProvider123",
+        slugs: ["one", "two"],
+      },
+    ]);
+  });
+
+  it("keeps legacy provider facts when the canonical Google ID anchors the row", () => {
+    const slug = "tous-les-jours-bakery-cafe-frederick";
+    const legacyEnrichment = ENRICHMENT_RAW as Record<
+      string,
+      { google_place_id?: string }
+    >;
+    expect(legacyEnrichment[slug]?.google_place_id).toBeUndefined();
+
+    const canonical = publicPlaceBySlug(slug);
+    expect(canonical).toBeDefined();
+    expect(isGooglePlaceId(canonical!.google_place_id)).toBe(true);
+
+    const decorated = decoratePlace(canonical!);
+    expect(decorated.google_place_id).toBe(canonical!.google_place_id);
+    expect(decorated.google_rating).toBeGreaterThan(0);
+    expect(decorated.google_rating_count).toBeGreaterThan(0);
+  });
+
+  it("withholds provider facts when a valid canonical ID disagrees with a similar-name enrichment", () => {
+    const slug = "frederick-health-hospital";
+    const canonical = publicPlaceBySlug(slug);
+    const enrichment = (
+      ENRICHMENT_RAW as Record<
+        string,
+        { google_place_id?: string; display_name?: string }
+      >
+    )[slug];
+
+    expect(canonical).toBeDefined();
+    expect(isGooglePlaceId(canonical!.google_place_id)).toBe(true);
+    expect(isGooglePlaceId(enrichment?.google_place_id)).toBe(true);
+    expect(enrichment?.google_place_id).not.toBe(canonical!.google_place_id);
+    expect(enrichment?.display_name).toContain("Emergency Department");
+
+    const decorated = decoratePlace(canonical!);
+    expect(decorated.google_place_id).toBe(canonical!.google_place_id);
+    expect(decorated.google_rating).toBeUndefined();
+    expect(decorated.google_rating_count).toBeUndefined();
+    expect(decorated.google_photo_url).toBeUndefined();
+    expect(decorated.hours).toBe(canonical!.hours);
+    expect(decorated.phone).toBe(canonical!.phone);
+    expect(decorated.website).toBe(canonical!.website);
+    expect(decorated.geom).toEqual(canonical!.geom);
+  });
+
+  it.each([
+    "north-market-farmers-market",
+    "roosters-wing-box",
+  ])(
+    "does not let a rejected temporary-closure status hide %s",
+    (slug) => {
+      const canonical = publicPlaceBySlug(slug);
+      expect(canonical).toBeDefined();
+      expect(isOperational(canonical!)).toBe(true);
+      expect(decoratePlace(canonical!).is_operational).toBe("operational");
+    },
+  );
+
+  it.each([
+    "new-hope-cafe",
+    "the-healing-temple",
+    "marianne-riley-psychotherapy",
+    "om-chakra-holistic-healing-and-massage-center",
+    "outreach-healthcare-frederick",
+    "rockwell-brewery-frederick",
+  ])(
+    "withholds the entire rejected provider bundle for %s",
+    (slug) => {
+      const canonical = publicPlaceBySlug(slug);
+      expect(canonical, `${slug} must remain a canonical public place`).toBeDefined();
+      const decorated = decoratePlace(canonical!);
+      const canonicalGoogleId = isGooglePlaceId(canonical!.google_place_id)
+        ? canonical!.google_place_id
+        : undefined;
+      expect(decorated.google_photos ?? []).toEqual([]);
+
+      expect({
+        googlePlaceId: decorated.google_place_id,
+        geom: decorated.geom,
+        status: decorated.is_operational,
+        hours: decorated.hours,
+        phone: decorated.phone,
+        website: decorated.website,
+        category: decorated.category,
+        primaryType: decorated.primary_type,
+        rating: decorated.google_rating,
+        ratingCount: decorated.google_rating_count,
+        photo: decorated.google_photo_url,
+        reviewSnippet: decorated.review_snippet,
+        reviewAuthor: decorated.review_author,
+        googleVerified: decorated.google_verified,
+      }).toEqual({
+        googlePlaceId: canonicalGoogleId,
+        geom: canonical!.geom,
+        status: canonical!.is_operational,
+        hours: canonical!.hours,
+        phone: canonical!.phone,
+        website: canonical!.website,
+        category: canonical!.category,
+        primaryType: undefined,
+        rating: undefined,
+        ratingCount: undefined,
+        photo: undefined,
+        reviewSnippet: undefined,
+        reviewAuthor: undefined,
+        googleVerified: undefined,
+      });
+    },
+  );
 });
 
 describe("data health: quarantine keys resolve to real base records", () => {
@@ -149,5 +352,23 @@ describe("data health: every suspect enrichment binding is quarantined or dead",
       .map((place) => place.slug);
 
     expect(invalid, invalid.join("\n")).toEqual([]);
+  });
+
+  it("publishes one canonical slug per Google Place ID", () => {
+    const collisions = findGooglePlaceIdCollisions(
+      CLIENT_RAW as Array<{
+        slug: string;
+        google_place_id?: string;
+      }>,
+    );
+    expect(
+      collisions,
+      collisions
+        .map(
+          ({ googlePlaceId, slugs }) =>
+            `${googlePlaceId}: ${slugs.join(", ")}`,
+        )
+        .join("\n"),
+    ).toEqual([]);
   });
 });

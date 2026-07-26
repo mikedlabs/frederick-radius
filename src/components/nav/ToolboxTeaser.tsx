@@ -1,11 +1,26 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { RADIUS_TOOLS, type RadiusToolTone } from "@/data/radius-tools";
+import {
+  Activity,
+  ArrowRight,
+  BusFront,
+  MapPin,
+  ParkingCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { RADIUS_TOOLS, type RadiusTool, type RadiusToolTone } from "@/data/radius-tools";
 
-const SHORTCUT_IDS = ["public-essentials", "parking", "transit", "county-pulse"] as const;
-const SHORTCUTS = SHORTCUT_IDS.map((id) => RADIUS_TOOLS.find((tool) => tool.id === id)).filter(
-  (tool): tool is NonNullable<typeof tool> => Boolean(tool),
-);
+function registeredTool(id: string): RadiusTool {
+  const tool = RADIUS_TOOLS.find((candidate) => candidate.id === id);
+  if (!tool) throw new Error(`Missing Radius tool: ${id}`);
+  return tool;
+}
+
+const PRIMARY_TOOL = registeredTool("public-essentials");
+const SUPPORTING_TOOLS: readonly { tool: RadiusTool; icon: LucideIcon }[] = [
+  { tool: registeredTool("parking"), icon: ParkingCircle },
+  { tool: registeredTool("transit"), icon: BusFront },
+  { tool: registeredTool("county-pulse"), icon: Activity },
+];
 
 const TONE_COLOR: Record<RadiusToolTone, string> = {
   accent: "var(--app-accent-press)",
@@ -15,7 +30,14 @@ const TONE_COLOR: Record<RadiusToolTone, string> = {
   positive: "var(--app-positive)",
 };
 
-/** A short practical shelf. The All tools page owns the complete directory. */
+/**
+ * Today keeps one job-led utility surface rather than repeating Compass.
+ *
+ * The urgent, location-aware action gets the strongest treatment. Three
+ * supporting tools remain one tap away, and the complete directory has one
+ * quiet exit. This is deliberate progressive disclosure: useful immediately,
+ * comprehensive only when somebody asks for it.
+ */
 export default function ToolboxTeaser() {
   return (
     <section
@@ -23,21 +45,77 @@ export default function ToolboxTeaser() {
       className="mt-6 border-t pt-4"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <h2
-        id="toolbox-teaser-heading"
-        className="font-sans text-[17px] font-semibold leading-tight tracking-tight"
-        style={{ color: "var(--app-ink)" }}
-      >
-        Practical shortcuts
-      </h2>
+      <header className="flex items-center gap-3">
+        <h2
+          id="toolbox-teaser-heading"
+          className="font-sans text-[17px] font-semibold leading-tight tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Quick tools
+        </h2>
+        <span
+          aria-hidden
+          className="h-px min-w-4 flex-1"
+          style={{ background: "var(--app-border)" }}
+        />
+        <Link
+          href="/compass"
+          prefetch={false}
+          className="tap-44-y inline-flex shrink-0 items-center gap-1 px-1 text-[12px] font-semibold"
+          style={{ color: "var(--app-brand-press)" }}
+        >
+          All tools
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </header>
 
-      <ul className="mt-3 grid grid-cols-2 gap-2">
-        {SHORTCUTS.map((tool) => (
+      <Link
+        href={PRIMARY_TOOL.href}
+        prefetch={false}
+        className="tactile-interactive group mt-3 flex min-h-[72px] items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] border px-3.5 py-3 outline-none transition hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] active:scale-[0.99]"
+        style={{
+          borderColor: "color-mix(in srgb, var(--app-civic) 28%, var(--app-border))",
+          background:
+            "linear-gradient(115deg, color-mix(in srgb, var(--app-civic) 8%, var(--app-bg-elevated)), var(--app-bg-elevated) 68%)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          color: "var(--app-ink)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+          style={{
+            background: "color-mix(in srgb, var(--app-civic) 12%, transparent)",
+            color: "var(--app-civic)",
+          }}
+        >
+          <MapPin className="h-5 w-5" strokeWidth={2.1} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold leading-tight">
+            Find the nearest essential
+          </span>
+          <span
+            className="mt-1 block text-[11.5px] leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Restroom, water, trash, dog bags, seating, or power
+          </span>
+        </span>
+        <ArrowRight
+          className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
+          strokeWidth={2.25}
+          aria-hidden
+        />
+      </Link>
+
+      <ul className="mt-2 grid grid-cols-3 gap-2">
+        {SUPPORTING_TOOLS.map(({ tool, icon: Icon }) => (
           <li key={tool.id}>
             <Link
               href={tool.href}
               prefetch={false}
-              className="tactile-interactive flex min-h-12 items-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold leading-tight outline-none transition hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] active:scale-[0.99]"
+              className="tactile-interactive flex min-h-[66px] flex-col items-start justify-between gap-2 rounded-[var(--app-radius-md)] border px-3 py-2.5 text-left text-[11.5px] font-semibold leading-tight outline-none transition hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] active:scale-[0.98]"
               style={{
                 borderColor: "var(--app-border)",
                 background: "var(--app-bg-elevated)",
@@ -46,24 +124,19 @@ export default function ToolboxTeaser() {
             >
               <span
                 aria-hidden
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: TONE_COLOR[tool.tone] }}
-              />
-              {tool.label}
+                className="grid h-7 w-7 place-items-center rounded-[6px]"
+                style={{
+                  color: TONE_COLOR[tool.tone],
+                  background: `color-mix(in srgb, ${TONE_COLOR[tool.tone]} 10%, transparent)`,
+                }}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <span>{tool.label}</span>
             </Link>
           </li>
         ))}
       </ul>
-
-      <Link
-        href="/compass"
-        prefetch={false}
-        className="tap-44-y mt-2 flex min-h-11 items-center justify-between gap-3 px-1 py-2 text-[12.5px] font-semibold"
-        style={{ color: "var(--app-brand-press)" }}
-      >
-        All tools
-        <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      </Link>
     </section>
   );
 }

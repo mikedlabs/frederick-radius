@@ -23,9 +23,19 @@ const DAY_MS = 86_400_000;
 const MAX_LATEST_AGE_MS = 36 * 60 * 60 * 1000;
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 const HOURS_POLICY_MS = 7 * DAY_MS;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GOOGLE_BUSINESS_STATUSES = new Set([
+  "OPERATIONAL",
+  "CLOSED_TEMPORARILY",
+  "CLOSED_PERMANENTLY",
+  "UNKNOWN",
+]);
 
 const DOC =
-  "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug. Each entry overrides the static enrichment hours and business status for that place, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.";
+  "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.";
+const LEGACY_DOC =
+  "Legacy rolling hours refresh artifact built without a public slug-to-place_id mapping. Rows may be read only by consumers that independently verify provider identity.";
 
 function dataRows(artifact) {
   if (!artifact || typeof artifact !== "object") return [];
@@ -50,12 +60,14 @@ function asValidIso(value, slug, now) {
  *
  * @param {Array<{
  *   slug?: unknown;
+ *   place_id?: unknown;
  *   weekday_hours?: unknown;
  *   business_status?: unknown;
  *   refreshed_at?: unknown;
  * }>} rows
  * @param {{
  *   now?: Date;
+ *   knownPlaces?: Iterable<{slug?: unknown; google_place_id?: unknown}>;
  *   knownSlugs?: Iterable<string>;
  *   existingArtifact?: Record<string, unknown>;
  * }} options
@@ -64,19 +76,59 @@ export function buildHoursRefreshArtifact(
   rows,
   {
     now = new Date(),
+    knownPlaces,
     knownSlugs,
     existingArtifact = {},
   } = /** @type {{
     now?: Date;
+    knownPlaces?: Iterable<{slug?: unknown; google_place_id?: unknown}>;
     knownSlugs?: Iterable<string>;
     existingArtifact?: Record<string, unknown>;
   }} */ ({}),
 ) {
-  const known = knownSlugs ? new Set(knownSlugs) : null;
+  const known = knownPlaces
+    ? new Set()
+    : knownSlugs
+      ? new Set(knownSlugs)
+      : null;
+  const knownPlaceIds = knownPlaces ? new Map() : null;
+  const knownIdOwners = knownPlaces ? new Map() : null;
+  if (knownPlaces) {
+    for (const place of knownPlaces) {
+      const slug = typeof place?.slug === "string" ? place.slug.trim() : "";
+      if (!slug) {
+        throw new Error("The public catalog contains a place without a slug.");
+      }
+      if (known.has(slug)) {
+        throw new Error(`The public catalog contains duplicate slug ${slug}.`);
+      }
+      known.add(slug);
+
+      const placeId =
+        typeof place?.google_place_id === "string"
+          ? place.google_place_id.trim()
+          : "";
+      if (!placeId) continue;
+      if (UUID_RE.test(placeId)) {
+        throw new Error(
+          `The public catalog row ${slug} has invalid Google Place ID ${placeId}.`,
+        );
+      }
+      const owner = knownIdOwners.get(placeId);
+      if (owner) {
+        throw new Error(
+          `The public catalog maps Google Place ID ${placeId} to both ${owner} and ${slug}.`,
+        );
+      }
+      knownIdOwners.set(placeId, slug);
+      knownPlaceIds.set(slug, placeId);
+    }
+  }
   const existingKnownRows = dataRows(existingArtifact).filter(
     (slug) => !known || known.has(slug),
   ).length;
   const normalized = [];
+  const normalizedSlugs = new Set();
   let unmatchedRows = 0;
 
   for (const row of rows ?? []) {
@@ -85,6 +137,34 @@ export function buildHoursRefreshArtifact(
     if (known && !known.has(slug)) {
       unmatchedRows++;
       continue;
+    }
+    if (normalizedSlugs.has(slug)) {
+      throw new Error(`Hours snapshot contains duplicate row ${slug}.`);
+    }
+    normalizedSlugs.add(slug);
+
+    const placeId =
+      typeof row.place_id === "string" ? row.place_id.trim() : "";
+    if (placeId && UUID_RE.test(placeId)) {
+      throw new Error(
+        `Hours snapshot row ${slug} has invalid place_id ${placeId}.`,
+      );
+    }
+    if (knownPlaceIds) {
+      const expectedPlaceId = knownPlaceIds.get(slug);
+      if (!expectedPlaceId) {
+        throw new Error(
+          `Hours snapshot row ${slug} no longer has a Google Place ID in the public catalog.`,
+        );
+      }
+      if (!placeId) {
+        throw new Error(`Hours snapshot row ${slug} is missing place_id.`);
+      }
+      if (placeId !== expectedPlaceId) {
+        throw new Error(
+          `Hours snapshot row ${slug} has place_id ${placeId}, but the public catalog maps it to ${expectedPlaceId}.`,
+        );
+      }
     }
     if (row.weekday_hours != null && !Array.isArray(row.weekday_hours)) {
       throw new Error(`Hours snapshot row ${slug} has malformed weekday_hours.`);
@@ -95,14 +175,32 @@ export function buildHoursRefreshArtifact(
           (line) => typeof line === "string" && line.trim().length > 0,
         )
       : [];
+    if (
+      row.business_status != null &&
+      typeof row.business_status !== "string"
+    ) {
+      throw new Error(
+        `Hours snapshot row ${slug} has malformed business_status.`,
+      );
+    }
+    const businessStatus =
+      typeof row.business_status === "string"
+        ? row.business_status.trim()
+        : "";
+    if (
+      businessStatus &&
+      !GOOGLE_BUSINESS_STATUSES.has(businessStatus)
+    ) {
+      throw new Error(
+        `Hours snapshot row ${slug} has unsupported business_status ${businessStatus}.`,
+      );
+    }
     const refreshedAt = asValidIso(row.refreshed_at, slug, now);
     normalized.push({
       slug,
+      place_id: placeId || undefined,
       weekday_hours: weekdayHours,
-      business_status:
-        typeof row.business_status === "string"
-          ? row.business_status
-          : undefined,
+      business_status: businessStatus || undefined,
       refreshed_at: refreshedAt,
     });
   }
@@ -154,16 +252,18 @@ export function buildHoursRefreshArtifact(
     newest_refreshed_at: new Date(Math.max(...timestamps)).toISOString(),
   };
 
+  const identityBound = Boolean(knownPlaceIds);
   const artifact = {
-    _doc: DOC,
+    _doc: identityBound ? DOC : LEGACY_DOC,
     _meta: {
-      schema_version: 1,
+      schema_version: identityBound ? 2 : 1,
       generated_at: now.toISOString(),
       ...summary,
     },
   };
   for (const row of normalized) {
     artifact[row.slug] = {
+      ...(row.place_id ? { place_id: row.place_id } : {}),
       ...(row.weekday_hours.length > 0
         ? { weekday_hours: row.weekday_hours }
         : {}),
@@ -211,7 +311,7 @@ export async function main() {
   let rows;
   try {
     rows = await sql`
-      SELECT slug, weekday_hours, business_status, refreshed_at
+      SELECT slug, place_id, weekday_hours, business_status, refreshed_at
       FROM place_hours_refresh
       ORDER BY slug
     `;
@@ -233,10 +333,10 @@ export async function main() {
     "data",
     "places-client.json",
   );
-  const knownSlugs = readJson(publicPlacesFile).map((place) => place.slug);
+  const knownPlaces = readJson(publicPlacesFile);
   const existingArtifact = readJson(dest);
   const { artifact, summary } = buildHoursRefreshArtifact(rows, {
-    knownSlugs,
+    knownPlaces,
     existingArtifact,
   });
 
