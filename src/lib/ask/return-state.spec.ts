@@ -91,6 +91,24 @@ describe("Ask return-state restoration", () => {
     ).toBeNull();
   });
 
+  it.each(["timeout", "cancelled"] as const)(
+    "preserves an actionable %s failure",
+    (requestFailure) => {
+      const storage = memoryStorage();
+      const saved = snapshot({ requestFailure });
+      writeAskReturnSnapshot(storage, saved);
+
+      expect(
+        readAskReturnSnapshot(
+          storage,
+          historyStateWithAskReturn({}, saved.id),
+          saved.query,
+          saved.savedAt + 1,
+        ),
+      ).toEqual(saved);
+    },
+  );
+
   it("ignores malformed or partial session data", () => {
     const storage = memoryStorage();
     storage.setItem("fr:ask:return:v1:broken", '{"version":1,"id":"broken"}');

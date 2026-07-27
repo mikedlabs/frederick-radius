@@ -37,7 +37,7 @@
 
 import { getDb } from "@/lib/db/client";
 import { feed_snapshots } from "@/lib/db/schema";
-import { desc, lt } from "drizzle-orm";
+import { asc, desc, inArray, lt } from "drizzle-orm";
 
 type Snapshot = {
   taken_at: string;
@@ -114,49 +114,56 @@ export function recordSnapshot(source: string, rows: SnapshotRow[]): void {
   buf.push(snap);
   while (buf.length > WINDOW) buf.shift();
   SNAPSHOTS.set(source, buf);
-  // Persist asynchronously — the request path is sync. Errors are
-  // intentionally swallowed so a transient DB blip doesn't bring
-  // down the events page; the next fetch retries on its own.
-  void persistSnapshot(source, snap);
 }
 
-/** Sources we've already warned about in this process. Without this,
- *  a missing table or other persistent error floods the dev console
- *  on every feed fetch — once per minute per source. */
-const warnedSources = new Set<string>();
-
-async function persistSnapshot(source: string, snap: Snapshot): Promise<void> {
+/**
+ * Persist one current snapshot per successful source.
+ *
+ * This is deliberately separate from `recordSnapshot()`: request-path feed
+ * assembly can run on many cold workers and must never write telemetry on an
+ * ordinary page view. The nightly data-health cron calls this after its fresh
+ * feed pull, which caps growth to roughly one row per source per day while
+ * preserving cross-deploy anomaly history.
+ */
+let warnedPersistFailure = false;
+export async function persistCurrentSnapshots(sources?: readonly string[]): Promise<number> {
   const db = getDb();
-  if (!db) return;
+  if (!db) return 0;
+  const allowed = sources ? new Set(sources) : null;
+  const values = [...SNAPSHOTS.entries()]
+    .filter(([source]) => !allowed || allowed.has(source))
+    .map(([source, buf]) => {
+      const snap = buf[buf.length - 1];
+      if (!snap) return null;
+      return {
+        source,
+        taken_at: new Date(snap.taken_at),
+        count: snap.count,
+        free_ratio: snap.free_ratio,
+        empty_desc_ratio: snap.empty_desc_ratio,
+        top_venue: snap.top_venue,
+        top_category: snap.top_category,
+        earliest: snap.earliest ? new Date(snap.earliest) : null,
+        latest: snap.latest ? new Date(snap.latest) : null,
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => value !== null);
+  if (values.length === 0) return 0;
+
   try {
-    await db.insert(feed_snapshots).values({
-      source,
-      taken_at: new Date(snap.taken_at),
-      count: snap.count,
-      free_ratio: snap.free_ratio,
-      empty_desc_ratio: snap.empty_desc_ratio,
-      top_venue: snap.top_venue,
-      top_category: snap.top_category,
-      earliest: snap.earliest ? new Date(snap.earliest) : null,
-      latest: snap.latest ? new Date(snap.latest) : null,
-    });
+    await db.insert(feed_snapshots).values(values);
+    return values.length;
   } catch (err) {
-    // Telemetry-only write. A failure here doesn't affect the
-    // request path. We deliberately:
-    //   1. Downgrade to console.warn so Next.js dev overlay doesn't
-    //      render this as a red "Console Error" box. Production
-    //      observability (Sentry) still picks it up via its own
-    //      error capture if configured.
-    //   2. Only log ONCE per source per process, so a missing table
-    //      or persistent connection failure doesn't fill the console
-    //      with one row per fetch.
-    if (!warnedSources.has(source)) {
-      warnedSources.add(source);
+    // Telemetry-only write. A failure must not break the rest of the health
+    // report, and one warning per worker is enough to make it observable.
+    if (!warnedPersistFailure) {
+      warnedPersistFailure = true;
       console.warn(
-        `[feed-snapshot] persist failed (${source}) — telemetry only; further failures from this source suppressed:`,
+        "[feed-snapshot] cron persist failed — telemetry only; further failures in this worker suppressed:",
         err instanceof Error ? err.message : err,
       );
     }
+    return 0;
   }
 }
 
@@ -247,14 +254,32 @@ export function _resetHydrateThrottle(): void {
  * No-op when DB unavailable. Returns the row count deleted (0 when
  * DB unset) so the cron can report it.
  */
-export async function pruneOldSnapshots(days: number): Promise<number> {
+export const SNAPSHOT_PRUNE_BATCH_SIZE = 5_000;
+
+export async function pruneOldSnapshots(
+  days: number,
+  batchSize = SNAPSHOT_PRUNE_BATCH_SIZE,
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const cutoff = new Date(Date.now() - days * 86_400_000);
+  const limit = Math.max(1, Math.min(Math.floor(batchSize), SNAPSHOT_PRUNE_BATCH_SIZE));
   try {
+    // Never issue an unbounded DELETE ... RETURNING against this telemetry
+    // table. A request-path write regression grew it past 700k rows and the
+    // old cleanup tried to delete and return every expired UUID in one
+    // statement, repeatedly hitting Supabase's statement timeout. `taken_at`
+    // is the retention clock and has the operational index added in migration
+    // 0031. Oldest-first batching makes every run useful without a long lock.
+    const doomed = db
+      .select({ id: feed_snapshots.id })
+      .from(feed_snapshots)
+      .where(lt(feed_snapshots.taken_at, cutoff))
+      .orderBy(asc(feed_snapshots.taken_at))
+      .limit(limit);
     const deleted = await db
       .delete(feed_snapshots)
-      .where(lt(feed_snapshots.created_at, cutoff))
+      .where(inArray(feed_snapshots.id, doomed))
       .returning({ id: feed_snapshots.id });
     return deleted.length;
   } catch (err) {

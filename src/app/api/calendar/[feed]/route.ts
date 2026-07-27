@@ -6,6 +6,7 @@ import { getLocalSportsGames } from "@/lib/integrations/local-sports";
 import { buildIcsFeed, type IcsInput } from "@/lib/ics";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { SportsGame } from "@/lib/sports/types";
+import { localGameIcsInput } from "@/lib/sports/calendar";
 
 export const revalidate = 3600;
 
@@ -64,28 +65,6 @@ function toIcsInput(e: EventWithMeta): IcsInput {
     address: e.address,
     url: `${ORIGIN}/events/${e.slug}`,
     all_day: e.is_all_day,
-  };
-}
-
-export function localGameIcsInput(game: SportsGame): IcsInput {
-  const start = Date.parse(game.startsAt);
-  const homeAway =
-    game.homeAway === "home"
-      ? "Home game"
-      : game.homeAway === "away"
-        ? "Away game"
-        : "Neutral-site game";
-  const timing = game.timeTba ? " Time TBA." : "";
-  return {
-    uid: `local-sports-${game.id}`,
-    title: `${game.teamName} ${game.homeAway === "away" ? "at" : "vs."} ${game.opponent}${game.timeTba ? " (Time TBA)" : ""}`,
-    starts_at: game.startsAt,
-    ends_at: new Date(start + 2 * 60 * 60 * 1000).toISOString(),
-    description: `${game.sport}. ${homeAway}.${timing} Verified by ${game.teamName}'s official athletics calendar.`,
-    venue_name: game.venue ?? undefined,
-    address: game.location ?? undefined,
-    url: `${ORIGIN}/sports`,
-    all_day: game.timeTba,
   };
 }
 

@@ -1,107 +1,176 @@
 {
-  "note": "Ledger of hand-applied migrations (mig-4). applied_at=null means recorded but not yet confirmed applied on prod. See drizzle/README.md.",
+  "schema_version": 2,
+  "note": "Production state ledger for hand-managed migrations. effects_present records observable production effects only; it does not claim the SQL file ran or assign an execution time. See drizzle/README.md.",
   "migrations": [
     {
       "file": "0000_adorable_roxanne_simpson.sql",
       "sha256": "61dbe7e916c72a53c339e5fcd1f4be9df7ab38d5f95c0256073744df8ce23ba1",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0001_event_ingestion.sql",
       "sha256": "c4daa36bab0a3c6660603927b69964ab121618e74f3bd7646236024775c27143",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0002_feed_snapshots.sql",
       "sha256": "daedbfa76ce5d09362f937a6801a1be9ff2da11950188aadb9761b5e38b63033",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0003_push_subscriptions.sql",
       "sha256": "ff21e9951d7c3d88ee83b22f2cdfcaa69f3dbced99ebfbf200083f9452b8bbbe",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0004_push_log.sql",
       "sha256": "aecc554de3584cc4b0fb408d26c663f45b7be1bc342eb6d2a8ac1fdb28bfd8a7",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0005_friendly_marten_broadcloak.sql",
       "sha256": "7029bd538ab211ce3d95d27cac902f2c69ea372e13464d6f30057f684b669177",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0006_robust_miss_america.sql",
       "sha256": "51a1db97ff81e2682061bf28dc61dc11227f878fb9d07f724feebc87b6af6fe1",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0007_enable_rls.sql",
       "sha256": "5acf075f8f6dcf8c2f946a98bb8ddd5ae30e1ac527b641e675dd41be920b8b75",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0008_move_pg_trgm_out_of_public.sql",
       "sha256": "86bf2c0fa08349747cd6cc70631aa2dd4624886f25f88bd92dc91c26591e4174",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0009_enable_rls_all_public.sql",
       "sha256": "95e62651eb0f9d93cf5f7746db7d10a28bdad531306087912e26412d4068a255",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0010_drop_duplicate_slug_indexes.sql",
       "sha256": "5e01ddc14eee6d664a353e045783a12c39da7486a5b42a64dcbd9e40d11eb105",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0011_index_ingested_events_raw_event_id.sql",
       "sha256": "6157997971bd6dbee96b9c45e591a35c40f16bb70bd3bd70e2038666db33f32c",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0012_enable_rls_field_amenities.sql",
       "sha256": "d1b6dde69c8ff87e59a1abea3eb15b950dd02a88bed1f6938ad86cbb0146c9cb",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0013_saved_events.sql",
       "sha256": "5836d57a5145c50c9ebf8a31fb3446167387a11146cd79fa171f95b32af13f49",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
     },
     {
       "file": "0014_commerce_link_reports.sql",
       "sha256": "f3bfeed66ce138dbc88db08b302c222ce07372dceecf29d190dadc409128f0ca",
-      "applied_at": null,
-      "note": "recorded by migration-audit --write; confirm applied on prod"
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0015_beta_emails.sql",
+      "sha256": "efa672f011935a2eb01c89df96634a04f8a2539fbbca001e542312c7957e2d88",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0016_beta_codes.sql",
+      "sha256": "cbce4c1224ea335d516a439ca68c2b78a0e1441139cd6a0309fd16bba681112f",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0017_usage_counters.sql",
+      "sha256": "0af6d7917ca4dff049539c3d243d7b9bad40ad6270aa266241c57813fc0a5a7d",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0018_curation_decisions.sql",
+      "sha256": "e6d53459f9a3426c5d3f12ba731d9af185429f4fcd8bd9f61cbf8d3cd03a1187",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0019_field_notes.sql",
+      "sha256": "8b44986e3522996f776a0a691a0786fab4b3f4cd1dc93713645ddabc2d2ab36d",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0020_push_prefs.sql",
+      "sha256": "9c2f3c0ccdf79cd2aa738297c5bc48c0d276bbaf0abaa2524e9f97370e327978",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0021_push_log_open_count.sql",
+      "sha256": "a161120c5f1bf9d243ff4be04acc21cc80eb218eb7d245d12f478ea8e786c887",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0022_lock_unused_storage_bucket.sql",
+      "sha256": "b7fac5d11f21f4b4e280a77610fef5f6d148301197067c29e3f62f3c5f385289",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0023_redact_beta_signup_push_logs.sql",
+      "sha256": "8edca16d91bea4f778da5a1b55e36aee03a35a405df24756615f14d280e9f166",
+      "production_state": "effects_absent",
+      "note": "A live production check found legacy beta-signup owner-alert bodies still containing email addresses. Apply only after backup state is confirmed, then verify the matching row count is zero."
+    },
+    {
+      "file": "0024_place_hours_refresh.sql",
+      "sha256": "3ed19cf92083d101d79900af3984b9e06a0a32268518439739e3d4a390d66219",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0025_radius_search_documents.sql",
+      "sha256": "bd6f617a8194fd26adcb76bfe181ef46977702201dee9f62a744978a609a2dad",
+      "production_state": "effects_present"
     },
     {
       "file": "0026_food_truck_beacons.sql",
       "sha256": "a88a14db1c7bd85a0314149b7637fb41005fd3f076dd4c4cc939ec7d5cb65e87",
-      "applied_at": null,
-      "note": "food-truck operator-beacon layer (claims + beacons, RLS deny-all); apply BY HAND in Supabase SQL editor"
+      "production_state": "effects_present"
     },
     {
       "file": "0027_dear_frederick_submissions.sql",
       "sha256": "40266ff4fd963b44c72d8ec48e1a19a756543a7a9b35b6508d9e532f2bcc7069",
-      "applied_at": null,
-      "note": "public Dear Frederick letter submissions (one table, RLS deny-all so contact info stays server-only); apply BY HAND in Supabase SQL editor"
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0028_scanner_incidents.sql",
+      "sha256": "b9751175de65360feec1d342dc6dcf210dc50e5768320a28d396bd9c3d470a03",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0029_search_misses.sql",
+      "sha256": "6b0b9cd82f5244fb90a83e541ef72fea54297b1a6b244088e881ce33a61a85fb",
+      "production_state": "effects_present"
+    },
+    {
+      "file": "0030_nfc_cards.sql",
+      "sha256": "ef24aee23d029aab8db3fb86f7bc0ad998bb4c509e4e50e57885344204f9e8f1",
+      "production_state": "effects_present",
+      "note": "The NFC tables, RLS posture, and expected indexes now exist. Two nfc_events indexes were absent during the live audit and were added by 0031, so this state does not claim 0030 itself ran in full."
+    },
+    {
+      "file": "0031_operational_indexes.sql",
+      "sha256": "89dc897cacb2b8123b18d6ac9219cc6e133b9038f7ecfc7fbf67eb9b10d2f9c1",
+      "production_state": "migration_recorded",
+      "migration_record": "operational_indexes",
+      "note": "Supabase migration history records operational_indexes, and a live check confirmed all three indexes defined by this file."
+    },
+    {
+      "file": "0032_harden_public_default_privileges.sql",
+      "sha256": "85b13358f8d2e6d7731ea38a910c93f2cd81211fde5351d8c045d22ec9eeec78",
+      "production_state": "effects_absent",
+      "note": "A live migration attempt was rejected because the normal project-admin connection cannot change defaults owned by Supabase's managed supabase_admin role. Existing public objects remain fail-closed; ask Supabase support or use a future elevated dashboard control before claiming this default-policy hardening is active."
     }
   ]
 }

@@ -7,7 +7,12 @@ export const ASK_RETURN_TTL_MS = 15 * 60 * 1_000;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export type AskReturnFailure = "network" | "rate-limit" | "service";
+export type AskReturnFailure =
+  | "network"
+  | "rate-limit"
+  | "service"
+  | "timeout"
+  | "cancelled";
 
 export type AskReturnSnapshot<TResult> = {
   version: 1;
@@ -100,7 +105,9 @@ export function readAskReturnSnapshot<TResult>(
     requestFailure === null ||
     requestFailure === "network" ||
     requestFailure === "rate-limit" ||
-    requestFailure === "service";
+    requestFailure === "service" ||
+    requestFailure === "timeout" ||
+    requestFailure === "cancelled";
   const validSourceIndex =
     clickedSourceIndex === null ||
     (typeof clickedSourceIndex === "number" &&

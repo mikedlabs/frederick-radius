@@ -1,4 +1,5 @@
 import type { LngLat } from "@/lib/geo";
+import { cache } from "react";
 
 const NWS_BASE = "https://api.weather.gov";
 const UA = "Frederick Radius (hello@frederickradius.app)";
@@ -75,12 +76,12 @@ async function nwsFetch<T>(url: string, revalidate: number, signal?: AbortSignal
   }
 }
 
-export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null> {
+async function loadNwsForecast(latValue: number, lngValue: number): Promise<NwsForecast | null> {
   // One deadline covers the points lookup and both forecast requests. NWS is
   // useful context, never a reason to withhold the page shell.
   const signal = AbortSignal.timeout(5000);
-  const lat = point.lat.toFixed(4);
-  const lng = point.lng.toFixed(4);
+  const lat = latValue.toFixed(4);
+  const lng = lngValue.toFixed(4);
   const points = await nwsFetch<PointsResp>(`${NWS_BASE}/points/${lat},${lng}`, 86400, signal);
   if (!points) return null;
 
@@ -126,6 +127,19 @@ export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null>
     // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
     daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),
   };
+}
+
+/**
+ * React request memoization is intentional here. Today uses the same Frederick
+ * forecast for its weather lean, hero, tomorrow preview, and idea rail. Next's
+ * HTTP cache avoids repeated upstream traffic, but without this wrapper every
+ * consumer still rebuilt and parsed the forecast independently during one ISR
+ * regeneration. Primitive coordinate keys also coalesce equal point objects.
+ */
+const getNwsForecastForRequest = cache(loadNwsForecast);
+
+export function getNwsForecast(point: LngLat): Promise<NwsForecast | null> {
+  return getNwsForecastForRequest(point.lat, point.lng);
 }
 
 export function iconForShortForecast(

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ASK_CLIENT_DEADLINE_MS,
+  askFailureForAbortReason,
   askQuestionPath,
   askResultHeading,
   canDisplayAskSourcePhoto,
@@ -8,9 +10,14 @@ import {
   nearbyQueryNeedsAreaChoice,
   queryNeedsNearbyContext,
   queryIsLocalDiscovery,
+  scheduleAskDeadline,
   sourceHasDistinctDetail,
   sourceSaveTarget,
 } from "./AskFrederick";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("Ask Radius question links", () => {
   it("encodes only the bounded, self-contained question", () => {
@@ -60,17 +67,50 @@ describe("Ask Radius nearby context", () => {
     expect(queryIsLocalDiscovery("pizza")).toBe(true);
     expect(queryIsLocalDiscovery("where can I get good coffee")).toBe(true);
     expect(queryIsLocalDiscovery("breweries")).toBe(true);
+    expect(queryIsLocalDiscovery("Where can I rent a bicycle?")).toBe(true);
+    expect(queryIsLocalDiscovery("Where can I find a bike repair stand?")).toBe(true);
+    expect(queryIsLocalDiscovery("Where can I get a kayak?")).toBe(true);
     // Informational / civic / event questions are NOT local hunts.
     expect(queryIsLocalDiscovery("what events are this weekend")).toBe(false);
     expect(queryIsLocalDiscovery("how do I pay my water bill")).toBe(false);
     expect(queryIsLocalDiscovery("what's the weather tomorrow")).toBe(false);
+    expect(queryIsLocalDiscovery("Where can I get a building permit?")).toBe(false);
+    expect(queryIsLocalDiscovery("Where can I find county budget data?")).toBe(false);
+    expect(queryIsLocalDiscovery("Where can I register to vote?")).toBe(false);
 
     // The gate now fires for "pizza" with no location and no town...
     expect(nearbyQueryNeedsAreaChoice("pizza", null, false)).toBe(true);
     // ...but not once a town is named, a device fix exists, or the county is chosen.
     expect(nearbyQueryNeedsAreaChoice("pizza in Brunswick", null, false)).toBe(false);
     expect(nearbyQueryNeedsAreaChoice("pizza", null, true)).toBe(false);
+    expect(
+      nearbyQueryNeedsAreaChoice(
+        "Where can I rent a bicycle?",
+        null,
+        false,
+      ),
+    ).toBe(true);
     expect(nearbyQueryNeedsAreaChoice("what events are this weekend", null, false)).toBe(false);
+  });
+
+  it("maps only deliberate client abort reasons to actionable failures", () => {
+    expect(ASK_CLIENT_DEADLINE_MS).toBe(22_000);
+    expect(askFailureForAbortReason("ask-timeout")).toBe("timeout");
+    expect(askFailureForAbortReason("ask-cancelled")).toBe("cancelled");
+    expect(askFailureForAbortReason(new DOMException("Aborted", "AbortError"))).toBeNull();
+    expect(askFailureForAbortReason(undefined)).toBeNull();
+  });
+
+  it("ends a stalled client request at the bounded deadline", () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    scheduleAskDeadline(controller);
+
+    vi.advanceTimersByTime(ASK_CLIENT_DEADLINE_MS - 1);
+    expect(controller.signal.aborted).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(controller.signal.aborted).toBe(true);
+    expect(askFailureForAbortReason(controller.signal.reason)).toBe("timeout");
   });
 
   it("respects a place named in the question", () => {

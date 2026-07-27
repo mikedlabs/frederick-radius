@@ -41,6 +41,32 @@ SQL file, no apply) and `db:studio` (read) remain safe.
 3. Apply it by pasting into the **Supabase SQL editor** and running it.
 4. Re-run the relevant Supabase **Advisor** (Security / Performance) to confirm
    the finding cleared.
+5. Update `applied.json` with what production actually proves, then run
+   `npm run db:audit`.
+
+## What the production ledger means
+
+`applied.json` deliberately does not carry guessed `applied_at` timestamps.
+Most of the older SQL was run by hand and Supabase migration history cannot
+prove which file produced an effect or when it happened. Each entry instead
+uses one of these states:
+
+- `unverified`: the file is committed, but production has not been checked.
+- `effects_present`: a live check found the expected production effects. This
+  does **not** claim the exact file ran or assign it a date.
+- `effects_absent`: a live check found the expected effects missing. Keep this
+  visible until the migration is safely applied and verified.
+- `migration_recorded`: Supabase migration history confirms a named migration.
+  Record that exact name in `migration_record`; do not translate it into a
+  timestamp the repository cannot prove.
+
+`node scripts/migration-audit.mjs --write` only discovers new files. It records
+them as `unverified` and never upgrades their production state. CI runs the
+DB-free `npm run db:audit` guard to catch missing files, duplicate entries,
+hash drift, legacy timestamps, invalid states, and ledger-order drift. A known
+`effects_absent` entry is reported prominently but is not disguised as a
+bookkeeping failure; applying it still requires a backup-aware production
+change and a fresh live verification.
 
 ## The RLS posture is intentional — do not "fix" it
 

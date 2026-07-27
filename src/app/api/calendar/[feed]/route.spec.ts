@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SportsGame } from "@/lib/sports/types";
 import { buildIcs } from "@/lib/ics";
-import { localGameIcsInput } from "./route";
+import { localGameIcsInput } from "@/lib/sports/calendar";
 
 function game(overrides: Partial<SportsGame> = {}): SportsGame {
   return {

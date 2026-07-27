@@ -177,10 +177,20 @@ export default async function HomePage() {
   const lean = leanFromForecast(forecastForLean, now);
 
   // The one headliner (splitTonightFeature's pick, drawn from the same shared
-  // promise). Null fallback: a quiet day must never stream in a hero-shaped
-  // skeleton it then takes away.
+  // promise). Reserve its compact text treatment while the feed resolves so
+  // the Ask/Browse decision surface does not appear and then jump downward on
+  // a cold render. The resolved component still returns nothing on a quiet day.
   const headliner = (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <section className="mt-6 space-y-2" aria-label="Loading today's pick" aria-busy="true">
+          <span className="sr-only" role="status">Loading today&rsquo;s pick.</span>
+          <Skeleton.Block height={12} width={92} round="var(--app-radius-sm)" />
+          <Skeleton.Block height={54} width="72%" round="var(--app-radius-sm)" />
+          <Skeleton.Block height={16} width="46%" round="var(--app-radius-sm)" />
+        </section>
+      }
+    >
       <TonightHeadliner eventsPromise={eventsPromise} now={now} />
     </Suspense>
   );

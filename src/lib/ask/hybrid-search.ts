@@ -26,9 +26,15 @@ export function hybridSearchConfigured(): boolean {
   // semantic search saved ~nothing while hurting recall for the many queries
   // that aren't a structured food/craving match ("bars", "a gym", vibe asks).
   // Set RADIUS_HYBRID_SEARCH=0 to force it off.
+  // Vercel's keyless OIDC token is request-scoped in hosted Functions and the
+  // AI SDK reads it from the request context. It therefore may not appear in
+  // process.env even though a plain-string Gateway model is authenticated.
+  const hostedOidc = process.env.VERCEL === "1";
   return Boolean(
     process.env.RADIUS_HYBRID_SEARCH !== "0" &&
-      (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) &&
+      (process.env.AI_GATEWAY_API_KEY ||
+        process.env.VERCEL_OIDC_TOKEN ||
+        hostedOidc) &&
       getSql(),
   );
 }

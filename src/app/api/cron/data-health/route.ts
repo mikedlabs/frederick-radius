@@ -27,6 +27,7 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
   getAnomalies,
   hydrateSnapshots,
+  persistCurrentSnapshots,
   pruneOldSnapshots,
 } from "@/lib/integrations/feed-snapshot";
 import { prunePushLog } from "@/lib/push-fanout";
@@ -48,6 +49,7 @@ export const maxDuration = 300; // tripwires add live fetches + one canary model
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
+  const startedAt = Date.now();
 
   const dedup = buildDedup(PLACES);
   const folded = Object.entries(dedup).filter(([s, v]) => v.canonical !== s).length;
@@ -94,44 +96,19 @@ export async function GET(request: Request) {
   // the full health report. Missing DB infrastructure is the exception:
   // without it, the DB checks were never evaluated, so the route returns 503.
   // ─────────────────────────────────────────────────────
+  const hydrateStartedAt = Date.now();
   await hydrateSnapshots().catch((err) => {
-
     console.error("[cron/data-health] hydrate failed:", err);
   });
+  const hydrateMs = Date.now() - hydrateStartedAt;
+  const liveFetchStartedAt = Date.now();
   const live = await getLiveEvents(60).catch((err) => {
     console.error("[cron/data-health] live fetch failed:", err);
     return { events: [], sources_succeeded: [], sources_failed: ["getLiveEvents:threw"] };
   });
+  const liveFetchMs = Date.now() - liveFetchStartedAt;
   const anomalies = getAnomalies();
   const validation = consumeFeedMetrics();
-  const prunedRows = await pruneOldSnapshots(90).catch((err) => {
-
-    console.error("[cron/data-health] prune failed:", err);
-    return 0;
-  });
-  // push_log is append-only — every civic-alert fanout writes a row
-  // for dedupe. Same 90d retention as feed_snapshots: any re-publish
-  // window we care about fits well within that.
-  const prunedPushRows = await prunePushLog(90).catch((err) => {
-    console.error("[cron/data-health] push_log prune failed:", err);
-    return 0;
-  });
-  // nfc_events is append-only (one row per member page view / action). Same 90d
-  // retention floor so the behavioral log can't grow without bound.
-  const prunedNfcEvents = await pruneNfcEvents(90).catch((err) => {
-    console.error("[cron/data-health] nfc_events prune failed:", err);
-    return 0;
-  });
-  // community_reports self-cleans: expired approved + old rejected rows
-  // (integrity-01). Pending rows are never touched. Each helper is already
-  // fail-soft for cleanup; the status-aware DB probes below decide whether the
-  // database was healthy enough to evaluate.
-  const prunedReports = await pruneExpiredReports();
-  // DB-health guards (mig-6 + ING-5): both queries must complete before this
-  // gate can be green. Missing configuration or a failed query becomes an
-  // explicit infrastructure anomaly and a failing HTTP response.
-  const dbHealth = await evaluateDbHealth();
-  const dbAnomalies = dbHealth.anomalies;
   // Curated-freshness assertions (data audit meta-fix): expired committed
   // snapshots, aging hand-verifications, and named live-feed failures become
   // red lines on the same alert channel instead of silent blanks.
@@ -139,23 +116,84 @@ export async function GET(request: Request) {
     ...curatedFreshnessAnomalies(),
     ...liveSourceAnomalies(live.sources_failed),
   ];
+
+  // These operations are independent after the fresh feed pull. Running them
+  // serially made the cron pay the sum of every network and database wait:
+  // retention alone could consume four statement-timeout windows before the
+  // tripwires even started. Each cleanup is batch-bounded in its helper, and
+  // Promise.all makes the route pay only the slowest independent operation.
+  const healthWorkStartedAt = Date.now();
+  // Retention deletes are intentionally gated separately from health checks.
+  // Production has a large legacy snapshot backlog, and backup inventory is
+  // not exposed through the management connector. Keep the cron fast and
+  // non-destructive until a recent Supabase backup is confirmed, then enable
+  // bounded oldest-first cleanup with DATA_RETENTION_PRUNE=1.
+  const retentionPruneEnabled =
+    process.env.DATA_RETENTION_PRUNE === "1";
+  const [
+    persistedSnapshots,
+    prunedRows,
+    prunedPushRows,
+    prunedNfcEvents,
+    prunedReports,
+    dbHealth,
+    tripwires,
+  ] = await Promise.all([
+    persistCurrentSnapshots(live.sources_succeeded).catch((err) => {
+      console.error("[cron/data-health] snapshot persist failed:", err);
+      return 0;
+    }),
+    retentionPruneEnabled
+      ? pruneOldSnapshots(90).catch((err) => {
+          console.error("[cron/data-health] prune failed:", err);
+          return 0;
+        })
+      : Promise.resolve(0),
+    // push_log is append-only — every civic-alert fanout writes a row for
+    // dedupe. The same 90d retention window covers any re-publish window.
+    retentionPruneEnabled
+      ? prunePushLog(90).catch((err) => {
+          console.error("[cron/data-health] push_log prune failed:", err);
+          return 0;
+        })
+      : Promise.resolve(0),
+    // nfc_events is append-only (one row per member page view / action).
+    retentionPruneEnabled
+      ? pruneNfcEvents(90).catch((err) => {
+          console.error("[cron/data-health] nfc_events prune failed:", err);
+          return 0;
+        })
+      : Promise.resolve(0),
+    // Pending community reports are never touched; this helper removes only
+    // an intentionally small batch of expired/rejected rows.
+    retentionPruneEnabled
+      ? pruneExpiredReports().catch((err) => {
+          console.error("[cron/data-health] community report prune failed:", err);
+          return 0;
+        })
+      : Promise.resolve(0),
+    // DB-health guards (mig-6 + ING-5): both queries must complete before this
+    // gate can be green.
+    evaluateDbHealth(),
+    // End-to-end tripwires: the politely-degrading failure classes (photo
+    // rot, transit zero-routes, dead event assembly, degraded ask).
+    runTripwires().catch((err) => {
+      console.error("[cron/data-health] tripwires failed:", err);
+      return {
+        anomalies: [{
+          source: "tripwires",
+          kind: "tripwire_failed" as const,
+          detail: `The data-health tripwire runner failed: ${err instanceof Error ? err.message : String(err)}`,
+        }],
+        checks: [{ name: "tripwire-execution", green: false }],
+      };
+    }),
+  ]);
+  const healthWorkMs = Date.now() - healthWorkStartedAt;
+  const dbAnomalies = dbHealth.anomalies;
+
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
-  // End-to-end tripwires: the politely-degrading failure classes (photo
-  // rot, transit zero-routes, dead event assembly, degraded ask). See
-  // src/lib/quality/tripwires.ts for the July 2026 history behind each.
-  const tripwires = await runTripwires().catch((err) => {
-    console.error("[cron/data-health] tripwires failed:", err);
-    return {
-      anomalies: [{
-        source: "tripwires",
-        kind: "tripwire_failed" as const,
-        detail: `The data-health tripwire runner failed: ${err instanceof Error ? err.message : String(err)}`,
-      }],
-      checks: [{ name: "tripwire-execution", green: false }],
-    };
-  });
-
   const allAnomalies = [...anomalies, ...dbAnomalies, ...freshnessAnomalies, ...tripwires.anomalies];
   if (allAnomalies.length > 0) {
     void sendAnomalyAlert(allAnomalies);
@@ -179,25 +217,38 @@ export async function GET(request: Request) {
   ];
   const red = gates.filter((g) => !g.green);
   const headline = `${gates.length - red.length}/${gates.length} green${red.length > 0 ? ` · red: ${red.map((g) => g.name).join(", ")}` : ""}`;
-  const runId = await startIngestRun("tripwires");
-  await finishIngestRun(runId, {
-    status: red.length === 0 ? "ok" : "error",
-    records_in: gates.length,
-    records_upserted: gates.length - red.length,
-    records_failed: red.length,
-    error: red.length > 0 ? headline : null,
-  });
 
   // GitHub delivery — the channel the owner already checks. One issue per
   // incident: opens on the first red morning, gains a daily comment while
   // red, closes itself on recovery. AWAITED (not void like the Slack post):
   // delivery is this feature's entire point, and serverless drops floating
   // promises. Fail-soft inside; "skipped" without GITHUB_ALERTS_TOKEN.
-  const githubDelivery = await deliverDataHealthReport({ headline, gates, anomalies: allAnomalies });
+  const deliveryStartedAt = Date.now();
+  const [githubDelivery] = await Promise.all([
+    deliverDataHealthReport({ headline, gates, anomalies: allAnomalies }),
+    (async () => {
+      const runId = await startIngestRun("tripwires");
+      await finishIngestRun(runId, {
+        status: red.length === 0 ? "ok" : "error",
+        records_in: gates.length,
+        records_upserted: gates.length - red.length,
+        records_failed: red.length,
+        error: red.length > 0 ? headline : null,
+      });
+    })(),
+  ]);
+  const deliveryMs = Date.now() - deliveryStartedAt;
 
   return NextResponse.json({
     summary: { headline, gates, github_delivery: githubDelivery },
     computed_at: new Date().toISOString(),
+    timing_ms: {
+      total: Date.now() - startedAt,
+      hydrate_snapshots: hydrateMs,
+      live_feed_fetch: liveFetchMs,
+      concurrent_health_work: healthWorkMs,
+      github_delivery: deliveryMs,
+    },
     places: PLACES.length,
     dedup: { clusters, folded },
     hours: { coverage_pct: coverage, target_pct: 60, below_gate: coverage < 60 },
@@ -221,6 +272,8 @@ export async function GET(request: Request) {
       validation,
       anomalies,
       anomaly_count: anomalies.length,
+      persisted_snapshots: persistedSnapshots,
+      retention_prune_enabled: retentionPruneEnabled,
       pruned_old_snapshots: prunedRows,
       pruned_push_log: prunedPushRows,
       pruned_nfc_events: prunedNfcEvents,

@@ -1,5 +1,5 @@
 import "server-only";
-import { lt } from "drizzle-orm";
+import { asc, inArray, lt } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { nfc_events } from "@/lib/db/schema";
 
@@ -12,14 +12,26 @@ import { nfc_events } from "@/lib/db/schema";
  * cron stays green. The member rows themselves are kept (they are the roster);
  * only their behavioral trail ages out.
  */
-export async function pruneNfcEvents(days: number): Promise<number> {
+export const NFC_EVENT_PRUNE_BATCH_SIZE = 5_000;
+
+export async function pruneNfcEvents(
+  days: number,
+  batchSize = NFC_EVENT_PRUNE_BATCH_SIZE,
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const cutoff = new Date(Date.now() - days * 86_400_000);
+  const limit = Math.max(1, Math.min(Math.floor(batchSize), NFC_EVENT_PRUNE_BATCH_SIZE));
   try {
+    const doomed = db
+      .select({ id: nfc_events.id })
+      .from(nfc_events)
+      .where(lt(nfc_events.created_at, cutoff))
+      .orderBy(asc(nfc_events.created_at))
+      .limit(limit);
     const deleted = await db
       .delete(nfc_events)
-      .where(lt(nfc_events.created_at, cutoff))
+      .where(inArray(nfc_events.id, doomed))
       .returning({ id: nfc_events.id });
     return deleted.length;
   } catch (err) {

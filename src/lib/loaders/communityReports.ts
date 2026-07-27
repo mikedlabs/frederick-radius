@@ -6,7 +6,7 @@
  * error all return [] — so this can be wired into the map safely before the
  * `community_reports` table exists on prod.
  */
-import { and, eq, gt, isNull, or, desc, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { community_reports } from "@/lib/db/schema";
 import { deleteCommunityReportPhoto } from "@/lib/community-report-photo";
@@ -85,11 +85,20 @@ export async function getCommunityReports(now: Date = new Date()): Promise<Commu
  * Mirrors prunePushLog / pruneOldSnapshots: fail-soft, returns the count
  * deleted, no-op without a DB.
  */
-export async function pruneExpiredReports(graceDays = 1): Promise<number> {
+export const COMMUNITY_REPORT_PRUNE_BATCH_SIZE = 100;
+
+export async function pruneExpiredReports(
+  graceDays = 1,
+  batchSize = COMMUNITY_REPORT_PRUNE_BATCH_SIZE,
+): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const now = new Date();
   const cutoff = new Date(Date.now() - graceDays * 86_400_000);
+  const limit = Math.max(
+    1,
+    Math.min(Math.floor(batchSize), COMMUNITY_REPORT_PRUNE_BATCH_SIZE),
+  );
   const expired = or(
     and(
       eq(community_reports.status, "approved"),
@@ -102,23 +111,46 @@ export async function pruneExpiredReports(graceDays = 1): Promise<number> {
   );
   try {
     const rows = await db
-      .select({ photo_url: community_reports.photo_url })
+      .select({
+        id: community_reports.id,
+        photo_url: community_reports.photo_url,
+      })
       .from(community_reports)
-      .where(expired);
+      .where(expired)
+      .orderBy(asc(community_reports.created_at))
+      .limit(limit);
 
-    // Remove public files before their database references. A failed Blob
-    // deletion leaves the row available for the next cleanup run instead of
-    // creating an untracked public orphan.
-    const cleanup = await Promise.all(rows.map((row) => deleteCommunityReportPhoto(row.photo_url)));
-    if (cleanup.some((ok) => !ok)) {
-      console.warn("[community-reports] prune deferred: one or more photos could not be deleted");
-      return 0;
-    }
+    if (rows.length === 0) return 0;
 
+    // Reapply the eligibility predicate at the destructive boundary. An admin
+    // may restore a report while cleanup is running; deleting by the stale ID
+    // list alone could otherwise remove a newly live report. Delete the row
+    // first, then clean up only the Blob URLs returned by that atomic delete.
+    // A rare Blob failure leaves an orphaned file, which is safer than leaving
+    // a visible report whose image was removed during an admin race.
     const deleted = await db
       .delete(community_reports)
-      .where(expired)
-      .returning({ id: community_reports.id });
+      .where(
+        and(
+          inArray(
+            community_reports.id,
+            rows.map((row) => row.id),
+          ),
+          expired,
+        ),
+      )
+      .returning({
+        id: community_reports.id,
+        photo_url: community_reports.photo_url,
+      });
+    const cleanup = await Promise.all(
+      deleted.map((row) => deleteCommunityReportPhoto(row.photo_url)),
+    );
+    if (cleanup.some((ok) => !ok)) {
+      console.warn(
+        "[community-reports] one or more deleted reports left a Blob for later cleanup",
+      );
+    }
     return deleted.length;
   } catch (err) {
     console.warn(
