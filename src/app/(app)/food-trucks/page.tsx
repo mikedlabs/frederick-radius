@@ -327,7 +327,16 @@ export default async function FoodTrucksPage({
             Published stops come first. Live locations appear when a truck checks in.
           </p>
         </div>
-        <div className="food-truck-hero-lineup" aria-label="Local food-truck vendor identities">
+        {/* Below 640px this grid becomes a horizontal scroller, and a region
+            that scrolls must be reachable by keyboard or its content is
+            unreachable without a pointer (axe scrollable-region-focusable).
+            role + label give the stop a name once it takes focus. */}
+        <div
+          className="food-truck-hero-lineup"
+          role="group"
+          aria-label="Local food-truck vendor identities"
+          tabIndex={0}
+        >
           {HERO_TRUCKS.map((truck, index) => (
             <div key={truck.slug} className="food-truck-hero-tile">
               <FoodTruckIdentity truck={truck} size="hero" priority={index < 2} />
