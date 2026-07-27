@@ -164,10 +164,10 @@ function sourceDate(iso: string | undefined): string | null {
   }).format(date);
 }
 
-function IntentTile({ intent }: { intent: TransitIntent }) {
+function IntentTile({ intent, layout = "rail" }: { intent: TransitIntent; layout?: "rail" | "grid" }) {
   const Icon = intent.icon;
   return (
-    <li className="w-[10rem] shrink-0 snap-start sm:w-auto">
+    <li className={layout === "grid" ? "min-w-0" : "w-[10rem] shrink-0 snap-start sm:w-auto"}>
       <a
         href={intent.href}
         target={intent.external ? "_blank" : undefined}
@@ -409,7 +409,7 @@ export default async function TransitPage() {
           </summary>
           <ul className="grid grid-cols-2 gap-2 px-3 pb-3 pt-1 sm:grid-cols-3">
             {TRANSIT_REFERENCE.map((intent) => (
-              <IntentTile key={intent.label} intent={intent} />
+              <IntentTile key={intent.label} intent={intent} layout="grid" />
             ))}
           </ul>
         </details>

@@ -5,6 +5,7 @@ import { currentMeal } from "@/lib/meal";
 import { CUISINES } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { Event } from "@/data/events";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 
 /**
  * Pure prompt-context builders for "Ask Frederick" — extracted from the
@@ -35,6 +36,7 @@ export type AskEvent = {
   venue_place_slug?: string | null;
   municipality?: string | null;
   municipality_name?: string;
+  geom?: LngLat;
 };
 
 /** Preserve an explicit town scope before building a time-window block. The
@@ -43,6 +45,39 @@ export type AskEvent = {
 export function scopeAskEvents<T extends AskEvent>(events: T[], municipality?: string | null): T[] {
   if (!municipality) return events;
   return events.filter((event) => event.municipality === municipality);
+}
+
+/**
+ * A visitor who says "near me" or "walking distance" is setting a hard
+ * geographic constraint, not merely asking for a distance-flavored sort.
+ * Keep the time-window grounder and its citation cards inside that constraint
+ * so a soon-starting event across the county cannot lead a downtown answer.
+ *
+ * Town/home centroids may rank general results elsewhere, but they are not a
+ * precise enough origin for a walking-distance claim. Callers pass
+ * canShowDistance=false for those approximate anchors, so this helper leaves
+ * the county/town-scoped pool unchanged in that case.
+ */
+export function scopeAskEventsByProximity<T extends AskEvent>(
+  events: T[],
+  query: string,
+  origin?: LngLat | null,
+  canShowDistance = true,
+): T[] {
+  const asksWalkingDistance = /\b(?:walking\s+distance|walkable|within\s+(?:an?\s+)?(?:easy\s+)?walk)\b/i.test(query);
+  const asksNearby = asksWalkingDistance ||
+    /\b(?:near\s+me|nearby|closest|nearest|close\s+to\s+me|around\s+me)\b/i.test(query);
+  if (!asksNearby || !origin || !canShowDistance) return events;
+
+  const maxDistanceMeters = asksWalkingDistance ? 2_400 : 5_000;
+  return events
+    .map((event) => ({
+      event,
+      distance: event.geom ? haversineMeters(origin, event.geom) : Infinity,
+    }))
+    .filter(({ distance }) => distance <= maxDistanceMeters)
+    .sort((a, b) => a.distance - b.distance)
+    .map(({ event }) => event);
 }
 
 /**
@@ -207,6 +242,13 @@ export function wantIntentOf(query: string, now: Date): WantIntent | null {
   if (meal) return { key: meal, cuisine: null, area };
   const craving = CRAVING_QUERY.find((c) => c.re.test(q));
   if (craving) return { key: craving.key, cuisine: null, area };
+  // "Restaurants open now" asks for the restaurant catalog, not whichever
+  // meal happens to align with the server clock. Keep daypart inference for
+  // conversational prompts such as "where should we eat," where it adds
+  // useful context instead of silently narrowing an explicit category.
+  if (/\brestaurants?\b/.test(q)) {
+    return { key: "food", cuisine: null, area };
+  }
   if (FOOD_GENERIC.test(q)) return { key: currentMeal(now).key, cuisine: null, area };
   return null;
 }

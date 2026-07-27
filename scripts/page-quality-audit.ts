@@ -25,7 +25,7 @@ type AuditRoute = {
 };
 
 type ViewportDefinition = {
-  id: "mobile" | "desktop";
+  id: "compact" | "mobile" | "desktop";
   width: number;
   height: number;
   deviceScaleFactor: number;
@@ -176,6 +176,10 @@ const ROUTES: AuditRoute[] = [
   { id: "map-unincorporated-area", path: "/map?at=39.36356,-77.30072", group: "core", description: "Coordinate-centered unincorporated area map" },
   { id: "pulse", path: "/pulse", group: "core", description: "Live local status" },
   { id: "compass", path: "/compass", group: "core", description: "Intent-led discovery" },
+  { id: "signals", path: "/signals", group: "core", description: "Public civic-data findings" },
+  { id: "history", path: "/history", group: "guide", description: "Local history guide" },
+  { id: "check-a-date", path: "/check-a-date", group: "guide", description: "Date-aware planning tool" },
+  { id: "rhythm", path: "/rhythm", group: "guide", description: "Stored schedule patterns" },
   { id: "contacts", path: "/contacts", group: "guide", description: "Local contacts directory" },
   { id: "collections", path: "/collections", group: "guide", description: "Editorial guide index" },
   { id: "nonprofits", path: "/nonprofits", group: "guide", description: "Local nonprofit browser" },
@@ -211,11 +215,20 @@ const ROUTES: AuditRoute[] = [
   { id: "reserve", path: "/reserve", group: "support", description: "Reservation links" },
   { id: "markers", path: "/markers", group: "support", description: "Historic marker browser" },
   { id: "settings", path: "/settings", group: "support", description: "Preferences" },
+  { id: "notification-settings", path: "/settings/notifications", group: "support", description: "Notification preferences" },
+  { id: "shared-radius", path: "/radius/shared?p=cafe-nola,gravel-and-grind-frederick", group: "support", description: "Recipient-facing shared list" },
+  { id: "dear-frederick", path: "/dear-frederick", group: "support", description: "Community notes" },
+  { id: "submit-event", path: "/submit/event", group: "support", description: "Event submission" },
+  { id: "submit-place", path: "/submit/place", group: "support", description: "Place submission" },
+  { id: "food-truck-console", path: "/food-trucks/out", group: "support", description: "Food-truck operator recovery state" },
+  { id: "from-above-preview", path: "/from-above/preview", group: "support", description: "Aerial preview tool" },
+  { id: "from-above-time-machine", path: "/from-above/time-machine", group: "support", description: "Aerial time-machine tool" },
   { id: "report", path: "/report", group: "support", description: "Public map reporting tool" },
   { id: "collect", path: "/collect", group: "support", description: "Field collection map tool" },
 ];
 
 const VIEWPORTS: ViewportDefinition[] = [
+  { id: "compact", width: 320, height: 568, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { id: "mobile", width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { id: "desktop", width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
 ];
@@ -529,6 +542,19 @@ async function collectDomMetrics(page: Page, viewport: ViewportDefinition): Prom
 
     const visible = (element: Element): element is HTMLElement => {
       if (!(element instanceof HTMLElement)) return false;
+      // Chromium can still return a box and computed display values for
+      // descendants of a closed <details>. Those controls are not painted or
+      // reachable until the disclosure opens, so counting them in the resting
+      // state creates false touch-target failures.
+      const closedDetails = element.closest("details:not([open])");
+      if (closedDetails) {
+        const visibleSummary = closedDetails.querySelector(":scope > summary");
+        if (!visibleSummary?.contains(element)) return false;
+      }
+      // An aria-hidden ancestor can still own a measurable off-screen box
+      // (the submission forms' anti-spam field is one example), but it is not
+      // an available interface target.
+      if (element.closest("[hidden],[inert],[aria-hidden='true']")) return false;
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       return style.display !== "none"
@@ -577,6 +603,7 @@ async function collectDomMetrics(page: Page, viewport: ViewportDefinition): Prom
       // exception too. Keep card/list actions honest: a link inside an article
       // is an action even when the article itself happens to sit in an <li>.
       const prose = link.closest("p,figcaption,blockquote,dd,dt")
+        ?? link.closest("[data-inline-prose]")
         ?? (!link.closest("article") ? link.closest("li") : null);
       if (!prose) return false;
       const walker = document.createTreeWalker(prose, NodeFilter.SHOW_TEXT);
@@ -635,8 +662,18 @@ async function collectDomMetrics(page: Page, viewport: ViewportDefinition): Prom
       const horizontallyAnchored = pseudo.left !== "auto" && pseudo.right !== "auto";
       const width = Number.isFinite(parsedWidth) && parsedWidth > 0
         ? parsedWidth
-        : horizontallyAnchored ? rect.width : 0;
-      const height = Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : 0;
+        : bothAxes
+          ? Math.max(rect.width, minimumTarget)
+          : horizontallyAnchored
+            ? rect.width
+            : 0;
+      // Chromium can preserve CSS max() as the computed string for pseudo
+      // elements, so parseFloat("max(100%, 44px)") is NaN even though the
+      // actual hit extender is valid. Fall back to the helper's documented
+      // minimum instead of reporting every tap-44-y link as a 16px target.
+      const height = Number.isFinite(parsedHeight) && parsedHeight > 0
+        ? parsedHeight
+        : Math.max(rect.height, minimumTarget);
       if (width <= 0 || height <= 0) return null;
       const left = bothAxes ? rect.left + (rect.width - width) / 2 : rect.left;
       const top = rect.top + (rect.height - height) / 2;
@@ -715,7 +752,10 @@ async function collectDomMetrics(page: Page, viewport: ViewportDefinition): Prom
         // from this check merely because its CSS display happens to be inline.
         if (
           element instanceof HTMLAnchorElement
-          && getComputedStyle(element).display === "inline"
+          && (
+            getComputedStyle(element).display === "inline"
+            || element.closest("[data-inline-prose]")
+          )
           && hasUnlinkedProse(element)
         ) return null;
         // Mapbox owns its required attribution/logo control and its compact
@@ -980,7 +1020,13 @@ async function auditRoute(
   page.setDefaultTimeout(NAVIGATION_TIMEOUT_MS);
   page.on("pageerror", (error) => pageErrors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") pageErrors.push(`console: ${message.text()}`);
+    if (message.type() !== "error") return;
+    const sourceUrl = message.location().url;
+    pageErrors.push(
+      sourceUrl
+        ? `console: ${message.text()} — ${sourceUrl}`
+        : `console: ${message.text()}`,
+    );
   });
   page.on("requestfailed", (request) => {
     if (request.resourceType() === "image") {

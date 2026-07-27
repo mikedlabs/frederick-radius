@@ -1,9 +1,10 @@
 /**
- * Bounded daily maintenance for Radius' private hybrid-search index.
+ * Bounded daily maintenance for Radius' private local-search index.
  *
- * The initial fill advances in cost-capped slices; later runs only embed
- * places whose search content changed. The writer is content-hash based and
- * upserts by (kind, source_id), so duplicate cron delivery is idempotent.
+ * The initial full-text fill advances in bounded slices. Optional OpenAI
+ * embeddings use the same limit when configured; later runs only revisit
+ * changed content or rows that still need a vector. The writer is
+ * content-hash based and idempotent by (kind, source_id).
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       enabled: false,
       note:
-        "Set RADIUS_SEARCH_CRON=1 to enable the bounded semantic-index refresh.",
+        "Set RADIUS_SEARCH_CRON=1 to enable the bounded local-search refresh.",
     });
   }
 
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
       ...result,
       note: result.current
         ? "The place search index is current."
-        : `${result.remaining} changed place documents will continue on the next run.`,
+        : `${result.remaining} place search documents will continue on the next run.`,
     });
   } catch (error) {
     console.error("[cron/radius-search] refresh failed:", error);

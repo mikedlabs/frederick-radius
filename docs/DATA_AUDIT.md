@@ -4,16 +4,17 @@ Three-part audit of the data layer: the complete source inventory, the
 quality/gaps report, and an externally-verified scout of NEW Frederick-specific
 sources. Read like MAP_AUDIT.md / EXPERIENCE_REVIEW.md: a working document.
 
-> **Status update, 2026-07-23:** This document preserves the July 2 audit
+> **Status update, 2026-07-27:** This document preserves the July 2 audit
 > snapshot below. Since then, hours freshness is strict by default, stale
-> schedules are withheld from open-now claims, and the rolling refresh can
-> persist to `place_hours_refresh`. The public snapshot currently has 3 of
-> 1,616 places inside the seven-day hours window; 1,192 source schedules remain
-> available for rolling refresh. Event adapters now report failed and partial
-> sources instead of turning every outage into an empty result. Downtown
-> Frederick events use the public Vibemap WordPress endpoint. The remaining
-> operational blockers are enabling and completing the paid hours and
-> business-status cycles, then merging their reviewed data PRs.
+> schedules are withheld from open-now claims, and the rolling refresh persists
+> to `place_hours_refresh`. The current public snapshot has 159 of 1,613 places
+> with a current publishable schedule; the source artifact carries 167 fresh
+> schedules for 1,524 Google-backed places. Open Now remains unavailable until
+> the reviewed public set reaches its 60% gate (968 places). Event adapters now
+> report failed and partial sources instead of turning every outage into an
+> empty result. Downtown Frederick events use the public Vibemap WordPress
+> endpoint. The remaining hours work is completing the rolling paid cycle and
+> merging its reviewed data PRs.
 
 ## The synthesis
 

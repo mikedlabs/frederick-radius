@@ -1,6 +1,11 @@
 import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
 import { PROVENANCE_FIELDS, type SourceConfidence } from "@/lib/provenance";
 import { hoursFreshnessEnforced, isHoursFresh } from "@/lib/hours-freshness";
+import {
+  OPEN_NOW_MINIMUM_COVERAGE,
+  type HoursAvailabilityPlace,
+} from "@/lib/hours-availability";
+import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
 
 /**
  * Trust report (data brief, Section 8 gates, made measurable).
@@ -25,6 +30,7 @@ import { hoursFreshnessEnforced, isHoursFresh } from "@/lib/hours-freshness";
 
 export type TrustReport = {
   places: number;
+  fresh_hours: FreshHoursHealth;
   provenance: {
     covered: number;
     coverage_pct: number;
@@ -40,7 +46,58 @@ export type TrustReport = {
   };
 };
 
+export type FreshHoursHealth = {
+  fresh_count: number;
+  total_count: number;
+  coverage_pct: number;
+  target_count: number;
+  target_pct: number;
+  open_now_eligible: boolean;
+  below_gate: boolean;
+  checked_at: string;
+  source: "current-verified-hours";
+};
+
 const ASSERTING_STATES = new Set(["open", "closing-soon", "closed"]);
+
+/**
+ * The strict nightly Open Now gate.
+ *
+ * This intentionally checks the verification timestamp directly instead of
+ * using mayAssertOpenState(). The latter has an emergency rollback that can
+ * temporarily let stored schedules render; an operational rollback must never
+ * make stale inventory look like current coverage on the owner health board.
+ */
+export function summarizeFreshHoursHealth(
+  places: readonly HoursAvailabilityPlace[],
+  now: Date = new Date(),
+  targetCoverage: number = OPEN_NOW_MINIMUM_COVERAGE,
+): FreshHoursHealth {
+  const total = places.length;
+  const fresh = places.filter(
+    (place) =>
+      Boolean(place.hours) &&
+      Object.keys(place.hours ?? {}).length > 0 &&
+      place.hours_verified === true &&
+      isHoursFresh(place.hours_updated_at, now) &&
+      mayPublishVisitabilityHours(place.slug, place.hours, now),
+  ).length;
+  const coverage = total > 0 ? fresh / total : 0;
+  const targetCount = Math.ceil(total * targetCoverage);
+  const eligible = fresh > 0 && coverage >= targetCoverage;
+
+  return {
+    fresh_count: fresh,
+    total_count: total,
+    coverage_pct: Number((coverage * 100).toFixed(1)),
+    target_count: targetCount,
+    target_pct: Number((targetCoverage * 100).toFixed(1)),
+    open_now_eligible: eligible,
+    below_gate: !eligible,
+    checked_at: now.toISOString(),
+    source: "current-verified-hours",
+  };
+}
 
 export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
   const publicCatalog = publicPlaces();
@@ -55,9 +112,11 @@ export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
   let asserting = 0;
   let stale = 0;
   const staleSample: string[] = [];
+  const decorated: HoursAvailabilityPlace[] = [];
 
   for (const raw of publicCatalog) {
     const row = decoratePlace(raw, undefined, now) as unknown as Record<string, unknown>;
+    decorated.push(row as unknown as HoursAvailabilityPlace);
 
     const complete = PROVENANCE_FIELDS.every((f) => f in row && row[f] !== undefined);
     if (complete) covered++;
@@ -81,6 +140,7 @@ export function computePlaceTrustReport(now: Date = new Date()): TrustReport {
   const total = publicCatalog.length;
   return {
     places: total,
+    fresh_hours: summarizeFreshHoursHealth(decorated, now),
     provenance: {
       covered,
       coverage_pct: total ? Number(((covered / total) * 100).toFixed(2)) : 0,

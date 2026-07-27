@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, stripInlineMarkdown, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type AskEvent } from "./context";
+import { clockLine, timeAnchorOf, eventContextLines, concisePlainTextAnswer, normalizePlainTextAnswer, optionCountInstruction, rankForSources, requestedOptionCount, filterCitedSources, scopeAskEvents, scopeAskEventsByProximity, stripInlineMarkdown, wantsAirQuality, wantsParking, wantsWeather, wantsWeatherAnswer, wantIntentOf, type AskEvent } from "./context";
 
 // A fixed summer Wednesday, 6 PM Eastern (22:00 UTC in July / EDT).
 const WED_6PM = new Date("2026-07-15T18:00:00-04:00");
@@ -148,6 +148,39 @@ describe("scopeAskEvents", () => {
     ];
     expect(scopeAskEvents(pool, "urbana").map((event) => event.slug)).toEqual(["urbana"]);
   });
+
+  it("keeps near-me and walking event windows close to the precise origin", () => {
+    const downtown = { lng: -77.4105, lat: 39.4143 };
+    const pool = [
+      ev({ slug: "downtown", geom: { lng: -77.4098, lat: 39.4139 } }),
+      ev({ slug: "edge-of-walk", geom: { lng: -77.431, lat: 39.4143 } }),
+      ev({ slug: "mount-airy", geom: { lng: -77.1547, lat: 39.3762 } }),
+    ];
+
+    expect(
+      scopeAskEventsByProximity(pool, "Anything fun tonight near me?", downtown)
+        .map((event) => event.slug),
+    ).toEqual(["downtown", "edge-of-walk"]);
+    expect(
+      scopeAskEventsByProximity(pool, "What is within walking distance tonight?", downtown)
+        .map((event) => event.slug),
+    ).toEqual(["downtown", "edge-of-walk"]);
+  });
+
+  it("does not claim proximity from an approximate town centroid", () => {
+    const pool = [
+      ev({ slug: "frederick", geom: { lng: -77.4105, lat: 39.4143 } }),
+      ev({ slug: "mount-airy", geom: { lng: -77.1547, lat: 39.3762 } }),
+    ];
+    expect(
+      scopeAskEventsByProximity(
+        pool,
+        "Anything fun tonight near me?",
+        { lng: -77.4105, lat: 39.4143 },
+        false,
+      ).map((event) => event.slug),
+    ).toEqual(["frederick", "mount-airy"]);
+  });
 });
 
 describe("rankForSources", () => {
@@ -236,6 +269,7 @@ describe("wantIntentOf", () => {
   it("'where should we eat' hears the meal it currently is", () => {
     expect(wantIntentOf("where should we eat", WED_6PM)?.key).toBe("dinner");
     expect(wantIntentOf("where should we eat", new Date("2026-07-15T08:00:00-04:00"))?.key).toBe("breakfast");
+    expect(wantIntentOf("restaurants open now", new Date("2026-07-15T08:00:00-04:00"))?.key).toBe("food");
   });
   it("never false-positives on the other grounders' questions", () => {
     expect(wantIntentOf("Music tonight", WED_6PM)).toBeNull();

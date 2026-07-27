@@ -46,7 +46,7 @@ export default function TaproomMap({ places }: { places: PlaceCardData[] }) {
           className="relative h-[62vh] min-h-[380px] w-full overflow-hidden border"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <AppMapClient places={places} fullBleed />
+          <AppMapClient places={places} fullBleed showSearchControls={false} />
         </div>
       ) : (
         <button

@@ -842,12 +842,12 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
                 feeds are degraded the banner above already explains the gap,
                 and this stays a neutral pointer instead of a false all-clear. */}
             {sourceHealth.degraded ? (
-              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+              <Link href="/events" className="tap-44-y inline-flex font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
                 Open the full events board.
               </Link>
             ) : (
               <>
-                No events are on the calendar today. <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                No events are on the calendar today. <Link href="/events" className="tap-44-y inline-flex font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
                   Browse all events.
                 </Link>
               </>

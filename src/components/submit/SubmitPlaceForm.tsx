@@ -91,7 +91,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
             ? "We’ll verify the details and contact you before the listing goes live."
             : "We’ll cross-check the details and reach out if anything needs clarification."}
         </p>
-        <Link href={isFoodTruck ? "/food-trucks" : "/"} className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>
+        <Link href={isFoodTruck ? "/food-trucks" : "/"} className="inline-flex min-h-11 items-center text-sm font-semibold" style={{ color: "var(--app-cool)" }}>
           {isFoodTruck ? "Back to the truck board" : "Back to Frederick Radius"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
         </Link>
       </div>
@@ -132,7 +132,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
                 </p>
               </div>
               <FieldText name="photo_url" label="Truck photo link" type="url" placeholder="https://…" />
-              <label className="flex items-start gap-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              <label className="flex min-h-11 items-start gap-2 py-2 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                 <input type="checkbox" name="photo_permission" className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>I own this photo or have permission for Frederick Radius to display it.</span>
               </label>
@@ -153,7 +153,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
         </p>
         <FieldText name="submitter_name" label="Your name" />
         <FieldText name="submitter_email" label="Your email" required type="email" />
-        <label className="mt-2 inline-flex items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
+        <label className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
           <input type="checkbox" name="is_owner" defaultChecked={isFoodTruck} className="h-4 w-4" />
           {isFoodTruck ? "I’m the owner or on this truck’s team" : "I’m the owner or on the team at this place"}
         </label>
@@ -189,7 +189,7 @@ function FieldText({ name, label, required, type = "text", placeholder }: { name
       <input
         name={name} type={type} required={required} placeholder={placeholder}
         maxLength={PLACE_FIELD_MAX_LENGTHS[name]}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -219,7 +219,7 @@ function FieldSelect({ name, label, required, options }: { name: string; label: 
       <select
         name={name} required={required}
         defaultValue=""
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       >
         <option value="" disabled>Pick one…</option>

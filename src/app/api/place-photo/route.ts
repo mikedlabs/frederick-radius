@@ -108,7 +108,26 @@ function placeholderSvg(name: string, w: number, slug?: string): string {
 </svg>`;
 }
 
-function placeholderResponse(name: string, w: number, reason: string, slug?: string): Response {
+function placeholderResponse(
+  name: string,
+  w: number,
+  reason: string,
+  slug?: string,
+  signal = false,
+): Response {
+  if (signal) {
+    return new Response(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"/>',
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "image/svg+xml",
+          "Cache-Control": "public, max-age=300, s-maxage=300",
+          "X-Photo-Fallback": reason,
+        },
+      },
+    );
+  }
   return new Response(placeholderSvg(name, w, slug), {
     status: 200,
     headers: {
@@ -199,6 +218,7 @@ export async function GET(req: NextRequest) {
   const wRaw = parseInt(req.nextUrl.searchParams.get("w") || "800", 10);
   const w = Math.min(1600, Math.max(80, Number.isFinite(wRaw) ? wRaw : 800));
   const rawSlug = req.nextUrl.searchParams.get("slug") || undefined;
+  const signalFallback = req.nextUrl.searchParams.get("fallback") === "signal";
   // Defense in depth: even though the loader-generated URLs always
   // contain a clean slug, we validate before using to look the place
   // up in PLACE_BY_SLUG.
@@ -215,14 +235,14 @@ export async function GET(req: NextRequest) {
   // session or a shared NAT must never turn valid <img> elements into broken
   // icons. No-op when KV is not configured (see isRateLimited docs).
   if (await isRateLimited(req, "place-photo", 120, 60)) {
-    return placeholderResponse(name, w, "rate-limited", slug);
+    return placeholderResponse(name, w, "rate-limited", slug, signalFallback);
   }
 
   const url = photoUrl(name, w);
   if (!url) {
     // Key not configured — degrade to a gradient placeholder so the
     // page still renders coherently in dev / on misconfigured deploys.
-    return placeholderResponse(name, w, "no-key", slug);
+    return placeholderResponse(name, w, "no-key", slug, signalFallback);
   }
 
   try {
@@ -243,10 +263,10 @@ export async function GET(req: NextRequest) {
           /* fall through to the placeholder */
         }
       }
-      return placeholderResponse(name, w, `upstream-${upstream.status}`, slug);
+      return placeholderResponse(name, w, `upstream-${upstream.status}`, slug, signalFallback);
     }
     return imageResponse(upstream);
   } catch {
-    return placeholderResponse(name, w, "fetch-error", slug);
+    return placeholderResponse(name, w, "fetch-error", slug, signalFallback);
   }
 }

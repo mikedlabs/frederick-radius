@@ -1,3 +1,2597 @@
 {
-  "_doc": "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand."
+  "_doc": "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.",
+  "_meta": {
+    "schema_version": 2,
+    "generated_at": "2026-07-27T13:45:56.414Z",
+    "rows": 216,
+    "with_schedule": 167,
+    "fresh_schedule_rows": 167,
+    "recent_rows": 216,
+    "unmatched_rows": 0,
+    "oldest_refreshed_at": "2026-07-27T12:49:47.617Z",
+    "newest_refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "24-7-prayer-room-frederick": {
+    "place_id": "ChIJN-DOmn_byYkRcGV5SOy3q-c",
+    "weekday_hours": [
+      "Monday: 8:30 AM – 8:00 PM",
+      "Tuesday: 8:30 AM – 8:00 PM",
+      "Wednesday: 8:30 AM – 8:00 PM",
+      "Thursday: 8:30 AM – 8:00 PM",
+      "Friday: 8:30 AM – 8:00 PM",
+      "Saturday: 8:30 AM – 8:00 PM",
+      "Sunday: 8:30 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "5-west-cafe-new-market": {
+    "place_id": "ChIJTyKnHHvTyYkRCbP92eAsEWs",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 7:00 AM – 3:00 PM",
+      "Wednesday: 7:00 AM – 3:00 PM",
+      "Thursday: 7:00 AM – 3:00 PM",
+      "Friday: 7:00 AM – 3:00 PM",
+      "Saturday: 7:00 AM – 3:00 PM",
+      "Sunday: 9:00 AM – 2:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "7th-street-cafe": {
+    "place_id": "ChIJ2x4DrfvayYkR2sP2DIQ8S_0",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 8:00 PM",
+      "Tuesday: 7:00 AM – 8:00 PM",
+      "Wednesday: 7:00 AM – 8:00 PM",
+      "Thursday: 7:00 AM – 8:00 PM",
+      "Friday: 7:00 AM – 8:00 PM",
+      "Saturday: 8:00 AM – 8:00 PM",
+      "Sunday: 8:00 AM – 4:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "adam-j-frieder-dds": {
+    "place_id": "ChIJmUOQ8fnayYkRP1Bl7ylZk3I",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "agave-137-tequila-bar-and-kitchen": {
+    "place_id": "ChIJz4dPj4zbyYkRSo2klbMXOHc",
+    "weekday_hours": [
+      "Monday: 3:00 – 11:00 PM",
+      "Tuesday: 3:00 – 11:00 PM",
+      "Wednesday: 3:00 PM – 12:30 AM",
+      "Thursday: 3:00 PM – 1:00 AM",
+      "Friday: 11:00 AM – 1:30 AM",
+      "Saturday: 11:00 AM – 1:30 AM",
+      "Sunday: 11:00 AM – 11:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "airborne-public-safety-association": {
+    "place_id": "ChIJkaQa8RXbyYkR1cTPqdOoxeI",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "aldi-urbana-pike-frederick": {
+    "place_id": "ChIJj9OWHyPayYkRLG3s8Lv7lEI",
+    "weekday_hours": [
+      "Monday: 8:30 AM – 8:30 PM",
+      "Tuesday: 8:30 AM – 8:30 PM",
+      "Wednesday: 8:30 AM – 8:30 PM",
+      "Thursday: 8:30 AM – 8:30 PM",
+      "Friday: 8:30 AM – 8:30 PM",
+      "Saturday: 8:30 AM – 8:30 PM",
+      "Sunday: 8:30 AM – 8:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "andaz-modern-indian-cuisine-frederick": {
+    "place_id": "ChIJzYn-OgDbyYkRCcgLbUsDKxc",
+    "weekday_hours": [
+      "Monday: 11:30 AM – 9:30 PM",
+      "Tuesday: 11:30 AM – 9:30 PM",
+      "Wednesday: 11:30 AM – 9:30 PM",
+      "Thursday: 11:30 AM – 9:30 PM",
+      "Friday: 11:30 AM – 10:30 PM",
+      "Saturday: 11:30 AM – 10:30 PM",
+      "Sunday: 11:30 AM – 9:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "annapolis-rock-vista-myersville": {
+    "place_id": "ChIJe8OPUIbpyYkR0QEMn3h-U-E",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "anytime-fitness-frederick": {
+    "place_id": "ChIJwZ3qPkjbyYkRofZnRkrYLbk",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "aquatic-training-consulting-services": {
+    "place_id": "ChIJr-iPO1LayYkRQJ_ITAk1Lco",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: 9:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "artspiration-frederick": {
+    "place_id": "ChIJ4eI1TADbyYkRSXeYwbv62Ro",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: 12:00 – 4:00 PM",
+      "Saturday: 12:00 – 5:00 PM",
+      "Sunday: 12:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "asian-american-center-of-frederick": {
+    "place_id": "ChIJbS924vbayYkRF8hOg0B67Wc",
+    "weekday_hours": [
+      "Monday: 9:30 AM – 6:00 PM",
+      "Tuesday: 9:30 AM – 6:00 PM",
+      "Wednesday: 9:30 AM – 6:00 PM",
+      "Thursday: 9:30 AM – 6:00 PM",
+      "Friday: 9:30 AM – 6:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "audrey-carroll-audubon-sanctuary-mount-airy": {
+    "place_id": "ChIJKeEaRbjSyYkR6aMJHyGZwoA",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "axiom-systems-inc": {
+    "place_id": "ChIJHSL5lPXayYkRJpJVItJomIw",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "bakehouse": {
+    "place_id": "ChIJKcSZJlrbyYkRpu4ma7r2Fys",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 8:00 AM – 2:00 PM",
+      "Thursday: 8:00 AM – 2:00 PM",
+      "Friday: 8:00 AM – 2:00 PM",
+      "Saturday: 8:00 AM – 2:00 PM",
+      "Sunday: 8:00 AM – 2:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "ballenger-creek-trail-frederick": {
+    "place_id": "ChIJXV19BIzZyYkRQ9ejU7bSr48",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 8:00 PM",
+      "Tuesday: 7:00 AM – 8:00 PM",
+      "Wednesday: 7:00 AM – 8:00 PM",
+      "Thursday: 7:00 AM – 8:00 PM",
+      "Friday: 7:00 AM – 8:00 PM",
+      "Saturday: 7:00 AM – 8:00 PM",
+      "Sunday: 7:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "bandersons-brunswick": {
+    "place_id": "ChIJnXPjTwDhyYkRmYG4ZnbZg8E",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 12:00 – 8:00 PM",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 12:00 – 8:00 PM",
+      "Friday: 12:00 – 8:00 PM",
+      "Saturday: 8:00 AM – 8:00 PM",
+      "Sunday: 8:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "beans-bagels-frederick": {
+    "place_id": "ChIJTyjEeVnayYkRvPCaqZoOhAw",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 3:00 PM",
+      "Tuesday: 8:00 AM – 3:00 PM",
+      "Wednesday: 8:00 AM – 3:00 PM",
+      "Thursday: 8:00 AM – 3:00 PM",
+      "Friday: 8:00 AM – 3:00 PM",
+      "Saturday: 8:00 AM – 3:00 PM",
+      "Sunday: 8:00 AM – 3:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "below-deck-mount-airy": {
+    "place_id": "ChIJbeN-cgAtyIkR0TjNgbftYmk",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 5:00 – 9:00 PM",
+      "Friday: 5:00 – 9:00 PM",
+      "Saturday: 12:00 – 9:00 PM",
+      "Sunday: 12:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "bernard-w-brown-community-center": {
+    "place_id": "ChIJ_zVhHffayYkRva2LOykvkyk",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 11:00 PM",
+      "Saturday: 9:00 AM – 11:00 PM",
+      "Sunday: 9:00 AM – 11:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "black-hog-bbq-bar": {
+    "place_id": "ChIJexyd9VrayYkRYuboXpRyVno",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 9:00 PM",
+      "Tuesday: 11:00 AM – 9:00 PM",
+      "Wednesday: 11:00 AM – 9:00 PM",
+      "Thursday: 11:00 AM – 9:00 PM",
+      "Friday: 11:00 AM – 10:00 PM",
+      "Saturday: 11:00 AM – 10:00 PM",
+      "Sunday: 11:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "boxcar-burgers-brunswick": {
+    "place_id": "ChIJhRB3b5YftokR0AQs7rXt_sc",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 12:00 – 8:00 PM",
+      "Friday: 12:00 – 8:00 PM",
+      "Saturday: 12:00 – 8:00 PM",
+      "Sunday: 12:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "brunswick-family-campground-brunswick": {
+    "place_id": "ChIJNYkdyzEetokRLWtUwZMGhE4",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 7:00 PM",
+      "Friday: 9:00 AM – 9:00 PM",
+      "Saturday: 9:00 AM – 9:00 PM",
+      "Sunday: 9:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "brunswick-municipal-swimming-pool-brunswick": {
+    "place_id": "ChIJD6w9lSMetokRZewnmLgprRM",
+    "weekday_hours": [
+      "Monday: 12:00 – 7:00 PM",
+      "Tuesday: 12:00 – 7:00 PM",
+      "Wednesday: 12:00 – 7:00 PM",
+      "Thursday: 12:00 – 7:00 PM",
+      "Friday: 12:00 – 7:00 PM",
+      "Saturday: 12:00 – 5:30 PM",
+      "Sunday: 12:00 – 5:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "buckeye-motel-frederick": {
+    "place_id": "ChIJ6xd_ucrbyYkRXTben_2vUuU",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "bullivant-park-treeland-trail-myersville": {
+    "place_id": "ChIJR3y0_PXpyYkRdT9gAh04vmI",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 9:00 PM",
+      "Tuesday: 7:00 AM – 9:00 PM",
+      "Wednesday: 7:00 AM – 9:00 PM",
+      "Thursday: 7:00 AM – 9:00 PM",
+      "Friday: 7:00 AM – 9:00 PM",
+      "Saturday: 7:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "cactus-flats-walkersville": {
+    "place_id": "ChIJHfTUU7vFyYkRhSydcvHfNUI",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 3:00 – 10:00 PM",
+      "Friday: 3:00 – 11:00 PM",
+      "Saturday: 12:00 – 11:00 PM",
+      "Sunday: 12:00 – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "cakebox-by-preeti-brunswick": {
+    "place_id": "ChIJR_uoNC7ht4kRTl_GjcgbUEQ",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "calvary-walkersville": {
+    "place_id": "ChIJ60OH3eTPyYkR_ieuQChSd74",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 4:00 PM",
+      "Tuesday: 9:00 AM – 4:00 PM",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 9:00 AM – 4:00 PM",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 8:15 – 9:30 AM, 10:00 – 11:15 AM, 11:45 AM – 1:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "carriage-house-inn-restaurant-catering-emmitsburg": {
+    "place_id": "ChIJ1b_FxSixyYkRiiwNWmNtxrA",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 11:00 AM – 9:00 PM",
+      "Saturday: 11:00 AM – 9:00 PM",
+      "Sunday: 11:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "carroll-county-public-library-mount-airy-branch-mount-airy": {
+    "place_id": "ChIJIx4DlYwsyIkRSmb9EqEjJuA",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 8:00 PM",
+      "Tuesday: 9:00 AM – 8:00 PM",
+      "Wednesday: 9:00 AM – 8:00 PM",
+      "Thursday: 9:00 AM – 8:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "carroll-creek-kinetic-art-promenade-frederick": {
+    "place_id": "ChIJ-Wqpj-fbyYkR9gvI0TzSnNY",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "carroll-creek-outdoor-amphitheater": {
+    "place_id": "ChIJo6Ojw1vayYkRG_9gGcMtUZM",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "carterque-bbq-grilling-co-mount-airy": {
+    "place_id": "ChIJ-aXlXfEsyIkRnLkH9gMJwVA",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 11:00 AM – 9:00 PM",
+      "Saturday: 11:00 AM – 9:00 PM",
+      "Sunday: 11:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "catoctin-furnace-historical-society-inc-thurmont": {
+    "place_id": "ChIJ1-kvdvvGyYkRc9tyZw6JayE",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 10:00 AM – 4:00 PM",
+      "Friday: 10:00 AM – 4:00 PM",
+      "Saturday: 10:00 AM – 4:00 PM",
+      "Sunday: 10:00 AM – 4:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "catoctin-furnace-thurmont": {
+    "place_id": "ChIJr-s83fzGyYkRfmFW9hnD4YQ",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 7:00 PM",
+      "Tuesday: 8:00 AM – 7:00 PM",
+      "Wednesday: 8:00 AM – 7:00 PM",
+      "Thursday: 8:00 AM – 7:00 PM",
+      "Friday: 8:00 AM – 7:00 PM",
+      "Saturday: 8:00 AM – 7:00 PM",
+      "Sunday: 8:00 AM – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "catoctin-mountain-orchard-thurmont": {
+    "place_id": "ChIJE-dQaTm4yYkR-I8-F7TzaJQ",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: 9:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "charleys-restaurant": {
+    "place_id": "ChIJfcslRvfayYkR2Qgb97HHS6k",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 10:00 PM",
+      "Wednesday: 11:00 AM – 10:00 PM",
+      "Thursday: 11:00 AM – 10:00 PM",
+      "Friday: 11:00 AM – 11:00 PM",
+      "Saturday: 11:00 AM – 11:00 PM",
+      "Sunday: 12:00 – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "china-garden-frederick": {
+    "place_id": "ChIJ34jj8KzbyYkRy4XBTbfe7O0",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 8:30 PM",
+      "Wednesday: 11:00 AM – 8:30 PM",
+      "Thursday: 11:00 AM – 8:30 PM",
+      "Friday: 11:00 AM – 9:30 PM",
+      "Saturday: 11:00 AM – 9:30 PM",
+      "Sunday: 11:00 AM – 8:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "china-wok-walkersville": {
+    "place_id": "ChIJrV8qQq7PyYkRmFmV26R1W9k",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 9:00 PM",
+      "Wednesday: 11:00 AM – 9:00 PM",
+      "Thursday: 11:00 AM – 9:00 PM",
+      "Friday: 11:00 AM – 10:00 PM",
+      "Saturday: 11:00 AM – 10:00 PM",
+      "Sunday: 12:00 – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "christ-reformed-united-church-of-christ-middletown": {
+    "place_id": "ChIJBSMw7nHdyYkR1ygwcNC1U4Q",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 3:00 PM",
+      "Tuesday: 9:00 AM – 3:00 PM",
+      "Wednesday: 9:00 AM – 3:00 PM",
+      "Thursday: 9:00 AM – 3:00 AM",
+      "Friday: 9:00 AM – 3:00 PM",
+      "Saturday: Closed",
+      "Sunday: 7:00 AM – 12:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "classic-barber-shop-middletown": {
+    "place_id": "ChIJd-1Dm3HdyYkRMc-inH33OWo",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 7:00 PM",
+      "Wednesday: 9:00 AM – 6:00 PM",
+      "Thursday: 9:00 AM – 6:00 PM",
+      "Friday: 9:00 AM – 6:00 PM",
+      "Saturday: 8:00 AM – 3:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "clearview-car-care": {
+    "place_id": "ChIJ80mAHffayYkR-7hKe6EDS-o",
+    "weekday_hours": [
+      "Monday: 7:30 AM – 5:00 PM",
+      "Tuesday: 7:30 AM – 5:00 PM",
+      "Wednesday: 7:30 AM – 5:00 PM",
+      "Thursday: 7:30 AM – 5:00 PM",
+      "Friday: 7:30 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "coffman-chapel": {
+    "place_id": "ChIJBzi_IvnayYkR1F5BxNb1brI",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "coin-exchange": {
+    "place_id": "ChIJ37JmvFnayYkR-ukC9NF8a30",
+    "business_status": "CLOSED_TEMPORARILY",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "community-garden-thurmont": {
+    "place_id": "ChIJRxkh_sO5yYkRDZ5IBHa-ob8",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "coreims": {
+    "place_id": "ChIJvaVZiVnayYkRFZo0smqrpcE",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "country-pleasures-farm-burkittsville": {
+    "place_id": "ChIJ9c-n907nyYkRdDuheQwjkVo",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "crossroads-valley-church": {
+    "place_id": "ChIJeRZToDHFyYkR6t1UFSCkiXM",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "cvs-pharmacy-95": {
+    "place_id": "ChIJJVlEsvvayYkRzQryMXjV-QI",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 1:30 PM, 2:00 – 8:00 PM",
+      "Tuesday: 9:00 AM – 1:30 PM, 2:00 – 8:00 PM",
+      "Wednesday: 9:00 AM – 1:30 PM, 2:00 – 8:00 PM",
+      "Thursday: 9:00 AM – 1:30 PM, 2:00 – 8:00 PM",
+      "Friday: 9:00 AM – 1:30 PM, 2:00 – 8:00 PM",
+      "Saturday: 9:00 AM – 1:30 PM, 2:00 – 6:00 PM",
+      "Sunday: 10:00 AM – 1:30 PM, 2:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dahlia-den-and-gardens-middletown": {
+    "place_id": "ChIJGZ7zoTDfyYkR03bWlQsN7xQ",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 7:00 PM",
+      "Tuesday: 9:00 AM – 7:00 PM",
+      "Wednesday: 9:00 AM – 7:00 PM",
+      "Thursday: 9:00 AM – 7:00 PM",
+      "Friday: 9:00 AM – 7:00 PM",
+      "Saturday: 9:00 AM – 7:00 PM",
+      "Sunday: 9:00 AM – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "delta-holistic-therapy-center": {
+    "place_id": "ChIJoxNbOVHayYkRem0KbaeLxbw",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "diamond-couture-bridal-by-my-sewing-studio": {
+    "place_id": "ChIJXdHaS_HQyYkR9w9UPWuoxBY",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 6:00 PM",
+      "Tuesday: 8:00 AM – 6:00 PM",
+      "Wednesday: 8:00 AM – 6:00 PM",
+      "Thursday: 8:00 AM – 6:00 PM",
+      "Friday: 8:00 AM – 6:00 PM",
+      "Saturday: 8:00 AM – 4:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dollar-general-thurmont": {
+    "place_id": "ChIJcUsNMne4yYkRlGUZ4li-E-E",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 9:00 PM",
+      "Tuesday: 8:00 AM – 9:00 PM",
+      "Wednesday: 8:00 AM – 9:00 PM",
+      "Thursday: 8:00 AM – 9:00 PM",
+      "Friday: 8:00 AM – 9:00 PM",
+      "Saturday: 8:00 AM – 9:00 PM",
+      "Sunday: 8:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dollar-tree-thurmont": {
+    "place_id": "ChIJ2evbsYPHyYkRWNLF2dFORiI",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 9:00 PM",
+      "Tuesday: 9:00 AM – 9:00 PM",
+      "Wednesday: 9:00 AM – 9:00 PM",
+      "Thursday: 9:00 AM – 9:00 PM",
+      "Friday: 9:00 AM – 9:00 PM",
+      "Saturday: 9:00 AM – 9:00 PM",
+      "Sunday: 9:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "doubs-meadow-basketball-courts-myersville": {
+    "place_id": "ChIJDw-pXynDyYkRpoFh-z-Bnd0",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 9:00 PM",
+      "Tuesday: 7:00 AM – 9:00 PM",
+      "Wednesday: 7:00 AM – 9:00 PM",
+      "Thursday: 7:00 AM – 9:00 PM",
+      "Friday: 7:00 AM – 9:00 PM",
+      "Saturday: 7:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "doubs-meadow-park-myersville": {
+    "place_id": "ChIJayyUiYLCyYkRawwyklP4kuA",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 9:00 PM",
+      "Tuesday: 7:00 AM – 9:00 PM",
+      "Wednesday: 7:00 AM – 9:00 PM",
+      "Thursday: 7:00 AM – 9:00 PM",
+      "Friday: 7:00 AM – 9:00 PM",
+      "Saturday: 7:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dr-atul-purohit": {
+    "place_id": "ChIJT6qvPPrayYkRbwl8rg541CU",
+    "weekday_hours": [
+      "Monday: 9:30 AM – 4:00 PM",
+      "Tuesday: 9:30 AM – 4:00 PM",
+      "Wednesday: Open 24 hours",
+      "Thursday: 9:30 AM – 4:00 PM",
+      "Friday: 9:30 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dr-snell-nursery-garden-center-mount-airy": {
+    "place_id": "ChIJ_2WIzloryIkRmYGQvcOCkQw",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: 10:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "dutch-plant-farm-frederick": {
+    "place_id": "ChIJO0pWFAjbyYkRpMy3mGvhEus",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 7:00 PM",
+      "Tuesday: 8:00 AM – 7:00 PM",
+      "Wednesday: 8:00 AM – 7:00 PM",
+      "Thursday: 8:00 AM – 7:00 PM",
+      "Friday: 8:00 AM – 7:00 PM",
+      "Saturday: 8:00 AM – 7:00 PM",
+      "Sunday: 10:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "east-all-saints-street-parking-garage": {
+    "place_id": "ChIJz3rBjVvayYkR3hxKndbSWfs",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "east-main-street-middletown": {
+    "place_id": "ChIJI6jMsQ3dyYkR2Z1yq0riXlY",
+    "business_status": "UNKNOWN",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "east-patrick-barbershop": {
+    "place_id": "ChIJJ4w0eFnayYkR2RwYZTkLrz4",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 7:00 PM",
+      "Tuesday: 9:00 AM – 7:00 PM",
+      "Wednesday: 9:00 AM – 7:00 PM",
+      "Thursday: 9:00 AM – 7:00 PM",
+      "Friday: 9:00 AM – 7:00 PM",
+      "Saturday: 8:00 AM – 5:00 PM",
+      "Sunday: 10:00 AM – 3:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "el-rancho-restaurant-walkersville": {
+    "place_id": "ChIJaRCXDy3PyYkRwCvnFk6XwV4",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 8:00 PM",
+      "Tuesday: 7:00 AM – 8:00 PM",
+      "Wednesday: 7:00 AM – 8:00 PM",
+      "Thursday: 7:00 AM – 8:00 PM",
+      "Friday: 7:00 AM – 9:00 PM",
+      "Saturday: 7:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "embark-skateboard-shop": {
+    "place_id": "ChIJvfFmF2DbyYkRUUEP0MCrZZ4",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 7:00 PM",
+      "Tuesday: 11:00 AM – 7:00 PM",
+      "Wednesday: 11:00 AM – 7:00 PM",
+      "Thursday: 11:00 AM – 7:00 PM",
+      "Friday: 11:00 AM – 7:00 PM",
+      "Saturday: 11:00 AM – 7:00 PM",
+      "Sunday: 12:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "emmitsburg-branch-library-emmitsburg": {
+    "place_id": "ChIJ53rmFymxyYkRRZIZDCsTzQs",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 6:00 PM",
+      "Tuesday: 10:00 AM – 8:00 PM",
+      "Wednesday: 10:00 AM – 6:00 PM",
+      "Thursday: 10:00 AM – 8:00 PM",
+      "Friday: Closed",
+      "Saturday: 10:00 AM – 5:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "emory-elizabeth-frye-memorial-field-brunswick": {
+    "place_id": "ChIJ---YDTsftokRKJBlRbEoWmw",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "escape-this-frederick": {
+    "place_id": "ChIJlaM2vPLayYkRKrMAYt1cgG8",
+    "weekday_hours": [
+      "Monday: 12:00 – 8:00 PM",
+      "Tuesday: 12:00 – 8:00 PM",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 12:00 – 8:00 PM",
+      "Friday: 12:00 – 10:00 PM",
+      "Saturday: 10:45 AM – 10:00 PM",
+      "Sunday: 12:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "esthetics-by-addie": {
+    "place_id": "ChIJ9w-otBXbyYkRneRXB4cKuWo",
+    "weekday_hours": [
+      "Monday: 5:30 – 9:00 PM",
+      "Tuesday: 5:30 – 9:00 PM",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 3:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "executive-tailoring-embroidery": {
+    "place_id": "ChIJJQENeFnayYkRz9Daa9bjbY8",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 3:00 PM",
+      "Wednesday: 10:00 AM – 3:00 PM",
+      "Thursday: 10:00 AM – 3:00 PM",
+      "Friday: 10:00 AM – 3:00 PM",
+      "Saturday: 10:00 AM – 2:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "fcf-church-walkersville": {
+    "place_id": "ChIJs4sjI1PayYkR5D-E188BVUw",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: 8:30 AM – 2:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "field-fresh-farmers-market-frederick": {
+    "place_id": "ChIJna6x6brbyYkR3gig5qkrQAU",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: 9:00 AM – 1:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "flook-park-myersville": {
+    "place_id": "ChIJVykqly3oyYkRulNBeNZ9MbM",
+    "weekday_hours": [
+      "Monday: 6:00 AM – 9:00 PM",
+      "Tuesday: 6:00 AM – 9:00 PM",
+      "Wednesday: 6:00 AM – 9:00 PM",
+      "Thursday: 6:00 AM – 9:00 PM",
+      "Friday: 6:00 AM – 9:00 PM",
+      "Saturday: 6:00 AM – 9:00 PM",
+      "Sunday: 6:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "food-lion-crestwood-frederick": {
+    "place_id": "ChIJr1JuJzPayYkRh3uwODy9bm8",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 11:00 PM",
+      "Tuesday: 7:00 AM – 11:00 PM",
+      "Wednesday: 7:00 AM – 11:00 PM",
+      "Thursday: 7:00 AM – 11:00 PM",
+      "Friday: 7:00 AM – 11:00 PM",
+      "Saturday: 7:00 AM – 11:00 PM",
+      "Sunday: 7:00 AM – 11:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "fountaindale-park-middletown": {
+    "place_id": "ChIJY5dUh1XcyYkRdF8q3Bvb6_I",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "fractured-prune-frederick": {
+    "place_id": "ChIJ7e4wxHrayYkRlUWqC7KSRNk",
+    "weekday_hours": [
+      "Monday: 7:30 AM – 12:00 PM",
+      "Tuesday: 7:30 AM – 12:00 PM",
+      "Wednesday: 7:30 AM – 12:00 PM",
+      "Thursday: 7:30 AM – 12:00 AM",
+      "Friday: 7:30 AM – 12:00 PM",
+      "Saturday: 7:30 AM – 2:00 PM",
+      "Sunday: 8:00 – 11:30 AM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-book-arts-center": {
+    "place_id": "ChIJOz0W-irbyYkRbwI6OvOmBNY",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 10:00 AM – 9:00 PM",
+      "Thursday: 10:00 AM – 4:00 PM",
+      "Friday: 10:00 AM – 4:00 PM",
+      "Saturday: 10:00 AM – 4:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-church-of-christ": {
+    "place_id": "ChIJW84Wye3ayYkRwhbFCjKXnh0",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 6:00 – 8:00 PM",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 9:00 – 9:50 AM, 10:00 – 11:45 AM, 6:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-county-office-of-economic-development": {
+    "place_id": "ChIJ1ZxjrlnayYkRWNHj02wXO60",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-dentures-and-orthodontics": {
+    "place_id": "ChIJT6qvPPrayYkRcxM8gp11cyE",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 4:30 PM",
+      "Tuesday: 8:00 AM – 4:30 PM",
+      "Wednesday: 8:00 AM – 4:30 PM",
+      "Thursday: 8:00 AM – 4:30 PM",
+      "Friday: 8:00 AM – 1:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-discount-liquors": {
+    "place_id": "ChIJx-sshvfayYkRNK4Zbu5zGro",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 8:00 PM",
+      "Tuesday: 10:00 AM – 8:00 PM",
+      "Wednesday: 10:00 AM – 8:00 PM",
+      "Thursday: 10:00 AM – 8:00 PM",
+      "Friday: 10:00 AM – 8:00 PM",
+      "Saturday: 10:00 AM – 8:00 PM",
+      "Sunday: 11:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "frederick-wig-company": {
+    "place_id": "ChIJwy_liM3byYkRTMSjF1w5ONc",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "friends-creek-church-of-god-emmitsburg": {
+    "place_id": "ChIJXax88Ty6yYkRE2GzZE9r9Cw",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "gambrill-mill-trail-frederick": {
+    "place_id": "ChIJMZALTMjZyYkRqbKKIwPZpQ4",
+    "weekday_hours": [
+      "Monday: 7:30 AM – 6:30 PM",
+      "Tuesday: 7:30 AM – 6:30 PM",
+      "Wednesday: 7:30 AM – 6:30 PM",
+      "Thursday: 7:30 AM – 6:30 PM",
+      "Friday: 7:30 AM – 6:30 PM",
+      "Saturday: 8:30 AM – 6:30 PM",
+      "Sunday: 8:30 AM – 6:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "gaslight-gallery": {
+    "place_id": "ChIJGezGQ2nbyYkRRGiqcDhUaaE",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: 1:00 – 6:00 PM",
+      "Sunday: 1:00 – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "gathland-state-park-burkittsville": {
+    "place_id": "ChIJBw9XAFLhyYkRLBbUBgvpamk",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 6:45 PM",
+      "Tuesday: 10:00 AM – 6:45 PM",
+      "Wednesday: 10:00 AM – 6:45 PM",
+      "Thursday: 10:00 AM – 6:45 PM",
+      "Friday: 10:00 AM – 6:45 PM",
+      "Saturday: 10:00 AM – 6:45 PM",
+      "Sunday: 10:00 AM – 6:45 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "giant-food-kingfisher-frederick": {
+    "place_id": "ChIJUUOdrqjayYkRxOcMxvPu5fQ",
+    "weekday_hours": [
+      "Monday: 6:00 AM – 11:00 PM",
+      "Tuesday: 6:00 AM – 11:00 PM",
+      "Wednesday: 6:00 AM – 11:00 PM",
+      "Thursday: 6:00 AM – 11:00 PM",
+      "Friday: 6:00 AM – 11:00 PM",
+      "Saturday: 6:00 AM – 11:00 PM",
+      "Sunday: 6:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "glade-valley-church-of-the-brethren-walkersville": {
+    "place_id": "ChIJwUbZFK7PyYkRnqmgI4TA-mk",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 4:00 – 6:00 PM",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 9:30 AM – 1:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "goat-for-the-soul-goat-yoga-woodsboro": {
+    "place_id": "ChIJWUxdH93NyYkRb24Oef031Vg",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: 6:30 – 8:30 PM",
+      "Saturday: 9:00 AM – 8:30 PM",
+      "Sunday: 9:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "grasshopper-grove-frederick": {
+    "place_id": "ChIJGQUaZ33byYkRrk88-TFR8RM",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 9:30 AM – 6:00 PM",
+      "Wednesday: 11:00 AM – 7:00 PM",
+      "Thursday: 9:30 AM – 5:30 AM",
+      "Friday: 9:30 AM – 3:00 PM",
+      "Saturday: 9:15 AM – 12:45 PM",
+      "Sunday: 9:15 AM – 2:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "habanero-mexican-food-bar-grill-new-market": {
+    "place_id": "ChIJbdR4ISDXyYkR3eXMmyVSTlE",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 9:00 PM",
+      "Tuesday: 11:00 AM – 9:00 PM",
+      "Wednesday: 11:00 AM – 9:00 PM",
+      "Thursday: 11:00 AM – 9:00 PM",
+      "Friday: 11:00 AM – 10:00 PM",
+      "Saturday: 11:00 AM – 10:00 PM",
+      "Sunday: 11:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "habitat-for-humanity-of-frederick-county": {
+    "place_id": "ChIJMT174vbayYkRA0m0IKSPmAc",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 5:00 PM",
+      "Wednesday: 10:00 AM – 5:00 PM",
+      "Thursday: 10:00 AM – 5:00 PM",
+      "Friday: 10:00 AM – 5:00 PM",
+      "Saturday: 10:00 AM – 5:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "hampton-inn-frederick-frederick": {
+    "place_id": "ChIJSzXURifayYkRXfHbqk5c1Is",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "heart-of-the-civil-war-heritage-area": {
+    "place_id": "ChIJNxdOe1zayYkRG3MVaH674ns",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "holiday-inn-express-suites-brunswick-harpers-ferry-area-by-i-rosemont": {
+    "place_id": "ChIJOXVpvtzhyYkRMTwwDABPY5w",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "home2-suites-by-hilton-frederick-frederick": {
+    "place_id": "ChIJmUMAWZnZyYkRSqtBCKD5HSk",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "hometown-barbell-frederick": {
+    "place_id": "ChIJb0TK_WvZyYkRUK0inyxJEIg",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "hope-christian-fellowship-church-brunswick": {
+    "place_id": "ChIJh2IcWl_fyYkRcueDAzrZWPU",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "hotworx-frederick-md-bottling-plant-frederick": {
+    "place_id": "ChIJVdodSSPbyYkR0S7F7ktu9AA",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 8:00 PM",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 9:00 AM – 6:00 PM",
+      "Saturday: 9:00 AM – 2:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "iglesia-de-dios-pentecostal-betesda-woodsboro": {
+    "place_id": "ChIJcw1M3l_JyYkRMNrB2ibjJKQ",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 7:00 – 8:30 PM",
+      "Friday: Closed",
+      "Saturday: 7:30 – 9:30 PM",
+      "Sunday: 2:00 – 4:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "iglesia-palabra-viva-walkersville": {
+    "place_id": "ChIJ6VeXNozPyYkRei0BrgJUFZQ",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "in-balance-massage-therapy": {
+    "place_id": "ChIJ7zx7-_TbyYkRsefn6g58BCk",
+    "weekday_hours": [
+      "Monday: 1:00 – 7:00 PM",
+      "Tuesday: 10:00 AM – 5:00 PM",
+      "Wednesday: 11:00 AM – 6:00 PM",
+      "Thursday: 10:00 AM – 6:00 PM",
+      "Friday: 10:00 AM – 5:00 PM",
+      "Saturday: 10:00 AM – 4:00 PM",
+      "Sunday: 10:00 AM – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "in-fit-personal-training-studio": {
+    "place_id": "ChIJTxkyZffayYkRTzPwURwyyr4",
+    "weekday_hours": [
+      "Monday: 5:00 AM – 8:00 PM",
+      "Tuesday: 5:00 AM – 8:00 PM",
+      "Wednesday: 5:00 AM – 8:00 PM",
+      "Thursday: 5:00 AM – 8:00 PM",
+      "Friday: 5:00 AM – 8:00 PM",
+      "Saturday: 6:00 AM – 1:00 PM",
+      "Sunday: 6:00 – 10:00 AM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "indian-wok-walkersville": {
+    "place_id": "ChIJV4o60t3PyYkR-z0L9TREeP4",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 8:30 PM",
+      "Wednesday: 11:00 AM – 8:30 PM",
+      "Thursday: 11:00 AM – 8:30 PM",
+      "Friday: 11:00 AM – 8:30 PM",
+      "Saturday: 11:00 AM – 8:30 PM",
+      "Sunday: 11:00 AM – 8:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "jbk-theater-frederick": {
+    "place_id": "ChIJu67lMwDbyYkRCF79NadgzMI",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "joseph-dill-baker-memorial-carillon-bell-tower": {
+    "place_id": "ChIJNfvn5lbayYkRnh-6CsC7dqs",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 11:59 AM – 12:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "jubilee-foods-emmitsburg": {
+    "place_id": "ChIJy-OpljexyYkRL3_uk7eYk7A",
+    "weekday_hours": [
+      "Monday: 6:00 AM – 9:00 PM",
+      "Tuesday: 6:00 AM – 9:00 PM",
+      "Wednesday: 6:00 AM – 9:00 PM",
+      "Thursday: 6:00 AM – 9:00 PM",
+      "Friday: 6:00 AM – 9:00 PM",
+      "Saturday: 6:00 AM – 9:00 PM",
+      "Sunday: 8:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "kiley-morgan-artistry": {
+    "place_id": "ChIJZfVdsQ7Nt4kRICi8zRddHTk",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 10:00 AM – 6:00 PM",
+      "Saturday: 10:00 AM – 6:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "kings-ny-style-pizza-walkersville": {
+    "place_id": "ChIJT8_md-_PyYkRfuzzEInUsQg",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 9:30 PM",
+      "Tuesday: 11:00 AM – 9:30 PM",
+      "Wednesday: 11:00 AM – 9:30 PM",
+      "Thursday: 11:00 AM – 9:30 PM",
+      "Friday: 11:00 AM – 10:30 PM",
+      "Saturday: 11:00 AM – 10:30 PM",
+      "Sunday: 3:00 – 9:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "kittiwat-thai-kitchen-frederick": {
+    "place_id": "ChIJh6XhEYfZyYkRwvuXuuuuBRc",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 9:00 PM",
+      "Tuesday: 11:00 AM – 9:00 PM",
+      "Wednesday: 11:00 AM – 9:00 PM",
+      "Thursday: 11:00 AM – 9:00 PM",
+      "Friday: 11:00 AM – 9:30 PM",
+      "Saturday: 12:00 – 9:30 PM",
+      "Sunday: 12:00 – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "knott-athletic-recreation-convocation-complex-emmitsburg": {
+    "place_id": "ChIJg1HJrD23yYkR8kNgcGCbrpc",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "kramers-piano-shop-woodsboro": {
+    "place_id": "ChIJ9XFSdnnJyYkRDlqF9LQj7Ts",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 8:00 PM",
+      "Tuesday: 9:00 AM – 8:00 PM",
+      "Wednesday: 9:00 AM – 8:00 PM",
+      "Thursday: 9:00 AM – 8:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "kusay-barakat": {
+    "place_id": "ChIJJ5DofvDayYkRyIacA8DllZA",
+    "weekday_hours": [
+      "Monday: 8:30 AM – 4:00 PM",
+      "Tuesday: 8:30 AM – 4:00 PM",
+      "Wednesday: 8:30 AM – 4:00 PM",
+      "Thursday: 8:30 AM – 4:00 PM",
+      "Friday: 8:30 AM – 4:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "lake-marian-dam-new-market": {
+    "place_id": "ChIJobQaT53RyYkRRkfg7W0XHzQ",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "lifeswork-yoga-frederick": {
+    "place_id": "ChIJMZ2XegXbyYkRr1ngin9OqGw",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 7:00 PM",
+      "Tuesday: 7:00 AM – 7:00 PM",
+      "Wednesday: 7:00 AM – 7:00 PM",
+      "Thursday: 7:00 AM – 7:00 PM",
+      "Friday: 7:00 AM – 7:00 PM",
+      "Saturday: 7:00 AM – 7:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "lil-cakes-creamery-new-market": {
+    "place_id": "ChIJv7ulML7XyYkRed1JPTb2MD0",
+    "weekday_hours": [
+      "Monday: 10:30 AM – 8:30 PM",
+      "Tuesday: 10:30 AM – 8:30 PM",
+      "Wednesday: 10:30 AM – 8:30 PM",
+      "Thursday: 10:30 AM – 8:30 PM",
+      "Friday: 10:30 AM – 9:00 PM",
+      "Saturday: 10:30 AM – 9:00 PM",
+      "Sunday: 10:30 AM – 8:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "lily-birch-market-frederick": {
+    "place_id": "ChIJ2_HTa5ffyYkReS0ucy1UFKE",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: 10:00 AM – 4:00 PM",
+      "Saturday: 10:00 AM – 4:00 PM",
+      "Sunday: 9:00 AM – 4:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "linganore-winecellars-mount-airy": {
+    "place_id": "ChIJdXlMtFMtyIkRTnKYQabp6_s",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 5:00 PM",
+      "Tuesday: 10:00 AM – 5:00 PM",
+      "Wednesday: 10:00 AM – 5:00 PM",
+      "Thursday: 10:00 AM – 5:00 PM",
+      "Friday: 10:00 AM – 8:00 PM",
+      "Saturday: 10:00 AM – 8:00 PM",
+      "Sunday: 12:00 – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "los-amigos-mexican-restaurant-thurmont": {
+    "place_id": "ChIJdQ3RZY7HyYkRh9XNnBog99Q",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 10:00 PM",
+      "Tuesday: 11:00 AM – 10:00 PM",
+      "Wednesday: 11:00 AM – 10:00 PM",
+      "Thursday: 11:00 AM – 10:00 PM",
+      "Friday: 11:00 AM – 10:30 PM",
+      "Saturday: 11:00 AM – 10:30 PM",
+      "Sunday: 11:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "lowcarb-avenue-frederick": {
+    "place_id": "ChIJU6vQYMnbyYkRzQcZ6QAJggc",
+    "weekday_hours": [
+      "Monday: 7:30 AM – 5:30 PM",
+      "Tuesday: 7:30 AM – 5:30 PM",
+      "Wednesday: 7:30 AM – 5:30 PM",
+      "Thursday: 7:30 AM – 5:30 PM",
+      "Friday: 7:30 AM – 5:30 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "madames-patisserie-middletown": {
+    "place_id": "ChIJPU4UZZPdyYkRetM4_yGzqp0",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 8:00 PM",
+      "Tuesday: 8:00 AM – 8:00 PM",
+      "Wednesday: 8:00 AM – 8:00 PM",
+      "Thursday: 8:00 AM – 8:00 PM",
+      "Friday: 8:00 AM – 8:00 PM",
+      "Saturday: 8:00 AM – 8:00 PM",
+      "Sunday: 8:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "mason-dixon-mixin-emmitsburg": {
+    "place_id": "ChIJY_aupgWxyYkRzQs0rGBYOKY",
+    "weekday_hours": [
+      "Monday: 6:30 AM – 3:00 PM",
+      "Tuesday: 6:30 AM – 3:00 PM",
+      "Wednesday: 6:30 AM – 3:00 PM",
+      "Thursday: 6:30 AM – 3:00 PM",
+      "Friday: 6:30 AM – 3:00 PM",
+      "Saturday: 9:00 AM – 2:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "max-kehne-memorial-park-frederick": {
+    "place_id": "ChIJ6f_bXPzayYkRn5JQg9qinnk",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 10:00 PM",
+      "Tuesday: 7:00 AM – 10:00 PM",
+      "Wednesday: 7:00 AM – 10:00 PM",
+      "Thursday: 7:00 AM – 10:00 PM",
+      "Friday: 7:00 AM – 10:00 PM",
+      "Saturday: 7:00 AM – 10:00 PM",
+      "Sunday: 7:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "memories-charcoal-house-mount-airy": {
+    "place_id": "ChIJvxRsRJEsyIkRy0mj12hXFuI",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 1:00 AM",
+      "Tuesday: 11:00 AM – 1:00 AM",
+      "Wednesday: 11:00 AM – 1:00 AM",
+      "Thursday: 11:00 AM – 1:00 AM",
+      "Friday: 11:00 AM – 1:00 AM",
+      "Saturday: 11:00 AM – 1:00 AM",
+      "Sunday: 11:00 AM – 1:00 AM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "middletown-food-bank-middletown": {
+    "place_id": "ChIJyR94XQ3dyYkRuqfpJhH7xzI",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 1:00 – 3:00 PM",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: 9:00 – 11:00 AM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "middletown-high-school-middletown": {
+    "place_id": "ChIJpXTe6BPdyYkRJwIQtsQfRXI",
+    "weekday_hours": [
+      "Monday: 7:30 AM – 2:15 PM",
+      "Tuesday: 7:30 AM – 2:15 PM",
+      "Wednesday: 7:30 AM – 2:15 PM",
+      "Thursday: 7:30 AM – 2:15 PM",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "middletown-public-library-middletown": {
+    "place_id": "ChIJVcROgHLdyYkRVvr1elD-zo4",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 8:00 PM",
+      "Tuesday: 10:00 AM – 8:00 PM",
+      "Wednesday: 10:00 AM – 8:00 PM",
+      "Thursday: 10:00 AM – 8:00 PM",
+      "Friday: 10:00 AM – 5:00 PM",
+      "Saturday: 10:00 AM – 5:00 PM",
+      "Sunday: 1:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "middletown-valley-pizzeria-middletown": {
+    "place_id": "ChIJORtBzSzdyYkRh8ThqiPBWFw",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "mmpac-mid-maryland-performing-arts-center-frederick": {
+    "place_id": "ChIJ78O1NvDbyYkRBfafFBE6UfY",
+    "weekday_hours": [
+      "Monday: 4:00 – 9:00 PM",
+      "Tuesday: 4:00 – 9:00 PM",
+      "Wednesday: 4:00 – 9:00 PM",
+      "Thursday: 4:00 – 9:00 PM",
+      "Friday: Closed",
+      "Saturday: 9:00 AM – 12:30 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "monocacy-crossing-restaurant-frederick": {
+    "place_id": "ChIJlWySFOHZyYkR3PnUtoBaWEw",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 4:00 – 9:00 PM",
+      "Wednesday: 4:00 – 9:00 PM",
+      "Thursday: 4:00 – 9:00 PM",
+      "Friday: 11:30 AM – 10:00 PM",
+      "Saturday: 3:00 – 10:00 PM",
+      "Sunday: 11:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "moon-valley-farm-woodsboro": {
+    "place_id": "ChIJf8u2bfPJyYkRRV50TScDCsU",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "morningstar-family-church-thurmont": {
+    "place_id": "ChIJlXjXfmu4yYkRWCejtY4YiWQ",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 2:00 PM",
+      "Tuesday: Closed",
+      "Wednesday: 7:00 – 8:30 PM",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: 9:30 AM – 12:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "motel-6-frederick-md-fort-detrick-frederick": {
+    "place_id": "ChIJ6RLB06XbyYkRlHi7FT9FxTc",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "motherland-kitchen-walkersville": {
+    "place_id": "ChIJNTzsPcfFyYkRK426yGODtdE",
+    "weekday_hours": [
+      "Monday: 2:00 – 7:00 PM",
+      "Tuesday: 2:00 – 7:00 PM",
+      "Wednesday: 2:00 – 7:00 PM",
+      "Thursday: 2:00 – 7:00 PM",
+      "Friday: 2:00 – 7:00 PM",
+      "Saturday: 12:00 – 7:00 PM",
+      "Sunday: 12:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "mountain-gate-family-restaurant-thurmont": {
+    "place_id": "ChIJvfZni4THyYkRsJ_5CFSWle0",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 8:00 PM",
+      "Tuesday: 8:00 AM – 8:00 PM",
+      "Wednesday: 8:00 AM – 8:00 PM",
+      "Thursday: 8:00 AM – 8:00 PM",
+      "Friday: 8:00 AM – 8:00 PM",
+      "Saturday: 8:00 AM – 8:00 PM",
+      "Sunday: 8:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "mountain-memories-at-thorpewood-thurmont": {
+    "place_id": "ChIJNRRUvijByYkR7SGuUA-ogE4",
+    "business_status": "CLOSED_PERMANENTLY",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "mullinix-park": {
+    "place_id": "ChIJLcJQ4FDayYkR4zrDZ7CiAq8",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "myersville-community-library-myersville": {
+    "place_id": "ChIJp6lZYwzpyYkRFnb6LwazRgE",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 6:00 PM",
+      "Tuesday: 10:00 AM – 8:00 PM",
+      "Wednesday: 10:00 AM – 6:00 PM",
+      "Thursday: 10:00 AM – 8:00 PM",
+      "Friday: Closed",
+      "Saturday: 10:00 AM – 5:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "nana-b-sweets-new-market": {
+    "place_id": "ChIJefcD1VzdyYkRyvHM5bg-Sd8",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 9:00 AM – 12:00 PM",
+      "Friday: 9:00 AM – 12:00 PM",
+      "Saturday: 9:00 AM – 12:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "needwood-farms-burkittsville": {
+    "place_id": "ChIJlRZbeXPhyYkRT78EQ5CbVto",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "new-hope-united-methodist-church-brunswick": {
+    "place_id": "ChIJbTVgRSIetokRKH9VeRZcidY",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 2:00 PM",
+      "Wednesday: Closed",
+      "Thursday: 10:00 AM – 2:00 PM",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "new-market-united-methodist-new-market": {
+    "place_id": "ChIJ5UNhGMLTyYkRzRggKaWqjs8",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "ott-house-emmitsburg": {
+    "place_id": "ChIJXT7m_yWxyYkR_Ni0kO3qVq4",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 10:00 PM",
+      "Tuesday: Closed",
+      "Wednesday: 11:00 AM – 10:00 PM",
+      "Thursday: 11:00 AM – 10:00 PM",
+      "Friday: 11:00 AM – 11:30 PM",
+      "Saturday: 11:00 AM – 11:30 PM",
+      "Sunday: 11:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "overboard-art-inc-new-market": {
+    "place_id": "ChIJhwb4AkLNyYkRmfErFtPjK-o",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "palms-emmitsburg": {
+    "place_id": "ChIJ__IDVi-xyYkRz3dCrN0mPRM",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 7:00 AM – 2:00 PM",
+      "Wednesday: 7:00 AM – 2:00 PM",
+      "Thursday: 7:00 AM – 2:00 PM",
+      "Friday: 7:00 AM – 2:00 PM",
+      "Saturday: 7:00 – 11:00 AM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "panera-bread-urbana": {
+    "place_id": "ChIJL4wqN37XyYkR_MU3ildDf9U",
+    "weekday_hours": [
+      "Monday: 6:00 AM – 9:00 PM",
+      "Tuesday: 6:00 AM – 9:00 PM",
+      "Wednesday: 6:00 AM – 9:00 PM",
+      "Thursday: 6:00 AM – 9:00 PM",
+      "Friday: 6:00 AM – 9:00 PM",
+      "Saturday: 6:00 AM – 9:00 PM",
+      "Sunday: 7:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "papa-johns-pizza-brunswick": {
+    "place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 11:00 PM",
+      "Tuesday: 10:00 AM – 11:00 PM",
+      "Wednesday: 10:00 AM – 11:00 PM",
+      "Thursday: 10:00 AM – 11:00 PM",
+      "Friday: 10:00 AM – 11:00 PM",
+      "Saturday: 10:00 AM – 11:00 PM",
+      "Sunday: 10:00 AM – 11:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "pasquales-italian-pizza-walkersville": {
+    "place_id": "ChIJzWhgIarayYkR4RQ1wlN0Enc",
+    "weekday_hours": [
+      "Monday: 10:30 AM – 10:00 PM",
+      "Tuesday: 10:30 AM – 10:00 PM",
+      "Wednesday: 10:30 AM – 10:00 PM",
+      "Thursday: 10:30 AM – 10:00 PM",
+      "Friday: 10:30 AM – 11:00 PM",
+      "Saturday: 10:30 AM – 11:00 PM",
+      "Sunday: 11:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "pauls-pit-stop-liqour-emmitsburg": {
+    "place_id": "ChIJT52J5yixyYkRR2RTqzTJQM0",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 9:00 PM",
+      "Tuesday: 9:00 AM – 10:00 PM",
+      "Wednesday: 9:00 AM – 10:00 PM",
+      "Thursday: 9:00 AM – 10:00 PM",
+      "Friday: 9:00 AM – 11:00 PM",
+      "Saturday: 9:00 AM – 11:00 PM",
+      "Sunday: 10:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "peak-performance-and-fitness-center-frederick": {
+    "place_id": "ChIJGwDmBQDbyYkRtdMjBfHCGuI",
+    "weekday_hours": [
+      "Monday: 4:00 AM – 10:00 PM",
+      "Tuesday: 4:00 AM – 10:00 PM",
+      "Wednesday: 4:00 AM – 10:00 PM",
+      "Thursday: 4:00 AM – 10:00 PM",
+      "Friday: 4:00 AM – 10:00 PM",
+      "Saturday: 6:00 AM – 6:00 PM",
+      "Sunday: 6:00 AM – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "pho-52": {
+    "place_id": "ChIJs2qK8FXbyYkRGhgRHGAY4iM",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 7:30 PM",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 11:00 AM – 7:30 PM",
+      "Friday: 11:00 AM – 7:30 PM",
+      "Saturday: 11:00 AM – 7:30 PM",
+      "Sunday: 11:00 AM – 6:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "pivot-pt-emmitsburg-an-athletico-company-emmitsburg": {
+    "place_id": "ChIJa79MyzOxyYkRaPdhp2rdG9Y",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 7:00 PM",
+      "Tuesday: 7:00 AM – 4:30 PM",
+      "Wednesday: 8:00 AM – 7:00 PM",
+      "Thursday: 7:00 AM – 7:00 PM",
+      "Friday: 8:00 AM – 1:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "pleasant-walk-united-methodist-myersville": {
+    "place_id": "ChIJ_dRzJ5XpyYkRuCe48zWS8oc",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "r-p-brady-antiques-new-market": {
+    "place_id": "ChIJpRneBsLTyYkRj9hgyoKDAc4",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: 11:00 AM – 5:00 PM",
+      "Sunday: 11:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "rambler-motel-thurmont": {
+    "place_id": "ChIJLxBISm64yYkROdIc1NT7Bms",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "ricci-italian-restaurant-walkersville": {
+    "place_id": "ChIJZ9TMT4LbyYkRIm3k2efQqso",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 10:00 PM",
+      "Tuesday: 11:00 AM – 10:00 PM",
+      "Wednesday: 11:00 AM – 10:00 PM",
+      "Thursday: 11:00 AM – 10:00 PM",
+      "Friday: 11:00 AM – 11:00 PM",
+      "Saturday: 11:00 AM – 11:00 PM",
+      "Sunday: 11:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "rock-roll-graveyard": {
+    "place_id": "ChIJVdoDZlnayYkRklG0ZPVVwhM",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 7:00 PM",
+      "Tuesday: 11:00 AM – 7:00 PM",
+      "Wednesday: 11:00 AM – 7:00 PM",
+      "Thursday: 11:00 AM – 7:00 PM",
+      "Friday: 11:00 AM – 7:00 PM",
+      "Saturday: 11:00 AM – 7:00 PM",
+      "Sunday: 12:00 – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "rosemont-rosemont": {
+    "place_id": "ChIJKaly5u3hyYkRXQVrXBxVubk",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sandbox-brewhouse-frederick": {
+    "place_id": "ChIJpXaZFEHbyYkRxWH8eFrDcig",
+    "weekday_hours": [
+      "Monday: 4:00 – 9:30 PM",
+      "Tuesday: 4:00 – 9:30 PM",
+      "Wednesday: 4:00 – 9:30 PM",
+      "Thursday: 4:00 – 9:30 PM",
+      "Friday: 3:00 – 10:30 PM",
+      "Saturday: 12:00 – 10:30 PM",
+      "Sunday: 12:00 – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sara-keps-kitchen-thurmont": {
+    "place_id": "ChIJc8PxTE_byYkR_RLbyCVwzuQ",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 8:00 PM",
+      "Tuesday: 8:00 AM – 8:00 PM",
+      "Wednesday: Closed",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "savoir-salon": {
+    "place_id": "ChIJAVuMedzbyYkRPVFIYECQ870",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 9:00 AM – 6:00 PM",
+      "Wednesday: 9:00 AM – 6:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "second-story-massage": {
+    "place_id": "ChIJZ9JU7ofbyYkRR8Q04yb4274",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 6:00 PM",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "shaestheticsss": {
+    "place_id": "ChIJnZls8cHTt4kR8gZp1FTXC98",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: 9:00 AM – 5:00 PM",
+      "Sunday: 9:00 AM – 4:45 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sheetz-thurmont": {
+    "place_id": "ChIJU8YFKHC4yYkRyhG45DIAEyI",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "signature-cafe-mount-airy": {
+    "place_id": "ChIJm23xApIsyIkRidCFWAJuY9E",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sknfit-by-marissa": {
+    "place_id": "ChIJ3_p-WnHZyYkR0m-X2TtARXk",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 4:00 PM",
+      "Tuesday: 9:00 AM – 4:00 PM",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 10:00 AM – 5:00 PM",
+      "Friday: 9:30 AM – 5:00 PM",
+      "Saturday: 10:30 AM – 3:30 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sleep-inn-suites-emmitsburg-emmitsburg": {
+    "place_id": "ChIJearaAzqxyYkR0Apme4KaC-k",
+    "business_status": "CLOSED_PERMANENTLY",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "so-thai-restaurant-new-market": {
+    "place_id": "ChIJddP5f7zXyYkRDZW_8Q3xYh8",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 12:00 – 3:00 PM, 4:00 – 9:00 PM",
+      "Wednesday: 12:00 – 3:00 PM, 4:00 – 9:00 PM",
+      "Thursday: 12:00 – 3:00 PM, 4:00 – 9:00 PM",
+      "Friday: 12:00 – 3:00 PM, 4:00 – 9:00 PM",
+      "Saturday: 12:00 – 9:00 PM",
+      "Sunday: 12:00 – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "south-frederick-overlook-at-gambrill-state-park-middletown": {
+    "place_id": "ChIJa9tKIMrcyYkRr7OWFJ79Fgk",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 7:00 PM",
+      "Tuesday: 8:00 AM – 7:00 PM",
+      "Wednesday: 8:00 AM – 7:00 PM",
+      "Thursday: 8:00 AM – 7:00 PM",
+      "Friday: 8:00 AM – 7:00 PM",
+      "Saturday: 8:00 AM – 7:00 PM",
+      "Sunday: 8:00 AM – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "st-john-lutheran-church-thurmont": {
+    "place_id": "ChIJS4-Arwi5yYkRUEnBrzXgH-M",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 2:00 PM",
+      "Tuesday: 10:00 AM – 2:00 PM",
+      "Wednesday: Closed",
+      "Thursday: 10:00 AM – 2:00 PM",
+      "Friday: 10:00 AM – 2:00 PM",
+      "Saturday: Closed",
+      "Sunday: 8:30 – 9:30 AM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "st-pauls-lutheran-church-myersville": {
+    "place_id": "ChIJM0OWHSboyYkRuqyw3PW04do",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "stage-line-coffee-roasters-new-market": {
+    "place_id": "ChIJVR7R5UnTyYkRgsPUvRM5agk",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "steinhardt-brewing-company-frederick": {
+    "place_id": "ChIJ__8v8CrcyYkRp1TcUakWYsA",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 4:00 – 10:00 PM",
+      "Thursday: 4:00 – 10:00 PM",
+      "Friday: 12:00 – 11:00 PM",
+      "Saturday: 12:00 – 11:00 PM",
+      "Sunday: 12:00 – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "subway-196": {
+    "place_id": "ChIJU3ccvvvayYkRk4aAxERUSuY",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 9:00 PM",
+      "Tuesday: 8:00 AM – 9:00 PM",
+      "Wednesday: 8:00 AM – 9:00 PM",
+      "Thursday: 8:00 AM – 9:00 PM",
+      "Friday: 8:00 AM – 9:30 PM",
+      "Saturday: 8:00 AM – 9:30 PM",
+      "Sunday: 9:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "surah-steak-seafood-sushi-mount-airy": {
+    "place_id": "ChIJj0FTG2styIkRZTtD1h4MbDQ",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 4:00 – 9:00 PM",
+      "Wednesday: 4:00 – 9:00 PM",
+      "Thursday: 4:00 – 9:00 PM",
+      "Friday: 3:30 – 9:30 PM",
+      "Saturday: 3:00 – 9:30 PM",
+      "Sunday: 3:00 – 8:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sushi-nomu-frederick": {
+    "place_id": "ChIJ2ZzGUdvZyYkRYf_IE0KVrRA",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 11:00 AM – 2:15 PM, 4:30 – 8:45 PM",
+      "Wednesday: 11:00 AM – 2:15 PM, 4:30 – 8:45 PM",
+      "Thursday: 11:00 AM – 2:15 PM, 4:30 – 8:45 PM",
+      "Friday: 11:00 AM – 2:15 PM, 4:30 – 9:15 PM",
+      "Saturday: 12:00 – 9:15 PM",
+      "Sunday: 12:00 – 8:45 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sweet-babes-creamery-new-market": {
+    "place_id": "ChIJHcu1WlDXyYkRzxqGeVte7pg",
+    "weekday_hours": [
+      "Monday: 1:00 – 9:00 PM",
+      "Tuesday: 1:00 – 9:00 PM",
+      "Wednesday: 1:00 – 9:00 PM",
+      "Thursday: 4:00 – 9:00 PM",
+      "Friday: 1:00 – 9:00 PM",
+      "Saturday: 1:00 – 9:00 PM",
+      "Sunday: 1:00 – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "sweethaus-treats-walkersville": {
+    "place_id": "ChIJ7SzwahDbyYkR5EP-7lex6ko",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 2:00 – 9:00 PM",
+      "Wednesday: 2:00 – 9:00 PM",
+      "Thursday: 2:00 – 9:00 PM",
+      "Friday: 2:00 – 10:00 PM",
+      "Saturday: 1:00 – 10:00 PM",
+      "Sunday: 1:00 – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "take-root-frederick": {
+    "place_id": "ChIJm0IGNSLbyYkReLwDwgpwF14",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 6:00 PM",
+      "Tuesday: Closed",
+      "Wednesday: 11:00 AM – 6:00 PM",
+      "Thursday: 11:00 AM – 6:00 PM",
+      "Friday: 11:00 AM – 6:00 PM",
+      "Saturday: 11:00 AM – 6:00 PM",
+      "Sunday: 11:00 AM – 4:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "tempo-di-pasta": {
+    "place_id": "ChIJMVwnKXjbyYkRWpy0fUuRIF0",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 12:00 – 8:00 PM",
+      "Wednesday: 12:00 – 8:00 PM",
+      "Thursday: 12:00 – 8:00 PM",
+      "Friday: 12:00 AM – 8:00 PM",
+      "Saturday: 12:30 – 8:30 PM",
+      "Sunday: 12:30 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "tenth-ward-distilling-company": {
+    "place_id": "ChIJbSV8CmDayYkR-mEin20GYXk",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 2:00 – 10:00 PM",
+      "Thursday: 2:00 – 10:00 PM",
+      "Friday: 2:00 – 11:00 PM",
+      "Saturday: 12:00 – 11:00 PM",
+      "Sunday: 12:00 – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-curious-iguana-frederick": {
+    "place_id": "ChIJN4ikkVnayYkRz7gLMCLmks4",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 7:00 PM",
+      "Tuesday: 10:00 AM – 7:00 PM",
+      "Wednesday: 10:00 AM – 7:00 PM",
+      "Thursday: 10:00 AM – 8:00 PM",
+      "Friday: 10:00 AM – 8:00 PM",
+      "Saturday: 10:00 AM – 8:00 PM",
+      "Sunday: 10:00 AM – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-frederick-floral-bar": {
+    "place_id": "ChIJl7k3JMvbyYkRYkq8GfcNQG4",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: Closed",
+      "Thursday: 11:00 AM – 5:00 PM",
+      "Friday: 11:00 AM – 6:00 PM",
+      "Saturday: 10:00 AM – 6:00 PM",
+      "Sunday: 10:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-orchard-frederick": {
+    "place_id": "ChIJIfP2ulnayYkRr03od_QMvrk",
+    "weekday_hours": [
+      "Monday: 11:30 AM – 8:00 PM",
+      "Tuesday: 11:30 AM – 8:00 PM",
+      "Wednesday: 11:30 AM – 8:00 PM",
+      "Thursday: 11:30 AM – 8:00 PM",
+      "Friday: 11:30 AM – 9:00 PM",
+      "Saturday: 11:30 AM – 9:00 PM",
+      "Sunday: 11:30 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-performing-arts-factory-frederick": {
+    "place_id": "ChIJXSVspbLbyYkR0A09OfEtJZg",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-village-potter-new-market": {
+    "place_id": "ChIJ9WZbAujTyYkRHM2hsiNtALk",
+    "business_status": "CLOSED_PERMANENTLY",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "the-w-r-rudys-country-store-drugstore-museum-mount-airy": {
+    "place_id": "ChIJq9rGNvEsyIkRRgu2Ey5YyNU",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "thurmont-kountry-kitchen-thurmont": {
+    "place_id": "ChIJhTqk5He4yYkR2rPE3OQAro0",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 8:00 AM – 8:00 PM",
+      "Wednesday: 8:00 AM – 8:00 PM",
+      "Thursday: 8:00 AM – 8:00 PM",
+      "Friday: 8:00 AM – 8:00 PM",
+      "Saturday: 7:00 AM – 8:00 PM",
+      "Sunday: 7:00 AM – 2:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "token-cookies-frederick": {
+    "place_id": "ChIJk8GqRoDRyYkR_vztbmOvVU0",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "tous-les-jours-bakery-cafe-frederick": {
+    "place_id": "ChIJfYtyaqXbyYkRtQKYSCqgXAw",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 9:00 PM",
+      "Tuesday: 8:00 AM – 9:00 PM",
+      "Wednesday: 8:00 AM – 9:00 PM",
+      "Thursday: 8:00 AM – 9:00 PM",
+      "Friday: 8:00 AM – 9:00 PM",
+      "Saturday: 8:00 AM – 9:00 PM",
+      "Sunday: 8:00 AM – 9:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "treaty-general-store": {
+    "place_id": "ChIJN4sgW1jayYkR67F1BLkQZJg",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 6:00 PM",
+      "Tuesday: 10:00 AM – 6:00 PM",
+      "Wednesday: 10:00 AM – 6:00 PM",
+      "Thursday: 10:00 AM – 6:00 PM",
+      "Friday: 10:00 AM – 7:00 PM",
+      "Saturday: 10:00 AM – 7:00 PM",
+      "Sunday: 11:00 AM – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "trinity-united-church-christ-thurmont": {
+    "place_id": "ChIJXUijyne4yYkRkVX-64tnpBw",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "true-standard-distilling": {
+    "place_id": "ChIJV16AKQPbyYkRztu0uQG9W-Y",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: Closed",
+      "Wednesday: 3:00 – 9:00 PM",
+      "Thursday: 3:00 – 9:00 PM",
+      "Friday: 1:00 – 10:00 PM",
+      "Saturday: 1:00 – 10:00 PM",
+      "Sunday: 1:00 – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "unique-studio-hair-salon": {
+    "place_id": "ChIJLQE18F7ayYkRMiTXQlCMgXY",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 8:00 PM",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 9:00 AM – 4:00 PM",
+      "Saturday: 9:00 AM – 4:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "united-way-of-frederick-county-maryland": {
+    "place_id": "ChIJaW2zPFrayYkRQ7nBe1fAbWo",
+    "weekday_hours": [
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+      "Wednesday: 9:00 AM – 5:00 PM",
+      "Thursday: 9:00 AM – 5:00 PM",
+      "Friday: 9:00 AM – 5:00 PM",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "unrivaled-iron-gym-frederick": {
+    "place_id": "ChIJt0FY16HbyYkRfu8Fk1k0qTI",
+    "weekday_hours": [
+      "Monday: Open 24 hours",
+      "Tuesday: Open 24 hours",
+      "Wednesday: Open 24 hours",
+      "Thursday: Open 24 hours",
+      "Friday: Open 24 hours",
+      "Saturday: Open 24 hours",
+      "Sunday: Open 24 hours"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "urban-air-adventure-park-frederick": {
+    "place_id": "ChIJEcndSRjbyYkR4A_u1k3EQr0",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 8:00 PM",
+      "Tuesday: 11:00 AM – 8:00 PM",
+      "Wednesday: 11:00 AM – 8:00 PM",
+      "Thursday: 11:00 AM – 8:00 PM",
+      "Friday: 11:00 AM – 9:00 PM",
+      "Saturday: 10:00 AM – 9:00 PM",
+      "Sunday: 11:00 AM – 8:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "victorias-oasis": {
+    "place_id": "ChIJsdsbkXrbyYkRll-MKB8vRb4",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "victory-tabernacle-thurmont": {
+    "place_id": "ChIJgbPU9wXHyYkR1JdR74b8imM",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "village-tavern-walkersville": {
+    "place_id": "ChIJ_5TLaa7PyYkRsur3bhCRZrs",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 11:00 PM",
+      "Tuesday: 11:00 AM – 11:00 PM",
+      "Wednesday: 11:00 AM – 11:00 PM",
+      "Thursday: 11:00 AM – 11:00 PM",
+      "Friday: 11:00 AM – 12:00 AM",
+      "Saturday: 11:00 AM – 12:00 AM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "walkers-village-shopping-center-walkersville": {
+    "place_id": "ChIJOX_A_q7PyYkR4_6MGViNUfE",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 9:30 PM",
+      "Tuesday: 10:00 AM – 9:30 PM",
+      "Wednesday: 10:00 AM – 12:00 AM",
+      "Thursday: 10:00 AM – 12:00 AM",
+      "Friday: 10:00 AM – 12:00 AM",
+      "Saturday: 10:00 AM – 9:30 AM",
+      "Sunday: 10:00 AM – 9:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "walkersville-bowling-center-inc-walkersville": {
+    "place_id": "ChIJy9spDZjPyYkRrHcBDbFNipQ",
+    "weekday_hours": [
+      "Monday: 1:30 – 10:15 PM",
+      "Tuesday: 9:00 – 10:30 AM, 1:30 – 8:30 PM",
+      "Wednesday: 9:00 AM – 10:30 PM",
+      "Thursday: 12:00 – 7:00 PM",
+      "Friday: 9:00 AM – 12:00 PM, 1:30 – 8:30 PM",
+      "Saturday: 9:00 AM – 9:30 PM",
+      "Sunday: 1:00 – 5:30 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "walkersville-community-church-walkersville": {
+    "place_id": "ChIJ6ak2oqvPyYkRxt8ase_dcFc",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "walkersville-watershed-walkersville": {
+    "place_id": "ChIJ9Wh6C9TNyYkRR3bUmCF6D-s",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "wastlers-barber-shop": {
+    "place_id": "ChIJsb0JvVnayYkRLFxIMZU5n68",
+    "weekday_hours": [
+      "Monday: 7:00 AM – 6:00 PM",
+      "Tuesday: 7:00 AM – 6:00 PM",
+      "Wednesday: 7:00 AM – 6:00 PM",
+      "Thursday: 7:00 AM – 6:00 PM",
+      "Friday: 7:00 AM – 7:00 PM",
+      "Saturday: 7:00 AM – 6:00 PM",
+      "Sunday: 7:00 AM – 5:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "weinberg-center-for-the-arts-frederick": {
+    "place_id": "ChIJrRPRjFnayYkR-V7f1OHLAJs",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 4:00 PM",
+      "Wednesday: 10:00 AM – 4:00 PM",
+      "Thursday: 10:00 AM – 6:00 PM",
+      "Friday: 10:00 AM – 6:00 PM",
+      "Saturday: 10:00 AM – 2:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "wheel-base-bikes": {
+    "place_id": "ChIJa7U8XVjayYkRQLk6hSJiCLw",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 6:00 PM",
+      "Tuesday: 10:00 AM – 6:00 PM",
+      "Wednesday: 10:00 AM – 6:00 PM",
+      "Thursday: 10:00 AM – 6:00 PM",
+      "Friday: 10:00 AM – 6:00 PM",
+      "Saturday: 10:00 AM – 6:00 PM",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "wiles-branch-park-pavillion-middletown": {
+    "place_id": "ChIJzRSxWwDdyYkREqN4yYywXrs",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "wilson-information-services-brunswick": {
+    "place_id": "ChIJq6qqqiYetokR9jVNm5n_4Co",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "windy-ridge-park-mount-airy": {
+    "place_id": "ChIJLfyyM8wtyIkREe9PUdLeweY",
+    "weekday_hours": [
+      "Monday: 8:00 AM – 10:00 PM",
+      "Tuesday: 8:00 AM – 10:00 PM",
+      "Wednesday: 8:00 AM – 10:00 PM",
+      "Thursday: 8:00 AM – 10:00 PM",
+      "Friday: 8:00 AM – 10:00 PM",
+      "Saturday: 8:00 AM – 10:00 PM",
+      "Sunday: 8:00 AM – 10:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "woodsboro-evangelical-lutheran-church-woodsboro": {
+    "place_id": "ChIJcc1YrDbJyYkRCKfF_BCPXqI",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "woodspring-suites-frederick-i-70-frederick": {
+    "place_id": "ChIJuZkUysjbyYkReINclhB4oKM",
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "ymca-farmers-market-frederick": {
+    "place_id": "ChIJx54VGwDbyYkRELX2KqI7tgc",
+    "weekday_hours": [
+      "Monday: Closed",
+      "Tuesday: 3:30 – 6:30 PM",
+      "Wednesday: Closed",
+      "Thursday: Closed",
+      "Friday: Closed",
+      "Saturday: Closed",
+      "Sunday: Closed"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "your-wellness-by-tea-spa-frederick-prospect-blvd-frederick": {
+    "place_id": "ChIJGwfoU4jbyYkRw3gLExqRIjY",
+    "weekday_hours": [
+      "Monday: 10:00 AM – 7:00 PM",
+      "Tuesday: 10:00 AM – 7:00 PM",
+      "Wednesday: 10:00 AM – 7:00 PM",
+      "Thursday: 10:00 AM – 7:00 PM",
+      "Friday: 10:00 AM – 8:00 PM",
+      "Saturday: 10:00 AM – 8:00 PM",
+      "Sunday: 10:00 AM – 7:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  },
+  "zoes-chocolate-company": {
+    "place_id": "ChIJxVdnslnayYkRTp_XMXH9sxQ",
+    "weekday_hours": [
+      "Monday: 11:00 AM – 6:00 PM",
+      "Tuesday: 11:00 AM – 6:00 PM",
+      "Wednesday: 11:00 AM – 6:00 PM",
+      "Thursday: 11:00 AM – 6:00 PM",
+      "Friday: 11:00 AM – 7:00 PM",
+      "Saturday: 11:00 AM – 7:00 PM",
+      "Sunday: 11:00 AM – 6:00 PM"
+    ],
+    "business_status": "OPERATIONAL",
+    "refreshed_at": "2026-07-27T12:49:47.617Z"
+  }
 }

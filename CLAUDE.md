@@ -129,11 +129,13 @@ draft must read like a person typing in a thread, not composed copy:
   `src/lib/loaders/places.ts` (server). Querying the tables looks
   perfectly reasonable and silently returns a stale, incomplete catalog,
   which is exactly why this warning exists. Audited July 2026.
-- **The semantic search index must never depend on memory.**
+- **The local search index must never depend on memory.**
   `radius_search_documents` is filled incrementally by the gated
   `/api/cron/radius-search` job and can be bootstrapped immediately with
-  `npm run build:radius-search` (both need `DATABASE_URL` + AI Gateway
-  auth). `hybridPlaceSearch()` fails soft to `[]`, so an EMPTY index is
+  `npm run build:radius-search` (both need `DATABASE_URL`; `OPENAI_API_KEY`
+  optionally adds semantic vectors). Full-text search is the required
+  baseline; Vercel OIDC and AI Gateway do not provide embedding support.
+  `hybridPlaceSearch()` fails soft to `[]`, so an EMPTY index is
   indistinguishable from a healthy one at the call site — it shipped empty
   and Ask ran keyword-only for months before anyone noticed. Keep
   `RADIUS_SEARCH_CRON=1` in Vercel Production; the `semantic-index`

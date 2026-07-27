@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 /**
- * Materialize the server-only place_hours_refresh table into the committed
- * snapshot read by the synchronous place loader.
+ * Materialize the place_hours_refresh table into the committed snapshot read
+ * by the synchronous place loader.
  *
  * The pull is deliberately defensive. It never replaces a good artifact with
  * an empty, stale, malformed, or unexpectedly smaller database snapshot. The
  * Vercel writer and this GitHub pull are separate systems; success in one must
  * not let failure in the other silently erase open-now coverage.
  *
- * Usage: DATABASE_URL=... node scripts/pull-hours-refresh.mjs
+ * Preferred CI usage:
+ *   NEXT_PUBLIC_SUPABASE_URL=... \
+ *   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=... \
+ *   node scripts/pull-hours-refresh.mjs
+ *
+ * A direct DATABASE_URL remains supported for trusted local/admin runs. CI
+ * should use the publishable-key path so it never holds a privileged database
+ * credential.
  */
 import postgres from "postgres";
 import {
@@ -36,6 +43,15 @@ const DOC =
   "Rolling hours refresh, pulled from the place_hours_refresh table by npm run refresh:hours. Keyed by slug and bound to the current public Google identity by place_id. Each entry overrides static enrichment hours and business status only while that identity still matches, with refreshed_at as the verification date the freshness policy reads. Written by scripts/pull-hours-refresh.mjs; do not edit by hand.";
 const LEGACY_DOC =
   "Legacy rolling hours refresh artifact built without a public slug-to-place_id mapping. Rows may be read only by consumers that independently verify provider identity.";
+const PUBLIC_COLUMNS = [
+  "slug",
+  "place_id",
+  "weekday_hours",
+  "business_status",
+  "refreshed_at",
+];
+const REST_PAGE_SIZE = 1_000;
+const MAX_REST_PAGES = 100;
 
 function dataRows(artifact) {
   if (!artifact || typeof artifact !== "object") return [];
@@ -292,33 +308,121 @@ function safeDatabaseError(error) {
     );
   }
   return new Error(
-    `Unable to read place_hours_refresh${code ? ` (Postgres ${code})` : ""}. Verify the GitHub DATABASE_URL secret and database role.`,
+    `Unable to read place_hours_refresh${code ? ` (Postgres ${code})` : ""}. Verify the trusted database URL and role.`,
+  );
+}
+
+function safeDataApiError(status) {
+  if (status === 401 || status === 403 || status === 404) {
+    return new Error(
+      `Unable to read place_hours_refresh through the Supabase Data API (HTTP ${status}). Apply drizzle/0034_expose_place_hours_refresh_read_only.sql and verify the project URL and publishable key.`,
+    );
+  }
+  return new Error(
+    `Unable to read place_hours_refresh through the Supabase Data API (HTTP ${status}).`,
+  );
+}
+
+/**
+ * Fetch every public hours row through Supabase's anon Data API role. The
+ * response is paginated because Supabase projects commonly cap a single
+ * PostgREST response at 1,000 rows while the Radius catalog is larger.
+ *
+ * @param {{
+ *   supabaseUrl: string;
+ *   publishableKey: string;
+ *   fetchImpl?: typeof fetch;
+ * }} options
+ */
+export async function fetchHoursRefreshRows({
+  supabaseUrl,
+  publishableKey,
+  fetchImpl = fetch,
+}) {
+  const baseUrl = supabaseUrl.trim().replace(/\/+$/, "");
+  const key = publishableKey.trim();
+  if (!baseUrl || !key) {
+    throw new Error(
+      "Both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required for the read-only Data API pull.",
+    );
+  }
+
+  const rows = [];
+  let offset = 0;
+  for (let page = 0; page < MAX_REST_PAGES; page++) {
+    const endpoint = new URL(`${baseUrl}/rest/v1/place_hours_refresh`);
+    endpoint.searchParams.set("select", PUBLIC_COLUMNS.join(","));
+    endpoint.searchParams.set("order", "slug.asc");
+    endpoint.searchParams.set("limit", String(REST_PAGE_SIZE));
+    endpoint.searchParams.set("offset", String(offset));
+
+    const response = await fetchImpl(endpoint, {
+      headers: {
+        accept: "application/json",
+        apikey: key,
+      },
+    });
+    if (!response.ok) throw safeDataApiError(response.status);
+
+    let batch;
+    try {
+      batch = await response.json();
+    } catch {
+      throw new Error(
+        "Supabase Data API returned malformed JSON for place_hours_refresh.",
+      );
+    }
+    if (!Array.isArray(batch)) {
+      throw new Error(
+        "Supabase Data API returned a non-array payload for place_hours_refresh.",
+      );
+    }
+    if (batch.length === 0) return rows;
+
+    rows.push(...batch);
+    offset += batch.length;
+  }
+
+  throw new Error(
+    `Supabase Data API pagination exceeded ${MAX_REST_PAGES} pages; refusing to publish a potentially incomplete hours snapshot.`,
   );
 }
 
 export async function main() {
-  const url =
+  const databaseUrl =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.SUPABASE_DB_URL;
-  if (!url) {
-    throw new Error(
-      "DATABASE_URL (or POSTGRES_URL / SUPABASE_DB_URL) is required.",
-    );
-  }
-
-  const sql = postgres(url, { prepare: false, max: 1 });
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY;
   let rows;
-  try {
-    rows = await sql`
-      SELECT slug, place_id, weekday_hours, business_status, refreshed_at
-      FROM place_hours_refresh
-      ORDER BY slug
-    `;
-  } catch (error) {
-    throw safeDatabaseError(error);
-  } finally {
-    await sql.end();
+  if (databaseUrl) {
+    const sql = postgres(databaseUrl, { prepare: false, max: 1 });
+    try {
+      rows = await sql`
+        SELECT slug, place_id, weekday_hours, business_status, refreshed_at
+        FROM place_hours_refresh
+        ORDER BY slug
+      `;
+    } catch (error) {
+      throw safeDatabaseError(error);
+    } finally {
+      await sql.end();
+    }
+  } else if (supabaseUrl && publishableKey) {
+    rows = await fetchHoursRefreshRows({
+      supabaseUrl,
+      publishableKey,
+    });
+  } else {
+    throw new Error(
+      "Configure either DATABASE_URL for a trusted direct pull, or NEXT_PUBLIC_SUPABASE_URL plus NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY for a read-only Data API pull.",
+    );
   }
 
   const dest = path.join(

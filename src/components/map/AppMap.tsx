@@ -390,6 +390,9 @@ type Props = {
    *  nothing faded. Provided by BrowseMapClient (which also passes the
    *  FULL place set as `places` in that case). */
   activeSlugs?: string[] | null;
+  /** Hide the generic search deck when an embedded map already has one
+   *  explicit subject. Native locate and zoom controls remain available. */
+  showSearchControls?: boolean;
 };
 
 export default function AppMap({
@@ -423,6 +426,7 @@ export default function AppMap({
   initialAmenityGroups,
   dock,
   activeSlugs = null,
+  showSearchControls = true,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const attachMapRef = useCallback((instance: MapRef | null) => {
@@ -2345,7 +2349,7 @@ export default function AppMap({
           row (MapDock) so there is one instrument and one map-search; the
           floating bar renders only on dock-less embeds (SavedList's map),
           where it also keeps its locate icon. ── */}
-      {!dock && (
+      {!dock && showSearchControls && (
         <AppMapDeck
           q={q}
           setQ={setQ}
@@ -2360,7 +2364,9 @@ export default function AppMap({
       {/* Living-map time scrubber. On /map browse it lives INSIDE the
           dock's When pane ("The day"); the floating card remains only
           for dock-less full-bleed maps so nothing regresses there. */}
-      {fullBleed && !dock && <TimeScrubber floating hour={scrubHour} onChange={setScrubHour} />}
+      {fullBleed && !dock && events.length > 0 && (
+        <TimeScrubber floating hour={scrubHour} onChange={setScrubHour} />
+      )}
 
         {mapError && (
           <div

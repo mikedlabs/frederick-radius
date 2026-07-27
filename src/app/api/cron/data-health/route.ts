@@ -21,7 +21,6 @@ import { PLACES } from "@/data/places";
 import PLACES_DFP_RAW from "@/data/places-dfp.json" with { type: "json" };
 import { buildDedup } from "@/lib/dedup";
 import { classifyDescription, type CopyQuality } from "@/lib/copy-quality";
-import { rankPlaces, hoursCoverage } from "@/lib/loaders/places";
 import { auditCoordDivergence, type CoordAuditPlace } from "@/lib/coord-audit";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
@@ -58,12 +57,9 @@ export async function GET(request: Request) {
   const copy: Record<CopyQuality, number> = { none: 0, scraped: 0, auto_clean: 0, reviewed: 0 };
   for (const p of PLACES) copy[classifyDescription(p.name, p.description ?? p.short_blurb)]++;
 
-  const ranked = rankPlaces({});
-  const coverage = Number((hoursCoverage(ranked) * 100).toFixed(1));
-
   // Trust report (Section 8 gates, made measurable): provenance coverage,
-  // the confidence distribution, and the count of open/closed assertions
-  // whose hours verification is stale (the freshness flip's blast radius).
+  // current fresh-hours eligibility, the confidence distribution, and the
+  // count of open/closed assertions whose hours verification is stale.
   const trust = computePlaceTrustReport();
 
   // Coordinate-divergence regression gate: a curated place whose
@@ -204,7 +200,10 @@ export async function GET(request: Request) {
   // ingest_runs row so the admin board (and any later surface) can read the
   // latest headline without recomputing.
   const gates: Array<{ name: string; green: boolean }> = [
-    { name: "hours-coverage", green: coverage >= 60 },
+    {
+      name: "open-now-eligibility",
+      green: trust.fresh_hours.open_now_eligible,
+    },
     { name: "provenance", green: !trust.provenance.below_gate },
     { name: "coord-divergence", green: coordFlags.length === 0 },
     { name: "feed-anomalies", green: anomalies.length === 0 },
@@ -251,7 +250,18 @@ export async function GET(request: Request) {
     },
     places: PLACES.length,
     dedup: { clusters, folded },
-    hours: { coverage_pct: coverage, target_pct: 60, below_gate: coverage < 60 },
+    hours: {
+      fresh_count: trust.fresh_hours.fresh_count,
+      total_count: trust.fresh_hours.total_count,
+      coverage_pct: trust.fresh_hours.coverage_pct,
+      target_count: trust.fresh_hours.target_count,
+      target_pct: trust.fresh_hours.target_pct,
+      open_now_eligible: trust.fresh_hours.open_now_eligible,
+      below_gate: trust.fresh_hours.below_gate,
+      checked_at: trust.fresh_hours.checked_at,
+      source: trust.fresh_hours.source,
+      note: "Only current verified schedules count. Stored or historical schedules do not.",
+    },
     trust: {
       provenance_coverage_pct: trust.provenance.coverage_pct,
       provenance_below_gate: trust.provenance.below_gate,

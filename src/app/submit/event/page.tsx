@@ -20,7 +20,13 @@ export default function SubmitEventPage() {
         paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      <Link href="/" className="text-xs" style={{ color: "var(--app-cool)" }}>← Back to Frederick Radius</Link>
+      <Link
+        href="/"
+        className="inline-flex min-h-11 items-center text-xs"
+        style={{ color: "var(--app-cool)" }}
+      >
+        ← Back to Frederick Radius
+      </Link>
       <header className="mt-4 space-y-2">
         <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           Submit an event

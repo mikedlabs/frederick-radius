@@ -77,6 +77,49 @@ export default async function HistoryPage({
   // When filtering, the hero fact isn't special, so keep every matching fact.
   const rest = HISTORY.filter((h) => h.kind === "fact" && inTopic(h) && (topic ? true : h.slug !== heroFact.slug));
 
+  const topicFilters = (
+    <section aria-label="Filter by topic" className="-mx-4 px-4">
+      <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <li className="shrink-0">
+          <Link
+            href="/history"
+            aria-current={topic ? undefined : "true"}
+            className="tap-44-y inline-flex min-w-11 items-center justify-center rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            style={
+              topic
+                ? { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                : { borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }
+            }
+          >
+            All
+          </Link>
+        </li>
+        {topics.slice(0, 14).map((t) => {
+          const on = topic === t.tag;
+          return (
+            <li key={t.tag} className="shrink-0">
+              <Link
+                href={`/history?topic=${t.tag}`}
+                aria-current={on ? "true" : undefined}
+                className="tap-44-y inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+                style={
+                  on
+                    ? { borderColor: "var(--app-accent-press)", background: "var(--app-accent-press)", color: "var(--app-on-brand, #fff)" }
+                    : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
+                }
+              >
+                #{t.tag}
+                <span className="rounded-full px-0.5 text-[10px] tabular-nums" style={{ color: on ? "rgba(255,255,255,0.75)" : "var(--app-ink-3)" }}>
+                  {t.count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+
   return (
     <div className="relative space-y-6">
       <PageBloom variant="warm-cool" />
@@ -114,6 +157,10 @@ export default async function HistoryPage({
           </p>
         </div>
       </header>
+
+      {/* Put the user's first useful choice before the editorial material.
+          On a compact phone the filters now arrive on the first screen. */}
+      {topicFilters}
 
       {/* The timeline ribbon — instant visual identity. Tells the
           visitor "this is a museum, not an essay" before they read a
@@ -159,49 +206,6 @@ export default async function HistoryPage({
         )}
       </section>
       )}
-
-      {/* Topic filter — a real, shareable filter (chips are links to
-          /history?topic=…). "All" resets; the active topic is pressed. */}
-      <section aria-label="Filter by topic" className="-mx-4 px-4">
-        <ul className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <li className="shrink-0">
-            <Link
-              href="/history"
-              aria-current={topic ? undefined : "true"}
-              className="tap-44-y inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-              style={
-                topic
-                  ? { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
-                  : { borderColor: "var(--app-ink)", background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }
-              }
-            >
-              All
-            </Link>
-          </li>
-          {topics.slice(0, 14).map((t) => {
-            const on = topic === t.tag;
-            return (
-              <li key={t.tag} className="shrink-0">
-                <Link
-                  href={`/history?topic=${t.tag}`}
-                  aria-current={on ? "true" : undefined}
-                  className="tap-44-y inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
-                  style={
-                    on
-                      ? { borderColor: "var(--app-accent-press)", background: "var(--app-accent-press)", color: "var(--app-on-brand, #fff)" }
-                      : { borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }
-                  }
-                >
-                  #{t.tag}
-                  <span className="rounded-full px-0.5 text-[10px] tabular-nums" style={{ color: on ? "rgba(255,255,255,0.75)" : "var(--app-ink-3)" }}>
-                    {t.count}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
 
       {topic && moments.length + people.length + rest.length === 0 && (
         <p className="rounded-[var(--app-radius-md)] border px-3.5 py-4 text-center text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
@@ -339,7 +343,7 @@ export default async function HistoryPage({
         Sources: National Park Service · Library of Congress · Maryland
         Historical Trust · Frederick County Public Libraries. Got a story
         we should add?{" "}
-        <a className="underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.app">
+        <a className="tap-44 inline-flex underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.app">
           Tell us
         </a>
         .
@@ -470,7 +474,8 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
                 href={entry.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+                aria-label={`Open ${entry.source_label ?? "the source"} for ${entry.title}`}
+                className="tap-44-y ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 {entry.source_label ?? "Source"}
@@ -606,7 +611,8 @@ function HistoryArticle({
                 href={entry.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+                aria-label={`Open ${entry.source_label ?? "the source"} for ${entry.title}`}
+                className="tap-44-y ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 {entry.source_label ?? "Source"}

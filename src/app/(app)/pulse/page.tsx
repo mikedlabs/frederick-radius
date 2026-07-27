@@ -19,9 +19,16 @@ import {
   humanizeChartText,
 } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
-import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
+import {
+  currentFcpsOperationsNotices,
+  getFcpsAlertsResult,
+} from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
-import { getPulsePointIncidentsResult } from "@/lib/integrations/pulsepoint";
+import {
+  getPulsePointIncidentsResult,
+  isPulsePointAlert,
+  isPulsePointNotable,
+} from "@/lib/integrations/pulsepoint";
 import { getNwsAlertsResult } from "@/lib/integrations/nws-alerts";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -339,10 +346,24 @@ export default async function PulsePage() {
   const outages = outageResult.data;
   const fcps = fcpsResult.data;
   const safety = safetyResult.data;
+  // PulsePoint is a dispatch feed, not a public warning system. Keep every
+  // privacy-safe call in the detail tile, but separate routine service calls
+  // from notable activity and reserve Pulse alert treatment for clear severe
+  // fire, rescue, or hazard types.
+  const severeSafety = safety.filter(isPulsePointAlert);
+  const notableSafety = safety.filter(
+    (incident) => isPulsePointNotable(incident) && !isPulsePointAlert(incident),
+  );
+  const routineSafety = safety.filter((incident) => !isPulsePointNotable(incident));
+  const safetyByPriority = [...severeSafety, ...notableSafety, ...routineSafety];
   trafficAvailable = trafficAvailable && incidentsResult.available;
   powerAvailable = powerAvailable && outageResult.available;
   schoolsAvailable = schoolsAvailable && fcpsResult.available;
-  safetyAvailable = safetyAvailable && safetyResult.available;
+  // PulsePoint is explicitly policy-gated. An intentionally unconfigured
+  // optional feed is not a failed county condition; after configuration, a
+  // fetch/decrypt failure does degrade the all-clear.
+  safetyAvailable = !safetyResult.configured ||
+    (safetyAvailable && safetyResult.available);
   if (!trafficAvailable || !powerAvailable || !schoolsAvailable || !safetyAvailable) {
     urgentDegraded = true;
   }
@@ -357,7 +378,7 @@ export default async function PulsePage() {
     (a, b) => sevRank[a.severity] - sevRank[b.severity]
   );
   const highTraffic = traffic.filter((incident) => incident.severity === "High");
-  const schoolAlerts = fcps.filter(
+  const schoolAlerts = currentFcpsOperationsNotices(fcps).filter(
     (alert) => alert.status === "closed" || alert.status === "delayed" || alert.status === "early_dismissal",
   );
 
@@ -411,7 +432,7 @@ export default async function PulsePage() {
   // fake situation total.
   const { heroDegraded, allClear } = pulseStatusState({
     weather: activeAlerts.length > 0,
-    fireRescue: safety.length > 0,
+    fireRescue: severeSafety.length > 0,
     traffic: highTraffic.length > 0,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
@@ -425,7 +446,7 @@ export default async function PulsePage() {
   const activeAirSummary = activeAirAlert ? summarizeAirQualityAlert(activeAirAlert) : null;
   const leadTraffic = highTraffic[0];
   const leadSchool = schoolAlerts[0];
-  const leadSafety = safety[0];
+  const leadSafety = severeSafety[0];
   const aqiLeads = Boolean(aqiActive && aqiWorst && shouldAqiLead(aqiWorst.category.id, leadAlert));
 
   let heroLine = "No major disruptions appear in the checked feeds.";
@@ -584,12 +605,13 @@ export default async function PulsePage() {
     ];
   } else if (leadSafety) {
     heroLeadKey = "safety";
-    heroLine = `${safety.length} active fire & rescue ${safety.length === 1 ? "call" : "calls"}.`;
+    heroTone = "danger";
+    heroLine = `PulsePoint reports ${severeSafety.length} high-priority fire or rescue ${severeSafety.length === 1 ? "call" : "calls"}.`;
     heroSub = `Most recent: ${leadSafety.type}${leadSafety.address ? ` near ${leadSafety.address}` : ""}.`;
     heroLeadMeta = timeAgo(leadSafety.received_at);
     heroActionLabel = "See active calls";
     heroFacts = [
-      { label: "Active calls", value: safety.length.toLocaleString() },
+      { label: "High-priority calls", value: severeSafety.length.toLocaleString() },
       { label: "Latest call", value: leadSafety.type },
       { label: "Location", value: leadSafety.address || "Frederick County" },
       { label: "Received", value: timeAgo(leadSafety.received_at) || "Recently" },
@@ -846,7 +868,7 @@ export default async function PulsePage() {
   const situationActive: Record<string, boolean> = {
     alerts: activeAlerts.length > 0,
     air: aqiActive,
-    safety: safety.length > 0,
+    safety: severeSafety.length > 0,
     traffic: highTraffic.length > 0,
     power: outagesActive,
     schools: schoolAlerts.length > 0,
@@ -1004,20 +1026,29 @@ export default async function PulsePage() {
         : safetyAvailable
           ? "No active calls reported"
           : "Feed unavailable",
-      accent: safety.length > 0 ? "var(--app-danger)" : "var(--app-cool)",
-      active: safety.length > 0,
+      accent: severeSafety.length > 0
+        ? "var(--app-danger)"
+        : notableSafety.length > 0
+          ? "var(--app-warning)"
+          : "var(--app-cool)",
+      active: severeSafety.length > 0,
       attention: situationActive.safety,
       degraded: !safetyAvailable,
       kind: "status",
       sourceLabel: "PulsePoint",
       peek: safety.length > 0
-        ? safety[0].type
+        ? safetyByPriority[0].type
         : safetyAvailable
           ? "no active calls reported"
           : "PulsePoint could not be reached",
       body: safety.length > 0
-        ? safety.slice(0, 12).map((s) => (
-            <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
+        ? safetyByPriority.slice(0, 12).map((s) => (
+            <Row
+              key={s.id}
+              tone={s.severity === "severe" ? "danger" : s.severity === "notable" ? "warning" : "muted"}
+              title={s.type}
+              meta={[s.address, timeAgo(s.received_at)]}
+            />
           ))
         : emptyNote(
             safetyAvailable

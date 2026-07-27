@@ -5,6 +5,18 @@ test.describe("beer workspace deep links", () => {
 
   test("anchors select their panel and browser history restores the prior mode", async ({ page }) => {
     test.setTimeout(180_000);
+    const pageErrors: string[] = [];
+    const hydrationErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("console", (message) => {
+      const text = message.text();
+      if (
+        message.type() === "error" &&
+        /hydration|did not match|nested <a>|cannot contain a nested/i.test(text)
+      ) {
+        hydrationErrors.push(text);
+      }
+    });
     await page.goto("/beer#on-tap-now", {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
@@ -53,5 +65,7 @@ test.describe("beer workspace deep links", () => {
     });
     await expect(week).toHaveAttribute("aria-selected", "true");
     await expect(page).toHaveURL(/#beer-week$/);
+    expect(pageErrors).toEqual([]);
+    expect(hydrationErrors).toEqual([]);
   });
 });

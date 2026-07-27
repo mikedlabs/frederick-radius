@@ -136,9 +136,11 @@ export default function DealsBrowser({ rows, today }: { rows: DealRow[]; today: 
 
   return (
     <div className="space-y-4">
-      {/* ── Week strip — the almanac. Each day shows its deal count; tap to
-          browse that day. Today carries a dot. Mobile-first 7-up grid. */}
-      <div className="grid grid-cols-7 gap-1.5">
+      {/* ── Week strip — the almanac. At the 320px floor, seven equal grid
+          columns squeezed each day below a real touch width. Keep 44px days
+          and let the last one peek/scroll instead of shrinking the controls. */}
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-max snap-x snap-mandatory gap-1.5 min-[360px]:min-w-0">
         {DAY_LETTER.map((letter, d) => {
           const active = d === day;
           const isToday = d === today;
@@ -150,7 +152,7 @@ export default function DealsBrowser({ rows, today }: { rows: DealRow[]; today: 
               onClick={() => setDay(d)}
               aria-label={`${DAY_FULL[d]}: ${n} deal${n === 1 ? "" : "s"}`}
               aria-pressed={active}
-              className="tactile-interactive flex flex-col items-center gap-1 rounded-[var(--app-radius-md)] py-2 transition"
+              className="tactile-interactive flex min-w-11 flex-1 snap-start flex-col items-center gap-1 rounded-[var(--app-radius-md)] py-2 transition"
               style={{
                 background: active ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
                 boxShadow: active ? "var(--app-elev-1)" : "var(--app-edge), var(--app-hi)",
@@ -163,6 +165,7 @@ export default function DealsBrowser({ rows, today }: { rows: DealRow[]; today: 
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* ── Selected day's reveal — dense rows, grouped by town chapter. */}

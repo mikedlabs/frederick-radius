@@ -113,15 +113,15 @@ export default function BrunchPage() {
                       <div className="flex items-start gap-3">
                         <BrunchIdentity spot={s} />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
                             {s.slug ? (
-                              <Link href={`/places/${s.slug}`} className="tap-44-y inline-flex hover:underline">{Title}</Link>
+                              <Link href={`/places/${s.slug}`} className="tap-44-y inline-flex min-w-0 flex-1 hover:underline">{Title}</Link>
                             ) : (
                               Title
                             )}
                             {s.confidence === "high" && (
                               <span
-                                className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                                className="max-w-full shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em]"
                                 style={{ background: "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}
                               >
                                 Checked at source

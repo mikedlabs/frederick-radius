@@ -171,6 +171,18 @@
       "sha256": "85b13358f8d2e6d7731ea38a910c93f2cd81211fde5351d8c045d22ec9eeec78",
       "production_state": "effects_absent",
       "note": "A live migration attempt was rejected because the normal project-admin connection cannot change defaults owned by Supabase's managed supabase_admin role. Existing public objects remain fail-closed; ask Supabase support or use a future elevated dashboard control before claiming this default-policy hardening is active."
+    },
+    {
+      "file": "0033_radius_search_embedding_optional.sql",
+      "sha256": "daed4b4e5eccf85f08363954290895836b28e1e71da6050a60c6b11c89ea2218",
+      "production_state": "effects_present",
+      "note": "Applied to production through the Supabase management migration tool on 2026-07-27."
+    },
+    {
+      "file": "0034_expose_place_hours_refresh_read_only.sql",
+      "sha256": "cbf8858b44d17b446c40cced86edb186095d3a961b6545c29878d812d6f15732",
+      "production_state": "effects_present",
+      "note": "Applied and verified in production through the Supabase management migration tool on 2026-07-27. Anon has column-level SELECT on the five public snapshot fields, one SELECT-only RLS policy, and no write privileges."
     }
   ]
 }

@@ -90,6 +90,36 @@ describe("applyAskOutdoorSafety", () => {
     expect(applyAskOutdoorSafety(indoor, "indoor birthday venue", HOLD)).toBe(indoor);
   });
 
+  it("does not mistake the parking verb for an outdoor park request", () => {
+    const parking: AskResult = {
+      status: "matches",
+      configured: true,
+      usedModel: false,
+      answer: "Carroll Creek Garage is the closest mapped city garage.",
+      sources: [{
+        slug: "carroll-creek-garage",
+        name: "Carroll Creek Garage",
+        category: "parking",
+        href: "/parking",
+      }],
+      actions: [{
+        label: "Open Carroll Creek Linear Park",
+        kind: "open",
+        href: "/places/carroll-creek-linear-park-frederick",
+      }],
+      intelligence: { tools: ["parking"], confidence: "high", retrieval: "keyword" },
+    };
+
+    expect(
+      applyAskOutdoorSafety(
+        parking,
+        "Where can I park near Carroll Creek?",
+        HOLD,
+        (source) => source.href.includes("carroll-creek-linear-park"),
+      ),
+    ).toBe(parking);
+  });
+
   it("removes unclassified event evidence for an explicit outdoor request", () => {
     const eventResult = result();
     eventResult.answer = "Try the creekside concert tonight.";

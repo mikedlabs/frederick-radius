@@ -87,6 +87,7 @@ export default function AppMapClient({
   initialAmenityGroups,
   dock,
   activeSlugs = null,
+  showSearchControls = true,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -162,6 +163,10 @@ export default function AppMapClient({
   /** Slugs matching the active What/Open-now filter — the map fades the
    *  rest instead of removing them. Forwarded to AppMap. */
   activeSlugs?: string[] | null;
+  /** Dock-less embeds normally inherit the full map search deck. Set false
+   *  when the surrounding page already defines the map's single purpose
+   *  (for example, breweries or trails). Locate and camera controls remain. */
+  showSearchControls?: boolean;
   /** Overlay content for the map column. (Historically the intent-chip
    *  strip; the dock replaced it — the slot stays for future overlays.) */
   children?: ReactNode;
@@ -201,6 +206,7 @@ export default function AppMapClient({
           initialAmenityGroups={initialAmenityGroups}
           dock={dock}
           activeSlugs={activeSlugs}
+          showSearchControls={showSearchControls}
         />
       </div>
     );
@@ -208,7 +214,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} trailsLayerDefault={trailsLayerDefault} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} cemeteries={cemeteries} events={events} foodTruckPins={foodTruckPins} initialCenter={initialCenter} initialZoom={initialZoom} initialBounds={initialBounds} cameraMinZoom={cameraMinZoom} cameraMaxBounds={cameraMaxBounds} initialAmenityGroups={initialAmenityGroups} showSearchControls={showSearchControls} />
     </div>
   );
 }

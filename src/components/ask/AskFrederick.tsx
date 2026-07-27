@@ -289,7 +289,7 @@ function activeContextLabel(
   if (scope === "nearme" && hasDevicePosition) return "Near your location";
   if (scope === "nearme") return "Whole county";
   if (scope) return scopeLabel(scope);
-  return hasDevicePosition ? "Near your location" : "Choose an area";
+  return hasDevicePosition ? "Near your location" : "Frederick County";
 }
 
 function requestScope(
@@ -1389,8 +1389,8 @@ export default function AskFrederick({
               className="mt-3 max-w-[580px] text-[14px] leading-relaxed sm:text-[15px]"
               style={{ color: "var(--app-ink-2)" }}
             >
-              Radius checks the guide&apos;s current local data, then gives you a
-              short answer that you can act on.
+              Ask the way you would ask a local. Radius checks Frederick County
+              listings and current sources before it answers.
             </p>
           ) : null}
         </header>
@@ -1436,7 +1436,7 @@ export default function AskFrederick({
               className="tap-44 shrink-0 rounded-full px-2.5 text-[10.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]"
               style={{ color: "var(--app-brand-press)" }}
             >
-              Change area
+              {currentScope || hasDevicePosition ? "Change area" : "Choose area"}
             </button>
           </div>
         </div>
@@ -1492,7 +1492,7 @@ export default function AskFrederick({
               placeholder={
                 res
                   ? "Ask for a closer option or change the time."
-                  : "Try: I need a quiet dinner near downtown before a 7:30 show."
+                  : "Quiet dinner downtown before a 7:30 show."
               }
               className={`${res ? "min-h-[52px]" : "min-h-[78px]"} w-full resize-none bg-transparent px-2.5 py-2 text-[16px] leading-relaxed outline-none placeholder:text-[var(--app-ink-3)]`}
               style={{ color: "var(--app-ink)" }}

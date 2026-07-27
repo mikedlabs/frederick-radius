@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { GooglePhotoAttributionLine } from "@/components/place/GoogleAttribution";
 import type {
@@ -21,6 +22,8 @@ type BreweryPhotoProps = {
   sizes: string;
   className?: string;
   imageClassName?: string;
+  href?: string;
+  linkLabel?: string;
 };
 
 /**
@@ -38,6 +41,8 @@ export function BreweryPhoto({
   sizes,
   className = "",
   imageClassName = "object-cover",
+  href,
+  linkLabel,
 }: BreweryPhotoProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = photo?.src;
@@ -62,6 +67,17 @@ export function BreweryPhoto({
           priority={priority}
           unoptimized={src.startsWith("/api/place-photo")}
           className={imageClassName}
+          onLoad={(event) => {
+            // The photo proxy returns a 1×1 signal image when a brewery photo
+            // could not be fetched. Do not label that fallback as a Google
+            // photograph; switch to the honest local plate instead.
+            if (
+              event.currentTarget.naturalWidth === 1 &&
+              event.currentTarget.naturalHeight === 1
+            ) {
+              setFailedSrc(src);
+            }
+          }}
           onError={() => setFailedSrc(src)}
         />
       ) : (
@@ -100,6 +116,13 @@ export function BreweryPhoto({
           ) : null}
         </span>
       )}
+      {href ? (
+        <Link
+          href={href}
+          aria-label={linkLabel ?? `Open ${breweryName}`}
+          className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-amber)]"
+        />
+      ) : null}
       {showPhoto && photo?.attribution ? (
         <span
           className="absolute bottom-2 right-2 z-10 max-w-[82%] rounded bg-black/72 px-2 py-1 text-right text-[9px] leading-none text-white shadow-sm backdrop-blur-sm"

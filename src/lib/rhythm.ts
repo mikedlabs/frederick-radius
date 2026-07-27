@@ -1,4 +1,4 @@
-import { clientPlaces } from "@/lib/loaders/places-client";
+import { storedPostedHoursPlaces } from "@/lib/loaders/posted-place-hours";
 import {
   DAYS,
   SLOTS_PER_DAY,
@@ -97,9 +97,7 @@ let cache: RhythmData | null = null;
 /** Build (and memoize) the county rhythm from the client dataset. */
 export function getRhythmData(): RhythmData {
   if (cache) return cache;
-  const pool = clientPlaces().filter(
-    (p) => p.hours && p.is_operational === "operational",
-  );
+  const pool = storedPostedHoursPlaces();
   const places: RhythmPlace[] = [];
   const masksArr: Uint8Array[] = [];
   const sorted = [...pool].sort((a, b) => {

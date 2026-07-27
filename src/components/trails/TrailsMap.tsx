@@ -73,6 +73,7 @@ export default function TrailsMap({
             countyBoundary={countyBoundary}
             trailsLayerDefault
             fullBleed
+            showSearchControls={false}
           />
           {/* Surface legend for the trail lines. Bottom-left, out of the way
               of the map's own controls (top-right layer tray, bottom nav). */}

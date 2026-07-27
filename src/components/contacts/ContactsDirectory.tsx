@@ -346,7 +346,7 @@ export default function ContactsDirectory({
           {total === 0 && (
             <div className="rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}>
               No contact matches. Try a broader term, or{" "}
-              <Link href="/guide" className="font-semibold underline" style={{ color: "var(--app-cool)" }}>ask in your own words</Link>.
+              <Link href="/ask" className="font-semibold underline" style={{ color: "var(--app-cool)" }}>ask in your own words</Link>.
             </div>
           )}
         </div>
@@ -403,7 +403,7 @@ export default function ContactsDirectory({
 
           {/* Not sure who to call → hand off to Ask. */}
           <Link
-            href="/guide"
+            href="/ask"
             className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-3"
             style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
           >

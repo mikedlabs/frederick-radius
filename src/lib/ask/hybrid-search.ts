@@ -1,5 +1,6 @@
 import "server-only";
 import { embed } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { getSql } from "@/lib/db/client";
 
 export type HybridSearchRow = {
@@ -16,88 +17,112 @@ type DbRow = {
   score: number | string;
 };
 
-const EMBEDDING_MODEL = process.env.RADIUS_EMBEDDING_MODEL || "openai/text-embedding-3-small";
+const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
 export function hybridSearchConfigured(): boolean {
-  // Query embeddings run through the Vercel AI Gateway (Anthropic has no
-  // embeddings API). Kept ON even when ASK_AI_PROVIDER pins TEXT generation to
-  // direct Anthropic: the July 2026 bill showed AI Gateway is a negligible line
-  // item (the real cost was Vercel Agent + build minutes), so disabling
-  // semantic search saved ~nothing while hurting recall for the many queries
-  // that aren't a structured food/craving match ("bars", "a gym", vibe asks).
-  // Set RADIUS_HYBRID_SEARCH=0 to force it off.
-  // Vercel's keyless OIDC token is request-scoped in hosted Functions and the
-  // AI SDK reads it from the request context. It therefore may not appear in
-  // process.env even though a plain-string Gateway model is authenticated.
-  const hostedOidc = process.env.VERCEL === "1";
-  return Boolean(
-    process.env.RADIUS_HYBRID_SEARCH !== "0" &&
-      (process.env.AI_GATEWAY_API_KEY ||
-        process.env.VERCEL_OIDC_TOKEN ||
-        hostedOidc) &&
-      getSql(),
-  );
+  // The database-backed FTS path needs no AI credentials. OPENAI_API_KEY adds
+  // semantic recall, but its absence must never disable exact local retrieval.
+  return Boolean(process.env.RADIUS_HYBRID_SEARCH !== "0" && getSql());
 }
 
-/** Server-only RRF over Postgres FTS + pgvector. Every failure returns [] so a
- * missing migration, cold database, or Gateway outage leaves lexical Radius
- * search fully intact. */
+function embeddingModelName(): string {
+  const configured =
+    process.env.RADIUS_EMBEDDING_MODEL?.trim() ||
+    DEFAULT_EMBEDDING_MODEL;
+  return configured.replace(/^openai\//, "") || DEFAULT_EMBEDDING_MODEL;
+}
+
+function mapRows(rows: DbRow[]): HybridSearchRow[] {
+  return rows.map((row) => ({
+    sourceId: row.source_id,
+    content: row.content,
+    metadata: row.metadata ?? {},
+    score: Number(row.score) || 0,
+  }));
+}
+
+function fuseRows(
+  keywordRows: HybridSearchRow[],
+  semanticRows: HybridSearchRow[],
+  limit: number,
+): HybridSearchRow[] {
+  const byId = new Map<string, HybridSearchRow>();
+  for (const row of [...semanticRows, ...keywordRows]) {
+    byId.set(row.sourceId, row);
+  }
+  const keywordRank = new Map(
+    keywordRows.map((row, index) => [row.sourceId, index]),
+  );
+  const semanticRank = new Map(
+    semanticRows.map((row, index) => [row.sourceId, index]),
+  );
+  return fuseRankedIds(
+    keywordRows.map((row) => row.sourceId),
+    semanticRows.map((row) => row.sourceId),
+    limit,
+  ).map((sourceId) => {
+    const row = byId.get(sourceId)!;
+    const exact = keywordRank.get(sourceId);
+    const semantic = semanticRank.get(sourceId);
+    return {
+      ...row,
+      score:
+        (exact === undefined ? 0 : 1.25 / (60 + exact + 1)) +
+        (semantic === undefined ? 0 : 1 / (60 + semantic + 1)),
+    };
+  });
+}
+
+/** Server-only Postgres FTS with optional pgvector recall. Full-text search is
+ * always attempted first; missing credentials or an embedding outage returns
+ * those exact local matches instead of erasing the entire retrieval result. */
 export async function hybridPlaceSearch(query: string, limit = 12): Promise<HybridSearchRow[]> {
   const clean = query.trim().slice(0, 300);
   const sql = getSql();
   if (!clean || !sql || !hybridSearchConfigured()) return [];
 
+  const bounded = Math.max(1, Math.min(30, Math.floor(limit)));
+  let keywordRows: HybridSearchRow[];
+  try {
+    const rows = await sql<DbRow[]>`
+      select source_id, content, metadata,
+        ts_rank_cd(fts, websearch_to_tsquery('english', ${clean})) as score
+      from public.radius_search_documents
+      where kind = 'place'
+        and fts @@ websearch_to_tsquery('english', ${clean})
+      order by score desc, source_id
+      limit ${bounded * 2}
+    `;
+    keywordRows = mapRows(rows);
+  } catch {
+    return [];
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return keywordRows.slice(0, bounded);
+  }
+
   try {
     const { embedding } = await embed({
-      model: EMBEDDING_MODEL,
+      model: openai.embedding(embeddingModelName()),
       value: clean,
       abortSignal: AbortSignal.timeout(2_500),
       maxRetries: 1,
     });
-    if (embedding.length !== 1536) return [];
+    if (embedding.length !== 1536) return keywordRows.slice(0, bounded);
     const vector = `[${embedding.join(",")}]`;
-    const bounded = Math.max(1, Math.min(30, Math.floor(limit)));
     const rows = await sql<DbRow[]>`
-      with full_text as (
-        select source_id,
-          row_number() over (
-            order by ts_rank_cd(fts, websearch_to_tsquery('english', ${clean})) desc
-          ) as rank_ix
-        from public.radius_search_documents
-        where kind = 'place'
-          and fts @@ websearch_to_tsquery('english', ${clean})
-        order by rank_ix
-        limit ${bounded * 2}
-      ),
-      semantic as (
-        select source_id,
-          row_number() over (order by embedding <=> ${vector}::extensions.vector) as rank_ix
-        from public.radius_search_documents
-        where kind = 'place'
-        order by rank_ix
-        limit ${bounded * 2}
-      )
-      select d.source_id, d.content, d.metadata,
-        (
-          coalesce(1.0 / (50 + full_text.rank_ix), 0.0) * 1.25 +
-          coalesce(1.0 / (50 + semantic.rank_ix), 0.0)
-        ) as score
-      from full_text
-      full outer join semantic on full_text.source_id = semantic.source_id
-      join public.radius_search_documents d
-        on d.kind = 'place'
-       and d.source_id = coalesce(full_text.source_id, semantic.source_id)
-      order by score desc
+      select source_id, content, metadata,
+        1 - (embedding <=> ${vector}::extensions.vector) as score
+      from public.radius_search_documents
+      where kind = 'place'
+        and embedding is not null
+      order by embedding <=> ${vector}::extensions.vector, source_id
       limit ${bounded}
     `;
-    return rows.map((row) => ({
-      sourceId: row.source_id,
-      content: row.content,
-      metadata: row.metadata ?? {},
-      score: Number(row.score) || 0,
-    }));
+    return fuseRows(keywordRows, mapRows(rows), bounded);
   } catch {
-    return [];
+    return keywordRows.slice(0, bounded);
   }
 }
 

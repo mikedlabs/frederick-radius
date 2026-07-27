@@ -4,8 +4,6 @@ const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
   buildDedup: vi.fn(),
   classifyDescription: vi.fn(),
-  rankPlaces: vi.fn(),
-  hoursCoverage: vi.fn(),
   auditCoordDivergence: vi.fn(),
   getLiveEvents: vi.fn(),
   getAnomalies: vi.fn(),
@@ -35,10 +33,6 @@ vi.mock("@/data/places-dfp.json", () => ({ default: [] }));
 vi.mock("@/lib/dedup", () => ({ buildDedup: mocks.buildDedup }));
 vi.mock("@/lib/copy-quality", () => ({
   classifyDescription: mocks.classifyDescription,
-}));
-vi.mock("@/lib/loaders/places", () => ({
-  rankPlaces: mocks.rankPlaces,
-  hoursCoverage: mocks.hoursCoverage,
 }));
 vi.mock("@/lib/coord-audit", () => ({
   auditCoordDivergence: mocks.auditCoordDivergence,
@@ -104,8 +98,6 @@ describe("GET /api/cron/data-health", () => {
     vi.stubEnv("DATA_RETENTION_PRUNE", "1");
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
-    mocks.rankPlaces.mockReturnValue([]);
-    mocks.hoursCoverage.mockReturnValue(0.7);
     mocks.auditCoordDivergence.mockReturnValue([]);
     mocks.getLiveEvents.mockResolvedValue({
       events: [],
@@ -120,6 +112,17 @@ describe("GET /api/cron/data-health", () => {
     mocks.pruneNfcEvents.mockResolvedValue(0);
     mocks.consumeFeedMetrics.mockReturnValue({});
     mocks.computePlaceTrustReport.mockReturnValue({
+      fresh_hours: {
+        fresh_count: 70,
+        total_count: 100,
+        coverage_pct: 70,
+        target_count: 60,
+        target_pct: 60,
+        open_now_eligible: true,
+        below_gate: false,
+        checked_at: "2026-07-27T12:00:00.000Z",
+        source: "current-verified-hours",
+      },
       provenance: {
         coverage_pct: 100,
         below_gate: false,
@@ -195,6 +198,59 @@ describe("GET /api/cron/data-health", () => {
       name: "db-health",
       green: false,
     });
+  });
+
+  it("keeps the headline red when current fresh hours are zero", async () => {
+    mocks.computePlaceTrustReport.mockReturnValue({
+      fresh_hours: {
+        fresh_count: 0,
+        total_count: 1_528,
+        coverage_pct: 0,
+        target_count: 917,
+        target_pct: 60,
+        open_now_eligible: false,
+        below_gate: true,
+        checked_at: "2026-07-27T12:00:00.000Z",
+        source: "current-verified-hours",
+      },
+      provenance: {
+        coverage_pct: 100,
+        below_gate: false,
+        missing_sample: [],
+      },
+      confidence: {},
+      open_assertions: {
+        asserting: 0,
+        stale_or_missing: 0,
+        stale_sample: [],
+      },
+    });
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.summary.headline).toContain("red: open-now-eligibility");
+    expect(body.summary.gates).toContainEqual({
+      name: "open-now-eligibility",
+      green: false,
+    });
+    expect(body.hours).toMatchObject({
+      fresh_count: 0,
+      total_count: 1_528,
+      coverage_pct: 0,
+      target_count: 917,
+      target_pct: 60,
+      open_now_eligible: false,
+      below_gate: true,
+      source: "current-verified-hours",
+    });
+    expect(body.hours.note).toContain("Stored or historical schedules do not");
   });
 
   it("persists one cron snapshot only for feeds that answered", async () => {

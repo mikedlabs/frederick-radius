@@ -226,7 +226,7 @@ export default function TopBar() {
                     </span>
                   </>
                 ) : (
-                  <span className="block truncate font-sans text-[18px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight min-[360px]:block" style={{ color: "var(--app-ink)" }}>
                     All tools
                   </span>
                 )}
@@ -277,7 +277,7 @@ export default function TopBar() {
                 searchOpenerRef.current = event.currentTarget;
                 setSearchOpen(true);
               }}
-              className="tap-44 relative grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] active:scale-95 lg:hidden"
               style={{
                 borderColor: searchOpen ? "var(--app-brand)" : "var(--app-border)",
                 color: searchOpen ? "var(--app-brand-press)" : "var(--app-ink-2)",
@@ -319,7 +319,7 @@ export default function TopBar() {
             aria-label="Open all Frederick Radius tools"
             aria-current={pathname === "/compass" ? "page" : undefined}
             title="Open all tools"
-            className="tap-44-y relative inline-flex h-9 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
+            className="relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] border bg-[var(--app-bg-elevated)] px-2 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 min-[430px]:px-2.5 sm:px-3"
             style={{
               borderColor: pathname === "/compass" ? "var(--app-brand)" : "var(--app-border)",
               color: pathname === "/compass" ? "var(--app-brand-press)" : "var(--app-ink-2)",

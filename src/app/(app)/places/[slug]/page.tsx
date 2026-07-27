@@ -220,8 +220,8 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       {/* Breadcrumbs stay visually small, but each link has a real 44px
           minimum target. Negative block margins keep that tap area from
           adding empty space above the identity card. */}
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
+      <nav aria-label="Breadcrumb" className="-mx-1 overflow-x-auto px-1 text-xs [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ol className="flex min-w-max items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/places" className="-mx-1 -my-3.5 inline-flex min-w-11 items-center justify-center px-1 py-3.5 hover:underline">Places</Link></li>
           {town && (
             <>

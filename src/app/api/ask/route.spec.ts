@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   meterUsage: vi.fn(),
   getNwsAlertsResult: vi.fn(),
   getAirQuality: vi.fn(),
+  getFrederickOutagesResult: vi.fn(),
+  getChartIncidentsFrederickResult: vi.fn(),
+  getFcpsAlertsResult: vi.fn(),
+  getCivicPressReleasesResult: vi.fn(),
 }));
 
 vi.mock("@/lib/ask/answer", () => ({ askFrederick: mocks.askFrederick }));
@@ -21,6 +25,28 @@ vi.mock("@/lib/origin-check", () => ({
 }));
 vi.mock("@/lib/usage-meter", () => ({ meterUsage: mocks.meterUsage }));
 vi.mock("@/lib/integrations/nws-alerts", () => ({ getNwsAlertsResult: mocks.getNwsAlertsResult }));
+vi.mock("@/lib/integrations/firstenergy", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/firstenergy")>();
+  return { ...actual, getFrederickOutagesResult: mocks.getFrederickOutagesResult };
+});
+vi.mock("@/lib/integrations/mdot-chart", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/mdot-chart")>();
+  return {
+    ...actual,
+    getChartIncidentsFrederickResult: mocks.getChartIncidentsFrederickResult,
+  };
+});
+vi.mock("@/lib/integrations/fcps", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/fcps")>();
+  return { ...actual, getFcpsAlertsResult: mocks.getFcpsAlertsResult };
+});
+vi.mock("@/lib/integrations/civic-press", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/civic-press")>();
+  return {
+    ...actual,
+    getCivicPressReleasesResult: mocks.getCivicPressReleasesResult,
+  };
+});
 vi.mock("@/lib/integrations/airnow", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/integrations/airnow")>();
   return { ...actual, getAirQuality: mocks.getAirQuality };
@@ -62,6 +88,27 @@ describe("/api/ask location policy", () => {
     });
     mocks.getNwsAlertsResult.mockResolvedValue({ available: true, alerts: [] });
     mocks.getAirQuality.mockResolvedValue(null);
+    mocks.getFrederickOutagesResult.mockResolvedValue({
+      available: true,
+      asOf: "2026-07-27T13:00:00.000Z",
+      data: {
+        total_out: 42,
+        total_served: 100_000,
+        munis: [],
+      },
+    });
+    mocks.getChartIncidentsFrederickResult.mockResolvedValue({
+      available: true,
+      data: [],
+    });
+    mocks.getFcpsAlertsResult.mockResolvedValue({
+      available: true,
+      data: [],
+    });
+    mocks.getCivicPressReleasesResult.mockResolvedValue({
+      items: [],
+      sourceHealth: { degraded: false, unavailable: [] },
+    });
     mocks.askFrederick.mockResolvedValue({
       status: "matches",
       configured: true,
@@ -138,6 +185,192 @@ describe("/api/ask location policy", () => {
       expect.objectContaining({ origin: null, contextLabel: "Whole county" }),
       { taste: undefined },
     );
+  });
+
+  it("answers a power-outage question from FirstEnergy without catalog or AirNow cards", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "Is my power out?", lat: 39.41437, lng: -77.41062 },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.getFrederickOutagesResult).toHaveBeenCalledOnce();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(body.answer).toContain("42 customers without power");
+    expect(body.answer).toContain("cannot tell whether a specific address is included");
+    expect(body.sources.map((source: { name: string }) => source.name)).toEqual([
+      "Potomac Edison outage report",
+    ]);
+    expect(body.sources.map((source: { name: string }) => source.name)).not.toContain(
+      "Outdoor conditions not verified",
+    );
+    expect(body.actions[0]).toMatchObject({
+      label: "Open the official outage map",
+      href: "https://outages-mdwv.firstenergycorp.com/",
+    });
+  });
+
+  it("uses the official power handoff when the FirstEnergy feed is unavailable", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "Are there any power outages in Frederick County?" },
+    });
+    mocks.getFrederickOutagesResult.mockResolvedValue({
+      available: false,
+      data: { total_out: 0, total_served: 0, munis: [] },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.answer).toContain("couldn’t load Potomac Edison’s live outage report");
+    expect(body.sources).toHaveLength(1);
+    expect(body.sources[0]).toMatchObject({
+      name: "Potomac Edison outage report",
+      reason: "Live feed unavailable",
+    });
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+  });
+
+  it("answers a road-closure question from MDOT CHART without catalog or AirNow cards", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: {
+        query: "Are roads closed near me?",
+        lat: 39.41437,
+        lng: -77.41062,
+      },
+    });
+    mocks.getChartIncidentsFrederickResult.mockResolvedValue({
+      available: true,
+      data: [{
+        id: "chart-1",
+        type: "Incident",
+        description: "Crash on US 15",
+        county: "Frederick",
+        road: "US 15",
+        direction: "SB",
+        location: "US 15 southbound near Rosemont Avenue",
+        lng: -77.421,
+        lat: 39.426,
+        started_at: new Date(Date.now() - 15 * 60_000).toISOString(),
+        severity: "High",
+        lanes_affected: "Right lane blocked",
+      }],
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.getChartIncidentsFrederickResult).toHaveBeenCalledWith({
+      deadlineMs: 2_000,
+    });
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(body.answer).toContain("MDOT CHART currently lists 1 active traffic incident");
+    expect(body.sources).toHaveLength(1);
+    expect(body.sources[0]).toMatchObject({
+      category: "traffic",
+      eyebrow: "MDOT CHART · Live traffic",
+    });
+    expect(body.sources[0].href).not.toContain("/places/");
+  });
+
+  it("answers an FCPS status question from the official operations feed", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "Are Frederick County schools closed?" },
+    });
+    mocks.getFcpsAlertsResult.mockResolvedValue({
+      available: true,
+      data: [{
+        id: "fcps-1",
+        title: "FCPS schools and offices are closed",
+        description: "All activities are canceled.",
+        status: "closed",
+        published_at: new Date().toISOString(),
+        url: "https://www.fcps.org/alerts/closed",
+      }],
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.getFcpsAlertsResult).toHaveBeenCalledOnce();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(body.answer).toContain("FCPS currently has this operations notice");
+    expect(body.sources.map((source: { name: string }) => source.name)).toEqual([
+      "FCPS schools and offices are closed",
+    ]);
+    expect(body.actions[0]).toMatchObject({
+      label: "Check FCPS",
+      href: "https://www.fcps.org/",
+    });
+  });
+
+  it("does not invent a reason for nearby police activity or return place cards", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "What is that police activity?" },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(mocks.getCivicPressReleasesResult).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(body.answer).toContain("cannot identify a nearby police scene");
+    expect(body.sources.map((source: { name: string }) => source.name)).toEqual([
+      "Frederick Police calls for service",
+      "Official police updates",
+      "Radius Scanner",
+    ]);
+    expect(body.sources.every((source: { href: string }) =>
+      !source.href.startsWith("/places/")
+    )).toBe(true);
+  });
+
+  it("answers a boil-water question only from official civic notices", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({
+      ok: true,
+      value: { query: "Is there a boil water advisory?" },
+    });
+    mocks.getCivicPressReleasesResult.mockResolvedValue({
+      items: [{
+        title: "Boil Water Advisory for East Street",
+        url: "https://www.cityoffrederickmd.gov/CivicAlerts.aspx?AID=123",
+        source: "City of Frederick",
+        sourceShort: "City",
+        publishedAt: new Date().toISOString(),
+        lane: "advisory",
+      }],
+      sourceHealth: { degraded: false, unavailable: [] },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(mocks.getCivicPressReleasesResult).toHaveBeenCalledOnce();
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
+    expect(mocks.getNwsAlertsResult).not.toHaveBeenCalled();
+    expect(mocks.getAirQuality).not.toHaveBeenCalled();
+    expect(body.answer).toContain("latest official water-related notice");
+    expect(body.answer).toContain("whether it is still in effect");
+    expect(body.sources).toHaveLength(1);
+    expect(body.sources[0]).toMatchObject({
+      name: "Boil Water Advisory for East Street",
+      category: "water",
+    });
   });
 
   it("removes an outdoor recommendation during an active severe-weather alert", async () => {

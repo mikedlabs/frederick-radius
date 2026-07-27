@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { buildHoursRefreshArtifact } from "../../../scripts/pull-hours-refresh.mjs";
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildHoursRefreshArtifact,
+  fetchHoursRefreshRows,
+} from "../../../scripts/pull-hours-refresh.mjs";
 import {
   hoursRefreshForAcceptedIdentity,
   resolveRefreshedBusinessStatusForAcceptedIdentity,
@@ -23,6 +26,59 @@ function row(
 }
 
 describe("hours refresh artifact safety", () => {
+  it("paginates the read-only Data API without sending a privileged credential", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            row("cafe"),
+            row("bakery"),
+          ]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), { status: 200 }),
+      );
+
+    const rows = await fetchHoursRefreshRows({
+      supabaseUrl: "https://example.supabase.co/",
+      publishableKey: "sb_publishable_example",
+      fetchImpl,
+    });
+
+    expect(rows).toHaveLength(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const [firstUrl, firstInit] = fetchImpl.mock.calls[0];
+    expect(String(firstUrl)).toContain(
+      "select=slug%2Cplace_id%2Cweekday_hours%2Cbusiness_status%2Crefreshed_at",
+    );
+    expect(String(firstUrl)).toContain("offset=0");
+    expect(firstInit?.headers).toEqual({
+      accept: "application/json",
+      apikey: "sb_publishable_example",
+    });
+    expect(JSON.stringify(firstInit)).not.toContain("DATABASE_URL");
+    expect(String(fetchImpl.mock.calls[1][0])).toContain("offset=2");
+  });
+
+  it("turns a denied Data API read into an actionable migration error", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: "permission denied" }), {
+        status: 403,
+      }),
+    );
+
+    await expect(
+      fetchHoursRefreshRows({
+        supabaseUrl: "https://example.supabase.co",
+        publishableKey: "sb_publishable_example",
+        fetchImpl,
+      }),
+    ).rejects.toThrow("0034_expose_place_hours_refresh_read_only.sql");
+  });
+
   it("applies a refresh row only to its currently accepted provider identity", () => {
     const refresh = {
       place_id: "ChIJCurrentPlace123",

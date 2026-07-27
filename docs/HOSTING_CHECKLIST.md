@@ -3,12 +3,13 @@
 > Mike's question: "Am I missing something in the containers I use to host
 > and run the app?" This is the answer — every env var the app reads,
 > WHICH host it belongs in, and why. Walk your dashboards against this.
-> Generated from the actual `process.env.*` reads in the code (2026-05-30).
+> Checked against the active workflows and `process.env.*` reads on
+> 2026-07-27.
 >
 > **The #1 gotcha:** there are THREE separate systems, and a key in the
 > wrong one silently does nothing. They do NOT share variables:
 > - **Vercel** — runs the live website (has Production / Preview / Dev scopes)
-> - **GitHub Actions** — runs the scheduled data agents (has repo "Secrets")
+> - **GitHub Actions** — runs the scheduled data agents (has repo Secrets and Variables)
 > - **Supabase** — the database (dashboard settings, not env vars)
 
 ---
@@ -17,7 +18,7 @@
 
 | Var | Host | Why it matters | Symptom if missing |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | **GitHub Actions secret** | Powers all 4 data agents | Venue/civic/business data stays empty. **← the one you put in Vercel by mistake.** |
+| `ANTHROPIC_API_KEY` | **GitHub Actions secret** | Powers the three scheduled website-extraction workflows | Venue, civic, and business information stops refreshing. |
 | Vercel Firewall rules | **Vercel** | Edge limits for Ask, paid APIs, signup, and public forms | Paid endpoints lose their shared production guardrail. |
 | `DATABASE_URL` (or `POSTGRES_URL`) | **Vercel** | Postgres (follows, claims, submissions, push) | Those features no-op |
 | RLS migration (`drizzle/0007_enable_rls.sql`) | **Supabase → SQL editor** | Locks the public anon-key door | Anyone with the public key can read your tables |
@@ -31,7 +32,7 @@
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`) | Vercel | Auth client |
 | `GOOGLE_PLACES_API_KEY` | Vercel | Place photos + enrichment |
 | `HOURS_REFRESH_CRON=1` | Vercel | Runs the paid, seven-day rolling hours refresh into Postgres. Without it, stale schedules remain safely withheld. |
-| `RADIUS_SEARCH_CRON=1` | Vercel | Runs the bounded, idempotent place-index refresh used by hybrid Ask Radius retrieval. |
+| `RADIUS_SEARCH_CRON=1` | Vercel | Runs the bounded, idempotent full-text place-index refresh used by Ask Radius. |
 | `DATA_RETENTION_PRUNE=1` | Vercel | Enables bounded 90-day cleanup from the health cron. Leave unset until a recent Supabase backup is confirmed. |
 | `BUSINESS_STATUS_CRON=1` | Vercel | Runs the paid rotating closure-status check. The Vercel route reports mismatches; the GitHub data-steward job creates the reviewable snapshot. |
 | `TICKETMASTER_API_KEY` | Vercel | Concert + Keys-game events |
@@ -45,6 +46,7 @@
 | Var | Host | Powers |
 |---|---|---|
 | `AIRNOW_API_KEY` | Vercel | Air-quality data |
+| `OPENAI_API_KEY` | Vercel | Adds semantic vectors to the required full-text Ask Radius index and provides a direct text-generation fallback. The local index still works without it. |
 | `NPS_API_KEY` | Vercel | National Park info |
 | `MAPILLARY_TOKEN` | Vercel | Street-level imagery / trash-can layer |
 | `PULSEPOINT_ENABLED` + `PULSEPOINT_AGENCY_ID` | Vercel | Restricted incident feed; enable only after the review recorded in `data/sources.yaml` |
@@ -70,12 +72,18 @@ Set it to `0` only as an emergency rollback. Doing so permits stale schedules
 to support open/closed claims and should not be normal production
 configuration.
 
-## GitHub data-workflow secrets
+## GitHub data-workflow configuration
 
-| Secret | Why it matters |
-|---|---|
-| `GOOGLE_PLACES_API_KEY` | Runs the rotating business-status snapshot, cost-capped enrichment, and manually dispatched photo-attribution backfill. |
-| `DATABASE_URL` | Pulls the Vercel hours-refresh table into the reviewed committed snapshot. |
+| Name | Kind | Why it matters |
+|---|---|---|
+| `GOOGLE_PLACES_API_KEY` | Secret | Runs the rotating business-status snapshot, cost-capped enrichment, and manually dispatched photo-attribution backfill. |
+| `ANTHROPIC_API_KEY` | Secret | Runs the venue, civic, and business-information extraction workflows. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Variable | Identifies the Supabase project for the read-only hours snapshot pull. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Variable | Lets the data steward read only the public hours columns exposed by migration `0034_expose_place_hours_refresh_read_only.sql`. |
+
+Do not put `DATABASE_URL` in GitHub for the hours pull. The privileged database
+connection stays in Vercel; GitHub reads the reviewed public snapshot fields
+through Supabase's anon Data API.
 
 The manual photo-attribution workflow is request-capped and opens a PR. It
 does not run on a schedule or publish legacy photo references without exact
@@ -90,9 +98,10 @@ Production AND Preview (and Development if you run `vercel dev`).
 `NEXT_PUBLIC_*` vars are exposed to the browser by design — fine, they're
 meant to be public. Everything else stays server-only.
 
-**GitHub Actions:** Repo → Settings → Secrets and variables → **Actions**
-tab → **Secrets** (NOT Variables, NOT Dependabot/Codespaces) → New
-repository secret. This is the ONLY place `ANTHROPIC_API_KEY` does anything.
+**GitHub Actions:** Repo → Settings → Secrets and variables → **Actions**.
+Use **Secrets** for protected API keys and **Variables** for the browser-safe
+Supabase URL and publishable key. Do not put either in Dependabot or Codespaces
+settings.
 
 **Supabase:** Dashboard → SQL Editor (run the RLS migration) and
 Database → Backups (enable PITR). These aren't env vars.

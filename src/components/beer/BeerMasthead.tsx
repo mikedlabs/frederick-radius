@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BREWERIES, BREWERY_BY_SLUG } from "@/data/beers";
 import BeerColorRibbon from "./BeerColorRibbon";
 import { BreweryPhoto, type BreweryPhotoMap } from "./BreweryPhoto";
@@ -30,24 +29,20 @@ export default function BeerMasthead({ photos }: { photos: BreweryPhotoMap }) {
       </div>
       <div className="grid h-[158px] grid-cols-[minmax(0,1.65fr)_minmax(92px,.75fr)] grid-rows-2 gap-px bg-[var(--app-border)] sm:h-[230px]">
         {featured.map((brewery, index) => (
-          <Link
+          <BreweryPhoto
             key={brewery.slug}
+            brewerySlug={brewery.slug}
+            breweryName={brewery.name}
+            photo={photos[brewery.slug]}
+            decorative
+            compactFallback={index > 0}
+            priority={index === 0}
+            sizes={index === 0 ? "(max-width: 640px) 70vw, 540px" : "(max-width: 640px) 30vw, 260px"}
             href={`/places/${brewery.slug}`}
-            aria-label={`Open ${brewery.name}`}
-            className={`group relative overflow-hidden outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-amber)]${index === 0 ? " row-span-2" : ""}`}
-          >
-            <BreweryPhoto
-              brewerySlug={brewery.slug}
-              breweryName={brewery.name}
-              photo={photos[brewery.slug]}
-              decorative
-              compactFallback={index > 0}
-              priority={index === 0}
-              sizes={index === 0 ? "(max-width: 640px) 70vw, 540px" : "(max-width: 640px) 30vw, 260px"}
-              className="absolute inset-0 h-full w-full"
-              imageClassName="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
-            />
-          </Link>
+            linkLabel={`Open ${brewery.name}`}
+            className={`group relative h-full w-full outline-none${index === 0 ? " row-span-2" : ""}`}
+            imageClassName="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
+          />
         ))}
       </div>
     </header>

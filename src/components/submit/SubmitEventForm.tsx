@@ -90,7 +90,7 @@ export default function SubmitEventForm() {
         </div>
         <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks, submitted</h2>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We review submissions and reply within three business days.</p>
-        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></Link>
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5" strokeWidth={2.25} /></Link>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function SubmitEventForm() {
         <Field name="price_text" label="Price" placeholder="$45–$85, or leave blank if free" />
         <Field name="ticket_url" label="Ticket / RSVP URL" placeholder="https://…" />
       </div>
-      <label className="inline-flex items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
+      <label className="inline-flex min-h-11 items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
         <input type="checkbox" name="is_free" className="h-4 w-4" />
         Free admission
       </label>
@@ -148,7 +148,7 @@ function Field({ name, label, required, type = "text", placeholder }: { name: st
       <input
         name={name} type={type} required={required} placeholder={placeholder}
         maxLength={EVENT_FIELD_MAX_LENGTHS[name]}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -175,7 +175,7 @@ function Select({ name, label, options }: { name: string; label: string; options
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <select
         name={name} defaultValue=""
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
+        className="block min-h-11 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       >
         <option value="">Pick one…</option>

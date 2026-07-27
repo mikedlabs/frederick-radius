@@ -29,6 +29,37 @@ export type FcpsAlertsResult = {
   asOf?: string;
 };
 
+const STATUS_PRIORITY: Record<FcpsStatus, number> = {
+  closed: 5,
+  delayed: 4,
+  early_dismissal: 3,
+  open: 2,
+  unknown: 1,
+};
+
+/**
+ * Resolve the current FCPS operating state from the feed's recent notice
+ * window. The RSS can contain a newer reopening notice alongside the closure
+ * it superseded; consumers must not scan the whole window for any closure and
+ * keep presenting an obsolete disruption.
+ *
+ * Multiple notices with the newest status remain useful, so retain them while
+ * dropping older contradictory states.
+ */
+export function currentFcpsOperationsNotices(
+  alerts: FcpsAlert[],
+): FcpsAlert[] {
+  const ordered = [...alerts].sort((a, b) => {
+    const published = Date.parse(b.published_at) - Date.parse(a.published_at);
+    if (Number.isFinite(published) && published !== 0) return published;
+    return STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
+  });
+  const currentStatus = ordered[0]?.status;
+  return currentStatus
+    ? ordered.filter((alert) => alert.status === currentStatus)
+    : [];
+}
+
 function stripCdata(s: string): string {
   return s.replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "").trim();
 }

@@ -126,6 +126,7 @@ export default function BookExperience({ cover, photos }: Props) {
       className="relative isolate min-h-[100dvh] w-full overflow-hidden bg-black text-white"
       style={{ perspective: "1800px", perspectiveOrigin: "50% 50%" }}
     >
+      <h1 className="sr-only">From Above, a Frederick photography book</h1>
       {/* Soft background hue — same time-of-day-ish wash from the
           previous build, kept so the dark stage doesn't feel sterile
           when the book is mid-flight. */}

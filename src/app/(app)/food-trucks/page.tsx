@@ -149,7 +149,7 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
                 key={`${vendor.name}-${href}`}
                 href={href}
                 aria-label={`Find ${vendor.name} in the vendor roster`}
-                className="mr-1 underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
+                className="mr-1 inline-flex min-h-11 items-center underline decoration-[color:var(--app-border-strong)] decoration-1 underline-offset-4 transition hover:decoration-[color:var(--app-brand)]"
               >
                 {label}
               </Link>

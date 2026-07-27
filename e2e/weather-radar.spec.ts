@@ -29,7 +29,13 @@ test.describe("weather radar", () => {
 
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const layers = page.getByRole("group", { name: "Map layer controls" });
+    await page.getByRole("button", { name: "Map options" }).click();
+    const options = page.getByRole("region", { name: "Map options" });
+    await options
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
+
+    const layers = page.getByRole("region", { name: "Map layers" });
     const radar = layers.getByRole("button", { name: "Radar" });
     await radar.click();
 
@@ -44,9 +50,8 @@ test.describe("weather radar", () => {
     expect(tileZooms.length).toBeGreaterThan(0);
     expect(Math.max(...tileZooms)).toBeLessThanOrEqual(7);
 
-    await layers.getByRole("button", { name: /^More layers/ }).click();
     await expect(
-      page.getByRole("region", { name: "Map layers" }).getByText(/Frame from .* Eastern/),
+      layers.getByText(/Frame from .* Eastern/),
     ).toBeVisible();
   }
 

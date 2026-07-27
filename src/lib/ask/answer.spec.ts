@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { askFrederick } from "./answer";
+import { askFrederick, sourceHasVerifiedOpenStatus } from "./answer";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { haversineMeters } from "@/lib/geo";
 
 const downtown = {
   origin: { lng: -77.4105, lat: 39.4143 },
@@ -9,6 +10,23 @@ const downtown = {
 } as const;
 
 describe("askFrederick structured answers", () => {
+  it("preserves a fresh verified-open state after adding a requested-time label", () => {
+    expect(sourceHasVerifiedOpenStatus({
+      slug: "timed-dinner",
+      name: "Timed dinner",
+      category: "restaurant",
+      href: "/places/timed-dinner",
+      status: "At 6:00 PM · Open until 10 PM",
+    })).toBe(true);
+    expect(sourceHasVerifiedOpenStatus({
+      slug: "timed-dinner",
+      name: "Timed dinner",
+      category: "restaurant",
+      href: "/places/timed-dinner",
+      status: "At 6:00 PM · Likely open · check hours",
+    })).toBe(false);
+  });
+
   it("leads coffee-and-bikes with nearby Gravel & Grind", async () => {
     const result = await askFrederick("coffee and bikes", {
       origin: { lng: -77.40955, lat: 39.42165 },
@@ -29,7 +47,14 @@ describe("askFrederick structured answers", () => {
   });
 
   it("returns evidence and proximity for a local place answer", async () => {
-    const result = await askFrederick("Where can I get a breakfast sandwich?", downtown);
+    const result = await askFrederick(
+      "Where can I get a breakfast sandwich near me?",
+      {
+        origin: downtown.origin,
+        contextLabel: "Near you",
+        canShowDistance: true,
+      },
+    );
     expect(result.status).toBe("matches");
     expect(result.intent).toMatchObject({ kind: "place", label: "Breakfast sandwich" });
     expect(result.sources[0]).toMatchObject({
@@ -40,6 +65,10 @@ describe("askFrederick structured answers", () => {
     expect(result.sources[0].distance).toBeTruthy();
     expect(result.sources[0].status).toBeTruthy();
     expect(result.sources[0].phone).toBe("(301) 620-2165");
+    expect(result.sources.every((source) => {
+      const place = clientPlaceBySlug(source.slug);
+      return !place || haversineMeters(downtown.origin, place.geom) <= 5_000;
+    })).toBe(true);
     expect(result.actions?.some((action) => action.label === "Make it a plan")).toBe(true);
   });
 
@@ -108,11 +137,18 @@ describe("askFrederick structured answers", () => {
 
       expect(result.intent?.timeNeed).toBe("now");
       expect(result.sources.every((source) => source.href.startsWith("/places/"))).toBe(true);
-      expect(result.sources.every((source) => /^Closed\b/.test(source.status ?? ""))).toBe(true);
-      expect(result.sources.some((source) => /\bOpen\b/.test(source.status ?? ""))).toBe(false);
+      expect(
+        result.sources.every(
+          (source) => !/^(?:Open\b|Closing soon\b)/.test(source.status ?? ""),
+        ),
+      ).toBe(true);
       expect(result.answer).toContain("couldn’t verify a coffee place open right now");
       if (result.sources.length > 0) {
-        expect(result.answer).toContain("cards show when they reopen");
+        expect(result.answer).toMatch(
+          result.sources.every((source) => /^Closed\b/.test(source.status ?? ""))
+            ? /cards show when they reopen/
+            : /check their hours/,
+        );
       } else {
         expect(result.answer).toContain("check the full map");
       }
@@ -140,15 +176,23 @@ describe("askFrederick structured answers", () => {
     }
   });
 
-  it("does not use a distant closed restaurant as a near-me fallback", async () => {
+  it("keeps an open-now restaurant request nearby when fresh hours are unavailable", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-18T02:30:00.000Z"));
     try {
-      const result = await askFrederick("restaurants open now near me", downtown);
+      const result = await askFrederick("restaurants open now near me", {
+        origin: downtown.origin,
+        contextLabel: "Near you",
+        canShowDistance: true,
+      });
 
-      expect(result.sources).toEqual([]);
-      expect(result.answer).toContain("open right now from fresh hours");
-      expect(result.answer).not.toContain("nearby matches below");
+      expect(result.intent?.label).not.toBe("Breakfast");
+      expect(result.answer).toContain("couldn’t verify a food place open right now");
+      expect(result.sources.every((source) => {
+        const place = clientPlaceBySlug(source.slug);
+        return !place || !place.geom || haversineMeters(downtown.origin, place.geom) <= 5_000;
+      })).toBe(true);
+      expect(result.actions?.some((action) => action.label === "Browse nearby food")).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -551,13 +595,41 @@ describe("askFrederick structured answers", () => {
     expect(result.answer).toContain("fare-free");
   });
 
+  it("keeps a current bus-service question on the transit tools and official schedule", async () => {
+    const result = await askFrederick("Can I catch a bus right now?", downtown);
+
+    expect(result.usedModel).toBe(false);
+    expect(result.intelligence?.tools).toEqual(["transit"]);
+    expect(result.sources.map((source) => source.name)).toEqual([
+      "Frederick County TransIT",
+      "Official Connector schedules",
+    ]);
+    expect(result.sources.every((source) => source.category === "transit")).toBe(true);
+    expect(result.sources.map((source) => source.href)).toEqual([
+      "/transit",
+      "https://www.frederickcountymd.gov/199/Connector-Schedules",
+    ]);
+    expect(result.actions?.map((action) => action.label)).toEqual([
+      "Open the live transit map",
+      "Check official schedules",
+    ]);
+    expect(result.actions?.some((action) => /plan|independent|walking/i.test(action.label))).toBe(false);
+    expect(result.answer).toContain("cannot confirm a specific departure");
+  });
+
   it("evaluates late-night food at a real late-night hour", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-23T16:00:00.000Z"));
     try {
       const result = await askFrederick("late night food near me", downtown);
-      expect(result.sources).toEqual([]);
-      expect(result.answer).toContain("couldn’t verify a late-night place open at 11:00 PM from fresh hours");
+      expect(result.sources.length).toBeGreaterThan(0);
+      expect(
+        result.sources.every(
+          (source) => !/^(?:Open\b|Closing soon\b)/.test(source.status ?? ""),
+        ),
+      ).toBe(true);
+      expect(result.answer).toContain("couldn’t verify a late-night place open at 11:00 PM");
+      expect(result.answer).toContain("check their hours");
       expect(result.answer).not.toContain("Wag's Restaurant");
     } finally {
       vi.useRealTimers();
