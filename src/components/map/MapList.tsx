@@ -37,7 +37,9 @@ function openLine(p: MapPinPlace): { text: string; tone: string } | null {
     case "open":
       return { text: "Open now", tone: "var(--app-positive)" };
     case "closing-soon":
-      return { text: "Closes soon", tone: "var(--app-warning-press, #8F5600)" };
+      // "Closing soon" everywhere else (PlaceStatus, RightNow, PlaceIndex).
+      // The map list was the one surface saying "Closes soon".
+      return { text: "Closing soon", tone: "var(--app-warning-press, #8F5600)" };
     case "closed":
       return { text: "Closed", tone: "var(--app-ink-3)" };
     default:
