@@ -49,6 +49,7 @@ const ROUTES = [
   "/happy-hour",
   "/deals",
   "/beer",
+  "/food-trucks",
   "/live-music",
   "/shipping",
   "/amenities",

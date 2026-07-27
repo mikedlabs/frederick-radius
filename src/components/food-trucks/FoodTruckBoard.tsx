@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -116,6 +116,34 @@ export default function FoodTruckBoard({
   const [filter, setFilter] = useState<Filter>("all");
   const [showAll, setShowAll] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+
+  /**
+   * `/food-trucks#truck-<slug>` is the link a vendor shares for their own
+   * listing, and the stop cards link to it too. The roster renders only the
+   * first 8 cards until "Show all", so for any vendor past the eighth the
+   * anchor pointed at a node that did not exist and the jump silently did
+   * nothing. Expand (and clear a filter that would hide them) before scrolling.
+   */
+  useEffect(() => {
+    const focusHashTruck = () => {
+      const match = /^#truck-(.+)$/.exec(window.location.hash);
+      if (!match) return;
+      const slug = decodeURIComponent(match[1]);
+      if (!trucks.some((truck) => truck.slug === slug)) return;
+      setFilter("all");
+      setShowAll(true);
+      // Two frames: one for the expanded list to commit, one for layout.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.getElementById(`truck-${slug}`)?.scrollIntoView({ block: "center" });
+        });
+      });
+    };
+    focusHashTruck();
+    window.addEventListener("hashchange", focusHashTruck);
+    return () => window.removeEventListener("hashchange", focusHashTruck);
+  }, [trucks]);
+
   const scheduledSlugs = useMemo(
     () => new Set(stops.flatMap((stop) => stop.vendors.map((item) => item.slug).filter(Boolean) as string[])),
     [stops],
