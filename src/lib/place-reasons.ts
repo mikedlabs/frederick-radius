@@ -49,9 +49,9 @@ const FRESH_WITHIN_DAYS = 14;
 // fuzzy "park is sort of kid-friendly" guessing).
 const KID_CATEGORIES: ReadonlySet<string> = new Set(["family", "playground"]);
 // Obviously-free public destinations.
-const FREE_CATEGORIES: ReadonlySet<string> = new Set([
-  "park", "trail", "outdoors", "public-art",
-]);
+// "outdoors" and "public-art" were in this list but no place carries either as
+// its category, so they never fired. Parks and trails are the real free set.
+const FREE_CATEGORIES: ReadonlySet<string> = new Set(["park", "trail"]);
 
 // Tiny curated landmark set — the locators a local actually uses. Downtown
 // coords are the real place geoms; Hood/Monocacy are well-known points.
