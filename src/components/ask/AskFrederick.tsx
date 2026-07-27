@@ -542,25 +542,56 @@ function AskPlanCard({
         {plan.stops.map((stop, index) => (
           <li
             key={`${stop.order}-${stop.href}`}
-            className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-3 border-b py-3.5 last:border-b-0"
+            className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-3 border-b py-3.5 last:border-b-0"
             style={{ borderColor: "var(--app-border)" }}
           >
             {index < plan.stops.length - 1 ? (
               <span
-                className="absolute bottom-[-7px] left-[13px] top-[38px] w-px"
+                className="absolute bottom-[-7px] left-[21px] top-[51px] w-px"
                 style={{ background: "var(--app-border-strong, var(--app-border))" }}
                 aria-hidden
               />
             ) : null}
-            <span
-              className="relative z-10 grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold"
-              style={{
-                background: "var(--app-brand-press)",
-                color: "var(--app-on-brand, #fff)",
-              }}
-            >
-              {stop.order}
-            </span>
+            {stop.photo_url ? (
+              <span
+                aria-hidden
+                className="relative z-10 h-11 w-11 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
+                style={{ boxShadow: "var(--app-edge), var(--app-hi)" }}
+              >
+                <Image
+                  src={stop.photo_url}
+                  alt=""
+                  fill
+                  unoptimized={stop.photo_url.startsWith("/api/place-photo")}
+                  sizes="44px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="object-cover"
+                />
+                <span
+                  className="absolute left-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[9px] font-bold"
+                  style={{
+                    background: "var(--app-brand-press)",
+                    color: "var(--app-on-brand, #fff)",
+                    boxShadow: "0 1px 4px rgba(0,0,0,.22)",
+                  }}
+                >
+                  {stop.order}
+                </span>
+              </span>
+            ) : (
+              <span
+                className="relative z-10 grid h-11 w-11 place-items-center rounded-[12px] text-[11px] font-bold"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated))",
+                  color: "var(--app-brand-press)",
+                  boxShadow: "var(--app-edge), var(--app-hi)",
+                }}
+              >
+                {stop.order}
+              </span>
+            )}
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <Link

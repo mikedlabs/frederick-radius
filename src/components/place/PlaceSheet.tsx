@@ -116,6 +116,11 @@ function PlaceSheetContent({
     photos: string[]; hours: string[]; phone?: string; website?: string;
     photo_attributions?: GooglePhotoAttribution[]; google_maps_uri?: string;
   } & LiveGooglePlaceData | null>(null);
+  const [photoContext, setPhotoContext] = useState<{
+    slug: string;
+    google_photo_attribution?: GooglePhotoAttribution;
+    google_maps_uri?: string;
+  } | null>(null);
   const needsBasicEnrichment = Boolean(
     !place.google_photo_url &&
     !place.google_hours?.length &&
@@ -131,6 +136,44 @@ function PlaceSheetContent({
       .catch(() => {});
     return () => { cancelled = true; };
   }, [needsBasicEnrichment, place.slug]);
+
+  // Client-safe place rows intentionally omit the large attribution object.
+  // Fetch it only for the one photo the user opens, preserving the complete
+  // author/source line in the sheet without making every catalog download pay
+  // for every business's profile URLs and report metadata.
+  useEffect(() => {
+    if (!place.google_photo_url || place.google_photo_attribution) return;
+    const controller = new AbortController();
+    fetch(`/api/places/map-card/${encodeURIComponent(place.slug)}`, {
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then(
+        (
+          body: {
+            place?: {
+              slug?: string;
+              google_photo_attribution?: GooglePhotoAttribution;
+              google_maps_uri?: string;
+            } | null;
+          } | null,
+        ) => {
+          if (body?.place?.slug !== place.slug) return;
+          setPhotoContext({
+            slug: place.slug,
+            google_photo_attribution:
+              body.place.google_photo_attribution,
+            google_maps_uri: body.place.google_maps_uri,
+          });
+        },
+      )
+      .catch(() => {});
+    return () => controller.abort();
+  }, [
+    place.google_photo_attribution,
+    place.google_photo_url,
+    place.slug,
+  ]);
 
   // Upcoming events happening AT this venue — a strong "should I go" signal.
   useEffect(() => {
@@ -148,8 +191,16 @@ function PlaceSheetContent({
     : (extra?.photos ?? []);
   const heroUrl = place.google_photo_url ?? photos[0];
   const photoAttributions = place.google_photo_attributions ?? extra?.photo_attributions ?? [];
-  const heroAttribution = place.google_photo_attribution ?? photoAttributions[0];
-  const googleMapsUri = place.google_maps_uri ?? extra?.google_maps_uri;
+  const activePhotoContext =
+    photoContext?.slug === place.slug ? photoContext : null;
+  const heroAttribution =
+    place.google_photo_attribution ??
+    activePhotoContext?.google_photo_attribution ??
+    photoAttributions[0];
+  const googleMapsUri =
+    place.google_maps_uri ??
+    activePhotoContext?.google_maps_uri ??
+    extra?.google_maps_uri;
   // Every unique photo (hero first), for the tap-to-enlarge lightbox.
   const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
   const lightboxAttributions = allPhotos.map((url) => {

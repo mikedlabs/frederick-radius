@@ -70,11 +70,13 @@ const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
  *                         open_status is already pre-computed)
  *   - amenities           (array; rendered by detail page only)
  *
- * KEPT for the drawer's PlaceCard:
- *   - google_photo_url, open_status, distance_m fields, name, slug,
- *     category, geom, address, city, phone, website, source,
- *     google_rating, google_rating_count, price_band, short_blurb,
- *     last_verified_at, is_verified, is_operational, municipality
+ * KEPT for pins, filters, and the immediate peek:
+ *   - open_status, name, slug, category, geom, source, short_blurb,
+ *     field-note flags, is_verified, and municipality.
+ *
+ * Photo URLs stay OUT of this ~1,700-row payload. The list face hydrates only
+ * rows approaching its scroll viewport through one batched by-slugs request;
+ * the place sheet and map peek keep their existing one-place hydration paths.
  *
  * The detail page (/places/[slug]) loads its own full data via
  * getPlaceBySlug, so nothing the stripped fields power is lost — they

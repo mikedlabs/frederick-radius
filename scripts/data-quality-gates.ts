@@ -181,7 +181,7 @@ const GATES: Gate[] = [
   },
   {
     id: "publishable_card_photo_coverage",
-    severity: "medium",
+    severity: "critical",
     audit: "visual data coverage",
     run: () => {
       // Count only bytes the shipped card is allowed to render: an owned hero
@@ -194,9 +194,9 @@ const GATES: Gate[] = [
       ).length;
       const r = pct(withPhoto, PLACES.length);
       return {
-        pass: r >= 0.25,
+        pass: r >= 0.7,
         observed: `${fmtPct(r)} have an owned or attributed card photo`,
-        expect: ">= 25% interim (target 70% of visitable places)",
+        expect: ">= 70% of public places",
       };
     },
   },

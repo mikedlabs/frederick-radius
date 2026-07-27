@@ -28,6 +28,7 @@ import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } fro
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CategoryIcon from "@/components/place/CategoryIcon";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import placeHues from "@/data/place-hues.json";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -198,12 +199,18 @@ function Card({
       </span>
 
       <div className="sw-face">
-        {/* Lockup — bold glyph "logo" + serif name left. Right slot: the ONE
+        {/* Lockup — the place's own photo medallion (category mark fallback)
+            + serif name left. Right slot: the ONE
             mono lip fact while tucked; the category TIER wordmark on raise
             (the ledger below takes over the facts). */}
         <div className="sw-top">
           <span className="sw-brand">
-            <CategoryIcon slug={place.category} className="h-[21px] w-[21px]" strokeWidth={2.25} />
+            <PlaceMedallion
+              place={place}
+              size={32}
+              shape="circle"
+              surface="inverse"
+            />
             <span className="sw-name">{place.name}</span>
           </span>
           {fact && (

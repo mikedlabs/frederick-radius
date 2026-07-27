@@ -16,6 +16,7 @@
  * response UI should never wait on the site's decorative entrance motion.
  */
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -30,6 +31,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { getWantAnswer } from "@/lib/want-cache";
 import { haptic } from "@/lib/haptics";
 import { track } from "@/lib/track";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 type WantRow = {
   slug: string;
@@ -62,6 +64,55 @@ type WantAnswer = {
   contextSource: "town" | "device" | "home" | "ip" | "county" | "none";
   fallbackReason: "outside-county" | "location-unavailable" | null;
 };
+
+function AnswerThumb({
+  row,
+  accent,
+  size = 36,
+}: {
+  row: WantRow;
+  accent: string;
+  size?: number;
+}) {
+  if (row.photo) {
+    return (
+      <span
+        aria-hidden
+        className="relative shrink-0 overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
+        style={{
+          height: size,
+          width: size,
+          boxShadow: "var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <Image
+          src={row.photo}
+          alt=""
+          fill
+          unoptimized={row.photo.startsWith("/api/place-photo")}
+          sizes={`${size}px`}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+        />
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="grid shrink-0 place-items-center rounded-[10px] font-serif text-[14px] font-semibold"
+      style={{
+        height: size,
+        width: size,
+        background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated))`,
+        color: `color-mix(in srgb, ${accent} 78%, var(--app-ink))`,
+      }}
+    >
+      {row.name.slice(0, 1)}
+    </span>
+  );
+}
 
 /** Scope label in mid-sentence form: "strongest matches {…}". The raw chip
  *  labels read wrong composed ("matches for whole county" / "for near me"). */
@@ -294,8 +345,9 @@ export default function WantAnswerPanel({
                     <button
                       type="button"
                       onClick={() => openPlace(r.slug)}
-                      className="tap-44-y flex w-full items-start justify-between gap-3 py-2 text-left"
+                      className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                     >
+                      <AnswerThumb row={r} accent={accent} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
                           {r.name}
@@ -334,8 +386,9 @@ export default function WantAnswerPanel({
                     <button
                       type="button"
                       onClick={() => openPlace(r.slug)}
-                      className="tap-44-y flex w-full items-start justify-between gap-3 py-2 text-left"
+                      className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                     >
+                      <AnswerThumb row={r} accent={accent} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
                           <span className="min-w-0 truncate text-[14px] font-medium" style={{ color: "var(--app-ink)" }}>
@@ -376,8 +429,9 @@ export default function WantAnswerPanel({
                       <button
                         type="button"
                         onClick={() => openPlace(r.slug)}
-                        className="tap-44-y flex w-full items-baseline justify-between gap-3 py-2 text-left"
+                        className="tap-44-y flex w-full items-center gap-3 py-2 text-left"
                       >
+                        <AnswerThumb row={r} accent={accent} size={32} />
                         <span className="min-w-0 truncate text-[14px]" style={{ color: "var(--app-ink-2)" }}>
                           {r.name}
                         </span>

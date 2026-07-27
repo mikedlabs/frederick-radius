@@ -9,6 +9,7 @@ import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
 import { isClosedNow } from "@/lib/hours";
 import { dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 
 /**
  * HappyHourWallet — the happy hours ON NOW, on /today.
@@ -65,7 +66,14 @@ type LivePour = {
   lastCall: boolean;
 };
 
-type NextPour = { slug: string; name: string; deal: string; label: string };
+type NextPour = {
+  slug: string;
+  name: string;
+  category: string;
+  photo?: string;
+  deal: string;
+  label: string;
+};
 
 /**
  * The soonest verified pour starting AFTER now (Eastern), across every venue.
@@ -101,7 +109,14 @@ function nextPour(now: Date): NextPour | null {
         : `Opens ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date(now.getTime() + best.dayOffset * 86_400_000))} ${time}`;
   // The full deal (subject + figure), not a bare hook — so the teaser reads
   // "Opens 5 PM · 50% off all wine bottles", never "Opens 5 PM · 50% OFF".
-  return { slug: best.slug, name: p.name, deal: best.details, label };
+  return {
+    slug: best.slug,
+    name: p.name,
+    category: p.category,
+    photo: p.google_photo_url,
+    deal: best.details,
+    label,
+  };
 }
 
 export default function HappyHourWallet({ now }: { now: Date }) {
@@ -152,9 +167,15 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
           }}
         >
-          <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[var(--app-radius-sm)]" style={{ background: "color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-sunken))" }}>
-            <Martini className="h-5 w-5" strokeWidth={1.5} style={{ color: "var(--app-brand-2)" }} aria-hidden />
-          </div>
+          <PlaceMedallion
+            place={{
+              slug: next.slug,
+              name: next.name,
+              category: next.category,
+              google_photo_url: next.photo,
+            }}
+            size={64}
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
               Between rounds

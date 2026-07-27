@@ -19,18 +19,10 @@ import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
 
 /**
- * PlaceCard — the unified TYPOGRAPHIC browse card (Photo Policy, Phase 1).
- *
- * Browse/list/recommendation surfaces do NOT render imported photography
- * (Google / Wikimedia / uncontrolled hero_image). 89% of place photos were
- * imported and ~96% of those were un-curated, with provenance/duplicate
- * problems (#437) — too inconsistent to carry the main UI. Every variant
- * here leads with a small category mark + a clear text hierarchy:
- *   category/icon mark · title · type/town · open status · reason chips ·
- *   distance (only when present) · source/freshness.
- * Built from existing primitives (CategoryIcon, ReasonChip, StatusChipRow,
- * SourceBadge) — no new design system. Photography lives on DETAIL pages
- * (PlaceHero / gallery / AerialBeat), not here. See docs/PHOTO_POLICY.md.
+ * PlaceCard — the shared business card across browse and recommendation
+ * surfaces. A verified, individually attributable place photo leads when one
+ * is available; the category mark is the fallback. The canonical loader has
+ * already removed shared, mismatched, or unattributed images.
  */
 
 /**
@@ -160,15 +152,13 @@ function Thumb({
   category,
   color,
   size,
-  noPhoto = false,
 }: {
   place: PlaceCardData;
   category: string;
   color: string;
   size: number;
-  noPhoto?: boolean;
 }) {
-  if (place.google_photo_url && !noPhoto) {
+  if (place.google_photo_url) {
     return (
       <div
         className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
@@ -198,7 +188,6 @@ export default function PlaceCard({
   // badge becomes "chip soup" down the margin; ON for the prominent
   // answer/feature lead. Override explicitly anywhere it's wanted.
   showSource = variant === "answer" || variant === "feature",
-  noPhoto = false,
   neutral = false,
 }: {
   place: PlaceCardData;
@@ -212,13 +201,8 @@ export default function PlaceCard({
    *  so the card just reflects the place — name, category, open/closed — with
    *  no app-chosen verdicts. Open/closed still shows via PlaceStatus. */
   neutral?: boolean;
-  /** Force the typographic category mark instead of the photo thumbnail.
-   *  The Map bottom-sheet uses this — map results are compact decision
-   *  cards, not photo cards (the Map redesign brief). */
-  noPhoto?: boolean;
-  /** Legacy: extra photos for the old answer photo strip. Browse cards are
-   *  typographic now (Photo Policy), so this is no longer rendered — kept in
-   *  the type so existing callers compile without churn. */
+  /** Legacy: extra photos for the old answer photo strip. The shared card uses
+   *  the canonical hero only; kept in the type so existing callers compile. */
   galleryPhotos?: string[];
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
@@ -267,7 +251,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-3 p-4 pl-5">
-            <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={52} />
+            <Thumb place={place} category={place.category} color={color} size={52} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -333,7 +317,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={48} />
+              <Thumb place={place} category={place.category} color={color} size={48} />
               <div className="min-w-0 flex-1">
                 {/* pr-9 clears the absolutely-positioned SaveButton (36px at
                     right-2.5) so the ml-auto distance never renders under it. */}
@@ -413,7 +397,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2 p-3.5 pb-4">
             <div className="flex items-center gap-2.5">
-              <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
+              <Thumb place={place} category={place.category} color={color} size={40} />
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                 {cat?.name ?? place.category}
               </span>
@@ -471,7 +455,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-2.5 p-2.5">
-            <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
+            <Thumb place={place} category={place.category} color={color} size={40} />
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -537,7 +521,7 @@ export default function PlaceCard({
         className="absolute inset-0 z-0 rounded-[var(--app-radius-lg)] text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] focus-visible:ring-inset"
       />
       <div className="pointer-events-none relative z-10 self-center">
-        <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={46} />
+        <Thumb place={place} category={place.category} color={color} size={46} />
       </div>
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">

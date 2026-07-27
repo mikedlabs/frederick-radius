@@ -4,16 +4,15 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { mayPublishVisitabilityHours } from "@/lib/hours-visitability";
-import {
-  googlePhotoNameFromProxyUrl,
-  publishableGooglePhotoAttribution,
-} from "@/lib/google-photo-policy";
 
 type ClientPlaceData = PlaceCardData & {
   /** Build-time policy stamped by build-client-places. This avoids reading a
    * private server env var from a browser bundle while still aging strict
    * schedules out during a long-lived deployment. */
   hours_policy_strict?: boolean;
+  /** Build-time verdict from the canonical loader. Rich author/source data is
+   * hydrated only when a photo is opened, not repeated across the catalog. */
+  google_photo_policy_passed?: true;
 };
 
 /**
@@ -27,14 +26,14 @@ type ClientPlaceData = PlaceCardData & {
  * cards never read are dropped. `import type` of PlaceCardData is
  * erased, so this module pulls in zero loader code.
  */
-export function withoutUnpublishableGooglePhoto(place: PlaceCardData): PlaceCardData {
+export function withoutUnpublishableGooglePhoto(
+  place: ClientPlaceData,
+): ClientPlaceData {
   const photo = place.google_photo_url;
   if (!photo) return place;
-  const photoName = googlePhotoNameFromProxyUrl(photo);
-  const attribution = photoName && place.google_photo_attribution
-    ? publishableGooglePhotoAttribution(photoName, [place.google_photo_attribution])
-    : undefined;
-  return attribution ? place : { ...place, google_photo_url: undefined };
+  return place.google_photo_policy_passed
+    ? place
+    : { ...place, google_photo_url: undefined };
 }
 
 const ALL_CLIENT_PLACES = (CLIENT_RAW as unknown as ClientPlaceData[]).map(

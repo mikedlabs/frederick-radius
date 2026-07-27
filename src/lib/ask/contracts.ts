@@ -48,6 +48,9 @@ export type AskPlanPreview = {
     name: string;
     category: string;
     href: string;
+    /** Verified place or event image. Google place photos always stay behind
+     * the key-safe Radius proxy and open into the attributed place view. */
+    photo_url?: string;
     why: string;
     status: string;
     tip?: string;

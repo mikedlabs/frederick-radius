@@ -1,5 +1,9 @@
 import { liveTapMenus } from "@/lib/integrations/untappd-business";
+import Link from "next/link";
 import { BREWERIES } from "@/data/beers";
+// eslint-disable-next-line no-restricted-imports -- SERVER component: canonical place media is resolved before this async section reaches the client.
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 
 /**
  * OnTapNow — live tap lists for pilot breweries that shared a UTFB
@@ -40,50 +44,66 @@ export default async function OnTapNow() {
       </header>
 
       <div className="mt-5 space-y-6">
-        {menus.map((menu) => (
-          <article key={menu.slug} aria-label={`${BREWERY_NAME_BY_SLUG.get(menu.slug) ?? menu.slug} tap list`}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2" style={{ borderColor: "var(--app-border)" }}>
-              <h3 className="font-serif text-[19px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                {BREWERY_NAME_BY_SLUG.get(menu.slug) ?? menu.slug}
-              </h3>
-              <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                via Untappd for Business · as of {FRESHNESS.format(new Date(menu.fetchedAt))}
-              </span>
-            </div>
-            {menu.sections.map((section) => (
-              <div key={section.name} className="mt-3">
-                {menu.sections.length > 1 && (
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                    {section.name}
-                  </p>
-                )}
-                <ul className="reveal-up mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
-                  {section.items.map((item) => (
-                    <li key={item.name} className="flex items-baseline justify-between gap-3 py-2">
-                      <span className="min-w-0">
-                        <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                          {item.name}
-                        </span>
-                        {(item.style || item.description) && (
-                          <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                            {item.style}
-                            {item.style && item.description ? " · " : ""}
-                            {item.description}
+        {menus.map((menu) => {
+          const breweryName =
+            BREWERY_NAME_BY_SLUG.get(menu.slug) ?? menu.slug;
+          const breweryPlace = clientPlaceBySlug(menu.slug);
+
+          return (
+            <article key={menu.slug} aria-label={`${breweryName} tap list`}>
+              <Link
+                href={`/places/${menu.slug}`}
+                aria-label={`Open ${breweryName} details and photo credits`}
+                className="tactile-interactive flex items-start gap-3 border-b pb-2.5"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                {breweryPlace ? (
+                  <PlaceMedallion place={breweryPlace} size={44} />
+                ) : null}
+                <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:justify-between sm:gap-3">
+                  <h3 className="truncate font-serif text-[19px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    {breweryName}
+                  </h3>
+                  <span className="mt-0.5 block font-mono text-[9.5px] leading-snug sm:mt-0 sm:shrink-0 sm:text-right" style={{ color: "var(--app-ink-3)" }}>
+                    via Untappd for Business · as of {FRESHNESS.format(new Date(menu.fetchedAt))}
+                  </span>
+                </div>
+              </Link>
+              {menu.sections.map((section) => (
+                <div key={section.name} className="mt-3">
+                  {menu.sections.length > 1 && (
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                      {section.name}
+                    </p>
+                  )}
+                  <ul className="reveal-up mt-1 divide-y" style={{ borderColor: "var(--app-border)" }}>
+                    {section.items.map((item) => (
+                      <li key={item.name} className="flex items-baseline justify-between gap-3 py-2">
+                        <span className="min-w-0">
+                          <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+                            {item.name}
                           </span>
-                        )}
-                      </span>
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                        {item.abv != null ? `${item.abv.toFixed(1)}%` : ""}
-                        {item.abv != null && item.ibu != null ? " · " : ""}
-                        {item.ibu != null ? `${Math.round(item.ibu)} IBU` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </article>
-        ))}
+                          {(item.style || item.description) && (
+                            <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                              {item.style}
+                              {item.style && item.description ? " · " : ""}
+                              {item.description}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                          {item.abv != null ? `${item.abv.toFixed(1)}%` : ""}
+                          {item.abv != null && item.ibu != null ? " · " : ""}
+                          {item.ibu != null ? `${Math.round(item.ibu)} IBU` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,4 +1,19 @@
 import { clientPlaces } from "@/lib/loaders/places-client";
+import {
+  DAYS,
+  SLOTS_PER_DAY,
+  WEEK_SLOTS,
+  type RhythmData,
+  type RhythmGroup,
+  type RhythmPlace,
+} from "@/lib/rhythm-shared";
+
+export { SLOTS_PER_DAY, WEEK_SLOTS, slotLabel } from "@/lib/rhythm-shared";
+export type {
+  RhythmData,
+  RhythmGroup,
+  RhythmPlace,
+} from "@/lib/rhythm-shared";
 
 /**
  * The Rhythm — the county's business hours as a scrubbable week.
@@ -20,23 +35,8 @@ import { clientPlaces } from "@/lib/loaders/places-client";
  * not a promise the lights are on.
  */
 
-export const SLOTS_PER_DAY = 96;
-export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
-export const WEEK_SLOTS = SLOTS_PER_DAY * 7;
-
 /** Visual grouping for the light-field: one hue per group, dots sorted so
  *  a group reads as a band and its wake/sleep wave is visible. */
-export type RhythmGroup =
-  | "food"
-  | "coffee"
-  | "pours"
-  | "shops"
-  | "outdoors"
-  | "wellness"
-  | "services"
-  | "civic"
-  | "lodging";
-
 const GROUP_BY_CATEGORY: Record<string, RhythmGroup> = {
   restaurant: "food", pizza: "food", bakery: "food", "ice-cream": "food", "food-truck": "food", market: "food",
   coffee: "coffee",
@@ -51,24 +51,6 @@ const GROUP_BY_CATEGORY: Record<string, RhythmGroup> = {
 export function groupForCategory(category: string): RhythmGroup {
   return GROUP_BY_CATEGORY[category] ?? "services";
 }
-
-export type RhythmPlace = {
-  name: string;
-  slug: string;
-  group: RhythmGroup;
-  town: string;
-};
-
-export type RhythmData = {
-  /** One entry per place, sorted by group then name (band layout). */
-  places: RhythmPlace[];
-  /** Base64 of places.length * 84 bytes; bit i of a place's 672 = open in slot i. */
-  masks: string;
-  /** Open count per week slot across all places (for the readout + peak). */
-  counts: number[];
-  /** The single busiest slot of the week. */
-  peak: { slot: number; count: number };
-};
 
 function minutesOf(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -143,16 +125,4 @@ export function getRhythmData(): RhythmData {
 
   cache = { places, masks: Buffer.from(all).toString("base64"), counts, peak };
   return cache;
-}
-
-/** Human label for a week slot: "Wednesday · 1:15 PM". */
-export function slotLabel(slot: number): string {
-  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const day = dayNames[Math.floor(slot / SLOTS_PER_DAY)];
-  const m = (slot % SLOTS_PER_DAY) * 15;
-  const h24 = Math.floor(m / 60);
-  const mm = m % 60;
-  const mer = h24 >= 12 ? "PM" : "AM";
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${day} · ${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }

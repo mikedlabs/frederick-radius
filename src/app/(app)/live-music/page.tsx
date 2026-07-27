@@ -10,6 +10,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import EventCard from "@/components/event/EventCard";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import PageBloom from "@/components/ui/PageBloom";
 
 /**
@@ -127,9 +128,10 @@ export default async function LiveMusicPage() {
           slug: v.slug,
           name: p.name,
           town: p.municipality ? MUNICIPALITY_BY_SLUG[p.municipality]?.name : undefined,
+          place: p,
         };
       })
-        .filter((s): s is { slug: string; name: string; town: string | undefined } => s !== null)
+        .filter((s): s is NonNullable<typeof s> => s !== null)
         .filter((s, i, arr) => arr.findIndex((o) => o.name === s.name) === i)
         .sort((a, b) => a.name.localeCompare(b.name))
     : [];
@@ -223,10 +225,11 @@ export default async function LiveMusicPage() {
                   <li key={s.slug}>
                     <Link
                       href={`/places/${s.slug}`}
-                      className="tap-44-y flex items-baseline justify-between gap-3 border-b py-2 text-[14px]"
+                      className="tap-44-y flex items-center gap-2.5 border-b py-2 text-[14px]"
                       style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
                     >
-                      <span className="font-medium leading-snug">{s.name}</span>
+                      <PlaceMedallion place={s.place} size={36} />
+                      <span className="min-w-0 flex-1 truncate font-medium leading-snug">{s.name}</span>
                       {s.town && (
                         <span className="shrink-0 font-mono text-[11px] uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
                           {s.town}

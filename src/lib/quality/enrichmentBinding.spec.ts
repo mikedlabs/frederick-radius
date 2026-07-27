@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   chooseCanonicalGooglePlaceId,
   findGooglePlaceIdCollisions,
+  hasIdentitySubfacilityConflict,
   isSafeEnrichmentIdentityMatch,
   isSuspectBinding,
 } from "./enrichmentBinding";
@@ -72,6 +73,44 @@ describe("Google identity promotion", () => {
     ).toBe("ChIJGravelAndGrind123");
   });
 
+  it("accepts a unique identity independently verified by name and location", () => {
+    expect(
+      chooseCanonicalGooglePlaceId({
+        enrichmentId: "ChIJGiantEagleWestPatrick123",
+        curatedName: "Giant Eagle - West Patrick Street",
+        enrichmentDisplayName: "Giant Eagle Supermarket",
+        enrichmentOwnerCount: 1,
+        claimedByAnotherCanonicalPlace: false,
+        independentlyVerified: true,
+      }),
+    ).toBe("ChIJGiantEagleWestPatrick123");
+  });
+
+  it("rejects a nearby subfacility even when the resolver marked it verified", () => {
+    expect(
+      hasIdentitySubfacilityConflict(
+        "Urbana Community Park",
+        "Urbana Community Skate Park",
+      ),
+    ).toBe(true);
+    expect(
+      hasIdentitySubfacilityConflict(
+        "Clustered Spires Golf Course",
+        "Clustered Spires Golf Club",
+      ),
+    ).toBe(false);
+    expect(
+      chooseCanonicalGooglePlaceId({
+        enrichmentId: "ChIJUrbanaSkatePark123",
+        curatedName: "Urbana Community Park",
+        enrichmentDisplayName: "Urbana Community Skate Park",
+        enrichmentOwnerCount: 1,
+        claimedByAnotherCanonicalPlace: false,
+        independentlyVerified: true,
+      }),
+    ).toBeUndefined();
+  });
+
   it("rejects generic-name overlap, duplicate ownership, and collisions", () => {
     expect(
       isSafeEnrichmentIdentityMatch(
@@ -127,7 +166,7 @@ describe("Google identity promotion", () => {
   });
 
   it("keeps legacy provider facts when the canonical Google ID anchors the row", () => {
-    const slug = "tous-les-jours-bakery-cafe-frederick";
+    const slug = "beanvenido-frederick";
     const legacyEnrichment = ENRICHMENT_RAW as Record<
       string,
       { google_place_id?: string }

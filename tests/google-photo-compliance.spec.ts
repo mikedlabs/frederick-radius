@@ -29,7 +29,10 @@ describe("Google photo storage guardrails", () => {
 
     const clientLoader = read("src/lib/loaders/places-client.ts");
     expect(clientLoader).toContain("withoutUnpublishableGooglePhoto");
-    expect(clientLoader).toContain("publishableGooglePhotoAttribution");
+    expect(clientLoader).toContain("google_photo_policy_passed");
+    const clientBuild = read("scripts/build-client-places.ts");
+    expect(clientBuild).toContain("google_photo_attribution: _gpaHero");
+    expect(clientBuild).toContain("google_photo_policy_passed");
   });
 
   it("requires exact source metadata before server or runtime loaders publish a photo", () => {

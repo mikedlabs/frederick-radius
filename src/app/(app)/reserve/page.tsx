@@ -6,6 +6,7 @@ import { resolveCommerceLinks, providerLabel, isBrandedProvider } from "@/lib/co
 import { openTableSearchUrl } from "@/lib/ask/reservations";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 
 /**
  * /reserve — book a table, one tap from the Eat pane.
@@ -84,6 +85,7 @@ export default async function ReservePage() {
           const town = MUNICIPALITY_BY_SLUG[p.municipality ?? ""]?.name;
           return (
             <li key={p.slug} className="flex items-center gap-3 py-3" style={{ borderColor: "var(--app-border)" }}>
+              <PlaceMedallion place={p} size={44} />
               <Link
                 href={`/places/${p.slug}`}
                 className="flex min-h-11 min-w-0 flex-1 flex-col justify-center hover:underline"

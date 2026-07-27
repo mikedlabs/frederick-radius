@@ -1579,7 +1579,7 @@ export default function AppMap({
   // ── Living-map scrub → place open/closed via feature-state ──────────────
   // Snappy by design: rather than re-serializing the GeoJSON source, flip a
   // per-pin `dim` feature-state and let the icon-opacity expression paint it
-  // on the GPU. The compact client hours bundle is lazy-loaded on first scrub
+  // on the GPU. A generated hours-only artifact is lazy-loaded on first scrub
   // (the deliberately-slimmed browse payload carries no hours), then reused.
   // Reapplied whenever the source data changes (Mapbox clears feature-state on
   // setData) or the hour moves; cleared when the scrubber turns off.
@@ -1594,10 +1594,13 @@ export default function AppMap({
         return;
       }
       if (!clientHoursRef.current) {
-        const mod = await import("@/lib/loaders/places-client");
+        const mod = await import("@/lib/loaders/places-client-hours");
         if (cancelled) return;
         clientHoursRef.current = new globalThis.Map(
-          mod.clientPlaces().map((p) => [p.slug, { hours: p.hours, verified: p.hours_verified ?? false }] as const),
+          mod.clientPlaceHours().map((p) => [
+            p.slug,
+            { hours: p.hours, verified: p.hours_verified },
+          ] as const),
         );
       }
       const hoursBySlug = clientHoursRef.current;
