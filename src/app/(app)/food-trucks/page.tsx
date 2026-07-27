@@ -217,7 +217,7 @@ function OwnerDoor({
         <div>
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>For truck owners</p>
           <p className="mt-1 font-serif text-[21px] leading-tight" style={{ color: "var(--app-ink)" }}>
-            {lead ? "Put your truck on the county board." : "Make this listing useful before someone arrives."}
+            {lead ? "Your truck belongs on the county board." : "Make this listing useful before someone arrives."}
           </p>
           <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             {lead
@@ -313,7 +313,7 @@ export default async function FoodTrucksPage({
   };
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-5 sm:space-y-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }} />
       <PageBloom variant="single" />
 

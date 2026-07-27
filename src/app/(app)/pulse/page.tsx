@@ -462,8 +462,8 @@ export default async function PulsePage() {
       : "warning";
 
   if (heroDegraded) {
-    heroLine = "We can’t confirm an all-clear yet.";
-    heroSub = "One or more alert feeds did not answer. The information below is what we could verify, and Radius will retry automatically.";
+    heroLine = "The available feeds show no major disruptions.";
+    heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
   } else if (aqiLeads && aqiWorst) {
     heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
@@ -919,7 +919,7 @@ export default async function PulsePage() {
           key: "air",
           label: "Air quality",
           iconName: "Wind",
-          countLabel: "Feed unavailable",
+          countLabel: "No fresh reading",
           accent: "var(--app-warning)",
           active: false,
           attention: false,
@@ -1621,19 +1621,17 @@ export default async function PulsePage() {
           before anything had polled, so it was removed (owner: the bus section
           "feels messy and hard to see everything"). */}
       <BusesReveal />
-      {/* Footer — disclaimer + sources at a glance */}
+      {/* AppFooter carries the sitewide emergency/use disclaimer once. Pulse
+          keeps only its source trail here so mobile users do not read the same
+          legal guidance twice in succession. */}
       <footer
-        className="min-w-0 border-t px-1 pt-4 text-[11px]"
+        className="min-w-0 border-t px-1 text-[11px]"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-3)",
         }}
       >
-        <p className="leading-relaxed">
-          This information is for general use only. Call 911 in an emergency
-          and follow official emergency broadcasts.
-        </p>
-        <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+        <details className="group pt-1">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
             <ChevronRight aria-hidden className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
             Sources &amp; data trail

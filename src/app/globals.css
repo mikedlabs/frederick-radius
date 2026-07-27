@@ -2176,6 +2176,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * without becoming visual noise.
  * ───────────────────────────────────────────────────── */
 .sky-glyph {
+  /* A sunny-weather symbol should read as daylight, not inherit the plum
+   * arts/culture accent. Keep this local to the glyph rather than widening the
+   * global palette or changing warning colors elsewhere in the app. */
+  --sky-sun-color: #C77918;
   position: relative;
   display: inline-block;
   flex-shrink: 0;
@@ -5186,6 +5190,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     box-shadow: var(--app-shadow-2);
   }
 }
+
+/* Keep the selected When and Where values readable at the supported 320px
+   floor. A clear-filter button leaves less width for the three cells; a
+   two-word value should wrap rather than collapse into "This we…". */
+@media (max-width: 360px) {
+  .eb-seg {
+    padding-inline: 4px;
+  }
+  .eb-seg-v,
+  .eb-seg-v.mono {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    font-size: 11.5px;
+    line-height: 1.05;
+  }
+}
+
 .eb-lensseg {
   display: flex;
   align-items: center;
@@ -6425,6 +6447,21 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .food-truck-vendor-card .food-truck-fallback-kicker,
   .food-truck-vendor-card .food-truck-fallback-footer { font-size: .4rem; }
   .food-truck-mode-switch button { gap: .35rem; padding-inline: .45rem; }
+}
+
+/* At the narrow 320px floor, the vendor strip should prove that real local
+   trucks are represented without pushing the three ways to use the page
+   toward the bottom edge of the first screen. */
+@media (max-width: 360px) {
+  .food-truck-hero-tile {
+    width: 5rem;
+    height: 5rem;
+    flex-basis: 5rem;
+  }
+  .food-truck-hero-tile:first-child {
+    width: 5.6rem;
+    flex-basis: 5.6rem;
+  }
 }
 
 @media (max-width: 350px) {

@@ -100,6 +100,12 @@ test("legacy wheel links converge on Compass", async ({ page }) => {
   await expect(page).toHaveURL(/\/compass$/);
 });
 
+test("legacy weekend links preserve the weekend event lens", async ({ page }) => {
+  await page.goto("/weekend", { waitUntil: "domcontentloaded" });
+
+  await expect(page).toHaveURL(/\/events\?.*lens=weekend/);
+});
+
 test("the contacts directory hands uncertain questions to Ask Radius", async ({ page }) => {
   await page.goto("/contacts", { waitUntil: "domcontentloaded" });
 
@@ -107,6 +113,26 @@ test("the contacts directory hands uncertain questions to Ask Radius", async ({ 
     "href",
     "/ask",
   );
+});
+
+test("contacts keeps secondary sharing tools tucked away until requested", async ({ page }) => {
+  await page.goto("/contacts", { waitUntil: "domcontentloaded" });
+
+  await expect(page.getByRole("link", { name: "Text these" })).toBeHidden();
+  await page.getByText("Save or share these numbers", { exact: true }).click();
+  await expect(page.getByRole("link", { name: "Text these" })).toBeVisible();
+});
+
+test("the nonprofit directory starts compact and can reveal the full list", async ({ page }) => {
+  await page.goto("/nonprofits", { waitUntil: "domcontentloaded" });
+
+  const nonprofitLinks = page.locator('a[href^="/nonprofits/"]');
+  await expect(nonprofitLinks).toHaveCount(15);
+  const showAll = page.getByRole("button", { name: /^Show all \d+$/ });
+  const advertisedTotal = Number((await showAll.textContent())?.match(/\d+/)?.[0]);
+  expect(advertisedTotal).toBeGreaterThan(15);
+  await showAll.click();
+  await expect(nonprofitLinks).toHaveCount(advertisedTotal);
 });
 
 test("a cold report deep link closes to the map instead of a blank browser page", async ({ page }) => {

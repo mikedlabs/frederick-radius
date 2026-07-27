@@ -25,7 +25,23 @@ describe("TodayCard fallback", () => {
       }),
     ).toEqual({
       headline: "Mostly sunny",
-      safetyNote: "Some safety feeds are unavailable.",
+      safetyNote: "The weather-alert feed is unavailable.",
+    });
+  });
+
+  it("names an unavailable air-quality reading", () => {
+    expect(
+      compactWeatherRead({
+        verdict: "Some safety data is temporarily unavailable.",
+        condition: "Mostly sunny",
+        alertsAvailable: true,
+        airQualityAvailable: false,
+        activeAlertCount: 0,
+        airQualityIndex: null,
+      }),
+    ).toEqual({
+      headline: "Mostly sunny",
+      safetyNote: "The air-quality reading is unavailable.",
     });
   });
 

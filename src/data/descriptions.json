@@ -11,6 +11,18 @@
     "reviewed_at": "2026-07-22T00:00:00.000Z",
     "reviewer_note": "Checked against the linked business website on 2026-07-22."
   },
+  "cafe-nola": {
+    "blurb": "Cafe Nola is a cafe and bar on East Patrick Street with pickup ordering.",
+    "status": "approved",
+    "source": {
+      "kind": "business_website",
+      "url": "https://www.cafe-nola.com/",
+      "fetched_at": "2026-07-27T16:55:00.000Z"
+    },
+    "generated_at": "2026-07-27T16:55:00.000Z",
+    "reviewed_at": "2026-07-27T16:55:00.000Z",
+    "reviewer_note": "Checked against the linked business website on 2026-07-27."
+  },
   "dublin-roasters-frederick": {
     "blurb": "Dublin Roasters uses air roasting for small batches of organic and fair-trade beans sourced from family coffee farms.",
     "status": "approved",

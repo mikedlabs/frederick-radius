@@ -226,7 +226,7 @@ export default function TopBar() {
                     </span>
                   </>
                 ) : (
-                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight min-[360px]:block" style={{ color: "var(--app-ink)" }}>
+                  <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight lg:block" style={{ color: "var(--app-ink)" }}>
                     All tools
                   </span>
                 )}

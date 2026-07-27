@@ -76,6 +76,11 @@ export default async function HistoryPage({
   );
   // When filtering, the hero fact isn't special, so keep every matching fact.
   const rest = HISTORY.filter((h) => h.kind === "fact" && inTopic(h) && (topic ? true : h.slug !== heroFact.slug));
+  // The unfiltered page is a browse surface, not an archive dump. Keep two
+  // facts in the reading flow and fold the rest behind one explicit action.
+  // A topic filter remains fully expanded because every result is relevant.
+  const visibleFacts = topic ? rest : rest.slice(0, 2);
+  const hiddenFacts = topic ? [] : rest.slice(2);
 
   const topicFilters = (
     <section aria-label="Filter by topic" className="-mx-4 px-4">
@@ -275,9 +280,15 @@ export default async function HistoryPage({
             Frederick people
           </h2>
         </header>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
           {people.map((p) => (
-            <HistoryArticle key={p.slug} entry={p} idx={0} compact />
+            <HistoryArticle
+              key={p.slug}
+              entry={p}
+              idx={0}
+              compact
+              className="w-[82vw] max-w-[300px] shrink-0 snap-start [&>article]:h-full sm:w-auto sm:max-w-none"
+            />
           ))}
         </ul>
       </section>
@@ -304,10 +315,35 @@ export default async function HistoryPage({
           </h2>
         </header>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {rest.map((f) => (
+          {visibleFacts.map((f) => (
             <HistoryArticle key={f.slug} entry={f} idx={0} compact />
           ))}
         </ul>
+        {hiddenFacts.length > 0 && (
+          <details className="group border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+            <summary
+              className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 py-2 text-[13px] font-semibold [&::-webkit-details-marker]:hidden"
+              style={{ color: "var(--app-brand-press)" }}
+            >
+              <span className="group-open:hidden">
+                Show {hiddenFacts.length} more {hiddenFacts.length === 1 ? "fact" : "facts"}
+              </span>
+              <span className="hidden group-open:inline">Show fewer facts</span>
+              <span
+                aria-hidden
+                className="font-mono text-[16px] leading-none transition-transform group-open:rotate-45"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                +
+              </span>
+            </summary>
+            <ul className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
+              {hiddenFacts.map((f) => (
+                <HistoryArticle key={f.slug} entry={f} idx={0} compact />
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
       </>
       )}
@@ -493,10 +529,12 @@ function HistoryArticle({
   entry,
   idx,
   compact = false,
+  className = "",
 }: {
   entry: HistoryEntry;
   idx: number;
   compact?: boolean;
+  className?: string;
 }) {
   const meta = KIND_META[entry.kind];
   const Icon = meta.icon;
@@ -509,7 +547,7 @@ function HistoryArticle({
   const era = typeof entry.year === "number" ? eraForYear(entry.year) : null;
   const stripeColor = era?.color ?? meta.color;
   return (
-    <li id={`h-${entry.slug}`} className="scroll-mt-24">
+    <li id={`h-${entry.slug}`} className={`scroll-mt-24 ${className}`}>
       <article
         className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 pl-5"
         style={{ "--section-accent": meta.color } as React.CSSProperties}
@@ -633,11 +671,23 @@ function HistoryImageAttribution({ image }: { image: HistoryImage }) {
       style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
     >
       Photo: {" "}
-      <a href={image.source_url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+      <a
+        href={image.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Photo credit: ${image.creator}; ${image.alt ?? "Frederick history image"}`}
+        className="underline underline-offset-2"
+      >
         {image.creator}
       </a>{" "}
       · {" "}
-      <a href={image.license.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+      <a
+        href={image.license.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Photo license ${image.license.label}; ${image.alt ?? "Frederick history image"}`}
+        className="underline underline-offset-2"
+      >
         {image.license.label}
       </a>{" "}
       · {image.modifications}

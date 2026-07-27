@@ -117,7 +117,7 @@ export default async function RiversPage() {
           className="absolute inset-x-0 top-0 h-[3px]"
           style={{ background: "var(--app-cool)" }}
         />
-        <div className="space-y-2.5 px-4 py-5 sm:px-5">
+        <div className="space-y-2.5 px-4 py-4 sm:px-5 sm:py-5">
           <p
             className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]"
             style={{ color: "var(--app-ink-3)" }}
@@ -161,7 +161,7 @@ export default async function RiversPage() {
           USGS reading to NWS's own thresholds); the rest show reading +
           trend only. Crest forecasts + official warnings stay with NWS. */}
       <aside
-        className="rounded-[var(--app-radius-md)] border px-4 py-3 text-[12px] leading-relaxed"
+        className="rounded-[var(--app-radius-md)] border px-3 py-2 text-[11.5px] leading-snug sm:px-4 sm:py-3 sm:text-[12px] sm:leading-relaxed"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-sunken)",

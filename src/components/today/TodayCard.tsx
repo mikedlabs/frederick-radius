@@ -95,9 +95,15 @@ export function compactWeatherRead({
     !hasActionableSafetySignal &&
     condition.trim()
   ) {
+    const safetyNote =
+      !alertsAvailable && !airQualityAvailable
+        ? "Weather-alert and air-quality checks are unavailable."
+        : !alertsAvailable
+          ? "The weather-alert feed is unavailable."
+          : "The air-quality reading is unavailable.";
     return {
       headline: condition.trim(),
-      safetyNote: "Some safety feeds are unavailable.",
+      safetyNote,
     };
   }
 

@@ -1373,24 +1373,23 @@ export default function AskFrederick({
       className={workspace ? "mx-auto max-w-[760px]" : undefined}
     >
       {workspace ? (
-        <header className={`${res ? "mb-3" : "mb-5"} max-w-[660px]`}>
+        <header className={`${res ? "mb-3" : "mb-3.5"} max-w-[660px]`}>
           <p className="eyebrow" style={{ color: "var(--app-brand-press)" }}>
             Ask Radius
           </p>
           <h1
             id="ask-radius-heading"
-            className={`${res ? "mt-1 text-[28px] sm:text-[34px]" : "mt-2 text-[36px] sm:text-[46px]"} font-serif font-semibold leading-[0.98] tracking-[-0.03em]`}
+            className={`${res ? "mt-1 text-[28px] sm:text-[34px]" : "mt-1.5 text-[30px] sm:text-[40px]"} font-serif font-semibold leading-[1.01] tracking-[-0.03em]`}
             style={{ color: "var(--app-ink)" }}
           >
             Tell Radius what you need.
           </h1>
           {!res ? (
             <p
-              className="mt-3 max-w-[580px] text-[14px] leading-relaxed sm:text-[15px]"
+              className="mt-2 max-w-[560px] text-[13px] leading-[1.55] sm:text-[14px]"
               style={{ color: "var(--app-ink-2)" }}
             >
-              Ask the way you would ask a local. Radius checks Frederick County
-              listings and current sources before it answers.
+              Find a place or get a source-backed answer about Frederick County.
             </p>
           ) : null}
         </header>
@@ -1409,7 +1408,7 @@ export default function AskFrederick({
       ) : null}
 
       <div
-        className={workspace ? "border-y py-3 sm:py-4" : undefined}
+        className={workspace ? "border-y py-2.5 sm:py-3" : undefined}
         style={
           workspace
             ? {
@@ -1418,7 +1417,7 @@ export default function AskFrederick({
             : undefined
         }
       >
-        <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
+        <div className="mb-1 flex min-h-8 items-center justify-between gap-3">
           <p
             aria-label={`Search area: ${contextLabel}`}
             className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-semibold"
@@ -1462,7 +1461,7 @@ export default function AskFrederick({
           }}
           className={
             workspace
-              ? "mt-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-2"
+              ? "mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] p-1.5"
               : "mt-2 flex items-center gap-2 rounded-[14px] border bg-[var(--app-bg-elevated-solid)] py-1 pl-4 pr-1.5"
           }
           style={{
@@ -1494,7 +1493,7 @@ export default function AskFrederick({
                   ? "Ask for a closer option or change the time."
                   : "Quiet dinner downtown before a 7:30 show."
               }
-              className={`${res ? "min-h-[52px]" : "min-h-[78px]"} w-full resize-none bg-transparent px-2.5 py-2 text-[16px] leading-relaxed outline-none placeholder:text-[var(--app-ink-3)]`}
+              className={`${res ? "min-h-[50px]" : "min-h-[64px]"} w-full resize-none bg-transparent px-2.5 py-2 text-[15.5px] leading-[1.55] outline-none placeholder:text-[var(--app-ink-3)]`}
               style={{ color: "var(--app-ink)" }}
               aria-label="Ask Radius"
             />
@@ -1515,7 +1514,7 @@ export default function AskFrederick({
           )}
 
           {workspace ? (
-            <div className="flex items-center justify-between gap-3 px-1 pb-1">
+            <div className="flex items-center justify-between gap-3 px-1 pb-0.5">
               <span
                 className="hidden items-center gap-1.5 text-[10.5px] sm:inline-flex"
                 style={{ color: "var(--app-ink-3)" }}
@@ -1594,29 +1593,26 @@ export default function AskFrederick({
       </div>
 
       {workspace && !res && !loading && !nearbyGateQuery ? (
-        <section aria-labelledby="ask-start-heading" className="mt-4">
+        <section aria-labelledby="ask-start-heading" className="mt-3">
           <h2
             id="ask-start-heading"
             className="px-1 text-[10px] font-bold uppercase tracking-[0.11em]"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Questions to try
+            Try a question
           </h2>
-          <div className="mt-2 grid border-t sm:grid-cols-2" style={{ borderColor: "var(--app-border)" }}>
-            {WORKSPACE_ASKS.map((prompt, index) => (
+          <div className="mt-1.5 grid grid-cols-2 border-t" style={{ borderColor: "var(--app-border)" }}>
+            {WORKSPACE_ASKS.map((prompt) => (
               <button
                 key={prompt.label}
                 type="button"
                 onClick={() => runIntent(prompt.query)}
-                className="tap-44 grid min-h-[52px] min-w-0 grid-cols-[28px_minmax(0,1fr)_16px] items-center gap-2 border-b px-1 text-left text-[11.5px] font-semibold transition hover:bg-[var(--app-bg-sunken)] active:opacity-70 sm:odd:border-r"
+                className="tap-44 grid min-h-[52px] min-w-0 grid-cols-[minmax(0,1fr)_16px] items-center gap-2 border-b px-2 text-left text-[11.5px] font-semibold leading-snug transition odd:border-r hover:bg-[var(--app-bg-sunken)] active:opacity-70"
                 style={{
                   borderColor: "var(--app-border)",
                   color: "var(--app-ink-2)",
                 }}
               >
-                <span className="font-mono text-[9px] tabular-nums" style={{ color: "var(--app-brand-press)" }}>
-                  {String(index + 1).padStart(2, "0")}
-                </span>
                 <span>{prompt.label}</span>
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </button>

@@ -54,8 +54,12 @@ import MapReturnLink from "@/components/place/MapReturnLink";
  * passes it. Otherwise show nothing and let category and practical info
  * carry the page. No filler.
  */
-function cleanCopy(name: string, raw: string | undefined): string | null {
-  const q = classifyDescription(name, raw);
+function cleanCopy(
+  name: string,
+  raw: string | undefined,
+  reviewed = false,
+): string | null {
+  const q = classifyDescription(name, raw, reviewed);
   return q === "auto_clean" || q === "reviewed" ? (raw ?? "").trim() : null;
 }
 
@@ -70,9 +74,14 @@ function safeBlurb(p: {
   short_blurb: string;
   category_name: string;
   municipality_name: string;
+  description_reviewed?: boolean;
 }): string {
   return (
-    cleanCopy(p.name, p.description ?? p.short_blurb) ??
+    cleanCopy(
+      p.name,
+      p.description ?? p.short_blurb,
+      p.description_reviewed ?? false,
+    ) ??
     `${p.category_name} in ${p.municipality_name}.`
   );
 }
@@ -150,7 +159,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   // "more in town" link, and BreadcrumbList JSON-LD all emit a 404 /m/ path
   // with an empty/undefined name. When it's not a real town, drop the crumb.
   const town = MUNICIPALITY_BY_SLUG[place.municipality];
-  const desc = cleanCopy(place.name, place.description ?? place.short_blurb);
+  const desc = cleanCopy(
+    place.name,
+    place.description ?? place.short_blurb,
+    place.description_reviewed ?? false,
+  );
   const hoursConfirmed = place.hours_source
     ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
     : null;

@@ -254,9 +254,6 @@ export default function ContactsDirectory({
             <AlertCircle className="h-3 w-3" strokeWidth={2.5} aria-hidden />
             Most important numbers
           </p>
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-            Save or share the set
-          </span>
         </div>
 
         <ul className="grid gap-1.5 sm:grid-cols-2">
@@ -265,33 +262,47 @@ export default function ContactsDirectory({
           ))}
         </ul>
 
-        <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-          <p className="mb-2 text-[11.5px]" style={{ color: "var(--app-ink-2)" }}>
-            Send these to your phone or your family:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={smsHref}
-              className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
-              style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
-            >
-              <MessageSquare className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden /> Text these
-            </a>
-            <a href={mailHref} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-              <Mail className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Email
-            </a>
-            <button type="button" onClick={() => void copyList()} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-              {copied ? <Check className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden style={{ color: "var(--app-positive)" }} /> : <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
-              {copied ? "Copied" : "Copy"}
-            </button>
-            <button type="button" onClick={downloadVCard} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
-              <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Add to phone
-            </button>
+        <details className="group mt-3 border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+          <summary
+            className="tap-44-y flex cursor-pointer list-none items-center justify-between gap-3 py-2 text-[12.5px] font-semibold [&::-webkit-details-marker]:hidden"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Save or share these numbers
+            <ChevronRight
+              aria-hidden
+              className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90"
+              strokeWidth={2.2}
+              style={{ color: "var(--app-ink-3)" }}
+            />
+          </summary>
+          <div className="pb-1 pt-1">
+            <p className="mb-2 text-[11.5px]" style={{ color: "var(--app-ink-2)" }}>
+              Send the list to your phone or your family.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={smsHref}
+                className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold"
+                style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden /> Text these
+              </a>
+              <a href={mailHref} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+                <Mail className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Email
+              </a>
+              <button type="button" onClick={() => void copyList()} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+                {copied ? <Check className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden style={{ color: "var(--app-positive)" }} /> : <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+              <button type="button" onClick={downloadVCard} className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-semibold" style={{ borderColor: "var(--app-border-strong)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}>
+                <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} /> Add to phone
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Star any line to add it to this set.
+            </p>
           </div>
-          <p className="mt-2 text-[11px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Star any line to add it to this set.
-          </p>
-        </div>
+        </details>
       </div>
 
       {/* ── Where you live ─────────────────────────────────────────────── */}
@@ -366,13 +377,13 @@ export default function ContactsDirectory({
                     type="button"
                     onClick={() => setOpenTopic(g.id)}
                     aria-haspopup="dialog"
-                    className="tactile-interactive flex flex-col items-start gap-2 rounded-[var(--app-radius-lg)] border p-3 text-left active:scale-[0.98]"
+                    className="tactile-interactive grid min-h-20 grid-cols-[2rem_1fr] items-center gap-x-2 gap-y-0.5 rounded-[var(--app-radius-lg)] border p-2.5 text-left active:scale-[0.98]"
                     style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", boxShadow: "var(--app-elev-1), var(--app-hi)" }}
                   >
-                    <span aria-hidden className="grid h-8 w-8 place-items-center rounded-[9px]" style={{ background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
+                    <span aria-hidden className="row-span-2 grid h-8 w-8 place-items-center rounded-[9px]" style={{ background: "color-mix(in srgb, var(--app-ink) 8%, transparent)" }}>
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} />
                     </span>
-                    <span className="font-serif text-[15px] font-semibold leading-[1.1] tracking-tight" style={{ color: "var(--app-ink)" }}>{g.label}</span>
+                    <span className="self-end font-serif text-[14px] font-semibold leading-[1.08] tracking-tight" style={{ color: "var(--app-ink)" }}>{g.label}</span>
                     <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
                       {g.depts.length} {g.depts.length === 1 ? "office" : "offices"}
                     </span>
