@@ -304,7 +304,13 @@ export default function CompassHub() {
 
   const sections = useMemo(() => buildCompassSections(homeSlug), [homeSlug]);
   const commonTasks = useMemo(() => commonCompassTasks(sections), [sections]);
-  const activeSection = sections.find((section) => section.id === activeSectionId) ?? null;
+  // Falling back to the FIRST section is what makes the directory open with
+  // tools on screen. `activeSectionId` starts empty (nothing is chosen yet and
+  // the hash has not been read), and without this fallback the browse view
+  // rendered a row of category chips over empty space: all 59 registered tools
+  // were one required tap away, so the page read as though the app had none.
+  const activeSection =
+    sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null;
   const recentItems = useMemo(() => {
     const byHref = new globalThis.Map(
       sections.flatMap((section) => section.items).map((item) => [item.href, item]),

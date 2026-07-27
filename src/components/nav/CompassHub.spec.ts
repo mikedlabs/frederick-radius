@@ -20,6 +20,23 @@ function representedRegistryIds(homeSlug: string | null): string[] {
 }
 
 describe("Compass browse model", () => {
+  /**
+   * The browse view resolves its open topic as
+   * `sections.find(matching activeSectionId) ?? sections[0]`, and
+   * `activeSectionId` is empty on first paint. Without a first-section
+   * fallback the directory rendered category chips over nothing, so every
+   * registered tool sat one required tap out of sight and the page looked like
+   * the app shipped no tools at all. This locks the two things that fallback
+   * depends on: there is always a section, and the first one is never empty.
+   */
+  it("always has a first topic with tools in it, so the directory never opens blank", () => {
+    for (const homeSlug of [null, "frederick"]) {
+      const sections = buildCompassSections(homeSlug);
+      expect(sections.length).toBeGreaterThan(0);
+      expect(sections[0].items.length).toBeGreaterThan(0);
+    }
+  });
+
   it("keeps every registered tool discoverable exactly once", () => {
     const represented = representedRegistryIds(null);
     const expected = RADIUS_TOOLS.map((tool) => tool.id);
