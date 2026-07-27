@@ -212,6 +212,8 @@ export default async function FoodTrucksPage() {
           slug: truck.slug,
           name: truck.name,
           cuisine: truck.cuisine,
+          kind: truck.kind,
+          ...(truck.media ? { media: truck.media } : {}),
           beacon: truck.beacon,
         }]
       : [],

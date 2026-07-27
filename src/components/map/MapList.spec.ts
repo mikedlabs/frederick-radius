@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { rankMapListEvents, rankMapListPlaces } from "./MapList";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import MapList, { rankMapListEvents, rankMapListPlaces } from "./MapList";
+import { createMapListPhotoLoader } from "./map-list-photo-loader";
 import type { EventPin, MapPinPlace } from "./types";
 
 function place(slug: string, lng: number): MapPinPlace {
@@ -73,5 +76,70 @@ describe("rankMapListEvents", () => {
     );
 
     expect(rows.map((row) => row.slug)).toEqual(["near", "far"]);
+  });
+});
+
+describe("map list photos", () => {
+  it("uses an inline photo when a full place record already carries one", () => {
+    const withPhoto = {
+      ...place("photo-place", -77.4),
+      google_photo_url: "/api/place-photo?name=photo-place",
+    } as MapPinPlace;
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        places: [withPhoto],
+        events: [],
+        userLoc: null,
+        sortOrigin: { lng: -77.4, lat: 39.4 },
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+
+    expect(html).toContain('data-photo-state="ready"');
+    expect(html).toContain("/api/place-photo?name=photo-place");
+  });
+
+  it("batches, deduplicates, and caches visible-row photo requests", async () => {
+    const requests: string[] = [];
+    const fetcher = vi.fn(async (input: string) => {
+      requests.push(input);
+      return {
+        ok: true,
+        json: async () => ({
+          places: [
+            {
+              slug: "one",
+              google_photo_url: "/api/place-photo?name=one",
+            },
+            { slug: "two" },
+          ],
+        }),
+      };
+    });
+    const loader = createMapListPhotoLoader({
+      fetcher,
+      batchDelayMs: 60_000,
+    });
+
+    const one = loader.load("one");
+    const oneAgain = loader.load("one");
+    const two = loader.load("two");
+    expect(oneAgain).toBe(one);
+
+    await loader.flush();
+
+    expect(requests).toHaveLength(1);
+    const requestUrl = new URL(requests[0], "https://frederickradius.app");
+    expect(requestUrl.searchParams.get("slugs")).toBe("one,two");
+    await expect(one).resolves.toBe("/api/place-photo?name=one");
+    await expect(two).resolves.toBeNull();
+
+    await expect(loader.load("one")).resolves.toBe(
+      "/api/place-photo?name=one",
+    );
+    await expect(loader.load("two")).resolves.toBeNull();
+    await loader.flush();
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

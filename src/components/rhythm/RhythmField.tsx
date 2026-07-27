@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { SLOTS_PER_DAY, WEEK_SLOTS, slotLabel, type RhythmPlace, type RhythmGroup } from "@/lib/rhythm";
+import {
+  SLOTS_PER_DAY,
+  WEEK_SLOTS,
+  slotLabel,
+  type RhythmPlace,
+  type RhythmGroup,
+} from "@/lib/rhythm-shared";
 
 /**
  * RhythmField — the county as a board of ~1,200 lights, one per place,

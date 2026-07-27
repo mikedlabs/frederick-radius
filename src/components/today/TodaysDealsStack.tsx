@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BadgeCheck, ChevronRight } from "lucide-react";
-import CategoryIcon from "@/components/place/CategoryIcon";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
 import { todayDealAvailability } from "@/lib/today/dealAvailability";
 
@@ -73,7 +72,6 @@ export default function TodaysDealsStack({
       >
           {shown.map(({ deal, availability }) => {
             const category = deal.category ?? "restaurant";
-            const accent = CATEGORY_BY_SLUG[category]?.color ?? "var(--app-brand-2)";
             return (
               <li
                 key={deal.slug}
@@ -84,16 +82,16 @@ export default function TodaysDealsStack({
                   href={`/places/${deal.slug}`}
                   className="group flex min-h-[88px] items-start gap-3 px-3.5 py-3.5 text-left transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--app-brand)]"
                 >
-                  <span
-                    aria-hidden
-                    className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${accent} 13%, var(--app-bg-elevated))`,
-                      color: accent,
+                  <PlaceMedallion
+                    place={{
+                      slug: deal.slug,
+                      name: deal.name,
+                      category,
+                      google_photo_url: deal.photo,
                     }}
-                  >
-                    <CategoryIcon slug={category} className="h-5 w-5" strokeWidth={2} />
-                  </span>
+                    size={44}
+                    className="mt-0.5"
+                  />
 
                   <span className="min-w-0 flex-1">
                     {/* text-wrap pretty: multi-line deal headlines ("… by the

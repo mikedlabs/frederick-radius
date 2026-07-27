@@ -263,6 +263,7 @@ type Enrichment = {
   review_google_maps_uri?: string;
   google_maps_uri?: string;
   enriched_at?: string;
+  photo_identity_verified_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
 
@@ -567,6 +568,9 @@ function acceptedEnrichmentIdentity(
     enrichmentOwnerCount: enrichmentOwners.length,
     claimedByAnotherCanonicalPlace: canonicalOwners.some(
       (slug) => slug !== place.slug,
+    ),
+    independentlyVerified: Boolean(
+      candidate?.photo_identity_verified_at,
     ),
   });
   const canonicalHasGooglePlaceId = isGooglePlaceId(place.google_place_id);

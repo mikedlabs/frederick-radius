@@ -122,6 +122,47 @@ function identityTokenMatches(left: string, right: string): boolean {
   );
 }
 
+// These words distinguish a parent destination from a separately mapped
+// subfacility. Shared coordinates and a mostly identical name are not enough:
+// "Urbana Community Park" must not inherit the identity or photo for "Urbana
+// Community Skate Park." Keep this to concrete facility nouns rather than
+// broad business types that Google commonly adds or removes from one listing.
+const IDENTITY_SUBFACILITY_QUALIFIERS = new Set([
+  "amphitheater",
+  "arena",
+  "bandshell",
+  "branch",
+  "campus",
+  "deck",
+  "department",
+  "dog",
+  "emergency",
+  "field",
+  "garage",
+  "marina",
+  "pavilion",
+  "playground",
+  "pool",
+  "skate",
+  "splash",
+  "stadium",
+  "station",
+  "terminal",
+  "trailhead",
+]);
+
+export function hasIdentitySubfacilityConflict(
+  curatedName: string,
+  displayName: string | undefined,
+): boolean {
+  if (!displayName) return false;
+  const curated = new Set(clean(curatedName).split(/\s+/).filter(Boolean));
+  const enriched = new Set(clean(displayName).split(/\s+/).filter(Boolean));
+  return [...IDENTITY_SUBFACILITY_QUALIFIERS].some(
+    (qualifier) => curated.has(qualifier) !== enriched.has(qualifier),
+  );
+}
+
 /**
  * Promotion is intentionally stricter than the broad quarantine heuristic.
  * A shared generic word such as "school" or "health" is not proof that two
@@ -133,6 +174,7 @@ export function isSafeEnrichmentIdentityMatch(
   displayName: string | undefined,
 ): boolean {
   if (!displayName) return false;
+  if (hasIdentitySubfacilityConflict(curatedName, displayName)) return false;
   const curated = identityTokens(curatedName);
   const enriched = identityTokens(displayName);
   if (curated.length === 0 || enriched.length === 0) return false;
@@ -162,6 +204,7 @@ export function chooseCanonicalGooglePlaceId({
   enrichmentDisplayName,
   enrichmentOwnerCount,
   claimedByAnotherCanonicalPlace,
+  independentlyVerified = false,
 }: {
   existingId?: string;
   enrichmentId?: string;
@@ -169,15 +212,30 @@ export function chooseCanonicalGooglePlaceId({
   enrichmentDisplayName?: string;
   enrichmentOwnerCount: number;
   claimedByAnotherCanonicalPlace: boolean;
+  /** Set only after a bounded name + coordinate resolver has independently
+   * verified this identity against the canonical Radius listing. */
+  independentlyVerified?: boolean;
 }): string | undefined {
   // A valid canonical identity is authoritative. Enrichment may refresh its
   // facts, but it may not silently switch the record to a different profile.
   if (isGooglePlaceId(existingId)) return existingId;
+  const safeNameMatch = isSafeEnrichmentIdentityMatch(
+    curatedName,
+    enrichmentDisplayName,
+  );
+  // The bounded resolver also checked distance, so it may accept harmless
+  // listing-name variants that the promotion matcher cannot prove by tokens
+  // alone. It may never override a parent/subfacility conflict.
+  const safeIndependentMatch =
+    independentlyVerified &&
+    Boolean(enrichmentDisplayName) &&
+    !hasIdentitySubfacilityConflict(curatedName, enrichmentDisplayName) &&
+    !isSuspectBinding(curatedName, enrichmentDisplayName!);
   if (
     !isGooglePlaceId(enrichmentId) ||
     enrichmentOwnerCount !== 1 ||
     claimedByAnotherCanonicalPlace ||
-    !isSafeEnrichmentIdentityMatch(curatedName, enrichmentDisplayName)
+    (!safeNameMatch && !safeIndependentMatch)
   ) {
     return undefined;
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { getWorthALookToday, easternDayKey } from "@/lib/worth-a-look";
@@ -6,6 +7,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { isOutdoorRecommendation } from "@/lib/weather-safety";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * WorthALook — the daily discovery pick list on /today.
@@ -17,9 +19,9 @@ import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
  * guide instead, and the two remaining rails (DaypartNeeds, CuratedPicks) are
  * separated by content.
  *
- * Photo Policy (Phase 1): no imported place photos. Each row is typographic (a
- * category mark + name + type), so the list reads as a curated set of picks, not
- * a strip of scraped storefront shots. See docs/PHOTO_POLICY.md.
+ * Every pick is selected from the publishable-photo pool. Render that verified
+ * business image here instead of discarding it; the category mark remains the
+ * honest fallback if a record changes between selection and render.
  */
 export default async function WorthALook() {
   const [dailyPicks, hold] = await Promise.all([
@@ -45,18 +47,36 @@ export default async function WorthALook() {
                 className="tap-44 group flex items-center gap-3 py-2.5"
                 aria-label={`${p.name}, ${cat?.name ?? p.category}`}
               >
-                {/* Category mark — the typographic stand-in for a photo. */}
-                <span
-                  aria-hidden
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
-                  style={{
-                    background: `linear-gradient(145deg, color-mix(in srgb, ${catColor} 22%, var(--app-bg-elevated)), color-mix(in srgb, ${catColor} 7%, var(--app-bg-elevated)))`,
-                    color: catColor,
-                    boxShadow: "var(--app-edge)",
-                  }}
-                >
-                  <CategoryIcon slug={p.category} strokeWidth={1.75} className="h-5 w-5 opacity-90" style={{ color: catColor }} />
-                </span>
+                {p.google_photo_url ? (
+                  <span
+                    aria-hidden
+                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
+                    style={{ boxShadow: "var(--app-edge)" }}
+                  >
+                    <Image
+                      src={p.google_photo_url}
+                      alt=""
+                      fill
+                      unoptimized={p.google_photo_url.startsWith("/api/place-photo")}
+                      sizes="48px"
+                      placeholder="blur"
+                      blurDataURL={PAPER_CREAM_BLUR}
+                      className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.035]"
+                    />
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+                    style={{
+                      background: `linear-gradient(145deg, color-mix(in srgb, ${catColor} 22%, var(--app-bg-elevated)), color-mix(in srgb, ${catColor} 7%, var(--app-bg-elevated)))`,
+                      color: catColor,
+                      boxShadow: "var(--app-edge)",
+                    }}
+                  >
+                    <CategoryIcon slug={p.category} strokeWidth={1.75} className="h-5 w-5 opacity-90" style={{ color: catColor }} />
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-sans text-[15px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {p.name}

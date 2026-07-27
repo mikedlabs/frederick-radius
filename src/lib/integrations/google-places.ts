@@ -20,6 +20,7 @@
  */
 
 import type { OperationalStatus } from "@/data/places";
+import { hasIdentitySubfacilityConflict } from "@/lib/quality/enrichmentBinding";
 
 const BASE = "https://places.googleapis.com/v1";
 
@@ -151,7 +152,15 @@ export function googlePlacesConfigured(): boolean {
  *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
  *                business-status cron, which reads nothing else.
  */
-export type GoogleFieldSet = "status" | "hours" | "basic" | "lean" | "full" | "photos" | "experience";
+export type GoogleFieldSet =
+  | "status"
+  | "hours"
+  | "basic"
+  | "lean"
+  | "full"
+  | "photos"
+  | "photo-resolve"
+  | "experience";
 
 const FIELDS_FULL = [
   "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
@@ -182,6 +191,20 @@ const FIELDS_BASIC = [
 // per-call cost of refreshing a rotated name stays on the smallest SKU
 // that carries photos.
 const FIELDS_PHOTOS = ["id", "photos"];
+// Identity-safe photo discovery for a public listing that does not yet have a
+// durable Google Place ID. Text Search needs the returned name and point so
+// resolveAndEnrich can reject a wrong nearby business before we publish its
+// image. Keep the mask narrower than "basic": this pass does not need hours,
+// ratings, phone, or website data.
+const FIELDS_PHOTO_RESOLVE = [
+  "id",
+  "displayName",
+  "formattedAddress",
+  "businessStatus",
+  "location",
+  "photos",
+  "googleMapsUri",
+];
 // User-opened place context. FIELDS_LEAN already reaches the Enterprise +
 // Atmosphere SKU because it requests editorialSummary; these additional
 // decision fields make that paid request materially more useful without
@@ -201,6 +224,7 @@ function fieldsFor(set: GoogleFieldSet): string[] {
     : set === "basic" ? FIELDS_BASIC
     : set === "full" ? FIELDS_FULL
     : set === "photos" ? FIELDS_PHOTOS
+    : set === "photo-resolve" ? FIELDS_PHOTO_RESOLVE
     : set === "experience" ? FIELDS_EXPERIENCE
     : FIELDS_LEAN;
 }
@@ -465,6 +489,7 @@ function metersBetween(la1: number, lo1: number, la2: number, lo2: number): numb
  *  the strong gate; this catches same-building wrong-tenant matches. */
 function namesPlausible(ours: string, theirs?: string): boolean {
   if (!theirs) return true;
+  if (hasIdentitySubfacilityConflict(ours, theirs)) return false;
   const toks = (s: string) =>
     new Set(
       s.toLowerCase()

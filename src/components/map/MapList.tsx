@@ -1,11 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import Image from "next/image";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import CategoryIcon from "@/components/place/CategoryIcon";
+import { mapListPhotoLoader } from "./map-list-photo-loader";
 import type { EventPin, MapPinPlace } from "./types";
 
 /**
@@ -33,6 +43,94 @@ function openLine(p: MapPinPlace): { text: string; tone: string } | null {
     default:
       return null;
   }
+}
+
+/** Full PlaceCardData callers may already carry a photo even though the main
+ * /map pin payload deliberately does not. Read that optional runtime field
+ * without widening MapPinPlace and accidentally making it part of the payload
+ * contract. */
+function inlinePhoto(place: MapPinPlace): string | undefined {
+  const value = (place as MapPinPlace & { google_photo_url?: unknown })
+    .google_photo_url;
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function MapListPlaceVisual({
+  place,
+  color,
+}: {
+  place: MapPinPlace;
+  color: string;
+}) {
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null | undefined>(
+    () => inlinePhoto(place) ?? mapListPhotoLoader.peek(place.slug),
+  );
+
+  useEffect(() => {
+    if (photoUrl !== undefined) return;
+
+    let active = true;
+    let started = false;
+    const hydrate = () => {
+      if (started) return;
+      started = true;
+      void mapListPhotoLoader.load(place.slug).then((photo) => {
+        if (active) setPhotoUrl(photo);
+      });
+    };
+
+    const anchor = anchorRef.current;
+    if (!anchor || typeof IntersectionObserver === "undefined") {
+      hydrate();
+      return () => {
+        active = false;
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        hydrate();
+      },
+      { rootMargin: "180px 0px" },
+    );
+    observer.observe(anchor);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [photoUrl, place.slug]);
+
+  return (
+    <span
+      ref={anchorRef}
+      aria-hidden
+      className="map-list-place-visual"
+      data-photo-state={photoUrl ? "ready" : "fallback"}
+      style={{ "--map-list-place-color": color } as CSSProperties}
+    >
+      {photoUrl ? (
+        <Image
+          src={photoUrl}
+          alt=""
+          fill
+          unoptimized={photoUrl.startsWith("/api/place-photo")}
+          sizes="44px"
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+        />
+      ) : (
+        <CategoryIcon
+          slug={place.category}
+          className="h-5 w-5"
+          strokeWidth={1.8}
+        />
+      )}
+    </span>
+  );
 }
 
 export default function MapList({
@@ -159,11 +257,7 @@ export default function MapList({
                           onPick(p);
                         }}
                       >
-                        <span
-                          aria-hidden
-                          className="map-list-dot"
-                          style={{ background: color }}
-                        />
+                        <MapListPlaceVisual place={p} color={color} />
                         <span className="map-list-main">
                           <span className="map-list-name">{p.name}</span>
                           <span className="map-list-sub">

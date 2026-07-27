@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Calendar, Building2, Tag, ArrowLeft, ArrowRight, ChevronDown, DoorOpen, Phone, MessageCircleQuestion } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
@@ -17,6 +18,7 @@ import {
   withMapReturnTo,
   withMapSearchQuery,
 } from "@/lib/map-return";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/search" },
@@ -147,29 +149,50 @@ function SearchResultRow({
   const Icon = d.Icon;
   const href =
     hit.type === "place" ? withMapReturnTo(d.href, mapReturnTo) : d.href;
+  const placePhoto =
+    hit.type === "place" ? hit.place.google_photo_url : undefined;
   return (
     <li style={divided ? { borderTop: "1px solid var(--app-border)" } : undefined}>
       <Link
         href={href}
         prefetch={false}
-        className="flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
+        className="group flex min-h-[60px] items-center gap-3 px-3.5 py-2.5 transition-[background-color,transform] duration-[var(--app-dur-fast)] hover:bg-[var(--app-bg-sunken)] active:scale-[0.995]"
       >
-        <span
-          aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
-        >
-          {d.categorySlug ? (
-            <CategoryIcon
-              slug={d.categorySlug}
-              className="h-4 w-4"
-              strokeWidth={1.8}
-              style={{ color: d.badge.color }}
+        {placePhoto ? (
+          <span
+            aria-hidden
+            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)] bg-[var(--app-bg-sunken)]"
+            style={{ boxShadow: "var(--app-edge)" }}
+          >
+            <Image
+              src={placePhoto}
+              alt=""
+              fill
+              unoptimized={placePhoto.startsWith("/api/place-photo")}
+              sizes="44px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.035]"
             />
-          ) : (
-            <Icon className="h-4 w-4" strokeWidth={2} style={{ color: d.badge.color }} />
-          )}
-        </span>
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+            style={{ background: `color-mix(in srgb, ${d.badge.color} 14%, transparent)` }}
+          >
+            {d.categorySlug ? (
+              <CategoryIcon
+                slug={d.categorySlug}
+                className="h-4 w-4"
+                strokeWidth={1.8}
+                style={{ color: d.badge.color }}
+              />
+            ) : (
+              <Icon className="h-4 w-4" strokeWidth={2} style={{ color: d.badge.color }} />
+            )}
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
             {d.title}

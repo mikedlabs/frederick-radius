@@ -23,10 +23,12 @@ import { hoursFreshnessEnforced } from "@/lib/hours-freshness";
 import { findGooglePlaceIdCollisions } from "@/lib/quality/enrichmentBinding";
 
 const OUT = new URL("../src/data/places-client.json", import.meta.url).pathname;
+const HOURS_OUT = new URL("../src/data/places-client-hours.json", import.meta.url).pathname;
 
 const slim = publicPlaces().map((p) => {
   const d = decoratePlace(p) as PlaceCardData & {
     google_photos?: unknown;
+    google_photo_attribution?: unknown;
     google_photo_attributions?: unknown;
     google_hours?: unknown;
     review_snippet?: unknown;
@@ -67,6 +69,7 @@ const slim = publicPlaces().map((p) => {
   // rebuild. The compact `hours` it recomputes from is kept.
   const {
     google_photos: _gp,
+    google_photo_attribution: _gpaHero,
     google_photo_attributions: _gpa,
     google_hours: _gh,
     review_snippet: _rs,
@@ -84,11 +87,16 @@ const slim = publicPlaces().map((p) => {
     open_status: _os,
     ...rest
   } = d;
-  void _gp; void _gpa; void _gh; void _rs; void _ra;
+  void _gp; void _gpaHero; void _gpa; void _gh; void _rs; void _ra;
   void _rau; void _rap; void _rgm; void _pgm;
   void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _os;
   return {
     ...rest,
+    // The build only emits a hero after the server-side exact-attribution
+    // policy accepts its photo/source pair. Keep that verdict as one byte-ish
+    // boolean instead of shipping the full author/profile/report record with
+    // every client row. Sheets hydrate the rich attribution only when opened.
+    google_photo_policy_passed: d.google_photo_url ? true : undefined,
     // Browser code cannot safely read the private HOURS_FRESHNESS_ENFORCED
     // env var. Stamp the build policy into each slim row; strict builds can
     // continue aging schedules out at runtime, staged builds keep legacy
@@ -116,6 +124,31 @@ if (identityCollisions.length > 0) {
   );
 }
 
-writeFileSync(OUT, JSON.stringify(slim));
-const bytes = Buffer.byteLength(JSON.stringify(slim));
+const clientJson = JSON.stringify(slim);
+writeFileSync(OUT, clientJson);
+const bytes = Buffer.byteLength(clientJson);
 console.log(`wrote ${OUT} — ${slim.length} places, ${(bytes / 1_000_000).toFixed(2)} MB`);
+
+// AppMap's time scrubber needs only schedules. Keep those records in a
+// separate generated artifact so the first scrub does not download the full
+// browse catalog (including every hero-photo URL) just to dim closed pins.
+// Rows without a publishable verified schedule are intentionally omitted:
+// the scrubber already treats a missing schedule as unknown and leaves that
+// pin visible.
+const hoursSlim = slim.flatMap((place) =>
+  place.hours && place.hours_verified
+    ? [{
+        slug: place.slug,
+        hours: place.hours,
+        hours_verified: true as const,
+        hours_updated_at: place.hours_updated_at,
+        hours_policy_strict: place.hours_policy_strict,
+      }]
+    : [],
+);
+const hoursJson = JSON.stringify(hoursSlim);
+writeFileSync(HOURS_OUT, hoursJson);
+const hoursBytes = Buffer.byteLength(hoursJson);
+console.log(
+  `wrote ${HOURS_OUT} — ${hoursSlim.length} verified schedules, ${(hoursBytes / 1_000_000).toFixed(2)} MB`,
+);

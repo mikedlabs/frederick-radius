@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
-  Bookmark,
   CalendarDays,
   Check,
   ChevronDown,
@@ -28,7 +27,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import BottomDrawer from "@/components/ui/BottomDrawer";
-import CategoryIcon from "@/components/place/CategoryIcon";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -618,9 +617,15 @@ export default function PlanBuilder({
                       className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
                       style={{ borderColor: "var(--app-border)" }}
                     >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}>
-                        <CategoryIcon slug={alternative.category} className="h-[18px] w-[18px]" style={{ color }} aria-hidden />
-                      </span>
+                      <PlaceMedallion
+                        place={{
+                          slug: alternative.slug,
+                          name: alternative.name,
+                          category: alternative.category,
+                          google_photo_url: alternative.photo_url,
+                        }}
+                        size={48}
+                      />
                       <span className="min-w-0 flex-1">
                         <span className="block font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{alternative.name}</span>
                         <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{alternative.categoryName}</span>
@@ -657,7 +662,7 @@ export default function PlanBuilder({
                     className="flex min-h-16 w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
                     style={{ borderColor: "var(--app-border)" }}
                   >
-                    <Bookmark className="h-4 w-4 shrink-0" style={{ color: "var(--app-brand)" }} aria-hidden />
+                    <PlaceMedallion place={place} size={48} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>{place.name}</span>
                       <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{CATEGORY_BY_SLUG[place.category]?.name ?? place.category}</span>
@@ -892,6 +897,11 @@ function Stop({
   const where = stop.place ? placeLocationLabel(stop.place.address, stop.place.city) : stop.event?.venue_name;
   const geom = stop.place?.geom ?? stop.event?.geom;
   const status = OPEN_LABEL[stop.open];
+  const fallbackPlace = {
+    slug: stop.place?.slug ?? stop.event?.slug ?? `plan-stop-${stop.order}`,
+    name,
+    category: stop.place?.category ?? stop.event?.category ?? "attraction",
+  };
 
   return (
     <li className="relative">
@@ -944,6 +954,13 @@ function Stop({
                 className="object-cover"
               />
             </div>
+          )}
+          {!stop.photo_url && (
+            <PlaceMedallion
+              place={fallbackPlace}
+              size={80}
+              className="rounded-[var(--app-radius-sm)]"
+            />
           )}
         </div>
 

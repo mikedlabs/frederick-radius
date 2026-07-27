@@ -11,6 +11,7 @@ import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PageChapter from "@/components/ui/PageChapter";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getLocalSportsGames } from "@/lib/integrations/local-sports";
 import { clientPlaces } from "@/lib/loaders/places-client";
@@ -366,7 +367,13 @@ export default function SportsPage() {
             <div className="border-t p-2" style={{ borderColor: "var(--app-border)" }}>
               <RowList>
                 {golf.map((p) => (
-                  <Row key={p.slug} href={`/places/${p.slug}`} title={p.name} subtitle={townOf(p)} />
+                  <Row
+                    key={p.slug}
+                    href={`/places/${p.slug}`}
+                    leading={<PlaceMedallion place={p} />}
+                    title={p.name}
+                    subtitle={townOf(p)}
+                  />
                 ))}
               </RowList>
             </div>
@@ -386,7 +393,13 @@ export default function SportsPage() {
             <div className="border-t p-2" style={{ borderColor: "var(--app-border)" }}>
               <RowList>
                 {pools.map((p) => (
-                  <Row key={p.slug} href={`/places/${p.slug}`} title={p.name} subtitle={townOf(p)} />
+                  <Row
+                    key={p.slug}
+                    href={`/places/${p.slug}`}
+                    leading={<PlaceMedallion place={p} />}
+                    title={p.name}
+                    subtitle={townOf(p)}
+                  />
                 ))}
               </RowList>
               <p className="px-2 pb-2 pt-3 text-[11.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
@@ -409,7 +422,13 @@ export default function SportsPage() {
             <div className="border-t p-2" style={{ borderColor: "var(--app-border)" }}>
               <RowList>
                 {courts.map((p) => (
-                  <Row key={p.slug} href={`/places/${p.slug}`} title={p.name} subtitle={townOf(p)} />
+                  <Row
+                    key={p.slug}
+                    href={`/places/${p.slug}`}
+                    leading={<PlaceMedallion place={p} />}
+                    title={p.name}
+                    subtitle={townOf(p)}
+                  />
                 ))}
               </RowList>
               <Link

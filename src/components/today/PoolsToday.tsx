@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { poolsStatus } from "@/lib/pools";
 import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
+// eslint-disable-next-line no-restricted-imports -- SERVER component: resolves two seasonal pool records before rendering and does not ship the catalog to the client.
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 
 /**
  * PoolsToday — a seasonal "pools open now" card for the Today page.
@@ -33,28 +36,39 @@ export default async function PoolsToday({ now }: { now: Date }) {
 
       {anyOpen ? (
       <ul className="divide-y border-y" style={{ borderColor: "var(--app-border)" }}>
-        {openPools.map((p) => (
-          <li key={p.slug}>
-            <Link
-              href={`/places/${p.slug}`}
-              className="tap-44 flex items-center gap-3 py-2.5"
-            >
-              <span
-                aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {p.name}
+        {openPools.map((p) => {
+          const place = clientPlaceBySlug(p.slug);
+          return (
+            <li key={p.slug}>
+              <Link
+                href={`/places/${p.slug}`}
+                className="tap-44 flex items-center gap-3 py-2.5"
+              >
+                <PlaceMedallion
+                  place={place ?? {
+                    slug: p.slug,
+                    name: p.name,
+                    category: "wellness",
+                  }}
+                  size={44}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    {p.name}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[12px]" style={{ color: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}>
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}
+                    />
+                    {p.line}
+                  </span>
                 </span>
-                <span className="block text-[12px]" style={{ color: p.openNow ? "var(--app-positive)" : "var(--app-ink-3)" }}>
-                  {p.line}
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       ) : (
         <Link

@@ -201,6 +201,7 @@ export function buildAskPlanPreview(
       name: stop.place?.name ?? stop.event?.title ?? "Frederick stop",
       category: stop.place ? categoryName(stop.place.category) : "Event",
       href: stop.place ? `/places/${stop.place.slug}` : `/events/${stop.event?.slug ?? ""}`,
+      photo_url: stop.photo_url,
       why: stop.why,
       status: stop.open === "open" ? "Open" : stop.open === "closed" ? "Check hours" : "Hours unconfirmed",
       tip: stop.tip,

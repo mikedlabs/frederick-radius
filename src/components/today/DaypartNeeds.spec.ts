@@ -113,6 +113,42 @@ describe("DaypartNeeds", () => {
     expect(html).not.toContain("confirmed open");
   });
 
+  it("renders a supplied business photo and falls back only when it is absent", () => {
+    const renderPick = (photo?: string) =>
+      renderToStaticMarkup(
+        createElement(DaypartNeeds, {
+          rows: [
+            {
+              category: "coffee",
+              label: "Coffee",
+              href: "/category/coffee",
+              picks: [
+                {
+                  slug: "gravel-and-grind",
+                  name: "Gravel & Grind",
+                  rating: 4.8,
+                  photo,
+                  where: "Frederick",
+                  confidence: "confirmed",
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+    const withPhoto = renderPick(
+      "/api/place-photo?name=places%2FChIJtest%2Fphotos%2Ffront&w=800",
+    );
+    expect(withPhoto).toContain("<img");
+    expect(withPhoto).toContain("places%2FChIJtest%2Fphotos%2Ffront");
+    expect(withPhoto).not.toContain('data-radius-plate="gravel-and-grind"');
+
+    const withoutPhoto = renderPick();
+    expect(withoutPhoto).not.toContain("<img");
+    expect(withoutPhoto).toContain('data-radius-plate="gravel-and-grind"');
+  });
+
   it("keeps expanded daypart results on the location-aware Nearby journey", () => {
     expect(daypartBrowseHref("coffee", "Coffee", "nearme")).toBe(
       "/nearby?c=coffee&in=nearme",

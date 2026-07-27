@@ -2,16 +2,18 @@
 
 import { useMemo } from "react";
 import { ArrowUpRight, LocateFixed, MapPin } from "lucide-react";
+import type { FoodTruck } from "@/data/food-trucks";
 import { formatDistance, haversineMeters } from "@/lib/geo";
 import type { TruckBeacon } from "@/lib/food-trucks/beacon";
 import { readBeacon } from "@/lib/food-trucks/beacon";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import FoodTruckIdentity from "./FoodTruckIdentity";
 import TruckLiveStatus from "./TruckLiveStatus";
 
-export type NearbyFoodTruck = {
-  slug: string;
-  name: string;
-  cuisine: string;
+export type NearbyFoodTruck = Pick<
+  FoodTruck,
+  "slug" | "name" | "cuisine" | "kind" | "media"
+> & {
   beacon: TruckBeacon;
 };
 
@@ -75,26 +77,37 @@ export default function FoodTruckNearMe({
               className="rounded-[var(--app-radius-lg)] border p-4"
               style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="font-serif text-[21px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                    {truck.name}
-                  </p>
-                  <p className="mt-0.5 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-                    {truck.cuisine}
-                    {truck.distance !== null ? ` · ${formatDistance(truck.distance)} away` : ""}
-                  </p>
+              <div className="flex items-start gap-3">
+                <div className="food-truck-near-identity shrink-0">
+                  <FoodTruckIdentity
+                    truck={truck}
+                    size="thumb"
+                    decorative
+                  />
                 </div>
-                <span
-                  aria-label="Live location"
-                  className="inline-flex shrink-0 items-center gap-1.5 text-[10.5px] font-semibold"
-                  style={{ color: "var(--app-positive)" }}
-                >
-                  <span aria-hidden className="live-dot h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-                  Live
-                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-serif text-[21px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                        {truck.name}
+                      </p>
+                      <p className="mt-0.5 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                        {truck.cuisine}
+                        {truck.distance !== null ? ` · ${formatDistance(truck.distance)} away` : ""}
+                      </p>
+                    </div>
+                    <span
+                      aria-label="Live location"
+                      className="inline-flex shrink-0 items-center gap-1.5 text-[10.5px] font-semibold"
+                      style={{ color: "var(--app-positive)" }}
+                    >
+                      <span aria-hidden className="live-dot h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
+                      Live
+                    </span>
+                  </div>
+                  <TruckLiveStatus beacon={truck.beacon} accent={accent} />
+                </div>
               </div>
-              <TruckLiveStatus beacon={truck.beacon} accent={accent} />
             </li>
           ))}
         </ul>
