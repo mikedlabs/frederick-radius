@@ -351,7 +351,13 @@ export function qualifiesForToday(incident: ChartIncident, now: Date = new Date(
 }
 
 export async function getChartIncidentsFrederickResult(
-  { deadlineMs = 5_000 }: { deadlineMs?: number } = {},
+  {
+    deadlineMs = 5_000,
+    revalidateSeconds = 120,
+  }: {
+    deadlineMs?: number;
+    revalidateSeconds?: number;
+  } = {},
 ): Promise<ChartIncidentsResult> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), deadlineMs);
@@ -362,7 +368,7 @@ export async function getChartIncidentsFrederickResult(
         Accept: "application/json",
       },
       signal: ctrl.signal,
-      next: { revalidate: 120 },
+      next: { revalidate: revalidateSeconds },
     });
     if (!res.ok) return { data: [], available: false };
     const data = await res.json().catch(() => null);
@@ -418,6 +424,8 @@ export async function getChartIncidentsFrederickResult(
 }
 
 /** Compatibility wrapper for map, Today, and notification consumers. */
-export async function getChartIncidentsFrederick(): Promise<ChartIncident[]> {
-  return (await getChartIncidentsFrederickResult()).data;
+export async function getChartIncidentsFrederick(
+  options: Parameters<typeof getChartIncidentsFrederickResult>[0] = {},
+): Promise<ChartIncident[]> {
+  return (await getChartIncidentsFrederickResult(options)).data;
 }

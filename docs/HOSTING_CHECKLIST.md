@@ -18,8 +18,7 @@
 | Var | Host | Why it matters | Symptom if missing |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | **GitHub Actions secret** | Powers all 4 data agents | Venue/civic/business data stays empty. **← the one you put in Vercel by mistake.** |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | **Vercel** (all scopes) | The map canvas | Map renders blank / falls back |
-| `KV_REST_API_URL` + `KV_REST_API_TOKEN` | **Vercel** | The per-IP rate limiter | **Rate limiting silently OFF** — fails open. Paid Google routes unprotected. |
+| Vercel Firewall rules | **Vercel** | Edge limits for Ask, paid APIs, signup, and public forms | Paid endpoints lose their shared production guardrail. |
 | `DATABASE_URL` (or `POSTGRES_URL`) | **Vercel** | Postgres (follows, claims, submissions, push) | Those features no-op |
 | RLS migration (`drizzle/0007_enable_rls.sql`) | **Supabase → SQL editor** | Locks the public anon-key door | Anyone with the public key can read your tables |
 | DB backups / PITR | **Supabase → Database → Backups** | Disaster recovery | No recovery if data is wiped |
@@ -32,6 +31,8 @@
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`) | Vercel | Auth client |
 | `GOOGLE_PLACES_API_KEY` | Vercel | Place photos + enrichment |
 | `HOURS_REFRESH_CRON=1` | Vercel | Runs the paid, seven-day rolling hours refresh into Postgres. Without it, stale schedules remain safely withheld. |
+| `RADIUS_SEARCH_CRON=1` | Vercel | Runs the bounded, idempotent place-index refresh used by hybrid Ask Radius retrieval. |
+| `DATA_RETENTION_PRUNE=1` | Vercel | Enables bounded 90-day cleanup from the health cron. Leave unset until a recent Supabase backup is confirmed. |
 | `BUSINESS_STATUS_CRON=1` | Vercel | Runs the paid rotating closure-status check. The Vercel route reports mismatches; the GitHub data-steward job creates the reviewable snapshot. |
 | `TICKETMASTER_API_KEY` | Vercel | Concert + Keys-game events |
 | `BANDSINTOWN_APP_ID` | Vercel | Venue lineups (Bentztown etc.) |
@@ -50,6 +51,13 @@
 | `FCPS_FEED_URL`, `HOOD_CALENDAR_URL` | Vercel | School + Hood College calendars |
 | `NWS_USER_AGENT` | Vercel | Weather API courtesy header |
 | `SLACK_WEBHOOK_URL` | GitHub Actions | Agent failure notifications |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN` | Vercel | Adds durable per-bucket application limits. Without it, the app uses a per-instance fallback while Vercel Firewall remains the shared edge guard. |
+
+Mapbox is temporarily an intentional exception to the environment-variable
+table: `src/lib/mapbox.ts` uses a validated publishable token and ignores the
+dead Vercel value that previously blanked the map. Do not restore
+`NEXT_PUBLIC_MAPBOX_TOKEN` precedence until a replacement is verified against
+map tiles, Static Images, and Isochrone requests.
 
 ## Feature flags (set to "1"/"on" in Vercel to toggle behavior)
 `HOURS_GATE`, `RADIUS_DEDUPE`, `RADIUS_PRUNE_THIN`, `RADIUS_RELEVANCE`,

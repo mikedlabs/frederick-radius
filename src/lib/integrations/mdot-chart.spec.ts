@@ -102,6 +102,20 @@ describe("MDOT CHART feed availability", () => {
     expect((await getChartIncidentsFrederickResult()).available).toBe(false);
   });
 
+  it("lets a slower page cache boundary override only this read", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      new Response(JSON.stringify({ data: [], success: true, totalCount: 0 }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getChartIncidentsFrederickResult({ revalidateSeconds: 300 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ next: { revalidate: 300 } }),
+    );
+  });
+
   it("aborts a stalled feed and marks it unavailable", async () => {
     vi.useFakeTimers();
     let signal: AbortSignal | undefined;

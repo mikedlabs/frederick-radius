@@ -179,6 +179,37 @@ test.describe("Ask Radius deterministic workspace", () => {
     await expect(page.getByText("The delayed answer arrived.")).toBeVisible();
   });
 
+  test("lets the user cancel a slow request and retry it", async ({ page }) => {
+    let calls = 0;
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    await page.route("**/api/ask", async (route) => {
+      calls += 1;
+      if (calls === 1) {
+        await firstGate;
+        await fulfill(route, answer({ answer: "Canceled response." })).catch(() => {});
+        return;
+      }
+      await fulfill(route, answer({ answer: "The retry worked." }));
+    });
+
+    await page.goto("/ask");
+    await submit(page, "cancel this request");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(
+      page.getByText(
+        "That request was canceled. Your question is still here if you want to try again.",
+      ),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(page.getByText("The retry worked.")).toBeVisible();
+    await expect.poll(() => calls).toBe(2);
+    releaseFirst();
+  });
+
   test("keeps only the newest overlapping response", async ({ page }) => {
     let releaseFirst!: () => void;
     const firstGate = new Promise<void>((resolve) => {

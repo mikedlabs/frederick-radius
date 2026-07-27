@@ -56,6 +56,7 @@ import {
 
 const ASK_CACHE_LIMIT = 24;
 const ASK_CACHE_TTL_MS = 45_000;
+export const ASK_CLIENT_DEADLINE_MS = 22_000;
 const MAX_QUERY_LENGTH = 300;
 
 const QUICK_ASKS = [
@@ -100,7 +101,12 @@ const LOADING_MESSAGE = "Radius is checking current local data and sources.";
 
 type AskCacheEntry = { at: number; result: AskResult };
 type AskMode = "compact" | "workspace";
-export type AskRequestFailure = "network" | "rate-limit" | "service";
+export type AskRequestFailure =
+  | "network"
+  | "rate-limit"
+  | "service"
+  | "timeout"
+  | "cancelled";
 type AskOptions = {
   position?: { lat: number; lng: number } | null;
   scope?: Scope;
@@ -112,6 +118,25 @@ type AskOptions = {
 type ShareStatus = "idle" | "copied" | "shared" | "error";
 
 const askCache = new Map<string, AskCacheEntry>();
+const ASK_ABORT_TIMEOUT = "ask-timeout";
+const ASK_ABORT_CANCELLED = "ask-cancelled";
+
+export function askFailureForAbortReason(
+  reason: unknown,
+): Extract<AskRequestFailure, "timeout" | "cancelled"> | null {
+  if (reason === ASK_ABORT_TIMEOUT) return "timeout";
+  if (reason === ASK_ABORT_CANCELLED) return "cancelled";
+  return null;
+}
+
+export function scheduleAskDeadline(
+  controller: AbortController,
+  delayMs = ASK_CLIENT_DEADLINE_MS,
+): ReturnType<typeof setTimeout> {
+  return globalThis.setTimeout(() => {
+    if (!controller.signal.aborted) controller.abort(ASK_ABORT_TIMEOUT);
+  }, delayMs);
+}
 
 /**
  * Ask permalinks contain only the question. Location, saved places, and taste
@@ -184,15 +209,26 @@ export function queryNeedsNearbyContext(query: string): boolean {
 // an area first. Informational / civic / event / weather queries are NOT local
 // in this sense and must never be gated.
 const LOCAL_DISCOVERY =
-  /\b(?:pizza|tacos?|taqueria|sushi|ramen|pho|burgers?|sandwich(?:es)?|bbq|barbecue|wings?|coffee|espresso|latte|cafe|café|brunch|breakfast|lunch|dinner|bakery|bagels?|donuts?|ice cream|gelato|dessert|beer|brewery|breweries|taproom|bars?|cocktails?|wine|winery|cidery|distillery|pub|gastropub|restaurants?|dining|parks?|trails?|hikes?|playground|gym|yoga|museum|thrift|bookstore|ice rink|bowling|arcade|barber|salons?)\b/i;
+  /\b(?:pizza|tacos?|taqueria|sushi|ramen|pho|burgers?|sandwich(?:es)?|bbq|barbecue|wings?|coffee|espresso|latte|cafe|café|brunch|breakfast|lunch|dinner|bakery|bagels?|donuts?|ice cream|gelato|dessert|beer|brewery|breweries|taproom|bars?|cocktails?|wine|winery|cidery|distillery|pub|gastropub|restaurants?|dining|parks?|trails?|hikes?|playground|gym|yoga|museum|thrift|bookstore|bikes?|bicycles?|cycling|ice rink|bowling|arcade|barber|salons?)\b/i;
+const LOCAL_PLACE_REQUEST =
+  /\b(?:where\s+(?:can|could|should|do)\s+(?:i|we|you)\s+(?:find|get|rent|buy|borrow|visit|go|grab|use|charge|park|pick\s+up)|find\s+me\s+(?:a|an|some))\b/i;
+const GENERAL_INFORMATION_MARKERS =
+  /\b(?:information|info|instructions?|requirements?|applications?|forms?|websites?|online|rules?|polic(?:y|ies)|laws?|data|statistics?|records?|documents?|budgets?|schedules?)\b/i;
 const NON_LOCAL_MARKERS =
-  /\b(?:events?|festival|concert|shows?|weather|forecast|rain|snow|pay|bill|register|permit|license|vote|voting|trash|recycl|pothole|how do i|phone number|hours of|contact|county council|schools?)\b/i;
+  /\b(?:events?|festival|concert|shows?|weather|forecast|rain|snow|pay|bill|register|permit|license|vote|voting|trash|recycl|pothole|how do i|phone number|hours of|contact|county council|schools?|zoning|taxes?|courts?|sheriff|police|government)\b/i;
 
 /** True when a query is an inherently-local place hunt rather than an
  * informational or civic question. Whole county is a valid deliberate scope;
  * the chooser is only needed when no usable scope exists. */
 export function queryIsLocalDiscovery(query: string): boolean {
-  return LOCAL_DISCOVERY.test(query) && !NON_LOCAL_MARKERS.test(query);
+  if (
+    NON_LOCAL_MARKERS.test(query) ||
+    GENERAL_INFORMATION_MARKERS.test(query)
+  ) {
+    return false;
+  }
+  if (LOCAL_DISCOVERY.test(query)) return true;
+  return LOCAL_PLACE_REQUEST.test(query);
 }
 
 function escapeRegExp(value: string): string {
@@ -253,7 +289,7 @@ function activeContextLabel(
   if (scope === "nearme" && hasDevicePosition) return "Near your location";
   if (scope === "nearme") return "Whole county";
   if (scope) return scopeLabel(scope);
-  return hasDevicePosition ? "Near your location" : "Whole county";
+  return hasDevicePosition ? "Near your location" : "Choose an area";
 }
 
 function requestScope(
@@ -807,7 +843,7 @@ export default function AskFrederick({
   const [showAllSources, setShowAllSources] = useState(false);
   const [showAreaChooser, setShowAreaChooser] = useState(false);
   const [nearbyGateQuery, setNearbyGateQuery] = useState<string | null>(null);
-  const [currentScope, setCurrentScope] = useState<Scope | null>("county");
+  const [currentScope, setCurrentScope] = useState<Scope | null>(null);
   const [hasCachedPosition, setHasCachedPosition] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const areaChooserRef = useRef<HTMLDivElement | null>(null);
@@ -835,7 +871,7 @@ export default function AskFrederick({
   visibleResultRef.current = res;
 
   useEffect(() => {
-    setCurrentScope(getScope() ?? "county");
+    setCurrentScope(getScope());
     setHasCachedPosition(Boolean(readCachedPosition()));
     const unsubscribe = subscribeScopeChange((scope) => {
       requestIdRef.current += 1;
@@ -846,7 +882,7 @@ export default function AskFrederick({
       setRes(null);
       setRequestFailure(null);
       setSubmittedQuery("");
-      setCurrentScope(scope ?? "county");
+      setCurrentScope(scope);
     });
     return () => {
       unsubscribe();
@@ -987,7 +1023,10 @@ export default function AskFrederick({
       ? text
       : contextualizeAskQuery(text, lastQueryRef.current);
     const position = options.position === undefined ? readCachedPosition() : options.position;
-    const selectedScope = options.scope ?? getScope() ?? "county";
+    // Keep an unset scope distinct from an explicitly chosen whole-county
+    // scope. Local place hunts should ask for an area on a visitor's first
+    // request; a person who deliberately chose the county should keep it.
+    const selectedScope = options.scope ?? getScope();
     const resolvedScope = requestScope(contextualQuery, selectedScope, Boolean(position));
 
     if (
@@ -1062,6 +1101,7 @@ export default function AskFrederick({
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
+    const deadlineId = scheduleAskDeadline(controller);
     try {
       const response = await fetch("/api/ask", {
         method: "POST",
@@ -1109,6 +1149,22 @@ export default function AskFrederick({
         }
       }
     } catch (error) {
+      if (controller.signal.aborted) {
+        const abortFailure = askFailureForAbortReason(controller.signal.reason);
+        if (!abortFailure || requestId !== requestIdRef.current) return;
+        setRequestFailure(abortFailure);
+        setSubmittedQuery(text);
+        setShowAllSources(false);
+        setRes(
+          errorResult(
+            abortFailure === "timeout"
+              ? "Radius took too long to answer. Your question is still here, so you can try again."
+              : "That request was canceled. Your question is still here if you want to try again.",
+          ),
+        );
+        track(abortFailure === "timeout" ? "ask_timeout" : "ask_cancel");
+        return;
+      }
       if (error instanceof DOMException && error.name === "AbortError") return;
       if (requestId === requestIdRef.current) {
         setRequestFailure("network");
@@ -1121,6 +1177,7 @@ export default function AskFrederick({
         );
       }
     } finally {
+      globalThis.clearTimeout(deadlineId);
       if (requestId === requestIdRef.current) {
         setLoading(false);
         if (abortRef.current === controller) abortRef.current = null;
@@ -1129,6 +1186,22 @@ export default function AskFrederick({
   }
 
   askRef.current = ask;
+
+  function cancelCurrentRequest(): void {
+    const controller = abortRef.current;
+    if (!controller || controller.signal.aborted) return;
+    controller.abort(ASK_ABORT_CANCELLED);
+  }
+
+  function retryLastQuestion(): void {
+    const query = (permalinkQuery || submittedQuery).trim();
+    if (!query) return;
+    void ask(query, {
+      scope: currentScope ?? undefined,
+      skipNearbyGate: true,
+      selfContained: true,
+    });
+  }
 
   function chooseScope(nextScope: Scope): void {
     const pendingQuery = pendingNearbyQueryRef.current;
@@ -1558,7 +1631,6 @@ export default function AskFrederick({
         </span>
         {loading ? (
           <div
-            aria-hidden
             className={
               workspace
                 ? "mt-5 border-y px-1 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
@@ -1570,13 +1642,23 @@ export default function AskFrederick({
               background: "var(--app-bg-sunken)",
             }}
           >
-            <div className="flex items-center gap-2.5 text-[12px] font-semibold">
-              <span
-                className="pulse-dot h-2 w-2 rounded-full"
-                style={{ background: "var(--app-brand)" }}
-                aria-hidden
-              />
-              {LOADING_MESSAGE}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 text-[12px] font-semibold">
+                <span
+                  className="pulse-dot h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: "var(--app-brand)" }}
+                  aria-hidden
+                />
+                <span>{LOADING_MESSAGE}</span>
+              </div>
+              <button
+                type="button"
+                onClick={cancelCurrentRequest}
+                className="tap-44 shrink-0 rounded-full px-3 text-[11px] font-semibold transition hover:bg-[var(--app-bg-elevated-solid)] active:scale-[0.98]"
+                style={{ color: "var(--app-brand-press)" }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         ) : null}
@@ -1690,6 +1772,20 @@ export default function AskFrederick({
                 >
                   {res.answer}
                 </p>
+              ) : null}
+              {requestFailure ? (
+                <button
+                  type="button"
+                  onClick={retryLastQuestion}
+                  className="tap-44 mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border px-4 text-[11.5px] font-semibold transition active:scale-[0.98]"
+                  style={{
+                    borderColor: "var(--app-brand-press)",
+                    color: "var(--app-brand-press)",
+                  }}
+                >
+                  Try again
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
               ) : null}
             </section>
 

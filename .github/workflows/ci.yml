@@ -40,6 +40,8 @@ jobs:
         run: npm run lint
       - name: Audit data-source registry
         run: npm run audit:sources
+      - name: Audit migration ledger
+        run: npm run db:audit
       - name: Unit tests
         run: npm test
       - name: Build

@@ -41,4 +41,72 @@ describe("getLiveEvents — feed failures never block or break the page", () => 
     const res = await p;
     expect(res.events).toEqual([]);
   });
+
+  it("keeps raw Google Calendar bodies out of Next's 2 MB Data Cache", async () => {
+    const respondWithCalendar: typeof fetch = async () =>
+      new Response(
+        [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//Frederick Radius test//EN",
+          "END:VCALENDAR",
+        ].join("\r\n"),
+        { status: 200, headers: { "content-type": "text/calendar" } },
+      );
+    const fetchMock = vi.fn(respondWithCalendar);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getLiveEvents(60);
+
+    const calendarCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes("calendar.google.com/calendar/ical/"),
+    );
+    expect(calendarCalls.length).toBeGreaterThan(0);
+    for (const [, options] of calendarCalls) {
+      expect(options).toMatchObject({ cache: "no-store" });
+      expect(options).not.toHaveProperty("next");
+    }
+  });
+
+  it("coalesces concurrent 60-day and 90-day reads of the same raw calendar", async () => {
+    const respondWithCalendar: typeof fetch = async () =>
+      new Response(
+        [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//Frederick Radius test//EN",
+          "END:VCALENDAR",
+        ].join("\r\n"),
+        { status: 200, headers: { "content-type": "text/calendar" } },
+      );
+    const fetchMock = vi.fn(respondWithCalendar);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all([getLiveEvents(60), getLiveEvents(90)]);
+
+    const fairCalendarCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes("gffcal%40gmail.com"),
+    );
+    expect(fairCalendarCalls).toHaveLength(1);
+  });
+
+  it("fails one oversized calendar source softly instead of buffering it", async () => {
+    const fetchMock = vi.fn((url: string | URL | Request) => {
+      if (String(url).includes("gffcal%40gmail.com")) {
+        return Promise.resolve(
+          new Response("", {
+            status: 200,
+            headers: { "content-length": "5000001" },
+          }),
+        );
+      }
+      return Promise.reject(new Error("offline in test"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getLiveEvents(60);
+
+    expect(result.events).toEqual([]);
+    expect(result.sources_failed).toContain("fair");
+  });
 });

@@ -130,16 +130,23 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `DELAPLAINE_CALENDAR_URL` | Delaplaine live feed — inert by default |
 | `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
 | `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
-| `GOOGLE_MAPS_API_KEY` | Places enrichment + isochrone (one-time job, already loaded) |
-| `MAPBOX_ACCESS_TOKEN` | Map tiles + isochrone proxy |
+| `GOOGLE_PLACES_API_KEY` | Place photos, enrichment, and the bounded hours refresh |
 | `NWS_USER_AGENT` | Required identifier for the NWS API |
 | `SENTRY_DSN` | Runtime error capture |
 | `NEXT_PUBLIC_PLAUSIBLE_SRC` | Optional override for the checked-in Frederick Radius `pa-….js` URL, mainly for a future first-party proxy |
-| `DATABASE_URL` | Postgres for feed-snapshot telemetry |
+| `DATABASE_URL` | Server-side Postgres for saved data, submissions, hours, telemetry, and hybrid search |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Gate `/admin/*` (fail-closed by default) |
 | `BUSINESS_STATUS_CRON=1` | Nightly Google Place Details refresh (PAID — off by default) |
+| `HOURS_REFRESH_CRON=1` | Daily bounded refresh of Google-backed place hours |
+| `RADIUS_SEARCH_CRON=1` | Daily bounded refresh of the private Ask Radius search index |
 
 The Starter-plan goal list and installation check are in [docs/PLAUSIBLE_STARTER.md](docs/PLAUSIBLE_STARTER.md).
+The complete value-free setup template is [`.env.example`](./.env.example).
+
+Mapbox currently uses the validated publishable token in
+`src/lib/mapbox.ts`. The stale `NEXT_PUBLIC_MAPBOX_TOKEN` value that previously
+blanked the map is intentionally ignored; restore environment precedence only
+after a replacement token passes map-tile, Static Images, and Isochrone checks.
 
 ## Closed-business handling
 

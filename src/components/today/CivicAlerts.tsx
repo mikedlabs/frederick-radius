@@ -188,7 +188,11 @@ export default async function CivicAlerts({ includeWeather = true }: { includeWe
   const [nws, nps, chart] = await Promise.all([
     includeWeather ? getNwsAlerts() : Promise.resolve([]),
     getNpsAlerts(),
-    getChartIncidentsFrederick(),
+    // The CHART map and Pulse keep their two-minute feed cache. Today is an
+    // ISR briefing with a declared five-minute cadence; letting this nested
+    // fetch keep its 120-second default silently lowered the entire /today
+    // route to two-minute regenerations. Match the page boundary here.
+    getChartIncidentsFrederick({ revalidateSeconds: 300 }),
   ]);
   const alerts = normalize(nws, nps, trafficAlerts(new Date(), chart));
   // Owner event notices (event-notices.json) — "Alive @ Five is cancelled

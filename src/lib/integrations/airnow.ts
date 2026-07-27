@@ -1,5 +1,6 @@
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
+import { cache } from "react";
 
 const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation/latLong/current";
 const AIRNOW_TIMEOUT_MS = 4_000;
@@ -44,16 +45,17 @@ const COLORS: Record<number, string> = {
   1: "#315A43", 2: "#B26B00", 3: "#A03A22", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
 };
 
-export async function getAirQuality(
-  point: LngLat,
-  { deadlineMs = AIRNOW_TIMEOUT_MS }: { deadlineMs?: number } = {},
+async function loadAirQuality(
+  lat: number,
+  lng: number,
+  deadlineMs: number,
 ): Promise<AqiObservation[] | null> {
   const key = process.env.AIRNOW_API_KEY;
   if (!key) return null;
 
   const url =
     `${AIRNOW_BASE}/?format=application/json` +
-    `&latitude=${point.lat.toFixed(4)}&longitude=${point.lng.toFixed(4)}` +
+    `&latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
     `&distance=25&API_KEY=${key}`;
 
   const ctrl = new AbortController();
@@ -87,6 +89,21 @@ export async function getAirQuality(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Request-scoped memoization prevents Today's hero and several outdoor
+ * recommendation modules from separately decoding the same hourly response.
+ * The deadline remains part of the key so a patient background caller never
+ * changes a latency-bounded surface's behavior.
+ */
+const getAirQualityForRequest = cache(loadAirQuality);
+
+export function getAirQuality(
+  point: LngLat,
+  { deadlineMs = AIRNOW_TIMEOUT_MS }: { deadlineMs?: number } = {},
+): Promise<AqiObservation[] | null> {
+  return getAirQualityForRequest(point.lat, point.lng, deadlineMs);
 }
 
 export function pickWorstAqi(obs: AqiObservation[]): AqiObservation | null {

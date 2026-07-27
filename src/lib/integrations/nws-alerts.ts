@@ -1,4 +1,5 @@
 import { prioritizeAlerts } from "@/lib/alert-priority";
+import { cache } from "react";
 
 const NWS = "https://api.weather.gov";
 const UA = "Frederick Radius (hello@frederickradius.app)";
@@ -111,7 +112,7 @@ function isForFrederickMD(p: AlertProperties): boolean {
   return false;
 }
 
-export async function getNwsAlertsResult(): Promise<NwsAlertsResult> {
+async function loadNwsAlertsResult(): Promise<NwsAlertsResult> {
   // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
   // (prod runtime errors: connect ETIMEDOUT). The .catch below already
   // fail-softs to [], but without an abort the request can tie up the
@@ -149,6 +150,19 @@ export async function getNwsAlertsResult(): Promise<NwsAlertsResult> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Today asks for the same active-alert result in its interruption banner,
+ * weather guidance, hero, and outdoor-safety checks. Share one promise for the
+ * lifetime of the Server Component render so a regeneration parses the NWS
+ * payload once. The underlying fetch still owns the cross-request 10-minute
+ * cache and its availability semantics.
+ */
+const getNwsAlertsResultForRequest = cache(loadNwsAlertsResult);
+
+export function getNwsAlertsResult(): Promise<NwsAlertsResult> {
+  return getNwsAlertsResultForRequest();
 }
 
 export async function getNwsAlerts(): Promise<NwsAlert[]> {

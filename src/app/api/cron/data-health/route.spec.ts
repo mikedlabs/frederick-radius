@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   verifyCronAuth: vi.fn(),
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getLiveEvents: vi.fn(),
   getAnomalies: vi.fn(),
   hydrateSnapshots: vi.fn(),
+  persistCurrentSnapshots: vi.fn(),
   pruneOldSnapshots: vi.fn(),
   prunePushLog: vi.fn(),
   pruneNfcEvents: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock("@/lib/integrations/ical-live", () => ({
 vi.mock("@/lib/integrations/feed-snapshot", () => ({
   getAnomalies: mocks.getAnomalies,
   hydrateSnapshots: mocks.hydrateSnapshots,
+  persistCurrentSnapshots: mocks.persistCurrentSnapshots,
   pruneOldSnapshots: mocks.pruneOldSnapshots,
 }));
 vi.mock("@/lib/push-fanout", () => ({
@@ -93,8 +95,13 @@ function request() {
 }
 
 describe("GET /api/cron/data-health", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("DATA_RETENTION_PRUNE", "1");
     mocks.verifyCronAuth.mockReturnValue(null);
     mocks.buildDedup.mockReturnValue({});
     mocks.rankPlaces.mockReturnValue([]);
@@ -107,6 +114,7 @@ describe("GET /api/cron/data-health", () => {
     });
     mocks.getAnomalies.mockReturnValue([]);
     mocks.hydrateSnapshots.mockResolvedValue(undefined);
+    mocks.persistCurrentSnapshots.mockResolvedValue(0);
     mocks.pruneOldSnapshots.mockResolvedValue(0);
     mocks.prunePushLog.mockResolvedValue(0);
     mocks.pruneNfcEvents.mockResolvedValue(0);
@@ -187,5 +195,74 @@ describe("GET /api/cron/data-health", () => {
       name: "db-health",
       green: false,
     });
+  });
+
+  it("persists one cron snapshot only for feeds that answered", async () => {
+    mocks.getLiveEvents.mockResolvedValue({
+      events: [],
+      sources_succeeded: ["county", "fcpl"],
+      sources_failed: ["city-frederick"],
+    });
+    mocks.persistCurrentSnapshots.mockResolvedValue(2);
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.persistCurrentSnapshots).toHaveBeenCalledWith(["county", "fcpl"]);
+    expect(body.feeds.persisted_snapshots).toBe(2);
+  });
+
+  it("starts independent cleanup and health checks without waiting for snapshot persistence", async () => {
+    let releasePersistence: ((value: number) => void) | undefined;
+    mocks.persistCurrentSnapshots.mockReturnValue(
+      new Promise<number>((resolve) => {
+        releasePersistence = resolve;
+      }),
+    );
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+
+    const responsePromise = GET(request());
+
+    await vi.waitFor(() => {
+      expect(mocks.pruneOldSnapshots).toHaveBeenCalledWith(90);
+      expect(mocks.prunePushLog).toHaveBeenCalledWith(90);
+      expect(mocks.pruneNfcEvents).toHaveBeenCalledWith(90);
+      expect(mocks.pruneExpiredReports).toHaveBeenCalledTimes(1);
+      expect(mocks.evaluateDbHealth).toHaveBeenCalledTimes(1);
+      expect(mocks.runTripwires).toHaveBeenCalledTimes(1);
+    });
+
+    releasePersistence?.(0);
+    const response = await responsePromise;
+    expect(response.status).toBe(200);
+  });
+
+  it("keeps retention non-destructive until the backup-aware flag is enabled", async () => {
+    vi.stubEnv("DATA_RETENTION_PRUNE", "0");
+    mocks.evaluateDbHealth.mockResolvedValue({
+      status: "available",
+      reason: null,
+      anomalies: [],
+    });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.feeds.retention_prune_enabled).toBe(false);
+    expect(mocks.pruneOldSnapshots).not.toHaveBeenCalled();
+    expect(mocks.prunePushLog).not.toHaveBeenCalled();
+    expect(mocks.pruneNfcEvents).not.toHaveBeenCalled();
+    expect(mocks.pruneExpiredReports).not.toHaveBeenCalled();
   });
 });

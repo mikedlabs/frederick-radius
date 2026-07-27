@@ -38,6 +38,11 @@ import { unstable_cache } from "next/cache";
 // Ticketmaster/Bandsintown abort pattern; on timeout the fetch rejects,
 // the per-feed try/catch swallows it, and that source degrades to [].
 const FEED_FETCH_TIMEOUT_MS = 8_000;
+// Google Calendar's Frederick Fair feed is currently about 3.2 MB once
+// decoded. Next's Data Cache rejects any item over 2 MB, so raw calendar
+// bodies must never be stored there. Five MB leaves real headroom for that
+// feed while placing a hard ceiling on an upstream response before parsing.
+const MAX_ICAL_SOURCE_BYTES = 5_000_000;
 
 export type LiveEvent = {
   id: string;
@@ -833,6 +838,11 @@ function parseICalEvents(text: string): ParsedVEvent[] {
 }
 
 type FeedFetchResult = { events: LiveEvent[]; ok: boolean };
+type RawIcalResponse = {
+  ok: boolean;
+  status: number;
+  text: string;
+};
 
 function reportFeedUnavailable(
   feed: FeedSpec,
@@ -851,35 +861,87 @@ function reportFeedUnavailable(
   console.warn(message);
 }
 
+async function readBoundedText(response: Response, maxBytes: number): Promise<string> {
+  const declared = Number(response.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Error(`calendar body exceeded ${maxBytes} bytes`);
+  }
+
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = "";
+
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    received += chunk.value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error(`calendar body exceeded ${maxBytes} bytes`);
+    }
+    text += decoder.decode(chunk.value, { stream: true });
+  }
+
+  return text + decoder.decode();
+}
+
+// Coalesce the three cold cache fills warm-events performs (unified, 60-day,
+// and 90-day) inside one worker. The raw body is intentionally short-lived:
+// only the compact parsed event arrays are persisted by the surrounding
+// unstable_cache wrappers.
+const fetchRawIcalOnce = createSingleFlight<string, RawIcalResponse>();
+
+async function fetchRawIcal(feed: FeedSpec): Promise<RawIcalResponse> {
+  return fetchRawIcalOnce(feed.url, async () => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetch(feed.url, {
+        signal: ctrl.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+          Accept: "text/calendar, text/plain",
+        },
+        // Raw public calendars can exceed Vercel/Next's 2 MB Data Cache item
+        // ceiling. Cache the parsed, windowed result instead of this body.
+        cache: "no-store",
+      });
+      return {
+        ok: response.ok,
+        status: response.status,
+        text: response.ok
+          ? await readBoundedText(response, MAX_ICAL_SOURCE_BYTES)
+          : "",
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+}
+
 async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFetchResult> {
   // Reset per-source counts at the start of every pull so the admin
   // dashboard reflects the current fetch, not lifetime aggregates.
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(feed.url, {
-      signal: ctrl.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
-        Accept: "text/calendar, text/plain",
-      },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) {
+    const raw = await fetchRawIcal(feed);
+    if (!raw.ok) {
       // 410 (Gone) and 404 (Not Found) signal the calendar was
       // retired upstream — not an app error. Log as info so the
       // feed can come back without a code change but the noise
       // stays out of the error stream.
-      if (res.status === 410 || res.status === 404) {
-        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
+      if (raw.status === 410 || raw.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${raw.status})`);
       } else {
-        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
+        console.warn(`[ical-live] ${feed.source}: HTTP ${raw.status} (fail-soft, skipped)`);
       }
       return { events: [], ok: false };
     }
-    const text = await res.text();
+    const text = raw.text;
     if (!text.includes("BEGIN:VCALENDAR")) {
 
       console.warn(`[ical-live] ${feed.source}: not iCal (fail-soft, skipped)`);
@@ -963,8 +1025,6 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<FeedFe
       err instanceof Error ? err.message : err,
     );
     return { events: [], ok: false };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -1693,10 +1753,10 @@ export async function getLiveEvents(
 }
 
 /**
- * Cached wrapper around getLiveEvents — ONE shared 300s data-cache entry that
+ * Cached wrapper around getLiveEvents — ONE shared 840s data-cache entry that
  * every request-path surface reads from (/map, /events, /today, /towns,
  * /events/[slug]), so the live iCal/RSS feeds are fetched at most once per
- * 5 minutes per deploy instead of on every render.
+ * roughly 15 minutes instead of on every render.
  *
  * This is the fix for the request-time feed timeouts (Vercel runtime errors:
  * ~1,500 feed aborts affecting 150+ users over 7 days). /map and the slug
@@ -1705,20 +1765,25 @@ export async function getLiveEvents(
  * and because an aborted fetch is never cached, the very next request retried
  * the same timeout, a thundering herd. Wrapping the ASSEMBLED + deduped result
  * in unstable_cache means a warm hit skips the network (and the parse/dedupe)
- * entirely; a cold miss is paid once per 5 min and even a partial result (some
+ * entirely; a cold miss is paid once per 15 min and even a partial result (some
  * feeds fail-soft to []) is cached and self-heals on the next revalidate.
  *
- * ~5-minute staleness is acceptable for event listings (owner-approved). The
- * key is SHA-pinned so a deploy busts it, and tagged "events" to share
- * invalidation with the other event caches. Same proven pattern as
- * town-event-counts.ts. Crons (data-health, daily-briefing) keep calling the
- * raw getLiveEvents so they measure / read genuinely fresh feed state.
+ * ~15-minute staleness is acceptable for event listings. The fourteen-minute
+ * TTL is deliberately shorter than the production fifteen-minute warm cron,
+ * ensuring every scheduled run crosses the stale boundary even though cache
+ * timestamps are written after recomputation completes. The
+ * The explicit vNN key is the shape/version boundary and stays stable across
+ * ordinary deploys, so a release does not create a first-visitor cold miss.
+ * Shape changes must bump that version. The shared "events" tag still lets
+ * ingest paths invalidate fresh data immediately. Crons (data-health,
+ * daily-briefing) keep calling raw getLiveEvents so they measure genuinely
+ * fresh feed state.
  */
 export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
   return unstable_cache(
     () => getLiveEvents(windowDays),
-    ["live-events-v6", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-    { revalidate: 300, tags: ["events"] },
+    ["live-events-v6", String(windowDays)],
+    { revalidate: 840, tags: ["events"] },
   )();
 }
 

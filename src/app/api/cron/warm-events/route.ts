@@ -5,18 +5,18 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * /today + /events read assembleUnifiedEvents (unstable_cache, 300s);
- * /map + the /events/[slug] resolver read getCachedLiveEvents (300s).
- * Those caches are LAZY: the first request in each 5-minute window — and
- * EVERY request in the cold window right after a deploy busts the
- * SHA-keyed cache — blocks up to ~8s awaiting the slowest upstream feed.
+ * /today + /events read assembleUnifiedEvents (unstable_cache, 840s);
+ * /map + the /events/[slug] resolver read getCachedLiveEvents (840s).
+ * Those caches are LAZY: an expired cache can block up to ~8s awaiting the
+ * slowest upstream feed. Their explicit version keys survive ordinary
+ * deploys, so a release itself no longer creates a cold first-visitor window.
  * (Vercel runtime errors: hundreds of `[ical-live] … RSS timed out` on
  * /today, /events, /map, /events/[slug], affecting 150+ users — the
  * "loads slow even on a fast network" symptom, which is server-side TTFB,
  * not bandwidth.)
  *
- * This cron pre-pays that fetch on a schedule (every 5 min, matching the
- * revalidate window), so the chronically slow feeds (mount-airy, county,
+ * This cron pre-pays that fetch on a 15-minute schedule, so the chronically
+ * slow feeds (mount-airy, county,
  * parks, thurmont, city-frederick) are pulled by the BACKGROUND job and
  * users only ever read a warm cache. It calls the SAME functions the
  * pages call, so it populates the SAME cache keys.
@@ -25,15 +25,8 @@
  * new data path, no change to the unified assembly — so it is purely
  * additive and fail-soft: a warm miss just means the next user
  * repopulates as before, never worse than today.
- *
- * Two callers hit this route: the 5-minute Vercel cron, and a deploy-time
- * boot kick from src/instrumentation.ts (`?source=boot`) that closes the
- * post-deploy cold window the cron alone leaves open (up to 5 minutes of
- * cold-miss TTFB after every SHA-keyed cache bust). Boot kicks are deduped
- * per deploy — see claimBootWarm below.
  */
 import { NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -42,7 +35,7 @@ import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alert
 // /map browse feeds — the SAME loaders the browse map render awaits. They were
 // NOT covered here (only the event caches were), so a cold /map visit paid the
 // full live-fetch cost of all of them (measured: ~6-7s cold TTFB, ~500ms warm).
-// Warming their shared Vercel Data Cache on the 5-min schedule means even a cold
+// Warming their shared Vercel Data Cache on the cron schedule means even a cold
 // lambda reads them from cache and paints fast. Purely additive + fail-soft.
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
@@ -65,43 +58,9 @@ function errMsg(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
-/**
- * Boot-kick dedupe (instrumentation.ts fires `?source=boot` on every lambda
- * cold start, for the deployment's whole life — not just the first one after
- * deploy). One Data Cache entry keyed by the deploy SHA turns all but the
- * first kick per deploy into instant no-ops:
- *
- * Each route instance has its own random CLAIM_ID. The first boot kick per
- * deploy computes the cache entry, storing ITS instance's id; that instance
- * sees its own id come back and proceeds to warm. Every later kick reads the
- * first instance's id, sees it isn't theirs, and skips. A same-instance repeat
- * (the cached id matches by construction) is caught by the local boolean.
- * Two kicks racing before the entry lands both warm — harmless, the warm is a
- * read-through. If the claimed warm then FAILS there is no boot-level retry;
- * the 5-minute cron is the backstop, and the failure path below still alerts.
- * The cron itself (no ?source=boot) is never deduped.
- */
-const BOOT_CLAIM_ID = Math.random().toString(36).slice(2);
-let bootWarmedThisInstance = false;
-const claimBootWarm = unstable_cache(
-  async () => BOOT_CLAIM_ID,
-  ["warm-events-boot-claim", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: false },
-);
-
 export async function GET(request: Request) {
   const auth = verifyCronAuth(request);
   if (auth) return auth;
-
-  if (new URL(request.url).searchParams.get("source") === "boot") {
-    // Fail-open: a cache error means we can't prove another instance already
-    // warmed, so warm anyway (worst case is a redundant read-through).
-    const claimed = await claimBootWarm().catch(() => BOOT_CLAIM_ID);
-    if (claimed !== BOOT_CLAIM_ID || bootWarmedThisInstance) {
-      return NextResponse.json({ ok: true, skipped: "already-warmed-this-deploy" });
-    }
-    bootWarmedThisInstance = true;
-  }
 
   const t0 = Date.now();
   // Warm every cache key a user-facing render reads:

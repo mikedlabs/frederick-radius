@@ -114,7 +114,7 @@ export default async function TodayCard() {
   const [forecast, alertResult, airObservations] = await Promise.all([
     getNwsForecast(FREDERICK_CENTER).catch(() => null),
     within<NwsAlertsResult>(getNwsAlertsResult(), 2_500, { alerts: [], available: false }),
-    within(getAirQuality(FREDERICK_CENTER), 2_500, null),
+    within(getAirQuality(FREDERICK_CENTER, { deadlineMs: 2_500 }), 2_500, null),
   ]);
   const cur = forecast?.hourly?.[0] ?? null;
   const tempNow = cur?.temperature ?? null;

@@ -42,6 +42,31 @@ describe("parseAskIntent", () => {
     });
   });
 
+  it("recognizes bike rentals and generic local place-seeking language", () => {
+    expect(parseAskIntent("Where can I rent a bicycle?")).toMatchObject({
+      kind: "place",
+      vibe: "active",
+    });
+    expect(parseAskIntent("Where can I get a kayak?")).toMatchObject({
+      kind: "place",
+    });
+  });
+
+  it("does not turn civic or general information requests into place discovery", () => {
+    expect(parseAskIntent("Where can I get a building permit?")).toMatchObject({
+      kind: "civic",
+    });
+    expect(parseAskIntent("Where can I find county budget data?")).toMatchObject({
+      kind: "explore",
+    });
+    expect(parseAskIntent("Where can I find public records?")).toMatchObject({
+      kind: "civic",
+    });
+    expect(parseAskIntent("Where is the best food court?")).toMatchObject({
+      kind: "place",
+    });
+  });
+
   it("recognizes current events without treating them as a generic exploration", () => {
     expect(parseAskIntent("What live music is happening tonight?")).toMatchObject({
       kind: "event",

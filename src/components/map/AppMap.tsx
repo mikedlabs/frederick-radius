@@ -235,7 +235,6 @@ import {
 import MapDiscoveryPeek from "./MapDiscoveryPeek";
 import { buildMapDiscoveries, type MapDiscovery } from "./mapDiscoveries";
 import { parkingTone, PARKING_TONE_STYLE, type ParkingPin } from "@/lib/map/parking";
-import MapList from "./MapList";
 import TimeScrubber from "./TimeScrubber";
 import { ArrowRight, ChevronRight, LoaderCircle, LocateFixed, Shrink, Truck } from "lucide-react";
 import { easternHourFloat, withinScrubWindow } from "@/lib/map/scrubTime";
@@ -756,26 +755,10 @@ export default function AppMap({
   // tapped (photo, open state, distance, Save + Directions). Upgrades the
   // cramped popup into a real card you can act on without leaving the map.
   const [peekPlace, setPeekPlace] = useState<MapPinPlace | null>(null);
-  const [peekListReturnSlug, setPeekListReturnSlug] = useState<string | null>(null);
-  // Kept only for the contextual results handoff used by MapList. The map no
-  // longer advertises a second presentation mode or restores legacy
-  // ?view=list links; browse always opens on the map canvas.
-  const [listView, setListView] = useState(false);
   // True once the camera has moved off the county overview. Both zoom and the
   // visible bounds matter: a pan can clip the county without changing zoom.
   // Drives the reset FAB and hides again once fitCounty() settles.
   const [offOverview, setOffOverview] = useState(false);
-  const updateListView = (next: boolean) => {
-    setListView(next);
-    try {
-      const url = new URL(window.location.href);
-      if (next) url.searchParams.set("view", "list");
-      else url.searchParams.delete("view");
-      window.history.replaceState(null, "", url.toString());
-    } catch {
-      // URL persistence is an enhancement; the local toggle still works.
-    }
-  };
   const [userLoc, setUserLoc] = useState<LngLat | null>(locationSeed.ranking);
   // Ranking fallback when there's no device fix: the saved home town's
   // centroid. Privacy-free (client-local preference, no prompt), and it makes
@@ -1755,7 +1738,6 @@ export default function AppMap({
         setSelected(null);
         setSelectedEvent(null);
         setParkingPeek(null);
-        setPeekListReturnSlug(null);
         setPeekPlace(place);
         // Lift the tapped pin above the bottom card (Google/Apple pattern):
         // shift the camera up so the pin + its selected glow stay visible
@@ -1972,10 +1954,6 @@ export default function AppMap({
       url.searchParams.set("q", q.trim());
       window.history.replaceState(window.history.state, "", url.toString());
     }
-    // A focused result belongs on the map. If search was opened while the
-    // synchronized list was visible, return to the canvas before moving the
-    // camera or opening a peek.
-    if (listView) updateListView(false);
     // A layer result toggles the overlay in place — no navigation.
     const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
     if (layer) {
@@ -1998,7 +1976,6 @@ export default function AppMap({
           smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15, maxStep: 6 });
         }
         setParkingPeek(null);
-        setPeekListReturnSlug(null);
         setPeekPlace(p);
         return;
       }
@@ -2635,7 +2612,6 @@ export default function AppMap({
               const place = places.find((candidate) => candidate.slug === initialPlaceSlug);
               if (place) {
                 setSelectedSlug(place.slug);
-                setPeekListReturnSlug(null);
                 setPeekPlace(place);
               }
             }
@@ -4103,7 +4079,7 @@ export default function AppMap({
             un-lost used to be buried under Filters → Where → Whole county.
             Stacked just above the locate FAB; only shown once off the overview
             so the default county view stays uncluttered. */}
-        {dock && !listView && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && offOverview && (
+        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && offOverview && (
           <button
             type="button"
             className="map-reset-fab tap-44"
@@ -4120,7 +4096,7 @@ export default function AppMap({
             a dock pane or the list is open. While locating, the icon swaps to
             a spinner (static under reduced motion) so the ~8s geolocation wait
             reads as working, not stuck. */}
-        {dock && !listView && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
+        {dock && !peekPlace && !parkingPeek && !foodTruckPeek && !selectedDiscovery && (
           <button
             type="button"
             className="map-locate-fab tap-44"
@@ -4141,7 +4117,7 @@ export default function AppMap({
           </button>
         )}
 
-        {dock && selectedDiscovery && !listView && (
+        {dock && selectedDiscovery && (
           <MapDiscoveryPeek
             discovery={selectedDiscovery}
             index={Math.max(0, selectedDiscoveryIndex)}
@@ -4152,48 +4128,11 @@ export default function AppMap({
           />
         )}
 
-        {/* The map's LIST face — the same filtered pins as a scannable
-            roll. Honest empty state when nothing matches. */}
-        {dock && listView && (
-          <MapList
-            places={inViewPlaces}
-            events={inViewEvents}
-            userLoc={userLoc}
-            sortOrigin={userLoc ?? homeCentroid ?? viewCenter}
-            onPick={(p) => {
-              updateListView(false);
-              setPeekListReturnSlug(p.slug);
-              setSelectedSlug(p.slug);
-              const m = mapRef.current?.getMap();
-              if (m && p.geom) {
-                cameraIntentRef.current = true;
-                smoothFocus(m, [p.geom.lng, p.geom.lat], { minZoom: 14, maxStep: 6 });
-              }
-              setParkingPeek(null);
-              setPeekPlace(p);
-            }}
-            onPickEvent={(event) => {
-              updateListView(false);
-              setPeekListReturnSlug(null);
-              setSelectedSlug(null);
-              setPeekPlace(null);
-              setParkingPeek(null);
-              setCivicTown(null);
-              setSelectedEvent(event);
-              const m = mapRef.current?.getMap();
-              if (m) {
-                cameraIntentRef.current = true;
-                smoothFocus(m, [event.lng, event.lat], { minZoom: 14, maxStep: 6 });
-              }
-            }}
-          />
-        )}
-
         {/* The pin peek card. The cross-join: the soonest event pin hosted
             AT this place (venue_place_slug) rides along, so tapping a
             brewery answers "anything on here tonight?" without leaving the
             map (2026-07-17 map audit #2). */}
-        {peekPlace && !parkingPeek && !foodTruckPeek && !listView && (
+        {peekPlace && !parkingPeek && !foodTruckPeek && (
           <MapPeek
             place={peekPlace}
             hostedEvent={
@@ -4225,14 +4164,6 @@ export default function AppMap({
             onClose={() => {
               setPeekPlace(null);
               setSelectedSlug(null);
-              if (peekListReturnSlug) {
-                const returnSlug = peekListReturnSlug;
-                setPeekListReturnSlug(null);
-                updateListView(true);
-                window.requestAnimationFrame(() => {
-                  document.querySelector<HTMLElement>(`[data-map-place-slug="${CSS.escape(returnSlug)}"]`)?.focus();
-                });
-              }
             }}
             onDetails={() => openPlaceSheet(peekPlace)}
           />
@@ -4240,18 +4171,18 @@ export default function AppMap({
 
         {/* The parking garage peek — its own compact card (a garage isn't a
             saveable place): live spaces, hourly rate, and Directions. */}
-        {parkingPeek && !listView && (
+        {parkingPeek && (
           <MapParkingPeek pin={parkingPeek} userLoc={userLoc} onClose={() => setParkingPeek(null)} />
         )}
 
-        {foodTruckPeek && !peekPlace && !parkingPeek && !listView && (
+        {foodTruckPeek && !peekPlace && !parkingPeek && (
           <MapFoodTruckPeek pin={foodTruckPeek} onClose={() => setFoodTruckPeek(null)} />
         )}
 
         <BottomDrawer
           title={selectedTransitStop?.name ?? "Bus stop"}
           subtitle="Live Frederick County TransIT arrivals"
-          open={selectedTransitStop !== null && !listView}
+          open={selectedTransitStop !== null}
           onOpenChange={(open) => {
             if (!open) setSelectedTransitStop(null);
           }}
@@ -4278,7 +4209,7 @@ export default function AppMap({
         {/* MARC station popup — the next scheduled trains, as clock times
             from the committed GTFS schedule (weekday commuter service;
             honest empty line when no more trains today). */}
-        {marcPeek && !listView && (() => {
+        {marcPeek && (() => {
           const st = marcStations.find((m) => m.name === marcPeek);
           if (!st) return null;
           return (

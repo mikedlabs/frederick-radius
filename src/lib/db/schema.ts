@@ -260,6 +260,7 @@ export const feed_snapshots = pgTable(
       t.source,
       t.taken_at,
     ),
+    takenIdx: index("feed_snapshots_taken_idx").on(t.taken_at),
   }),
 );
 

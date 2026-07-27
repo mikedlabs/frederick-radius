@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   availabilityAnomalies,
   eventSourceHealthAnomaly,
   photoMetadataCoverageAnomaly,
+  tripwireWithDeadline,
 } from "@/lib/quality/tripwires";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("live-source availability tripwires", () => {
   it("does not flag a successful feed that happens to be empty", () => {
@@ -106,5 +111,22 @@ describe("unified event source-health tripwire", () => {
         unavailable: [],
       }),
     ).toBeNull();
+  });
+});
+
+describe("tripwire deadlines", () => {
+  it("turns a hung probe red instead of letting it consume the cron budget", async () => {
+    vi.useFakeTimers();
+    const pending = new Promise<never>(() => undefined);
+    const resultPromise = tripwireWithDeadline("slow-probe", pending, 25);
+
+    await vi.advanceTimersByTimeAsync(25);
+
+    await expect(resultPromise).resolves.toEqual([
+      expect.objectContaining({
+        source: "slow-probe",
+        kind: "tripwire_failed",
+      }),
+    ]);
   });
 });

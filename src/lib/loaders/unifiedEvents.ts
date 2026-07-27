@@ -23,7 +23,7 @@ import {
   type EventWithMeta,
 } from "@/lib/loaders/events";
 // Raw (uncached) getLiveEvents on purpose: this call already runs INSIDE
-// cachedAssemble (unstable_cache, 300s) below, so wrapping it again would nest
+// cachedAssemble (unstable_cache, 840s) below, so wrapping it again would nest
 // unstable_cache. /map + /events/[slug], which are NOT inside another cache,
 // use getCachedLiveEvents instead.
 import { getLiveEvents } from "@/lib/integrations/ical-live";
@@ -363,10 +363,12 @@ function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
 // ceiling. A time bucket must NOT be an unstable_cache argument: arguments are
 // part of its key, which created a brand-new cold entry every five minutes and
 // defeated stale-while-revalidate. The stable entry can now return its last
-// good value while Next refreshes it after 300 seconds. The pages still window
+// good value while Next refreshes it after 840 seconds. The pages still window
 // the set against their real `now`, so "tonight/weekend" stay exact.
-// The deploy SHA is a second key segment so a shape change ALSO auto-busts the
-// cache on deploy even if the manual version bump is forgotten (the #509 lesson).
+// Keep this expensive source cache stable across ordinary deploys so a release
+// does not hand the first visitor an eight-second cold fetch. Any output-shape
+// change MUST bump the explicit vNN key below; ingest paths can also invalidate
+// the shared "events" tag when fresh data lands.
 const assembleOnce = createSingleFlight<number, UnifiedEventsCachePayload>();
 
 const cachedAssemble = unstable_cache(
@@ -387,11 +389,17 @@ const cachedAssemble = unstable_cache(
   // serializing both `unified` and its `publicEvents` subset in a new entry
   // every five minutes. This keeps the item below Next's 2 MB cache limit and
   // lets stale-while-revalidate work.
-  ["unified-events-v24", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v24"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
-  // instead of fresh data waiting out the 300s TTL + a cold-miss request.
-  { revalidate: 300, tags: ["events"] },
+  // instead of fresh data waiting out the cache TTL + a cold-miss request.
+  // Keep the lifetime one minute below the fifteen-minute warm cron. An exact
+  // 900/900 match can miss its boundary because a cache timestamp is written
+  // after the upstream fetch completes, silently stretching refreshes to 30m.
+  // The previous five-minute lifetime expired twice between warm runs, so
+  // ordinary Today regenerations repeatedly paid the full multi-feed assembly
+  // and geocode pass in the foreground/background function invocation.
+  { revalidate: 840, tags: ["events"] },
 );
 
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {

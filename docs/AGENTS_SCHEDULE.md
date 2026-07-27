@@ -20,9 +20,10 @@
 | Nightly 09:00 UTC | `ingest/all` | Full civic/venue/business ingest into the live store. | Vercel cron (`/api/ingest/all`) |
 | Nightly 07:00 UTC | `business-status` | Checks a rotating, cost-capped batch for Google business-status mismatches. This route reports; it does not write the repo. | Vercel cron (`/api/cron/business-status`) |
 | Nightly 08:00 UTC | `hours-refresh` | Refreshes one seventh of Google-backed place hours and persists the results to Postgres. Requires `HOURS_REFRESH_CRON=1`. | Vercel cron (`/api/cron/hours-refresh`) |
+| Nightly 08:30 UTC | `radius-search` | Fills or updates a bounded batch of the private place search index. Unchanged place documents cost nothing. Requires `RADIUS_SEARCH_CRON=1`. | Vercel cron (`/api/cron/radius-search`) |
 | Nightly 09:30 UTC | `data-health` | Server-side data freshness/health snapshot. | Vercel cron (`/api/cron/data-health`) |
 | Daily 12:00/13:00 UTC | `daily-briefing` | Builds the daily briefing payload. | Vercel cron (`/api/cron/daily-briefing`) |
-| Nightly 06:00 UTC | **data-steward** | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements. | GitHub Actions (`.github/workflows/data-steward.yml`) |
+| Nightly 09:00 UTC | **data-steward** | Pulls the business-status and hours snapshots, rebuilds public data, blocks critical safety failures, reports high-severity debt, and opens a review PR for incremental improvements. | GitHub Actions (`.github/workflows/data-steward.yml`) |
 | Daily 12:00 UTC | **feed-health** | Probes the critical external feeds and exits non-zero if any critical endpoint is down — the job goes red so you can alert. | GitHub Actions (`.github/workflows/feed-health.yml`) |
 | Weekly Mon 07:00 UTC | **discovery** | `npm run discover` dry run ($0, no API call). Publishes the candidate count + cost projection to the job summary and an artifact. | GitHub Actions (`.github/workflows/discovery.yml`) |
 
@@ -85,6 +86,14 @@ Vercel cron routes read the same values from the Vercel project's
 not from GitHub — set them in both places if a value is needed by both
 engines. `GITHUB_TOKEN` is provided automatically to Actions and is what
 the PR-opening step uses; no manual setup needed.
+
+The hosted hours writer needs `HOURS_REFRESH_CRON=1`,
+`GOOGLE_PLACES_API_KEY`, `DATABASE_URL`, and `CRON_SECRET` in Vercel
+Production. The semantic-index writer needs `RADIUS_SEARCH_CRON=1`,
+`DATABASE_URL`, `CRON_SECRET`, and either Vercel's injected
+`VERCEL_OIDC_TOKEN` or `AI_GATEWAY_API_KEY`. Its optional
+`RADIUS_SEARCH_CRON_BATCH` is clamped to 1–512 documents per run and
+defaults to 256.
 
 > Treat every key as production: scope it to the minimum needed, never
 > echo it in logs, and rotate it if a workflow run ever exposes it.

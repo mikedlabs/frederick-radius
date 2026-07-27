@@ -29,10 +29,14 @@ export type AskIntent = {
   constraints: string[];
 };
 
-const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole|county office|department|phone number|pay (?:a|my)|animal control)\b/i;
+const CIVIC_RE = /\b(report|permit|license|register to vote|trash pickup|pothole|county office|department|phone number|pay (?:a|my)|animal control|zoning|property tax|public records?|courthouse|(?:district|circuit|county) court|sheriff|police|county government|city government)\b/i;
 const EVENT_RE = /\b(event|events|concert|festival|live music|performance|happening|calendar)\b/i;
 const PLAN_RE = /\b(plan|itinerary|date[-\s]+night|day out|afternoon out|evening out|morning out|perfect (?:hour|morning|afternoon|evening|day)|few hours|make (?:me|us) a day|build (?:me|us) a)\b/i;
-const PLACE_RE = /\b(where|food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|hotel|motel|lodging|place to stay|museum|patio|open|nearby|near me)\b/i;
+const PLACE_RE = /\b(food|eat|eaten|ate|eating|restaurant|pizza|coffee|cafe|breakfast|lunch|dinner|sandwich|beer|brewery|bar|park|trail|shop|store|grocery|hotel|motel|lodging|place to stay|museum|patio|bike|bikes|bicycle|bicycles|cycling|open|nearby|near me)\b/i;
+const PLACE_SEEKING_RE =
+  /\b(?:where\s+(?:can|could|should|do)\s+(?:i|we|you)\s+(?:find|get|rent|buy|borrow|visit|go|grab|use|charge|park|pick\s+up)|find\s+me\s+(?:a|an|some))\b/i;
+const GENERAL_INFORMATION_RE =
+  /\b(?:information|info|instructions?|requirements?|applications?|forms?|websites?|online|rules?|polic(?:y|ies)|laws?|data|statistics?|records?|documents?|budgets?|schedules?)\b/i;
 const ACTIVITY_RE = /\b(?:(?:anything|something) fun|things? to do|what (?:should|can|could) (?:i|we) do|anything going on)\b/i;
 const ACTIVITY_TIME_RE = /\b(?:today|tonight|this evening|tomorrow|this weekend|next weekend|this morning|this afternoon|(?:(?:this|next)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|night))?)\b/i;
 
@@ -142,13 +146,16 @@ export function parseAskIntent(query: string, now = new Date()): AskIntent {
   const civic = CIVIC_RE.test(q);
   const event = (EVENT_RE.test(q) || isTimedActivityRequest(q)) &&
     !(fixedAppointment && PLACE_RE.test(q));
+  const place =
+    PLACE_RE.test(q) ||
+    (PLACE_SEEKING_RE.test(q) && !GENERAL_INFORMATION_RE.test(q));
   const kind: AskIntentKind = civic
     ? "civic"
     : plan
       ? "plan"
       : event
         ? "event"
-        : PLACE_RE.test(q) || explicitPlaceList
+        : place || explicitPlaceList
           ? "place"
           : "explore";
 
@@ -183,7 +190,7 @@ export function parseAskIntent(query: string, now = new Date()): AskIntent {
 
   const vibe: AskVibe = /\b(hike|trail|outside|outdoor|park|nature)\b/i.test(q)
     ? "outdoors"
-    : /\b(active|workout|bike|run|adventure)\b/i.test(q)
+    : /\b(active|workout|bike|bicycle|cycling|run|adventure)\b/i.test(q)
       ? "active"
       : /\b(art|history|museum|gallery|culture|theater|theatre)\b/i.test(q)
         ? "cultural"

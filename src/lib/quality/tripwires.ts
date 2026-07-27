@@ -94,22 +94,31 @@ export async function photoTripwire(sample = 6): Promise<Anomaly[]> {
   const step = Math.max(1, Math.floor(rows.length / sample));
   const picks = Array.from({ length: sample }, (_, i) => rows[Math.min(i * step, rows.length - 1)]);
 
-  let failed = 0;
-  const failures: string[] = [];
-  for (const [slug, v] of picks) {
-    const url = photoUrl(v.photo_names![0], 80);
-    if (!url) return []; // no key in this environment — nothing to measure
-    try {
-      const res = await fetch(url, { redirect: "follow", cache: "no-store", signal: AbortSignal.timeout(8000) });
-      if (!res.ok) {
-        failed++;
-        failures.push(`${slug}:${res.status}`);
+  const probes = await Promise.all(
+    picks.map(async ([slug, v]) => {
+      const url = photoUrl(v.photo_names![0], 80);
+      if (!url) return { configured: false, failure: null };
+      try {
+        const res = await fetch(url, {
+          redirect: "follow",
+          cache: "no-store",
+          signal: AbortSignal.timeout(8_000),
+        });
+        return {
+          configured: true,
+          failure: res.ok ? null : `${slug}:${res.status}`,
+        };
+      } catch {
+        return { configured: true, failure: `${slug}:fetch-error` };
       }
-    } catch {
-      failed++;
-      failures.push(`${slug}:fetch-error`);
-    }
-  }
+    }),
+  );
+  // No Google key in this environment — there is nothing to measure.
+  if (probes.some((probe) => !probe.configured)) return [];
+  const failures = probes
+    .map((probe) => probe.failure)
+    .filter((failure): failure is string => Boolean(failure));
+  const failed = failures.length;
   if (failed * 2 < picks.length) return [];
   return [
     {
@@ -324,6 +333,38 @@ async function within<T>(promise: Promise<T>, fallback: T): Promise<T> {
   ]).finally(() => clearTimeout(timer));
 }
 
+export const TRIPWIRE_DEADLINE_MS = 20_000;
+
+/**
+ * No single watchdog may consume the whole cron budget. A timed-out check is
+ * red, never silently skipped, so bounding the work preserves health coverage
+ * while guaranteeing the board can still be delivered.
+ */
+export async function tripwireWithDeadline(
+  source: string,
+  promise: Promise<Anomaly[]>,
+  timeoutMs = TRIPWIRE_DEADLINE_MS,
+): Promise<Anomaly[]> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise.catch((err) => [{
+      source,
+      kind: "tripwire_failed" as const,
+      detail: `The ${source} tripwire failed: ${err instanceof Error ? err.message : String(err)}`,
+    }]),
+    new Promise<Anomaly[]>((resolve) => {
+      timer = setTimeout(
+        () => resolve([{
+          source,
+          kind: "tripwire_failed",
+          detail: `The ${source} tripwire exceeded its ${timeoutMs}ms deadline.`,
+        }]),
+        timeoutMs,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 /** Canary the live-condition sources whose empty sets can otherwise look like
  * good news. PulsePoint participates only when the deployment intentionally
  * configures it; its absence is already reported by the feed registry. */
@@ -373,11 +414,12 @@ export type TripwireReport = {
  * also means an EMPTY index is indistinguishable from a healthy one at the
  * call site: hybridSearchConfigured() only proves a database and a gateway
  * key exist, never that a single document was ever embedded. The index is
- * populated by `npm run build:radius-search`, a script run by hand — so the
- * failure mode is simply "nobody ran it," and the app degrades to
- * keyword-only search without a word of complaint. (Found July 2026:
- * radius_search_documents held ZERO rows in production while the feature
- * had been shipped for months.)
+ * populated by the gated `/api/cron/radius-search` job (with
+ * `npm run build:radius-search` as the one-off bootstrap). Without the
+ * feature flag or a successful first run, the app degrades to keyword-only
+ * search without a word of complaint. (Found July 2026:
+ * radius_search_documents held ZERO rows in production while the feature had
+ * been shipped for months.)
  *
  * Red when the index is empty, or has fallen far behind the catalog it is
  * supposed to cover. Silent when hybrid search is deliberately off
@@ -401,7 +443,7 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
           kind: "index_empty",
           detail:
             `radius_search_documents holds 0 embedded documents, so every semantic lookup returns nothing and Ask is running on keyword matching alone. ` +
-            `Run \`npm run build:radius-search\` (needs DATABASE_URL + AI Gateway auth) to embed the ${expected} public places.`,
+            `Enable the gated radius-search cron or run \`npm run build:radius-search\` (needs DATABASE_URL + AI Gateway auth) to embed the ${expected} public places.`,
         },
       ];
     }
@@ -413,7 +455,7 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
           kind: "index_stale",
           detail:
             `radius_search_documents covers ${embedded} of ${expected} public places (${Math.round((embedded / expected) * 100)}%). ` +
-            `Re-run \`npm run build:radius-search\`; it is incremental, so it only embeds what changed.`,
+            `Check the radius-search cron or re-run \`npm run build:radius-search\`; both are incremental and only embed what changed.`,
         },
       ];
     }
@@ -427,14 +469,17 @@ export async function semanticIndexTripwire(): Promise<Anomaly[]> {
 }
 
 /** Run every tripwire (concurrently — they're independent networks). */
-export async function runTripwires(now: Date = new Date()): Promise<TripwireReport> {
+export async function runTripwires(
+  now: Date = new Date(),
+  timeoutMs = TRIPWIRE_DEADLINE_MS,
+): Promise<TripwireReport> {
   const [photos, transit, events, ask, conditions, semantic] = await Promise.all([
-    photoTripwire(),
-    transitTripwire(),
-    eventsTripwire(now),
-    askCanaryTripwire(),
-    conditionsTripwire(),
-    semanticIndexTripwire(),
+    tripwireWithDeadline("photos", photoTripwire(), timeoutMs),
+    tripwireWithDeadline("transit", transitTripwire(), timeoutMs),
+    tripwireWithDeadline("events", eventsTripwire(now), timeoutMs),
+    tripwireWithDeadline("ask-canary", askCanaryTripwire(), timeoutMs),
+    tripwireWithDeadline("live-conditions", conditionsTripwire(), timeoutMs),
+    tripwireWithDeadline("semantic-index", semanticIndexTripwire(), timeoutMs),
   ]);
   const ingest = ingestFreshnessTripwire(now);
   return {

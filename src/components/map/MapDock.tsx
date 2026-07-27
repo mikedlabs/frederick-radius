@@ -1068,26 +1068,6 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row"
-                  aria-label={props.showTransit ? "Hide transit" : "Show transit routes, stops, and vehicles"}
-                  data-on={props.showTransit || undefined}
-                  onClick={() => {
-                    haptic("light");
-                    props.setShowTransit((current) => !current);
-                    closePane();
-                  }}
-                >
-                  <span className="dock-content-icon" aria-hidden>
-                    <Waypoints className="h-[18px] w-[18px]" strokeWidth={2.1} />
-                  </span>
-                  <span className="dock-content-copy">
-                    <strong>Transit</strong>
-                    <small>{props.showTransit ? "Routes, stops, and vehicles showing" : "Routes, stops, and live vehicles"}</small>
-                  </span>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="dock-content-row"
                   aria-label="Towns and area"
                   data-on={whereSel.kind !== "county" || undefined}
                   onClick={() => openContentsPane("where")}
@@ -1104,7 +1084,7 @@ export default function MapDock(props: MapDockProps) {
                 <button
                   type="button"
                   className="dock-content-row"
-                  aria-label="Map layers"
+                  aria-label="Live and reference map layers"
                   data-on={visibleLayerCount > 0 || undefined}
                   onClick={() => openContentsPane("layers")}
                 >
@@ -1112,7 +1092,7 @@ export default function MapDock(props: MapDockProps) {
                     <Layers3 className="h-[18px] w-[18px]" strokeWidth={2.1} />
                   </span>
                   <span className="dock-content-copy">
-                    <strong>Layers</strong>
+                    <strong>Live layers</strong>
                     <small>
                       {visibleLayerCount > 0
                         ? `${visibleLayerCount} ${visibleLayerCount === 1 ? "layer" : "layers"} showing`

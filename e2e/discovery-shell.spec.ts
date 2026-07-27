@@ -11,9 +11,11 @@ test.describe("mobile discovery shell", () => {
   test("Find opens as a focused full-screen task surface", async ({ page }) => {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
 
-    const openFind = page.getByRole("button", { name: "Search Frederick County" });
+    const openFind = page.getByRole("button", {
+      name: "Ask or find across Frederick County",
+    });
     await expect(openFind).toBeVisible();
-    await expect(openFind).toHaveAttribute("aria-controls", "radius-find-dialog");
+    await expect(openFind).toHaveAttribute("aria-haspopup", "dialog");
     await expect(openFind).toHaveAttribute("aria-expanded", "false");
     const primaryNav = page.getByRole("navigation", { name: "Primary" });
     await expect(primaryNav.getByRole("link")).toHaveCount(4);
@@ -23,10 +25,15 @@ test.describe("mobile discovery shell", () => {
     expect(searchBox?.height ?? 0).toBeGreaterThanOrEqual(40);
     await openFind.click();
 
-    const dialog = page.getByRole("dialog", { name: "Frederick County" });
+    const dialog = page.getByRole("dialog", { name: "What do you need?" });
     await expect(dialog).toBeVisible();
+    await expect(openFind).toHaveAttribute("aria-controls", "radius-find-dialog");
     await expect(openFind).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("searchbox", { name: "Find across Frederick County" })).toBeFocused();
+    await expect(
+      page.getByRole("searchbox", {
+        name: "Ask or find across Frederick County",
+      }),
+    ).toBeFocused();
     await expect(page.getByRole("button", { name: "Close Find" })).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -37,11 +44,11 @@ test.describe("mobile discovery shell", () => {
   test("the map opens calm and reveals choices through one options door", async ({ page }) => {
     await page.goto("/map", { waitUntil: "domcontentloaded" });
 
-    const mapFind = page.getByRole("button", { name: "Search this map" });
-    await expect(mapFind).toHaveAttribute("aria-controls", "map-search-input");
+    const mapFind = page.getByRole("searchbox", { name: "Search this map" });
+    await expect(mapFind).toHaveAttribute("id", "map-search-input");
     await mapFind.click();
-    await expect(page.getByRole("searchbox", { name: "Search this map" })).toBeFocused();
-    await expect(page.getByRole("dialog", { name: "Frederick County" })).toHaveCount(0);
+    await expect(mapFind).toBeFocused();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
 
     const contentsButton = page.getByRole("button", { name: "Map options" });
     await expect(contentsButton).toBeVisible();
@@ -62,7 +69,9 @@ test.describe("mobile discovery shell", () => {
     await expect(contentsPane.getByRole("button", { name: /Events and time/ })).toBeVisible();
     await expect(contentsPane.getByRole("button", { name: /Public essentials/ })).toBeVisible();
 
-    await contentsPane.getByRole("button", { name: /Map layers/ }).click();
+    await contentsPane
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     const layersPane = page.getByRole("region", { name: "Map layers" });
     await expect(layersPane).toBeVisible();
     await expect(layersPane.getByRole("button", { name: /Transit/ })).toBeVisible();
@@ -95,14 +104,22 @@ test.describe("mobile discovery shell", () => {
     await expect(page.getByRole("region", { name: "Map options" })).toBeHidden();
   });
 
-  test("focused search surfaces do not repeat the global search button", async ({ page }) => {
+  test("focused search surfaces keep their local query and the permanent global find", async ({ page }) => {
     await page.goto("/search", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("searchbox", { name: "Search Frederick County" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Search Frederick County" })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: "Ask or find across Frederick County",
+      }),
+    ).toBeVisible();
 
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("searchbox", { name: "Search all tools" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Search Frederick County" })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: "Ask or find across Frederick County",
+      }),
+    ).toBeVisible();
   });
 
   test("map options never create a sideways or document scroll trap", async ({ page }) => {
@@ -132,7 +149,9 @@ test.describe("mobile discovery shell", () => {
     ).toBeLessThanOrEqual(1);
 
     const paneScroll = page.locator("#dock-pane .dock-pane-scroll");
-    await pane.getByRole("button", { name: /Map layers/ }).click();
+    await pane
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     const layersPane = page.getByRole("region", { name: "Map layers" });
     await expect(layersPane).toBeVisible();
     const layersPaneBox = await layersPane.boundingBox();
@@ -163,7 +182,7 @@ test.describe("mobile discovery shell", () => {
     ).toBeLessThanOrEqual(1);
     await page
       .getByRole("region", { name: "Map options" })
-      .getByRole("button", { name: "Map layers" })
+      .getByRole("button", { name: "Live and reference map layers" })
       .click();
     const regularLayersBox = await page
       .getByRole("region", { name: "Map layers" })
@@ -224,7 +243,9 @@ test.describe("mobile discovery shell", () => {
       "ready",
     );
     await page.getByRole("button", { name: "Map options" }).click();
-    await page.getByRole("button", { name: /Map layers/ }).click();
+    await page
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     await page.getByRole("button", { name: "Hide all map layers" }).click();
     await expect(page).not.toHaveURL(/amenity=/);
     await expect(page).not.toHaveURL(/show=/);
@@ -236,7 +257,9 @@ test.describe("mobile discovery shell", () => {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).not.toHaveURL(/amenity=|show=|layers=/);
     await page.getByRole("button", { name: "Map options" }).click();
-    await page.getByRole("button", { name: /Map layers/ }).click();
+    await page
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     await expect(
       page.getByRole("region", { name: "Map layers" }).getByRole("button", {
         name: /Transit/,
@@ -256,7 +279,9 @@ test.describe("mobile discovery shell", () => {
       waitUntil: "domcontentloaded",
     });
     await page.getByRole("button", { name: "Map options" }).click();
-    await page.getByRole("button", { name: /Map layers/ }).click();
+    await page
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     await expect(
       page.getByRole("region", { name: "Map layers" }).getByRole("button", {
         name: /Transit/,
@@ -268,7 +293,9 @@ test.describe("mobile discovery shell", () => {
     });
     await expect(page).toHaveURL(/layers=art/);
     await page.getByRole("button", { name: "Map options" }).click();
-    await page.getByRole("button", { name: /Map layers/ }).click();
+    await page
+      .getByRole("button", { name: "Live and reference map layers" })
+      .click();
     await page
       .getByRole("region", { name: "Map layers" })
       .getByRole("button", { name: "More local layers" })
