@@ -7,6 +7,7 @@ import Image from "next/image";
 import { BadgeCheck, Martini } from "lucide-react";
 import DealLines from "@/components/happy/DealLines";
 import { figureCount } from "@/lib/happyHourDeal";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { Hours } from "@/data/places";
 
 /**
@@ -92,7 +93,8 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
           anchor, so without a label a screen reader announces nothing. */}
       <Link href={`/places/${r.slug}`} aria-label={r.name} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
       <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
-        {r.photo ? <Image src={r.photo} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
+        {/* 52px tile: ask the proxy for 52px, not the stored 800px hero. */}
+        {r.photo ? <Image src={proxyPhotoAtWidth(r.photo, 52)} alt="" fill sizes="52px" unoptimized={r.photo.startsWith("/api/place-photo")} className="object-cover" /> : <PhotoFallback />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">

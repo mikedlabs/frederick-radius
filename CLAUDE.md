@@ -92,9 +92,12 @@ draft must read like a person typing in a thread, not composed copy:
   2026-07-08: "the map IS the page" — the Nearby/Whole-county toggle pill
   was removed as clutter). Radius ("Nearby") mode still exists behind
   `/map?mode=radius` (isochrone + control sheet) but has no UI entry point;
-  don't re-add the floating toggle without an owner ask. The nav is
-  `Ask(/guide) · Today · Map · Events · Saved(/my-radius)` from ONE
-  source of truth (`src/components/nav/tabs.ts`).
+  don't re-add the floating toggle without an owner ask. The nav is FOUR
+  tabs, `Today · Map · Events · Saved(/my-radius)`, from ONE source of
+  truth (`src/components/nav/tabs.ts`). Ask is deliberately NOT a fifth
+  tab: it lives at `/ask` as a focused workspace, reached from Today's
+  compact launcher and from Compass. The old `/guide` URL redirects to
+  `/ask`, so don't link `/guide` in new code.
 - Canonicals, sitemap, robots, JSON-LD were audited and fixed (June 2026,
   PRs #504, #516–#520, #530). Don't churn them casually.
 - `dynamicParams=false` on places (closed slug set); events/[slug] has NO

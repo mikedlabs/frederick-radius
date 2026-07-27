@@ -1,6 +1,7 @@
 import Image from "next/image";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { proxyPhotoAtWidth } from "@/lib/format/img";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 type PlaceMedallionPlace = Pick<
@@ -57,7 +58,10 @@ export function PlaceMedallion({
     >
       {photo ? (
         <Image
-          src={photo}
+          // Proxy responses are unoptimized (Next cannot resize an opaque
+          // route), so `sizes` alone would still pull the stored 800px hero
+          // down to paint a 40px circle. Ask the proxy for the real size.
+          src={proxyPhotoAtWidth(photo, size)}
           alt=""
           fill
           loading="lazy"
