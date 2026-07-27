@@ -18,6 +18,7 @@ import { unstable_cache } from "next/cache";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
 
 /**
  * Categories that read well as photo-led "discovery" tiles. A parking
@@ -34,16 +35,11 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 const CHAIN_TILE_RE =
   /\b(starbucks|dunkin'?|subway|chipotle|panera|chick-?fil-?a|mcdonald'?s|wendy'?s|burger king|taco bell|domino'?s|papa john'?s|pizza hut|little caesars|five guys|panda express|olive garden|applebee'?s|ihop|denny'?s|cracker barrel|texas roadhouse|outback steakhouse|red robin|buffalo wild wings|chili'?s|kfc|popeyes|dairy queen|sweetfrog|jersey mike'?s|jimmy john'?s|firehouse subs|tropical smoothie|smoothie king|sonic drive|arby'?s|7-?eleven|wawa|sheetz|royal farms)\b/i;
 
-const PHOTOGENIC: ReadonlySet<string> = new Set([
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "park", "trail", "outdoors", "playground",
-  "museum", "gallery", "theater", "music", "public-art",
-  "market", "lodging", "family",
-  // The county's signature photo-led draws: the wine/spirits trails and
-  // pick-your-own, which overrides patch dozens of places into. They were
-  // missing here, so a high-rated vineyard or orchard could never surface.
-  "winery", "distillery", "agritourism", "ice-cream",
-]);
+// One list, in photogenic.ts. This file used to keep a hand-copied duplicate,
+// and the two drifted: the wine/spirits and pick-your-own additions landed
+// here but never made it back, so the same place could be photo-worthy on this
+// rail and not on the "Looks like Frederick" wall.
+const PHOTOGENIC = PHOTOGENIC_CATEGORIES;
 
 /** Eastern-time YYYY-MM-DD — the rotation key. */
 export function easternDayKey(now: Date = new Date()): string {

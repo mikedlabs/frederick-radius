@@ -16,7 +16,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { food_truck_claims } from "@/lib/db/schema";
-import { isFoodTruckSlug } from "@/data/food-trucks";
+import { FOOD_TRUCK_BY_SLUG, isFoodTruckSlug } from "@/data/food-trucks";
+import { sendAdminEmail } from "@/lib/notify/adminEmail";
 import {
   isRateLimited,
   isSameOriginMutationRequest,
@@ -86,8 +87,31 @@ export async function POST(req: NextRequest) {
       operator_name,
       contact,
     });
-    return NextResponse.json({ ok: true }, { headers: noStore() });
   } catch {
     return NextResponse.json({ error: "insert-failed" }, { status: 500, headers: noStore() });
   }
+
+  // The row is the durable record and the operator is already done, so the
+  // notification is deliberately AFTER the insert and never affects the
+  // response. Without it a claim just sits in /admin/food-trucks until someone
+  // happens to look, which for a truck owner who asked on a Saturday night is
+  // indistinguishable from being ignored.
+  const truckName = FOOD_TRUCK_BY_SLUG.get(body.truckSlug)?.name ?? body.truckSlug;
+  const emailed = await sendAdminEmail({
+    subject: `Food-truck claim: ${truckName}`,
+    text: [
+      `${truckName} (${body.truckSlug}) was claimed.`,
+      "",
+      `Operator: ${operator_name}`,
+      `Contact: ${contact}`,
+      "",
+      "Approve in /admin/food-trucks to mint their beacon token, then send",
+      "them the private drop link. Nothing is live until you approve it.",
+    ].join("\n"),
+    tag: "food-truck-claim",
+  });
+  // Never log the operator's name or contact details; the row is the record.
+  console.info(`[food-truck-claim] claim stored (admin_email=${emailed}).`);
+
+  return NextResponse.json({ ok: true }, { headers: noStore() });
 }

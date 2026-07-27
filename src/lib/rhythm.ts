@@ -43,8 +43,11 @@ const GROUP_BY_CATEGORY: Record<string, RhythmGroup> = {
   bar: "pours", brewery: "pours", winery: "pours", distillery: "pours",
   shopping: "shops", antiques: "shops", "book-store": "shops", gallery: "shops",
   park: "outdoors", trail: "outdoors", playground: "outdoors", golf: "outdoors", agritourism: "outdoors",
-  wellness: "wellness", yoga: "wellness", gym: "wellness",
-  civic: "civic", museum: "civic", library: "civic", theater: "civic", worship: "civic",
+  // "gym" is not a category: Google's gym type maps to "yoga" (Yoga & fitness)
+  // in categoryFromGoogle. Massage, salon, and spa are real wellness leaves
+  // that were falling through to the catch-all "services" band.
+  wellness: "wellness", yoga: "wellness", massage: "wellness", salon: "wellness", spa: "wellness",
+  civic: "civic", museum: "civic", library: "civic", theater: "civic", worship: "civic", music: "civic",
   lodging: "lodging",
 };
 

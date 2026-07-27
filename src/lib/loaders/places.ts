@@ -1266,14 +1266,21 @@ function dayPartLocal(d: Date): "morning" | "midday" | "evening" {
   return "evening";
 }
 
+// Matched against a place's leaf category, so every entry has to be one.
+// "cafe" and "breakfast" are not categories in the taxonomy at all, and
+// "outdoors" is a real PARENT slug that no place is ever filed under, so all
+// three matched nothing while reading as coverage. category-sets.spec.ts
+// locks this against the live catalog.
 const MOMENT_FIT: Record<"morning" | "midday" | "evening", ReadonlySet<string>> = {
-  morning: new Set(["coffee", "bakery", "breakfast", "cafe", "park", "trail", "outdoors", "market"]),
+  morning: new Set(["coffee", "bakery", "park", "trail", "market"]),
   midday: new Set([
-    "restaurant", "cafe", "coffee", "museum", "gallery", "park", "trail",
-    "outdoors", "market", "shopping", "playground", "family",
+    "restaurant", "coffee", "museum", "gallery", "park", "trail",
+    "market", "shopping", "playground", "family",
   ]),
   evening: new Set([
     "restaurant", "bar", "brewery", "winery", "pizza", "music", "theater", "gallery",
+    // The county's tasting rooms keep evening hours like any bar does.
+    "distillery",
   ]),
 };
 

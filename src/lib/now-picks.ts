@@ -34,19 +34,26 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 
 export type Daypart = "morning" | "midday" | "evening";
 
-const DAYTIME_OUTDOOR_CATS = new Set(["park", "trail", "outdoors", "playground", "market"]);
+// Every entry below must be a category a place actually carries. "outdoors"
+// and "arts" are PARENT slugs in the taxonomy — real navigation, but no
+// place is ever filed under them, so listing one here matched nothing and
+// read as coverage the set did not have. category-sets.spec.ts locks this.
+const DAYTIME_OUTDOOR_CATS = new Set(["park", "trail", "playground", "market"]);
 const DAYTIME_MIXED_CATS = new Set([
   "coffee", "bakery", "restaurant", "park", "trail", "museum", "gallery",
-  "market", "outdoors",
+  "market",
 ]);
 const EVENING_OUT_CATS = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "music", "theater", "gallery", "museum",
+  // A tasting room at 7pm is an evening answer in this county as surely as
+  // a bar is. Same omission the weekend set below already corrected.
+  "winery", "distillery",
 ]);
 const WEEKEND_BET_CATS = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "music", "theater", "gallery", "museum", "market",
-  "park", "trail", "outdoors", "playground",
+  "park", "trail", "playground",
   // The wine/spirits trails and pick-your-own farms are exactly the
   // weekend-bet draws of the county; they were absent from this set.
   "winery", "distillery", "agritourism", "ice-cream",
