@@ -14,15 +14,17 @@ import { placeQuality } from "@/lib/quality/placeQuality";
 export const PHOTOGENIC_CATEGORIES: ReadonlySet<string> = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "park", "trail", "playground",
-  "museum", "gallery", "theater", "music",
+  "museum", "gallery", "theater", "music", "public-art",
   "market", "lodging", "family",
   // The wine/spirits trails and pick-your-own farms are signature photo-led
   // draws of the county. worth-a-look.ts had already added them to its own
   // copy of this set; the two are now one list again, which is what the
   // "adopt once, apply everywhere" note above always claimed.
   "winery", "distillery", "agritourism", "ice-cream",
-  // "outdoors" and "public-art" were dropped: both are real taxonomy slugs
-  // but no place carries either as its category, so they never matched.
+  // "outdoors" was dropped: it is a PARENT slug (park, trail, playground, golf,
+  // agritourism sit under it), and a place is only ever filed under a leaf, so
+  // it could never match. "public-art" stays because it is a real leaf that
+  // just has no places yet.
 ]);
 
 /** A place is photogenic when it has a real photo AND sits in a category

@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
+import { sendAdminEmail } from "@/lib/notify/adminEmail";
 import {
   isRateLimited,
   isSameOriginMutationRequest,
@@ -220,39 +221,18 @@ async function persistSubmission(
   return { ok: true, token };
 }
 
+/** Thin wrapper over the shared owner-notification channel, kept so the call
+ *  sites below read the same as they always did. Behaviour is unchanged: same
+ *  from-address, same recipient default, same 5s timeout, same fail-soft. */
 async function maybeSendAdminEmail(
   kind: SubmissionKind,
   payload: object,
 ): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
-  const to = process.env.ADMIN_EMAIL ?? "hello@frederickradius.app";
-  if (!key) return false;
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Frederick Radius <submissions@frederickradius.app>",
-        to,
-        subject: `New ${kind.replace("_", " ")} submission`,
-        text: JSON.stringify(payload, null, 2),
-      }),
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response.ok) {
-      console.warn(
-        `[submission] Admin email rejected with HTTP ${response.status}.`,
-      );
-      return false;
-    }
-    return true;
-  } catch {
-    console.warn("[submission] Admin email delivery was unavailable.");
-    return false;
-  }
+  return sendAdminEmail({
+    subject: `New ${kind.replace("_", " ")} submission`,
+    text: JSON.stringify(payload, null, 2),
+    tag: "submission",
+  });
 }
 
 export async function submitPlaceAction(

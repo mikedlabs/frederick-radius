@@ -49,9 +49,11 @@ const FRESH_WITHIN_DAYS = 14;
 // fuzzy "park is sort of kid-friendly" guessing).
 const KID_CATEGORIES: ReadonlySet<string> = new Set(["family", "playground"]);
 // Obviously-free public destinations.
-// "outdoors" and "public-art" were in this list but no place carries either as
-// its category, so they never fired. Parks and trails are the real free set.
-const FREE_CATEGORIES: ReadonlySet<string> = new Set(["park", "trail"]);
+// "outdoors" is dropped because it is a PARENT slug (park, trail, playground,
+// golf, agritourism live under it) and a place is only ever filed under a leaf,
+// so it could never fire. "public-art" stays: it is a real leaf that simply has
+// no places yet, and a mural is free when one arrives.
+const FREE_CATEGORIES: ReadonlySet<string> = new Set(["park", "trail", "public-art"]);
 
 // Tiny curated landmark set — the locators a local actually uses. Downtown
 // coords are the real place geoms; Hood/Monocacy are well-known points.

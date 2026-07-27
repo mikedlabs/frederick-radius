@@ -31,9 +31,12 @@ describe("placeReasons — extended intent reasons", () => {
   it("free for obviously-free public destinations", () => {
     expect(kinds(place({ category: "park" }))).toContain("free");
     expect(kinds(place({ category: "trail" }))).toContain("free");
-    expect(kinds(place({ category: "outdoors" }))).toContain("free");
     expect(kinds(place({ category: "public-art" }))).toContain("free");
     expect(kinds(place({ category: "restaurant" }))).not.toContain("free");
+    // "outdoors" used to be asserted here, but it is a PARENT slug: places are
+    // filed under its children (park, trail, playground, golf, agritourism),
+    // never under it, so the branch was unreachable in production.
+    expect(kinds(place({ category: "outdoors" }))).not.toContain("free");
   });
 
   it("near_landmark when within 500m of a curated landmark", () => {
