@@ -113,7 +113,11 @@ export default function FoodTruckIdentity({
             className="object-contain"
           />
         </span>
-        <span className="food-truck-mark-cuisine">{truck.cuisine}</span>
+        {/* The cuisine belongs to whichever element is the label. When a card
+            or drawer names the vendor immediately afterward it prints the
+            cuisine too, so printing it here as well stamped every roster card
+            with "Barbecue / Barbecue / Blues BBQ". */}
+        {decorative ? null : <span className="food-truck-mark-cuisine">{truck.cuisine}</span>}
         {size === "detail" && !decorative ? (
           <a
             href={mark.sourcePage}
@@ -147,7 +151,9 @@ export default function FoodTruckIdentity({
       <span className="food-truck-fallback-kicker">Frederick County</span>
       <strong className="food-truck-vendor-mark">{foodTruckInitials(truck.name)}</strong>
       <span className="food-truck-fallback-rule" aria-hidden />
-      <span className="food-truck-vendor-cuisine">{truck.cuisine}</span>
+      {/* Same reason as the mark variant above: the labelling card prints the
+          cuisine, so repeating it here read as a stutter on every card. */}
+      {decorative ? null : <span className="food-truck-vendor-cuisine">{truck.cuisine}</span>}
       <span className="food-truck-fallback-footer">Mobile vendor</span>
     </div>
   );

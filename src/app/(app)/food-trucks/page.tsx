@@ -96,12 +96,21 @@ function vendorHref(vendor: FoodTruckScheduleStop["vendors"][number]): string | 
   return FOOD_TRUCK_BY_SLUG.has(vendor.slug) ? `#truck-${vendor.slug}` : undefined;
 }
 
+/** A stop vendor we have no roster entry for. Named by the host's calendar,
+ *  so the truck is real and out working, it just has no listing yet. */
+function isUnlistedStopVendor(vendor: FoodTruckScheduleStop["vendors"][number]): boolean {
+  return !vendor.slug || !FOOD_TRUCK_BY_SLUG.has(vendor.slug);
+}
+
 function stopVendorIdentity(vendor: FoodTruckScheduleStop["vendors"][number]) {
   const truck = vendor.slug ? FOOD_TRUCK_BY_SLUG.get(vendor.slug) : undefined;
   return truck ?? {
     slug: vendor.slug ?? vendor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name: vendor.name,
-    cuisine: "Guest truck",
+    // Was "Guest truck", which read as a downgrade to the exact operators we
+    // most want to reach: these are working trucks on a published calendar
+    // that simply have not claimed a listing.
+    cuisine: "Not listed yet",
     kind: "food" as const,
   };
 }
@@ -183,7 +192,72 @@ function StopCard({ stop }: { stop: FoodTruckScheduleStop }) {
   );
 }
 
-export default async function FoodTrucksPage() {
+/**
+ * The operator door. It sits under the board for the everyday visitor, and
+ * moves above it for `/food-trucks?for=owner` — the link to hand to vendors
+ * directly, so an operator who taps through from a post is not asked to scroll
+ * past the whole consumer page to find the two things they came for.
+ */
+function OwnerDoor({
+  unlisted,
+  lead,
+}: {
+  unlisted: ReadonlyArray<{ name: string }>;
+  lead: boolean;
+}) {
+  return (
+    <aside
+      className="food-truck-owner-door rounded-[var(--app-radius-lg)] border p-4"
+      style={{
+        borderColor: lead ? "var(--app-ink)" : "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+      }}
+    >
+      <div className="sm:flex sm:items-center sm:justify-between sm:gap-5">
+        <div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>For truck owners</p>
+          <p className="mt-1 font-serif text-[21px] leading-tight" style={{ color: "var(--app-ink)" }}>
+            {lead ? "Put your truck on the county board." : "Make this listing useful before someone arrives."}
+          </p>
+          <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {lead
+              ? "A listing carries your photo, menu, catering link, and today's stop. It is free, there is no account to keep up, and you can post a live pin from your phone while you are serving."
+              : "Send a truck photo, menu, or public schedule. We’ll keep the listing current."}
+          </p>
+        </div>
+        <div className="mt-3 grid shrink-0 grid-cols-2 gap-2 sm:mt-0 sm:flex">
+          <Link href="/food-trucks/claim" className="tap-44 inline-flex items-center justify-center rounded-full border px-3.5 py-2.5 text-center text-[12px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}>
+            Claim a listing
+          </Link>
+          <Link href="/submit/place?category=food-truck" className="tap-44 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2.5 text-center text-[12px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}>
+            Add my truck
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </Link>
+        </div>
+      </div>
+
+      {/* Named, source-verified trucks working this week that have no listing.
+          The most specific possible invitation: an operator can see their own
+          truck on the board and know exactly what is missing. */}
+      {unlisted.length > 0 ? (
+        <p className="mt-3 border-t pt-3 text-[12px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+          On this week&rsquo;s board without a listing:{" "}
+          <span style={{ color: "var(--app-ink)" }}>
+            {unlisted.map((vendor) => vendor.name).join(", ")}
+          </span>
+          . If one of those is yours, add it and it carries your links from then on.
+        </p>
+      ) : null}
+    </aside>
+  );
+}
+
+export default async function FoodTrucksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ for?: string }>;
+}) {
+  const ownerView = (await searchParams).for === "owner";
   // The public route must never inherit a database, Blob, or official-calendar
   // hang. On timeout, the static Frederick County roster still renders and the
   // week panel says that no published stops are available.
@@ -196,6 +270,15 @@ export default async function FoodTrucksPage() {
   );
   const scheduleUnavailable =
     schedule.stops.length === 0 && schedule.sources.some((source) => !source.ok);
+  // Deduped by name: one truck can appear at several stops in the same week.
+  const unlistedStopVendors = Array.from(
+    new Map(
+      schedule.stops
+        .flatMap((stop) => stop.vendors)
+        .filter(isUnlistedStopVendor)
+        .map((vendor) => [vendor.name, { name: vendor.name }]),
+    ).values(),
+  );
   const boardItems: FoodTruckBoardItem[] = FOOD_TRUCKS.map((truck) => ({
     ...truck,
     home: resolveHomeBase(truck.homeBase) ?? undefined,
@@ -252,6 +335,8 @@ export default async function FoodTrucksPage() {
           ))}
         </div>
       </header>
+
+      {ownerView ? <OwnerDoor unlisted={unlistedStopVendors} lead /> : null}
 
       <FoodTruckJourneys
         defaultMode={nearbyTrucks.length > 0 ? "near" : "week"}
@@ -319,24 +404,7 @@ export default async function FoodTrucksPage() {
         trucks={<FoodTruckBoard trucks={boardItems} stops={schedule.stops} accent={FOOD_ACCENT} />}
       />
 
-      <aside className="food-truck-owner-door rounded-[var(--app-radius-lg)] border p-4 sm:flex sm:items-center sm:justify-between sm:gap-5" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}>
-        <div>
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: FOOD_ACCENT }}>For truck owners</p>
-          <p className="mt-1 font-serif text-[21px] leading-tight" style={{ color: "var(--app-ink)" }}>Make this listing useful before someone arrives.</p>
-          <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Send a truck photo, menu, or public schedule. We&rsquo;ll keep the listing current.
-          </p>
-        </div>
-        <div className="mt-3 grid shrink-0 grid-cols-2 gap-2 sm:mt-0 sm:flex">
-          <Link href="/food-trucks/claim" className="tap-44 inline-flex items-center justify-center rounded-full border px-3.5 py-2.5 text-center text-[12px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}>
-            Claim a listing
-          </Link>
-          <Link href="/submit/place?category=food-truck" className="tap-44 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2.5 text-center text-[12px] font-semibold" style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}>
-            Add my truck
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </Link>
-        </div>
-      </aside>
+      {ownerView ? null : <OwnerDoor unlisted={unlistedStopVendors} lead={false} />}
     </div>
   );
 }
