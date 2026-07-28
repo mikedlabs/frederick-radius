@@ -97,18 +97,33 @@ function liveEta(etaEpoch: number, nowMs: number): string | null {
 }
 
 /** A gauge's last 24 hours as one path, scaled to its own range so a creek
- *  that moves two inches still reads as a shape. */
-function Sparkline({ series, color }: { series: number[]; color: string }) {
+ *  that moves two inches still reads as a shape. `at` marks the scrubbed
+ *  point when a finger or pointer is moving across the key. */
+function Sparkline({
+  series,
+  color,
+  at,
+}: {
+  series: Array<{ v: number; at: string }>;
+  color: string;
+  at: number | null;
+}) {
+  const fillId = useId().replace(/[:]/g, "");
   if (series.length < 2) return null;
-  const min = Math.min(...series);
-  const max = Math.max(...series);
+  const values = series.map((point) => point.v);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   const span = max - min || 1;
   const step = 100 / (series.length - 1);
-  const points = series.map((value, i) => {
-    const x = i * step;
-    const y = 26 - ((value - min) / span) * 22;
-    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  const xy = (i: number) => ({
+    x: i * step,
+    y: 26 - ((series[i].v - min) / span) * 22,
   });
+  const points = series.map((_, i) => {
+    const p = xy(i);
+    return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  });
+  const cursor = at === null ? null : xy(at);
   return (
     <svg
       // Sits in the key's empty middle band, between the icon and the reading.
@@ -118,7 +133,15 @@ function Sparkline({ series, color }: { series: number[]; color: string }) {
       preserveAspectRatio="none"
       aria-hidden
     >
-      <polygon points={`0,30 ${points.join(" ")} 100,30`} fill={color} opacity={0.12} />
+      {/* The fill fades out downward. A flat tint stopped at the band's edge
+          and read as a shaded rectangle sitting on the key, not a chart. */}
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,30 ${points.join(" ")} 100,30`} fill={`url(#${fillId})`} />
       <polyline
         points={points.join(" ")}
         fill="none"
@@ -126,11 +149,47 @@ function Sparkline({ series, color }: { series: number[]; color: string }) {
         strokeWidth={1.4}
         strokeLinejoin="round"
         strokeLinecap="round"
-        opacity={0.75}
+        opacity={cursor ? 0.95 : 0.75}
         vectorEffect="non-scaling-stroke"
       />
+      {cursor && (
+        <>
+          <line
+            x1={cursor.x}
+            y1={0}
+            x2={cursor.x}
+            y2={30}
+            stroke={color}
+            strokeWidth={1}
+            opacity={0.45}
+            vectorEffect="non-scaling-stroke"
+          />
+          {/* Drawn as a tiny rect: a circle would be stretched into an ellipse
+              by preserveAspectRatio="none" on this viewBox. */}
+          <rect
+            x={cursor.x - 1.1}
+            y={cursor.y - 1.1}
+            width={2.2}
+            height={2.2}
+            fill={color}
+            vectorEffect="non-scaling-stroke"
+          />
+        </>
+      )}
     </svg>
   );
+}
+
+/** "just now", "40 min ago", "6h ago" — how long before this render the gauge
+ *  reported. Reads the point's own timestamp, never its position in the array,
+ *  because USGS skips intervals and the gaps are real. */
+function agoLabel(iso: string, nowMs: number): string {
+  const minutes = Math.round((nowMs - Date.parse(iso)) / 60_000);
+  if (!Number.isFinite(minutes) || minutes < 0) return "just now";
+  if (minutes < 5) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return hours <= 1 ? "1h ago" : `${hours}h ago`;
 }
 
 function DetailRow({ row, nowMs }: { row: DeckDetailRow; nowMs: number }) {
@@ -192,6 +251,8 @@ export default function DeckBoard({
   /** Per-key manual face offsets, set by swiping or arrow keys. */
   const [nudge, setNudge] = useState<Record<string, number>>({});
   const touchX = useRef<number | null>(null);
+  /** Which point of a scrubbable key's line the pointer is over, if any. */
+  const [scrub, setScrub] = useState<{ id: string; index: number } | null>(null);
 
   const rotates = keys.some((deckKey) => deckKey.faces.length > 1);
   const ticksEta = keys.some((deckKey) => deckKey.detail.some((row) => row.etaEpoch));
@@ -278,6 +339,23 @@ export default function DeckBoard({
   const turnFace = (id: string, by: number) =>
     setNudge((current) => ({ ...current, [id]: (current[id] ?? 0) + by }));
 
+  /**
+   * Map a pointer's x position inside a key onto a point in its series.
+   *
+   * A key either scrubs or turns faces on horizontal movement, never both:
+   * two meanings on one gesture is how a control stops being predictable.
+   * The rule is the data's, not a setting — a key that publishes a series
+   * scrubs it, and today only Creeks publishes one.
+   */
+  const scrubAt = (deckKey: DeckKey, clientX: number, element: HTMLElement) => {
+    const series = deckKey.spark;
+    if (!series || series.length < 2) return;
+    const box = element.getBoundingClientRect();
+    if (box.width === 0) return;
+    const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+    setScrub({ id: deckKey.id, index: Math.round(ratio * (series.length - 1)) });
+  };
+
   // Only groups that actually carry tools, so a folder can never open empty.
   const folders = RADIUS_TOOL_GROUPS.filter((group) => group.tools.length > 0);
 
@@ -327,7 +405,17 @@ export default function DeckBoard({
           const faceIndex =
             (((auto + (nudge[deckKey.id] ?? 0)) % deckKey.faces.length) + deckKey.faces.length) %
             deckKey.faces.length;
-          const face = deckKey.faces[faceIndex];
+          // A key that publishes a series scrubs it; a key without one turns
+          // faces. One meaning per gesture.
+          const scrubs = !!deckKey.spark && deckKey.spark.length > 1;
+          const scrubIndex = scrub?.id === deckKey.id ? scrub.index : null;
+          const scrubbed = scrubIndex === null ? null : deckKey.spark?.[scrubIndex] ?? null;
+          // While scrubbing, the face reads out the moment under the pointer
+          // instead of the current value, so the number and the marker always
+          // agree about which reading they describe.
+          const face = scrubbed
+            ? { value: `${scrubbed.v.toFixed(1)} ft`, label: agoLabel(scrubbed.at, nowMs) }
+            : deckKey.faces[faceIndex];
 
           // Three across leaves a lone key stranded whenever the count is
           // 3n+1. The last one widens rather than sitting in a half-empty row.
@@ -378,7 +466,7 @@ export default function DeckBoard({
                   type="button"
                   onClick={() => setOpenId(open ? null : deckKey.id)}
                   onKeyDown={(event) => {
-                    if (!many || open) return;
+                    if (!many || open || scrubs) return;
                     if (event.key === "ArrowRight") {
                       event.preventDefault();
                       turnFace(deckKey.id, 1);
@@ -389,10 +477,22 @@ export default function DeckBoard({
                   }}
                   onTouchStart={(event) => {
                     touchX.current = event.touches[0]?.clientX ?? null;
+                    if (scrubs && !open && touchX.current !== null) {
+                      scrubAt(deckKey, touchX.current, event.currentTarget);
+                    }
+                  }}
+                  onTouchMove={(event) => {
+                    if (!scrubs || open) return;
+                    const x = event.touches[0]?.clientX;
+                    if (x != null) scrubAt(deckKey, x, event.currentTarget);
                   }}
                   onTouchEnd={(event) => {
                     const start = touchX.current;
                     touchX.current = null;
+                    if (scrubs) {
+                      setScrub(null);
+                      return;
+                    }
                     if (start === null || !many || open) return;
                     const delta = (event.changedTouches[0]?.clientX ?? start) - start;
                     if (Math.abs(delta) < SWIPE_PX) return;
@@ -400,6 +500,13 @@ export default function DeckBoard({
                     // the gesture never fights the tap it looks like.
                     event.preventDefault();
                     turnFace(deckKey.id, delta < 0 ? 1 : -1);
+                  }}
+                  onPointerMove={(event) => {
+                    if (!scrubs || open || event.pointerType === "touch") return;
+                    scrubAt(deckKey, event.clientX, event.currentTarget);
+                  }}
+                  onPointerLeave={() => {
+                    if (scrubs) setScrub(null);
                   }}
                   aria-expanded={open}
                   aria-controls={panelId}
@@ -409,8 +516,8 @@ export default function DeckBoard({
                   }`}
                 >
                   {/* The gauge's own last 24 hours, behind its reading. */}
-                  {!open && deckKey.spark && deckKey.spark.length > 1 && (
-                    <Sparkline series={deckKey.spark} color={deckKey.accent} />
+                  {!open && scrubs && deckKey.spark && (
+                    <Sparkline series={deckKey.spark} color={deckKey.accent} at={scrubIndex} />
                   )}
 
                   <span className="relative flex items-start justify-between gap-2">
