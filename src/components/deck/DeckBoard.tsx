@@ -20,11 +20,16 @@ import type { DeckIcon, DeckKey } from "@/lib/deck/readings";
 /**
  * The deck — the county's instruments as a board of keys.
  *
- * Each key is lit Ink on the Cream page: the one place in the product where
- * the dark surface earns itself, because an instrument panel is exactly the
- * "rare contrast moment" the brand reserves Ink for. The face carries an icon,
- * one reading, and one label. Nothing else. A key that has a second honest
- * reading rotates to it rather than stacking both.
+ * Each key is paper, not a dark slab. The first build lit these in Ink on the
+ * argument that an instrument panel is the brand's "rare contrast moment";
+ * ten of them at once turned out to be a heavy black grid dropped onto a warm
+ * page, which is a page theme by another name and exactly what the brand rule
+ * exists to prevent. The keys are warm white with their own accent washed
+ * across the face, so identity comes from colour and the reading stays Ink on
+ * paper where it is easiest to read.
+ *
+ * The face carries an icon, one reading, and one label. Nothing else. A key
+ * with a second honest reading rotates to it rather than stacking both.
  *
  * Motion: faces cross-fade on a shared tick, staggered into three groups so
  * the board breathes instead of flashing in unison. prefers-reduced-motion
@@ -59,7 +64,7 @@ function KeyFace({ deckKey, faceIndex }: { deckKey: DeckKey; faceIndex: number }
         <Icon
           className="h-[18px] w-[18px] shrink-0"
           strokeWidth={2.25}
-          style={{ color: unavailable ? "rgba(244,238,226,0.32)" : deckKey.accent }}
+          style={{ color: unavailable ? "var(--app-ink-3)" : deckKey.accent }}
           aria-hidden
         />
         {deckKey.live && !unavailable && (
@@ -79,7 +84,7 @@ function KeyFace({ deckKey, faceIndex }: { deckKey: DeckKey; faceIndex: number }
           style={{
             fontSize: "clamp(19px, 5.4vw, 27px)",
             letterSpacing: "-0.02em",
-            color: unavailable ? "rgba(244,238,226,0.45)" : "var(--app-bg)",
+            color: unavailable ? "var(--app-ink-3)" : "var(--app-ink)",
           }}
         >
           {face.value}
@@ -87,7 +92,7 @@ function KeyFace({ deckKey, faceIndex }: { deckKey: DeckKey; faceIndex: number }
         <span
           key={`${deckKey.id}-${faceIndex}-label`}
           className="fr-deck-label mt-1 block truncate text-[10.5px] leading-tight"
-          style={{ color: "rgba(244,238,226,0.62)" }}
+          style={{ color: "var(--app-ink-3)" }}
         >
           {face.label}
         </span>
@@ -142,27 +147,32 @@ export default function DeckBoard({ keys }: { keys: DeckKey[] }) {
             }`}
             style={{
               borderRadius: "var(--app-radius-md)",
-              background: "var(--app-ink)",
-              opacity: unavailable ? 0.62 : 1,
+              background: "var(--app-bg-elevated-solid)",
+              border: "1px solid var(--app-border)",
+              opacity: unavailable ? 0.72 : 1,
             }}
           >
-            {/* The backlight: the key's own accent, thrown from behind the icon. */}
+            {/* The key's own colour, washed across the face from the corner the
+                icon sits in. Light enough that Ink text keeps full contrast. */}
             {!unavailable && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute -left-6 -top-8 h-20 w-20 rounded-full"
+                className="pointer-events-none absolute inset-0"
                 style={{
-                  background: deckKey.accent,
-                  opacity: 0.22,
-                  filter: "blur(22px)",
+                  background: `radial-gradient(120% 90% at 0% 0%, ${deckKey.accent} 0%, transparent 72%)`,
+                  opacity: 0.16,
                 }}
               />
             )}
-            {/* Top edge highlight — the lit-key bevel, not a border. */}
+            {/* A colour stripe on the top edge so a key is identifiable at a
+                glance, and at a distance, without reading it. */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px"
-              style={{ background: "rgba(244,238,226,0.16)" }}
+              className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+              style={{
+                background: unavailable ? "var(--app-border)" : deckKey.accent,
+                opacity: unavailable ? 1 : 0.85,
+              }}
             />
             <span className="relative flex h-full flex-col" aria-hidden>
               <KeyFace deckKey={deckKey} faceIndex={faceIndex} />
@@ -174,11 +184,11 @@ export default function DeckBoard({ keys }: { keys: DeckKey[] }) {
       <style>{`
         .fr-deck-key {
           transition: transform 140ms ease, box-shadow 140ms ease;
-          box-shadow: 0 1px 0 rgba(34,28,21,0.10), 0 6px 14px -10px rgba(34,28,21,0.55);
+          box-shadow: 0 1px 2px rgba(34,28,21,0.05), 0 4px 10px -8px rgba(34,28,21,0.28);
         }
         .fr-deck-key:active { transform: translateY(1px) scale(0.985); }
         @media (hover: hover) {
-          .fr-deck-key:hover { transform: translateY(-1px); box-shadow: 0 2px 0 rgba(34,28,21,0.10), 0 12px 22px -12px rgba(34,28,21,0.6); }
+          .fr-deck-key:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(34,28,21,0.06), 0 12px 20px -12px rgba(34,28,21,0.34); }
         }
         .fr-deck-value, .fr-deck-label { animation: fr-deck-in 420ms ease both; }
         .fr-deck-label { animation-delay: 40ms; }
