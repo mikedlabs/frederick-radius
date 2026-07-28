@@ -19,7 +19,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import type { DeckDetailRow, DeckIcon, DeckKey } from "@/lib/deck/readings";
+import type { DeckDetailRow, DeckFace, DeckIcon, DeckKey } from "@/lib/deck/readings";
 import { RADIUS_TOOL_GROUPS } from "@/data/radius-tools";
 import { TOOL_ICONS, TOOL_TONE_COLOR } from "@/components/tools/toolIcons";
 
@@ -178,6 +178,36 @@ function Sparkline({
       )}
     </svg>
   );
+}
+
+/**
+ * What a key has to say, one stop at a time, as you move across its face.
+ *
+ * Every key holds more than the one number it shows. Moving inside the cube
+ * walks that content without opening anything: which bus and how far out,
+ * which town is dark and how many, what the sky does tomorrow, which creek is
+ * where. The face keeps its own grammar throughout — the figure on top, what
+ * the figure is about underneath — so a scrubbed stop reads exactly like a
+ * resting reading rather than like a different component.
+ *
+ * A gauge series scrubs as a timeline; everything else scrubs its detail rows.
+ * Rows that carry no figure of their own get a position counter, which is
+ * honest about being a position rather than dressing one up as a measurement.
+ */
+function scrubTrack(deckKey: DeckKey, nowMs: number): DeckFace[] {
+  if (deckKey.spark && deckKey.spark.length > 1) {
+    return deckKey.spark.map((point) => ({
+      value: `${point.v.toFixed(1)} ft`,
+      label: agoLabel(point.at, nowMs),
+    }));
+  }
+  const rows = deckKey.detail;
+  if (rows.length < 2) return [];
+  return rows.map((row, i) => {
+    const live = row.etaEpoch ? liveEta(row.etaEpoch, nowMs) : null;
+    const figure = row.etaEpoch ? live : row.trail;
+    return { value: figure ?? `${i + 1}/${rows.length}`, label: row.lead };
+  });
 }
 
 /** "just now", "40 min ago", "6h ago" — how long before this render the gauge
@@ -347,14 +377,21 @@ export default function DeckBoard({
    * The rule is the data's, not a setting — a key that publishes a series
    * scrubs it, and today only Creeks publishes one.
    */
-  const scrubAt = (deckKey: DeckKey, clientX: number, element: HTMLElement) => {
-    const series = deckKey.spark;
-    if (!series || series.length < 2) return;
+  const scrubAt = (deckKey: DeckKey, track: DeckFace[], clientX: number, element: HTMLElement) => {
+    if (track.length < 2) return;
     const box = element.getBoundingClientRect();
     if (box.width === 0) return;
     const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-    setScrub({ id: deckKey.id, index: Math.round(ratio * (series.length - 1)) });
+    setScrub({ id: deckKey.id, index: Math.round(ratio * (track.length - 1)) });
   };
+
+  /** Arrow keys step the same track, so the reveal is not pointer-only. */
+  const stepScrub = (deckKey: DeckKey, track: DeckFace[], by: number) =>
+    setScrub((current) => {
+      const from = current?.id === deckKey.id ? current.index : by > 0 ? -1 : track.length;
+      const next = Math.min(track.length - 1, Math.max(0, from + by));
+      return { id: deckKey.id, index: next };
+    });
 
   // Only groups that actually carry tools, so a folder can never open empty.
   const folders = RADIUS_TOOL_GROUPS.filter((group) => group.tools.length > 0);
@@ -405,17 +442,16 @@ export default function DeckBoard({
           const faceIndex =
             (((auto + (nudge[deckKey.id] ?? 0)) % deckKey.faces.length) + deckKey.faces.length) %
             deckKey.faces.length;
-          // A key that publishes a series scrubs it; a key without one turns
-          // faces. One meaning per gesture.
-          const scrubs = !!deckKey.spark && deckKey.spark.length > 1;
+          // Everything a key holds beyond its headline, walkable across the
+          // face. One meaning per gesture: a key with a track scrubs it, and
+          // faces keep turning on their own timer.
+          const track = open ? [] : scrubTrack(deckKey, nowMs);
+          const scrubs = track.length > 1;
           const scrubIndex = scrub?.id === deckKey.id ? scrub.index : null;
-          const scrubbed = scrubIndex === null ? null : deckKey.spark?.[scrubIndex] ?? null;
-          // While scrubbing, the face reads out the moment under the pointer
-          // instead of the current value, so the number and the marker always
-          // agree about which reading they describe.
-          const face = scrubbed
-            ? { value: `${scrubbed.v.toFixed(1)} ft`, label: agoLabel(scrubbed.at, nowMs) }
-            : deckKey.faces[faceIndex];
+          const scrubbed = scrubIndex === null ? null : track[scrubIndex] ?? null;
+          // While scrubbing, the face reads the stop under the pointer, so the
+          // figure and the marker always describe the same thing.
+          const face = scrubbed ?? deckKey.faces[faceIndex];
 
           // Three across leaves a lone key stranded whenever the count is
           // 3n+1. The last one widens rather than sitting in a half-empty row.
@@ -466,25 +502,32 @@ export default function DeckBoard({
                   type="button"
                   onClick={() => setOpenId(open ? null : deckKey.id)}
                   onKeyDown={(event) => {
-                    if (!many || open || scrubs) return;
-                    if (event.key === "ArrowRight") {
+                    if (open) return;
+                    const forward = event.key === "ArrowRight";
+                    const back = event.key === "ArrowLeft";
+                    if (!forward && !back) return;
+                    if (scrubs) {
+                      // The keyboard walks the same content the finger does.
                       event.preventDefault();
-                      turnFace(deckKey.id, 1);
-                    } else if (event.key === "ArrowLeft") {
+                      stepScrub(deckKey, track, forward ? 1 : -1);
+                    } else if (many) {
                       event.preventDefault();
-                      turnFace(deckKey.id, -1);
+                      turnFace(deckKey.id, forward ? 1 : -1);
                     }
+                  }}
+                  onBlur={() => {
+                    if (scrub?.id === deckKey.id) setScrub(null);
                   }}
                   onTouchStart={(event) => {
                     touchX.current = event.touches[0]?.clientX ?? null;
                     if (scrubs && !open && touchX.current !== null) {
-                      scrubAt(deckKey, touchX.current, event.currentTarget);
+                      scrubAt(deckKey, track, touchX.current, event.currentTarget);
                     }
                   }}
                   onTouchMove={(event) => {
                     if (!scrubs || open) return;
                     const x = event.touches[0]?.clientX;
-                    if (x != null) scrubAt(deckKey, x, event.currentTarget);
+                    if (x != null) scrubAt(deckKey, track, x, event.currentTarget);
                   }}
                   onTouchEnd={(event) => {
                     const start = touchX.current;
@@ -503,7 +546,7 @@ export default function DeckBoard({
                   }}
                   onPointerMove={(event) => {
                     if (!scrubs || open || event.pointerType === "touch") return;
-                    scrubAt(deckKey, event.clientX, event.currentTarget);
+                    scrubAt(deckKey, track, event.clientX, event.currentTarget);
                   }}
                   onPointerLeave={() => {
                     if (scrubs) setScrub(null);
@@ -516,7 +559,7 @@ export default function DeckBoard({
                   }`}
                 >
                   {/* The gauge's own last 24 hours, behind its reading. */}
-                  {!open && scrubs && deckKey.spark && (
+                  {!open && deckKey.spark && deckKey.spark.length > 1 && (
                     <Sparkline series={deckKey.spark} color={deckKey.accent} at={scrubIndex} />
                   )}
 
@@ -572,19 +615,42 @@ export default function DeckBoard({
 
                     {/* How many readings this key holds, and which one you are
                         looking at. Rotation stops being a surprise. */}
-                    {many && !open && (
-                      <span className="mt-1.5 flex gap-1" aria-hidden>
-                        {deckKey.faces.map((_, dot) => (
-                          <span
-                            key={dot}
-                            className="h-[3px] w-[3px] rounded-full transition-opacity"
-                            style={{
-                              background: deckKey.accent,
-                              opacity: dot === faceIndex ? 0.9 : 0.25,
-                            }}
-                          />
-                        ))}
+                    {/* Where you are in the key's content. Scrubbing takes the
+                        indicator over: a continuous rail with a travelling
+                        marker, because a scrub track can hold twenty-four
+                        stops and twenty-four dots is noise. At rest it falls
+                        back to the face dots. */}
+                    {!open && scrubIndex !== null && track.length > 1 ? (
+                      <span
+                        className="mt-1.5 block h-[3px] w-full overflow-hidden rounded-full"
+                        style={{ background: `color-mix(in srgb, ${deckKey.accent} 22%, transparent)` }}
+                        aria-hidden
+                      >
+                        <span
+                          className="block h-full rounded-full"
+                          style={{
+                            background: deckKey.accent,
+                            width: `${Math.max(8, 100 / track.length)}%`,
+                            marginLeft: `${(scrubIndex / (track.length - 1)) * (100 - Math.max(8, 100 / track.length))}%`,
+                          }}
+                        />
                       </span>
+                    ) : (
+                      many &&
+                      !open && (
+                        <span className="mt-1.5 flex gap-1" aria-hidden>
+                          {deckKey.faces.map((_, dot) => (
+                            <span
+                              key={dot}
+                              className="h-[3px] w-[3px] rounded-full transition-opacity"
+                              style={{
+                                background: deckKey.accent,
+                                opacity: dot === faceIndex ? 0.9 : 0.25,
+                              }}
+                            />
+                          ))}
+                        </span>
+                      )
                     )}
                   </span>
                 </button>
