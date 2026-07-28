@@ -603,6 +603,28 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * How long ago a feed item was published, in the deck's figure slot.
+ *
+ * A headline's source and a 311 report's category are both already most of
+ * their own title, so putting either in the figure slot spent the one big
+ * number on a repeat. Age is the fact those rows were missing: whether the
+ * news is from this morning or last Tuesday changes what you do with it, and
+ * both feeds have carried the timestamp all along.
+ */
+export function ageLabel(iso: string | undefined, now: Date): string | undefined {
+  if (!iso) return undefined;
+  const then = Date.parse(iso);
+  if (!Number.isFinite(then)) return undefined;
+  const minutes = Math.round((now.getTime() - then) / 60_000);
+  if (minutes < 0) return undefined; // a future stamp is a feed bug, not a fact
+  if (minutes < 45) return "just now";
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours <= 1 ? "1h ago" : `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days <= 1 ? "1d ago" : `${days}d ago`;
+}
+
 /** Clamp a feed's own prose to one readable line on a narrow key. */
 function clamp(value: string, max = 58): string {
   const trimmed = value.replace(/\s+/g, " ").trim();
@@ -720,7 +742,7 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
         getFixItIssues(20).then((issues) =>
           issues.map((issue) => ({
             lead: clamp(issue.summary || issue.category),
-            trail: issue.category && issue.category !== issue.summary ? clamp(issue.category, 18) : undefined,
+            trail: ageLabel(issue.reported_at, now),
           })),
         ),
         T,
@@ -752,8 +774,10 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
       withTimeout(
         getLocalHeadlines().then((headlines) =>
           headlines.map((headline) => ({
-            lead: clamp(headline.title),
-            trail: clamp(headline.source, 16),
+            // The source rides with the title rather than in the figure slot:
+            // "WTOP" set in the key's biggest type read like a measurement.
+            lead: clamp(`${headline.title}${headline.source ? ` · ${headline.source}` : ""}`, 72),
+            trail: ageLabel(headline.published_at, now),
           })),
         ),
         T,

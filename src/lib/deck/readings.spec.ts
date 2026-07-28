@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ageLabel,
   buildDeckKeys,
   dayRangeNote,
   minutesUntil,
@@ -413,5 +414,29 @@ describe("dayRangeNote", () => {
   it("says nothing when there is not enough history to describe", () => {
     expect(dayRangeNote(undefined, "Catoctin at Middletown")).toBeUndefined();
     expect(dayRangeNote([{ value: 1, at: at(0) }], "Catoctin at Middletown")).toBeUndefined();
+  });
+});
+
+describe("ageLabel", () => {
+  const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
+
+  it("rounds a feed item's age into the deck's figure slot", () => {
+    expect(ageLabel(ago(10 * 60_000), NOW)).toBe("just now");
+    expect(ageLabel(ago(3 * 3_600_000), NOW)).toBe("3h ago");
+    expect(ageLabel(ago(50 * 3_600_000), NOW)).toBe("2d ago");
+  });
+
+  it("uses the singular where a count of one lands", () => {
+    expect(ageLabel(ago(60 * 60_000), NOW)).toBe("1h ago");
+    expect(ageLabel(ago(25 * 3_600_000), NOW)).toBe("1d ago");
+  });
+
+  it("says nothing rather than guessing when the stamp is missing or broken", () => {
+    expect(ageLabel(undefined, NOW)).toBeUndefined();
+    expect(ageLabel("not-a-date", NOW)).toBeUndefined();
+  });
+
+  it("refuses a future timestamp, which is a feed bug and not a fact", () => {
+    expect(ageLabel(ago(-3_600_000), NOW)).toBeUndefined();
   });
 });
