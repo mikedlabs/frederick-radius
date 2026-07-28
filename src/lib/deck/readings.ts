@@ -4,7 +4,10 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { getChartIncidentsFrederickResult, chartRoad } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutagesResult } from "@/lib/integrations/firstenergy";
 import { getFcpsAlertsResult } from "@/lib/integrations/fcps";
-import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
+import {
+  getFrederickWaterSitesWithHistory,
+  readingTrend,
+} from "@/lib/integrations/usgsWater";
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { getLiveVehiclesWithNextStopResult } from "@/lib/integrations/transitRealtime";
 import { getMarcVehiclesResult } from "@/lib/integrations/marcVehicles";
@@ -72,6 +75,13 @@ export type DeckDetailRow = {
   lead: string;
   /** The figure or time on the right. Optional: some rows are just a name. */
   trail?: string;
+  /** Unix seconds of a predicted arrival. When present the client counts it
+   *  down live and ignores `trail`, so a bus ETA cannot silently age into a
+   *  lie on a page that has been open for ten minutes. */
+  etaEpoch?: number;
+  /** Direction of travel over the last hour, where the feed has the history
+   *  to support one. Rendered as an arrow, never as an adjective. */
+  trend?: "rising" | "falling" | "steady";
 };
 
 export type DeckKeyStatus = "ok" | "unavailable";
@@ -93,6 +103,11 @@ export type DeckKey = {
   faces: DeckFace[];
   /** The rows revealed on open. May be empty when the reading is calm. */
   detail: DeckDetailRow[];
+  /** A short recent series drawn on the closed face, oldest first. Present
+   *  only where the feed actually publishes history: today that is the USGS
+   *  gauges (~94 readings over 24h) and nothing else. A sparkline invented
+   *  from a single current value would be a drawing, not a measurement. */
+  spark?: number[];
   /** Shown instead of rows when there are none. Says what was checked. */
   note?: string;
   /** Named on the open key, never invented. */
@@ -121,7 +136,12 @@ export type DeckInputs = {
     alerts: string[];
     outlook: DeckDetailRow[];
   } | null;
-  water: Array<{ name: string; feet: number }> | null;
+  water: Array<{
+    name: string;
+    feet: number;
+    trend?: "rising" | "falling" | "steady";
+    history?: number[];
+  }> | null;
   schools: { available: boolean; alerts: string[] } | null;
   reports: DeckDetailRow[] | null;
   events: { today: number; week: number; rows: DeckDetailRow[] } | null;
@@ -130,11 +150,16 @@ export type DeckInputs = {
 
 const UNAVAILABLE: DeckFace = { value: "—", label: "not reporting" };
 
-type KeyBase = Omit<DeckKey, "status" | "faces" | "detail" | "note">;
+type KeyBase = Omit<DeckKey, "status" | "faces" | "detail" | "note" | "spark">;
 
 function key(
   base: KeyBase,
-  built: { faces: DeckFace[]; detail?: DeckDetailRow[]; note?: string } | null,
+  built: {
+    faces: DeckFace[];
+    detail?: DeckDetailRow[];
+    note?: string;
+    spark?: number[];
+  } | null,
 ): DeckKey {
   if (!built || built.faces.length === 0) {
     return {
@@ -151,7 +176,22 @@ function key(
     faces: built.faces,
     detail: (built.detail ?? []).slice(0, DETAIL_MAX),
     note: built.note,
+    spark: built.spark,
   };
+}
+
+/**
+ * Thin a long series to the handful of points a sparkline the width of a
+ * thumbnail can actually resolve, keeping the newest reading so the line ends
+ * where the number on the face says it does.
+ */
+export function sparkSeries(history: readonly number[], points = 24): number[] {
+  const clean = history.filter((value) => Number.isFinite(value));
+  if (clean.length <= points) return [...clean];
+  const step = (clean.length - 1) / (points - 1);
+  return Array.from({ length: points }, (_, i) =>
+    clean[Math.min(clean.length - 1, Math.round(i * step))],
+  );
 }
 
 /** Minutes until an epoch, floored, or null when it has passed or is absent. */
@@ -235,7 +275,13 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
               ...(input.routes ? [{ value: String(input.routes), label: "routes" }] : []),
             ],
             detail: buses.stops
-              .map((stop) => ({ lead: stop.name, trail: etaLabel(stop.etaEpoch, now) }))
+              .map((stop) => ({
+                lead: stop.name,
+                trail: etaLabel(stop.etaEpoch, now),
+                // Handed through raw so the client can count it down rather
+                // than freeze a minute figure at render time.
+                etaEpoch: minutesUntil(stop.etaEpoch, now) === null ? undefined : stop.etaEpoch,
+              }))
               .sort((a, b) => (a.trail ? 0 : 1) - (b.trail ? 0 : 1)),
             note:
               busCount === 0
@@ -379,25 +425,27 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
         source: "USGS",
       },
       water && water.length > 0
-        ? {
-            faces: [
-              { value: String(water.length), label: "gauges reporting" },
-              ...(water[0]
-                ? [
-                    {
-                      value: `${[...water].sort((a, b) => b.feet - a.feet)[0].feet.toFixed(1)} ft`,
-                      label: shortGaugeName([...water].sort((a, b) => b.feet - a.feet)[0].name),
-                    },
-                  ]
-                : []),
-            ],
-            detail: [...water]
-              .sort((a, b) => b.feet - a.feet)
-              .map((site) => ({
+        ? (() => {
+            const ranked = [...water].sort((a, b) => b.feet - a.feet);
+            const highest = ranked[0];
+            return {
+              faces: [
+                { value: String(water.length), label: "gauges reporting" },
+                {
+                  value: `${highest.feet.toFixed(1)} ft`,
+                  label: shortGaugeName(highest.name),
+                },
+              ],
+              // The face shows the highest gauge, so the line under it is that
+              // same gauge's last 24 hours and not an average of nine rivers.
+              spark: highest.history ? sparkSeries(highest.history) : undefined,
+              detail: ranked.map((site) => ({
                 lead: shortGaugeName(site.name),
                 trail: `${site.feet.toFixed(1)} ft`,
+                trend: site.trend,
               })),
-          }
+            };
+          })()
         : null,
     ),
     key(
@@ -594,13 +642,21 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
       ),
       withTimeout(getNwsForecast(FREDERICK_CENTER), T, null),
       withTimeout(
-        getFrederickWaterSites().then((sites) =>
+        // The history variant, so the face can carry a 24h line and each row
+        // a direction. Every one of the nine gauges reports ~94 points a day,
+        // which is more than enough for readingTrend's eight-sample window.
+        getFrederickWaterSitesWithHistory("P1D").then((sites) =>
           sites
             .filter(
               (site): site is typeof site & { gageHeightFt: number } =>
                 typeof site.gageHeightFt === "number" && Number.isFinite(site.gageHeightFt),
             )
-            .map((site) => ({ name: site.name, feet: site.gageHeightFt })),
+            .map((site) => ({
+              name: site.name,
+              feet: site.gageHeightFt,
+              trend: readingTrend(site.gageHistory) ?? undefined,
+              history: site.gageHistory?.map((reading) => reading.value),
+            })),
         ),
         T,
         null,
