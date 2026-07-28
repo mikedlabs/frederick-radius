@@ -40,13 +40,17 @@ import {
 } from "@/lib/transit-focus";
 import StopArrivalsPopup, { type SelectedStop } from "./StopArrivalsPopup";
 import {
+  MAX_SAVED_TRANSIT_BUSES,
   MAX_SAVED_TRANSIT_STOPS,
   deriveCatchability,
   estimateWalkingMinutes,
   isPredictionFresh,
   minutesUntilArrival,
+  transitBusWatchId,
   type Catchability,
+  type TransitBusRef,
 } from "./transitRiderModel";
+import { useSavedTransitBuses } from "./useSavedTransitBuses";
 import { useSavedTransitStops } from "./useSavedTransitStops";
 import { useLiveVehicles } from "./useLiveVehicles";
 import {
@@ -78,6 +82,7 @@ type ArrivalRowData = {
   fresh: boolean;
   catchability: Catchability | null;
   focus: TransitVehicleFocusDetail | null;
+  busRef: TransitBusRef | null;
 };
 
 const STOPS: SelectedStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
@@ -89,6 +94,8 @@ const STOPS: SelectedStop[] = CURRENT_TRANSIT_STOPS.map((stop) => ({
 const STOP_BY_ID: Record<string, StopRecord> = Object.fromEntries(
   CURRENT_TRANSIT_STOPS.map((stop) => [stop.id, stop]),
 );
+const SELECTABLE_STOP_BY_ID: Record<string, SelectedStop> =
+  Object.fromEntries(STOPS.map((stop) => [stop.id, stop]));
 
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
   (TRANSIT.routes as TransitRoute[]).map((route) => [route.id, route]),
@@ -234,10 +241,14 @@ function FeedBadge({
 
 function ArrivalRow({
   row,
+  saved,
   onTrack,
+  onToggleSaved,
 }: {
   row: ArrivalRowData;
+  saved: boolean;
   onTrack: (detail: TransitVehicleFocusDetail) => void;
+  onToggleSaved: (bus: TransitBusRef) => void;
 }) {
   const timeLabel = row.fresh
     ? row.minutes === 0
@@ -248,7 +259,7 @@ function ArrivalRow({
 
   return (
     <li
-      className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-[var(--app-radius-sm)] px-2.5 py-2"
+      className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--app-radius-sm)] px-2.5 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
       style={{ background: "var(--app-bg-sunken)" }}
     >
       <RouteBadge route={row.route} />
@@ -280,30 +291,67 @@ function ArrivalRow({
         </span>
         {row.catchability && <CatchabilityLabel value={row.catchability} />}
       </span>
-      {row.focus && (
-        <button
-          type="button"
-          onClick={() => onTrack(row.focus as TransitVehicleFocusDetail)}
-          aria-label={`Track ${
-            destination
-              ? `${row.route?.name ?? "this bus"} to ${destination}`
-              : row.route?.name ?? "this bus"
-          } on the live map`}
-          className="tap-44 inline-flex min-h-11 max-w-[4.5rem] items-center justify-center gap-1 rounded-[var(--app-radius-sm)] border px-1.5 text-center text-[10px] font-semibold leading-tight transition motion-reduce:transition-none"
-          style={{
-            borderColor:
-              "color-mix(in srgb, var(--app-cool) 36%, var(--app-border))",
-            color: "var(--app-cool)",
-            background: "var(--app-cool-tint-6)",
-          }}
-        >
-          <LocateFixed
-            className="h-3.5 w-3.5 shrink-0"
-            strokeWidth={2.2}
-            aria-hidden
-          />
-          Track on map
-        </button>
+      {row.focus && row.busRef && (
+        <div className="col-span-2 col-start-2 flex flex-wrap justify-end gap-1.5 sm:col-span-1 sm:col-start-auto sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => onTrack(row.focus as TransitVehicleFocusDetail)}
+            aria-label={`Track ${
+              destination
+                ? `${row.route?.name ?? "this bus"} to ${destination}`
+                : row.route?.name ?? "this bus"
+            } on the live map`}
+            className="tap-44 inline-flex min-h-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] border px-2 text-center text-[10px] font-semibold leading-tight transition motion-reduce:transition-none"
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--app-cool) 36%, var(--app-border))",
+              color: "var(--app-cool)",
+              background: "var(--app-cool-tint-6)",
+            }}
+          >
+            <LocateFixed
+              className="h-3.5 w-3.5 shrink-0"
+              strokeWidth={2.2}
+              aria-hidden
+            />
+            Track on map
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleSaved(row.busRef as TransitBusRef)}
+            aria-pressed={saved}
+            aria-label={
+              saved
+                ? `Remove bus ${row.busRef.vehicleId} from Saved`
+                : `Save bus ${row.busRef.vehicleId}`
+            }
+            className="tap-44 inline-flex min-h-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] border px-2 text-[10px] font-semibold transition motion-reduce:transition-none"
+            style={{
+              borderColor: saved
+                ? "color-mix(in srgb, var(--app-cool) 45%, var(--app-border))"
+                : "var(--app-control-border)",
+              color: saved ? "var(--app-cool)" : "var(--app-ink-2)",
+              background: saved
+                ? "var(--app-cool-tint-6)"
+                : "var(--app-bg-elevated-solid)",
+            }}
+          >
+            {saved ? (
+              <BookmarkCheck
+                className="h-3.5 w-3.5 shrink-0"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            ) : (
+              <Bookmark
+                className="h-3.5 w-3.5 shrink-0"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            )}
+            {saved ? "Saved bus" : "Save bus"}
+          </button>
+        </div>
       )}
     </li>
   );
@@ -315,16 +363,20 @@ function StopCommandPanel({
   saved,
   onToggleSaved,
   onTrackVehicle,
+  onAnnounce,
 }: {
   stop: SelectedStop;
   position: GeoPosition | null;
   saved: boolean;
   onToggleSaved: (stop: SelectedStop) => void;
   onTrackVehicle: (detail: TransitVehicleFocusDetail) => void;
+  onAnnounce: (message: string) => void;
 }) {
   const [showFullDetail, setShowFullDetail] = useState(false);
   const { snapshot, nowMs } = useStopArrivals(stop.id);
   const liveVehicles = useLiveVehicles();
+  const { buses: savedBuses, toggle: toggleSavedBus } =
+    useSavedTransitBuses();
   const accuratePosition =
     position && position.accuracy <= MAX_LOCATION_ACCURACY_METERS
       ? position
@@ -375,6 +427,7 @@ function StopCommandPanel({
             vehicles: liveVehicles.vehicles,
             vehicleId: prediction.vehicleId,
             expectedRouteId: prediction.routeId,
+            expectedTripId: prediction.tripId,
             feedCurrent:
               liveVehicles.loaded &&
               liveVehicles.available &&
@@ -383,6 +436,7 @@ function StopCommandPanel({
             nowMs,
           })
         : null;
+      const exactTripId = prediction.tripId ?? currentVehicle?.tripId;
       return {
         key:
           prediction.tripId ??
@@ -409,6 +463,28 @@ function StopCommandPanel({
               stop: { lng: stop.lng, lat: stop.lat },
               stopId: stop.id,
               stopName: stop.name,
+            }
+          : null,
+        busRef: currentVehicle && exactTripId
+          ? {
+              vehicleId: currentVehicle.vehicleId,
+              tripId: exactTripId,
+              routeId: currentVehicle.routeId ?? prediction.routeId,
+              routeShort: prediction.routeId
+                ? ROUTE_BY_ID[prediction.routeId]?.short
+                : undefined,
+              routeName: prediction.routeId
+                ? ROUTE_BY_ID[prediction.routeId]?.name
+                : undefined,
+              directionId: prediction.directionId,
+              headsign: prediction.headsign,
+              targetStop: {
+                id: stop.id,
+                name: stop.name,
+                lat: stop.lat,
+                lng: stop.lng,
+              },
+              lastSeenAt: currentVehicle.timestamp,
             }
           : null,
       };
@@ -556,7 +632,35 @@ function StopCommandPanel({
                 <ArrivalRow
                   key={row.key}
                   row={row}
+                  saved={
+                    row.busRef
+                      ? savedBuses.some(
+                          (bus) =>
+                            bus.watchId === transitBusWatchId(row.busRef!),
+                        )
+                      : false
+                  }
                   onTrack={onTrackVehicle}
+                  onToggleSaved={(bus) => {
+                    const result = toggleSavedBus(bus);
+                    if (result.limitReached) {
+                      haptic("warning");
+                      onAnnounce(
+                        `You can save up to ${MAX_SAVED_TRANSIT_BUSES} buses. Remove one from Saved before adding another.`,
+                      );
+                      return;
+                    }
+                    haptic(result.saved ? "success" : "light");
+                    onAnnounce(
+                      result.saved
+                        ? result.persistent
+                          ? `Bus ${bus.vehicleId} saved for future tracking.`
+                          : `Bus ${bus.vehicleId} saved for this visit only. Device storage is unavailable.`
+                        : result.persistent
+                          ? `Bus ${bus.vehicleId} removed from Saved.`
+                          : `Bus ${bus.vehicleId} removed for this visit only. Device storage is unavailable.`,
+                    );
+                  }}
                 />
               ))}
             </ul>
@@ -800,6 +904,24 @@ export default function TransitStopFinder() {
     [],
   );
 
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get(
+      "stop",
+    );
+    if (!requestedId) return;
+    const requested = SELECTABLE_STOP_BY_ID[requestedId];
+    const timer = window.setTimeout(() => {
+      if (!requested) {
+        announce(
+          "That saved stop is no longer in the current TransIT network.",
+        );
+        return;
+      }
+      setSelected(requested);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [announce]);
+
   const results = useMemo(() => {
     if (normalized.length >= 2) {
       return STOPS.filter((stop) =>
@@ -822,6 +944,13 @@ export default function TransitStopFinder() {
     setSelected(stop);
     setQuery("");
     setShowNearby(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set("stop", stop.id);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
     haptic("light");
     announce(`${stop.name} selected.`);
   };
@@ -838,8 +967,12 @@ export default function TransitStopFinder() {
     haptic(result.saved ? "success" : "light");
     announce(
       result.saved
-        ? `${stop.name} saved on this phone.`
-        : `${stop.name} removed from saved stops.`,
+        ? result.persistent
+          ? `${stop.name} saved on this phone.`
+          : `${stop.name} saved for this visit only. Device storage is unavailable.`
+        : result.persistent
+          ? `${stop.name} removed from saved stops.`
+          : `${stop.name} removed for this visit only. Device storage is unavailable.`,
     );
   };
 
@@ -947,6 +1080,7 @@ export default function TransitStopFinder() {
           saved={currentSavedStops.some((stop) => stop.id === activeStop.id)}
           onToggleSaved={toggleSaved}
           onTrackVehicle={trackVehicle}
+          onAnnounce={announce}
         />
       ) : (
         <div

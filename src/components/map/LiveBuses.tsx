@@ -2,13 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
-import { BellRing } from "lucide-react";
+import { BellRing, Bookmark, BookmarkCheck } from "lucide-react";
 import TRANSIT from "@/data/transit.json";
 import TRANSIT_NETWORK from "@/data/transit-network.json";
 import { readableTextOn } from "@/lib/color/readableText";
 import { haptic } from "@/lib/haptics";
 import { shouldLimitLiveEffects } from "@/lib/motion";
 import { findCurrentTransitVehicle } from "@/lib/transit-focus";
+import { CURRENT_TRANSIT_STOPS } from "@/lib/transit-static";
+import {
+  MAX_SAVED_TRANSIT_BUSES,
+  transitBusWatchId,
+  type TransitBusRef,
+} from "@/components/transit/transitRiderModel";
+import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
 import { exposeMarkerChild } from "./markerA11y";
 
 /**
@@ -66,6 +73,9 @@ type TransitRoute = { id: string; short: string; name: string; color: string; te
 
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
   (TRANSIT.routes as TransitRoute[]).map((r) => [r.id, r]),
+);
+const SELECTABLE_STOP_BY_ID = new Map(
+  CURRENT_TRANSIT_STOPS.map((stop) => [String(stop.id), stop]),
 );
 
 const POLL_MS = 15_000;
@@ -211,6 +221,12 @@ export default function LiveBuses({
   const [dismissedFocusKey, setDismissedFocusKey] =
     useState<string | null>(null);
   const [watching, setWatching] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{
+    vehicleId: string;
+    message: string;
+  } | null>(null);
+  const { buses: savedBuses, toggle: toggleSavedBus } =
+    useSavedTransitBuses();
   const [ago, setAgo] = useState(0);
   // Wall-clock now (ms), refreshed on the 1s tick — drives the next-stop ETA
   // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
@@ -522,6 +538,7 @@ export default function LiveBuses({
                 haptic("light");
                 setDismissedFocusKey(focusKey);
                 setSelected(v.vehicleId);
+                setSaveNotice(null);
               }}
               aria-label={`TransIT ${route?.name ?? "bus"}, vehicle ${v.vehicleId}, ${feedStatus === "stale" ? "last reported position" : p.moving ? "moving now" : "at a stop"}`}
               style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: feedStatus === "stale" ? 0.62 : highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
@@ -637,6 +654,31 @@ export default function LiveBuses({
             ? null
             : Math.max(8, Math.min(100, ((12 - etaMinutes) / 12) * 100));
         const isWatching = watching === v.vehicleId;
+        const targetStop = v.nextStop
+          ? SELECTABLE_STOP_BY_ID.get(v.nextStop.id)
+          : undefined;
+        const busRef: TransitBusRef = {
+          vehicleId: v.vehicleId,
+          tripId: v.tripId,
+          routeId: v.routeId,
+          routeShort: route?.short,
+          routeName: route?.name,
+          targetStop: targetStop
+            ? {
+                id: String(targetStop.id),
+                name: targetStop.name,
+                lat: targetStop.lat,
+                lng: targetStop.lng,
+              }
+            : undefined,
+          lastSeenAt: v.timestamp,
+        };
+        const busSaved = savedBuses.some(
+          (bus) => bus.watchId === transitBusWatchId(busRef),
+        );
+        const canSaveExactRun =
+          Boolean(v.tripId && targetStop) && feedStatus === "ready";
+        const canToggleSaved = busSaved || canSaveExactRun;
         return (
           <Popup
             longitude={p.lng}
@@ -724,7 +766,7 @@ export default function LiveBuses({
                   aria-pressed={isWatching}
                   style={{
                     width: "100%",
-                    minHeight: 40,
+                    minHeight: 44,
                     marginTop: 9,
                     display: "inline-flex",
                     alignItems: "center",
@@ -774,6 +816,84 @@ export default function LiveBuses({
                   </p>
                 )
               )}
+              <button
+                type="button"
+                disabled={!canToggleSaved}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const result = toggleSavedBus(busRef);
+                  if (result.limitReached) {
+                    haptic("warning");
+                    setSaveNotice({
+                      vehicleId: v.vehicleId,
+                      message: `You can save up to ${MAX_SAVED_TRANSIT_BUSES} buses.`,
+                    });
+                    return;
+                  }
+                  haptic(result.saved ? "success" : "light");
+                    setSaveNotice({
+                      vehicleId: v.vehicleId,
+                      message: result.saved
+                        ? result.persistent
+                          ? `Bus ${v.vehicleId} saved on this device.`
+                          : `Bus ${v.vehicleId} saved for this visit only. Device storage is unavailable.`
+                        : result.persistent
+                          ? `Bus ${v.vehicleId} removed from Saved.`
+                          : `Bus ${v.vehicleId} removed for this visit only. Device storage is unavailable.`,
+                    });
+                }}
+                aria-pressed={busSaved}
+                style={{
+                  width: "100%",
+                  minHeight: 44,
+                  marginTop: 7,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  border: `1px solid ${
+                    busSaved
+                      ? color
+                      : "var(--app-border, #D9D2C3)"
+                  }`,
+                  borderRadius: 999,
+                  background: busSaved
+                    ? `color-mix(in srgb, ${color} 10%, white)`
+                    : "var(--app-bg-elevated, #FCFBF8)",
+                  color: "var(--app-ink, #221C15)",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: canToggleSaved ? "pointer" : "not-allowed",
+                  opacity: canToggleSaved ? 1 : 0.62,
+                }}
+              >
+                {busSaved ? (
+                  <BookmarkCheck aria-hidden size={14} strokeWidth={2.2} />
+                ) : (
+                  <Bookmark aria-hidden size={14} strokeWidth={2.2} />
+                )}
+                {busSaved
+                  ? "Saved bus"
+                  : canSaveExactRun
+                    ? "Save this bus"
+                    : v.tripId && !targetStop
+                      ? "Next stop unavailable"
+                      : "Live trip unavailable"}
+              </button>
+              {saveNotice?.vehicleId === v.vehicleId ? (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    marginTop: 5,
+                    fontSize: 9.5,
+                    lineHeight: 1.35,
+                    color: "var(--app-ink-3, #5C5A50)",
+                  }}
+                >
+                  {saveNotice.message}
+                </p>
+              ) : null}
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
                 {feedStatus === "stale"
                   ? `Feed delayed · last update ${ago < 90 ? `${ago}s` : `${Math.floor(ago / 60)} min`} ago`

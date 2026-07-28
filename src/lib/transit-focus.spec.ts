@@ -90,6 +90,7 @@ describe("transit route focus handoff", () => {
       {
         vehicleId: "bus-15",
         routeId: "9349",
+        tripId: "trip-15",
         lat: 39.421,
         lng: -77.413,
         timestamp: (nowMs - 20_000) / 1000,
@@ -97,6 +98,7 @@ describe("transit route focus handoff", () => {
       {
         vehicleId: "bus-old",
         routeId: "9349",
+        tripId: "trip-old",
         lat: 39.42,
         lng: -77.41,
         timestamp: (nowMs - 41_000) / 1000,
@@ -108,6 +110,7 @@ describe("transit route focus handoff", () => {
         vehicles,
         vehicleId: "bus-15",
         expectedRouteId: "9349",
+        expectedTripId: "trip-15",
         feedCurrent: true,
         nowMs,
       }),
@@ -116,6 +119,15 @@ describe("transit route focus handoff", () => {
       findCurrentTransitVehicle({
         vehicles,
         vehicleId: "bus-old",
+        feedCurrent: true,
+        nowMs,
+      }),
+    ).toBeNull();
+    expect(
+      findCurrentTransitVehicle({
+        vehicles,
+        vehicleId: "bus-15",
+        expectedTripId: "different-trip",
         feedCurrent: true,
         nowMs,
       }),
