@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ageLabel,
   buildDeckKeys,
+  dayRangeNote,
   minutesUntil,
   shortGaugeName,
   sparkSeries,
@@ -30,6 +32,13 @@ const NOTHING: DeckInputs = {
   events: null,
   news: null,
 };
+
+/** Gauge readings an hour apart, oldest first, like USGS returns them. */
+const readings = (values: number[]) =>
+  values.map((value, i) => ({
+    value,
+    at: new Date(NOW.getTime() - (values.length - 1 - i) * 3_600_000).toISOString(),
+  }));
 
 const keyed = (input: Partial<DeckInputs>, now: Date = NOW) => {
   const keys = buildDeckKeys({ ...NOTHING, ...input }, now);
@@ -243,12 +252,25 @@ describe("buildDeckKeys", () => {
   it("draws the sparkline from the gauge named on the face, not an average", () => {
     const keys = keyed({
       water: [
-        { name: "CATOCTIN CREEK NEAR MIDDLETOWN, MD", feet: 1.5, history: [9, 9, 9] },
-        { name: "POTOMAC RIVER AT POINT OF ROCKS, MD", feet: 2.5, history: [1, 2, 3] },
+        { name: "CATOCTIN CREEK NEAR MIDDLETOWN, MD", feet: 1.5, history: readings([9, 9, 9]) },
+        { name: "POTOMAC RIVER AT POINT OF ROCKS, MD", feet: 2.5, history: readings([1, 2, 3]) },
       ],
     });
     expect(keys.water.faces[1].label).toBe("Potomac at Point Of Rocks");
-    expect(keys.water.spark).toEqual([1, 2, 3]);
+    expect(keys.water.spark?.map((point) => point.v)).toEqual([1, 2, 3]);
+  });
+
+  it("keeps each point's own timestamp, so a scrub readout can say when", () => {
+    const keys = keyed({
+      water: [{ name: "MONOCACY RIVER AT BRIDGEPORT, MD", feet: 2.1, history: readings([1, 2, 3]) }],
+    });
+    // USGS skips intervals, so a time inferred from array position would be
+    // wrong exactly when the reader is asking "when was that".
+    expect(keys.water.spark?.map((point) => point.at)).toEqual([
+      "2026-07-28T19:00:00.000Z",
+      "2026-07-28T20:00:00.000Z",
+      "2026-07-28T21:00:00.000Z",
+    ]);
   });
 
   it("carries a trend per gauge only where the feed supports one", () => {
@@ -266,7 +288,7 @@ describe("buildDeckKeys", () => {
     const keys = buildDeckKeys(
       {
         ...NOTHING,
-        water: [{ name: "MONOCACY RIVER AT BRIDGEPORT, MD", feet: 2.1, history: [1, 2] }],
+        water: [{ name: "MONOCACY RIVER AT BRIDGEPORT, MD", feet: 2.1, history: readings([1, 2]) }],
         power: { available: true, out: 5, munis: [{ area: "Thurmont", out: 5 }] },
         buses: { available: true, stops: [{ name: "Market & 7th" }] },
       },
@@ -310,21 +332,35 @@ describe("buildDeckKeys", () => {
 
 describe("sparkSeries", () => {
   it("keeps a short series whole", () => {
-    expect(sparkSeries([1, 2, 3], 24)).toEqual([1, 2, 3]);
+    expect(sparkSeries(readings([1, 2, 3]), 24).map((p) => p.v)).toEqual([1, 2, 3]);
   });
 
   it("thins a full day of gauge readings to a drawable number of points", () => {
     // The real shape: ~94 readings per gauge per day.
-    const day = Array.from({ length: 94 }, (_, i) => i);
+    const day = readings(Array.from({ length: 94 }, (_, i) => i));
     const thinned = sparkSeries(day, 24);
     expect(thinned).toHaveLength(24);
     // The line has to end where the number on the face says it does.
-    expect(thinned[0]).toBe(0);
-    expect(thinned.at(-1)).toBe(93);
+    expect(thinned[0].v).toBe(0);
+    expect(thinned.at(-1)?.v).toBe(93);
+    expect(thinned.at(-1)?.at).toBe(day.at(-1)?.at);
   });
 
   it("drops readings that are not numbers rather than plotting a hole", () => {
-    expect(sparkSeries([1, Number.NaN, 3], 24)).toEqual([1, 3]);
+    const bad = [
+      { value: 1, at: "2026-07-28T18:00:00.000Z" },
+      { value: Number.NaN, at: "2026-07-28T19:00:00.000Z" },
+      { value: 3, at: "2026-07-28T20:00:00.000Z" },
+    ];
+    expect(sparkSeries(bad, 24).map((p) => p.v)).toEqual([1, 3]);
+  });
+
+  it("drops a point whose timestamp is unusable, since the scrub reads it", () => {
+    const bad = [
+      { value: 1, at: "not-a-date" },
+      { value: 3, at: "2026-07-28T20:00:00.000Z" },
+    ];
+    expect(sparkSeries(bad, 24).map((p) => p.v)).toEqual([3]);
   });
 });
 
@@ -344,5 +380,63 @@ describe("minutesUntil", () => {
 
   it("has nothing to say without a prediction", () => {
     expect(minutesUntil(undefined, NOW)).toBeNull();
+  });
+});
+
+describe("dayRangeNote", () => {
+  const at = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
+
+  it("states the day's low and high, since the line can only be scrubbed", () => {
+    expect(
+      dayRangeNote(
+        [
+          { value: 1.2, at: at(6) },
+          { value: 2.6, at: at(3) },
+          { value: 1.9, at: at(0) },
+        ],
+        "Monocacy at Frederick",
+      ),
+    ).toBe("Monocacy at Frederick ran 1.2 to 2.6 ft over the last 24 hours.");
+  });
+
+  it("says a flat day held steady rather than printing a false range", () => {
+    expect(
+      dayRangeNote(
+        [
+          { value: 1.51, at: at(6) },
+          { value: 1.52, at: at(0) },
+        ],
+        "Bennett at Park Mills",
+      ),
+    ).toBe("Bennett at Park Mills has held near 1.5 ft for the last 24 hours.");
+  });
+
+  it("says nothing when there is not enough history to describe", () => {
+    expect(dayRangeNote(undefined, "Catoctin at Middletown")).toBeUndefined();
+    expect(dayRangeNote([{ value: 1, at: at(0) }], "Catoctin at Middletown")).toBeUndefined();
+  });
+});
+
+describe("ageLabel", () => {
+  const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
+
+  it("rounds a feed item's age into the deck's figure slot", () => {
+    expect(ageLabel(ago(10 * 60_000), NOW)).toBe("just now");
+    expect(ageLabel(ago(3 * 3_600_000), NOW)).toBe("3h ago");
+    expect(ageLabel(ago(50 * 3_600_000), NOW)).toBe("2d ago");
+  });
+
+  it("uses the singular where a count of one lands", () => {
+    expect(ageLabel(ago(60 * 60_000), NOW)).toBe("1h ago");
+    expect(ageLabel(ago(25 * 3_600_000), NOW)).toBe("1d ago");
+  });
+
+  it("says nothing rather than guessing when the stamp is missing or broken", () => {
+    expect(ageLabel(undefined, NOW)).toBeUndefined();
+    expect(ageLabel("not-a-date", NOW)).toBeUndefined();
+  });
+
+  it("refuses a future timestamp, which is a feed bug and not a fact", () => {
+    expect(ageLabel(ago(-3_600_000), NOW)).toBeUndefined();
   });
 });

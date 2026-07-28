@@ -106,8 +106,13 @@ export type DeckKey = {
   /** A short recent series drawn on the closed face, oldest first. Present
    *  only where the feed actually publishes history: today that is the USGS
    *  gauges (~94 readings over 24h) and nothing else. A sparkline invented
-   *  from a single current value would be a drawing, not a measurement. */
-  spark?: number[];
+   *  from a single current value would be a drawing, not a measurement.
+   *
+   *  Each point keeps its own timestamp because the line is scrubbable, and a
+   *  readout that says "6h ago" from assumed even spacing would be inventing
+   *  the one thing the reader is asking for. USGS reports every ~15 minutes
+   *  but skips, so the spacing is not guaranteed. */
+  spark?: Array<{ v: number; at: string }>;
   /** Shown instead of rows when there are none. Says what was checked. */
   note?: string;
   /** Named on the open key, never invented. */
@@ -140,7 +145,7 @@ export type DeckInputs = {
     name: string;
     feet: number;
     trend?: "rising" | "falling" | "steady";
-    history?: number[];
+    history?: Array<{ value: number; at: string }>;
   }> | null;
   schools: { available: boolean; alerts: string[] } | null;
   reports: DeckDetailRow[] | null;
@@ -158,7 +163,7 @@ function key(
     faces: DeckFace[];
     detail?: DeckDetailRow[];
     note?: string;
-    spark?: number[];
+    spark?: Array<{ v: number; at: string }>;
   } | null,
 ): DeckKey {
   if (!built || built.faces.length === 0) {
@@ -184,13 +189,25 @@ function key(
  * Thin a long series to the handful of points a sparkline the width of a
  * thumbnail can actually resolve, keeping the newest reading so the line ends
  * where the number on the face says it does.
+ *
+ * Timestamps travel with the values. The line is scrubbable, and the whole
+ * point of a scrub readout is answering "when", so each surviving point has
+ * to carry its own time rather than have one inferred from its position.
  */
-export function sparkSeries(history: readonly number[], points = 24): number[] {
-  const clean = history.filter((value) => Number.isFinite(value));
-  if (clean.length <= points) return [...clean];
+export function sparkSeries(
+  history: readonly { value: number; at: string }[],
+  points = 24,
+): Array<{ v: number; at: string }> {
+  const clean = history.filter(
+    (reading) =>
+      Number.isFinite(reading?.value) && Number.isFinite(Date.parse(reading?.at ?? "")),
+  );
+  if (clean.length === 0) return [];
+  const pick = (reading: { value: number; at: string }) => ({ v: reading.value, at: reading.at });
+  if (clean.length <= points) return clean.map(pick);
   const step = (clean.length - 1) / (points - 1);
   return Array.from({ length: points }, (_, i) =>
-    clean[Math.min(clean.length - 1, Math.round(i * step))],
+    pick(clean[Math.min(clean.length - 1, Math.round(i * step))]),
   );
 }
 
@@ -234,6 +251,29 @@ export function shortGaugeName(raw: string): string {
   const full = `${body} at ${place}`;
   if (full.length <= 22) return full;
   return `${body.replace(/\s+(River|Creek|Run|Branch)$/i, "")} at ${place}`;
+}
+
+/**
+ * The day's low and high for the gauge on the face, in words.
+ *
+ * The sparkline can only be scrubbed with a pointer, so the shape it draws has
+ * to be stated somewhere a keyboard or a screen reader can reach. Returns
+ * undefined rather than a flat "0.0 to 0.0" when there is no usable history.
+ */
+export function dayRangeNote(
+  history: readonly { value: number; at: string }[] | undefined,
+  name: string,
+): string | undefined {
+  const values = (history ?? [])
+    .map((reading) => reading.value)
+    .filter((value) => Number.isFinite(value));
+  if (values.length < 2) return undefined;
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  if (high - low < 0.05) {
+    return `${name} has held near ${high.toFixed(1)} ft for the last 24 hours.`;
+  }
+  return `${name} ran ${low.toFixed(1)} to ${high.toFixed(1)} ft over the last 24 hours.`;
 }
 
 /**
@@ -447,6 +487,10 @@ export function buildDeckKeys(input: DeckInputs, now: Date = new Date()): DeckKe
                 trail: `${site.feet.toFixed(1)} ft`,
                 trend: site.trend,
               })),
+              // The scrub gesture on the face is a pointer-only nicety, so the
+              // day's shape has to be readable without it too. This is the same
+              // series the line is drawn from, stated in words.
+              note: dayRangeNote(highest.history, shortGaugeName(highest.name)),
             };
           })()
         : null,
@@ -559,6 +603,28 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * How long ago a feed item was published, in the deck's figure slot.
+ *
+ * A headline's source and a 311 report's category are both already most of
+ * their own title, so putting either in the figure slot spent the one big
+ * number on a repeat. Age is the fact those rows were missing: whether the
+ * news is from this morning or last Tuesday changes what you do with it, and
+ * both feeds have carried the timestamp all along.
+ */
+export function ageLabel(iso: string | undefined, now: Date): string | undefined {
+  if (!iso) return undefined;
+  const then = Date.parse(iso);
+  if (!Number.isFinite(then)) return undefined;
+  const minutes = Math.round((now.getTime() - then) / 60_000);
+  if (minutes < 0) return undefined; // a future stamp is a feed bug, not a fact
+  if (minutes < 45) return "just now";
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours <= 1 ? "1h ago" : `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days <= 1 ? "1d ago" : `${days}d ago`;
+}
+
 /** Clamp a feed's own prose to one readable line on a narrow key. */
 function clamp(value: string, max = 58): string {
   const trimmed = value.replace(/\s+/g, " ").trim();
@@ -658,7 +724,7 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
               name: site.name,
               feet: site.gageHeightFt,
               trend: readingTrend(site.gageHistory) ?? undefined,
-              history: site.gageHistory?.map((reading) => reading.value),
+              history: site.gageHistory,
             })),
         ),
         T,
@@ -676,7 +742,7 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
         getFixItIssues(20).then((issues) =>
           issues.map((issue) => ({
             lead: clamp(issue.summary || issue.category),
-            trail: issue.category && issue.category !== issue.summary ? clamp(issue.category, 18) : undefined,
+            trail: ageLabel(issue.reported_at, now),
           })),
         ),
         T,
@@ -708,8 +774,10 @@ export async function getDeckKeys(now: Date = new Date()): Promise<DeckKey[]> {
       withTimeout(
         getLocalHeadlines().then((headlines) =>
           headlines.map((headline) => ({
-            lead: clamp(headline.title),
-            trail: clamp(headline.source, 16),
+            // The source rides with the title rather than in the figure slot:
+            // "WTOP" set in the key's biggest type read like a measurement.
+            lead: clamp(`${headline.title}${headline.source ? ` · ${headline.source}` : ""}`, 72),
+            trail: ageLabel(headline.published_at, now),
           })),
         ),
         T,
